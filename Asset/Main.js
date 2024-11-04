@@ -18,12 +18,28 @@ const translations = {
         DevText: "Lập trình",
 
         SkillNote: "*Các đánh giá này được dựa trên đánh giá từ những người có kinh nghiệm chuyên ngành.",
-        Skil1: "Cơ điện tử",
+        Skill1: "Cơ điện tử",
         Skill2: "Lập trình PLC",
         Skill3: "Tin học văn phòng",
         Skill4: "Lập trình Web [Front-End]",
         Skill5: "Auto CAD",
         Skill6: "Lập trình Arduino, Vi xử lý",
+
+        ExpText:"Kinh nghiệm",
+        Exp1: "Tốt nghiệp trung học phổ thông",
+        Exp2: "Tốt nghiệp Cao đẳng Cơ Điện Tử tiêu chuẩn Đức",
+        Exp3: "CTY TNHH KỸ THUẬT ELECOM VIỆT NAM",
+        Exp3a: "Thực tập sinh",
+        Exp3b: "Học hỏi về quy trình và công nghệ cơ điện tử",
+        Exp4: "Kỹ thuật",
+        Exp4a: "Kiểm tra & sửa chữa Motor điện",
+        TimeExp5: "Nay",
+        Exp5: "CTY CP THIẾT KẾ VÀ QUẢN LÝ KỸ THUẬT IMPC",
+        Exp5a: "Kỹ thuật & Giám sát",
+        Exp5b: `Xử lý sự cố hệ thống điện: Khắc phục các lỗi như mất điện, lỗi thiết bị.
+        <br>Giám sát hệ thống phòng cháy chữa cháy: Kiểm tra thiết bị, kiểm soát các nguồn cháy nổ, đào tạo về phòng cháy chữa cháy. 
+        <br>Giám sát an toàn lao động: Nhắc nhở, phổ biến, huấn luyện an toàn cho nhà thầu thi công.
+        <br>Giám sát an ninh trật tự trong quản lý dự án`,
     },
     en: {
         welcomeText: "Hello",
@@ -42,12 +58,29 @@ const translations = {
         DevText: "Developer",
 
         SkillNote: "*These evaluations are based on assessments from experienced professionals in the field.",
-        Skil1: "Mechatronics",
+        Skill1: "Mechatronics",
         Skill2: "PLC Programming",
         Skill3: "Office Computing",
         Skill4: "Web Programming [Front-End]",
         Skill5: "Auto CAD",
         Skill6: "Arduino Programming, Microcontroller",
+
+        ExpText:"Experience",
+        Exp1: "High School Graduate",
+        Exp2: "Graduated from German-standard Mechatronics College",
+        Exp3: "ELECOM VIETNAM TECHNICAL CO., LTD",
+        Exp3a: "Intern",
+        Exp3b: "Learning about mechatronics processes and technology",
+        Exp4: "Technical",
+        Exp4a: "Inspect & repair electric motors",
+        TimeExp5: "Present",
+        Exp5: "IMPC ENGINEERING DESIGN AND MANAGEMENT JSC",
+        Exp5a: "Technical & Supervision",
+        Exp5b: `Handling electrical system issues: Troubleshooting issues like power outages, equipment failures.
+        <br>Supervising fire protection systems: Inspecting equipment, monitoring fire/explosion sources, providing fire protection training.
+        <br>Supervising labor safety: Reminding, educating, and training safety practices for contractors.
+        <br>Supervising security and order in project management.`
+
     },
     ja: {
         welcomeText: "こんにちは",
@@ -66,12 +99,29 @@ const translations = {
         DevText: "開発者 ",
 
         SkillNote: "*これらの評価は、専門分野で経験のある人の評価に基づいています。",
-        Skil1: "メカトロニクス",
+        Skill1: "メカトロニクス",
         Skill2: "PLCプログラミング",
         Skill3: "オフィスコンピューティング",
         Skill4: "ウェブプログラミング [フロントエンド]",
         Skill5: "オートCAD",
         Skill6: "Arduinoプログラミング、マイクロコントローラー",
+
+        ExpText:"経験 (けいけん)",
+        Exp1: "高校卒業",
+        Exp2: "ドイツ基準のメカトロニクス専門学校卒業",
+        Exp3: "ELECOM VIETNAM 技術有限会社",
+        Exp3a: "インターン",
+        Exp3b: "メカトロニクスのプロセスと技術について学ぶ",
+        Exp4: "技術",
+        Exp4a: "電動モーターの検査と修理",
+        TimeExp5: "現在",
+        Exp5: "IMPC設計と技術管理株式会社",
+        Exp5a: "技術と監督",
+        Exp5b: `電気システムの問題対応: 停電、設備故障などの問題を解決。
+<br>防火システムの監視: 機器の点検、火災や爆発源の管理、防火訓練。
+<br>労働安全の監視: 施工業者への注意喚起、教育、安全訓練。
+<br>プロジェクト管理の治安と秩序の監視。`
+
     }
 };
 
@@ -111,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function applyLanguage(language) {
     var body = document.body.classList;
-    body.remove('en', 'vi', 'ja');
+    body.remove('en', 'vi', 'ja', 'cn');
 
     // Thêm lớp ngôn ngữ mới
     body.add(language);
@@ -119,16 +169,17 @@ function applyLanguage(language) {
     // Lấy tất cả phần tử có thuộc tính data-translate và cập nhật nội dung
     document.querySelectorAll('[data-translate]').forEach(el => {
         const key = el.getAttribute('data-translate');
-        el.textContent = translations[language][key] || el.textContent;
+        el.innerHTML = translations[language][key] || el.innerHTML;
     });
 }
 
 // Hàm cập nhật cờ dựa trên ngôn ngữ đã lưu
 function updateFlag(language) {
     const flagMap = {
-        'vi': './Asset/icon/flag/VietNam.png',
+        'vi': './Asset/icon/flag/vietnam.png',
         'en': './Asset/icon/flag/US.png',
-        'ja': './Asset/icon/flag/Japan.png'
+        'ja': './Asset/icon/flag/Japan.png',
+        'cn': './Asset/icon/flag/china.png'
     };
     document.getElementById('currentFlag').src = flagMap[language];
 }
