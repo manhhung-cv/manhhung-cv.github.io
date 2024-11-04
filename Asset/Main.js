@@ -228,7 +228,7 @@ function applyLanguage(language) {
 // Hàm cập nhật cờ dựa trên ngôn ngữ đã lưu
 function updateFlag(language) {
     const flagMap = {
-        'vi': './Asset/icon/flag/vietnam.png',
+        'vi': './Asset/icon/flag/Vietnam.png',
         'en': './Asset/icon/flag/US.png',
         'ja': './Asset/icon/flag/Japan.png',
         'zh': './Asset/icon/flag/china.png'
