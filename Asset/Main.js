@@ -13,7 +13,7 @@ const translations = {
         ProjectText: "Dự án",
         StoreText: "Cửa hàng",
 
-        HideInfo: "Hiện tại đang ẩn",
+        HideInfo: "Thông tin bị ẩn, Chỉ hiển thị khi nhập mã tuyển dụng.",
 
         DevText: "Lập trình",
 
@@ -62,7 +62,8 @@ const translations = {
         ProjectText: "Project",
         StoreText: "Store",
 
-        HideInfo: "Currently hidden",
+        HideInfo: "Information is hidden, Only displayed when entering recruitment code.",
+
         DevText: "Developer",
 
         SkillNote: "*These evaluations are based on assessments from experienced professionals in the field.",
@@ -109,7 +110,7 @@ const translations = {
         ProjectText: "プロジェクト",
         StoreText: "ショップ",
 
-        HideInfo: "現在隠れています",
+        HideInfo: " 情報は非表示、採用コード入力時のみ表示",
         DevText: "開発者 ",
 
         SkillNote: "*これらの評価は、専門分野で経験のある人の評価に基づいています。",
@@ -155,7 +156,7 @@ const translations = {
         "ProjectText": "项目",
         "StoreText": "商店",
 
-        "HideInfo": "当前隐藏",
+        "HideInfo": "信息隐藏，仅输入招聘码时显示",
 
         "DevText": "编程",
 
@@ -292,3 +293,44 @@ document.querySelectorAll('.progress').forEach(function (progress) {
     container.appendChild(barWrapper);
     progress.appendChild(container);
 });
+
+
+
+
+
+async function DownloadCV() {
+    const { value: password } = await Swal.fire({
+        title: "Recruitment Code",
+        input: "text",
+        inputLabel: "Password",
+        inputPlaceholder: "Recruitment Code",
+        inputAttributes: {
+            maxlength: "10",
+            autocapitalize: "off",
+            autocorrect: "off"
+        }
+    });
+
+    // Nếu có nhập mật khẩu
+    if (password) {
+        try {
+            // Giải mã nội dung `.Contact` bằng mật khẩu nhập vào
+            const decryptedContent = CryptoJS.AES.decrypt(encryptedContactInfo, password).toString(CryptoJS.enc.Utf8);
+
+            // Kiểm tra nếu mật khẩu đúng (nội dung giải mã không rỗng)
+            if (decryptedContent) {
+                document.getElementById("Download").innerHTML = decryptedContent;
+                document.getElementById("Download").style.display = "block";
+                Swal.fire("Access Granted!", "Contact details are now visible", "success");
+            } else {
+                Swal.fire("Access denied", "Incorrect password", "error");
+            }
+        } catch (e) {
+            Swal.fire("Access Denied", "Incorrect password", "error");
+        }
+    }
+}
+
+// Mã hóa nội dung liên hệ để tránh hiển thị trong mã nguồn
+const encryptedContactInfo = "U2FsdGVkX1/a/N+6QwK/7AhzN6b23cP0PJxioLZjAq32gYPvkeq1+apyL2kn0zmHagPwVDkRmEUE6aUvbzASfu2kdFxwXM46I6ZamM/Akx7bkTMafLX6MwP+/5JaGJlY7AdpL2XhIpHsEhysBiZOIO5O15jW5X//dyd/6TmKNnH/TTCvM82keQwGzpPE/gHRU/jTpAucfTcLUJMKkPK2Hw==";
+
