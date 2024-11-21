@@ -191,8 +191,6 @@ const translations = {
 };
 
 
-
-
 // Hàm bật/tắt hiển thị menu ngôn ngữ
 function toggleDropdown() {
     const dropdown = document.getElementById('languageDropdown');
@@ -332,5 +330,5 @@ async function DownloadCV() {
 }
 
 // Mã hóa nội dung liên hệ để tránh hiển thị trong mã nguồn
-const encryptedContactInfo = "U2FsdGVkX1/a/N+6QwK/7AhzN6b23cP0PJxioLZjAq32gYPvkeq1+apyL2kn0zmHagPwVDkRmEUE6aUvbzASfu2kdFxwXM46I6ZamM/Akx7bkTMafLX6MwP+/5JaGJlY7AdpL2XhIpHsEhysBiZOIO5O15jW5X//dyd/6TmKNnH/TTCvM82keQwGzpPE/gHRU/jTpAucfTcLUJMKkPK2Hw==";
+const encryptedContactInfo = "U2FsdGVkX18+/WQMYjScy5xZYU82uVGNZIfAnoF79uBZEVY7I2/RZ9UmEw8A6g00XlHVm7ZUBnQx2O1c4l4SQWQ1+brNt7bb/8nOfCs8cGnLWVjlz1MPxkBUZaj0XMTVH+MxcD0ODkb/Ilw0n0NfHOrkIh3n5wodM/q0vM2ebilMADuMC8sEctbMvQkez+K9wGiBvqOCi40z/NWarpV/Mw==";
 
