@@ -332,3 +332,246 @@ async function DownloadCV() {
 // Mã hóa nội dung liên hệ để tránh hiển thị trong mã nguồn
 const encryptedContactInfo = "U2FsdGVkX18+/WQMYjScy5xZYU82uVGNZIfAnoF79uBZEVY7I2/RZ9UmEw8A6g00XlHVm7ZUBnQx2O1c4l4SQWQ1+brNt7bb/8nOfCs8cGnLWVjlz1MPxkBUZaj0XMTVH+MxcD0ODkb/Ilw0n0NfHOrkIh3n5wodM/q0vM2ebilMADuMC8sEctbMvQkez+K9wGiBvqOCi40z/NWarpV/Mw==";
 
+
+
+// WEATHER
+const apiKey = 'KZH7P9GUL9SBMVQ5MV4WDF23L'; // Thay thế bằng API Key của bạn
+
+function getWeatherAuto() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                localStorage.setItem('location', `${lat},${lon}`);
+                fetchWeather(lat, lon);
+            },
+            () => {
+                // Nếu không thể lấy vị trí, sử dụng IP để lấy thời tiết
+                getWeatherByIP();
+            }
+        );
+    } else {
+        // Nếu trình duyệt không hỗ trợ định vị, sử dụng IP để lấy thời tiết
+        getWeatherByIP();
+    }
+}
+
+// Bảng ánh xạ từ hướng gió quốc tế sang thuần Việt
+const windDirectionMap = {
+    'N': 'Bắc',
+    'NNE': 'Bắc Đông Bắc',
+    'NE': 'Đông Bắc',
+    'ENE': 'Đông Bắc Đông',
+    'E': 'Đông',
+    'ESE': 'Đông Đông Nam',
+    'SE': 'Đông Nam',
+    'SSE': 'Nam Đông Nam',
+    'S': 'Nam',
+    'SSW': 'Nam Tây Nam',
+    'SW': 'Tây Nam',
+    'WSW': 'Tây Tây Nam',
+    'W': 'Tây',
+    'WNW': 'Tây Bắc Tây',
+    'NW': 'Tây Bắc',
+    'NNW': 'Bắc Tây Bắc'
+};
+
+// Bảng ánh xạ mã điều kiện thời tiết sang mô tả tiếng Việt
+const weatherConditionMap = {
+    'clear-day': 'Trời quang đãng',
+    'clear-night': 'Trời quang đãng',
+    'partly-cloudy-day': 'Có mây',
+    'partly-cloudy-night': 'Có mây',
+    'cloudy': 'Trời nhiều mây',
+    'rain': 'Mưa rào',
+    'sleet': 'Mưa tuyết',
+    'snow': 'Tuyết rơi',
+    'wind': 'Gió',
+    'fog': 'Sương mù',
+    'hail': 'Mưa đá',
+    'thunderstorm': 'Bão tố'
+};
+
+async function fetchWeather(latitude, longitude) {
+    const response = await fetch(`https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${latitude},${longitude}?unitGroup=metric&key=${apiKey}&contentType=json`);
+    const data = await response.json();
+
+    // Xử lý thông tin điều kiện thời tiết
+    const currentConditions = data.currentConditions;
+    const conditionCode = currentConditions.icon;
+    const conditionText = weatherConditionMap[conditionCode] || currentConditions.conditions;
+    const conditionIcon = `/Asset/Weather/${conditionCode}.svg`;
+
+    // document.getElementById('temperature').innerHTML = `${currentConditions.temp.toFixed(0)}°C`;
+    // document.getElementById('rain_chance').innerHTML = `<i class="fa-solid fa-cloud-rain"></i> ${currentConditions.precip !== null ? currentConditions.precip.toFixed(1) : 0} mm`;
+    // document.getElementById('uv_index').innerHTML = `<i class="fa-solid fa-sun"></i> UV: ${currentConditions.uvindex}`;
+
+    // // Chuyển đổi gió hướng sang định dạng thuần Việt
+    // const windDir = currentConditions.winddir;
+    // const windDirection = windDirectionMap[windDir] || windDir;
+    // document.getElementById('wind_direction').innerHTML = `<i class="fa-solid fa-wind"></i> ${windDirection} ${currentConditions.windspeed.toFixed(1)} km/h`;
+
+    reverseGeocodeNominatim(latitude, longitude).then(({ address, addressFull }) => {
+        // Cập nhật nội dung trên giao diện người dùng
+        document.getElementById('weather').innerHTML = `<p>${address} <i class="fa-solid fa-location-arrow" aria-hidden="true"></i></p>
+  <div class="flex">
+    <img src="${conditionIcon}" alt="${conditionText}" />
+      <h1>${currentConditions.temp.toFixed(0)}°C</h1></div>
+    </div>
+      
+      `;
+    }).catch(error => {
+        console.error('Lỗi khi lấy địa điểm:', error);
+    });
+
+}
+
+async function reverseGeocodeNominatim(latitude, longitude) {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
+        const data = await response.json();
+        // Khởi tạo giá trị mặc định cho address và addressFull
+        let address = '';
+        let addressFull = '';
+
+        if (data.address) {
+            if (data.address.village !== undefined) {
+                const originalSuburb = data.address.village || '';  // Đảm bảo có giá trị mặc định
+                const formattedSuburb = originalSuburb.replace(/^Xã\s/, 'X.');
+                address = formattedSuburb;
+            } else if (data.address.quarter !== undefined) {
+                address = data.address.quarter;
+            } else {
+                const originalSuburb = data.address.suburb || '';  // Đảm bảo có giá trị mặc định
+                const formattedSuburb = originalSuburb.replace(/^Phường\s/, 'P.');
+                address = formattedSuburb;
+            }
+            addressFull = data.display_name;
+
+        } else {
+            throw new Error('Không thể tìm thấy địa điểm.');
+        }
+
+        return {
+            address: address.trim(),
+            addressFull: addressFull.trim()
+        };
+    } catch (error) {
+        console.error('Lỗi khi tìm địa điểm:', error);
+        throw error;  // Ném lỗi để xử lý ở nơi gọi hàm
+    }
+}
+
+async function getWeatherByIP() {
+    try {
+        const ipResponse = await fetch('https://ipinfo.io/json?token=8c35ace05458e6');
+        const ipData = await ipResponse.json();
+
+        document.getElementById('ip').innerText = `IP: ${ipData.ip}`;
+        document.getElementById('organization').innerText = `Nhà mạng: ${ipData.org}`;
+
+        if (ipData.loc) {
+            const [latitude, longitude] = ipData.loc.split(',');
+            fetchWeather(latitude, longitude);
+        } else {
+            console.error('Không tìm thấy thông tin tọa độ từ IP.');
+        }
+    } catch (error) {
+        console.error('Lỗi khi lấy thông tin từ IP:', error);
+    }
+}
+
+function getWeatherByGeolocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(async position => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            fetchWeather(lat, lon);
+        }, error => {
+            console.error('Lỗi khi lấy thông tin định vị:', error);
+        });
+    } else {
+        alert('Trình duyệt của bạn không hỗ trợ định vị địa lý.');
+    }
+}
+
+async function geocodeAddress(address) {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
+    const data = await response.json();
+
+    if (data.length > 0) {
+        const location = data[0];
+        return {
+            latitude: location.lat,
+            longitude: location.lon
+        };
+
+    } else {
+        throw new Error('Không tìm thấy địa điểm.');
+    }
+
+}
+
+async function getWeatherByManual() {
+    const manualLocation = document.getElementById('manualLocation').value;
+    if (manualLocation) {
+        try {
+            const { latitude, longitude } = await geocodeAddress(manualLocation);
+            fetchWeather(latitude, longitude);
+        } catch (error) {
+            alert(error.message);
+        }
+    } else {
+        Info('Vui lòng nhập địa điểm.');
+    }
+}
+
+//Modal thời tiết
+document.addEventListener('DOMContentLoaded', () => {
+    const weatherPreference = localStorage.getItem('weatherPreference');
+    if (weatherPreference === 'none') {
+        // Nếu người dùng chọn "Không", không làm gì
+        return;
+    } else if (!weatherPreference) {
+        // Hiển thị modal nếu chưa lưu lựa chọn
+        document.getElementById('weatherModal').style.display = 'flex';
+    } else if (weatherPreference === 'geolocation') {
+        getWeatherAuto();
+    } else if (weatherPreference === 'ip') {
+        getWeatherByIP();
+    }
+});
+
+
+// Lắng nghe sự kiện click trên phần tử #weather
+document.getElementById('weather').addEventListener('click', () => {
+    // Hiển thị lại modal để người dùng thay đổi quyết định
+    document.getElementById('weatherModal').style.display = 'flex';
+    // Xóa trạng thái "không hỏi nữa" để cho phép chọn lại
+    localStorage.removeItem('weatherPreference');
+});
+
+
+// Hàm xử lý khi người dùng chọn phương thức
+function handleWeatherChoice(choice) {
+    const modal = document.getElementById('weatherModal');
+
+    if (choice === 'geolocation') {
+        // Lưu lựa chọn định vị và gọi hàm lấy thời tiết
+        localStorage.setItem('weatherPreference', 'geolocation');
+        getWeatherAuto();
+    } else if (choice === 'ip') {
+        // Lưu lựa chọn IP và gọi hàm lấy thời tiết
+        localStorage.setItem('weatherPreference', 'ip');
+        getWeatherByIP();
+    } else if (choice === 'cancel') {
+        // Lưu lựa chọn "không hỏi nữa"
+        localStorage.setItem('weatherPreference', 'none');
+        // Xóa thông tin vị trí cũ nếu có
+        localStorage.removeItem('location');
+    }
+
+    // Ẩn modal
+    modal.style.display = 'none';
+}
