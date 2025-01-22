@@ -33,7 +33,7 @@ const translations = {
         Exp3b: "Học hỏi về quy trình và công nghệ cơ điện tử",
         Exp4: "Kỹ thuật",
         Exp4a: "Kiểm tra & sửa chữa Motor điện",
-        TimeExp5: "Nay",
+        TimeExp5: "1/2025",
         Exp5: "CTY CP THIẾT KẾ VÀ QUẢN LÝ KỸ THUẬT IMPC",
         Exp5a: "Kỹ thuật & Giám sát",
         Exp5b: `Xử lý sự cố hệ thống điện: Khắc phục các lỗi như mất điện, lỗi thiết bị.
@@ -82,7 +82,7 @@ const translations = {
         Exp3b: "Learning about mechatronics processes and technology",
         Exp4: "Technical",
         Exp4a: "Inspect & repair electric motors",
-        TimeExp5: "Present",
+        TimeExp5: "1/2025",
         Exp5: "IMPC ENGINEERING DESIGN AND MANAGEMENT JSC",
         Exp5a: "Technical & Supervision",
         Exp5b: `Handling electrical system issues: Troubleshooting issues like power outages, equipment failures.
@@ -129,7 +129,7 @@ const translations = {
         Exp3b: "メカトロニクスのプロセスと技術について学ぶ",
         Exp4: "技術",
         Exp4a: "電動モーターの検査と修理",
-        TimeExp5: "現在",
+        TimeExp5: "1/2025",
         Exp5: "IMPC設計と技術管理株式会社",
         Exp5a: "技術と監督",
         Exp5b: `電気システムの問題対応: 停電、設備故障などの問題を解決。
@@ -176,7 +176,7 @@ const translations = {
         "Exp3b": "学习机电工程的流程和技术",
         "Exp4": "技术",
         "Exp4a": "电动机的检查和维修",
-        "TimeExp5": "至今",
+        "TimeExp5": "1/2025",
         "Exp5": "IMPC设计与技术管理股份公司",
         "Exp5a": "技术与监督",
         "Exp5b": "处理电力系统问题：解决电力中断、设备故障等问题。<br>消防系统监控：检查设备，控制火灾源，进行消防培训。<br>职业安全监督：提醒、宣传和培训施工承包商的安全措施。<br>项目管理中的秩序与安全监控。",
