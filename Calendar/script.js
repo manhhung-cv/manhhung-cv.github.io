@@ -1,47 +1,70 @@
+let selectedDate = null;
+
 let currentSchedule = {}; // Lịch làm việc hiện tại cho tháng hiện tại
 let primaryColor = localStorage.getItem('primaryColor') || '#28a745'; // Màu chủ đạo
+let currentMonth = new Date(); // Tháng hiện tại
+let isEditMode = false; // Trạng thái chỉnh sửa
+
 const colorPicker = document.getElementById('colorPicker');
-const monthInput = document.getElementById('monthInput'); // Input chọn tháng
+const toggleEditBtn = document.getElementById('toggleEditMode');
+const prevMonthBtn = document.getElementById('prevMonth');
+const nextMonthBtn = document.getElementById('nextMonth');
+const currentMonthDisplay = document.getElementById('currentMonthDisplay');
 
 // Áp dụng màu chủ đạo từ localStorage khi trang được tải
-document.documentElement.style.setProperty('--primary-color', primaryColor); // Áp dụng màu sắc mới cho sáng
+document.documentElement.style.setProperty('--primary-color', primaryColor);
 
 // Lắng nghe sự kiện thay đổi màu sắc
-colorPicker.addEventListener('input', handleColorChange);
-
-// Tải lịch và bảng khi chọn tháng mới
-monthInput.addEventListener('change', loadScheduleFromLocalStorage);
-
-// Tạo lịch cho tháng hiện tại khi trang được tải
-document.addEventListener('DOMContentLoaded', function() {
-  // Lấy tháng và năm hiện tại
-  const currentDate = new Date();
-  const currentMonth = currentDate.getMonth() + 1; // Tháng hiện tại (tính từ 0)
-  const currentYear = currentDate.getFullYear(); // Năm hiện tại
-
-  // Đặt giá trị cho monthInput
-  monthInput.value = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
-
-  // Tải lịch cho tháng hiện tại
-  loadScheduleFromLocalStorage();
+colorPicker.addEventListener('input', function() {
+  primaryColor = colorPicker.value;
+  document.documentElement.style.setProperty('--primary-color', primaryColor);
+  localStorage.setItem('primaryColor', primaryColor);
+  updateSummary();
 });
-// Hàm xử lý sự kiện thay đổi màu sắc
-function handleColorChange() {
-  primaryColor = colorPicker.value; // Cập nhật màu sắc chính
-  document.documentElement.style.setProperty('--primary-color', primaryColor); // Áp dụng màu sắc mới cho sáng
-  localStorage.setItem('primaryColor', primaryColor); // Lưu màu sắc mới vào localStorage
-  updateSummary(); // Cập nhật lại phần thống kê
+
+
+
+// Cập nhật hiển thị tháng
+function updateMonthDisplay() {
+  const month = currentMonth.getMonth() + 1; // getMonth() trả về giá trị từ 0 đến 11
+  const year = currentMonth.getFullYear(); // lấy năm
+  const formattedMonthYear = `${month}/${year}`; // định dạng lại thành "1/2025"
+  
+  currentMonthDisplay.textContent = formattedMonthYear; // cập nhật nội dung
+  loadScheduleFromLocalStorage(); // giữ lại hàm này nếu cần thiết
 }
 
 
-function formatNumber(value) {
-  return value.toLocaleString('vi-VN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+// Xử lý nút chuyển tháng
+prevMonthBtn.addEventListener('click', () => {
+  currentMonth.setMonth(currentMonth.getMonth() - 1);
+  updateMonthDisplay();
+});
 
+nextMonthBtn.addEventListener('click', () => {
+  currentMonth.setMonth(currentMonth.getMonth() + 1);
+  updateMonthDisplay();
+});
+
+// Cho phép chọn tháng thủ công
+currentMonthDisplay.addEventListener('click', () => {
+  const newMonth = prompt('Nhập tháng (YYYY-MM):', currentMonth.toISOString().slice(0, 7));
+  if (newMonth) {
+    currentMonth = new Date(newMonth + '-01');
+    updateMonthDisplay();
+  }
+});
+
+// Xử lý chế độ chỉnh sửa
+toggleEditBtn.addEventListener('click', () => {
+  isEditMode = !isEditMode;
+  toggleEditBtn.innerHTML = isEditMode ? '<i class="fa-regular fa-circle-check"></i>' : '<i class="fas fa-edit"></i>';
+  if (!isEditMode) saveScheduleToLocalStorage();
+});
 
 // Hàm lấy khóa tháng hiện tại (dựa trên giá trị tháng đã chọn)
-function getMonthKey(monthYear) {
-  return monthYear; // Lấy khóa tháng theo kiểu "YYYY-MM"
+function getMonthKey() {
+  return currentMonth.toISOString().slice(0, 7); // Lấy khóa tháng theo kiểu "YYYY-MM"
 }
 
 // Hàm tạo lịch cho tháng đã chọn
@@ -75,178 +98,501 @@ function generateCalendar(year, month) {
   // Thêm từng ngày trong tháng
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, month, day);
-    const dateStr = currentDate.toISOString().split('T')[0];
+    const dateStr = new Date(year, month, day + 1).toISOString().split('T')[0];  // Đảm bảo ngày được lấy đúng
+    
+    currentSchedule[dateStr] = currentSchedule[dateStr] || {
+      shift: 'nghi',
+      overtimeHours: 0,
+      overtimeMinutes: 0,
+      confirmed: false
+    };
 
-    const dayElement = createDayElement(day, currentDate, dateStr);
+    const dayElement = document.createElement('div');
+    dayElement.className = 'day';
+    dayElement.innerHTML = `<div class="day-header">${day}</div>`;
+
+    // Thêm class nếu là ngày hôm nay
+    if (currentDate.toDateString() === new Date().toDateString()) {
+      dayElement.classList.add('today-highlight');
+    }
+
+    // Thêm class tương ứng với ca làm việc
+    if (currentSchedule[dateStr].shift === 'sang') {
+      dayElement.classList.add('shift-sang');
+    } else if (currentSchedule[dateStr].shift === 'toi') {
+      dayElement.classList.add('shift-toi');
+    } else {
+      dayElement.classList.add('shift-nghi');
+    }
+
+    // Xử lý khi click vào ngày
+    dayElement.onclick = () => updateSchedule(dateStr, dayElement);
+
+    // Áp dụng trạng thái lịch làm việc nếu có
+    if (currentSchedule[dateStr].confirmed) {
+      const overtimeHours = currentSchedule[dateStr].overtimeHours || 0;
+      const overtimeMinutes = currentSchedule[dateStr].overtimeMinutes || 0;
+      const totalOvertime = overtimeHours + (overtimeMinutes / 60);
+
+      if (totalOvertime === 0) {
+        dayElement.innerHTML += '<div class="checkmark">✓</div>';
+      } else {
+        dayElement.innerHTML += `<div class="overtime-display">${totalOvertime.toFixed(2)}</div>`;
+      }
+    }
     calendar.appendChild(dayElement);
   }
 
-  updateSummary(); // Cập nhật thống kê
-  updateDetailsTable(); // Cập nhật bảng chi tiết
+  updateSummary();
+  updateDetailsTable();
 }
 
-// Hàm tạo phần tử ngày
-function createDayElement(day, currentDate, dateStr) {
-  const dayElement = document.createElement('div');
-  dayElement.className = 'day';
-  dayElement.innerHTML = `<div class="day-header">${day}</div>`;
+function updateHistory() {
+  const historyContent = document.getElementById('historyContent');
+  historyContent.innerHTML = '';
 
-  // Thêm class nếu là ngày hôm nay
-  if (currentDate.toDateString() === new Date().toDateString()) {
-    dayElement.classList.add('today-highlight'); // Thêm class để làm viền màu
+  const sortedDates = Object.keys(currentSchedule)
+    .filter(date => currentSchedule[date].confirmed)
+    .sort((a, b) => new Date(b) - new Date(a)); // Sắp xếp từ mới nhất đến cũ nhất
+
+  sortedDates.forEach(date => {
+    const shiftText = currentSchedule[date].shift === 'sang' ? 'Sáng' : currentSchedule[date].shift === 'toi' ? 'Tối' : 'Nghỉ';
+    const overtimeHours = currentSchedule[date].overtimeHours || 0;
+    const overtimeMinutes = currentSchedule[date].overtimeMinutes || 0;
+    const totalOvertime = overtimeHours + (overtimeMinutes / 60);
+
+    const entry = document.createElement('div');
+    entry.className = 'history-entry';
+    entry.textContent = `${formatDate(date)} - ${shiftText} - Tăng ca: ${totalOvertime.toFixed(2)}h`;
+    historyContent.appendChild(entry);
+  });
+}
+
+function deleteOvertime() {
+  if (selectedDate) {
+    currentSchedule[selectedDate] = {
+      ...currentSchedule[selectedDate],
+      overtimeHours: 0,
+      overtimeMinutes: 0,
+      confirmed: false
+    };
+    saveScheduleToLocalStorage();
+    updateSummary();
+    updateHistory();
+    loadScheduleFromLocalStorage(); // Refresh calendar
+    closePopup();
   }
-
-  // Xử lý khi click vào ngày
-  dayElement.onclick = () => updateSchedule(dateStr, dayElement);
-
-  // Áp dụng trạng thái lịch làm việc nếu có
-  if (!currentSchedule[dateStr]) {
-    currentSchedule[dateStr] = 'nghi'; // Mặc định là nghỉ
-  } else {
-    dayElement.classList.add(`shift-${currentSchedule[dateStr]}`);
-  }
-
-  return dayElement;
 }
 
 // Hàm cập nhật lịch làm việc khi nhấn vào một ngày
 function updateSchedule(date, element) {
-  let shift = currentSchedule[date];
-
-  // Nếu chưa có lịch làm việc cho ngày đó, mặc định là ca sáng
-  if (!shift || shift === 'nghi') {
-    shift = 'sang'; // Chuyển từ Nghỉ -> Sáng
-  } else if (shift === 'sang') {
-    shift = 'toi'; // Chuyển từ Sáng -> Tối
-  } else if (shift === 'toi') {
-    shift = 'nghi'; // Chuyển từ Tối -> Nghỉ
-  } else {
-    shift = 'sang'; // Quay lại ca sáng nếu không phải ca sáng, tối, hay nghỉ
+  if (!isEditMode) {
+    selectedDate = date; // Đảm bảo selectedDate được cập nhật đúng
+    document.getElementById('overtimeHours').value = currentSchedule[date]?.overtimeHours || 0;
+    document.getElementById('overtimeMinutes').value = currentSchedule[date]?.overtimeMinutes || 0;
+    document.getElementById('overtimePopup').style.display = 'flex';
+    return;
   }
 
-  currentSchedule[date] = shift; // Cập nhật lịch làm việc trong đối tượng currentSchedule
-  saveScheduleToLocalStorage(); // Lưu lịch vào localStorage
+  // Chỉ cập nhật ca làm việc nếu đang ở chế độ chỉnh sửa ca
+  if (isEditMode) {
+    let shift = currentSchedule[date]?.shift || 'nghi';
+    if (shift === 'nghi') {
+      shift = 'sang';
+    } else if (shift === 'sang') {
+      shift = 'toi';
+    } else if (shift === 'toi') {
+      shift = 'nghi';
+    }
 
-  // Cập nhật giao diện
-  element.classList.remove('shift-sang', 'shift-toi', 'shift-nghi'); // Xóa các lớp cũ
-  if (shift !== 'nghi') {
-    element.classList.add(`shift-${shift}`); // Thêm lớp mới theo ca làm việc
+    // Lưu thay đổi ca làm việc
+    currentSchedule[date] = { ...currentSchedule[date], shift };
+    saveScheduleToLocalStorage();
+
+    // Cập nhật class nhưng giữ nguyên thông tin tăng ca
+    element.classList.remove('shift-sang', 'shift-toi', 'shift-nghi');
+    if (shift !== 'nghi') {
+      element.classList.add(`shift-${shift}`);
+    }
   }
 
-  updateSummary(); // Cập nhật lại phần thống kê
-  updateDetailsTable(); // Cập nhật lại bảng chi tiết
+  // Chỉ cập nhật bảng tóm tắt & chi tiết nếu chỉnh sửa ca
+  if (isEditMode) {
+    updateSummary();
+    updateDetailsTable();
+  }
 }
 
+function displayAllData() {
+  const settings = JSON.parse(localStorage.getItem('salarySettings')) || {};
+  const schedule = JSON.parse(localStorage.getItem('allSchedules')) || {};
+
+  const data = {
+    settings,
+    schedule
+  };
+
+  document.getElementById('dataPreview').textContent = JSON.stringify(data, null, 2);
+}
+
+function loadSettings() {
+  const settings = JSON.parse(localStorage.getItem('salarySettings')) || {
+    basicHourlyRate: 0,
+    basicWorkingHours: 0,
+    overtimeHourlyRate: 0,
+    allowance: 0,
+  };
+
+  document.getElementById('basicHourlyRate').value = settings.basicHourlyRate;
+  document.getElementById('basicWorkingHours').value = settings.basicWorkingHours;
+  document.getElementById('overtimeHourlyRate').value = settings.overtimeHourlyRate;
+  document.getElementById('allowance').value = settings.allowance;
+
+  calculateSalary(); // Tính toán lương khi tải trang
+}
+
+function saveSettings() {
+  const settings = {
+    basicHourlyRate: parseFloat(document.getElementById('basicHourlyRate').value) || 0,
+    basicWorkingHours: parseFloat(document.getElementById('basicWorkingHours').value) || 0,
+    overtimeHourlyRate: parseFloat(document.getElementById('overtimeHourlyRate').value) || 0,
+    allowance: parseFloat(document.getElementById('allowance').value) || 0,
+  };
+  localStorage.setItem('salarySettings', JSON.stringify(settings));
+  calculateSalary(); // Tự động tính toán lương khi thông số thay đổi
+  displayAllData(); // Hiển thị toàn bộ dữ liệu sau khi lưu
+}
+
+function confirmOvertime() {
+  const hours = parseInt(document.getElementById('overtimeHours').value) || 0;
+  const minutes = parseInt(document.getElementById('overtimeMinutes').value) || 0;
+
+  currentSchedule[selectedDate] = {
+    ...currentSchedule[selectedDate],
+    overtimeHours: hours,
+    overtimeMinutes: minutes,
+    confirmed: true
+  };
+
+  document.getElementById('overtimePopup').style.display = 'none';
+  saveScheduleToLocalStorage();
+  updateSummary();
+  updateHistory(); // Đảm bảo lịch sử được cập nhật sau khi xác nhận
+  loadScheduleFromLocalStorage(); // Refresh calendar
+}
+
+function closePopup() {
+  document.getElementById('overtimePopup').style.display = 'none';
+}
 // Hàm cập nhật phần thống kê
 function updateSummary() {
-  let shifts = Object.values(currentSchedule);
-  let morningCount = shifts.filter(s => s === 'sang').length; // Đếm số ca sáng
-  let nightCount = shifts.filter(s => s === 'toi').length; // Đếm số ca tối
-  let offCount = shifts.filter(s => s === 'nghi').length; // Đếm số ngày nghỉ
+  let morningCount = 0;
+  let nightCount = 0;
+  let workingDays = 0;
+  let totalOvertimeHours = 0;
+  let totalOvertimeMinutes = 0;
+  let totalMorningOvertime = 0; // Tổng giờ tăng ca sáng
+  let totalNightOvertime = 0; // Tổng giờ tăng ca tối
 
-  let totalWorkingDays = morningCount + nightCount; // Tổng số ngày làm việc (ca sáng + ca tối)
+  Object.values(currentSchedule).forEach(entry => {
+    if (entry.shift === 'sang') {
+      morningCount++;
+      if (entry.confirmed) {
+        totalMorningOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
+      }
+    }
+    if (entry.shift === 'toi') {
+      nightCount++;
+      if (entry.confirmed) {
+        totalNightOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
+      }
+    }
+    if (entry.confirmed) {
+      workingDays++;
+    }
+    totalOvertimeHours += entry.overtimeHours || 0;
+    totalOvertimeMinutes += entry.overtimeMinutes || 0;
+  });
 
-  document.getElementById('totalDays').textContent = totalWorkingDays; // Hiển thị tổng số ngày làm việc
-  document.getElementById('morningCount').textContent = morningCount + ' ['+(18656*morningCount)+']'; // Hiển thị số ca sáng
-  document.getElementById('nightCount').textContent = nightCount + ' ['+(17656*nightCount)+']'; // Hiển thị số ca tối
-  document.getElementById('offCount').textContent = offCount; // Hiển thị số ngày nghỉ
-  var tongluong = (18656*morningCount)+(17656*nightCount)+10000;
-  document.getElementById('LuongTong').innerHTML = formatNumber(tongluong)+' ¥ <br>'+ formatNumber(tongluong*167) + 'đ'; // Hiển thị số ngày nghỉ
+  // Chuyển đổi phút thành giờ
+  totalOvertimeHours += Math.floor(totalOvertimeMinutes / 60);
+  totalOvertimeMinutes = totalOvertimeMinutes % 60;
+
+  // Cập nhật giao diện
+  document.getElementById('totalDays').textContent = morningCount + nightCount;
+  document.getElementById('morningCount').textContent = morningCount;
+  document.getElementById('nightCount').textContent = nightCount;
+  document.getElementById('offCount').textContent = Object.values(currentSchedule).filter(e => e.shift === 'nghi').length;
+  document.getElementById('totalDaysWork').innerText = workingDays;
+  document.getElementById('totalOvertimeHours').innerText = `${totalOvertimeHours}h ${totalOvertimeMinutes}m`;
+  document.getElementById('totalMorningOvertime').innerText = totalMorningOvertime.toFixed(2) + 'h';
+document.getElementById('totalNightOvertime').innerText = totalNightOvertime.toFixed(2)+ 'h';
+  
+  
+  
   
 }
 
 // Hàm cập nhật bảng chi tiết lịch làm việc
 function updateDetailsTable() {
   let tableBody = document.getElementById('detailsTableBody');
-  tableBody.innerHTML = ''; // Làm sạch bảng chi tiết
+  tableBody.innerHTML = '';
 
-  // Sắp xếp ngày theo thứ tự từ 1 đến 31 cho bảng chi tiết
   const sortedDates = Object.keys(currentSchedule).sort((a, b) => new Date(a) - new Date(b));
 
   sortedDates.forEach(date => {
-    // Định dạng ngày theo kiểu dd/mm/yyyy
     const formattedDate = formatDate(date);
-    let shiftText = currentSchedule[date] === 'sang' ? 'Sáng' : currentSchedule[date] === 'toi' ? 'Tối' : 'Nghỉ';
-    let row = `<tr><td>${formattedDate}</td><td>${new Date(date).toLocaleDateString('vi-VN', { weekday: 'long' })}</td><td>${shiftText}</td></tr>`;
-    tableBody.innerHTML += row; // Thêm dòng mới vào bảng
+    let shiftText = currentSchedule[date].shift === 'sang' ? 'Sáng' : currentSchedule[date].shift === 'toi' ? 'Tối' : 'Nghỉ';
+    let overtimeText = currentSchedule[date].overtimeHours || currentSchedule[date].overtimeMinutes ? ` (Tăng ca: ${currentSchedule[date].overtimeHours}h ${currentSchedule[date].overtimeMinutes}m)` : '';
+    let row = `<tr><td>${formattedDate}</td><td>${new Date(date).toLocaleDateString('vi-VN', { weekday: 'long' })}</td><td>${shiftText}${overtimeText}</td></tr>`;
+    tableBody.innerHTML += row;
   });
 }
 
 // Hàm định dạng ngày theo kiểu dd/mm/yyyy
 function formatDate(date) {
   const d = new Date(date);
-  const day = d.getDate().toString().padStart(2, '0'); // Đảm bảo ngày có 2 chữ số
-  const month = (d.getMonth() + 1).toString().padStart(2, '0'); // Đảm bảo tháng có 2 chữ số
-  const year = d.getFullYear(); // Năm đầy đủ
-  return `${day}/${month}/${year}`; // Trả về định dạng dd/mm/yyyy
+  const day = d.getDate().toString().padStart(2, '0');
+  const month = (d.getMonth() + 1).toString().padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 // Lưu lịch làm việc của tháng vào localStorage
 function saveScheduleToLocalStorage() {
-  const currentMonthKey = getMonthKey(monthInput.value); // Lấy khóa tháng theo kiểu "YYYY-MM"
-  let allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {}; // Lấy dữ liệu lịch của tất cả các tháng
-  allSchedules[currentMonthKey] = currentSchedule; // Lưu lịch của tháng hiện tại
-  localStorage.setItem('allSchedules', JSON.stringify(allSchedules)); // Lưu lại toàn bộ lịch vào localStorage
+  const currentMonthKey = getMonthKey();
+  let allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {};
+  allSchedules[currentMonthKey] = currentSchedule;
+  localStorage.setItem('allSchedules', JSON.stringify(allSchedules));
 }
 
 // Tải lịch từ localStorage
 function loadScheduleFromLocalStorage() {
-  const currentMonthKey = getMonthKey(monthInput.value); // Lấy khóa tháng theo kiểu "YYYY-MM"
-  let allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {}; // Lấy dữ liệu lịch của tất cả các tháng
+  const currentMonthKey = getMonthKey();
+  let allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {};
 
   if (allSchedules[currentMonthKey]) {
-    currentSchedule = allSchedules[currentMonthKey]; // Lấy lịch của tháng hiện tại
+    currentSchedule = allSchedules[currentMonthKey];
   } else {
-    currentSchedule = {}; // Nếu không có lịch, tạo lịch trống
+    currentSchedule = {};
   }
 
-  const [year, month] = monthInput.value.split('-');
-  generateCalendar(parseInt(year), parseInt(month) - 1); // Tạo lại lịch cho tháng hiện tại
+  generateCalendar(currentMonth.getFullYear(), currentMonth.getMonth());
 }
 
-// Hàm xuất lịch làm việc ra file JSON (bao gồm tất cả các tháng có lịch làm việc)
-document.getElementById('exportJsonButton').addEventListener('click', function() {
-  const allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {}; // Lấy tất cả lịch làm việc của các tháng
+// Nhập JSON
+document.getElementById('importJsonButton').addEventListener('click', function() {
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json';
 
-  // Lưu lịch theo thứ tự ngày trong tháng
+  fileInput.onchange = function(e) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        localStorage.setItem('allSchedules', JSON.stringify(data));
+        loadScheduleFromLocalStorage();
+        alert('Nhập dữ liệu thành công!');
+      } catch (error) {
+        alert('File JSON không hợp lệ!');
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  fileInput.click();
+});
+
+// Xuất JSON (đơn giản hóa)
+document.getElementById('exportJsonButton').addEventListener('click', function() {
+  const allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {};
+  const simplifiedSchedules = {};
+
   Object.keys(allSchedules).forEach(monthKey => {
-    allSchedules[monthKey] = sortScheduleByDay(allSchedules[monthKey]);
+    simplifiedSchedules[monthKey] = {};
+    Object.keys(allSchedules[monthKey]).forEach(date => {
+      simplifiedSchedules[monthKey][date] = {
+        shift: allSchedules[monthKey][date].shift,
+        overtimeHours: allSchedules[monthKey][date].overtimeHours || 0,
+        overtimeMinutes: allSchedules[monthKey][date].overtimeMinutes || 0
+      };
+    });
   });
 
-  const jsonContent = JSON.stringify(allSchedules, null, 2); // Tạo JSON từ tất cả lịch làm việc
+  const jsonContent = JSON.stringify(simplifiedSchedules, null, 2);
 
   const blob = new Blob([jsonContent], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'schedules.json'; // Tên tệp xuất ra
+  link.download = 'schedules.json';
   link.click();
-  URL.revokeObjectURL(url); // Giải phóng URL đã tạo
+  URL.revokeObjectURL(url);
 });
 
-// Hàm sắp xếp lịch làm việc theo thứ tự ngày trong tháng
-function sortScheduleByDay(schedule) {
-  const sortedSchedule = {};
-  const sortedDates = Object.keys(schedule).sort((a, b) => new Date(a) - new Date(b));
-
-  sortedDates.forEach(date => {
-    sortedSchedule[date] = schedule[date];
-  });
-
-  return sortedSchedule;
-}
-
-// Hàm xem trước JSON
+// Xem trước JSON
 document.getElementById('viewJsonButton').addEventListener('click', function() {
   const jsonPreview = document.getElementById('jsonPreview');
-  const allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {}; // Lấy tất cả lịch làm việc của các tháng
+  const allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {};
+  const jsonContent = JSON.stringify(allSchedules, null, 2);
+  jsonPreview.textContent = jsonContent;
+});
 
-  // Lưu lịch theo thứ tự ngày trong tháng
-  Object.keys(allSchedules).forEach(monthKey => {
-    allSchedules[monthKey] = sortScheduleByDay(allSchedules[monthKey]);
+function formatNumber(number) {
+  return Math.round(number).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function calculateSalary() {
+  const settings = JSON.parse(localStorage.getItem('salarySettings')) || {
+    basicHourlyRate: 0,
+    basicWorkingHours: 0,
+    overtimeHourlyRate: 0,
+    allowance: 0,
+  };
+
+  const basicHourlyRate = settings.basicHourlyRate;
+  const basicWorkingHours = settings.basicWorkingHours;
+  const overtimeHourlyRate = settings.overtimeHourlyRate;
+  const allowance = settings.allowance;
+
+  // Lấy dữ liệu từ lịch
+  let morningCount = 0;
+  let nightCount = 0;
+  let totalMorningOvertime = 0;
+  let totalNightOvertime = 0;
+  let holidayWorkCount = 0; // Số ngày nghỉ đã đi làm
+
+  Object.values(currentSchedule).forEach(entry => {
+    if (entry.shift === 'sang' && entry.confirmed) {
+      morningCount++;
+      totalMorningOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
+    }
+    if (entry.shift === 'toi' && entry.confirmed) {
+      nightCount++;
+      totalNightOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
+    }
+    if (entry.shift === 'nghi' && entry.confirmed) {
+      holidayWorkCount++;
+      totalMorningOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
+    }
   });
 
-  const jsonContent = JSON.stringify(allSchedules, null, 2); // Tạo JSON từ tất cả lịch làm việc
-  jsonPreview.textContent = jsonContent; // Hiển thị JSON vào phần tử
+  // Tính toán lương
+  const totalMorningSalary = (basicHourlyRate * basicWorkingHours * morningCount) + (overtimeHourlyRate * totalMorningOvertime);
+  const totalNightSalary = (basicHourlyRate * basicWorkingHours * nightCount) + (overtimeHourlyRate * totalNightOvertime);
+  const totalBasicSalary = basicHourlyRate * basicWorkingHours * (morningCount + nightCount);
+  const totalSalary = totalMorningSalary + totalNightSalary + allowance;
+
+  // Hiển thị kết quả (làm tròn và thêm dấu chấm)
+  document.getElementById('totalMorningSalary').textContent = formatNumber(totalMorningSalary);
+  document.getElementById('totalNightSalary').textContent = formatNumber(totalNightSalary);
+  document.getElementById('totalBasicSalary').textContent = formatNumber(totalBasicSalary);
+  document.getElementById('totalSalary').textContent = formatNumber(totalSalary);
+  document.getElementById('holidayWorkCount').textContent = holidayWorkCount; // Hiển thị số ngày nghỉ đã đi làm
+}
+
+
+// Khởi tạo khi trang tải xong
+document.addEventListener('DOMContentLoaded', function() {
+  updateMonthDisplay();
+  loadSettings(); // Tải thông số từ localStorage
+  displayAllData(); // Hiển thị toàn bộ dữ liệu khi trang được tải
 });
+
+// Tab navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    // Remove active class from all
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+    // Add active class to selected
+    this.classList.add('active');
+    const tabId = this.dataset.tab;
+    document.getElementById(tabId).classList.add('active');
+  });
+});
+
+// Dark Mode
+const darkModeToggle = document.getElementById('darkModeToggle');
+const isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+// Initialize dark mode
+if (isDarkMode) {
+  document.body.classList.add('dark-mode');
+  darkModeToggle.checked = true;
+}
+
+darkModeToggle.addEventListener('change', function() {
+  document.body.classList.toggle('dark-mode');
+  localStorage.setItem('darkMode', this.checked);
+});
+
+// Responsive adjustment for bottom nav
+
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    // Xóa class active từ tất cả các item
+    document.querySelectorAll('.nav-item').forEach(navItem => {
+      navItem.classList.remove('active');
+    });
+
+    // Thêm class active cho item được click
+    this.classList.add('active');
+  });
+});
+
+function updateIndicator(element) {
+  const indicator = document.querySelector('.active-indicator');
+  if (!indicator) return; // Kiểm tra nếu indicator không tồn tại
+
+  const nav = document.querySelector('.bottom-nav');
+  if (!nav) return; // Kiểm tra nếu .bottom-nav không tồn tại
+
+  // Lấy vị trí và kích thước của nav và item
+  const navRect = nav.getBoundingClientRect();
+  const itemRect = element.getBoundingClientRect();
+
+  // Tính toán vị trí left của indicator
+  const leftPosition = itemRect.left - navRect.left;
+
+  // Lấy chiều rộng của item
+  const itemWidth = itemRect.width;
+
+  // Cập nhật vị trí và kích thước của indicator
+  indicator.style.left = `${leftPosition}px`;
+  indicator.style.width = `${itemWidth}px`;
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  const activeItem = document.querySelector('.nav-item.active');
+  if (activeItem) updateIndicator(activeItem);
+});
+
+// Handle clicks
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    // Xóa class active từ tất cả các item
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+
+    // Thêm class active cho item được click
+    this.classList.add('active');
+
+    // Cập nhật indicator
+    updateIndicator(this);
+  });
+});
+
+// Handle window resize
+window.addEventListener('resize', () => {
+  const activeItem = document.querySelector('.nav-item.active');
+  updateIndicator(activeItem);
+});
+
 
