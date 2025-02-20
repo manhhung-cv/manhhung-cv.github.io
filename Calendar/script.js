@@ -20,6 +20,7 @@ colorPicker.addEventListener('input', function() {
   document.documentElement.style.setProperty('--primary-color', primaryColor);
   localStorage.setItem('primaryColor', primaryColor);
   updateSummary();
+  calculateSalary();
 });
 
 
@@ -143,6 +144,7 @@ function generateCalendar(year, month) {
     calendar.appendChild(dayElement);
   }
 
+calculateSalary();
   updateSummary();
   updateDetailsTable();
 }
@@ -179,6 +181,7 @@ function deleteOvertime() {
     saveScheduleToLocalStorage();
     updateSummary();
     updateHistory();
+    calculateSalary();
     loadScheduleFromLocalStorage(); // Refresh calendar
     closePopup();
   }
@@ -191,6 +194,8 @@ function updateSchedule(date, element) {
     document.getElementById('overtimeHours').value = currentSchedule[date]?.overtimeHours || 0;
     document.getElementById('overtimeMinutes').value = currentSchedule[date]?.overtimeMinutes || 0;
     document.getElementById('overtimePopup').style.display = 'flex';
+    
+    calculateSalary();
     return;
   }
 
@@ -208,6 +213,7 @@ function updateSchedule(date, element) {
     // Lưu thay đổi ca làm việc
     currentSchedule[date] = { ...currentSchedule[date], shift };
     saveScheduleToLocalStorage();
+    
 
     // Cập nhật class nhưng giữ nguyên thông tin tăng ca
     element.classList.remove('shift-sang', 'shift-toi', 'shift-nghi');
@@ -220,6 +226,7 @@ function updateSchedule(date, element) {
   if (isEditMode) {
     updateSummary();
     updateDetailsTable();
+    calculateSalary();
   }
 }
 
@@ -241,12 +248,14 @@ function loadSettings() {
     basicWorkingHours: 0,
     overtimeHourlyRate: 0,
     allowance: 0,
+    jpytovnd: 0,
   };
 
   document.getElementById('basicHourlyRate').value = settings.basicHourlyRate;
   document.getElementById('basicWorkingHours').value = settings.basicWorkingHours;
   document.getElementById('overtimeHourlyRate').value = settings.overtimeHourlyRate;
   document.getElementById('allowance').value = settings.allowance;
+  document.getElementById('jpytovnd').value = settings.jpytovnd;
 
   calculateSalary(); // Tính toán lương khi tải trang
 }
@@ -257,6 +266,9 @@ function saveSettings() {
     basicWorkingHours: parseFloat(document.getElementById('basicWorkingHours').value) || 0,
     overtimeHourlyRate: parseFloat(document.getElementById('overtimeHourlyRate').value) || 0,
     allowance: parseFloat(document.getElementById('allowance').value) || 0,
+    jpytovnd: parseFloat(document.getElementById('jpytovnd').value) || 0,
+    
+    
   };
   localStorage.setItem('salarySettings', JSON.stringify(settings));
   calculateSalary(); // Tự động tính toán lương khi thông số thay đổi
@@ -277,8 +289,10 @@ function confirmOvertime() {
   document.getElementById('overtimePopup').style.display = 'none';
   saveScheduleToLocalStorage();
   updateSummary();
+  calculateSalary();
   updateHistory(); // Đảm bảo lịch sử được cập nhật sau khi xác nhận
   loadScheduleFromLocalStorage(); // Refresh calendar
+  
 }
 
 function closePopup() {
@@ -291,8 +305,8 @@ function updateSummary() {
   let workingDays = 0;
   let totalOvertimeHours = 0;
   let totalOvertimeMinutes = 0;
-  let totalMorningOvertime = 0; // Tổng giờ tăng ca sáng
-  let totalNightOvertime = 0; // Tổng giờ tăng ca tối
+  let totalMorningOvertime = 0;
+  let totalNightOvertime = 0;
 
   Object.values(currentSchedule).forEach(entry => {
     if (entry.shift === 'sang') {
@@ -324,14 +338,22 @@ function updateSummary() {
   document.getElementById('nightCount').textContent = nightCount;
   document.getElementById('offCount').textContent = Object.values(currentSchedule).filter(e => e.shift === 'nghi').length;
   document.getElementById('totalDaysWork').innerText = workingDays;
-  document.getElementById('totalOvertimeHours').innerText = `${totalOvertimeHours}h ${totalOvertimeMinutes}m`;
+  document.getElementById('totalOvertimeHours').innerText = `${totalOvertimeHours}h${totalOvertimeMinutes}m`;
   document.getElementById('totalMorningOvertime').innerText = totalMorningOvertime.toFixed(2) + 'h';
-document.getElementById('totalNightOvertime').innerText = totalNightOvertime.toFixed(2)+ 'h';
-  
-  
-  
-  
+  document.getElementById('totalNightOvertime').innerText = totalNightOvertime.toFixed(2) + 'h';
+
+  // Trả về một đối tượng với các biến
+  return {
+    morningCount,
+    nightCount,
+    workingDays,
+    totalOvertimeHours,
+    totalOvertimeMinutes,
+    totalMorningOvertime,
+    totalNightOvertime
+  };
 }
+
 
 // Hàm cập nhật bảng chi tiết lịch làm việc
 function updateDetailsTable() {
@@ -447,51 +469,94 @@ function formatNumber(number) {
 }
 
 function calculateSalary() {
+  const summary = updateSummary();
+  let DaysWork = summary.nightCount + summary.morningCount;
+
   const settings = JSON.parse(localStorage.getItem('salarySettings')) || {
     basicHourlyRate: 0,
     basicWorkingHours: 0,
     overtimeHourlyRate: 0,
     allowance: 0,
+    jpytovnd:0,
   };
 
-  const basicHourlyRate = settings.basicHourlyRate;
-  const basicWorkingHours = settings.basicWorkingHours;
-  const overtimeHourlyRate = settings.overtimeHourlyRate;
-  const allowance = settings.allowance;
+  const { basicHourlyRate, basicWorkingHours, overtimeHourlyRate, allowance } = settings;
 
   // Lấy dữ liệu từ lịch
   let morningCount = 0;
   let nightCount = 0;
   let totalMorningOvertime = 0;
   let totalNightOvertime = 0;
+  let totalHolidayOvertime = 0;
   let holidayWorkCount = 0; // Số ngày nghỉ đã đi làm
 
-  Object.values(currentSchedule).forEach(entry => {
-    if (entry.shift === 'sang' && entry.confirmed) {
-      morningCount++;
-      totalMorningOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
-    }
-    if (entry.shift === 'toi' && entry.confirmed) {
-      nightCount++;
-      totalNightOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
-    }
-    if (entry.shift === 'nghi' && entry.confirmed) {
-      holidayWorkCount++;
-      totalMorningOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
-    }
-  });
+  if (typeof currentSchedule !== "undefined") {
+    Object.values(currentSchedule).forEach(entry => {
+      if (entry.shift === 'sang' && entry.confirmed) {
+        morningCount++;
+        totalMorningOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
+      }
+      if (entry.shift === 'toi' && entry.confirmed) {
+        nightCount++;
+        totalNightOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
+      }
+      if (entry.shift === 'nghi' && entry.confirmed) {
+        holidayWorkCount++;
+        totalHolidayOvertime += entry.overtimeHours + (entry.overtimeMinutes / 60);
+      }
+    });
+  }
 
   // Tính toán lương
-  const totalMorningSalary = (basicHourlyRate * basicWorkingHours * morningCount) + (overtimeHourlyRate * totalMorningOvertime);
-  const totalNightSalary = (basicHourlyRate * basicWorkingHours * nightCount) + (overtimeHourlyRate * totalNightOvertime);
-  const totalBasicSalary = basicHourlyRate * basicWorkingHours * (morningCount + nightCount);
-  const totalSalary = totalMorningSalary + totalNightSalary + allowance;
+  const morningSalary = {
+    total: (basicHourlyRate * basicWorkingHours * morningCount) + (overtimeHourlyRate * totalMorningOvertime),
+    overtime: overtimeHourlyRate * totalMorningOvertime,
+    normal: (basicHourlyRate * basicWorkingHours * morningCount)
+  };
 
-  // Hiển thị kết quả (làm tròn và thêm dấu chấm)
-  document.getElementById('totalMorningSalary').textContent = formatNumber(totalMorningSalary);
-  document.getElementById('totalNightSalary').textContent = formatNumber(totalNightSalary);
+  const nightSalary = {
+    total: (basicHourlyRate * basicWorkingHours * nightCount) + (overtimeHourlyRate * totalNightOvertime),
+    overtime: overtimeHourlyRate * totalNightOvertime,
+    normal: (basicHourlyRate * basicWorkingHours * nightCount)
+  };
+  
+  const holidaySalary = {
+  total: (overtimeHourlyRate * basicWorkingHours * holidayWorkCount) + (overtimeHourlyRate * totalHolidayOvertime),
+  overtime: overtimeHourlyRate * totalHolidayOvertime,
+  normal: (overtimeHourlyRate * basicWorkingHours * holidayWorkCount)
+};
+  
+
+  const totalBasicSalary = basicHourlyRate * basicWorkingHours * (morningCount + nightCount);
+  
+  const totalSalary = morningSalary.total + nightSalary.total + holidaySalary.overtime + ((allowance / DaysWork) * (morningCount + nightCount)) ;
+
+  const totalSalaryMonth = (basicHourlyRate * basicWorkingHours * DaysWork) +
+    (overtimeHourlyRate * 2 * morningCount) +
+    (overtimeHourlyRate * nightCount) +
+    allowance;
+
+  // Hiển thị kết quả
+  document.getElementById('totalMorningSalary').textContent = formatNumber(morningSalary.total);
+  document.getElementById('totalMorningSalarySub').textContent = `[${morningCount} ngày] ${formatNumber(morningSalary.normal)} + ${formatNumber(morningSalary.overtime)}`;
+
+  document.getElementById('totalNightSalary').textContent = formatNumber(nightSalary.total);
+  document.getElementById('totalNightSalarySub').textContent = `[${nightCount} ngày] ${formatNumber(nightSalary.normal)} + ${formatNumber(nightSalary.overtime)}`;
+
+  document.getElementById('totalHolidaySalary').textContent = formatNumber(holidaySalary.overtime);
+  document.getElementById('totalHolidaySalarySub').textContent = `[${holidayWorkCount} ngày] ${formatNumber(holidaySalary.overtime)}`;
+
   document.getElementById('totalBasicSalary').textContent = formatNumber(totalBasicSalary);
+  document.getElementById('totalBasicSalarySub').textContent = `[${morningCount + nightCount} ngày] ${formatNumber(morningSalary.normal)} + ${formatNumber(nightSalary.normal)}`;
+
   document.getElementById('totalSalary').textContent = formatNumber(totalSalary);
+
+  document.getElementById('TotalAllowance').textContent = formatNumber((allowance / DaysWork) * (morningCount + nightCount));
+
+  document.getElementById('allowanceSub').textContent = `${formatNumber(allowance)}/tháng`;
+
+  document.getElementById('totalSalaryMonth').textContent = formatNumber(totalSalaryMonth);
+
   document.getElementById('holidayWorkCount').textContent = holidayWorkCount; // Hiển thị số ngày nghỉ đã đi làm
 }
 
@@ -595,4 +660,30 @@ window.addEventListener('resize', () => {
   updateIndicator(activeItem);
 });
 
+
+function JPYtoVND() {
+    const api = "https://api.exchangerate-api.com/v4/latest/JPY"; // API lấy tỷ giá
+    const jpytovndInput = document.getElementById("jpytovnd"); // Input nơi hiển thị kết quả
+    const jpyrateDisplay = document.getElementById("jpyrate"); // Phần tử <p> nơi hiển thị tỷ giá
+
+    fetch(api)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const jpyToVndRate = data.rates['VND']; // Lấy tỷ giá JPY sang VND
+            const result = (1 * jpyToVndRate).toFixed(2); // Chuyển đổi 1 JPY
+
+            jpytovndInput.value = result; // Hiển thị kết quả trong input
+            jpyrateDisplay.textContent = `Tỷ giá: 1 JPY = ${jpyToVndRate.toFixed(2)} VND`; // Hiển thị tỷ giá trong <p>
+        })
+        .catch(error => {
+            console.error('Error fetching currency data:', error);
+            jpytovndInput.value = ""; // Xóa giá trị trong input khi lỗi
+            jpyrateDisplay.textContent = "Không thể lấy dữ liệu tỷ giá hối đoái. Vui lòng thử lại sau."; // Thông báo lỗi
+        });
+}
 
