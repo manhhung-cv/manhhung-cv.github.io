@@ -30,7 +30,7 @@ function updateMonthDisplay() {
   const month = currentMonth.getMonth() + 1; // getMonth() trả về giá trị từ 0 đến 11
   const year = currentMonth.getFullYear(); // lấy năm
   const formattedMonthYear = `${month}/${year}`; // định dạng lại thành "1/2025"
-  
+
   currentMonthDisplay.textContent = formattedMonthYear; // cập nhật nội dung
   loadScheduleFromLocalStorage(); // giữ lại hàm này nếu cần thiết
 }
@@ -99,8 +99,8 @@ function generateCalendar(year, month) {
   // Thêm từng ngày trong tháng
   for (let day = 1; day <= daysInMonth; day++) {
     const currentDate = new Date(year, month, day);
-    const dateStr = new Date(year, month, day + 1).toISOString().split('T')[0];  // Đảm bảo ngày được lấy đúng
-    
+    const dateStr = new Date(year, month, day + 1).toISOString().split('T')[0]; // Đảm bảo ngày được lấy đúng
+
     currentSchedule[dateStr] = currentSchedule[dateStr] || {
       shift: 'nghi',
       overtimeHours: 0,
@@ -144,9 +144,8 @@ function generateCalendar(year, month) {
     calendar.appendChild(dayElement);
   }
 
-calculateSalary();
+  calculateSalary();
   updateSummary();
-  updateDetailsTable();
 }
 
 function updateHistory() {
@@ -194,7 +193,7 @@ function updateSchedule(date, element) {
     document.getElementById('overtimeHours').value = currentSchedule[date]?.overtimeHours || 0;
     document.getElementById('overtimeMinutes').value = currentSchedule[date]?.overtimeMinutes || 0;
     document.getElementById('overtimePopup').style.display = 'flex';
-    
+
     calculateSalary();
     return;
   }
@@ -213,7 +212,7 @@ function updateSchedule(date, element) {
     // Lưu thay đổi ca làm việc
     currentSchedule[date] = { ...currentSchedule[date], shift };
     saveScheduleToLocalStorage();
-    
+
 
     // Cập nhật class nhưng giữ nguyên thông tin tăng ca
     element.classList.remove('shift-sang', 'shift-toi', 'shift-nghi');
@@ -225,11 +224,9 @@ function updateSchedule(date, element) {
   // Chỉ cập nhật bảng tóm tắt & chi tiết nếu chỉnh sửa ca
   if (isEditMode) {
     updateSummary();
-    updateDetailsTable();
     calculateSalary();
   }
 }
-
 function displayAllData() {
   const settings = JSON.parse(localStorage.getItem('salarySettings')) || {};
   const schedule = JSON.parse(localStorage.getItem('allSchedules')) || {};
@@ -251,14 +248,17 @@ function loadSettings() {
     jpytovnd: 0,
   };
 
+
   document.getElementById('basicHourlyRate').value = settings.basicHourlyRate;
   document.getElementById('basicWorkingHours').value = settings.basicWorkingHours;
   document.getElementById('overtimeHourlyRate').value = settings.overtimeHourlyRate;
   document.getElementById('allowance').value = settings.allowance;
   document.getElementById('jpytovnd').value = settings.jpytovnd;
 
-  calculateSalary(); // Tính toán lương khi tải trang
+
+  calculateSalary();
 }
+
 
 function saveSettings() {
   const settings = {
@@ -267,9 +267,8 @@ function saveSettings() {
     overtimeHourlyRate: parseFloat(document.getElementById('overtimeHourlyRate').value) || 0,
     allowance: parseFloat(document.getElementById('allowance').value) || 0,
     jpytovnd: parseFloat(document.getElementById('jpytovnd').value) || 0,
-    
-    
   };
+
   localStorage.setItem('salarySettings', JSON.stringify(settings));
   calculateSalary(); // Tự động tính toán lương khi thông số thay đổi
   displayAllData(); // Hiển thị toàn bộ dữ liệu sau khi lưu
@@ -292,7 +291,7 @@ function confirmOvertime() {
   calculateSalary();
   updateHistory(); // Đảm bảo lịch sử được cập nhật sau khi xác nhận
   loadScheduleFromLocalStorage(); // Refresh calendar
-  
+
 }
 
 function closePopup() {
@@ -355,22 +354,6 @@ function updateSummary() {
 }
 
 
-// Hàm cập nhật bảng chi tiết lịch làm việc
-function updateDetailsTable() {
-  let tableBody = document.getElementById('detailsTableBody');
-  tableBody.innerHTML = '';
-
-  const sortedDates = Object.keys(currentSchedule).sort((a, b) => new Date(a) - new Date(b));
-
-  sortedDates.forEach(date => {
-    const formattedDate = formatDate(date);
-    let shiftText = currentSchedule[date].shift === 'sang' ? 'Sáng' : currentSchedule[date].shift === 'toi' ? 'Tối' : 'Nghỉ';
-    let overtimeText = currentSchedule[date].overtimeHours || currentSchedule[date].overtimeMinutes ? ` (Tăng ca: ${currentSchedule[date].overtimeHours}h ${currentSchedule[date].overtimeMinutes}m)` : '';
-    let row = `<tr><td>${formattedDate}</td><td>${new Date(date).toLocaleDateString('vi-VN', { weekday: 'long' })}</td><td>${shiftText}${overtimeText}</td></tr>`;
-    tableBody.innerHTML += row;
-  });
-}
-
 // Hàm định dạng ngày theo kiểu dd/mm/yyyy
 function formatDate(date) {
   const d = new Date(date);
@@ -380,7 +363,7 @@ function formatDate(date) {
   return `${day}/${month}/${year}`;
 }
 
-// Lưu lịch làm việc của tháng vào localStorage
+// Hàm lưu lịch làm việc vào localStorage
 function saveScheduleToLocalStorage() {
   const currentMonthKey = getMonthKey();
   let allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {};
@@ -402,68 +385,6 @@ function loadScheduleFromLocalStorage() {
   generateCalendar(currentMonth.getFullYear(), currentMonth.getMonth());
 }
 
-// Nhập JSON
-document.getElementById('importJsonButton').addEventListener('click', function() {
-  const fileInput = document.createElement('input');
-  fileInput.type = 'file';
-  fileInput.accept = '.json';
-
-  fileInput.onchange = function(e) {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-
-    reader.onload = function(e) {
-      try {
-        const data = JSON.parse(e.target.result);
-        localStorage.setItem('allSchedules', JSON.stringify(data));
-        loadScheduleFromLocalStorage();
-        alert('Nhập dữ liệu thành công!');
-      } catch (error) {
-        alert('File JSON không hợp lệ!');
-      }
-    };
-
-    reader.readAsText(file);
-  };
-
-  fileInput.click();
-});
-
-// Xuất JSON (đơn giản hóa)
-document.getElementById('exportJsonButton').addEventListener('click', function() {
-  const allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {};
-  const simplifiedSchedules = {};
-
-  Object.keys(allSchedules).forEach(monthKey => {
-    simplifiedSchedules[monthKey] = {};
-    Object.keys(allSchedules[monthKey]).forEach(date => {
-      simplifiedSchedules[monthKey][date] = {
-        shift: allSchedules[monthKey][date].shift,
-        overtimeHours: allSchedules[monthKey][date].overtimeHours || 0,
-        overtimeMinutes: allSchedules[monthKey][date].overtimeMinutes || 0
-      };
-    });
-  });
-
-  const jsonContent = JSON.stringify(simplifiedSchedules, null, 2);
-
-  const blob = new Blob([jsonContent], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'schedules.json';
-  link.click();
-  URL.revokeObjectURL(url);
-});
-
-// Xem trước JSON
-document.getElementById('viewJsonButton').addEventListener('click', function() {
-  const jsonPreview = document.getElementById('jsonPreview');
-  const allSchedules = JSON.parse(localStorage.getItem('allSchedules')) || {};
-  const jsonContent = JSON.stringify(allSchedules, null, 2);
-  jsonPreview.textContent = jsonContent;
-});
-
 function formatNumber(number) {
   return Math.round(number).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
@@ -477,8 +398,9 @@ function calculateSalary() {
     basicWorkingHours: 0,
     overtimeHourlyRate: 0,
     allowance: 0,
-    jpytovnd:0,
+    jpytovnd: 0,
   };
+
 
   const { basicHourlyRate, basicWorkingHours, overtimeHourlyRate, allowance } = settings;
 
@@ -519,22 +441,26 @@ function calculateSalary() {
     overtime: overtimeHourlyRate * totalNightOvertime,
     normal: (basicHourlyRate * basicWorkingHours * nightCount)
   };
-  
+
   const holidaySalary = {
-  total: (overtimeHourlyRate * basicWorkingHours * holidayWorkCount) + (overtimeHourlyRate * totalHolidayOvertime),
-  overtime: overtimeHourlyRate * totalHolidayOvertime,
-  normal: (overtimeHourlyRate * basicWorkingHours * holidayWorkCount)
-};
-  
+    total: (overtimeHourlyRate * basicWorkingHours * holidayWorkCount) + (overtimeHourlyRate * totalHolidayOvertime),
+    overtime: overtimeHourlyRate * totalHolidayOvertime,
+    normal: (overtimeHourlyRate * basicWorkingHours * holidayWorkCount)
+  };
+
 
   const totalBasicSalary = basicHourlyRate * basicWorkingHours * (morningCount + nightCount);
-  
-  const totalSalary = morningSalary.total + nightSalary.total + holidaySalary.overtime + ((allowance / DaysWork) * (morningCount + nightCount)) ;
 
-  const totalSalaryMonth = (basicHourlyRate * basicWorkingHours * DaysWork) +
-    (overtimeHourlyRate * 2 * morningCount) +
-    (overtimeHourlyRate * nightCount) +
+  const totalSalary = morningSalary.total + nightSalary.total + holidaySalary.overtime + ((allowance / DaysWork) * (morningCount + nightCount));
+
+  const totalSalarySub = totalSalary * settings.jpytovnd;
+
+  const totalSalaryMonth = ((basicHourlyRate * basicWorkingHours) * DaysWork) +
+    (overtimeHourlyRate * 2 * summary.morningCount) +
+    (overtimeHourlyRate * summary.nightCount) +
     allowance;
+
+  const totalSalaryMonthSub = totalSalaryMonth * settings.jpytovnd
 
   // Hiển thị kết quả
   document.getElementById('totalMorningSalary').textContent = formatNumber(morningSalary.total);
@@ -551,11 +477,18 @@ function calculateSalary() {
 
   document.getElementById('totalSalary').textContent = formatNumber(totalSalary);
 
+  document.getElementById('totalSalarySub').textContent = formatNumber(totalSalarySub) + 'đ';
+
+
+
   document.getElementById('TotalAllowance').textContent = formatNumber((allowance / DaysWork) * (morningCount + nightCount));
 
   document.getElementById('allowanceSub').textContent = `${formatNumber(allowance)}/tháng`;
 
   document.getElementById('totalSalaryMonth').textContent = formatNumber(totalSalaryMonth);
+
+  document.getElementById('totalSalaryMonthSub').textContent = formatNumber(totalSalaryMonthSub) + 'đ';
+
 
   document.getElementById('holidayWorkCount').textContent = holidayWorkCount; // Hiển thị số ngày nghỉ đã đi làm
 }
@@ -662,28 +595,149 @@ window.addEventListener('resize', () => {
 
 
 function JPYtoVND() {
-    const api = "https://api.exchangerate-api.com/v4/latest/JPY"; // API lấy tỷ giá
-    const jpytovndInput = document.getElementById("jpytovnd"); // Input nơi hiển thị kết quả
-    const jpyrateDisplay = document.getElementById("jpyrate"); // Phần tử <p> nơi hiển thị tỷ giá
+  const api = "https://api.exchangerate-api.com/v4/latest/JPY"; // API lấy tỷ giá
+  const jpytovndInput = document.getElementById("jpytovnd"); // Input nơi hiển thị kết quả
 
-    fetch(api)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            const jpyToVndRate = data.rates['VND']; // Lấy tỷ giá JPY sang VND
-            const result = (1 * jpyToVndRate).toFixed(2); // Chuyển đổi 1 JPY
+  fetch(api)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      const jpyToVndRate = data.rates['VND']; // Lấy tỷ giá JPY sang VND
+      const result = (1 * jpyToVndRate).toFixed(2); // Chuyển đổi 1 JPY
 
-            jpytovndInput.value = result; // Hiển thị kết quả trong input
-            jpyrateDisplay.textContent = `Tỷ giá: 1 JPY = ${jpyToVndRate.toFixed(2)} VND`; // Hiển thị tỷ giá trong <p>
-        })
-        .catch(error => {
-            console.error('Error fetching currency data:', error);
-            jpytovndInput.value = ""; // Xóa giá trị trong input khi lỗi
-            jpyrateDisplay.textContent = "Không thể lấy dữ liệu tỷ giá hối đoái. Vui lòng thử lại sau."; // Thông báo lỗi
-        });
+      jpytovndInput.value = result; // Hiển thị kết quả trong input
+
+    })
+    .catch(error => {
+      console.error('Error fetching currency data:', error);
+      jpytovndInput.value = ""; // Xóa giá trị trong input khi lỗi
+      jpyrateDisplay.textContent = "Không thể lấy dữ liệu tỷ giá hối đoái. Vui lòng thử lại sau."; // Thông báo lỗi
+    });
 }
 
+function showDeleteConfirmation() {
+  document.getElementById('deleteModal').style.display = 'block';
+}
+
+function cancelDelete() {
+  document.getElementById('deleteModal').style.display = 'none';
+}
+
+function confirmDelete() {
+  // Xóa tất cả dữ liệu từ localStorage
+  localStorage.clear();
+
+  // Đặt lại các giá trị input về mặc định
+  document.getElementById('basicHourlyRate').value = '';
+  document.getElementById('basicWorkingHours').value = '';
+  document.getElementById('overtimeHourlyRate').value = '';
+  document.getElementById('allowance').value = '';
+  document.getElementById('jpytovnd').value = '';
+
+  // Ẩn modal
+  document.getElementById('deleteModal').style.display = 'none';
+
+  // Hiển thị thông báo thành công (tùy chọn)
+  alert('Đã xóa tất cả dữ liệu thành công!');
+}
+
+// Đóng modal khi click bên ngoài
+window.onclick = function(event) {
+  const modal = document.getElementById('deleteModal');
+  if (event.target == modal) {
+    modal.style.display = 'none';
+  }
+}
+
+
+function displayLocalStorage() {
+  // Lấy element để hiển thị
+  const localDiv = document.getElementById('Local');
+
+  // Lấy dữ liệu từ localStorage
+  const settings = JSON.parse(localStorage.getItem('salarySettings')) || {};
+
+  // Tạo HTML để hiển thị
+  let html = '<h3>Local Storage Data:</h3>';
+  html += '<table border="1">';
+  html += '<tr><th>Key</th><th>Value</th></tr>';
+
+  // Thêm từng dòng dữ liệu
+  for (const [key, value] of Object.entries(settings)) {
+    html += `<tr>
+            <td>$
+{key}</td>
+            <td>
+${value}</td>
+        </tr>`;
+  }
+
+  html += '</table>';
+
+  // Hiển thị ra div
+  localDiv.innerHTML = html;
+}
+
+// Có thể gọi function này khi cần hiển thị
+// Ví dụ: sau khi load settings hoặc sau khi save settings
+// displayLocalStorage();
+
+
+function exportData() {
+    // Tạo object chứa toàn bộ dữ liệu
+    const exportObject = {
+        salarySettings: JSON.parse(localStorage.getItem('salarySettings') || '{}'),
+        scheduleData: JSON.parse(localStorage.getItem('currentSchedule') || '{}'),
+        lastUpdated: new Date().toISOString()
+    }
+
+    // Tạo file Blob và trigger download
+    const blob = new Blob([JSON.stringify(exportObject, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `salary_data_${new Date().toLocaleDateString('vi-VN')}.json`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedData = JSON.parse(e.target.result);
+            
+            // Validate data structure
+            if (importedData.salarySettings && importedData.scheduleData) {
+                localStorage.setItem('salarySettings', JSON.stringify(importedData.salarySettings));
+                localStorage.setItem('currentSchedule', JSON.stringify(importedData.scheduleData));
+                
+                // Refresh UI
+                loadSettings();
+                loadScheduleFromLocalStorage();
+                displayAllData();
+                alert('Nhập dữ liệu thành công!');
+            } else {
+                alert('File không đúng định dạng!');
+            }
+        } catch (error) {
+            alert('Lỗi đọc file: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+}
+function confirmImport() {
+    if (confirm('Bạn có chắc muốn ghi đè dữ liệu hiện tại?')) {
+        document.getElementById('importFile').click();
+    }
+}
