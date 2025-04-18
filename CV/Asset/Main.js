@@ -7,6 +7,8 @@ const translations = {
         Quote: "Mong muốn phát triển kỹ năng và kiến thức trong kỹ thuật cơ điện tử, học hỏi công nghệ mới và đóng góp vào dự án thực tế để trở thành chuyên gia trong tương lai.",
         BtnHireMe: "Tuyển dụng",
         BtnDownloadCV: "Tải CV",
+        Location: "Việt Nam 🇻🇳",
+        
 
         QualificationsText: "Bằng cấp",
         SkillsText: "Kĩ năng",
@@ -56,6 +58,7 @@ const translations = {
         Quote: "*Desiring to develop skills and knowledge in mechatronics engineering, learn new technologies, and contribute to real-world projects to become an expert in the future.",
         BtnHireMe: "Hire Me",
         BtnDownloadCV: "Download CV",
+        Location: "Viet Nam 🇻🇳",
 
         QualificationsText: "Qualifications",
         SkillsText: "Skills",
@@ -104,6 +107,7 @@ const translations = {
         Quote: "メカトロニクスのスキルと知識を伸ばしたいです。そして、新しい技術を学び、実際のプロジェクトに参加して、将来専門家になりたいです.",
         BtnHireMe: "私を雇ってください",
         BtnDownloadCV: "履歴書をダウンロード",
+        Location: "ベトナム 🇻🇳",
 
         QualificationsText: "資格",
         SkillsText: "スキル",
@@ -150,6 +154,7 @@ const translations = {
         "Quote": "希望在机电工程领域提升技能和知识，学习新技术并参与实际项目，为成为未来的专家而努力。",
         "BtnHireMe": "招聘",
         "BtnDownloadCV": "下载简历",
+        Location: "越南 🇻🇳",
 
         "QualificationsText": "学历",
         "SkillsText": "技能",
