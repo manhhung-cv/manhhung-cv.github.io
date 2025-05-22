@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunq Store</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="./Asset/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <!-- Biểu tượng cho web -->
+    <link rel="icon" href="/Asset/logo/logo.png">
+
+    <!-- Biểu tượng iPhone -->
+    <link rel="apple-touch-icon" href="/Asset/logo/logo.png" sizes="150x150">
+
+</head>
+
+<body class="bg-gray-50 text-gray-900 font-sans min-h-screen flex flex-col">
+
+    <header class="bg-white text-gray-800 p-4 shadow-md sticky top-0 z-20">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-blue-600">Hunq Store</h1>
+            <nav class="hidden md:block">
+                <ul class="flex space-x-6">
+                    <li><button
+                            class="nav-link text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
+                            data-view="product-list-view">Sản phẩm</button></li>
+                    <li>
+                        <button
+                            class="nav-link text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
+                            data-view="order-status-view">
+                            Kiểm tra đơn hàng
+                        </button>
+                    </li>
+                    <li>
+                        <button
+                            class="nav-link text-gray-700 hover:text-blue-600 transition-colors duration-200 font-medium"
+                            data-view="info-section">
+                            Thông tin
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+            <div class="flex items-center space-x-4">
+                <div class="relative">
+                    <button id="cart-icon"
+                        class="text-gray-700 text-2xl focus:outline-none p-1 rounded-full hover:bg-gray-200 transition-colors duration-200">
+                        <i class="fas fa-shopping-bag"></i> <span id="cart-count"
+                            class="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center -mt-1 -mr-2 border-2 border-white">0</span>
+                    </button>
+                    <div id="cart-dropdown"
+                        class="hidden absolute right-0 mt-3 w-64 bg-white rounded-lg shadow-xl py-3 z-10 origin-top-right transform scale-95 opacity-0 transition-all duration-200 ease-out">
+                        <div class="px-4 py-2 border-b border-gray-200">
+                            <h4 class="text-lg font-semibold text-gray-800">Giỏ hàng</h4>
+                        </div>
+                        <div id="cart-items-dropdown" class="px-4 py-2 text-gray-800 max-h-60 overflow-y-auto">Giỏ hàng
+                            trống</div>
+                        <div class="border-t border-gray-200 mt-2 pt-3 px-4">
+                            <p class="font-bold text-gray-800 text-lg">Tổng cộng: <span id="cart-total-dropdown"
+                                    class="text-blue-600">0đ</span></p>
+                            <button id="go-to-checkout-btn-dropdown"
+                                class="mt-3 w-full bg-blue-600 text-white py-2 rounded-md font-semibold hover:bg-blue-700 transition-colors duration-200 shadow-md">Tiến
+                                hành thanh toán</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-4 gap-6 flex-grow">
+
+        <aside id="sidebar" class="md:col-span-1 bg-white p-6 rounded-lg shadow-xl h-fit hidden md:block">
+            <h2 class="text-xl font-bold mb-6 text-gray-800">Bộ lọc & Sắp xếp</h2>
+
+            <div class="mb-6">
+                <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2">Tìm kiếm sản phẩm</label>
+                <div class="relative">
+                    <input type="text" id="search-input" placeholder="Nhập tên sản phẩm..."
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                    <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label for="category-filter" class="block text-sm font-medium text-gray-700 mb-2">Danh mục</label>
+                <select id="category-filter"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white appearance-none">
+                    <option value="all">Tất cả</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
+                <label for="sort-select" class="block text-sm font-medium text-gray-700 mb-2">Sắp xếp theo</label>
+                <select id="sort-select"
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white appearance-none">
+                    <option value="default">Mặc định</option>
+                    <option value="name-asc">Tên (A-Z)</option>
+                    <option value="name-desc">Tên (Z-A)</option>
+                    <option value="price-asc">Giá (Thấp đến cao)</option>
+                    <option value="price-desc">Giá (Cao đến thấp)</option>
+                </select>
+            </div>
+        </aside>
+
+        <section id="main-content-area" class="md:col-span-3">
+
+            <div id="product-list-view" class="view-section active">
+                <div id="product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                </div>
+                <div id="no-products-message" class="hidden text-center text-gray-500 mt-8 text-lg">Không tìm thấy sản
+                    phẩm nào phù hợp.</div>
+            </div>
+            <div id="order-status-view" class="view-section bg-white p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Kiểm tra đơn hàng</h2>
+
+                <div class="max-w-md mx-auto">
+                    <label for="order-code-input" class="block text-sm font-medium text-gray-700 mb-2">Nhập mã đơn
+                        hàng</label>
+                    <input type="text" id="order-code-input"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-md mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
+
+                    <button id="check-order-btn"
+                        class="w-full bg-blue-600 text-white py-2 rounded-md font-semibold hover:bg-blue-700 transition-colors duration-200">
+                        Kiểm tra
+                    </button>
+                    
+
+                    <div id="order-result"
+                        class="mt-6 hidden bg-gray-50 border border-gray-200 p-4 rounded-md text-sm text-gray-700">
+                        <!-- Kết quả đơn hàng sẽ hiển thị ở đây -->
+                         
+                    </div>
+                    
+                </div>
+            </div>
+            <div id="info-section" class="view-section bg-white p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Thông tin & Điều khoản</h2>
+
+                <div class="max-w-2xl mx-auto space-y-6 text-sm text-gray-700">
+                    <section>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">📜 Điều khoản sử dụng</h3>
+                        <p>
+                            Khi sử dụng dịch vụ của chúng tôi, bạn đồng ý tuân thủ các điều khoản được quy định. Vui
+                            lòng đọc kỹ trước khi tiếp tục sử dụng website.
+                        </p>
+                    </section>
+
+                    <section>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">🛡️ Chính sách bảo hành</h3>
+                        <p>
+                            <strong>Thời gian bảo hành:</strong> sẽ được ghi rõ theo từng sản phẩm. Có thể sử dụng mã
+                            hóa đơn hoặc email để kiểm tra bảo hành.
+                        </p>
+                        <p><strong>Điều kiện bảo hành:</strong> Hunq Store sẽ kiểm tra nguyên nhân lỗi và sẽ trả kết quả
+                            sớm nhất có thể.
+                        </p>
+                        <p>
+                            <strong>Sản phẩm phát sinh lỗi trong quá trình sử dụng:</strong>
+                            Hunq Store hỗ trợ khách hàng nhanh có thể.
+                        </p>
+                        <p>
+                            <strong>Từ chối bảo hành:</strong> Nguyên nhân do khách hàng.
+                            Ví dụ: Xoá tài khoản, đổi mật khẩu ( Đối với tài khoản dùng chung )
+                        </p>
+                    </section>
+
+                    <section>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">❓ Câu hỏi thường gặp (FAQ)</h3>
+                        <ul class="list-disc pl-5 space-y-2">
+                            <li><strong>Q:</strong> Tài khoản cấp sẵn là gì?<br><strong>A:</strong>
+                                Là tài khoản Hunq Store tạo sẵn và sẽ gửi tới Mail hoặc Messenger cho khách hàng.</li>
+                            <li><strong>Q:</strong> Dùng chung là gì ?<br><strong>A:</strong> Là tài khoản dùng chung 2
+                                hoặc nhiều người. Khách hàng không được phép đổi mật khẩu (Nếu vi phạm sẽ từ chối bảo
+                                hành và không hoàn tiền).</li>
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">🌐 Thông tin website</h3>
+                        <p>
+                            Hunq Store
+                        </p>
+                    </section>
+                </div>
+            </div>
+
+
+
+
+            <div id="checkout-view" class="view-section bg-white p-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Thanh toán</h2>
+
+                <div class="flex justify-between items-center mb-6 text-sm font-semibold text-gray-600">
+                    <div class="flex-1 text-center border-b-2 pb-2 border-blue-600 text-blue-600">1. Giỏ hàng</div>
+                    <div class="flex-1 text-center border-b-2 pb-2 border-gray-300">2. Thông tin</div>
+                    <div class="flex-1 text-center border-b-2 pb-2 border-gray-300">3. Thanh toán</div>
+                    <div class="flex-1 text-center border-b-2 pb-2 border-gray-300">4. Hoàn tất</div>
+                </div>
+
+
+                <div id="checkout-step-1" class="checkout-step active">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Bước 1: Giỏ hàng & Mã ưu đãi</h3>
+                    <div id="cart-items-list">
+                    </div>
+                    <div id="cart-empty-message" class="text-center text-gray-500 text-lg py-8">
+                        <i class="fas fa-shopping-bag text-6xl mb-4"></i>
+                        <p>Giỏ hàng của bạn đang trống.</p>
+                        <button id="go-shopping-from-cart"
+                            class="mt-4 bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-700 transition-colors duration-200 shadow-md">Tiếp
+                            tục mua sắm</button>
+                    </div>
+
+                    <h4 class="text-lg font-semibold mb-3 text-gray-800 mt-8">Mã ưu đãi</h4>
+                    <div class="flex items-end gap-2 mb-4">
+                        <!-- Input -->
+                        <div class="flex-grow">
+                            <label for="discount-code" class="block text-sm font-medium text-gray-700 mb-2">Mã giảm
+                                giá</label>
+                            <input type="text" id="discount-code"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                placeholder="Nhập mã giảm giá">
+                        </div>
+
+                        <!-- Nút áp dụng -->
+                        <div>
+                            <button id="apply-codes-btn"
+                                class="bg-gray-300 text-gray-800 py-2 px-6 rounded-md font-semibold hover:bg-gray-400 transition-colors duration-200">
+                                Áp dụng mã
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="discount-message" class="text-green-600 text-sm mt-2 hidden"></div>
+                    <div id="referral-message" class="text-green-600 text-sm mt-1 hidden"></div>
+
+
+                    <div id="cart-summary-area">
+                        <div
+                            class="border-t border-gray-200 mt-6 pt-6 flex flex-col md:flex-row justify-between items-center">
+                            <p class="text-xl font-bold mb-4 md:mb-0">Tổng cộng:</p>
+                            <p class="text-xl font-bold text-blue-600"><span id="cart-total">0đ</span></p>
+                        </div>
+                        <div class="mt-6 text-right space-y-4 md:space-y-0 md:space-x-4">
+                            <button id="continue-shopping-btn"
+                                class="bg-gray-300 text-gray-800 py-3 px-6 rounded-md font-semibold hover:bg-gray-400 transition-colors duration-200 w-full md:w-auto">Tiếp
+                                tục mua sắm</button>
+                            <button id="next-step-2-btn"
+                                class="bg-blue-600 text-white py-3 px-6 rounded-md text-lg font-semibold hover:bg-blue-700 transition-colors duration-200 shadow-md disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto"
+                                disabled>Tiếp tục</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="checkout-step-2" class="checkout-step">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Bước 2: Thông tin người nhận</h3>
+
+                    <div class="grid grid-cols-1 gap-6 mb-6">
+                        <div>
+                            <label for="recipient-name" class="block text-sm font-medium text-gray-700 mb-2">Tên người
+                                nhận</label>
+                            <input type="text" id="recipient-name"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                        </div>
+
+                        <div class="flex items-end gap-3">
+
+                            <!-- Email input -->
+                            <div id="email-input-group" class="flex-grow">
+                                <label for="recipient-email"
+                                    class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" id="recipient-email"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                    placeholder="Nhập email">
+                            </div>
+
+                            <!-- Messenger input -->
+                            <div id="messenger-input-group" class="hidden flex-grow">
+                                <label for="recipient-messenger"
+                                    class="block text-sm font-medium text-gray-700 mb-1">Link Facebook, Messenger</label>
+                                <input type="url" id="recipient-messenger" placeholder="https://facebook.com/..."
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200">
+                            </div>
+
+                            <!-- Toggle switch -->
+                            <div class="contact-switch flex-shrink-0">
+                                <input type="checkbox" id="contact-toggle" hidden>
+                                <label for="contact-toggle"
+                                    class="switch-label cursor-pointer inline-flex items-center justify-between rounded-full px-2 py-1 relative h-10">
+                                    <span class="icon email-icon text-xl" title="Email">
+                                        <i class="fab fa-facebook-messenger"></i>
+                                    </span>
+                                    <span class="icon messenger-icon text-xl" title="Messenger">
+                                        <i class="fas fa-envelope-open-text"></i></span>
+                                    <span
+                                        class="switch-ball absolute top-1 left-1 w-8 h-8 bg-white rounded-full shadow-md transition-left duration-300"></span>
+                                </label>
+                            </div>
+
+                        </div>
+                        <p class="text-red-600 font-bold">Lưu ý: Hoá đơn và tài khoản sẽ được gửi qua email hoặc messenger, vui lòng kiểm tra kỹ để không nhầm lẫn thông tin.</p>
+
+
+                        <div>
+                            <label for="order-notes" class="block text-sm font-medium text-gray-700 mb-2">Nội dung / Ghi
+                                chú đơn hàng</label>
+                            <textarea id="order-notes" rows="4"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                placeholder="Nhập nội dung hoặc ghi chú cho đơn hàng"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="text-right space-x-4">
+                        <button id="prev-step-1-btn"
+                            class="bg-gray-300 text-gray-800 py-2 px-6 rounded-md font-semibold hover:bg-gray-400 transition-colors duration-200">Quay
+                            lại</button>
+                        <button id="next-step-3-btn"
+                            class="bg-blue-600 text-white py-2 px-6 rounded-md font-semibold hover:bg-blue-700 transition-colors duration-200 shadow-md">Tiếp
+                            tục</button>
+                    </div>
+                </div>
+
+
+                <div id="checkout-step-3" class="checkout-step">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Bước 3: Thanh toán</h3>
+
+                    <h4 class="text-lg font-semibold mb-3 text-gray-800">Chọn phương thức thanh toán</h4>
+                    <div class="mb-6 space-y-4">
+                        <div class="flex items-center bg-gray-50 p-4 rounded-md border border-gray-200">
+                            <input type="radio" id="payment-qr" name="payment-method" value="qr"
+                                class="focus:ring-blue-500 h-5 w-5 text-blue-600 border-gray-300 cursor-pointer"
+                                checked>
+                            <label for="payment-qr"
+                                class="ml-3 block text-base font-medium text-gray-700 cursor-pointer">Chuyển khoản Ngân
+                                hàng</label>
+                        </div>
+                        <div class="flex items-center bg-gray-50 p-4 rounded-md border border-gray-200">
+                            <input type="radio" id="payment-momo" name="payment-method" value="momo"
+                                class="focus:ring-blue-500 h-5 w-5 text-blue-600 border-gray-300 cursor-pointer">
+                            <label for="payment-momo"
+                                class="ml-3 block text-base font-medium text-gray-700 cursor-pointer">Ví điện tử Momo</label>
+                        </div>
+                    </div>
+
+                    <div class="text-right space-x-4">
+                        <button id="prev-step-2-btn"
+                            class="bg-gray-300 text-gray-800 py-2 px-6 rounded-md font-semibold hover:bg-gray-400 transition-colors duration-200">Quay
+                            lại</button>
+                        <button id="complete-order-btn"
+                            class="bg-green-500 text-white py-2 px-6 rounded-md font-semibold hover:bg-green-600 transition-colors duration-200 shadow-md">Hoàn
+                            tất</button>
+                    </div>
+                </div>
+
+                <div id="checkout-step-4" class="checkout-step">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Bước 4: Hoàn tất & Hướng dẫn thanh toán</h3>
+                    <div class="text-center mb-6 p-6 bg-green-50 rounded-lg border border-green-200">
+                        <i class="fas fa-check-circle text-green-600 text-6xl mb-4"></i>
+                        <p class="text-2xl font-bold text-green-800 mb-2">Đặt hàng thành công!</p>
+                        <p class="text-lg text-gray-700">Mã đơn hàng của bạn là: <span id="order-id"
+                                class="font-bold text-blue-600">#...</span></p>
+                       
+                    </div>
+
+                    <div id="payment-instructions"
+                        class="mb-6 border border-gray-200 rounded-lg p-6 bg-white shadow-sm">
+                        <h4 class="text-lg font-semibold mb-4 text-gray-800">Thông tin thanh toán</h4>
+                        <div id="qr-code-area" class="flex flex-col justify-center items-center">
+                            <img id="payment-qr-img" src="" alt="Mã QR Thanh toán"
+                                class="mx-auto mb-4 w-48 h-48 object-contain border border-gray-300 rounded-md p-2 bg-white">
+                                <p id="payment-account-info" class="text-left text-gray-700 text-sm leading-relaxed"></p>
+                                <p class="text-red-600 font-semibold mt-3 text-sm">Vui lòng ghi rõ mã đơn hàng ( <span
+                                    class="font-bold" id="order-id-in-instruction">#...</span> ) trong nội dung chuyển
+                                khoản. Nếu sai cần phải liên hệ cho Hunq Store để được hỗ trợ.
+                            <br> Nhớ lưu hoá đơn chuyển tiền để có thể được hỗ trợ khi gặp lỗi.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="text-center mt-8">
+                        <p class="text-gray-700 mb-6 text-base">Hệ thống sẽ tự động ghi nhận đơn hàn .</p>
+                        <button id="back-to-home-btn-checkout"
+                            class="bg-blue-600 text-white py-3 px-8 rounded-md text-lg font-semibold hover:bg-blue-700 transition-colors duration-200 shadow-md">Quay
+                            lại trang chủ</button>
+                    </div>
+                </div>
+
+
+            </div>
+
+
+        </section>
+
+    </main>
+
+    <div id="mobile-filter-bar"
+        class="fixed bottom-[65px] m-[10px] rounded-[10px] left-0 right-0 bg-white p-[8px] shadow-lg z-10 flex items-center justify-between space-x-2 overflow-x-auto md:hidden">
+        <div class="flex-[2] min-w-0">
+            <div class="relative">
+                <input type="text" id="search-input-mobile" placeholder="Tìm kiếm..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm">
+                <i class="fas fa-search absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
+            </div>
+        </div>
+
+        <div class="flex-1 min-w-0">
+            <select id="category-filter-mobile"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white appearance-none text-sm">
+                <option value="all">Danh mục</option>
+            </select>
+        </div>
+
+        <div class="flex-1 min-w-0">
+            <select id="sort-select-mobile"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white appearance-none text-sm">
+                <option value="default">Sắp xếp</option>
+                <option value="name-asc">Tên (A-Z)</option>
+                <option value="name-desc">Tên (Z-A)</option>
+                <option value="price-asc">Giá (Thấp)</option>
+                <option value="price-desc">Giá (Cao)</option>
+            </select>
+        </div>
+    </div>
+    <nav id="mobile-nav"
+        class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30 flex justify-around items-center p-2 md:hidden">
+        <button class="mobile-nav-link flex flex-col items-center text-gray-600 hover:text-blue-600 text-sm"
+            data-view="product-list-view">
+            <i class="fas fa-box text-lg mb-1"></i>
+            Sản phẩm
+        </button>
+        <button class="mobile-nav-link flex flex-col items-center text-gray-600 hover:text-blue-600 text-sm"
+            data-view="order-status-view">
+            <i class="fas fa-search text-lg mb-1"></i>
+            Đơn hàng
+        </button>
+        <button class="mobile-nav-link flex flex-col items-center text-gray-600 hover:text-blue-600 text-sm"
+            data-view="info-section">
+            <i class="fas fa-info text-lg mb-1"></i>
+            Thông tin
+        </button>
+    </nav>
+
+
+
+    <div id="message-box"
+        class="hidden fixed bottom-4 right-4 bg-blue-500 text-white p-4 rounded-md shadow-lg z-50 transition-opacity duration-300 ease-in-out opacity-0 max-w-xs">
+        <p id="message-box-text"></p>
+    </div>
+
+    <footer class="bg-gray-800 text-white mt-8 py-6 text-center">
+        <div class="container mx-auto">
+            <p>&copy; 2025 Hunq Store. All rights reserved.</p>
+        </div>
+    </footer>
+
+
+    <script src="./Asset/script.js"></script>
+
+</body>
+
+</html>
