@@ -76,6 +76,17 @@ const products = [
         "notes": "Tài khoản sẵn Capcut Pro, dùng chung",
         "category": "Phần mềm",
         "imageUrl": "https://placehold.co/200x200/FFFFFF/000000?text=Capcut"
+    },
+    {
+        "id": 8,
+        "name": "Capcut Pro Chính Chủ",
+        "duration": "1 Tháng",
+        "priceroot": 199000,
+        "priceNumeric": 60000,
+        "warranty": "Đến khi hết hạn",
+        "notes": "Tài khoản chính chủ",
+        "category": "Phần mềm",
+        "imageUrl": "https://placehold.co/200x200/FFFFFF/000000?text=Capcut"
     }
     // Add more products here if needed
 ];
