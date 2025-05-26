@@ -4,80 +4,79 @@ const products = [
         "id": 1,
         "name": "Youtube Premium Chính Chủ",
         "duration": "1 Tháng",
-        "priceroot": 79000,
-        "priceNumeric": 45000,
+        "priceRoot": 79000,
+        "priceNumeric": 40000,
         "warranty": "Đến khi hết hạn",
         "notes": "Youtube Premium chính chủ",
         "category": "Giải trí",
-        "imageUrl": "https://placehold.co/200x200/FF0000/FFFFFF?text=Youtube"
+        "imageUrl": "./Asset/icon/Youtube.png"
     },
     {
         "id": 2,
         "name": "Youtube Premium Chính Chủ",
         "duration": "6 Tháng",
-        "priceroot": 79000,
-        "priceNumeric": 250000,
+        "priceRoot": 474000,
+        "priceNumeric": 230000,
         "warranty": "Đến khi hết hạn",
         "notes": "Youtube Premium chính chủ",
         "category": "Giải trí",
-        "imageUrl": "https://placehold.co/200x200/FF0000/FFFFFF?text=Youtube"
+        "imageUrl": "./Asset/icon/Youtube.png"
     },
     {
         "id": 3,
         "name": "Youtube Premium Chính Chủ",
         "duration": "12 Tháng",
-        "priceroot": 79000,
+        "priceRoot": 948000,
         "priceNumeric": 450000,
         "warranty": "Đến khi hết hạn",
         "notes": "Youtube Premium chính chủ",
         "category": "Giải trí",
-        "imageUrl": "https://placehold.co/200x200/FF0000/FFFFFF?text=Youtube"
+        "imageUrl": "./Asset/icon/Youtube.png"
     },
     {
         "id": 4,
         "name": "Key Windown 10/11 Pro",
         "duration": "Vĩnh viễn",
-        "priceroot": 500000,
+        "priceRoot": 500000,
         "priceNumeric": 150000,
         "warranty": "Đến khi hết hạn",
         "notes": "Key kích hoạt Windows 10 & 11 Pro",
         "category": "Máy tính",
-        "imageUrl": "https://placehold.co/200x200/19b1f0/FFFFFF?text=Windows"
+        "imageUrl": "./Asset/icon/Windows.png"
     },
     {
         "id": 5,
         "name": "Canva Pro Chính Chủ",
         "duration": "12 Tháng",
-        "priceroot": 1300000,
-        "priceNumeric": 250000,
+        "priceRoot": 1300000,
+        "priceNumeric": 240000,
         "warranty": "Đến khi hết hạn",
         "notes": "Nâng cấp chính chủ Canva PRO, Giá 1.300.000đ/năm",
         "category": "Phần mềm",
-        "imageUrl": "https://placehold.co/200x200/2591d6/FFFFFF?text=Canva"
+        "imageUrl": "./Asset/icon/Canva.png"
     },
     {
         "id": 6,
         "name": "Capcut Pro Chính Chủ",
         "duration": "12 Tháng",
-        "priceroot": 1500000,
-        "priceNumeric": 850000,
+        "priceRoot": 1500000,
+        "priceNumeric": 820000,
         "warranty": "Đến khi hết hạn",
         "notes": "Capcut Pro nâng cấp chính chủ 1 năm",
         "category": "Phần mềm",
-        "imageUrl": "https://placehold.co/200x200/FFFFFF/000000?text=Capcut"
+        "imageUrl": "./Asset/icon/Capcut.png"
     },
     {
         "id": 7,
         "name": "Capcut Pro Dùng Chung",
         "duration": "12 Tháng",
-        "priceroot": 1500000,
+        "priceRoot": 1500000,
         "priceNumeric": 200000,
         "warranty": "Đến khi hết hạn",
         "notes": "Tài khoản sẵn Capcut Pro, dùng chung",
         "category": "Phần mềm",
-        "imageUrl": "https://placehold.co/200x200/FFFFFF/000000?text=Capcut"
+        "imageUrl": "./Asset/icon/Capcut.png"
     }
-    // Add more products here if needed
 ];
 
 // URL của Google Apps Script đã triển khai để nhận dữ liệu đơn hàng
@@ -89,37 +88,41 @@ async function getScriptURL() {
     return WEB_APP_URL;
 }
 
-const discountCodes = [
-    {
-        code: "CTV",
-        type: "fixed", // Loại giảm giá: "fixed" (số tiền cố định) hoặc "percentage" (phần trăm)
-        value: 50000, // Giá trị giảm: 50000đ
-        appliesToAll: true, // Áp dụng cho tất cả sản phẩm?
-        productIds: [], // ID của sản phẩm áp dụng (nếu appliesToAll là false). Sử dụng ID số của sản phẩm, không phải "P01"
-        minAmount: 0, // Số tiền tối thiểu của giỏ hàng để áp dụng mã
-        maxDiscount: null // Số tiền giảm tối đa (null nếu không có giới hạn)
-    },
-    {
-        code: "GIAM20PHANTRAM",
-        type: "percentage",
-        value: 0.2, // 20%
-        appliesToAll: true,
-        productIds: [], // Không cần nếu appliesToAll là true
-        minAmount: 0,
-        maxDiscount: 100000 // Giảm tối đa 100.000đ
-    },
-    {
-        code: "FREE4ENGLISH",
-        type: "fixed",
-        value: 100000, // Giảm 100k, ví dụ cho sản phẩm 4English
-        appliesToAll: false,
-        productIds: [1], // Chỉ áp dụng cho 4English (ID 1)
-        minAmount: 500000,
-        maxDiscount: null
-    }
-];
+// const discountCodes = [
+//     {
+//         code: "CTV",
+//         type: "fixed", // Loại giảm giá: "fixed" (số tiền cố định) hoặc "percentage" (phần trăm)
+//         value: 50000, // Giá trị giảm: 50000đ
+//         appliesToAll: true, // Áp dụng cho tất cả sản phẩm?
+//         productIds: [], // ID của sản phẩm áp dụng (nếu appliesToAll là false). Sử dụng ID số của sản phẩm, không phải "P01"
+//         minAmount: 0, // Số tiền tối thiểu của giỏ hàng để áp dụng mã
+//         maxDiscount: null // Số tiền giảm tối đa (null nếu không có giới hạn)
+//     },
+//     {
+//         code: "GIAM20PHANTRAM",
+//         type: "percentage",
+//         value: 0.2, // 20%
+//         appliesToAll: true,
+//         productIds: [], // Không cần nếu appliesToAll là true
+//         minAmount: 0,
+//         maxDiscount: 100000 // Giảm tối đa 100.000đ
+//     },
+//     {
+//         code: "FREE4ENGLISH",
+//         type: "fixed",
+//         value: 100000, // Giảm 100k, ví dụ cho sản phẩm 4English
+//         appliesToAll: false,
+//         productIds: [1], // Chỉ áp dụng cho 4English (ID 1)
+//         minAmount: 500000,
+//         maxDiscount: null
+//     }
+// ];
+
 
 // --- DOM Elements ---
+
+const discountCodes = [];
+
 const productListDiv = document.getElementById('product-list');
 // Desktop Filter/Sort Elements
 const searchInputDesktop = document.getElementById('search-input');
@@ -283,10 +286,12 @@ function renderProducts(productsToRender) {
             <img src="${product.imageUrl}" alt="${product.name}" class="w-full h-48 object-cover">
             <div class="p-4 flex flex-col flex-grow">
                 <h3 class="text-lg font-semibold text-gray-900 mb-1">${product.name}</h3>
-                <p class="text-gray-600 text-sm mb-2 flex-grow">Thời hạn: ${product.duration}</p>
-                <p class="text-gray-600 text-sm mb-2 flex-grow">Bảo hành: ${product.warranty}</p>
+                <p class="text-gray-600 text-sm mb-2 flex-grow">${product.duration}</p>
                 <div class="flex items-center justify-between mt-auto">
-                    <p class="text-blue-600 text-xl font-bold">${formatPrice(product.priceNumeric)}</p>
+                    <div class="flex flex-col">
+                        <p class="priceRoot">${formatPrice(product.priceRoot)}</p>
+                        <p class="text-blue-600 text-xl font-bold">${formatPrice(product.priceNumeric)}</p>
+                    </div>
                      <button class="add-to-cart-btn bg-blue-600 text-white text-sm py-2 px-4 rounded-md font-semibold hover:bg-blue-700 transition-colors duration-200 shadow-sm" data-id="${product.id}">
                         <i class="fa-solid fa-circle-plus"></i>
                      </button>
@@ -384,12 +389,16 @@ function renderCartView() {
     let total = 0;
     cart.forEach(item => {
         const itemElement = document.createElement('div');
-        itemElement.classList.add('flex', 'flex-col', 'md:flex-row', 'items-center', 'border-b', 'border-gray-200', 'py-4', 'last:border-b-0');
+        itemElement.classList.add('flex', 'flex-row', 'gap-1', 'items-center', 'border-b', 'border-gray-200', 'py-4', 'last:border-b-0');
         itemElement.innerHTML = `
-            <img src="${item.imageUrl}" alt="${item.name}" class="w-20 h-20 object-cover rounded-md mr-0 md:mr-4 mb-4 md:mb-0 border border-gray-200">
-            <div class="flex-grow text-center md:text-left mb-4 md:mb-0">
-                <h3 class="text-lg font-semibold text-gray-800">${item.name}</h3>
-                <p class="text-gray-600 text-sm">${item.duration} | Bảo hành: ${item.warranty}</p>
+            <img src="${item.imageUrl}" alt="${item.name}" class="w-20 h-20 object-cover rounded-md mr-0 md:mb-0 border border-gray-200">
+            <div class="flex-grow text-center md:text-left">
+<h3 class="text-lg font-semibold text-gray-800 
+            truncate max-w-[9rem] mx-auto 
+            md:max-w-full md:whitespace-normal md:overflow-visible md:text-ellipsis">
+  ${item.name}
+</h3>
+                <p class="text-gray-600 text-sm">${item.duration}</p>
                 <p class="text-blue-600 font-bold mt-1">${formatPrice(item.priceNumeric)}</p>
             </div>
             <div class="flex items-center space-x-2">
@@ -1247,7 +1256,7 @@ if (checkOrderBtn && orderCodeInput && orderResultDiv) {
                             <span class="text-gray-500 font-medium">Thời gian:</span><span>${found.timestamp}</span>
                             <span class="text-gray-500 font-medium">Khách hàng:</span><span>${found.customerName}</span>
                             <span class="text-gray-500 font-medium">Sản phẩm:</span><span>${found.items}</span>
-                            <span class="text-gray-500 font-medium">Bảo hành:</span><span>${found.warranty || 'Chưa kích hoạt'}</span>
+                            <span class="text-gray-500 font-medium">Bảo hành:</span><span>${found.warrantyCheck || 'Chưa kích hoạt'}</span>
                             <span class="text-gray-500 font-medium">Tổng tiền:</span><span class="text-red-600 font-semibold">${formatPrice(found.totalAmount)}</span>
                             <span class="text-gray-500 font-medium">Trạng thái:</span>
                             <span><span class="${statusClass} px-2 py-0.5 rounded text-xs font-medium w-fit">${found.status || 'Đang xử lý'}</span></span>

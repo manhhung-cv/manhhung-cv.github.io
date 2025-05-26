@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tra Cứu Sản Phẩm Nâng Cao</title>
+<style>
+  :root {
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --light-gray: #f8f9fa;
+    --medium-gray: #e9ecef;
+    --dark-gray: #343a40;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --border-radius: 6px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: var(--light-gray);
+    color: var(--dark-gray);
+  }
+
+  .product-lookup-container {
+    max-width: 800px;
+    margin: 20px auto;
+    background-color: #fff;
+    padding: 25px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+  }
+
+  .product-lookup-container h2 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 25px;
+    font-size: 1.8em;
+  }
+
+  .controls-container {
+    display: flex;
+    flex-wrap: wrap; /* Cho phép xuống dòng trên màn hình nhỏ */
+    gap: 15px;
+    margin-bottom: 25px;
+    align-items: center;
+  }
+
+  .search-wrapper {
+    flex-grow: 1; /* Cho phép ô tìm kiếm co giãn */
+    position: relative;
+    min-width: 250px; /* Đảm bảo ô tìm kiếm không quá bé */
+  }
+
+  .search-wrapper .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--secondary-color);
+    pointer-events: none; /* Để không bắt sự kiện click */
+  }
+
+  #searchInput {
+    width: 100%;
+    padding: 12px 12px 12px 40px; /* Tăng padding trái cho icon */
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    font-size: 1em;
+    box-sizing: border-box; /* Quan trọng để padding không làm tăng kích thước */
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+
+  #searchInput:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    outline: none;
+  }
+
+  .clear-search-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    color: var(--secondary-color);
+    cursor: pointer;
+    padding: 5px;
+    display: none; /* Ẩn ban đầu */
+  }
+
+  #dateFilter {
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    font-size: 1em;
+    background-color: #fff;
+    min-width: 180px; /* Kích thước tối thiểu cho dropdown */
+  }
+
+  .product-list {
+    list-style: none;
+    padding: 0;
+    max-height: 60vh; /* Giới hạn chiều cao danh sách */
+    overflow-y: auto; /* Thanh cuộn khi cần */
+    border: 1px solid var(--medium-gray);
+    border-radius: var(--border-radius);
+  }
+
+  /* Tùy chỉnh thanh cuộn (cho Webkit browsers) */
+  .product-list::-webkit-scrollbar {
+    width: 8px;
+  }
+  .product-list::-webkit-scrollbar-track {
+    background: var(--light-gray);
+    border-radius: var(--border-radius);
+  }
+  .product-list::-webkit-scrollbar-thumb {
+    background: var(--secondary-color);
+    border-radius: var(--border-radius);
+  }
+  .product-list::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+
+
+  .product-item {
+    background-color: #fff;
+    border-bottom: 1px solid var(--medium-gray);
+    padding: 18px 20px;
+    transition: background-color 0.2s ease;
+  }
+  .product-item:last-child {
+    border-bottom: none;
+  }
+
+  .product-item:hover {
+    background-color: #f0f8ff; /* AliceBlue, màu xanh nhạt khi hover */
+  }
+
+  .product-item h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: var(--primary-color);
+    font-size: 1.15em;
+  }
+  .product-item h3 .highlight {
+    background-color: var(--warning-color);
+    color: var(--dark-gray);
+    padding: 0.5px 2px;
+    border-radius: 3px;
+  }
+
+  .product-item p {
+    margin: 8px 0;
+    color: #555;
+    font-size: 0.95em;
+    display: flex; /* Để icon và text thẳng hàng */
+    align-items: center;
+  }
+
+  .product-item .icon {
+    margin-right: 8px;
+    color: var(--secondary-color);
+    width: 16px; /* Kích thước cố định cho icon */
+    text-align: center;
+  }
+
+  .product-item .date-info {
+    /* color: var(--success-color); */
+    font-weight: 500;
+  }
+
+  .product-item .note-info {
+    /* color: var(--danger-color); */
+    font-style: italic;
+  }
+
+  .no-results {
+    text-align: center;
+    color: var(--secondary-color);
+    padding: 30px;
+    font-size: 1.1em;
+    border: 1px dashed var(--medium-gray);
+    border-radius: var(--border-radius);
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="product-lookup-container">
+  <h2>Tra Cứu Sản Phẩm</h2>
+
+  <div class="controls-container">
+    <div class="search-wrapper">
+      <input type="text" id="searchInput" placeholder="Nhập tên sản phẩm..." aria-label="Tìm kiếm sản phẩm">
+      <button class="clear-search-btn" id="clearSearch" aria-label="Xóa tìm kiếm" style="display: none;">&times;</button>
+    </div>
+    <select id="dateFilter" aria-label="Lọc theo thời hạn">
+      <option value="">Tất cả Thời hạn</option>
+      {/* Các option sẽ được thêm bằng JS */}
+    </select>
+  </div>
+
+  <div id="noResults" class="no-results" style="display:none;">
+    <p>Không tìm thấy sản phẩm nào phù hợp.</p>
+    <p>Vui lòng thử lại với từ khóa khác hoặc thay đổi bộ lọc.</p>
+  </div>
+  <ul id="productList" class="product-list" aria-live="polite">
+    </ul>
+</div>
+
+<script>
+const productsData = [
+    {
+        "Name": "4English chính chủ",
+        "Date": "1 năm",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "AdGuard Premium Lifetime Key",
+        "Date": "Vĩnh viễn",
+        "Note": "Hỗ trợ 1 thiết bị"
+    },
+    {
+        "Name": "Adobe Creative Cloud 3D substance app",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "Adobe Creative Cloud FULL APP 100GB",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Adobe Creative FULL APP ( Renew Trial)",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em (ƯU TIÊN MUA LOẠI NÀY)"
+    },
+    {
+        "Name": "Adobe Creative FULL APP Renew (Cấp)",
+        "Date": "12 tháng",
+        "Note": "Cấp sẵn"
+    },
+    {
+        "Name": "Apple Account TestFight Locket",
+        "Date": "1 Apple ID",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Apple ID 2FA @ICLOUD Trắng",
+        "Date": "1 APPLE ID",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Apple ID CHBM @GMAIL Trắng",
+        "Date": "1 APPLE ID",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Apple ID DeadCell FULL DLC",
+        "Date": "1 Apple ID",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Apple ID MuseDash FULL DLC",
+        "Date": "1 Apple ID",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Apple Music 6 tháng/ 12 tháng chính chủ",
+        "Date": "6 tháng/12 tháng",
+        "Note": "Gửi Tài khoản kèm mật khẩu Icloud nâng hơi lâu anh em"
+    },
+    {
+        "Name": "Autodesk All Apps chính chủ",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "Autodesk lẻ 1 app tự chọn",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "Avast Premium Security",
+        "Date": "12 tháng",
+        "Note": "Key Acitve trực tiếp"
+    },
+    {
+        "Name": "B612 cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Baamboozle chính chủ",
+        "Date": "net",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Beauty Plus cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Behance Pro chính chủ",
+        "Date": "1 tháng",
+        "Note": "FULL-TIME"
+    },
+    {
+        "Name": "Blinklist Premium cấp sẵn",
+        "Date": "6 tháng/12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Browsec VPN 7 Ngày chính chủ",
+        "Date": "7 Ngày",
+        "Note": "5 thiết bị"
+    },
+    {
+        "Name": "Bumble chính chủ",
+        "Date": "6 tháng",
+        "Note": "Gửi thông tin SDT đợi OTP"
+    },
+    {
+        "Name": "Busuu chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Camscanner Pre chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Canva Pro",
+        "Date": "Vĩnh viễn",
+        "Note": "Gửi mail nâng chính chủ ạ"
+    },
+    {
+        "Name": "Canva Pro chính chủ",
+        "Date": "1 Năm",
+        "Note": "Chỉ cần mail là được anh em"
+    },
+    {
+        "Name": "Capcut Pro cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Capcut Pro chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Capture One chính chủ(All in one)",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Cheg chính chủ",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Chess cờ vua chính chủ(Platinum)",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Clip Studio Paint",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Clip TV Tiêu Chuẩn chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Code Academy cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Code Svip FPT",
+        "Date": "1 tháng",
+        "Note": "Key cấp sẵn"
+    },
+    {
+        "Name": "Copilot cấp sẵn",
+        "Date": "1 tháng",
+        "Note": "Login thoải mái"
+    },
+    {
+        "Name": "Coursera Business chính chủ",
+        "Date": "3 tháng/6 tháng",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "Cousera Business chính chủ",
+        "Date": "6 tháng/12 tháng",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "Crunchyroll Premium",
+        "Date": "3 tháng/ 6 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Curiosity TV",
+        "Date": "3 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Cursor AI chính chủ PRO/BUSINESS",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Cyberghost VPN cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Danz-Tv",
+        "Date": "6 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Data Camp cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Dazzcam cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "DC UNIVERSE PREMIUM",
+        "Date": "12 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Discord Nitro chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Disney Plus cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Dung lượng Google Driver chính chủ 10TB",
+        "Date": "12 THÁNG",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "Dung lượng Google Driver chính chủ 2TB",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "Dung lượng Google Driver chính chủ 5TB",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "Dung lượng Icloud 400GB chính chủ",
+        "Date": "6 tháng|12 tháng",
+        "Note": "Gửi SDT bật Imess hoặc Mail Icloud"
+    },
+    {
+        "Name": "Dung lượng OneDrive ( Microsoft ) chính chủ",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em( Gói này có thêm full bộ MS365)"
+    },
+    {
+        "Name": "Duolingo Super chính chủ cá nhân",
+        "Date": "12 THÁNG",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Elsa Premium chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Elsa Pro chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Envato (Premium)",
+        "Date": "1 tháng",
+        "Note": "Cấp sẵn anh em lấy về là chơi"
+    },
+    {
+        "Name": "Epik Pro cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Exitlag chính chủ",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Express VPN cấp sẵn",
+        "Date": "1 tháng/ 12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ FULL KEY USER PASS"
+    },
+    {
+        "Name": "FaceApp cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Facebook Lên Tick Xanh Chính Chủ",
+        "Date": "1 acc",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Facebook Nhận Bậc 2FA",
+        "Date": "1 acc",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Facebook Nhận RIP Acc",
+        "Date": "1 acc",
+        "Note": "BH 2 PART"
+    },
+    {
+        "Name": "Facetune cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Fam Canva Edu",
+        "Date": "12 tháng",
+        "Note": "Cấp sẵn cả fam"
+    },
+    {
+        "Name": "Fam Canva Pro( Trial add 100 member)\t",
+        "Date": "1 Tháng",
+        "Note": "Cấp sẵn cả fam"
+    },
+    {
+        "Name": "Fam Duolingo 5 thành viên",
+        "Date": "12 THÁNG",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Fam Spotify 5 thành viên",
+        "Date": "6 tháng/12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Figma EDU cấp sẵn change được mail",
+        "Date": "12 tháng",
+        "Note": "Cấp sẵn anh em lấy về là chơi"
+    },
+    {
+        "Name": "Fonos chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Foodie Pro cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "FPT Smax chính chủ",
+        "Date": "4 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "FPT Svip cấp sẵn",
+        "Date": "6 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Freepik cấp sẵn",
+        "Date": "6 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Full Fam Youtube cấp sẵn fam",
+        "Date": "6 tháng/12 tháng",
+        "Note": "Add được 5 thành viên"
+    },
+    {
+        "Name": "Galaxy VIP cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Gamma AI(Plus/Pro)",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Gemini AI cấp sẵn mail",
+        "Date": "12 tháng",
+        "Note": "REG SẴN MAIL VỀ ĐỔI PASS"
+    },
+    {
+        "Name": "Gifthub Copilot Pro 10$",
+        "Date": "1 tháng",
+        "Note": "Cấp sẵn anh em lấy về là chơi"
+    },
+    {
+        "Name": "Google meet chính chủ",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em tặng kèm 2000GB Drive"
+    },
+    {
+        "Name": "GPT nâng chính chủ",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "GPT Plus 4.0 cấp sẵn",
+        "Date": "1 tháng",
+        "Note": "DUYỆT QUA MÃ 2FA"
+    },
+    {
+        "Name": "GPT Plus 4.0 cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "DUYỆT QUA MÃ 2FA"
+    },
+    {
+        "Name": "Grammarly cấp sẵn( Có AI)",
+        "Date": "12 THÁNG",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Hanzi chính chủ",
+        "Date": "vĩnh viễn",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "HBO MAX",
+        "Date": "6 THÁNG/ 12 THÁNG",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "HMA VPN cấp sẵn",
+        "Date": "1 THÁNG/12 THÁNG",
+        "Note": "CẤP 1 THIẾT BỊ FULL KEY USER PASS"
+    },
+    {
+        "Name": "Hotspot Shiled VPN cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Hulu Premium No Ads",
+        "Date": "6 tháng",
+        "Note": "Cấp sẵn lấy về dùng anh em"
+    },
+    {
+        "Name": "Hypic VIP cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Invideo( Studio- Unlimited)",
+        "Date": "6 tháng",
+        "Note": "Cấp sẵn anh em lấy về là chơi"
+    },
+    {
+        "Name": "Ip Vanish VPN cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Iquiyi cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Jetbrains Full Pack",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Kalodata ( Standard/Business)",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Kaspersky Premium chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Key Win retail hỗ trợ chuyển HOME>PRO",
+        "Date": "Vĩnh viễn",
+        "Note": "E đưa key anh e cứ đưa khách là được"
+    },
+    {
+        "Name": "Key Window 10/11 Home-OEM bản quyền",
+        "Date": "Vĩnh viễn",
+        "Note": "E đưa key anh e cứ đưa khách là được"
+    },
+    {
+        "Name": "Key Window 10/11 Pro bản quyền",
+        "Date": "Vĩnh viễn",
+        "Note": "E đưa key anh e cứ đưa khách là được(Active lên máy là được)"
+    },
+    {
+        "Name": "Kits AI(Converter/Creater/Composer)",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Kling AI chính chủ Standard",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "LearnChinese chính chủ",
+        "Date": "Vĩnh Viễn",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Lightroom Mobile cấp sẵn",
+        "Date": "24 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Lightroom Mobile cấp sẵn",
+        "Date": "24 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Lingokisd chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Linkedln Business chính chủ",
+        "Date": "6 tháng/ 12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Locket Gold",
+        "Date": "12 tháng",
+        "Note": "Nâng IOS TestFight"
+    },
+    {
+        "Name": "LovePik( Premium)",
+        "Date": "6 tháng",
+        "Note": "Cấp sẵn 1 thiêt bị nha anh em"
+    },
+    {
+        "Name": "Lumosity Premium cấp sẵn",
+        "Date": "6 tháng",
+        "Note": "Cấp sẵn anh em lấy về là chơi"
+    },
+    {
+        "Name": "Malwarebytes Key Premium",
+        "Date": "12 tháng",
+        "Note": "Key sẵn nha anh em"
+    },
+    {
+        "Name": "Master Class cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Mcafee Antivirus",
+        "Date": "12 tháng",
+        "Note": "Key Acitve trực tiếp"
+    },
+    {
+        "Name": "Meitu VIP cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Memrise lifetime chính chủ",
+        "Date": "vĩnh viễn",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Microsoft Office 365 1TB chính chủ",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi mail là được anh em( Được tặng kèm 1TB OneDrive)"
+    },
+    {
+        "Name": "Midjourney cấp sẵn Standard 30$",
+        "Date": "1 tháng",
+        "Note": "Cấp sẵn 1 thiết bị"
+    },
+    {
+        "Name": "Money Lover chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "MyTV gói Sport chính chủ",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "NBA League Pass PREMIUM",
+        "Date": "12 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Netflix Dài Hạn",
+        "Date": "6 tháng/ 12 tháng",
+        "Note": "CẤP 2"
+    },
+    {
+        "Name": "Netflix Slot Famlily",
+        "Date": "1 tháng",
+        "Note": "CẤP 2"
+    },
+    {
+        "Name": "NORD VPN cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Norton Antivirus Plus",
+        "Date": "12 tháng",
+        "Note": "Key Acitve trực tiếp"
+    },
+    {
+        "Name": "Notion AI PLUS chính chủ",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Notion Edu chính chủ",
+        "Date": "Vĩnh viễn",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Office 2016 HB Mac",
+        "Date": "Vĩnh viễn",
+        "Note": "KEY ACTIVE"
+    },
+    {
+        "Name": "Office 2016 PP Win",
+        "Date": "Vĩnh viễn",
+        "Note": "KEY ACTIVE"
+    },
+    {
+        "Name": "Office 2019 HB Mac",
+        "Date": "Vĩnh viễn",
+        "Note": "KEY ACTIVE"
+    },
+    {
+        "Name": "Office 2019 PP Win",
+        "Date": "Vĩnh viễn",
+        "Note": "KEY ACTIVE"
+    },
+    {
+        "Name": "Office 2021 HB Mac",
+        "Date": "Vĩnh viễn",
+        "Note": "KEY ACTIVE"
+    },
+    {
+        "Name": "Office 2021 PP Win",
+        "Date": "Vĩnh viễn",
+        "Note": "KEY ACTIVE"
+    },
+    {
+        "Name": "Paramount Plus PREMIUM",
+        "Date": "6 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Perplexity Pro",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Persona cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Photoroom cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "PIA VPN cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Picsar Pro 1 năm",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Picsart Gold cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Picsart Gold chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Pikbest( Premium)",
+        "Date": "6 tháng",
+        "Note": "Cấp sẵn 1 thiêt bị nha anh em"
+    },
+    {
+        "Name": "Pornhub Premium cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Pure VPN chính chủ",
+        "Date": "1 tháng",
+        "Note": "8 thiết bị"
+    },
+    {
+        "Name": "Quillbot Premium cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Quizizz Premium chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Quizlet Premium chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Runway AI chính chủ Standard",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Runway AI chính chủ Standard",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Skillshare cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Sling TV (BLUE VÀ ORGAN)",
+        "Date": "12 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "SNAPEDIT PRO cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Soda VIP cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "SoundCloud cấp sẵn",
+        "Date": "6 tháng",
+        "Note": "Cấp sẵn lấy về là chơi anh em"
+    },
+    {
+        "Name": "Spotify Premium chính chủ add fam",
+        "Date": "1M/6M/12M",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Spotify Premium chính chủ cá nhân",
+        "Date": "6 THÁNG/12 THÁNG",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Stodocu",
+        "Date": "12 tháng",
+        "Note": "Cấp sẵn anh em lấy về là chơi"
+    },
+    {
+        "Name": "Suno AI chính chủ gói 10$",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Surfshark VPN cấp sẵn",
+        "Date": "1 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Tele Premium",
+        "Date": "12 tháng",
+        "Note": "Gửi Acc Login"
+    },
+    {
+        "Name": "The Coach chính chủ",
+        "Date": "vĩnh viễn",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Tidal Hifi Plus chính chủ",
+        "Date": "6 THÁNG/12 tháng",
+        "Note": "Gửi mail là được anh em"
+    },
+    {
+        "Name": "Tinder Gold chính chủ",
+        "Date": "6 tháng",
+        "Note": "Gửi mỗi số điện thoại là được anh em"
+    },
+    {
+        "Name": "Tinder Plantium chính chủ",
+        "Date": "6 tháng",
+        "Note": "Gửi mỗi số điện thoại là được anh em"
+    },
+    {
+        "Name": "Tradingview Premium chính chủ( 3 gói)",
+        "Date": "1M(Pre)/1M(Plus)|1M(Essential)\t",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Truecaller chính chủ",
+        "Date": "12 tháng",
+        "Note": "Gửi mỗi SDT là được anh em"
+    },
+    {
+        "Name": "Tunnel Bear VPN cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Turnitin chính chủ",
+        "Date": "6 tháng/ 12 tháng",
+        "Note": "Gửi mỗi mail là được anh em"
+    },
+    {
+        "Name": "TV360 Super VIP chính chủ",
+        "Date": "2 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Udemy Business cấp sẵn",
+        "Date": "6 tháng",
+        "Note": "Cấp 1 thiết bị"
+    },
+    {
+        "Name": "UFC-TV",
+        "Date": "1 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Ulike VIP cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Veed .io chính chủ gói Lite",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Vieon All Acess chính chủ",
+        "Date": "6 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Vieon HBO chính chủ",
+        "Date": "6 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Vieon VIP cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Vieon VIP chính chủ",
+        "Date": "6 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "VIEON VIP HBO cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Voiz FM chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "VSco CAM-X cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Vscos Plus cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "VTVCAB ON combo 1th Cao cấp chính chủ",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "VYPR VPN cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Water Mark cấp sẵn",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "We TV",
+        "Date": "12 THÁNG",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "Weshop AI",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Windershare fimora chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "Windscribe VPN",
+        "Date": "1 tháng",
+        "Note": "8 thiết bị"
+    },
+    {
+        "Name": "Wuta Camp",
+        "Date": "12 tháng",
+        "Note": "CẤP 1 THIẾT BỊ"
+    },
+    {
+        "Name": "WWE-Network",
+        "Date": "12 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "YOU.COM AI PRO (Cấp Sẵn)",
+        "Date": "1 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Youku chính chủ",
+        "Date": "12 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN"
+    },
+    {
+        "Name": "YOUSICIAN PREMIUM cấp sẵn",
+        "Date": "6 tháng/12 tháng",
+        "Note": "Cấp sẵn anh em lấy về chơi thôi"
+    },
+    {
+        "Name": "Youtube Premium cấp sẵn riêng tư",
+        "Date": "12 THÁNG",
+        "Note": "Cấp săn mail+ pass duyệt mã ( 3-5 thiết bị)"
+    },
+    {
+        "Name": "Youtube Premium chính chủ",
+        "Date": "1M/6M/12M",
+        "Note": "GỬI MAIL KHÁCH LÀ ĐƯỢC AE"
+    },
+    {
+        "Name": "ZOOM PRO 100 member chính chủ",
+        "Date": "1 tháng",
+        "Note": "GỬI TÀI KHOẢN+ PASS TÀI KHOẢN( có thể gia hạn dài hạn)"
+    }
+];
+
+const productListEl = document.getElementById('productList');
+const searchInputEl = document.getElementById('searchInput');
+const noResultsDivEl = document.getElementById('noResults');
+const clearSearchBtnEl = document.getElementById('clearSearch');
+const dateFilterEl = document.getElementById('dateFilter');
+
+function populateDateFilter() {
+  const uniqueDates = new Set();
+  productsData.forEach(p => {
+    // Xử lý trường hợp có nhiều lựa chọn thời hạn như "6 tháng/12 tháng"
+    const dates = p.Date.split(/\/|\|/).map(d => d.trim());
+    dates.forEach(d => uniqueDates.add(d));
+  });
+
+  // Sắp xếp các thời hạn để dễ tìm hơn (ví dụ: số tháng tăng dần, "Vĩnh viễn" cuối cùng)
+  const sortedDates = Array.from(uniqueDates).sort((a, b) => {
+      if (a.toLowerCase().includes("vĩnh viễn")) return 1;
+      if (b.toLowerCase().includes("vĩnh viễn")) return -1;
+      if (a.toLowerCase().includes("năm") && !b.toLowerCase().includes("năm")) return 1;
+      if (b.toLowerCase().includes("năm") && !a.toLowerCase().includes("năm")) return -1;
+      
+      const numA = parseInt(a);
+      const numB = parseInt(b);
+
+      if (!isNaN(numA) && !isNaN(numB)) {
+          if (a.includes("tháng") && b.includes("tháng")) return numA - numB;
+          if (a.includes("ngày") && b.includes("ngày")) return numA - numB;
+          // Có thể thêm logic so sánh phức tạp hơn nếu cần
+      }
+      return a.localeCompare(b); // So sánh chuỗi mặc định
+  });
+
+  sortedDates.forEach(date => {
+    if (date) { // Bỏ qua các giá trị rỗng nếu có
+      const option = document.createElement('option');
+      option.value = date;
+      option.textContent = date;
+      dateFilterEl.appendChild(option);
+    }
+  });
+}
+
+
+function escapeRegExp(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}
+
+function displayProducts(productsToDisplay, searchTerm = "") {
+  productListEl.innerHTML = '';
+  noResultsDivEl.style.display = 'none';
+
+  if (productsToDisplay.length === 0) {
+    noResultsDivEl.style.display = 'block';
+    return;
+  }
+
+  productsToDisplay.forEach(product => {
+    const listItem = document.createElement('li');
+    listItem.classList.add('product-item');
+
+    const nameElement = document.createElement('h3');
+    let displayName = product.Name;
+    if (searchTerm) {
+      const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+      displayName = displayName.replace(regex, `<span class="highlight">$1</span>`);
+    }
+    nameElement.innerHTML = displayName;
+
+
+    const dateElement = document.createElement('p');
+    dateElement.innerHTML = `<strong>Thời hạn:</strong> <span class="date-info">${product.Date}</span>`;
+
+    const noteElement = document.createElement('p');
+    noteElement.innerHTML = `<strong>Ghi chú:</strong> <span class="note-info">${product.Note}</span>`;
+
+    listItem.appendChild(nameElement);
+    listItem.appendChild(dateElement);
+    listItem.appendChild(noteElement);
+
+    productListEl.appendChild(listItem);
+  });
+}
+
+function applyFilters() {
+  const searchTerm = searchInputEl.value.toLowerCase().trim();
+  const selectedDate = dateFilterEl.value;
+
+  const filteredProducts = productsData.filter(product => {
+    const nameMatch = product.Name.toLowerCase().includes(searchTerm);
+    
+    // Kiểm tra khớp thời hạn:
+    // - Nếu không chọn thời hạn cụ thể (giá trị rỗng), thì coi như khớp.
+    // - Nếu có chọn, kiểm tra xem trường Date của sản phẩm có chứa giá trị đã chọn không.
+    // Điều này hữu ích cho các trường Date có nhiều lựa chọn như "6 tháng/12 tháng".
+    const dateMatch = !selectedDate || product.Date.includes(selectedDate);
+
+    return nameMatch && dateMatch;
+  });
+
+  displayProducts(filteredProducts, searchTerm);
+  clearSearchBtnEl.style.display = searchTerm ? 'block' : 'none';
+}
+
+// Lắng nghe sự kiện
+searchInputEl.addEventListener('input', applyFilters);
+dateFilterEl.addEventListener('change', applyFilters);
+
+clearSearchBtnEl.addEventListener('click', () => {
+  searchInputEl.value = '';
+  applyFilters(); // Cập nhật lại danh sách sau khi xóa
+  searchInputEl.focus(); // Tập trung lại vào ô tìm kiếm
+});
+
+// Khởi tạo
+populateDateFilter();
+applyFilters(); // Hiển thị tất cả sản phẩm ban đầu (hoặc theo bộ lọc mặc định nếu có)
+
+</script>
+
+</body>
+</html>
