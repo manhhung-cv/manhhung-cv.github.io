@@ -1,223 +1,4 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tra Cứu Sản Phẩm Nâng Cao</title>
-<style>
-  :root {
-    --primary-color: #007bff;
-    --secondary-color: #6c757d;
-    --light-gray: #f8f9fa;
-    --medium-gray: #e9ecef;
-    --dark-gray: #343a40;
-    --success-color: #28a745;
-    --danger-color: #dc3545;
-    --warning-color: #ffc107;
-    --border-radius: 6px;
-    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
 
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    margin: 0;
-    padding: 20px;
-    background-color: var(--light-gray);
-    color: var(--dark-gray);
-  }
-
-  .product-lookup-container {
-    max-width: 800px;
-    margin: 20px auto;
-    background-color: #fff;
-    padding: 25px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-  }
-
-  .product-lookup-container h2 {
-    text-align: center;
-    color: var(--primary-color);
-    margin-bottom: 25px;
-    font-size: 1.8em;
-  }
-
-  .controls-container {
-    display: flex;
-    flex-wrap: wrap; /* Cho phép xuống dòng trên màn hình nhỏ */
-    gap: 15px;
-    margin-bottom: 25px;
-    align-items: center;
-  }
-
-  .search-wrapper {
-    flex-grow: 1; /* Cho phép ô tìm kiếm co giãn */
-    position: relative;
-    min-width: 250px; /* Đảm bảo ô tìm kiếm không quá bé */
-  }
-
-  .search-wrapper .search-icon {
-    position: absolute;
-    left: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--secondary-color);
-    pointer-events: none; /* Để không bắt sự kiện click */
-  }
-
-  #searchInput {
-    width: 100%;
-    padding: 12px 12px 12px 40px; /* Tăng padding trái cho icon */
-    border: 1px solid #ccc;
-    border-radius: var(--border-radius);
-    font-size: 1em;
-    box-sizing: border-box; /* Quan trọng để padding không làm tăng kích thước */
-    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  }
-
-  #searchInput:focus {
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-    outline: none;
-  }
-
-  .clear-search-btn {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    font-size: 1.2em;
-    color: var(--secondary-color);
-    cursor: pointer;
-    padding: 5px;
-    display: none; /* Ẩn ban đầu */
-  }
-
-  #dateFilter {
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: var(--border-radius);
-    font-size: 1em;
-    background-color: #fff;
-    min-width: 180px; /* Kích thước tối thiểu cho dropdown */
-  }
-
-  .product-list {
-    list-style: none;
-    padding: 0;
-    max-height: 60vh; /* Giới hạn chiều cao danh sách */
-    overflow-y: auto; /* Thanh cuộn khi cần */
-    border: 1px solid var(--medium-gray);
-    border-radius: var(--border-radius);
-  }
-
-  /* Tùy chỉnh thanh cuộn (cho Webkit browsers) */
-  .product-list::-webkit-scrollbar {
-    width: 8px;
-  }
-  .product-list::-webkit-scrollbar-track {
-    background: var(--light-gray);
-    border-radius: var(--border-radius);
-  }
-  .product-list::-webkit-scrollbar-thumb {
-    background: var(--secondary-color);
-    border-radius: var(--border-radius);
-  }
-  .product-list::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
-
-
-  .product-item {
-    background-color: #fff;
-    border-bottom: 1px solid var(--medium-gray);
-    padding: 18px 20px;
-    transition: background-color 0.2s ease;
-  }
-  .product-item:last-child {
-    border-bottom: none;
-  }
-
-  .product-item:hover {
-    background-color: #f0f8ff; /* AliceBlue, màu xanh nhạt khi hover */
-  }
-
-  .product-item h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
-    color: var(--primary-color);
-    font-size: 1.15em;
-  }
-  .product-item h3 .highlight {
-    background-color: var(--warning-color);
-    color: var(--dark-gray);
-    padding: 0.5px 2px;
-    border-radius: 3px;
-  }
-
-  .product-item p {
-    margin: 8px 0;
-    color: #555;
-    font-size: 0.95em;
-    display: flex; /* Để icon và text thẳng hàng */
-    align-items: center;
-  }
-
-  .product-item .icon {
-    margin-right: 8px;
-    color: var(--secondary-color);
-    width: 16px; /* Kích thước cố định cho icon */
-    text-align: center;
-  }
-
-  .product-item .date-info {
-    /* color: var(--success-color); */
-    font-weight: 500;
-  }
-
-  .product-item .note-info {
-    /* color: var(--danger-color); */
-    font-style: italic;
-  }
-
-  .no-results {
-    text-align: center;
-    color: var(--secondary-color);
-    padding: 30px;
-    font-size: 1.1em;
-    border: 1px dashed var(--medium-gray);
-    border-radius: var(--border-radius);
-    margin-top: 10px;
-  }
-</style>
-</head>
-<body>
-
-<div class="product-lookup-container">
-  <h2>Tra Cứu Sản Phẩm</h2>
-
-  <div class="controls-container">
-    <div class="search-wrapper">
-      <input type="text" id="searchInput" placeholder="Nhập tên sản phẩm..." aria-label="Tìm kiếm sản phẩm">
-      <button class="clear-search-btn" id="clearSearch" aria-label="Xóa tìm kiếm" style="display: none;">&times;</button>
-    </div>
-    <select id="dateFilter" aria-label="Lọc theo thời hạn">
-      <option value="">Tất cả Thời hạn</option>
-      {/* Các option sẽ được thêm bằng JS */}
-    </select>
-  </div>
-
-  <div id="noResults" class="no-results" style="display:none;">
-    <p>Không tìm thấy sản phẩm nào phù hợp.</p>
-    <p>Vui lòng thử lại với từ khóa khác hoặc thay đổi bộ lọc.</p>
-  </div>
-  <ul id="productList" class="product-list" aria-live="polite">
-    </ul>
-</div>
-
-<script>
 const productsData = [
     {
         "Name": "4English chính chủ",
@@ -1200,120 +981,71 @@ const productListEl = document.getElementById('productList');
 const searchInputEl = document.getElementById('searchInput');
 const noResultsDivEl = document.getElementById('noResults');
 const clearSearchBtnEl = document.getElementById('clearSearch');
-const dateFilterEl = document.getElementById('dateFilter');
 
-function populateDateFilter() {
-  const uniqueDates = new Set();
-  productsData.forEach(p => {
-    // Xử lý trường hợp có nhiều lựa chọn thời hạn như "6 tháng/12 tháng"
-    const dates = p.Date.split(/\/|\|/).map(d => d.trim());
-    dates.forEach(d => uniqueDates.add(d));
-  });
-
-  // Sắp xếp các thời hạn để dễ tìm hơn (ví dụ: số tháng tăng dần, "Vĩnh viễn" cuối cùng)
-  const sortedDates = Array.from(uniqueDates).sort((a, b) => {
-      if (a.toLowerCase().includes("vĩnh viễn")) return 1;
-      if (b.toLowerCase().includes("vĩnh viễn")) return -1;
-      if (a.toLowerCase().includes("năm") && !b.toLowerCase().includes("năm")) return 1;
-      if (b.toLowerCase().includes("năm") && !a.toLowerCase().includes("năm")) return -1;
-      
-      const numA = parseInt(a);
-      const numB = parseInt(b);
-
-      if (!isNaN(numA) && !isNaN(numB)) {
-          if (a.includes("tháng") && b.includes("tháng")) return numA - numB;
-          if (a.includes("ngày") && b.includes("ngày")) return numA - numB;
-          // Có thể thêm logic so sánh phức tạp hơn nếu cần
-      }
-      return a.localeCompare(b); // So sánh chuỗi mặc định
-  });
-
-  sortedDates.forEach(date => {
-    if (date) { // Bỏ qua các giá trị rỗng nếu có
-      const option = document.createElement('option');
-      option.value = date;
-      option.textContent = date;
-      dateFilterEl.appendChild(option);
-    }
-  });
-}
 
 
 function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 
 function displayProducts(productsToDisplay, searchTerm = "") {
-  productListEl.innerHTML = '';
-  noResultsDivEl.style.display = 'none';
+    productListEl.innerHTML = '';
+    noResultsDivEl.style.display = 'none';
 
-  if (productsToDisplay.length === 0) {
-    noResultsDivEl.style.display = 'block';
-    return;
-  }
-
-  productsToDisplay.forEach(product => {
-    const listItem = document.createElement('li');
-    listItem.classList.add('product-item');
-
-    const nameElement = document.createElement('h3');
-    let displayName = product.Name;
-    if (searchTerm) {
-      const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
-      displayName = displayName.replace(regex, `<span class="highlight">$1</span>`);
+    if (productsToDisplay.length === 0) {
+        noResultsDivEl.style.display = 'block';
+        return;
     }
-    nameElement.innerHTML = displayName;
+
+    productsToDisplay.forEach(product => {
+        const listItem = document.createElement('li');
+        listItem.classList.add('product-item');
+
+        const nameElement = document.createElement('h3');
+        let displayName = product.Name;
+        if (searchTerm) {
+            const regex = new RegExp(`(${escapeRegExp(searchTerm)})`, 'gi');
+            displayName = displayName.replace(regex, `<span class="highlight">$1</span>`);
+        }
+        nameElement.innerHTML = displayName;
 
 
-    const dateElement = document.createElement('p');
-    dateElement.innerHTML = `<strong>Thời hạn:</strong> <span class="date-info">${product.Date}</span>`;
+        const dateElement = document.createElement('p');
+        dateElement.innerHTML = `<strong>Thời hạn:</strong> <span class="date-info">${product.Date}</span>`;
 
-    const noteElement = document.createElement('p');
-    noteElement.innerHTML = `<strong>Ghi chú:</strong> <span class="note-info">${product.Note}</span>`;
+        const noteElement = document.createElement('p');
+        noteElement.innerHTML = `<strong>Ghi chú: </strong> <span class="note-info">${product.Note}</span>`;
 
-    listItem.appendChild(nameElement);
-    listItem.appendChild(dateElement);
-    listItem.appendChild(noteElement);
+        listItem.appendChild(nameElement);
+        listItem.appendChild(dateElement);
+        listItem.appendChild(noteElement);
 
-    productListEl.appendChild(listItem);
-  });
+        productListEl.appendChild(listItem);
+    });
 }
 
 function applyFilters() {
-  const searchTerm = searchInputEl.value.toLowerCase().trim();
-  const selectedDate = dateFilterEl.value;
+    const searchTerm = searchInputEl.value.toLowerCase().trim();
 
-  const filteredProducts = productsData.filter(product => {
-    const nameMatch = product.Name.toLowerCase().includes(searchTerm);
-    
-    // Kiểm tra khớp thời hạn:
-    // - Nếu không chọn thời hạn cụ thể (giá trị rỗng), thì coi như khớp.
-    // - Nếu có chọn, kiểm tra xem trường Date của sản phẩm có chứa giá trị đã chọn không.
-    // Điều này hữu ích cho các trường Date có nhiều lựa chọn như "6 tháng/12 tháng".
-    const dateMatch = !selectedDate || product.Date.includes(selectedDate);
+    const filteredProducts = productsData.filter(product => {
+        const nameMatch = product.Name.toLowerCase().includes(searchTerm);
+        return nameMatch;
+    });
 
-    return nameMatch && dateMatch;
-  });
 
-  displayProducts(filteredProducts, searchTerm);
-  clearSearchBtnEl.style.display = searchTerm ? 'block' : 'none';
+
+    displayProducts(filteredProducts, searchTerm);
+    clearSearchBtnEl.style.display = searchTerm ? 'block' : 'none';
 }
 
 // Lắng nghe sự kiện
 searchInputEl.addEventListener('input', applyFilters);
-dateFilterEl.addEventListener('change', applyFilters);
 
 clearSearchBtnEl.addEventListener('click', () => {
-  searchInputEl.value = '';
-  applyFilters(); // Cập nhật lại danh sách sau khi xóa
-  searchInputEl.focus(); // Tập trung lại vào ô tìm kiếm
+    searchInputEl.value = '';
+    applyFilters(); // Cập nhật lại danh sách sau khi xóa
+    searchInputEl.focus(); // Tập trung lại vào ô tìm kiếm
 });
 
 // Khởi tạo
-populateDateFilter();
 applyFilters(); // Hiển thị tất cả sản phẩm ban đầu (hoặc theo bộ lọc mặc định nếu có)
-
-</script>
-
-</body>
-</html>

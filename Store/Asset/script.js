@@ -9,7 +9,7 @@ const products = [
         "warranty": "Đến khi hết hạn",
         "notes": "Youtube Premium chính chủ",
         "category": "Giải trí",
-        "imageUrl": "./Asset/icon/Youtube.png"
+        "imageUrl": "./Asset/icon/YouTube.png"
     },
     {
         "id": 2,
@@ -20,7 +20,7 @@ const products = [
         "warranty": "Đến khi hết hạn",
         "notes": "Youtube Premium chính chủ",
         "category": "Giải trí",
-        "imageUrl": "./Asset/icon/Youtube.png"
+        "imageUrl": "./Asset/icon/YouTube.png"
     },
     {
         "id": 3,
@@ -31,7 +31,7 @@ const products = [
         "warranty": "Đến khi hết hạn",
         "notes": "Youtube Premium chính chủ",
         "category": "Giải trí",
-        "imageUrl": "./Asset/icon/Youtube.png"
+        "imageUrl": "./Asset/icon/YouTube.png"
     },
     {
         "id": 4,
@@ -81,7 +81,7 @@ const products = [
         "id": 8,
         "name": "Capcut Pro Chính Chủ",
         "duration": "1 Tháng",
-        "priceroot": 199000,
+        "priceRoot": 199000,
         "priceNumeric": 60000,
         "warranty": "Đến khi hết hạn",
         "notes": "Tài khoản chính chủ",
