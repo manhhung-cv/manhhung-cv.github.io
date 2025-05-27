@@ -87,6 +87,17 @@ const products = [
         "notes": "Tài khoản chính chủ",
         "category": "Phần mềm",
         "imageUrl": "./Asset/icon/Capcut.png"
+    },
+    {
+        "id": 9,
+        "name": "Google One 5TB",
+        "duration": "48 Tháng",
+        "priceRoot": 9999999,
+        "priceNumeric": 100000,
+        "warranty": "Sản phẩm không bảo hành.",
+        "notes": "Tài khoản chính chủ",
+        "category": "Tài khoản",
+        "imageUrl": "./Asset/icon/GoogleOne.png"
     }
 ];
 
