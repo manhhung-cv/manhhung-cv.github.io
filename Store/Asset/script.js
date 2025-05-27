@@ -90,7 +90,7 @@ const products = [
     },
     {
         "id": 9,
-        "name": "Google One 5TB",
+        "name": "Google One 5TB Cấp Sẵn",
         "duration": "48 Tháng",
         "priceRoot": 9999999,
         "priceNumeric": 100000,
