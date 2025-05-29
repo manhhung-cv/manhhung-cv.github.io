@@ -98,7 +98,31 @@ const products = [
         "notes": "Tài khoản chính chủ",
         "category": "Tài khoản",
         "imageUrl": "./Asset/icon/GoogleOne.png"
+    },
+    {
+        "id": 10,
+        "name": "Netflix Premium",
+        "duration": "6 Tháng",
+        "priceRoot": 1560000,
+        "priceNumeric": 450000,
+        "warranty": "Đến khi hết hạn.",
+        "notes": "CẤP 2,3 THIẾT BỊ ( xem cùng lúc 1 màn)",
+        "category": "Tài khoản",
+        "imageUrl": "./Asset/icon/Netflix.png"
+    },
+    {
+        "id": 11,
+        "name": "Netflix Premium",
+        "duration": "12 Tháng",
+        "priceRoot": 3120000,
+        "priceNumeric": 850000,
+        "warranty": "Đến khi hết hạn.",
+        "notes": "CẤP 2,3 THIẾT BỊ ( xem cùng lúc 1 màn)",
+        "category": "Tài khoản",
+        "imageUrl": "./Asset/icon/Netflix.png"
     }
+
+    
 ];
 
 // URL của Google Apps Script đã triển khai để nhận dữ liệu đơn hàng
