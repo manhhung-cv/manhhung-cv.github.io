@@ -39,7 +39,7 @@ const products = [
         "duration": "Vĩnh viễn",
         "priceRoot": 500000,
         "priceNumeric": 150000,
-        "warranty": "Đến khi hết hạn",
+        "warranty": "12 Tháng",
         "notes": "Key kích hoạt Windows 10 & 11 Pro",
         "category": "Máy tính",
         "imageUrl": "./Asset/icon/Windows.png"
