@@ -122,7 +122,7 @@ const products = [
         "imageUrl": "./Asset/icon/Netflix.png"
     }
 
-    
+
 ];
 
 // URL của Google Apps Script đã triển khai để nhận dữ liệu đơn hàng
@@ -332,7 +332,8 @@ function renderProducts(productsToRender) {
             <img src="${product.imageUrl}" alt="${product.name}" class="w-full h-48 object-cover">
             <div class="p-4 flex flex-col flex-grow">
                 <h3 class="text-lg font-semibold text-gray-900 mb-1">${product.name}</h3>
-                <p class="text-gray-600 text-sm mb-2 flex-grow">${product.duration}</p>
+                <p class="text-gray-600 text-sm  flex-grow">${product.duration}</p>
+                <p class="text-red-500 text-xs mb-2 flex-grow">${product.warranty}</p>
                 <div class="flex items-center justify-between mt-auto">
                     <div class="flex flex-col">
                         <p class="priceRoot">${formatPrice(product.priceRoot)}</p>
