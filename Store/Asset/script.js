@@ -36,10 +36,10 @@ const products = [
     {
         "id": 4,
         "name": "Key Windown 10/11 Pro",
-        "duration": "Vĩnh viễn",
+        "duration": "Vĩnh viễn 1 Máy",
         "priceRoot": 500000,
         "priceNumeric": 150000,
-        "warranty": "Đến khi hết hạn",
+        "warranty": "12 Tháng",
         "notes": "Key kích hoạt Windows 10 & 11 Pro",
         "category": "Máy tính",
         "imageUrl": "./Asset/icon/Windows.png"
