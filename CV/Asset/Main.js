@@ -192,6 +192,55 @@ const translations = {
 
         Cer1: "机电一体化学院 - 德国标准",
         Cer1a: "LILAMA2国际技术学院",
+    },
+    de: {
+        welcomeText: "Hallo",
+        Fullname: "Dinh Manh Hung",
+        Position: "Mechatronik-Ingenieurwesen",
+        Quote: "*Ich möchte meine Fähigkeiten und Kenntnisse im Bereich Mechatronik-Ingenieurwesen weiterentwickeln, neue Technologien erlernen und zu realen Projekten beitragen, um in Zukunft ein Experte zu werden.",
+        BtnHireMe: "Stellen Sie mich ein",
+        BtnDownloadCV: "Lebenslauf herunterladen",
+        Location: "Vietnam 🇻🇳",
+
+        QualificationsText: "Qualifikationen",
+        SkillsText: "Fähigkeiten",
+        ProjectText: "Projekt",
+        StoreText: "Shop",
+
+        HideInfo: "Informationen sind ausgeblendet und werden nur bei Eingabe des Rekrutierungscodes angezeigt.",
+
+        DevText: "Entwickler",
+
+        SkillNote: "*Diese Bewertungen basieren auf Einschätzungen erfahrener Fachleute auf diesem Gebiet.",
+        Skill1: "Mechatronik",
+        Skill2: "SPS-Programmierung",
+        Skill3: "Büro-IT",
+        Skill4: "Webprogrammierung [Front-End]",
+        Skill5: "Auto CAD",
+        Skill6: "Arduino-Programmierung, Mikrocontroller",
+
+        ExpText: "Erfahrung",
+        Exp1: "Abitur",
+        Exp2: "Abschluss am Deutsch-Standard Mechatronik Kolleg",
+        Exp3: "ELECOM VIETNAM TECHNICAL CO., LTD",
+        Exp3a: "Praktikant",
+        Exp3b: "Einblick in mechatronische Prozesse und Technologie",
+        Exp4: "Techniker",
+        Exp4a: "Elektromotoren prüfen und reparieren",
+        TimeExp5: "1/2025",
+        Exp5: "IMPC ENGINEERING DESIGN AND MANAGEMENT JSC",
+        Exp5a: "Technik & Aufsicht",
+        Exp5b: `Behebung von Problemen mit elektrischen Systemen: Fehlersuche bei Stromausfällen, Geräteausfällen.
+        <br>Überwachung von Brandschutzsystemen: Überprüfung der Ausrüstung, Überwachung von Brand-/Explosionsquellen, Durchführung von Brandschutzschulungen.
+        <br>Überwachung der Arbeitssicherheit: Erinnern, Aufklären und Schulen von Sicherheitsmaßnahmen für Auftragnehmer.
+        <br>Überwachung von Sicherheit und Ordnung im Projektmanagement.`,
+
+        LanguagesText: "Sprachen",
+        LanEN: "Englisch B2",
+        LanJA: "JLPT N4",
+
+        Cer1: "Mechatronik Kolleg - Deutscher Standard",
+        Cer1a: "LILAMA2 International Technology College"
     }
 };
 
@@ -201,6 +250,7 @@ function updateFlag(language) {
     const flagMap = {
         'vi': './Asset/icon/flag/Vietnam.png',
         'en': './Asset/icon/flag/US.png',
+        'de': './Asset/icon/flag/germany.png',
         'ja': './Asset/icon/flag/Japan.png',
         'zh': './Asset/icon/flag/china.png'
     };
