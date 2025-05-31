@@ -196,52 +196,7 @@ const translations = {
 };
 
 
-// Hàm bật/tắt hiển thị menu ngôn ngữ
-function toggleDropdown() {
-    const dropdown = document.getElementById('languageDropdown');
-    dropdown.classList.toggle('show');
-}
-
-// Hàm lưu ngôn ngữ và cập nhật cờ
-function setLanguage(language, flagSrc) {
-    localStorage.setItem('language', language);
-    applyLanguage(language);
-
-    // Cập nhật ảnh lá cờ trong Language Active
-    document.getElementById('currentFlag').src = flagSrc;
-
-    // Ẩn menu sau khi chọn ngôn ngữ
-    document.getElementById('languageDropdown').classList.remove('show');
-}
-
-// Hàm khởi tạo khi tải trang
-document.addEventListener('DOMContentLoaded', () => {
-    const savedLanguage = localStorage.getItem('language');
-    if (savedLanguage) {
-        applyLanguage(savedLanguage);
-        updateFlag(savedLanguage);
-    } else {
-        applyLanguage('vi');
-    }
-});
-
-// Hàm áp dụng ngôn ngữ
-
-function applyLanguage(language) {
-    var body = document.body.classList;
-    body.remove('en', 'vi', 'ja', 'zh');
-
-    // Thêm lớp ngôn ngữ mới
-    body.add(language);
-
-    // Lấy tất cả phần tử có thuộc tính data-translate và cập nhật nội dung
-    document.querySelectorAll('[data-translate]').forEach(el => {
-        const key = el.getAttribute('data-translate');
-        el.innerHTML = translations[language][key] || el.innerHTML;
-    });
-}
-
-// Hàm cập nhật cờ dựa trên ngôn ngữ đã lưu
+// ======= UPDATE FLAG IMAGE BASED ON LANGUAGE =======
 function updateFlag(language) {
     const flagMap = {
         'vi': './Asset/icon/flag/Vietnam.png',
@@ -252,331 +207,115 @@ function updateFlag(language) {
     document.getElementById('currentFlag').src = flagMap[language];
 }
 
+// ======= APPLY LANGUAGE =======
+function applyLanguage(language) {
+    const body = document.body.classList;
+    body.remove('en', 'vi', 'ja', 'zh');
+    body.add(language);
+    document.querySelectorAll('[data-translate]').forEach(el => {
+        const key = el.getAttribute('data-translate');
+        el.innerHTML = translations[language][key] || el.innerHTML;
+    });
+}
 
+// ======= SET LANGUAGE =======
+function setLanguage(language, flagSrc) {
+    localStorage.setItem('language', language);
+    applyLanguage(language);
+    document.getElementById('currentFlag').src = flagSrc;
+    document.getElementById('languageDropdown').classList.remove('show');
+}
 
-//Theme Darkmode - LightMode
+// ======= TOGGLE DROPDOWN =======
+function toggleDropdown() {
+    document.getElementById('languageDropdown').classList.toggle('show');
+}
+
+// ======= INIT ON PAGE LOAD =======
+document.addEventListener('DOMContentLoaded', () => {
+    const hashLang = window.location.hash.toUpperCase();
+    const langFromHash = {
+        '#JA': 'ja',
+        '#VI': 'vi',
+        '#EN': 'en',
+        '#ZH': 'zh'
+    };
+
+    const flagMap = {
+        'vi': './Asset/icon/flag/Vietnam.png',
+        'en': './Asset/icon/flag/US.png',
+        'ja': './Asset/icon/flag/Japan.png',
+        'zh': './Asset/icon/flag/china.png'
+    };
+
+    const language = langFromHash[hashLang] || localStorage.getItem('language') || 'vi';
+    applyLanguage(language);
+    updateFlag(language);
+});
+
+// ======= THEME DARK / LIGHT =======
 const themeToggle = document.getElementById('themeToggle');
 const themeIcon = document.getElementById('themeIcon');
-
-// Load the theme from localStorage
 const currentTheme = localStorage.getItem('theme') || 'light';
 document.body.classList.add(currentTheme + '-theme');
 themeIcon.src = currentTheme === 'light' ? './Asset/icon/theme/sun.png' : './Asset/icon/theme/moon.png';
 
-// Toggle theme function
 themeToggle.addEventListener('click', () => {
-    const newTheme = document.body.classList.contains('light-theme') ? 'dark' : 'light';
+    const isLight = document.body.classList.contains('light-theme');
+    const newTheme = isLight ? 'dark' : 'light';
     document.body.classList.toggle('light-theme');
     document.body.classList.toggle('dark-theme');
     themeIcon.src = newTheme === 'light' ? './Asset/icon/theme/sun.png' : './Asset/icon/theme/moon.png';
-
-    // Save the new theme to localStorage
     localStorage.setItem('theme', newTheme);
 });
 
-
-// Tạo các thanh tiến trình dựa trên data-percentage
-document.querySelectorAll('.progress').forEach(function (progress) {
-    let percentage = progress.getAttribute('data-percentage');
-
-    // Tạo phần tử nhãn, thanh chứa và thanh tiến trình
-    let container = document.createElement('div');
+// ======= PROGRESS BARS =======
+document.querySelectorAll('.progress').forEach(progress => {
+    const percentage = progress.getAttribute('data-percentage');
+    const container = document.createElement('div');
     container.classList.add('progress-container');
 
-
-    let barWrapper = document.createElement('div');
+    const barWrapper = document.createElement('div');
     barWrapper.classList.add('progress-bar-wrapper');
 
-    let bar = document.createElement('div');
+    const bar = document.createElement('div');
     bar.classList.add('progress-bar');
     bar.style.width = percentage + '%';
 
-    // Gắn các phần tử vào DOM
     barWrapper.appendChild(bar);
     container.appendChild(barWrapper);
     progress.appendChild(container);
 });
 
+// // ======= DOWNLOAD CV WITH RECRUITMENT CODE =======
+// async function DownloadCV() {
+//     const { value: password } = await Swal.fire({
+//         title: "Recruitment Code",
+//         input: "text",
+//         inputLabel: "Password",
+//         inputPlaceholder: "Recruitment Code",
+//         inputAttributes: {
+//             maxlength: "10",
+//             autocapitalize: "off",
+//             autocorrect: "off"
+//         }
+//     });
 
+//     if (password) {
+//         try {
+//             const decrypted = CryptoJS.AES.decrypt(encryptedContactInfo, password).toString(CryptoJS.enc.Utf8);
+//             if (decrypted) {
+//                 document.getElementById("Download").innerHTML = decrypted;
+//                 document.getElementById("Download").style.display = "block";
+//                 Swal.fire("Access Granted!", "Contact details are now visible", "success");
+//             } else {
+//                 Swal.fire("Access Denied", "Incorrect password", "error");
+//             }
+//         } catch (e) {
+//             Swal.fire("Access Denied", "Incorrect password", "error");
+//         }
+//     }
+// }
 
-
-
-async function DownloadCV() {
-    const { value: password } = await Swal.fire({
-        title: "Recruitment Code",
-        input: "text",
-        inputLabel: "Password",
-        inputPlaceholder: "Recruitment Code",
-        inputAttributes: {
-            maxlength: "10",
-            autocapitalize: "off",
-            autocorrect: "off"
-        }
-    });
-
-    // Nếu có nhập mật khẩu
-    if (password) {
-        try {
-            // Giải mã nội dung `.Contact` bằng mật khẩu nhập vào
-            const decryptedContent = CryptoJS.AES.decrypt(encryptedContactInfo, password).toString(CryptoJS.enc.Utf8);
-
-            // Kiểm tra nếu mật khẩu đúng (nội dung giải mã không rỗng)
-            if (decryptedContent) {
-                document.getElementById("Download").innerHTML = decryptedContent;
-                document.getElementById("Download").style.display = "block";
-                Swal.fire("Access Granted!", "Contact details are now visible", "success");
-            } else {
-                Swal.fire("Access denied", "Incorrect password", "error");
-            }
-        } catch (e) {
-            Swal.fire("Access Denied", "Incorrect password", "error");
-        }
-    }
-}
-
-// Mã hóa nội dung liên hệ để tránh hiển thị trong mã nguồn
-const encryptedContactInfo = "U2FsdGVkX18+/WQMYjScy5xZYU82uVGNZIfAnoF79uBZEVY7I2/RZ9UmEw8A6g00XlHVm7ZUBnQx2O1c4l4SQWQ1+brNt7bb/8nOfCs8cGnLWVjlz1MPxkBUZaj0XMTVH+MxcD0ODkb/Ilw0n0NfHOrkIh3n5wodM/q0vM2ebilMADuMC8sEctbMvQkez+K9wGiBvqOCi40z/NWarpV/Mw==";
-
-
-
-// WEATHER
-const apiKey = 'KZH7P9GUL9SBMVQ5MV4WDF23L'; // Thay thế bằng API Key của bạn
-
-function getWeatherAuto() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                localStorage.setItem('location', `${lat},${lon}`);
-                fetchWeather(lat, lon);
-            },
-            () => {
-                // Nếu không thể lấy vị trí, sử dụng IP để lấy thời tiết
-                getWeatherByIP();
-            }
-        );
-    } else {
-        // Nếu trình duyệt không hỗ trợ định vị, sử dụng IP để lấy thời tiết
-        getWeatherByIP();
-    }
-}
-
-// Bảng ánh xạ từ hướng gió quốc tế sang thuần Việt
-const windDirectionMap = {
-    'N': 'Bắc',
-    'NNE': 'Bắc Đông Bắc',
-    'NE': 'Đông Bắc',
-    'ENE': 'Đông Bắc Đông',
-    'E': 'Đông',
-    'ESE': 'Đông Đông Nam',
-    'SE': 'Đông Nam',
-    'SSE': 'Nam Đông Nam',
-    'S': 'Nam',
-    'SSW': 'Nam Tây Nam',
-    'SW': 'Tây Nam',
-    'WSW': 'Tây Tây Nam',
-    'W': 'Tây',
-    'WNW': 'Tây Bắc Tây',
-    'NW': 'Tây Bắc',
-    'NNW': 'Bắc Tây Bắc'
-};
-
-// Bảng ánh xạ mã điều kiện thời tiết sang mô tả tiếng Việt
-const weatherConditionMap = {
-    'clear-day': 'Trời quang đãng',
-    'clear-night': 'Trời quang đãng',
-    'partly-cloudy-day': 'Có mây',
-    'partly-cloudy-night': 'Có mây',
-    'cloudy': 'Trời nhiều mây',
-    'rain': 'Mưa rào',
-    'sleet': 'Mưa tuyết',
-    'snow': 'Tuyết rơi',
-    'wind': 'Gió',
-    'fog': 'Sương mù',
-    'hail': 'Mưa đá',
-    'thunderstorm': 'Bão tố'
-};
-
-async function fetchWeather(latitude, longitude) {
-    const response = await fetch(`https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${latitude},${longitude}?unitGroup=metric&key=${apiKey}&contentType=json`);
-    const data = await response.json();
-
-    // Xử lý thông tin điều kiện thời tiết
-    const currentConditions = data.currentConditions;
-    const conditionCode = currentConditions.icon;
-    const conditionText = weatherConditionMap[conditionCode] || currentConditions.conditions;
-    const conditionIcon = `/Asset/Weather/${conditionCode}.svg`;
-
-    // document.getElementById('temperature').innerHTML = `${currentConditions.temp.toFixed(0)}°C`;
-    // document.getElementById('rain_chance').innerHTML = `<i class="fa-solid fa-cloud-rain"></i> ${currentConditions.precip !== null ? currentConditions.precip.toFixed(1) : 0} mm`;
-    // document.getElementById('uv_index').innerHTML = `<i class="fa-solid fa-sun"></i> UV: ${currentConditions.uvindex}`;
-
-    // // Chuyển đổi gió hướng sang định dạng thuần Việt
-    // const windDir = currentConditions.winddir;
-    // const windDirection = windDirectionMap[windDir] || windDir;
-    // document.getElementById('wind_direction').innerHTML = `<i class="fa-solid fa-wind"></i> ${windDirection} ${currentConditions.windspeed.toFixed(1)} km/h`;
-
-    reverseGeocodeNominatim(latitude, longitude).then(({ address, addressFull }) => {
-        // Cập nhật nội dung trên giao diện người dùng
-        document.getElementById('weather').innerHTML = `<p>${address} <i class="fa-solid fa-location-arrow" aria-hidden="true"></i></p>
-  <div class="flex">
-    <img src="${conditionIcon}" alt="${conditionText}" />
-      <h1>${currentConditions.temp.toFixed(0)}°C</h1></div>
-    </div>
-      
-      `;
-    }).catch(error => {
-        console.error('Lỗi khi lấy địa điểm:', error);
-    });
-
-}
-
-async function reverseGeocodeNominatim(latitude, longitude) {
-    try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
-        const data = await response.json();
-        // Khởi tạo giá trị mặc định cho address và addressFull
-        let address = '';
-        let addressFull = '';
-
-        if (data.address) {
-            if (data.address.village !== undefined) {
-                const originalSuburb = data.address.village || '';  // Đảm bảo có giá trị mặc định
-                const formattedSuburb = originalSuburb.replace(/^Xã\s/, 'X.');
-                address = formattedSuburb;
-            } else if (data.address.quarter !== undefined) {
-                address = data.address.quarter;
-            } else {
-                const originalSuburb = data.address.suburb || '';  // Đảm bảo có giá trị mặc định
-                const formattedSuburb = originalSuburb.replace(/^Phường\s/, 'P.');
-                address = formattedSuburb;
-            }
-            addressFull = data.display_name;
-
-        } else {
-            throw new Error('Không thể tìm thấy địa điểm.');
-        }
-
-        return {
-            address: address.trim(),
-            addressFull: addressFull.trim()
-        };
-    } catch (error) {
-        console.error('Lỗi khi tìm địa điểm:', error);
-        throw error;  // Ném lỗi để xử lý ở nơi gọi hàm
-    }
-}
-
-async function getWeatherByIP() {
-    try {
-        const ipResponse = await fetch('https://ipinfo.io/json?token=8c35ace05458e6');
-        const ipData = await ipResponse.json();
-
-        document.getElementById('ip').innerText = `IP: ${ipData.ip}`;
-        document.getElementById('organization').innerText = `Nhà mạng: ${ipData.org}`;
-
-        if (ipData.loc) {
-            const [latitude, longitude] = ipData.loc.split(',');
-            fetchWeather(latitude, longitude);
-        } else {
-            console.error('Không tìm thấy thông tin tọa độ từ IP.');
-        }
-    } catch (error) {
-        console.error('Lỗi khi lấy thông tin từ IP:', error);
-    }
-}
-
-function getWeatherByGeolocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(async position => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            fetchWeather(lat, lon);
-        }, error => {
-            console.error('Lỗi khi lấy thông tin định vị:', error);
-        });
-    } else {
-        alert('Trình duyệt của bạn không hỗ trợ định vị địa lý.');
-    }
-}
-
-async function geocodeAddress(address) {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`);
-    const data = await response.json();
-
-    if (data.length > 0) {
-        const location = data[0];
-        return {
-            latitude: location.lat,
-            longitude: location.lon
-        };
-
-    } else {
-        throw new Error('Không tìm thấy địa điểm.');
-    }
-
-}
-
-async function getWeatherByManual() {
-    const manualLocation = document.getElementById('manualLocation').value;
-    if (manualLocation) {
-        try {
-            const { latitude, longitude } = await geocodeAddress(manualLocation);
-            fetchWeather(latitude, longitude);
-        } catch (error) {
-            alert(error.message);
-        }
-    } else {
-        Info('Vui lòng nhập địa điểm.');
-    }
-}
-
-//Modal thời tiết
-document.addEventListener('DOMContentLoaded', () => {
-    const weatherPreference = localStorage.getItem('weatherPreference');
-    if (weatherPreference === 'none') {
-        // Nếu người dùng chọn "Không", không làm gì
-        return;
-    } else if (!weatherPreference) {
-        // Hiển thị modal nếu chưa lưu lựa chọn
-        document.getElementById('weatherModal').style.display = 'flex';
-    } else if (weatherPreference === 'geolocation') {
-        getWeatherAuto();
-    } else if (weatherPreference === 'ip') {
-        getWeatherByIP();
-    }
-});
-
-
-// Lắng nghe sự kiện click trên phần tử #weather
-document.getElementById('weather').addEventListener('click', () => {
-    // Hiển thị lại modal để người dùng thay đổi quyết định
-    document.getElementById('weatherModal').style.display = 'flex';
-    // Xóa trạng thái "không hỏi nữa" để cho phép chọn lại
-    localStorage.removeItem('weatherPreference');
-});
-
-
-// Hàm xử lý khi người dùng chọn phương thức
-function handleWeatherChoice(choice) {
-    const modal = document.getElementById('weatherModal');
-
-    if (choice === 'geolocation') {
-        // Lưu lựa chọn định vị và gọi hàm lấy thời tiết
-        localStorage.setItem('weatherPreference', 'geolocation');
-        getWeatherAuto();
-    } else if (choice === 'ip') {
-        // Lưu lựa chọn IP và gọi hàm lấy thời tiết
-        localStorage.setItem('weatherPreference', 'ip');
-        getWeatherByIP();
-    } else if (choice === 'cancel') {
-        // Lưu lựa chọn "không hỏi nữa"
-        localStorage.setItem('weatherPreference', 'none');
-        // Xóa thông tin vị trí cũ nếu có
-        localStorage.removeItem('location');
-    }
-
-    // Ẩn modal
-    modal.style.display = 'none';
-}
+// // ======= ENCRYPTED CONTACT INFO (MÃ HÓA SẴN) =======
+// const encryptedContactInfo = "U2FsdGVkX18+/WQMYjScy5xZYU82uVGNZIfAnoF79uBZEVY7I2/RZ9UmEw8A6g00XlHVm7ZUBnQx2O1c4l4SQWQ1+brNt7bb/8nOfCs8cGnLWVjlz1MPxkBUZaj0XMTVH+MxcD0ODkb/Ilw0n0NfHOrkIh3n5wodM/q0vM2ebilMADuMC8sEctbMvQkez+K9wGiBvqOCi40z/NWarpV/Mw==";
