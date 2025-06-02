@@ -282,7 +282,7 @@ function toggleDropdown() {
 }
 
 // ======= INIT ON PAGE LOAD =======
-document.addEventListener('DOMContentLoaded', () => {
+Document.addEventListener('DOMContentLoaded', async () => {
     const hashLang = window.location.hash.toUpperCase();
     const langFromHash = {
         '#JA': 'ja',
@@ -298,10 +298,60 @@ document.addEventListener('DOMContentLoaded', () => {
         'zh': './Asset/icon/flag/china.png'
     };
 
-    const language = langFromHash[hashLang] || localStorage.getItem('language') || 'vi';
+    // Function to detect language from IP using ip-api.com
+    async function detectLanguageFromIP() {
+        try {
+            // Using ip-api.com's free endpoint.
+            // Be aware of their usage policies and rate limits: https://ip-api.com/docs/
+            const response = await fetch('http://ip-api.com/json');
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                const countryCode = data.countryCode.toLowerCase();
+
+                // Map country codes to your supported languages
+                const countryLangMap = {
+                    'vn': 'vi', // Vietnam
+                    'us': 'en', // United States
+                    'gb': 'en', // United Kingdom
+                    'jp': 'ja', // Japan
+                    'cn': 'zh', // China
+                    // Add more mappings as needed for other countries where your language is prevalent
+                };
+
+                return countryLangMap[countryCode] || null; // Return the language or null if no match
+            } else {
+                console.error("IP API request failed:", data.message);
+                return null;
+            }
+        } catch (error) {
+            console.error("Error detecting language from IP:", error);
+            return null;
+        }
+    }
+
+    let language = langFromHash[hashLang];
+
+    if (!language) {
+        language = localStorage.getItem('language');
+    }
+
+    if (!language) {
+        // Await the IP detection if language is not found from hash or local storage
+        language = await detectLanguageFromIP();
+    }
+
+    if (!language) {
+        language = 'vi'; // Fallback to 'vi' if no language is determined from any source
+    }
+
     applyLanguage(language);
     updateFlag(language);
 });
+
+
+
+
 
 // ======= THEME DARK / LIGHT =======
 const themeToggle = document.getElementById('themeToggle');
