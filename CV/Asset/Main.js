@@ -252,7 +252,7 @@ function updateFlag(language) {
         'en': './Asset/icon/flag/US.png',
         'de': './Asset/icon/flag/germany.png',
         'ja': './Asset/icon/flag/Japan.png',
-        'zh': './Asset/icon/flag/china.png'
+        'zh': './Asset/icon/flag/china.png',
     };
     document.getElementById('currentFlag').src = flagMap[language];
 }
@@ -260,7 +260,7 @@ function updateFlag(language) {
 // ======= APPLY LANGUAGE =======
 function applyLanguage(language) {
     const body = document.body.classList;
-    body.remove('en', 'vi', 'ja', 'zh');
+    body.remove('en', 'vi', 'ja', 'zh', 'de');
     body.add(language);
     document.querySelectorAll('[data-translate]').forEach(el => {
         const key = el.getAttribute('data-translate');
@@ -270,7 +270,7 @@ function applyLanguage(language) {
 
 // ======= SET LANGUAGE =======
 function setLanguage(language, flagSrc) {
-    localStorage.setItem('language', language);
+    // localStorage.setItem('language', language);
     applyLanguage(language);
     document.getElementById('currentFlag').src = flagSrc;
     document.getElementById('languageDropdown').classList.remove('show');
@@ -281,60 +281,69 @@ function toggleDropdown() {
     document.getElementById('languageDropdown').classList.toggle('show');
 }
 
+
 // ======= INIT ON PAGE LOAD =======
-Document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const hashLang = window.location.hash.toUpperCase();
     const langFromHash = {
         '#JA': 'ja',
         '#VI': 'vi',
         '#EN': 'en',
-        '#ZH': 'zh'
+        '#ZH': 'zh',
+        '#DE': 'de' //
     };
 
     const flagMap = {
         'vi': './Asset/icon/flag/Vietnam.png',
         'en': './Asset/icon/flag/US.png',
         'ja': './Asset/icon/flag/Japan.png',
-        'zh': './Asset/icon/flag/china.png'
+        'zh': './Asset/icon/flag/china.png',
+        'de': './Asset/icon/flag/germany.png' 
     };
 
     // Function to detect language from IP using ip-api.com
     async function detectLanguageFromIP() {
         try {
-            // Using ip-api.com's free endpoint.
-            // Be aware of their usage policies and rate limits: https://ip-api.com/docs/
-            const response = await fetch('http://ip-api.com/json');
+            const yourIpInfoToken = '8c35ace05458e6'; // Đây là token bạn đã cung cấp
+            const response = await fetch(`https://ipinfo.io/json?token=${yourIpInfoToken}`);
             const data = await response.json();
-
-            if (data.status === 'success') {
-                const countryCode = data.countryCode.toLowerCase();
-
-                // Map country codes to your supported languages
+            // console.log("Dữ liệu từ IPinfo.io:", data); // Ghi log để debug
+    
+            // ipinfo.io trả về mã quốc gia trong trường 'country'
+            // ví dụ: { "ip": "...", "country": "VN", ... }
+            if (data && data.country) {
+                const countryCode = data.country.toLowerCase(); // Lấy mã quốc gia và chuyển thành chữ thường
+    
                 const countryLangMap = {
                     'vn': 'vi', // Vietnam
                     'us': 'en', // United States
                     'gb': 'en', // United Kingdom
                     'jp': 'ja', // Japan
                     'cn': 'zh', // China
-                    // Add more mappings as needed for other countries where your language is prevalent
+                    'de': 'de'  // Germany
+                    // Thêm các mapping khác nếu cần
                 };
-
-                return countryLangMap[countryCode] || null; // Return the language or null if no match
+    
+                
+                return countryLangMap[countryCode] || null; // Trả về ngôn ngữ hoặc null nếu không có mapping
             } else {
-                console.error("IP API request failed:", data.message);
+                console.error("IPinfo.io API request failed or no country data:", data ? data.error : "No data");
                 return null;
             }
         } catch (error) {
-            console.error("Error detecting language from IP:", error);
+            console.error("Error detecting language from IP (IPinfo.io):", error);
             return null;
         }
     }
+    // Giả sử bạn có các hàm này đã được định nghĩa ở nơi khác
+    // function applyLanguage(lang) { /* ... logic áp dụng ngôn ngữ ... */ }
+    // function updateFlag(lang) { /* ... logic cập nhật cờ ... */ }
 
     let language = langFromHash[hashLang];
 
-    if (!language) {
-        language = localStorage.getItem('language');
-    }
+    // if (!language) {
+    //     language = localStorage.getItem('language');
+    // }
 
     if (!language) {
         // Await the IP detection if language is not found from hash or local storage
@@ -345,8 +354,14 @@ Document.addEventListener('DOMContentLoaded', async () => {
         language = 'vi'; // Fallback to 'vi' if no language is determined from any source
     }
 
+    // Bạn cần đảm bảo rằng hàm applyLanguage và updateFlag đã được định nghĩa
+    // Ví dụ:
     applyLanguage(language);
     updateFlag(language);
+    // console.log(`Final language determined: ${language}`);
+    // Gọi các hàm thực tế của bạn ở đây, ví dụ:
+    window.applyLanguage(language); // Nếu chúng là global
+    window.updateFlag(language);
 });
 
 
