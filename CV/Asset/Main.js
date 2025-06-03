@@ -402,35 +402,24 @@ document.querySelectorAll('.progress').forEach(progress => {
     progress.appendChild(container);
 });
 
-// // ======= DOWNLOAD CV WITH RECRUITMENT CODE =======
-// async function DownloadCV() {
-//     const { value: password } = await Swal.fire({
-//         title: "Recruitment Code",
-//         input: "text",
-//         inputLabel: "Password",
-//         inputPlaceholder: "Recruitment Code",
-//         inputAttributes: {
-//             maxlength: "10",
-//             autocapitalize: "off",
-//             autocorrect: "off"
-//         }
-//     });
-
-//     if (password) {
-//         try {
-//             const decrypted = CryptoJS.AES.decrypt(encryptedContactInfo, password).toString(CryptoJS.enc.Utf8);
-//             if (decrypted) {
-//                 document.getElementById("Download").innerHTML = decrypted;
-//                 document.getElementById("Download").style.display = "block";
-//                 Swal.fire("Access Granted!", "Contact details are now visible", "success");
-//             } else {
-//                 Swal.fire("Access Denied", "Incorrect password", "error");
-//             }
-//         } catch (e) {
-//             Swal.fire("Access Denied", "Incorrect password", "error");
-//         }
-//     }
-// }
-
-// // ======= ENCRYPTED CONTACT INFO (MÃ HÓA SẴN) =======
-// const encryptedContactInfo = "U2FsdGVkX18+/WQMYjScy5xZYU82uVGNZIfAnoF79uBZEVY7I2/RZ9UmEw8A6g00XlHVm7ZUBnQx2O1c4l4SQWQ1+brNt7bb/8nOfCs8cGnLWVjlz1MPxkBUZaj0XMTVH+MxcD0ODkb/Ilw0n0NfHOrkIh3n5wodM/q0vM2ebilMADuMC8sEctbMvQkez+K9wGiBvqOCi40z/NWarpV/Mw==";
+// ======= DOWNLOAD CV WITH RECRUITMENT CODE =======
+function DownloadCV() {
+    // Tạo một thẻ <a> ẩn
+    const link = document.createElement('a');
+    link.style.display = 'none';
+  
+    // Thiết lập đường dẫn đến file CV của bạn
+    link.href = './Asset/DINHMANHHUNG-CV.pdf';
+  
+    // Đặt tên file sẽ được tải về (trình duyệt sẽ gợi ý tên này)
+    link.download = 'CV.pdf';
+  
+    // Thêm thẻ <a> vào DOM (cần thiết cho Firefox)
+    document.body.appendChild(link);
+  
+    // Kích hoạt sự kiện click trên thẻ <a> để bắt đầu tải file
+    link.click();
+  
+    // Xóa thẻ <a> khỏi DOM sau khi đã click
+    document.body.removeChild(link);
+  }
