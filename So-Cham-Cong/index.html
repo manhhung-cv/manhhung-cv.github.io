@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sổ Chấm Công Toàn Diện</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 10px; /* Reduced body padding for mobile */
+            color: #333;
+            box-sizing: border-box;
+            font-size: 15px; /* Base font size for mobile */
+        }
+
+        .app-container {
+            background-color: #ffffff;
+            padding: 15px; /* Reduced padding */
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+            width: 100%;
+            max-width: 850px; 
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            display: flex;
+            border-bottom: 2px solid #dee2e6;
+            margin-bottom: 15px; /* Reduced margin */
+            overflow-x: auto; /* Allow horizontal scroll on small screens */
+            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+            scrollbar-width: none; /* Hide scrollbar for Firefox */
+        }
+        .tab-nav::-webkit-scrollbar { display: none; /* Hide scrollbar for Chrome, Safari, Opera */ }
+
+        .tab-button {
+            padding: 10px 15px; /* Adjusted padding */
+            cursor: pointer;
+            border: none;
+            background-color: transparent;
+            font-size: 0.95em; /* Adjusted font size */
+            font-weight: 500;
+            color: #495057;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px; 
+            transition: color 0.2s ease, border-color 0.2s ease;
+            white-space: nowrap; /* Prevent button text wrapping */
+        }
+        .tab-button:hover {
+            color: #0056b3;
+        }
+        .tab-button.active {
+            color: #007bff;
+            border-color: #007bff;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+            animation: fadeInContent 0.5s ease-out;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeInContent {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        h2.tab-title {
+            font-size: 1.3em; /* Adjusted font size */
+            color: #0056b3;
+            margin-top: 0;
+            margin-bottom: 15px; /* Reduced margin */
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px; /* Adjusted padding */
+        }
+
+        /* Common Section Styles */
+        .data-section { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background-color: #fdfdfd;}
+        .data-section h3 { font-size: 1.1em; color: #0056b3; margin-top: 0; margin-bottom: 12px; border-bottom: 1px solid #e0e0e0; padding-bottom: 7px;}
+        .data-section label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9em;}
+        .data-section select, .data-section input[type="file"], .data-section input[type="date"], .data-section input[type="month"], .data-section button {
+            padding: 9px; /* Adjusted padding */
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            font-size: 0.85em; /* Adjusted font size */
+            margin-top: 5px;
+            box-sizing: border-box;
+            width: 100%; /* Make inputs/selects full width in their container */
+        }
+        .data-section select { max-width: none; } /* Allow select to be full width */
+        .data-section input[type="file"] { max-width: none; }
+        .data-section button {
+            background-color: #007bff; color: white; cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .data-section button:hover { background-color: #0056b3; }
+        .data-section .button-group { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .filter-group { display: flex; gap: 10px; align-items: flex-end; margin-bottom:12px; flex-wrap: wrap;}
+        .filter-group .form-control { flex-grow: 1; min-width: 120px; } /* Adjusted min-width */
+
+
+        /* Calendar Styles (Tab LichLamViec) */
+        .calendar-settings { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eee; gap: 8px; }
+        .calendar-settings label { font-size: 0.8em; color: #555; user-select: none; }
+        .switch { position: relative; display: inline-block; width: 36px; height: 20px; } /* Smaller switch */
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: #007bff; }
+        input:focus + .slider { box-shadow: 0 0 1px #007bff; }
+        input:checked + .slider:before { transform: translateX(16px); } /* Adjusted for smaller switch */
+
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-header h2 { margin: 0; font-size: 1.3em; color: #0056b3; text-align: center; flex-grow: 1; }
+        .calendar-header button { background-color: #007bff; color: white; border: none; padding: 7px 10px; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; font-size: 0.9em; line-height: 1; }
+        .calendar-header button:hover { background-color: #0056b3; }
+
+        .calendar-controls { margin-bottom: 12px; text-align: right; }
+        .calendar-controls button { padding: 8px 14px; margin-left: 8px; cursor: pointer; border: none; border-radius: 5px; font-weight: 500; transition: background-color 0.3s ease, box-shadow 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.08); font-size: 0.85em; }
+        #editScheduleBtn { background-color: #ffc107; color: #333; }
+        #editScheduleBtn.active, #editScheduleBtn:disabled { background-color: #ffe083; color: #777; cursor: not-allowed; }
+        #saveScheduleBtn { background-color: #28a745; color: white; }
+
+        .calendar-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .calendar-table th, .calendar-table td { border: 1px solid #e9e9e9; padding: 0; text-align: center; vertical-align: top; height: 60px; } /* Reduced height */
+        .calendar-table th { background-color: #f8f9fa; color: #495057; font-weight: 500; padding: 8px 0; font-size: 0.75em; } /* Smaller header text */
+        .day-cell-content { padding: 4px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-around; align-items: center; position: relative; } /* space-around for better icon centering */
+        .calendar-table td.editable .day-cell-content, .calendar-table td.timesheet-entry-allowed .day-cell-content { cursor: pointer; }
+        .calendar-table td.editable:hover { background-color: #f0f8ff; }
+        .calendar-table td.timesheet-entry-allowed:not(.editable):hover { background-color: #e6ffed; }
+
+        .day-number { font-weight: 600; font-size: 0.8em; color: #333; align-self: center; padding: 2px 4px; border-radius: 50%; z-index: 1; line-height: 1; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
+        .today .day-number { background-color: #007bff; color: white; box-shadow: 0 0 5px rgba(0,123,255,0.5); }
+        
+        .shift-info { 
+            font-size: 1.1em; /* Larger for icons */
+            padding: 2px; 
+            border-radius: 50%; /* Make it a circle around the icon if needed */
+            color: #333; /* Default color, specific colors can be set by shift type or icon itself */
+            display: flex; /* Center icon */
+            align-items: center;
+            justify-content: center;
+            width: 24px; /* Fixed size for icon container */
+            height: 24px;
+            line-height: 1;
+            box-sizing: border-box; 
+            z-index: 0; 
+            margin-top: 2px;
+            background-color: transparent; /* Remove background, rely on icon color or cell color */
+        }
+        .ca-ngay .shift-info { /* color: #4CAF50; */ } /* Example if icons were single color */
+        .ca-dem .shift-info { /* color: #2196F3; */ }
+        .nghi .shift-info { /* color: #ff9800; */ }
+        .ngay-le .shift-info { /* color: #f44336; */ }
+        .shift-info.empty { display: none; } /* Hide if no icon */
+        
+        .timesheet-indicator-container { position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; } /* Adjusted for smaller cells */
+        .timesheet-indicator { width: 100%; height: 100%; background-color: #28a745; border-radius: 50%; display: none; }
+        .timesheet-indicator.visible { display: block; }
+        
+        .disabled-day .day-cell-content { color: #adb5bd; background-color: #fdfdfd; }
+        .disabled-day .day-number { color: #adb5bd; background-color: transparent; box-shadow: none;}
+        .disabled-day .shift-info, .disabled-day .timesheet-indicator-container { display: none; }
+
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 10px; }
+        .modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; border-radius: 10px; width: 100%; max-width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); animation: fadeInModal 0.3s ease-out; }
+        .modal-header { padding-bottom: 8px; border-bottom: 1px solid #eee; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { margin: 0; font-size: 1.2em; color: #0056b3; }
+        .modal-header .close-btn { color: #aaa; font-size: 26px; font-weight: bold; line-height: 1; background: none; border: none; cursor: pointer; padding: 0; }
+        .modal-body .form-group { margin-bottom: 12px; }
+        .modal-body label { display: block; margin-bottom: 4px; font-weight: 500; font-size: 0.85em;}
+        .modal-body input[type="number"], .modal-body textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 0.85em; }
+        .modal-body textarea { resize: vertical; min-height: 60px; }
+        .modal-footer { padding-top: 15px; border-top: 1px solid #eee; margin-top: 15px; text-align: right; display: flex; justify-content: flex-end; gap: 8px;}
+        .modal-footer button { padding: 8px 15px; cursor: pointer; border: none; border-radius: 5px; font-weight: 500; transition: background-color 0.3s ease; font-size: 0.85em; }
+        .modal-footer .btn-confirm, .modal-footer .btn-edit-timesheet { background-color: #28a745; color: white; }
+        .modal-footer .btn-delete { background-color: #dc3545; color: white; }
+        .modal-footer .btn-cancel { background-color: #6c757d; color: white; }
+        #actionConfirmModal .modal-body p { margin-top: 0; margin-bottom: 15px; font-size: 0.95em; }
+
+        /* Toast Notification */
+        .toast-notification { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 10px 18px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 1001; opacity: 0; transition: opacity 0.5s ease, bottom 0.5s ease; font-size: 0.85em; }
+        .toast-notification.show { opacity: 1; bottom: 25px; }
+
+        /* "Sổ Chấm Công" Tab Styles */
+        .timesheet-log-controls { margin-bottom: 15px; padding: 12px; border: 1px solid #eee; border-radius: 8px; background-color: #f9f9f9;}
+        .timesheet-log-controls h4 { margin-top:0; margin-bottom:8px; font-size: 1em; color: #333;}
+        .timesheet-log-table-container { max-height: 400px; overflow-y: auto; }
+        .timesheet-log-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .timesheet-log-table th, .timesheet-log-table td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; font-size: 0.85em; }
+        .timesheet-log-table th { background-color: #f8f9fa; font-weight: 600; color: #333; position: sticky; top: 0; z-index: 10; }
+        .timesheet-log-table td.check-mark { text-align: center; font-size: 1.1em; color: green; }
+        .timesheet-log-table td.overtime-hours { text-align: right; }
+        .timesheet-log-table td.shift-icon-cell { text-align: center; font-size: 1.1em; } /* For icons in log table */
+        .no-timesheet-data { text-align: center; color: #777; margin-top: 15px; font-style: italic; font-size: 0.9em; }
+
+        /* "Cài đặt" Tab Styles (uses .data-section) */
+        
+        /* Further Responsive adjustments for very small screens */
+        @media (max-width: 380px) { /* Target even smaller screens */
+            body { font-size: 14px; padding: 5px; }
+            .app-container { padding: 10px; }
+            .tab-button { padding: 8px 10px; font-size: 0.85em; }
+            h2.tab-title { font-size: 1.1em; }
+            .calendar-table th, .calendar-table td { height: 55px; }
+            .day-cell-content { padding: 2px; }
+            .day-number { font-size: 0.75em; width: 18px; height: 18px; }
+            .shift-info { font-size: 1em; width: 20px; height: 20px; }
+            .timesheet-indicator-container { top: 1px; right: 1px; width: 4px; height: 4px; }
+            .filter-group { gap: 8px; }
+            .data-section button { width: 100%; margin-bottom: 5px;}
+            .data-section .button-group button { margin-right: 0; }
+            .modal-footer { flex-direction: column; gap: 8px; }
+            .modal-footer button { width: 100%; margin-left: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <nav class="tab-nav">
+            <button class="tab-button active" data-tab="tabLichLamViec">Lịch Làm Việc</button>
+            <button class="tab-button" data-tab="tabSoChamCong">Sổ Chấm Công</button>
+            <button class="tab-button" data-tab="tabCaiDat">Cài Đặt</button>
+        </nav>
+
+        <!-- Tab Lịch Làm Việc -->
+        <div id="tabLichLamViec" class="tab-content active">
+            <div class="calendar-settings">
+                <label for="firstDaySwitch">Tuần bắt đầu từ Thứ Hai:</label>
+                <label class="switch">
+                    <input type="checkbox" id="firstDaySwitch">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+    
+            <div class="calendar-header">
+                <button id="prevMonthBtn" aria-label="Tháng trước">&lt;</button>
+                <h2 id="currentMonthYear">Tháng X Năm YYYY</h2>
+                <button id="nextMonthBtn" aria-label="Tháng sau">&gt;</button>
+            </div>
+            <div class="calendar-controls">
+                <button id="editScheduleBtn">Sửa Lịch</button>
+                <button id="saveScheduleBtn" style="display:none;">Lưu Thay Đổi Lịch</button>
+            </div>
+            <table class="calendar-table">
+                <thead>
+                    <tr id="calendarHeaderRow">
+                        <!-- Headers will be populated by JS -->
+                    </tr>
+                </thead>
+                <tbody id="calendarDays">
+                    <!-- Các ngày sẽ được tạo bằng JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Tab Sổ Chấm Công -->
+        <div id="tabSoChamCong" class="tab-content">
+            <h2 class="tab-title">Sổ Chấm Công Chi Tiết</h2>
+            <div class="timesheet-log-controls data-section">
+                <h4>Lọc và Tải Dữ Liệu Sổ Chấm Công</h4>
+                <div class="filter-group">
+                    <div class="form-control">
+                        <label for="logFilterType">Lọc theo:</label>
+                        <select id="logFilterType">
+                            <option value="all">Tất cả</option>
+                            <option value="range">Khoảng ngày</option>
+                            <option value="month">Tháng cụ thể</option>
+                        </select>
+                    </div>
+                    <div class="form-control" id="logDateRangePicker" style="display:none;">
+                        <label for="logStartDate">Từ ngày:</label>
+                        <input type="date" id="logStartDate">
+                        <label for="logEndDate" style="margin-top:5px;">Đến ngày:</label>
+                        <input type="date" id="logEndDate">
+                    </div>
+                    <div class="form-control" id="logMonthPicker" style="display:none;">
+                        <label for="logMonth">Chọn tháng:</label>
+                        <input type="month" id="logMonth">
+                    </div>
+                </div>
+                 <button id="applyLogFilterBtn" style="margin-right:10px; background-color: #17a2b8;">Áp dụng lọc</button>
+                <button id="exportLogCsvBtn">Tải CSV</button>
+            </div>
+
+            <div class="timesheet-log-table-container">
+                <table class="timesheet-log-table">
+                    <thead>
+                        <tr>
+                            <th>Ngày Làm Việc</th>
+                            <th>Phân Loại Ca</th>
+                            <th>Giờ Làm Việc</th>
+                            <th>Ghi Chú</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timesheetLogBody">
+                        <!-- Dữ liệu chấm công sẽ được điền vào đây -->
+                    </tbody>
+                </table>
+            </div>
+            <p id="noTimesheetDataMsg" class="no-timesheet-data" style="display:none;">Chưa có dữ liệu chấm công.</p>
+        </div>
+
+        <!-- Tab Cài Đặt -->
+        <div id="tabCaiDat" class="tab-content">
+            <h2 class="tab-title">Cài Đặt Dữ Liệu</h2>
+            <div class="data-section">
+                <h3>Xuất Dữ Liệu JSON</h3>
+                 <div class="filter-group">
+                    <div class="form-control">
+                        <label for="jsonExportFilterType">Lọc theo thời gian (cho JSON):</label>
+                        <select id="jsonExportFilterType">
+                            <option value="all">Không lọc (Tất cả)</option>
+                            <option value="range">Khoảng ngày</option>
+                            <option value="month">Tháng cụ thể</option>
+                        </select>
+                    </div>
+                    <div class="form-control" id="jsonExportDateRangePicker" style="display:none;">
+                        <label for="jsonExportStartDate">Từ ngày:</label>
+                        <input type="date" id="jsonExportStartDate">
+                        <label for="jsonExportEndDate" style="margin-top:5px;">Đến ngày:</label>
+                        <input type="date" id="jsonExportEndDate">
+                    </div>
+                    <div class="form-control" id="jsonExportMonthPicker" style="display:none;">
+                        <label for="jsonExportMonth">Chọn tháng:</label>
+                        <input type="month" id="jsonExportMonth">
+                    </div>
+                </div>
+                <label for="exportDataType" style="margin-top:15px;">Chọn loại dữ liệu để xuất:</label>
+                <select id="exportDataType">
+                    <option value="all">Cả Lịch Làm Việc và Sổ Chấm Công</option>
+                    <option value="schedule">Chỉ Lịch Làm Việc</option>
+                    <option value="timesheet">Chỉ Sổ Chấm Công</option>
+                </select>
+                <div class="button-group">
+                    <button id="exportDataBtn">Xuất File JSON</button>
+                </div>
+            </div>
+
+            <div class="data-section">
+                <h3>Nhập Dữ Liệu</h3>
+                <label for="importFile">Chọn file JSON để nhập:</label>
+                <input type="file" id="importFile" accept=".json">
+                <div class="button-group">
+                     <button id="importDataBtn">Nhập Dữ Liệu</button>
+                </div>
+                <p style="font-size:0.8em; color:#666; margin-top:10px;">Lưu ý: Dữ liệu nhập sẽ được hợp nhất với dữ liệu hiện tại. Các mục trùng lặp sẽ được ghi đè bởi dữ liệu từ file nhập.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timesheet Entry Modal (cho Tab Lịch Làm Việc) -->
+    <div id="timesheetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Chấm công ngày DD/MM/YYYY</h3>
+                <button type="button" class="close-btn" aria-label="Đóng">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="timesheetForm">
+                    <input type="hidden" id="timesheetDate">
+                    <div class="form-group">
+                        <label for="overtimeHours">Số giờ tăng ca:</label>
+                        <input type="number" id="overtimeHours" name="overtimeHours" min="0" max="23" placeholder="Ví dụ: 1">
+                    </div>
+                    <div class="form-group">
+                        <label for="overtimeMinutes">Số phút tăng ca:</label>
+                        <input type="number" id="overtimeMinutes" name="overtimeMinutes" min="0" max="59" placeholder="Ví dụ: 30">
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Ghi chú:</label>
+                        <textarea id="notes" name="notes" rows="3" placeholder="Thêm ghi chú nếu có..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel">Hủy</button>
+                <button type="button" class="btn-confirm">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Confirmation Modal -->
+    <div id="actionConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="actionConfirmModalTitle">Hành động cho ngày DD/MM/YYYY</h3>
+                <button type="button" class="close-btn" aria-label="Đóng">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn muốn làm gì với mục chấm công này?</p>
+                <input type="hidden" id="actionConfirmDate">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-edit-timesheet">Sửa Chấm Công</button>
+                <button type="button" class="btn-delete btn-delete-timesheet">Xoá Công</button>
+                <button type="button" class="btn-cancel">Huỷ</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // --- DOM Elements ---
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const currentMonthYearElement = document.getElementById('currentMonthYear');
+            const calendarDaysElement = document.getElementById('calendarDays');
+            const calendarHeaderRowElement = document.getElementById('calendarHeaderRow');
+            const prevMonthBtn = document.getElementById('prevMonthBtn');
+            const nextMonthBtn = document.getElementById('nextMonthBtn');
+            const editScheduleBtn = document.getElementById('editScheduleBtn');
+            const saveScheduleBtn = document.getElementById('saveScheduleBtn');
+            const firstDaySwitch = document.getElementById('firstDaySwitch');
+            const timesheetModal = document.getElementById('timesheetModal');
+            const modalTitleElement = document.getElementById('modalTitle');
+            const timesheetDateInput = document.getElementById('timesheetDate');
+            const overtimeHoursInput = document.getElementById('overtimeHours');
+            const overtimeMinutesInput = document.getElementById('overtimeMinutes');
+            const notesInput = document.getElementById('notes');
+            const timesheetModalCloseBtn = timesheetModal.querySelector('.close-btn');
+            const timesheetModalCancelBtn = timesheetModal.querySelector('.btn-cancel');
+            const timesheetModalConfirmBtn = timesheetModal.querySelector('.btn-confirm');
+            const actionConfirmModal = document.getElementById('actionConfirmModal');
+            const actionConfirmModalTitle = document.getElementById('actionConfirmModalTitle');
+            const actionConfirmDateInput = document.getElementById('actionConfirmDate');
+            const actionConfirmModalCloseBtn = actionConfirmModal.querySelector('.close-btn');
+            const actionConfirmModalEditBtn = actionConfirmModal.querySelector('.btn-edit-timesheet');
+            const actionConfirmModalDeleteBtn = actionConfirmModal.querySelector('.btn-delete-timesheet');
+            const actionConfirmModalCancelBtn = actionConfirmModal.querySelector('.btn-cancel');
+            const timesheetLogBody = document.getElementById('timesheetLogBody');
+            const noTimesheetDataMsg = document.getElementById('noTimesheetDataMsg');
+            const logFilterTypeSelect = document.getElementById('logFilterType');
+            const logDateRangePicker = document.getElementById('logDateRangePicker');
+            const logMonthPicker = document.getElementById('logMonthPicker');
+            const logStartDateInput = document.getElementById('logStartDate');
+            const logEndDateInput = document.getElementById('logEndDate');
+            const logMonthInput = document.getElementById('logMonth');
+            const applyLogFilterBtn = document.getElementById('applyLogFilterBtn');
+            const exportLogCsvBtn = document.getElementById('exportLogCsvBtn');
+            const exportDataTypeSelect = document.getElementById('exportDataType');
+            const exportDataBtn = document.getElementById('exportDataBtn');
+            const importFileInput = document.getElementById('importFile');
+            const importDataBtn = document.getElementById('importDataBtn');
+            const jsonExportFilterTypeSelect = document.getElementById('jsonExportFilterType');
+            const jsonExportDateRangePicker = document.getElementById('jsonExportDateRangePicker');
+            const jsonExportMonthPicker = document.getElementById('jsonExportMonthPicker');
+            const jsonExportStartDateInput = document.getElementById('jsonExportStartDate');
+            const jsonExportEndDateInput = document.getElementById('jsonExportEndDate');
+            const jsonExportMonthInput = document.getElementById('jsonExportMonth');
+
+            // --- State Variables ---
+            let currentDate = new Date();
+            let isEditMode = false; 
+            let scheduleData = {}; 
+            let timesheetEntries = {}; 
+            let firstDayIsMonday = false;
+
+            // --- Constants ---
+            const SHIFT_CYCLE = ["", "ca-ngay", "ca-dem", "nghi", "ngay-le"];
+            const SHIFT_DESCRIPTIONS = { // For tooltips, CSV export, etc.
+                "ca-ngay": "Ca Ngày", "ca-dem": "Ca Đêm",
+                "nghi": "Nghỉ", "ngay-le": "Ngày Lễ", "": "Không có ca"
+            };
+            const SHIFT_ICONS = { // For UI display
+                "ca-ngay": "☀️", "ca-dem": "🌙",
+                "nghi": "🏠", "ngay-le": "⭐", "": "" // Empty string for no shift icon
+            };
+            const DAY_HEADERS_SUN_FIRST = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+            const DAY_HEADERS_MON_FIRST = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+            const LOCAL_STORAGE_KEYS = {
+                schedule: 'myTimesheetSchedule_v4_mobileOpt', // Updated version
+                timesheet: 'myTimesheetEntries_v4_mobileOpt',
+                firstDay: 'myTimesheetFirstDayMonday_v4_mobileOpt'
+            };
+
+            // --- Utility Functions ---
+            function showToast(message, duration = 3000) {
+                let toast = document.querySelector('.toast-notification');
+                if (toast) toast.remove(); 
+                toast = document.createElement('div');
+                toast.className = 'toast-notification';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+                toast.offsetHeight; 
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 500);
+                }, duration - 500);
+            }
+
+            function formatDateStr(dateStr) { 
+                const [year, month, day] = dateStr.split('-');
+                return `${day}/${month}/${year}`;
+            }
+
+            // --- Local Storage Functions ---
+            function loadAllData() {
+                try {
+                    const savedSchedule = localStorage.getItem(LOCAL_STORAGE_KEYS.schedule);
+                    if (savedSchedule) scheduleData = JSON.parse(savedSchedule);
+                    const savedEntries = localStorage.getItem(LOCAL_STORAGE_KEYS.timesheet);
+                    if (savedEntries) timesheetEntries = JSON.parse(savedEntries);
+                    const savedFirstDay = localStorage.getItem(LOCAL_STORAGE_KEYS.firstDay);
+                    firstDayIsMonday = savedFirstDay === 'true';
+                    firstDaySwitch.checked = firstDayIsMonday;
+                } catch (e) {
+                    console.error("Lỗi tải dữ liệu từ localStorage:", e);
+                    scheduleData = {}; timesheetEntries = {}; firstDayIsMonday = false;
+                    showToast("Lỗi: Không thể tải dữ liệu đã lưu.", 5000);
+                }
+            }
+
+            function persistAllData() {
+                try {
+                    localStorage.setItem(LOCAL_STORAGE_KEYS.schedule, JSON.stringify(scheduleData));
+                    localStorage.setItem(LOCAL_STORAGE_KEYS.timesheet, JSON.stringify(timesheetEntries));
+                    localStorage.setItem(LOCAL_STORAGE_KEYS.firstDay, firstDayIsMonday);
+                } catch (e) {
+                    console.error("Lỗi lưu dữ liệu vào localStorage:", e);
+                    showToast("Lỗi: Không thể lưu dữ liệu!", 5000);
+                }
+            }
+            
+            // --- Tab Navigation ---
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    button.classList.add('active');
+                    const tabId = button.dataset.tab;
+                    document.getElementById(tabId).classList.add('active');
+                    if (tabId === 'tabSoChamCong') renderTimesheetLog(); 
+                });
+            });
+
+            // --- Calendar Rendering (Tab LichLamViec) ---
+            function updateCalendarTableHeaders() {
+                calendarHeaderRowElement.innerHTML = '';
+                const headers = firstDayIsMonday ? DAY_HEADERS_MON_FIRST : DAY_HEADERS_SUN_FIRST;
+                headers.forEach(headerText => {
+                    const th = document.createElement('th');
+                    th.textContent = headerText;
+                    calendarHeaderRowElement.appendChild(th);
+                });
+            }
+
+            function renderCalendar() {
+                if (!calendarDaysElement) return; 
+                updateCalendarTableHeaders();
+                calendarDaysElement.innerHTML = '';
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const todayObj = new Date(); 
+                currentMonthYearElement.textContent = `Tháng ${month + 1} Năm ${year}`;
+                const firstDayOfMonth = new Date(year, month, 1);
+                const lastDayOfMonth = new Date(year, month + 1, 0);
+                const daysInMonth = lastDayOfMonth.getDate();
+                let dayOfWeekOfFirst = firstDayOfMonth.getDay(); 
+                let startDayOffset = firstDayIsMonday ? (dayOfWeekOfFirst === 0 ? 6 : dayOfWeekOfFirst - 1) : dayOfWeekOfFirst;
+                let dateCounter = 1;
+                const numRows = Math.ceil((daysInMonth + startDayOffset) / 7);
+
+                for (let i = 0; i < numRows; i++) {
+                    const row = document.createElement('tr');
+                    for (let j = 0; j < 7; j++) {
+                        const cell = document.createElement('td');
+                        const cellContent = document.createElement('div');
+                        cellContent.classList.add('day-cell-content');
+                        const indicatorContainer = document.createElement('div');
+                        indicatorContainer.classList.add('timesheet-indicator-container');
+                        const indicatorDot = document.createElement('div');
+                        indicatorDot.classList.add('timesheet-indicator');
+                        indicatorContainer.appendChild(indicatorDot);
+                        cellContent.appendChild(indicatorContainer);
+
+                        if (i === 0 && j < startDayOffset) {
+                            cell.classList.add('disabled-day');
+                        } else if (dateCounter > daysInMonth) {
+                            cell.classList.add('disabled-day');
+                        } else {
+                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dateCounter).padStart(2, '0')}`;
+                            cell.dataset.date = dateStr;
+                            const dayNumberSpan = document.createElement('span');
+                            dayNumberSpan.classList.add('day-number');
+                            dayNumberSpan.textContent = dateCounter;
+                            cellContent.appendChild(dayNumberSpan); 
+                            if (dateCounter === todayObj.getDate() && month === todayObj.getMonth() && year === todayObj.getFullYear()) {
+                                cell.classList.add('today');
+                            }
+                            const shiftType = scheduleData[dateStr] || "";
+                            if (shiftType) cell.classList.add(shiftType);
+                            const shiftInfoSpan = document.createElement('span');
+                            shiftInfoSpan.classList.add('shift-info');
+                            shiftInfoSpan.textContent = SHIFT_ICONS[shiftType] || SHIFT_ICONS[""]; // Use icon
+                            if (!SHIFT_ICONS[shiftType] || SHIFT_ICONS[shiftType] === SHIFT_ICONS[""]) {
+                                shiftInfoSpan.classList.add('empty');
+                            }
+                            cellContent.appendChild(shiftInfoSpan);
+                            if (timesheetEntries[dateStr] && timesheetEntries[dateStr].isWorkday) {
+                                indicatorDot.classList.add('visible');
+                            }
+                            if (isEditMode) cell.classList.add('editable');
+                            else cell.classList.add('timesheet-entry-allowed');
+                            cell.addEventListener('click', handleDayClick);
+                            dateCounter++;
+                        }
+                        cell.appendChild(cellContent);
+                        row.appendChild(cell);
+                    }
+                    calendarDaysElement.appendChild(row);
+                }
+            }
+
+            // --- Calendar Event Handlers ---
+            function handleDayClick(event) {
+                let targetCell = event.target.closest('td');
+                if (!targetCell || !targetCell.dataset.date || targetCell.classList.contains('disabled-day')) return;
+                const dateStr = targetCell.dataset.date;
+                if (isEditMode) { 
+                    const currentShift = scheduleData[dateStr] || "";
+                    let currentIndex = SHIFT_CYCLE.indexOf(currentShift);
+                    currentIndex = (currentIndex + 1) % SHIFT_CYCLE.length;
+                    const newShift = SHIFT_CYCLE[currentIndex];
+                    if (newShift === "") delete scheduleData[dateStr];
+                    else scheduleData[dateStr] = newShift;
+                    SHIFT_CYCLE.forEach(sc => { if(sc) targetCell.classList.remove(sc); });
+                    if (newShift) targetCell.classList.add(newShift);
+                    const shiftInfoSpan = targetCell.querySelector('.shift-info');
+                    if (shiftInfoSpan) {
+                        shiftInfoSpan.textContent = SHIFT_ICONS[newShift] || SHIFT_ICONS[""];
+                        (!SHIFT_ICONS[newShift] || SHIFT_ICONS[newShift] === SHIFT_ICONS[""]) ? shiftInfoSpan.classList.add('empty') : shiftInfoSpan.classList.remove('empty');
+                    }
+                } else { 
+                    if (timesheetEntries[dateStr] && timesheetEntries[dateStr].isWorkday) openActionConfirmModal(dateStr); 
+                    else openTimesheetModal(dateStr); 
+                }
+            }
+
+            // --- Timesheet Modal Functions ---
+            function openTimesheetModal(dateStr) {
+                modalTitleElement.textContent = `Chấm công ngày ${formatDateStr(dateStr)}`;
+                timesheetDateInput.value = dateStr;
+                const entry = timesheetEntries[dateStr];
+                if (entry && entry.isWorkday) {
+                    overtimeHoursInput.value = entry.overtimeHours || '';
+                    overtimeMinutesInput.value = entry.overtimeMinutes || '';
+                    notesInput.value = entry.notes || '';
+                } else {
+                    document.getElementById('timesheetForm').reset(); 
+                }
+                timesheetModal.style.display = 'flex';
+            }
+            function closeTimesheetModal() {
+                timesheetModal.style.display = 'none';
+                document.getElementById('timesheetForm').reset();
+            }
+            timesheetModalConfirmBtn.addEventListener('click', () => {
+                const dateStr = timesheetDateInput.value;
+                const hours = parseInt(overtimeHoursInput.value) || 0;
+                const minutes = parseInt(overtimeMinutesInput.value) || 0;
+                const notes = notesInput.value.trim();
+                timesheetEntries[dateStr] = { overtimeHours: hours, overtimeMinutes: minutes, notes: notes, isWorkday: true };
+                persistAllData();
+                showToast(`Đã chấm công ngày ${formatDateStr(dateStr)}!`);
+                closeTimesheetModal();
+                renderCalendar(); 
+                if (document.getElementById('tabSoChamCong').classList.contains('active')) renderTimesheetLog(); 
+            });
+            timesheetModalCloseBtn.addEventListener('click', closeTimesheetModal);
+            timesheetModalCancelBtn.addEventListener('click', closeTimesheetModal);
+            
+            // --- Action Confirm Modal Functions ---
+            function openActionConfirmModal(dateStr) {
+                actionConfirmModalTitle.textContent = `Hành động cho ngày ${formatDateStr(dateStr)}`;
+                actionConfirmDateInput.value = dateStr;
+                actionConfirmModal.style.display = 'flex';
+            }
+            function closeActionConfirmModal() { actionConfirmModal.style.display = 'none'; }
+            actionConfirmModalEditBtn.addEventListener('click', () => {
+                const dateStr = actionConfirmDateInput.value;
+                closeActionConfirmModal();
+                openTimesheetModal(dateStr); 
+            });
+            actionConfirmModalDeleteBtn.addEventListener('click', () => {
+                const dateStr = actionConfirmDateInput.value;
+                if (timesheetEntries[dateStr]) {
+                    delete timesheetEntries[dateStr];
+                    persistAllData();
+                    showToast(`Đã xoá chấm công ngày ${formatDateStr(dateStr)}.`);
+                    renderCalendar();
+                    if (document.getElementById('tabSoChamCong').classList.contains('active')) renderTimesheetLog();
+                }
+                closeActionConfirmModal();
+            });
+            actionConfirmModalCloseBtn.addEventListener('click', closeActionConfirmModal);
+            actionConfirmModalCancelBtn.addEventListener('click', closeActionConfirmModal);
+            window.addEventListener('click', (event) => { 
+                if (event.target == timesheetModal) closeTimesheetModal();
+                if (event.target == actionConfirmModal) closeActionConfirmModal();
+            });
+
+            // --- Calendar Control Buttons ---
+            prevMonthBtn.addEventListener('click', () => { currentDate.setDate(1); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
+            nextMonthBtn.addEventListener('click', () => { currentDate.setDate(1); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
+            editScheduleBtn.addEventListener('click', () => {
+                isEditMode = !isEditMode; 
+                saveScheduleBtn.style.display = isEditMode ? 'inline-block' : 'none';
+                editScheduleBtn.textContent = isEditMode ? 'Hoàn Tất Sửa' : 'Sửa Lịch';
+                editScheduleBtn.classList.toggle('active', isEditMode);
+                showToast(isEditMode ? "Chế độ sửa lịch BẬT." : "Chế độ sửa lịch TẮT. Chế độ chấm công BẬT.");
+                renderCalendar(); 
+            });
+            saveScheduleBtn.addEventListener('click', () => { 
+                isEditMode = false; 
+                saveScheduleBtn.style.display = 'none';
+                editScheduleBtn.textContent = 'Sửa Lịch';
+                editScheduleBtn.classList.remove('active');
+                persistAllData(); 
+                showToast('Đã lưu lịch làm việc!');
+                renderCalendar(); 
+            });
+            firstDaySwitch.addEventListener('change', (event) => { firstDayIsMonday = event.target.checked; persistAllData(); renderCalendar(); });
+
+            // --- Timesheet Log Tab Functions ---
+            function getFilteredTimesheetEntries() {
+                const filterType = logFilterTypeSelect.value;
+                let filteredEntries = {};
+                if (filterType === 'all') return timesheetEntries;
+                Object.keys(timesheetEntries).forEach(dateStr => {
+                    if (!timesheetEntries[dateStr].isWorkday) return;
+                    const entryDate = new Date(dateStr + "T00:00:00");
+                    if (filterType === 'range') {
+                        const startDate = logStartDateInput.value ? new Date(logStartDateInput.value + "T00:00:00") : null;
+                        const endDate = logEndDateInput.value ? new Date(logEndDateInput.value + "T23:59:59") : null;
+                        if ((!startDate || entryDate >= startDate) && (!endDate || entryDate <= endDate)) filteredEntries[dateStr] = timesheetEntries[dateStr];
+                    } else if (filterType === 'month') {
+                        const selectedMonthYear = logMonthInput.value; 
+                        if (selectedMonthYear && dateStr.startsWith(selectedMonthYear)) filteredEntries[dateStr] = timesheetEntries[dateStr];
+                    }
+                });
+                return filteredEntries;
+            }
+            function renderTimesheetLog() {
+                if (!timesheetLogBody) return;
+                timesheetLogBody.innerHTML = '';
+                let hasData = false;
+                const filteredEntries = getFilteredTimesheetEntries();
+                const sortedDates = Object.keys(filteredEntries).sort((a, b) => new Date(a) - new Date(b));
+                sortedDates.forEach(dateStr => {
+                    const entry = filteredEntries[dateStr];
+                    hasData = true;
+                    const row = timesheetLogBody.insertRow();
+                    row.insertCell().textContent = formatDateStr(dateStr);
+                    const shiftType = scheduleData[dateStr] || "";
+                    const shiftDisplayCell = row.insertCell(); // Use icon for shift type
+                    shiftDisplayCell.textContent = SHIFT_ICONS[shiftType] || SHIFT_ICONS[""];
+                    shiftDisplayCell.classList.add('shift-icon-cell'); // For specific styling if needed
+                    
+                    const workHoursCell = row.insertCell();
+                    const totalOvertimeMinutes = (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
+                    if (totalOvertimeMinutes > 0) {
+                        workHoursCell.textContent = `${(totalOvertimeMinutes / 60).toFixed(1)} giờ TC`;
+                        workHoursCell.classList.add('overtime-hours');
+                    } else {
+                        workHoursCell.textContent = '✓'; 
+                        workHoursCell.classList.add('check-mark');
+                    }
+                    row.insertCell().textContent = entry.notes || '';
+                });
+                noTimesheetDataMsg.style.display = hasData ? 'none' : 'block';
+            }
+            logFilterTypeSelect.addEventListener('change', function() {
+                logDateRangePicker.style.display = this.value === 'range' ? 'flex' : 'none';
+                logMonthPicker.style.display = this.value === 'month' ? 'block' : 'none';
+                if (this.value === 'all') renderTimesheetLog();
+            });
+            applyLogFilterBtn.addEventListener('click', renderTimesheetLog);
+            exportLogCsvBtn.addEventListener('click', () => {
+                const filteredEntries = getFilteredTimesheetEntries();
+                const sortedDates = Object.keys(filteredEntries).sort((a, b) => new Date(a) - new Date(b));
+                if (sortedDates.length === 0) {
+                    showToast("Không có dữ liệu chấm công để xuất theo bộ lọc hiện tại.");
+                    return;
+                }
+                let csvContent = "Ngày Làm Việc,Phân Loại Ca,Giờ Làm Việc,Ghi Chú\n";
+                sortedDates.forEach(dateStr => {
+                    const entry = filteredEntries[dateStr];
+                    const shiftType = scheduleData[dateStr] || "";
+                    const shiftDescription = SHIFT_DESCRIPTIONS[shiftType] || SHIFT_DESCRIPTIONS[""]; // Use full description for CSV
+                    const totalOvertimeMinutes = (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
+                    let workHoursDisplay = "Giờ cơ bản";
+                    if (totalOvertimeMinutes > 0) workHoursDisplay = `${(totalOvertimeMinutes / 60).toFixed(1)} giờ TC`;
+                    const notes = entry.notes ? `"${entry.notes.replace(/"/g, '""')}"` : "";
+                    csvContent += `${formatDateStr(dateStr)},"${shiftDescription}",${workHoursDisplay},${notes}\n`;
+                });
+                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `so_cham_cong_${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                showToast("Đã xuất sổ chấm công ra CSV!");
+            });
+
+            // --- Settings Tab Functions ---
+            function getFilteredDataForJsonExport() {
+                const filterType = jsonExportFilterTypeSelect.value;
+                let exportScheduleData = scheduleData;
+                let exportTimesheetEntries = timesheetEntries;
+                if (filterType !== 'all') {
+                    exportScheduleData = {}; exportTimesheetEntries = {};
+                    const dataToFilter = filterType === 'range' 
+                        ? { startDate: jsonExportStartDateInput.value, endDate: jsonExportEndDateInput.value }
+                        : { monthYear: jsonExportMonthInput.value };
+                    Object.keys(scheduleData).forEach(dateStr => {
+                        const entryDate = new Date(dateStr + "T00:00:00"); let include = false;
+                        if (filterType === 'range') {
+                            const startDate = dataToFilter.startDate ? new Date(dataToFilter.startDate + "T00:00:00") : null;
+                            const endDate = dataToFilter.endDate ? new Date(dataToFilter.endDate + "T23:59:59") : null;
+                            if ((!startDate || entryDate >= startDate) && (!endDate || entryDate <= endDate)) include = true;
+                        } else if (filterType === 'month') {
+                            if (dataToFilter.monthYear && dateStr.startsWith(dataToFilter.monthYear)) include = true;
+                        }
+                        if (include) {
+                            exportScheduleData[dateStr] = scheduleData[dateStr];
+                            if(timesheetEntries[dateStr]) exportTimesheetEntries[dateStr] = timesheetEntries[dateStr];
+                        }
+                    });
+                    if (exportDataTypeSelect.value === 'all' || exportDataTypeSelect.value === 'timesheet') {
+                         Object.keys(timesheetEntries).forEach(dateStr => {
+                            if (exportTimesheetEntries[dateStr]) return; 
+                            const entryDate = new Date(dateStr + "T00:00:00"); let include = false;
+                            if (filterType === 'range') {
+                                const startDate = dataToFilter.startDate ? new Date(dataToFilter.startDate + "T00:00:00") : null;
+                                const endDate = dataToFilter.endDate ? new Date(dataToFilter.endDate + "T23:59:59") : null;
+                                if ((!startDate || entryDate >= startDate) && (!endDate || entryDate <= endDate)) include = true;
+                            } else if (filterType === 'month') {
+                                if (dataToFilter.monthYear && dateStr.startsWith(dataToFilter.monthYear)) include = true;
+                            }
+                            if (include) exportTimesheetEntries[dateStr] = timesheetEntries[dateStr];
+                        });
+                    }
+                }
+                return { scheduleData: exportScheduleData, timesheetEntries: exportTimesheetEntries };
+            }
+            jsonExportFilterTypeSelect.addEventListener('change', function() {
+                jsonExportDateRangePicker.style.display = this.value === 'range' ? 'flex' : 'none';
+                jsonExportMonthPicker.style.display = this.value === 'month' ? 'block' : 'none';
+            });
+            exportDataBtn.addEventListener('click', () => {
+                const selectedDataType = exportDataTypeSelect.value;
+                const { scheduleData: filteredSchedule, timesheetEntries: filteredTimesheet } = getFilteredDataForJsonExport();
+                let dataToExport = {}; const timestamp = new Date().toISOString().slice(0, 10); 
+                if (selectedDataType === 'all' || selectedDataType === 'schedule') dataToExport.scheduleData = filteredSchedule;
+                if (selectedDataType === 'all' || selectedDataType === 'timesheet') dataToExport.timesheetEntries = filteredTimesheet;
+                if (selectedDataType === 'all') dataToExport.settings = { firstDayIsMonday: firstDayIsMonday };
+                if (Object.keys(dataToExport).length === 0 || 
+                    (selectedDataType === 'schedule' && Object.keys(dataToExport.scheduleData || {}).length === 0) ||
+                    (selectedDataType === 'timesheet' && Object.keys(dataToExport.timesheetEntries || {}).length === 0) ) {
+                     if (selectedDataType !== 'all' || (Object.keys(dataToExport.settings || {}).length === 0 && Object.keys(dataToExport.scheduleData || {}).length === 0 && Object.keys(dataToExport.timesheetEntries || {}).length === 0)) {
+                        showToast("Không có dữ liệu để xuất cho lựa chọn và bộ lọc này."); return;
+                     }
+                }
+                const jsonData = JSON.stringify(dataToExport, null, 2);
+                const blob = new Blob([jsonData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `cham_cong_data_${selectedDataType}_${jsonExportFilterTypeSelect.value}_${timestamp}.json`;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+                showToast("Đã xuất dữ liệu JSON thành công!");
+            });
+            importDataBtn.addEventListener('click', () => {
+                if (!importFileInput.files || importFileInput.files.length === 0) { showToast("Vui lòng chọn một file để nhập."); return; }
+                const file = importFileInput.files[0]; const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const importedData = JSON.parse(event.target.result); let dataImported = false;
+                        if (importedData.scheduleData && typeof importedData.scheduleData === 'object') { scheduleData = { ...scheduleData, ...importedData.scheduleData }; dataImported = true; }
+                        if (importedData.timesheetEntries && typeof importedData.timesheetEntries === 'object') { timesheetEntries = { ...timesheetEntries, ...importedData.timesheetEntries }; dataImported = true; }
+                        if (importedData.settings && typeof importedData.settings.firstDayIsMonday === 'boolean') { firstDayIsMonday = importedData.settings.firstDayIsMonday; firstDaySwitch.checked = firstDayIsMonday; dataImported = true; }
+                        if(dataImported) {
+                            persistAllData(); renderCalendar(); renderTimesheetLog(); 
+                            showToast("Đã nhập và hợp nhất dữ liệu thành công!");
+                        } else { showToast("File không chứa dữ liệu hợp lệ hoặc không có mục nào được nhập."); }
+                        importFileInput.value = ''; 
+                    } catch (e) {
+                        console.error("Lỗi khi phân tích file JSON:", e);
+                        showToast("Lỗi: File không hợp lệ hoặc không phải định dạng JSON.", 5000);
+                        importFileInput.value = '';
+                    }
+                };
+                reader.onerror = function() { showToast("Lỗi khi đọc file.", 5000); importFileInput.value = ''; };
+                reader.readAsText(file);
+            });
+
+            // --- Initialization ---
+            loadAllData(); 
+            renderCalendar(); 
+            logFilterTypeSelect.dispatchEvent(new Event('change')); 
+            jsonExportFilterTypeSelect.dispatchEvent(new Event('change')); 
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình tạo Danh sách Xếp hạng Văn bản</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Cấu hình Firebase ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "YOUR_PROJECT_ID.firebaseapp.com", projectId: "YOUR_PROJECT_ID" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-tier-maker-text-app'; // Changed app ID slightly
+
+        let app;
+        let auth;
+        let db;
+        let userId;
+        let tierListDocRef;
+
+        let tierRowsData = [];
+        let unrankedItemsData = [];
+        let currentlyDraggedItemId = null;
+        let currentlyDraggedItemSource = null; // 'unranked' or tier_id
+
+        const DEFAULT_TIERS = [
+          { id: `tier-s-${crypto.randomUUID()}`, name: 'S', color: 'bg-red-500', items: [] },
+          { id: `tier-a-${crypto.randomUUID()}`, name: 'A', color: 'bg-orange-500', items: [] },
+          { id: `tier-b-${crypto.randomUUID()}`, name: 'B', color: 'bg-yellow-500', items: [] },
+          { id: `tier-c-${crypto.randomUUID()}`, name: 'C', color: 'bg-green-500', items: [] },
+          { id: `tier-d-${crypto.randomUUID()}`, name: 'D', color: 'bg-sky-500', items: [] },
+          { id: `tier-f-${crypto.randomUUID()}`, name: 'F', color: 'bg-gray-500', items: [] }
+        ];
+
+        // --- Khởi tạo Firebase ---
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                setLogLevel('debug');
+                console.log("Firebase App initialized.");
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("User is signed in with UID:", userId);
+                        document.getElementById('userIdDisplay').textContent = `UserID: ${userId}`;
+                        tierListDocRef = doc(db, "artifacts", appId, "users", userId, "tierMakerTextData", "defaultTierList"); // Changed collection
+                        loadDataFromFirestore();
+                    } else {
+                        console.log("User is not signed in. Signing in anonymously...");
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            try {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                                console.log("Signed in with custom token.");
+                            } catch (error) {
+                                console.error("Error signing in with custom token, falling back to anonymous:", error);
+                                await signInAnonymously(auth);
+                            }
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                showModal("Lỗi", "Không thể khởi tạo Firebase. Vui lòng làm mới trang hoặc kiểm tra cấu hình.");
+            }
+        }
+
+        // --- Quản lý Dữ liệu Firestore ---
+        async function loadDataFromFirestore() {
+            if (!tierListDocRef) return;
+            showLoading(true, "Đang tải dữ liệu...");
+            try {
+                onSnapshot(tierListDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        tierRowsData = data.tierRows || JSON.parse(JSON.stringify(DEFAULT_TIERS));
+                        unrankedItemsData = data.unrankedItemsPool || [];
+                        console.log("Data loaded from Firestore:", tierRowsData, unrankedItemsData);
+                    } else {
+                        console.log("No data in Firestore, initializing with default tiers.");
+                        tierRowsData = JSON.parse(JSON.stringify(DEFAULT_TIERS));
+                        unrankedItemsData = [];
+                        saveDataToFirestore();
+                    }
+                    renderApp();
+                    showLoading(false);
+                }, (error) => {
+                    console.error("Error listening to Firestore document:", error);
+                    showModal("Lỗi", "Không thể tải dữ liệu từ Firestore. Vui lòng thử lại.");
+                    tierRowsData = JSON.parse(JSON.stringify(DEFAULT_TIERS));
+                    unrankedItemsData = [];
+                    renderApp();
+                    showLoading(false);
+                });
+
+            } catch (error) {
+                console.error("Error loading data from Firestore:", error);
+                showModal("Lỗi", "Không thể tải dữ liệu từ Firestore. Sử dụng dữ liệu mặc định.");
+                tierRowsData = JSON.parse(JSON.stringify(DEFAULT_TIERS));
+                unrankedItemsData = [];
+                renderApp();
+                showLoading(false);
+            }
+        }
+
+        async function saveDataToFirestore() {
+            if (!tierListDocRef || !auth.currentUser) {
+                console.log("Firestore not ready or user not authenticated, skipping save.");
+                return;
+            }
+            // Không hiển thị loading khi chỉ lưu tự động nhỏ
+            // showLoading(true, "Đang lưu...");
+            try {
+                await setDoc(tierListDocRef, {
+                    tierRows: tierRowsData,
+                    unrankedItemsPool: unrankedItemsData,
+                    lastUpdated: serverTimestamp()
+                });
+                console.log("Data saved to Firestore.");
+            } catch (error) {
+                console.error("Error saving data to Firestore:", error);
+                showModal("Lỗi Lưu", "Không thể lưu dữ liệu vào Firestore. Thay đổi của bạn có thể không được giữ lại.");
+            } finally {
+                // showLoading(false);
+            }
+        }
+
+        // --- Xử lý Thêm Mục Văn Bản ---
+        window.addItemFromInputs = function() {
+            const titleInput = document.getElementById('newItemTitle');
+            const contentInput = document.getElementById('newItemContent');
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+
+            if (!title) {
+                showModal("Thiếu thông tin", "Vui lòng nhập Tiêu đề cho mục.");
+                return;
+            }
+
+            const newItem = {
+                id: `item-${crypto.randomUUID()}`,
+                title: title,
+                content: content
+            };
+
+            unrankedItemsData.push(newItem);
+            renderApp();
+            saveDataToFirestore();
+
+            titleInput.value = '';
+            contentInput.value = '';
+            titleInput.focus();
+        }
+
+
+        // --- Kéo và Thả ---
+        function handleDragStart(event, itemId, sourceTierId = null) {
+            currentlyDraggedItemId = itemId;
+            currentlyDraggedItemSource = sourceTierId ? sourceTierId : 'unranked';
+            event.dataTransfer.setData('text/plain', itemId);
+            event.dataTransfer.effectAllowed = 'move';
+            event.target.classList.add('opacity-50');
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+        }
+
+        function handleDrop(event, targetTierId = null) {
+            event.preventDefault();
+            const draggedItemId = event.dataTransfer.getData('text/plain');
+            if (!draggedItemId || draggedItemId !== currentlyDraggedItemId) return;
+
+            const targetIsUnranked = targetTierId === 'unranked-drop-zone';
+
+            let itemToMove;
+            if (currentlyDraggedItemSource === 'unranked') {
+                const itemIndex = unrankedItemsData.findIndex(item => item.id === draggedItemId);
+                if (itemIndex > -1) {
+                    itemToMove = unrankedItemsData.splice(itemIndex, 1)[0];
+                }
+            } else {
+                const sourceTier = tierRowsData.find(tier => tier.id === currentlyDraggedItemSource);
+                if (sourceTier) {
+                    const itemIndex = sourceTier.items.findIndex(item => item.id === draggedItemId);
+                    if (itemIndex > -1) {
+                        itemToMove = sourceTier.items.splice(itemIndex, 1)[0];
+                    }
+                }
+            }
+
+            if (itemToMove) {
+                if (targetIsUnranked) {
+                    unrankedItemsData.push(itemToMove);
+                } else {
+                    const targetTier = tierRowsData.find(tier => tier.id === targetTierId);
+                    if (targetTier) {
+                        targetTier.items.push(itemToMove);
+                    } else {
+                        unrankedItemsData.push(itemToMove);
+                        console.warn("Target tier not found, item moved to unranked.");
+                    }
+                }
+                renderApp();
+                saveDataToFirestore();
+            }
+            
+            const draggedElement = document.getElementById(draggedItemId);
+            if (draggedElement) draggedElement.classList.remove('opacity-50');
+            currentlyDraggedItemId = null;
+            currentlyDraggedItemSource = null;
+        }
+
+        function handleDragEnd(event) {
+           if(event.target.id && document.getElementById(event.target.id)){
+             event.target.classList.remove('opacity-50');
+           }
+            currentlyDraggedItemId = null;
+            currentlyDraggedItemSource = null;
+        }
+
+        // --- Hiển thị Giao diện ---
+        function renderApp() {
+            renderUnrankedItems();
+            renderTiers();
+        }
+
+        function createItemDOM(item, sourceTierId = null) {
+            const itemDiv = document.createElement('div');
+            itemDiv.id = item.id;
+            // Adjusted class for potentially more text content
+            itemDiv.className = 'item p-3 bg-gray-700 rounded-lg shadow-md flex flex-col cursor-grab w-full sm:w-40 md:w-48 m-1 transition-opacity min-h-[100px]';
+            itemDiv.draggable = true;
+            itemDiv.addEventListener('dragstart', (e) => handleDragStart(e, item.id, sourceTierId));
+            itemDiv.addEventListener('dragend', handleDragEnd);
+
+            const titleEl = document.createElement('h4');
+            titleEl.className = 'text-md font-semibold text-sky-300 mb-1 break-words';
+            titleEl.textContent = item.title;
+
+            const contentEl = document.createElement('p');
+            contentEl.className = 'text-xs text-gray-300 break-words flex-grow overflow-y-auto max-h-20'; // Max height and scroll for long content
+            contentEl.textContent = item.content;
+            
+            const controlsDiv = document.createElement('div');
+            controlsDiv.className = 'mt-auto pt-2 flex justify-between items-center text-xs';
+
+            const editBtn = document.createElement('button');
+            editBtn.innerHTML = '&#x270E;'; // Pencil icon
+            editBtn.className = 'p-1 hover:text-yellow-400';
+            editBtn.title = "Sửa mục";
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                promptEditItem(item.id, sourceTierId);
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '&#x1F5D1;'; // Trash icon
+            deleteBtn.className = 'p-1 hover:text-red-400';
+            deleteBtn.title = "Xóa mục";
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                confirmDeleteItem(item.id, sourceTierId);
+            });
+            
+            controlsDiv.appendChild(editBtn);
+            controlsDiv.appendChild(deleteBtn);
+
+            itemDiv.appendChild(titleEl);
+            itemDiv.appendChild(contentEl);
+            itemDiv.appendChild(controlsDiv);
+            return itemDiv;
+        }
+
+        function renderUnrankedItems() {
+            const pool = document.getElementById('unrankedItemsPool');
+            pool.innerHTML = '';
+            if (unrankedItemsData.length === 0) {
+                pool.innerHTML = '<p class="text-gray-400 text-center w-full">Kéo các mục vào đây hoặc thêm mục mới.</p>';
+            } else {
+                unrankedItemsData.forEach(item => {
+                    pool.appendChild(createItemDOM(item, null));
+                });
+            }
+        }
+
+        function renderTiers() {
+            const tiersContainer = document.getElementById('tiersContainer');
+            tiersContainer.innerHTML = '';
+
+            tierRowsData.forEach(tier => {
+                const tierRowDiv = document.createElement('div');
+                tierRowDiv.id = `tier-row-${tier.id}`;
+                tierRowDiv.className = `tier-row flex flex-col sm:flex-row items-stretch mb-2 rounded-lg shadow-lg ${tier.color} transition-all duration-300 ease-in-out`;
+                tierRowDiv.addEventListener('dragover', handleDragOver);
+                tierRowDiv.addEventListener('drop', (e) => handleDrop(e, tier.id));
+
+                const tierLabelDiv = document.createElement('div');
+                tierLabelDiv.className = 'tier-label p-3 sm:w-20 md:w-24 flex-shrink-0 flex items-center justify-center text-white font-bold text-xl sm:text-2xl cursor-pointer relative group';
+                tierLabelDiv.textContent = tier.name;
+                tierLabelDiv.title = "Nhấn để sửa hạng mục";
+                tierLabelDiv.addEventListener('click', () => promptEditTier(tier.id));
+                
+                const tierActionsDiv = document.createElement('div');
+                tierActionsDiv.className = "absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col sm:flex-row text-xs";
+
+                const deleteTierBtn = document.createElement('button');
+                deleteTierBtn.innerHTML = '&#x1F5D1;';
+                deleteTierBtn.className = "p-1 text-white hover:text-red-300";
+                deleteTierBtn.title = "Xóa hạng mục này";
+                deleteTierBtn.onclick = (e) => { e.stopPropagation(); confirmDeleteTier(tier.id);};
+                
+                tierActionsDiv.appendChild(deleteTierBtn);
+                tierLabelDiv.appendChild(tierActionsDiv);
+
+                const tierItemsContainer = document.createElement('div');
+                tierItemsContainer.id = `items-${tier.id}`;
+                tierItemsContainer.className = 'tier-items-container flex-grow bg-black bg-opacity-20 p-2 flex flex-wrap justify-start items-start min-h-[120px] rounded-b-lg sm:rounded-r-lg sm:rounded-bl-none';
+
+                tier.items.forEach(item => {
+                    tierItemsContainer.appendChild(createItemDOM(item, tier.id));
+                });
+
+                tierRowDiv.appendChild(tierLabelDiv);
+                tierRowDiv.appendChild(tierItemsContainer);
+                tiersContainer.appendChild(tierRowDiv);
+            });
+        }
+
+        // --- Chỉnh sửa Hạng mục và Item ---
+        function promptEditTier(tierId) {
+            const tier = tierRowsData.find(t => t.id === tierId);
+            if (!tier) return;
+            document.getElementById('modalTierId').value = tierId;
+            document.getElementById('modalTierName').value = tier.name;
+            document.getElementById('modalTierColor').value = tier.color;
+            showModal('editTierModal');
+        }
+        
+        window.saveTierEdit = function() {
+            const tierId = document.getElementById('modalTierId').value;
+            const newName = document.getElementById('modalTierName').value.trim();
+            const newColor = document.getElementById('modalTierColor').value;
+            const tier = tierRowsData.find(t => t.id === tierId);
+            if (tier && newName) {
+                tier.name = newName;
+                tier.color = newColor;
+                renderApp();
+                saveDataToFirestore();
+            }
+            hideModal('editTierModal');
+        }
+
+        window.addTier = function() {
+            const newTierName = document.getElementById('newTierNameInput').value.trim() || "Hạng Mới";
+            const newTierColor = document.getElementById('newTierColorInput').value || 'bg-purple-500';
+            const newTier = {
+                id: `tier-${crypto.randomUUID()}`,
+                name: newTierName,
+                color: newTierColor,
+                items: []
+            };
+            tierRowsData.push(newTier);
+            renderApp();
+            saveDataToFirestore();
+            document.getElementById('newTierNameInput').value = '';
+        }
+
+        function confirmDeleteTier(tierId) {
+            const tier = tierRowsData.find(t => t.id === tierId);
+            if (!tier) return;
+            showConfirmationModal(
+                `Bạn có chắc muốn xóa hạng mục "${tier.name}"? Tất cả các mục trong đó sẽ được chuyển về khu vực chưa xếp hạng.`,
+                () => {
+                    if (tier.items.length > 0) {
+                        unrankedItemsData.push(...tier.items);
+                    }
+                    tierRowsData = tierRowsData.filter(t => t.id !== tierId);
+                    renderApp();
+                    saveDataToFirestore();
+                }
+            );
+        }
+
+        function promptEditItem(itemId, sourceTierId) { // Renamed from promptEditItemLabel
+            let item;
+            if (sourceTierId) {
+                const sourceTier = tierRowsData.find(t => t.id === sourceTierId);
+                item = sourceTier ? sourceTier.items.find(i => i.id === itemId) : null;
+            } else {
+                item = unrankedItemsData.find(i => i.id === itemId);
+            }
+            if (!item) return;
+
+            document.getElementById('modalItemId').value = itemId;
+            document.getElementById('modalItemSourceTierId').value = sourceTierId || '';
+            document.getElementById('modalItemTitle').value = item.title; // Changed from modalItemLabel
+            document.getElementById('modalItemContent').value = item.content; // New field for content
+            showModal('editItemModal'); // Changed from editItemLabelModal
+        }
+
+        window.saveItemEdit = function() { // Renamed from saveItemLabelEdit
+            const itemId = document.getElementById('modalItemId').value;
+            const sourceTierId = document.getElementById('modalItemSourceTierId').value;
+            const newTitle = document.getElementById('modalItemTitle').value.trim(); // Changed from modalItemLabel
+            const newContent = document.getElementById('modalItemContent').value.trim(); // New field for content
+
+            if (!newTitle) {
+                showModal("Thiếu thông tin", "Tiêu đề không được để trống.");
+                // Không đóng modal, để người dùng sửa lại
+                document.getElementById('modalItemTitle').focus();
+                return;
+            }
+            
+            let item;
+            if (sourceTierId) {
+                const sourceTier = tierRowsData.find(t => t.id === sourceTierId);
+                item = sourceTier ? sourceTier.items.find(i => i.id === itemId) : null;
+            } else {
+                item = unrankedItemsData.find(i => i.id === itemId);
+            }
+
+            if (item) {
+                item.title = newTitle;
+                item.content = newContent;
+                renderApp();
+                saveDataToFirestore();
+            }
+            hideModal('editItemModal'); // Changed from editItemLabelModal
+        }
+        
+        function confirmDeleteItem(itemId, sourceTierId) {
+             let itemTitle = "Mục này";
+             let item;
+             if (sourceTierId) {
+                const sourceTier = tierRowsData.find(t => t.id === sourceTierId);
+                item = sourceTier ? sourceTier.items.find(i => i.id === itemId) : null;
+            } else {
+                item = unrankedItemsData.find(i => i.id === itemId);
+            }
+            if(item && item.title) itemTitle = `"${item.title}"`;
+
+            showConfirmationModal(
+                `Bạn có chắc muốn xóa mục ${itemTitle}?`,
+                () => {
+                    if (sourceTierId) {
+                        const sourceTier = tierRowsData.find(t => t.id === sourceTierId);
+                        if (sourceTier) {
+                            sourceTier.items = sourceTier.items.filter(i => i.id !== itemId);
+                        }
+                    } else {
+                        unrankedItemsData = unrankedItemsData.filter(i => i.id !== itemId);
+                    }
+                    renderApp();
+                    saveDataToFirestore();
+                }
+            );
+        }
+
+        window.resetAllData = function() {
+            showConfirmationModal(
+                "Bạn có chắc muốn đặt lại toàn bộ danh sách? Tất cả các mục và hạng mục sẽ bị xóa và đặt lại về mặc định.",
+                () => {
+                    tierRowsData = JSON.parse(JSON.stringify(DEFAULT_TIERS));
+                    unrankedItemsData = [];
+                    renderApp();
+                    saveDataToFirestore();
+                }
+            );
+        }
+
+        // --- Modal System ---
+        const modalOverlay = document.getElementById('modalOverlay');
+        const allModals = document.querySelectorAll('.custom-modal');
+        const confirmationModal = document.getElementById('confirmationModal');
+        const confirmationMessage = document.getElementById('confirmationMessage');
+        let currentConfirmCallback = null;
+
+        function showModal(modalIdOrMessage, title) {
+            const modalElement = document.getElementById(modalIdOrMessage);
+            if (modalElement) {
+                modalOverlay.classList.remove('hidden');
+                modalElement.classList.remove('hidden');
+                modalElement.setAttribute('data-state', 'open');
+            } else {
+                document.getElementById('simpleModalMessage').textContent = modalIdOrMessage;
+                document.getElementById('simpleModalTitle').textContent = title || "Thông báo";
+                modalOverlay.classList.remove('hidden');
+                const simpleModalElement = document.getElementById('simpleModal');
+                simpleModalElement.classList.remove('hidden');
+                simpleModalElement.setAttribute('data-state', 'open');
+            }
+        }
+
+        window.hideModal = function(modalId) {
+             if (modalId) {
+                const modalElement = document.getElementById(modalId);
+                if (modalElement) {
+                    modalElement.classList.add('hidden');
+                    modalElement.setAttribute('data-state', 'closed');
+                }
+            }
+            let isAnyModalOpen = false;
+            allModals.forEach(m => {
+                if (!m.classList.contains('hidden')) {
+                    isAnyModalOpen = true;
+                }
+            });
+            if (!isAnyModalOpen) {
+                modalOverlay.classList.add('hidden');
+            }
+        }
+        
+        modalOverlay.addEventListener('click', () => {
+            allModals.forEach(modal => {
+                modal.classList.add('hidden');
+                modal.setAttribute('data-state', 'closed');
+            });
+            modalOverlay.classList.add('hidden');
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                allModals.forEach(modal => {
+                     modal.classList.add('hidden');
+                     modal.setAttribute('data-state', 'closed');
+                });
+                modalOverlay.classList.add('hidden');
+            }
+        });
+        
+        allModals.forEach(modal => {
+            modal.addEventListener('click', (event) => event.stopPropagation());
+        });
+
+        function showConfirmationModal(message, onConfirm) {
+            confirmationMessage.textContent = message;
+            currentConfirmCallback = onConfirm;
+            modalOverlay.classList.remove('hidden');
+            confirmationModal.classList.remove('hidden');
+            confirmationModal.setAttribute('data-state', 'open');
+        }
+
+        document.getElementById('confirmYesBtn').addEventListener('click', () => {
+            if (currentConfirmCallback) {
+                currentConfirmCallback();
+            }
+            hideModal('confirmationModal');
+            currentConfirmCallback = null;
+        });
+
+        document.getElementById('confirmNoBtn').addEventListener('click', () => {
+            hideModal('confirmationModal');
+            currentConfirmCallback = null;
+        });
+        
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingMessage = document.getElementById('loadingMessage');
+
+        function showLoading(show, message = "Đang tải...") {
+            if (show) {
+                loadingMessage.textContent = message;
+                loadingOverlay.classList.remove('hidden');
+            } else {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFirebase();
+            document.getElementById('unrankedItemsPool').addEventListener('dragover', handleDragOver);
+            document.getElementById('unrankedItemsPool').addEventListener('drop', (e) => handleDrop(e, 'unranked-drop-zone'));
+            document.getElementById('addItemButton').addEventListener('click', addItemFromInputs);
+
+
+            const defaultTierColors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500', 'bg-sky-500', 'bg-purple-500', 'bg-pink-500', 'bg-gray-500', 'bg-indigo-500', 'bg-teal-500'];
+            const newTierColorInput = document.getElementById('newTierColorInput');
+            defaultTierColors.forEach(color => {
+                const option = document.createElement('option');
+                option.value = color;
+                option.textContent = color.replace('bg-', '').replace('-500', '');
+                option.className = `${color} text-white`;
+                newTierColorInput.appendChild(option);
+            });
+             const modalTierColorInput = document.getElementById('modalTierColor');
+             defaultTierColors.forEach(color => {
+                const option = document.createElement('option');
+                option.value = color;
+                option.textContent = color.replace('bg-', '').replace('-500', '');
+                option.className = `${color} text-white`;
+                modalTierColorInput.appendChild(option.cloneNode(true));
+            });
+        });
+
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .item { touch-action: manipulation; }
+        .tier-items-container, .item p { scrollbar-width: thin; scrollbar-color: #4B5563 #1F2937; }
+        .tier-items-container::-webkit-scrollbar, .item p::-webkit-scrollbar { width: 8px; }
+        .tier-items-container::-webkit-scrollbar-track, .item p::-webkit-scrollbar-track { background: #1F2937; border-radius: 10px; }
+        .tier-items-container::-webkit-scrollbar-thumb, .item p::-webkit-scrollbar-thumb { background-color: #4B5563; border-radius: 10px; border: 2px solid #1F2937; }
+         select option { color: black; }
+        select option[class*="bg-"] { color: white; }
+        .custom-modal {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        .custom-modal[data-state="open"] {
+            transform: scale(1);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-2 sm:p-4">
+    <div class="container mx-auto max-w-6xl">
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-sky-400">Trình Tạo Danh Sách Xếp Hạng (Văn Bản)</h1>
+            <p class="text-sm text-gray-400" id="userIdDisplay">Đang kết nối...</p>
+        </header>
+
+        <!-- Controls -->
+        <div class="mb-6 p-4 bg-gray-800 rounded-lg shadow-xl">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                <!-- Add New Item Section -->
+                <div class="space-y-3">
+                    <div>
+                        <label for="newItemTitle" class="block mb-1 text-sm font-medium text-sky-300">Tiêu đề Mục mới:</label>
+                        <input type="text" id="newItemTitle" placeholder="Nhập tiêu đề..." class="bg-gray-700 border border-gray-600 text-gray-100 text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5">
+                    </div>
+                    <div>
+                        <label for="newItemContent" class="block mb-1 text-sm font-medium text-sky-300">Nội dung Mục mới (tùy chọn):</label>
+                        <textarea id="newItemContent" rows="3" placeholder="Nhập nội dung chi tiết..." class="bg-gray-700 border border-gray-600 text-gray-100 text-sm rounded-lg focus:ring-sky-500 focus:border-sky-500 block w-full p-2.5"></textarea>
+                    </div>
+                    <button id="addItemButton" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-opacity-50">
+                        Thêm Mục Vào Danh Sách
+                    </button>
+                </div>
+
+                <!-- Add New Tier Section -->
+                <div class="space-y-3">
+                    <div>
+                        <label for="newTierNameInput" class="block mb-1 text-sm font-medium text-green-300">Tên Hạng mục mới:</label>
+                        <input type="text" id="newTierNameInput" placeholder="Tên hạng mục" class="bg-gray-700 border border-gray-600 text-gray-100 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5" />
+                    </div>
+                    <div>
+                        <label for="newTierColorInput" class="block mb-1 text-sm font-medium text-green-300">Màu Hạng mục:</label>
+                        <select id="newTierColorInput" class="bg-gray-700 border border-gray-600 text-gray-100 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block w-full p-2.5">
+                         <!-- Options được thêm bằng JS -->
+                        </select>
+                    </div>
+                    <button onclick="addTier()" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50">
+                        Thêm Hạng Mục Mới
+                    </button>
+                </div>
+            </div>
+             <button onclick="resetAllData()" class="mt-6 w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg shadow focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">
+                Đặt Lại Toàn Bộ
+            </button>
+        </div>
+
+        <!-- Unranked Items Pool -->
+        <div class="mb-8 p-4 bg-gray-800 rounded-lg shadow-xl min-h-[180px]"
+             id="unrankedItemsContainer"
+             ondragover="handleDragOver(event)"
+             ondrop="handleDrop(event, 'unranked-drop-zone')">
+            <h2 class="text-xl font-semibold mb-3 text-sky-300 border-b-2 border-sky-500 pb-2">Mục Chưa Xếp Hạng</h2>
+            <div id="unrankedItemsPool" class="flex flex-wrap gap-2 justify-center sm:justify-start min-h-[120px]">
+                <p class="text-gray-400 text-center w-full">Kéo các mục vào đây hoặc thêm mục mới.</p>
+            </div>
+        </div>
+
+        <!-- Tiers Container -->
+        <div id="tiersContainer" class="space-y-3">
+            <!-- Tiers sẽ được thêm bằng JS -->
+        </div>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="fixed inset-0 bg-black bg-opacity-75 hidden z-40 transition-opacity duration-300 ease-in-out"></div>
+
+    <!-- Edit Tier Modal -->
+    <div id="editTierModal" class="custom-modal fixed inset-0 m-auto w-11/12 sm:w-1/2 md:w-1/3 lg:w-1/4 h-fit p-6 bg-gray-800 rounded-lg shadow-2xl hidden z-50 flex flex-col" data-state="closed">
+        <h3 class="text-xl font-semibold mb-4 text-sky-300">Chỉnh Sửa Hạng Mục</h3>
+        <input type="hidden" id="modalTierId">
+        <label for="modalTierName" class="block mb-1 text-sm text-gray-300">Tên Hạng Mục:</label>
+        <input type="text" id="modalTierName" class="bg-gray-700 border border-gray-600 text-gray-100 rounded-lg p-2.5 mb-3 w-full focus:ring-sky-500 focus:border-sky-500">
+        <label for="modalTierColor" class="block mb-1 text-sm text-gray-300">Màu Hạng Mục:</label>
+        <select id="modalTierColor" class="bg-gray-700 border border-gray-600 text-gray-100 rounded-lg p-2.5 mb-4 w-full focus:ring-sky-500 focus:border-sky-500">
+            <!-- Options -->
+        </select>
+        <div class="flex justify-end space-x-3">
+            <button onclick="hideModal('editTierModal')" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-white">Hủy</button>
+            <button onclick="saveTierEdit()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 rounded-lg text-white">Lưu</button>
+        </div>
+    </div>
+
+    <!-- Edit Item Modal -->
+    <div id="editItemModal" class="custom-modal fixed inset-0 m-auto w-11/12 sm:w-1/2 md:w-1/3 h-fit p-6 bg-gray-800 rounded-lg shadow-2xl hidden z-50 flex flex-col" data-state="closed">
+        <h3 class="text-xl font-semibold mb-4 text-sky-300">Chỉnh Sửa Mục</h3>
+        <input type="hidden" id="modalItemId">
+        <input type="hidden" id="modalItemSourceTierId">
+        <label for="modalItemTitle" class="block mb-1 text-sm text-gray-300">Tiêu đề:</label>
+        <input type="text" id="modalItemTitle" class="bg-gray-700 border border-gray-600 text-gray-100 rounded-lg p-2.5 mb-3 w-full focus:ring-sky-500 focus:border-sky-500">
+        <label for="modalItemContent" class="block mb-1 text-sm text-gray-300">Nội dung:</label>
+        <textarea id="modalItemContent" rows="4" class="bg-gray-700 border border-gray-600 text-gray-100 rounded-lg p-2.5 mb-4 w-full focus:ring-sky-500 focus:border-sky-500"></textarea>
+        <div class="flex justify-end space-x-3">
+            <button onclick="hideModal('editItemModal')" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-white">Hủy</button>
+            <button onclick="saveItemEdit()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 rounded-lg text-white">Lưu</button>
+        </div>
+    </div>
+    
+    <div id="simpleModal" class="custom-modal fixed inset-0 m-auto w-11/12 sm:w-1/2 md:w-1/3 lg:w-1/4 h-fit p-6 bg-gray-800 rounded-lg shadow-2xl hidden z-50 flex flex-col" data-state="closed">
+        <h3 id="simpleModalTitle" class="text-xl font-semibold mb-4 text-sky-300">Thông báo</h3>
+        <p id="simpleModalMessage" class="text-gray-200 mb-4"></p>
+        <div class="flex justify-end">
+            <button onclick="hideModal('simpleModal')" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 rounded-lg text-white">Đã hiểu</button>
+        </div>
+    </div>
+
+    <div id="confirmationModal" class="custom-modal fixed inset-0 m-auto w-11/12 sm:w-1/2 md:w-1/3 lg:w-1/4 h-fit p-6 bg-gray-800 rounded-lg shadow-2xl hidden z-50 flex flex-col" data-state="closed">
+        <h3 class="text-xl font-semibold mb-4 text-yellow-400">Xác Nhận</h3>
+        <p id="confirmationMessage" class="text-gray-200 mb-6"></p>
+        <div class="flex justify-end space-x-3">
+            <button id="confirmNoBtn" class="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded-lg text-white">Không</button>
+            <button id="confirmYesBtn" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white">Có, Chắc Chắn</button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-gray-800 p-5 rounded-lg shadow-xl flex items-center space-x-3">
+            <svg class="animate-spin h-6 w-6 text-sky-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span id="loadingMessage" class="text-lg text-gray-200">Đang tải...</span>
+        </div>
+    </div>
+
+</body>
+</html>
