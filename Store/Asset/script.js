@@ -90,10 +90,10 @@ const products = [
     },
     {
         "id": 9,
-        "name": "Google One 5TB Cấp Sẵn",
+        "name": "Google One 2TB (Gemini PRO) Cấp Sẵn",
         "duration": "48 Tháng",
         "priceRoot": 9999999,
-        "priceNumeric": 100000,
+        "priceNumeric": 0,
         "warranty": "Sản phẩm không bảo hành.",
         "notes": "Tài khoản chính chủ",
         "category": "Tài khoản",
@@ -272,16 +272,38 @@ if (mobileNavLinks) {
 
 // Format price to VND (e.g., 560.000đ)
 function formatPrice(price) {
+    let finalNumericPrice;
+
+    // Bước 1: Chuyển đổi đầu vào về dạng số (nếu cần)
     if (typeof price !== 'number') {
         const priceStr = String(price).toLowerCase().replace(/\s/g, '');
+
         if (priceStr.endsWith('k')) {
-            price = parseFloat(priceStr) * 1000;
+            // Xử lý trường hợp có hậu tố 'k' (ví dụ: '20k' thành 20000)
+            finalNumericPrice = parseFloat(priceStr) * 1000;
         } else {
-            price = parseFloat(priceStr);
+            // Chuyển đổi chuỗi thành số thập phân
+            finalNumericPrice = parseFloat(priceStr);
         }
-        if (isNaN(price)) return 'N/A';
+    } else {
+        // Nếu đầu vào đã là số, sử dụng trực tiếp
+        finalNumericPrice = price;
     }
-    return price.toLocaleString('vi-VN') + 'đ';
+
+    // Bước 2: Xử lý các trường hợp đặc biệt
+    // Nếu giá trị là 0, trả về 'Liên hệ'
+    if (finalNumericPrice === 0) {
+        return 'Liên hệ';
+    }
+
+    // Nếu giá trị không phải là số hợp lệ (NaN), trả về 'N/A'
+    if (isNaN(finalNumericPrice)) {
+        return 'N/A';
+    }
+
+    // Bước 3: Định dạng giá trị số thành chuỗi tiền tệ tiếng Việt
+    // Sử dụng 'vi-VN' để định dạng số theo chuẩn Việt Nam và thêm ký tự 'đ'
+    return finalNumericPrice.toLocaleString('vi-VN') + 'đ';
 }
 
 // Calculate total cart amount including simulated discounts
@@ -847,7 +869,6 @@ function applyFiltersAndSort() {
         return;
     }
 
-
     const searchTerm = currentSearchInput.value.toLowerCase();
     if (searchTerm) {
         filteredProducts = filteredProducts.filter(product =>
@@ -872,6 +893,8 @@ function applyFiltersAndSort() {
             return a.priceNumeric - b.priceNumeric;
         } else if (sortValue === 'price-desc') {
             return b.priceNumeric - a.priceNumeric;
+        } else if (sortValue === 'product-new') { // Thêm điều kiện sắp xếp mới
+            return b.id - a.id;
         }
         return 0;
     });

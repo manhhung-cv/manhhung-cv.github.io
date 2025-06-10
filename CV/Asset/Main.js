@@ -44,7 +44,7 @@ const translations = {
         <br>Giám sát an ninh trật tự trong quản lý dự án`,
 
         LanguagesText: "Ngoại ngữ",
-        LanEN: "Tiếng Anh B2",
+        LanEN: "Tiếng Anh A2",
         LanJA: "Tiếng Nhật N4",
 
         Cer1: "Cao đẳng Cơ Điện Tử - Tiêu chuẩn Đức",
@@ -94,7 +94,7 @@ const translations = {
         <br>Supervising security and order in project management.`,
 
         LanguagesText: "Languages",
-        LanEN: "English B2",
+        LanEN: "English A2",
         LanJA: "JLPT N4",
 
         Cer1: "College of Mechatronics - German Standard",
@@ -141,7 +141,7 @@ const translations = {
 <br>労働安全の監視: 施工業者への注意喚起、教育、安全訓練。
 <br>プロジェクト管理の治安と秩序の監視。`,
         LanguagesText: "言語 (げんご)",
-        LanEN: "英語 B2",
+        LanEN: "英語 A2",
         LanJA: "JLPT N4",
 
         Cer1: "メカトロニクス専門学校 - ドイツ基準",
@@ -187,7 +187,7 @@ const translations = {
         "Exp5b": "处理电力系统问题：解决电力中断、设备故障等问题。<br>消防系统监控：检查设备，控制火灾源，进行消防培训。<br>职业安全监督：提醒、宣传和培训施工承包商的安全措施。<br>项目管理中的秩序与安全监控。",
 
         LanguagesText: "語言",
-        LanEN: "英語 B2",
+        LanEN: "英語 A2",
         LanJA: "JLPT N4",
 
         Cer1: "机电一体化学院 - 德国标准",
@@ -236,7 +236,7 @@ const translations = {
         <br>Überwachung von Sicherheit und Ordnung im Projektmanagement.`,
 
         LanguagesText: "Sprachen",
-        LanEN: "Englisch B2",
+        LanEN: "Englisch A2",
         LanJA: "JLPT N4",
 
         Cer1: "Mechatronik Kolleg - Deutscher Standard",
