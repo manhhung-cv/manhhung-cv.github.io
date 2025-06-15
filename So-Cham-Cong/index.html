@@ -1,919 +1,690 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sổ Chấm Công Toàn Diện</title>
-    <style>
-        /* General Styles */
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column; 
-            align-items: center; 
-            min-height: 100vh;
-            background-color: #f0f2f5;
-            margin: 0;
-            padding: 10px; /* Reduced body padding for mobile */
-            color: #333;
-            box-sizing: border-box;
-            font-size: 15px; /* Base font size for mobile */
-        }
-
-        .app-container {
-            background-color: #ffffff;
-            padding: 15px; /* Reduced padding */
-            border-radius: 12px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-            width: 100%;
-            max-width: 850px; 
-            border: 1px solid #e0e0e0;
-        }
-
-        /* Tab Navigation */
-        .tab-nav {
-            display: flex;
-            border-bottom: 2px solid #dee2e6;
-            margin-bottom: 15px; /* Reduced margin */
-            overflow-x: auto; /* Allow horizontal scroll on small screens */
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-            scrollbar-width: none; /* Hide scrollbar for Firefox */
-        }
-        .tab-nav::-webkit-scrollbar { display: none; /* Hide scrollbar for Chrome, Safari, Opera */ }
-
-        .tab-button {
-            padding: 10px 15px; /* Adjusted padding */
-            cursor: pointer;
-            border: none;
-            background-color: transparent;
-            font-size: 0.95em; /* Adjusted font size */
-            font-weight: 500;
-            color: #495057;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -2px; 
-            transition: color 0.2s ease, border-color 0.2s ease;
-            white-space: nowrap; /* Prevent button text wrapping */
-        }
-        .tab-button:hover {
-            color: #0056b3;
-        }
-        .tab-button.active {
-            color: #007bff;
-            border-color: #007bff;
-        }
-
-        /* Tab Content */
-        .tab-content {
-            display: none;
-            animation: fadeInContent 0.5s ease-out;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        @keyframes fadeInContent {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        h2.tab-title {
-            font-size: 1.3em; /* Adjusted font size */
-            color: #0056b3;
-            margin-top: 0;
-            margin-bottom: 15px; /* Reduced margin */
-            border-bottom: 1px solid #eee;
-            padding-bottom: 8px; /* Adjusted padding */
-        }
-
-        /* Common Section Styles */
-        .data-section { margin-bottom: 25px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background-color: #fdfdfd;}
-        .data-section h3 { font-size: 1.1em; color: #0056b3; margin-top: 0; margin-bottom: 12px; border-bottom: 1px solid #e0e0e0; padding-bottom: 7px;}
-        .data-section label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9em;}
-        .data-section select, .data-section input[type="file"], .data-section input[type="date"], .data-section input[type="month"], .data-section button {
-            padding: 9px; /* Adjusted padding */
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            font-size: 0.85em; /* Adjusted font size */
-            margin-top: 5px;
-            box-sizing: border-box;
-            width: 100%; /* Make inputs/selects full width in their container */
-        }
-        .data-section select { max-width: none; } /* Allow select to be full width */
-        .data-section input[type="file"] { max-width: none; }
-        .data-section button {
-            background-color: #007bff; color: white; cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .data-section button:hover { background-color: #0056b3; }
-        .data-section .button-group { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
-        .filter-group { display: flex; gap: 10px; align-items: flex-end; margin-bottom:12px; flex-wrap: wrap;}
-        .filter-group .form-control { flex-grow: 1; min-width: 120px; } /* Adjusted min-width */
-
-
-        /* Calendar Styles (Tab LichLamViec) */
-        .calendar-settings { display: flex; justify-content: flex-end; align-items: center; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #eee; gap: 8px; }
-        .calendar-settings label { font-size: 0.8em; color: #555; user-select: none; }
-        .switch { position: relative; display: inline-block; width: 36px; height: 20px; } /* Smaller switch */
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
-        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        input:checked + .slider { background-color: #007bff; }
-        input:focus + .slider { box-shadow: 0 0 1px #007bff; }
-        input:checked + .slider:before { transform: translateX(16px); } /* Adjusted for smaller switch */
-
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .calendar-header h2 { margin: 0; font-size: 1.3em; color: #0056b3; text-align: center; flex-grow: 1; }
-        .calendar-header button { background-color: #007bff; color: white; border: none; padding: 7px 10px; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease; font-size: 0.9em; line-height: 1; }
-        .calendar-header button:hover { background-color: #0056b3; }
-
-        .calendar-controls { margin-bottom: 12px; text-align: right; }
-        .calendar-controls button { padding: 8px 14px; margin-left: 8px; cursor: pointer; border: none; border-radius: 5px; font-weight: 500; transition: background-color 0.3s ease, box-shadow 0.3s ease; box-shadow: 0 2px 4px rgba(0,0,0,0.08); font-size: 0.85em; }
-        #editScheduleBtn { background-color: #ffc107; color: #333; }
-        #editScheduleBtn.active, #editScheduleBtn:disabled { background-color: #ffe083; color: #777; cursor: not-allowed; }
-        #saveScheduleBtn { background-color: #28a745; color: white; }
-
-        .calendar-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        .calendar-table th, .calendar-table td { border: 1px solid #e9e9e9; padding: 0; text-align: center; vertical-align: top; height: 60px; } /* Reduced height */
-        .calendar-table th { background-color: #f8f9fa; color: #495057; font-weight: 500; padding: 8px 0; font-size: 0.75em; } /* Smaller header text */
-        .day-cell-content { padding: 4px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-around; align-items: center; position: relative; } /* space-around for better icon centering */
-        .calendar-table td.editable .day-cell-content, .calendar-table td.timesheet-entry-allowed .day-cell-content { cursor: pointer; }
-        .calendar-table td.editable:hover { background-color: #f0f8ff; }
-        .calendar-table td.timesheet-entry-allowed:not(.editable):hover { background-color: #e6ffed; }
-
-        .day-number { font-weight: 600; font-size: 0.8em; color: #333; align-self: center; padding: 2px 4px; border-radius: 50%; z-index: 1; line-height: 1; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; margin-bottom: 2px; }
-        .today .day-number { background-color: #007bff; color: white; box-shadow: 0 0 5px rgba(0,123,255,0.5); }
-        
-        .shift-info { 
-            font-size: 1.1em; /* Larger for icons */
-            padding: 2px; 
-            border-radius: 50%; /* Make it a circle around the icon if needed */
-            color: #333; /* Default color, specific colors can be set by shift type or icon itself */
-            display: flex; /* Center icon */
-            align-items: center;
-            justify-content: center;
-            width: 24px; /* Fixed size for icon container */
-            height: 24px;
-            line-height: 1;
-            box-sizing: border-box; 
-            z-index: 0; 
-            margin-top: 2px;
-            background-color: transparent; /* Remove background, rely on icon color or cell color */
-        }
-        .ca-ngay .shift-info { /* color: #4CAF50; */ } /* Example if icons were single color */
-        .ca-dem .shift-info { /* color: #2196F3; */ }
-        .nghi .shift-info { /* color: #ff9800; */ }
-        .ngay-le .shift-info { /* color: #f44336; */ }
-        .shift-info.empty { display: none; } /* Hide if no icon */
-        
-        .timesheet-indicator-container { position: absolute; top: 2px; right: 2px; width: 5px; height: 5px; } /* Adjusted for smaller cells */
-        .timesheet-indicator { width: 100%; height: 100%; background-color: #28a745; border-radius: 50%; display: none; }
-        .timesheet-indicator.visible { display: block; }
-        
-        .disabled-day .day-cell-content { color: #adb5bd; background-color: #fdfdfd; }
-        .disabled-day .day-number { color: #adb5bd; background-color: transparent; box-shadow: none;}
-        .disabled-day .shift-info, .disabled-day .timesheet-indicator-container { display: none; }
-
-        /* Modal Styles */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 10px; }
-        .modal-content { background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; border-radius: 10px; width: 100%; max-width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); animation: fadeInModal 0.3s ease-out; }
-        .modal-header { padding-bottom: 8px; border-bottom: 1px solid #eee; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        .modal-header h3 { margin: 0; font-size: 1.2em; color: #0056b3; }
-        .modal-header .close-btn { color: #aaa; font-size: 26px; font-weight: bold; line-height: 1; background: none; border: none; cursor: pointer; padding: 0; }
-        .modal-body .form-group { margin-bottom: 12px; }
-        .modal-body label { display: block; margin-bottom: 4px; font-weight: 500; font-size: 0.85em;}
-        .modal-body input[type="number"], .modal-body textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 0.85em; }
-        .modal-body textarea { resize: vertical; min-height: 60px; }
-        .modal-footer { padding-top: 15px; border-top: 1px solid #eee; margin-top: 15px; text-align: right; display: flex; justify-content: flex-end; gap: 8px;}
-        .modal-footer button { padding: 8px 15px; cursor: pointer; border: none; border-radius: 5px; font-weight: 500; transition: background-color 0.3s ease; font-size: 0.85em; }
-        .modal-footer .btn-confirm, .modal-footer .btn-edit-timesheet { background-color: #28a745; color: white; }
-        .modal-footer .btn-delete { background-color: #dc3545; color: white; }
-        .modal-footer .btn-cancel { background-color: #6c757d; color: white; }
-        #actionConfirmModal .modal-body p { margin-top: 0; margin-bottom: 15px; font-size: 0.95em; }
-
-        /* Toast Notification */
-        .toast-notification { position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); background-color: #333; color: white; padding: 10px 18px; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 1001; opacity: 0; transition: opacity 0.5s ease, bottom 0.5s ease; font-size: 0.85em; }
-        .toast-notification.show { opacity: 1; bottom: 25px; }
-
-        /* "Sổ Chấm Công" Tab Styles */
-        .timesheet-log-controls { margin-bottom: 15px; padding: 12px; border: 1px solid #eee; border-radius: 8px; background-color: #f9f9f9;}
-        .timesheet-log-controls h4 { margin-top:0; margin-bottom:8px; font-size: 1em; color: #333;}
-        .timesheet-log-table-container { max-height: 400px; overflow-y: auto; }
-        .timesheet-log-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .timesheet-log-table th, .timesheet-log-table td { border: 1px solid #ddd; padding: 8px 10px; text-align: left; font-size: 0.85em; }
-        .timesheet-log-table th { background-color: #f8f9fa; font-weight: 600; color: #333; position: sticky; top: 0; z-index: 10; }
-        .timesheet-log-table td.check-mark { text-align: center; font-size: 1.1em; color: green; }
-        .timesheet-log-table td.overtime-hours { text-align: right; }
-        .timesheet-log-table td.shift-icon-cell { text-align: center; font-size: 1.1em; } /* For icons in log table */
-        .no-timesheet-data { text-align: center; color: #777; margin-top: 15px; font-style: italic; font-size: 0.9em; }
-
-        /* "Cài đặt" Tab Styles (uses .data-section) */
-        
-        /* Further Responsive adjustments for very small screens */
-        @media (max-width: 380px) { /* Target even smaller screens */
-            body { font-size: 14px; padding: 5px; }
-            .app-container { padding: 10px; }
-            .tab-button { padding: 8px 10px; font-size: 0.85em; }
-            h2.tab-title { font-size: 1.1em; }
-            .calendar-table th, .calendar-table td { height: 55px; }
-            .day-cell-content { padding: 2px; }
-            .day-number { font-size: 0.75em; width: 18px; height: 18px; }
-            .shift-info { font-size: 1em; width: 20px; height: 20px; }
-            .timesheet-indicator-container { top: 1px; right: 1px; width: 4px; height: 4px; }
-            .filter-group { gap: 8px; }
-            .data-section button { width: 100%; margin-bottom: 5px;}
-            .data-section .button-group button { margin-right: 0; }
-            .modal-footer { flex-direction: column; gap: 8px; }
-            .modal-footer button { width: 100%; margin-left: 0; }
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sổ Chấm Công</title>
+    <!-- CSS File -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Google Fonts for Themes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
 </head>
-<body>
-    <div class="app-container">
-        <nav class="tab-nav">
-            <button class="tab-button active" data-tab="tabLichLamViec">Lịch Làm Việc</button>
-            <button class="tab-button" data-tab="tabSoChamCong">Sổ Chấm Công</button>
-            <button class="tab-button" data-tab="tabCaiDat">Cài Đặt</button>
+<body class="platform-mobile"> <!-- JS will automatically switch this class if on desktop -->
+    <div id="appShell" class="app-shell">
+        <nav class="bottom-nav">
+             <button class="nav-button active" data-tab="tabLichLamViec" data-title="Lịch Làm Việc"><span class="icon"><i class="fas fa-calendar-alt"></i></span><span class="label">Lịch</span></button>
+             <button class="nav-button" data-tab="tabSoChamCong" data-title="Sổ Chấm Công"><span class="icon"><i class="fas fa-clipboard-list"></i></span><span class="label">Sổ Công</span></button>
+             <button class="nav-button" data-tab="tabCaiDat" data-title="Cài Đặt"><span class="icon"><i class="fas fa-cog"></i></span><span class="label">Cài Đặt</span></button>
         </nav>
-
-        <!-- Tab Lịch Làm Việc -->
-        <div id="tabLichLamViec" class="tab-content active">
-            <div class="calendar-settings">
-                <label for="firstDaySwitch">Tuần bắt đầu từ Thứ Hai:</label>
-                <label class="switch">
-                    <input type="checkbox" id="firstDaySwitch">
-                    <span class="slider round"></span>
-                </label>
-            </div>
-    
-            <div class="calendar-header">
-                <button id="prevMonthBtn" aria-label="Tháng trước">&lt;</button>
-                <h2 id="currentMonthYear">Tháng X Năm YYYY</h2>
-                <button id="nextMonthBtn" aria-label="Tháng sau">&gt;</button>
-            </div>
-            <div class="calendar-controls">
-                <button id="editScheduleBtn">Sửa Lịch</button>
-                <button id="saveScheduleBtn" style="display:none;">Lưu Thay Đổi Lịch</button>
-            </div>
-            <table class="calendar-table">
-                <thead>
-                    <tr id="calendarHeaderRow">
-                        <!-- Headers will be populated by JS -->
-                    </tr>
-                </thead>
-                <tbody id="calendarDays">
-                    <!-- Các ngày sẽ được tạo bằng JavaScript -->
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Tab Sổ Chấm Công -->
-        <div id="tabSoChamCong" class="tab-content">
-            <h2 class="tab-title">Sổ Chấm Công Chi Tiết</h2>
-            <div class="timesheet-log-controls data-section">
-                <h4>Lọc và Tải Dữ Liệu Sổ Chấm Công</h4>
-                <div class="filter-group">
-                    <div class="form-control">
-                        <label for="logFilterType">Lọc theo:</label>
-                        <select id="logFilterType">
-                            <option value="all">Tất cả</option>
-                            <option value="range">Khoảng ngày</option>
-                            <option value="month">Tháng cụ thể</option>
-                        </select>
+        
+        <div class="app-content-wrapper">
+             <header class="app-header">
+                <h1 id="headerTitle">Lịch Làm Việc</h1>
+             </header>
+             <main class="app-content">
+                <h1 id="appTitle">Lịch Làm Việc</h1>
+                 <div id="tabLichLamViec" class="tab-content active">
+                     <div class="card">
+                         <div class="calendar-controls-header">
+                             <button id="prevMonthBtn" class="btn-icon" aria-label="Tháng trước"><i class="fas fa-chevron-left"></i></button>
+                             <h2 id="currentMonthYear">...</h2>
+                             <button id="nextMonthBtn" class="btn-icon" aria-label="Tháng sau"><i class="fas fa-chevron-right"></i></button>
+                         </div>
+                         <div id="editScheduleBtnContainer">
+                              <button id="editScheduleBtn" class="btn btn-secondary btn-full-width"><i class="fas fa-edit"></i> Sửa Lịch</button>
+                              <button id="saveScheduleBtn" class="btn btn-primary btn-full-width" style="display:none;"><i class="fas fa-check"></i> Lưu Lịch</button>
+                         </div>
+                         <table class="calendar-table">
+                             <thead><tr id="calendarHeaderRow"></tr></thead>
+                             <tbody id="calendarDays"></tbody>
+                         </table>
+                     </div>
+                 </div>
+                 <div id="tabSoChamCong" class="tab-content">
+                    <div class="card" id="statsCard">
+                        <h3 class="card-header">Thống Kê Tháng Này</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item"><span class="stat-label">Lịch làm:</span><span class="stat-value" id="statsTotalWorkDays">...</span></div>
+                            <div class="stat-item"><span class="stat-label">Đã làm:</span><span class="stat-value" id="statsActualWorkDays">...</span></div>
+                            <div class="stat-item"><span class="stat-label">Ngày nghỉ:</span><span class="stat-value" id="statsLeaveDays">...</span></div>
+                            <div class="stat-item"><span class="stat-label">Giờ làm:</span><span class="stat-value" id="statsTotalHours">...</span></div>
+                            <div class="stat-item"><span class="stat-label">Tăng ca:</span><span class="stat-value" id="statsOvertimeHours">...</span></div>
+                        </div>
                     </div>
-                    <div class="form-control" id="logDateRangePicker" style="display:none;">
-                        <label for="logStartDate">Từ ngày:</label>
-                        <input type="date" id="logStartDate">
-                        <label for="logEndDate" style="margin-top:5px;">Đến ngày:</label>
-                        <input type="date" id="logEndDate">
+                    <div class="card">
+                         <div class="card-header">Bộ lọc</div>
+                        <div class="filter-group">
+                            <div class="form-group"><label for="logFilterType">Lọc theo:</label><select id="logFilterType"><option value="all">Tất cả</option><option value="range">Khoảng ngày</option><option value="month">Tháng cụ thể</option></select></div>
+                            <div class="form-group" id="logDateRangePicker" style="display:none;"><label for="logStartDate">Từ ngày:</label><input type="date" id="logStartDate"><label for="logEndDate" style="margin-top: 10px;">Đến ngày:</label><input type="date" id="logEndDate"></div>
+                            <div class="form-group" id="logMonthPicker" style="display:none;"><label for="logMonth">Chọn tháng:</label><input type="month" id="logMonth"></div>
+                        </div>
+                        <div class="button-group">
+                            <button id="applyLogFilterBtn" class="btn btn-secondary"><i class="fas fa-filter"></i> Áp dụng</button>
+                            <button id="exportLogCsvBtn" class="btn btn-primary"><i class="fas fa-file-csv"></i> Tải CSV</button>
+                        </div>
                     </div>
-                    <div class="form-control" id="logMonthPicker" style="display:none;">
-                        <label for="logMonth">Chọn tháng:</label>
-                        <input type="month" id="logMonth">
+                    <div class="card">
+                        <table class="timesheet-log-table"><tbody id="timesheetLogBody"></tbody></table>
+                        <p id="noTimesheetDataMsg" class="no-timesheet-data" style="display:none;">Chưa có dữ liệu.</p>
                     </div>
-                </div>
-                 <button id="applyLogFilterBtn" style="margin-right:10px; background-color: #17a2b8;">Áp dụng lọc</button>
-                <button id="exportLogCsvBtn">Tải CSV</button>
-            </div>
-
-            <div class="timesheet-log-table-container">
-                <table class="timesheet-log-table">
-                    <thead>
-                        <tr>
-                            <th>Ngày Làm Việc</th>
-                            <th>Phân Loại Ca</th>
-                            <th>Giờ Làm Việc</th>
-                            <th>Ghi Chú</th>
-                        </tr>
-                    </thead>
-                    <tbody id="timesheetLogBody">
-                        <!-- Dữ liệu chấm công sẽ được điền vào đây -->
-                    </tbody>
-                </table>
-            </div>
-            <p id="noTimesheetDataMsg" class="no-timesheet-data" style="display:none;">Chưa có dữ liệu chấm công.</p>
-        </div>
-
-        <!-- Tab Cài Đặt -->
-        <div id="tabCaiDat" class="tab-content">
-            <h2 class="tab-title">Cài Đặt Dữ Liệu</h2>
-            <div class="data-section">
-                <h3>Xuất Dữ Liệu JSON</h3>
-                 <div class="filter-group">
-                    <div class="form-control">
-                        <label for="jsonExportFilterType">Lọc theo thời gian (cho JSON):</label>
-                        <select id="jsonExportFilterType">
-                            <option value="all">Không lọc (Tất cả)</option>
-                            <option value="range">Khoảng ngày</option>
-                            <option value="month">Tháng cụ thể</option>
-                        </select>
-                    </div>
-                    <div class="form-control" id="jsonExportDateRangePicker" style="display:none;">
-                        <label for="jsonExportStartDate">Từ ngày:</label>
-                        <input type="date" id="jsonExportStartDate">
-                        <label for="jsonExportEndDate" style="margin-top:5px;">Đến ngày:</label>
-                        <input type="date" id="jsonExportEndDate">
-                    </div>
-                    <div class="form-control" id="jsonExportMonthPicker" style="display:none;">
-                        <label for="jsonExportMonth">Chọn tháng:</label>
-                        <input type="month" id="jsonExportMonth">
-                    </div>
-                </div>
-                <label for="exportDataType" style="margin-top:15px;">Chọn loại dữ liệu để xuất:</label>
-                <select id="exportDataType">
-                    <option value="all">Cả Lịch Làm Việc và Sổ Chấm Công</option>
-                    <option value="schedule">Chỉ Lịch Làm Việc</option>
-                    <option value="timesheet">Chỉ Sổ Chấm Công</option>
-                </select>
-                <div class="button-group">
-                    <button id="exportDataBtn">Xuất File JSON</button>
-                </div>
-            </div>
-
-            <div class="data-section">
-                <h3>Nhập Dữ Liệu</h3>
-                <label for="importFile">Chọn file JSON để nhập:</label>
-                <input type="file" id="importFile" accept=".json">
-                <div class="button-group">
-                     <button id="importDataBtn">Nhập Dữ Liệu</button>
-                </div>
-                <p style="font-size:0.8em; color:#666; margin-top:10px;">Lưu ý: Dữ liệu nhập sẽ được hợp nhất với dữ liệu hiện tại. Các mục trùng lặp sẽ được ghi đè bởi dữ liệu từ file nhập.</p>
-            </div>
+                 </div>
+                 <div id="tabCaiDat" class="tab-content">
+                     <div class="card">
+                         <h3 class="card-header">Giao diện</h3>
+                         <div class="form-group"><label for="themeSelector">Chọn chủ đề:</label><select id="themeSelector"><option value="default">Mặc định</option><option value="cute">Dễ Thương</option><option value="doraemon">Doraemon</option></select></div>
+                     </div>
+                     <div class="card">
+                         <div class="calendar-settings-inline">
+                             <label for="firstDaySwitch">Bắt đầu tuần từ Thứ Hai</label>
+                             <label class="switch"><input type="checkbox" id="firstDaySwitch"><span class="slider"></span></label>
+                         </div>
+                     </div>
+                     <!-- NEW: General Settings Card -->
+                     <div class="card">
+                         <h3 class="card-header">Cài đặt chung</h3>
+                         <div class="form-group">
+                             <label for="baseHoursInput">Số giờ làm cơ bản / ngày</label>
+                             <input type="number" id="baseHoursInput" min="1" max="24" value="8">
+                         </div>
+                     </div>
+                     <div class="card">
+                         <h3 class="card-header">Quản lý Dữ liệu</h3>
+                         <div class="form-group"><label for="exportDataType">Loại dữ liệu xuất:</label><select id="exportDataType"><option value="all">Toàn bộ</option><option value="schedule">Chỉ Lịch</option><option value="timesheet">Chỉ Chấm Công</option></select></div>
+                         <div class="button-group"><button id="exportDataBtn" class="btn btn-secondary"><i class="fas fa-file-export"></i> Xuất File JSON</button></div>
+                      </div>
+                      <div class="card">
+                          <div class="form-group"><label for="importFile">Nhập từ file JSON:</label><input type="file" id="importFile" accept=".json" style="padding: 10px; border: 1px solid var(--separator-color); border-radius: var(--radius-m); background: var(--input-bg);"></div>
+                          <div class="button-group"><button id="importDataBtn" class="btn btn-primary"><i class="fas fa-file-import"></i> Nhập Dữ Liệu</button></div>
+                          <p style="font-size:13px; color:var(--text-secondary); margin-top:16px;">Lưu ý: Dữ liệu nhập sẽ ghi đè.</p>
+                      </div>
+                 </div>
+            </main>
         </div>
     </div>
 
-    <!-- Timesheet Entry Modal (cho Tab Lịch Làm Việc) -->
+    <!-- Modals -->
     <div id="timesheetModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modalTitle">Chấm công ngày DD/MM/YYYY</h3>
-                <button type="button" class="close-btn" aria-label="Đóng">&times;</button>
-            </div>
+            <div class="modal-header"> <h3 id="modalTitle">Chấm công</h3> </div>
             <div class="modal-body">
                 <form id="timesheetForm">
                     <input type="hidden" id="timesheetDate">
                     <div class="form-group">
-                        <label for="overtimeHours">Số giờ tăng ca:</label>
-                        <input type="number" id="overtimeHours" name="overtimeHours" min="0" max="23" placeholder="Ví dụ: 1">
+                        <label for="entryType">Loại ngày công</label>
+                        <select id="entryType"><option value="work">Ngày làm</option><option value="work_ot">Ngày làm tăng ca</option><option value="paid_leave">Nghỉ phép</option><option value="unpaid_leave">Nghỉ không lương</option><option value="company_holiday">Công ty cho nghỉ</option></select>
                     </div>
-                    <div class="form-group">
-                        <label for="overtimeMinutes">Số phút tăng ca:</label>
-                        <input type="number" id="overtimeMinutes" name="overtimeMinutes" min="0" max="59" placeholder="Ví dụ: 30">
+                    <div id="overtimeFields" style="display: none;">
+                        <div class="form-group"><label for="overtimeHours">Giờ tăng ca:</label><input type="number" id="overtimeHours" min="0" max="23" placeholder="0"></div>
+                        <div class="form-group"><label for="overtimeMinutes">Phút tăng ca:</label><input type="number" id="overtimeMinutes" min="0" max="59" placeholder="0"></div>
                     </div>
-                    <div class="form-group">
-                        <label for="notes">Ghi chú:</label>
-                        <textarea id="notes" name="notes" rows="3" placeholder="Thêm ghi chú nếu có..."></textarea>
-                    </div>
+                    <div class="form-group"><label for="notes">Ghi chú:</label><textarea id="notes" rows="3"></textarea></div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-cancel">Hủy</button>
-                <button type="button" class="btn-confirm">Xác nhận</button>
+                <button type="button" class="btn btn-cancel">Hủy</button>
+                <button type="button" class="btn btn-confirm btn-primary">Xác nhận</button>
             </div>
         </div>
     </div>
-
-    <!-- Action Confirmation Modal -->
     <div id="actionConfirmModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="actionConfirmModalTitle">Hành động cho ngày DD/MM/YYYY</h3>
-                <button type="button" class="close-btn" aria-label="Đóng">&times;</button>
-            </div>
+            <div class="modal-header"> <h3 id="actionConfirmModalTitle">Hành động</h3> </div>
             <div class="modal-body">
                 <p>Bạn muốn làm gì với mục chấm công này?</p>
                 <input type="hidden" id="actionConfirmDate">
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-edit-timesheet">Sửa Chấm Công</button>
-                <button type="button" class="btn-delete btn-delete-timesheet">Xoá Công</button>
-                <button type="button" class="btn-cancel">Huỷ</button>
+                 <button type="button" class="btn btn-edit-timesheet"><i class="fas fa-pencil-alt"></i> Sửa</button>
+                 <button type="button" class="btn btn-danger btn-delete-timesheet"><i class="fas fa-trash-alt"></i> Xoá</button>
             </div>
         </div>
     </div>
-
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // --- DOM Elements ---
-            const tabButtons = document.querySelectorAll('.tab-button');
-            const tabContents = document.querySelectorAll('.tab-content');
-            const currentMonthYearElement = document.getElementById('currentMonthYear');
-            const calendarDaysElement = document.getElementById('calendarDays');
-            const calendarHeaderRowElement = document.getElementById('calendarHeaderRow');
-            const prevMonthBtn = document.getElementById('prevMonthBtn');
-            const nextMonthBtn = document.getElementById('nextMonthBtn');
-            const editScheduleBtn = document.getElementById('editScheduleBtn');
-            const saveScheduleBtn = document.getElementById('saveScheduleBtn');
-            const firstDaySwitch = document.getElementById('firstDaySwitch');
-            const timesheetModal = document.getElementById('timesheetModal');
-            const modalTitleElement = document.getElementById('modalTitle');
-            const timesheetDateInput = document.getElementById('timesheetDate');
-            const overtimeHoursInput = document.getElementById('overtimeHours');
-            const overtimeMinutesInput = document.getElementById('overtimeMinutes');
-            const notesInput = document.getElementById('notes');
-            const timesheetModalCloseBtn = timesheetModal.querySelector('.close-btn');
-            const timesheetModalCancelBtn = timesheetModal.querySelector('.btn-cancel');
-            const timesheetModalConfirmBtn = timesheetModal.querySelector('.btn-confirm');
-            const actionConfirmModal = document.getElementById('actionConfirmModal');
-            const actionConfirmModalTitle = document.getElementById('actionConfirmModalTitle');
-            const actionConfirmDateInput = document.getElementById('actionConfirmDate');
-            const actionConfirmModalCloseBtn = actionConfirmModal.querySelector('.close-btn');
-            const actionConfirmModalEditBtn = actionConfirmModal.querySelector('.btn-edit-timesheet');
-            const actionConfirmModalDeleteBtn = actionConfirmModal.querySelector('.btn-delete-timesheet');
-            const actionConfirmModalCancelBtn = actionConfirmModal.querySelector('.btn-cancel');
-            const timesheetLogBody = document.getElementById('timesheetLogBody');
-            const noTimesheetDataMsg = document.getElementById('noTimesheetDataMsg');
-            const logFilterTypeSelect = document.getElementById('logFilterType');
-            const logDateRangePicker = document.getElementById('logDateRangePicker');
-            const logMonthPicker = document.getElementById('logMonthPicker');
-            const logStartDateInput = document.getElementById('logStartDate');
-            const logEndDateInput = document.getElementById('logEndDate');
-            const logMonthInput = document.getElementById('logMonth');
-            const applyLogFilterBtn = document.getElementById('applyLogFilterBtn');
-            const exportLogCsvBtn = document.getElementById('exportLogCsvBtn');
-            const exportDataTypeSelect = document.getElementById('exportDataType');
-            const exportDataBtn = document.getElementById('exportDataBtn');
-            const importFileInput = document.getElementById('importFile');
-            const importDataBtn = document.getElementById('importDataBtn');
-            const jsonExportFilterTypeSelect = document.getElementById('jsonExportFilterType');
-            const jsonExportDateRangePicker = document.getElementById('jsonExportDateRangePicker');
-            const jsonExportMonthPicker = document.getElementById('jsonExportMonthPicker');
-            const jsonExportStartDateInput = document.getElementById('jsonExportStartDate');
-            const jsonExportEndDateInput = document.getElementById('jsonExportEndDate');
-            const jsonExportMonthInput = document.getElementById('jsonExportMonth');
-
-            // --- State Variables ---
-            let currentDate = new Date();
-            let isEditMode = false; 
-            let scheduleData = {}; 
-            let timesheetEntries = {}; 
-            let firstDayIsMonday = false;
-
-            // --- Constants ---
-            const SHIFT_CYCLE = ["", "ca-ngay", "ca-dem", "nghi", "ngay-le"];
-            const SHIFT_DESCRIPTIONS = { // For tooltips, CSV export, etc.
-                "ca-ngay": "Ca Ngày", "ca-dem": "Ca Đêm",
-                "nghi": "Nghỉ", "ngay-le": "Ngày Lễ", "": "Không có ca"
-            };
-            const SHIFT_ICONS = { // For UI display
-                "ca-ngay": "☀️", "ca-dem": "🌙",
-                "nghi": "🏠", "ngay-le": "⭐", "": "" // Empty string for no shift icon
-            };
-            const DAY_HEADERS_SUN_FIRST = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
-            const DAY_HEADERS_MON_FIRST = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-            const LOCAL_STORAGE_KEYS = {
-                schedule: 'myTimesheetSchedule_v4_mobileOpt', // Updated version
-                timesheet: 'myTimesheetEntries_v4_mobileOpt',
-                firstDay: 'myTimesheetFirstDayMonday_v4_mobileOpt'
-            };
-
-            // --- Utility Functions ---
-            function showToast(message, duration = 3000) {
-                let toast = document.querySelector('.toast-notification');
-                if (toast) toast.remove(); 
-                toast = document.createElement('div');
-                toast.className = 'toast-notification';
-                toast.textContent = message;
-                document.body.appendChild(toast);
-                toast.offsetHeight; 
-                toast.classList.add('show');
-                setTimeout(() => {
-                    toast.classList.remove('show');
-                    setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 500);
-                }, duration - 500);
-            }
-
-            function formatDateStr(dateStr) { 
-                const [year, month, day] = dateStr.split('-');
-                return `${day}/${month}/${year}`;
-            }
-
-            // --- Local Storage Functions ---
-            function loadAllData() {
-                try {
-                    const savedSchedule = localStorage.getItem(LOCAL_STORAGE_KEYS.schedule);
-                    if (savedSchedule) scheduleData = JSON.parse(savedSchedule);
-                    const savedEntries = localStorage.getItem(LOCAL_STORAGE_KEYS.timesheet);
-                    if (savedEntries) timesheetEntries = JSON.parse(savedEntries);
-                    const savedFirstDay = localStorage.getItem(LOCAL_STORAGE_KEYS.firstDay);
-                    firstDayIsMonday = savedFirstDay === 'true';
-                    firstDaySwitch.checked = firstDayIsMonday;
-                } catch (e) {
-                    console.error("Lỗi tải dữ liệu từ localStorage:", e);
-                    scheduleData = {}; timesheetEntries = {}; firstDayIsMonday = false;
-                    showToast("Lỗi: Không thể tải dữ liệu đã lưu.", 5000);
-                }
-            }
-
-            function persistAllData() {
-                try {
-                    localStorage.setItem(LOCAL_STORAGE_KEYS.schedule, JSON.stringify(scheduleData));
-                    localStorage.setItem(LOCAL_STORAGE_KEYS.timesheet, JSON.stringify(timesheetEntries));
-                    localStorage.setItem(LOCAL_STORAGE_KEYS.firstDay, firstDayIsMonday);
-                } catch (e) {
-                    console.error("Lỗi lưu dữ liệu vào localStorage:", e);
-                    showToast("Lỗi: Không thể lưu dữ liệu!", 5000);
-                }
-            }
-            
-            // --- Tab Navigation ---
-            tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    tabContents.forEach(content => content.classList.remove('active'));
-                    button.classList.add('active');
-                    const tabId = button.dataset.tab;
-                    document.getElementById(tabId).classList.add('active');
-                    if (tabId === 'tabSoChamCong') renderTimesheetLog(); 
-                });
-            });
-
-            // --- Calendar Rendering (Tab LichLamViec) ---
-            function updateCalendarTableHeaders() {
-                calendarHeaderRowElement.innerHTML = '';
-                const headers = firstDayIsMonday ? DAY_HEADERS_MON_FIRST : DAY_HEADERS_SUN_FIRST;
-                headers.forEach(headerText => {
-                    const th = document.createElement('th');
-                    th.textContent = headerText;
-                    calendarHeaderRowElement.appendChild(th);
-                });
-            }
-
-            function renderCalendar() {
-                if (!calendarDaysElement) return; 
-                updateCalendarTableHeaders();
-                calendarDaysElement.innerHTML = '';
-                const year = currentDate.getFullYear();
-                const month = currentDate.getMonth();
-                const todayObj = new Date(); 
-                currentMonthYearElement.textContent = `Tháng ${month + 1} Năm ${year}`;
-                const firstDayOfMonth = new Date(year, month, 1);
-                const lastDayOfMonth = new Date(year, month + 1, 0);
-                const daysInMonth = lastDayOfMonth.getDate();
-                let dayOfWeekOfFirst = firstDayOfMonth.getDay(); 
-                let startDayOffset = firstDayIsMonday ? (dayOfWeekOfFirst === 0 ? 6 : dayOfWeekOfFirst - 1) : dayOfWeekOfFirst;
-                let dateCounter = 1;
-                const numRows = Math.ceil((daysInMonth + startDayOffset) / 7);
-
-                for (let i = 0; i < numRows; i++) {
-                    const row = document.createElement('tr');
-                    for (let j = 0; j < 7; j++) {
-                        const cell = document.createElement('td');
-                        const cellContent = document.createElement('div');
-                        cellContent.classList.add('day-cell-content');
-                        const indicatorContainer = document.createElement('div');
-                        indicatorContainer.classList.add('timesheet-indicator-container');
-                        const indicatorDot = document.createElement('div');
-                        indicatorDot.classList.add('timesheet-indicator');
-                        indicatorContainer.appendChild(indicatorDot);
-                        cellContent.appendChild(indicatorContainer);
-
-                        if (i === 0 && j < startDayOffset) {
-                            cell.classList.add('disabled-day');
-                        } else if (dateCounter > daysInMonth) {
-                            cell.classList.add('disabled-day');
-                        } else {
-                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dateCounter).padStart(2, '0')}`;
-                            cell.dataset.date = dateStr;
-                            const dayNumberSpan = document.createElement('span');
-                            dayNumberSpan.classList.add('day-number');
-                            dayNumberSpan.textContent = dateCounter;
-                            cellContent.appendChild(dayNumberSpan); 
-                            if (dateCounter === todayObj.getDate() && month === todayObj.getMonth() && year === todayObj.getFullYear()) {
-                                cell.classList.add('today');
-                            }
-                            const shiftType = scheduleData[dateStr] || "";
-                            if (shiftType) cell.classList.add(shiftType);
-                            const shiftInfoSpan = document.createElement('span');
-                            shiftInfoSpan.classList.add('shift-info');
-                            shiftInfoSpan.textContent = SHIFT_ICONS[shiftType] || SHIFT_ICONS[""]; // Use icon
-                            if (!SHIFT_ICONS[shiftType] || SHIFT_ICONS[shiftType] === SHIFT_ICONS[""]) {
-                                shiftInfoSpan.classList.add('empty');
-                            }
-                            cellContent.appendChild(shiftInfoSpan);
-                            if (timesheetEntries[dateStr] && timesheetEntries[dateStr].isWorkday) {
-                                indicatorDot.classList.add('visible');
-                            }
-                            if (isEditMode) cell.classList.add('editable');
-                            else cell.classList.add('timesheet-entry-allowed');
-                            cell.addEventListener('click', handleDayClick);
-                            dateCounter++;
-                        }
-                        cell.appendChild(cellContent);
-                        row.appendChild(cell);
-                    }
-                    calendarDaysElement.appendChild(row);
-                }
-            }
-
-            // --- Calendar Event Handlers ---
-            function handleDayClick(event) {
-                let targetCell = event.target.closest('td');
-                if (!targetCell || !targetCell.dataset.date || targetCell.classList.contains('disabled-day')) return;
-                const dateStr = targetCell.dataset.date;
-                if (isEditMode) { 
-                    const currentShift = scheduleData[dateStr] || "";
-                    let currentIndex = SHIFT_CYCLE.indexOf(currentShift);
-                    currentIndex = (currentIndex + 1) % SHIFT_CYCLE.length;
-                    const newShift = SHIFT_CYCLE[currentIndex];
-                    if (newShift === "") delete scheduleData[dateStr];
-                    else scheduleData[dateStr] = newShift;
-                    SHIFT_CYCLE.forEach(sc => { if(sc) targetCell.classList.remove(sc); });
-                    if (newShift) targetCell.classList.add(newShift);
-                    const shiftInfoSpan = targetCell.querySelector('.shift-info');
-                    if (shiftInfoSpan) {
-                        shiftInfoSpan.textContent = SHIFT_ICONS[newShift] || SHIFT_ICONS[""];
-                        (!SHIFT_ICONS[newShift] || SHIFT_ICONS[newShift] === SHIFT_ICONS[""]) ? shiftInfoSpan.classList.add('empty') : shiftInfoSpan.classList.remove('empty');
-                    }
-                } else { 
-                    if (timesheetEntries[dateStr] && timesheetEntries[dateStr].isWorkday) openActionConfirmModal(dateStr); 
-                    else openTimesheetModal(dateStr); 
-                }
-            }
-
-            // --- Timesheet Modal Functions ---
-            function openTimesheetModal(dateStr) {
-                modalTitleElement.textContent = `Chấm công ngày ${formatDateStr(dateStr)}`;
-                timesheetDateInput.value = dateStr;
-                const entry = timesheetEntries[dateStr];
-                if (entry && entry.isWorkday) {
-                    overtimeHoursInput.value = entry.overtimeHours || '';
-                    overtimeMinutesInput.value = entry.overtimeMinutes || '';
-                    notesInput.value = entry.notes || '';
-                } else {
-                    document.getElementById('timesheetForm').reset(); 
-                }
-                timesheetModal.style.display = 'flex';
-            }
-            function closeTimesheetModal() {
-                timesheetModal.style.display = 'none';
-                document.getElementById('timesheetForm').reset();
-            }
-            timesheetModalConfirmBtn.addEventListener('click', () => {
-                const dateStr = timesheetDateInput.value;
-                const hours = parseInt(overtimeHoursInput.value) || 0;
-                const minutes = parseInt(overtimeMinutesInput.value) || 0;
-                const notes = notesInput.value.trim();
-                timesheetEntries[dateStr] = { overtimeHours: hours, overtimeMinutes: minutes, notes: notes, isWorkday: true };
-                persistAllData();
-                showToast(`Đã chấm công ngày ${formatDateStr(dateStr)}!`);
-                closeTimesheetModal();
-                renderCalendar(); 
-                if (document.getElementById('tabSoChamCong').classList.contains('active')) renderTimesheetLog(); 
-            });
-            timesheetModalCloseBtn.addEventListener('click', closeTimesheetModal);
-            timesheetModalCancelBtn.addEventListener('click', closeTimesheetModal);
-            
-            // --- Action Confirm Modal Functions ---
-            function openActionConfirmModal(dateStr) {
-                actionConfirmModalTitle.textContent = `Hành động cho ngày ${formatDateStr(dateStr)}`;
-                actionConfirmDateInput.value = dateStr;
-                actionConfirmModal.style.display = 'flex';
-            }
-            function closeActionConfirmModal() { actionConfirmModal.style.display = 'none'; }
-            actionConfirmModalEditBtn.addEventListener('click', () => {
-                const dateStr = actionConfirmDateInput.value;
-                closeActionConfirmModal();
-                openTimesheetModal(dateStr); 
-            });
-            actionConfirmModalDeleteBtn.addEventListener('click', () => {
-                const dateStr = actionConfirmDateInput.value;
-                if (timesheetEntries[dateStr]) {
-                    delete timesheetEntries[dateStr];
-                    persistAllData();
-                    showToast(`Đã xoá chấm công ngày ${formatDateStr(dateStr)}.`);
-                    renderCalendar();
-                    if (document.getElementById('tabSoChamCong').classList.contains('active')) renderTimesheetLog();
-                }
-                closeActionConfirmModal();
-            });
-            actionConfirmModalCloseBtn.addEventListener('click', closeActionConfirmModal);
-            actionConfirmModalCancelBtn.addEventListener('click', closeActionConfirmModal);
-            window.addEventListener('click', (event) => { 
-                if (event.target == timesheetModal) closeTimesheetModal();
-                if (event.target == actionConfirmModal) closeActionConfirmModal();
-            });
-
-            // --- Calendar Control Buttons ---
-            prevMonthBtn.addEventListener('click', () => { currentDate.setDate(1); currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); });
-            nextMonthBtn.addEventListener('click', () => { currentDate.setDate(1); currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); });
-            editScheduleBtn.addEventListener('click', () => {
-                isEditMode = !isEditMode; 
-                saveScheduleBtn.style.display = isEditMode ? 'inline-block' : 'none';
-                editScheduleBtn.textContent = isEditMode ? 'Hoàn Tất Sửa' : 'Sửa Lịch';
-                editScheduleBtn.classList.toggle('active', isEditMode);
-                showToast(isEditMode ? "Chế độ sửa lịch BẬT." : "Chế độ sửa lịch TẮT. Chế độ chấm công BẬT.");
-                renderCalendar(); 
-            });
-            saveScheduleBtn.addEventListener('click', () => { 
-                isEditMode = false; 
-                saveScheduleBtn.style.display = 'none';
-                editScheduleBtn.textContent = 'Sửa Lịch';
-                editScheduleBtn.classList.remove('active');
-                persistAllData(); 
-                showToast('Đã lưu lịch làm việc!');
-                renderCalendar(); 
-            });
-            firstDaySwitch.addEventListener('change', (event) => { firstDayIsMonday = event.target.checked; persistAllData(); renderCalendar(); });
-
-            // --- Timesheet Log Tab Functions ---
-            function getFilteredTimesheetEntries() {
-                const filterType = logFilterTypeSelect.value;
-                let filteredEntries = {};
-                if (filterType === 'all') return timesheetEntries;
-                Object.keys(timesheetEntries).forEach(dateStr => {
-                    if (!timesheetEntries[dateStr].isWorkday) return;
-                    const entryDate = new Date(dateStr + "T00:00:00");
-                    if (filterType === 'range') {
-                        const startDate = logStartDateInput.value ? new Date(logStartDateInput.value + "T00:00:00") : null;
-                        const endDate = logEndDateInput.value ? new Date(logEndDateInput.value + "T23:59:59") : null;
-                        if ((!startDate || entryDate >= startDate) && (!endDate || entryDate <= endDate)) filteredEntries[dateStr] = timesheetEntries[dateStr];
-                    } else if (filterType === 'month') {
-                        const selectedMonthYear = logMonthInput.value; 
-                        if (selectedMonthYear && dateStr.startsWith(selectedMonthYear)) filteredEntries[dateStr] = timesheetEntries[dateStr];
-                    }
-                });
-                return filteredEntries;
-            }
-            function renderTimesheetLog() {
-                if (!timesheetLogBody) return;
-                timesheetLogBody.innerHTML = '';
-                let hasData = false;
-                const filteredEntries = getFilteredTimesheetEntries();
-                const sortedDates = Object.keys(filteredEntries).sort((a, b) => new Date(a) - new Date(b));
-                sortedDates.forEach(dateStr => {
-                    const entry = filteredEntries[dateStr];
-                    hasData = true;
-                    const row = timesheetLogBody.insertRow();
-                    row.insertCell().textContent = formatDateStr(dateStr);
-                    const shiftType = scheduleData[dateStr] || "";
-                    const shiftDisplayCell = row.insertCell(); // Use icon for shift type
-                    shiftDisplayCell.textContent = SHIFT_ICONS[shiftType] || SHIFT_ICONS[""];
-                    shiftDisplayCell.classList.add('shift-icon-cell'); // For specific styling if needed
-                    
-                    const workHoursCell = row.insertCell();
-                    const totalOvertimeMinutes = (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
-                    if (totalOvertimeMinutes > 0) {
-                        workHoursCell.textContent = `${(totalOvertimeMinutes / 60).toFixed(1)} giờ TC`;
-                        workHoursCell.classList.add('overtime-hours');
-                    } else {
-                        workHoursCell.textContent = '✓'; 
-                        workHoursCell.classList.add('check-mark');
-                    }
-                    row.insertCell().textContent = entry.notes || '';
-                });
-                noTimesheetDataMsg.style.display = hasData ? 'none' : 'block';
-            }
-            logFilterTypeSelect.addEventListener('change', function() {
-                logDateRangePicker.style.display = this.value === 'range' ? 'flex' : 'none';
-                logMonthPicker.style.display = this.value === 'month' ? 'block' : 'none';
-                if (this.value === 'all') renderTimesheetLog();
-            });
-            applyLogFilterBtn.addEventListener('click', renderTimesheetLog);
-            exportLogCsvBtn.addEventListener('click', () => {
-                const filteredEntries = getFilteredTimesheetEntries();
-                const sortedDates = Object.keys(filteredEntries).sort((a, b) => new Date(a) - new Date(b));
-                if (sortedDates.length === 0) {
-                    showToast("Không có dữ liệu chấm công để xuất theo bộ lọc hiện tại.");
-                    return;
-                }
-                let csvContent = "Ngày Làm Việc,Phân Loại Ca,Giờ Làm Việc,Ghi Chú\n";
-                sortedDates.forEach(dateStr => {
-                    const entry = filteredEntries[dateStr];
-                    const shiftType = scheduleData[dateStr] || "";
-                    const shiftDescription = SHIFT_DESCRIPTIONS[shiftType] || SHIFT_DESCRIPTIONS[""]; // Use full description for CSV
-                    const totalOvertimeMinutes = (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
-                    let workHoursDisplay = "Giờ cơ bản";
-                    if (totalOvertimeMinutes > 0) workHoursDisplay = `${(totalOvertimeMinutes / 60).toFixed(1)} giờ TC`;
-                    const notes = entry.notes ? `"${entry.notes.replace(/"/g, '""')}"` : "";
-                    csvContent += `${formatDateStr(dateStr)},"${shiftDescription}",${workHoursDisplay},${notes}\n`;
-                });
-                const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `so_cham_cong_${new Date().toISOString().slice(0,10)}.csv`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-                showToast("Đã xuất sổ chấm công ra CSV!");
-            });
-
-            // --- Settings Tab Functions ---
-            function getFilteredDataForJsonExport() {
-                const filterType = jsonExportFilterTypeSelect.value;
-                let exportScheduleData = scheduleData;
-                let exportTimesheetEntries = timesheetEntries;
-                if (filterType !== 'all') {
-                    exportScheduleData = {}; exportTimesheetEntries = {};
-                    const dataToFilter = filterType === 'range' 
-                        ? { startDate: jsonExportStartDateInput.value, endDate: jsonExportEndDateInput.value }
-                        : { monthYear: jsonExportMonthInput.value };
-                    Object.keys(scheduleData).forEach(dateStr => {
-                        const entryDate = new Date(dateStr + "T00:00:00"); let include = false;
-                        if (filterType === 'range') {
-                            const startDate = dataToFilter.startDate ? new Date(dataToFilter.startDate + "T00:00:00") : null;
-                            const endDate = dataToFilter.endDate ? new Date(dataToFilter.endDate + "T23:59:59") : null;
-                            if ((!startDate || entryDate >= startDate) && (!endDate || entryDate <= endDate)) include = true;
-                        } else if (filterType === 'month') {
-                            if (dataToFilter.monthYear && dateStr.startsWith(dataToFilter.monthYear)) include = true;
-                        }
-                        if (include) {
-                            exportScheduleData[dateStr] = scheduleData[dateStr];
-                            if(timesheetEntries[dateStr]) exportTimesheetEntries[dateStr] = timesheetEntries[dateStr];
-                        }
-                    });
-                    if (exportDataTypeSelect.value === 'all' || exportDataTypeSelect.value === 'timesheet') {
-                         Object.keys(timesheetEntries).forEach(dateStr => {
-                            if (exportTimesheetEntries[dateStr]) return; 
-                            const entryDate = new Date(dateStr + "T00:00:00"); let include = false;
-                            if (filterType === 'range') {
-                                const startDate = dataToFilter.startDate ? new Date(dataToFilter.startDate + "T00:00:00") : null;
-                                const endDate = dataToFilter.endDate ? new Date(dataToFilter.endDate + "T23:59:59") : null;
-                                if ((!startDate || entryDate >= startDate) && (!endDate || entryDate <= endDate)) include = true;
-                            } else if (filterType === 'month') {
-                                if (dataToFilter.monthYear && dateStr.startsWith(dataToFilter.monthYear)) include = true;
-                            }
-                            if (include) exportTimesheetEntries[dateStr] = timesheetEntries[dateStr];
-                        });
-                    }
-                }
-                return { scheduleData: exportScheduleData, timesheetEntries: exportTimesheetEntries };
-            }
-            jsonExportFilterTypeSelect.addEventListener('change', function() {
-                jsonExportDateRangePicker.style.display = this.value === 'range' ? 'flex' : 'none';
-                jsonExportMonthPicker.style.display = this.value === 'month' ? 'block' : 'none';
-            });
-            exportDataBtn.addEventListener('click', () => {
-                const selectedDataType = exportDataTypeSelect.value;
-                const { scheduleData: filteredSchedule, timesheetEntries: filteredTimesheet } = getFilteredDataForJsonExport();
-                let dataToExport = {}; const timestamp = new Date().toISOString().slice(0, 10); 
-                if (selectedDataType === 'all' || selectedDataType === 'schedule') dataToExport.scheduleData = filteredSchedule;
-                if (selectedDataType === 'all' || selectedDataType === 'timesheet') dataToExport.timesheetEntries = filteredTimesheet;
-                if (selectedDataType === 'all') dataToExport.settings = { firstDayIsMonday: firstDayIsMonday };
-                if (Object.keys(dataToExport).length === 0 || 
-                    (selectedDataType === 'schedule' && Object.keys(dataToExport.scheduleData || {}).length === 0) ||
-                    (selectedDataType === 'timesheet' && Object.keys(dataToExport.timesheetEntries || {}).length === 0) ) {
-                     if (selectedDataType !== 'all' || (Object.keys(dataToExport.settings || {}).length === 0 && Object.keys(dataToExport.scheduleData || {}).length === 0 && Object.keys(dataToExport.timesheetEntries || {}).length === 0)) {
-                        showToast("Không có dữ liệu để xuất cho lựa chọn và bộ lọc này."); return;
-                     }
-                }
-                const jsonData = JSON.stringify(dataToExport, null, 2);
-                const blob = new Blob([jsonData], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `cham_cong_data_${selectedDataType}_${jsonExportFilterTypeSelect.value}_${timestamp}.json`;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-                showToast("Đã xuất dữ liệu JSON thành công!");
-            });
-            importDataBtn.addEventListener('click', () => {
-                if (!importFileInput.files || importFileInput.files.length === 0) { showToast("Vui lòng chọn một file để nhập."); return; }
-                const file = importFileInput.files[0]; const reader = new FileReader();
-                reader.onload = function(event) {
-                    try {
-                        const importedData = JSON.parse(event.target.result); let dataImported = false;
-                        if (importedData.scheduleData && typeof importedData.scheduleData === 'object') { scheduleData = { ...scheduleData, ...importedData.scheduleData }; dataImported = true; }
-                        if (importedData.timesheetEntries && typeof importedData.timesheetEntries === 'object') { timesheetEntries = { ...timesheetEntries, ...importedData.timesheetEntries }; dataImported = true; }
-                        if (importedData.settings && typeof importedData.settings.firstDayIsMonday === 'boolean') { firstDayIsMonday = importedData.settings.firstDayIsMonday; firstDaySwitch.checked = firstDayIsMonday; dataImported = true; }
-                        if(dataImported) {
-                            persistAllData(); renderCalendar(); renderTimesheetLog(); 
-                            showToast("Đã nhập và hợp nhất dữ liệu thành công!");
-                        } else { showToast("File không chứa dữ liệu hợp lệ hoặc không có mục nào được nhập."); }
-                        importFileInput.value = ''; 
-                    } catch (e) {
-                        console.error("Lỗi khi phân tích file JSON:", e);
-                        showToast("Lỗi: File không hợp lệ hoặc không phải định dạng JSON.", 5000);
-                        importFileInput.value = '';
-                    }
-                };
-                reader.onerror = function() { showToast("Lỗi khi đọc file.", 5000); importFileInput.value = ''; };
-                reader.readAsText(file);
-            });
-
-            // --- Initialization ---
-            loadAllData(); 
-            renderCalendar(); 
-            logFilterTypeSelect.dispatchEvent(new Event('change')); 
-            jsonExportFilterTypeSelect.dispatchEvent(new Event('change')); 
-        });
-    </script>
+    
+    <!-- JS File -->
+    <script src="script.js"></script>
 </body>
 </html>
+
+<!-- styles.css -->
+<style>
+/*
+    * CẤU TRÚC CSS:
+    * 1. BIẾN THEME & FONT
+    * 2. STYLE CƠ BẢN & CHIA SẺ
+    * 3. STYLE CHO DI ĐỘNG (iOS - Mobile-First)
+    * 4. STYLE CHO DESKTOP (macOS - Ghi đè)
+*/
+
+/* --- 1. BIẾN THEME & FONT --- */
+:root {
+    --green-confirm: #30D158;
+    --red-destructive: #FF453A;
+    --shadow-color: rgba(0, 0, 0, 0.08);
+
+    /* Theme Mặc định (Apple Blue) */
+    --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    --blue-primary: #0A84FF;
+    --bg-primary: #F9F9FB;
+    --bg-secondary: #FFFFFF;
+    --separator-color: #E5E5EA;
+    --text-primary: #1D1D1F;
+    --text-secondary: #86868B;
+    --input-bg: rgba(120, 120, 128, 0.16);
+    --radius-l: 12px;
+    --radius-m: 8px;
+    --btn-secondary-bg: var(--separator-color);
+}
+
+body.theme-cute {
+    --font-family-base: 'Quicksand', sans-serif;
+    --blue-primary: #ff8fab;
+    --green-confirm: #a2d2ff;
+    --bg-primary: #fff0f5;
+    --bg-secondary: #ffffff;
+    --separator-color: #fdeff5;
+    --text-primary: #5c506f;
+    --text-secondary: #8c7a9f;
+    --input-bg: #fdeff5;
+    --radius-l: 18px;
+    --radius-m: 12px;
+    --btn-secondary-bg: #fdeff5;
+}
+
+body.theme-doraemon {
+    --font-family-base: 'Quicksand', sans-serif;
+    --blue-primary: #0083c8;
+    --green-confirm: #00a960;
+    --red-destructive: #e60012;
+    --bg-primary: #eef8ff;
+    --bg-secondary: #ffffff;
+    --separator-color: #d0e9f8;
+    --text-primary: #003c71;
+    --text-secondary: #005a8d;
+    --input-bg: #ffffff;
+    --radius-l: 10px;
+    --radius-m: 8px;
+    --btn-secondary-bg: #d0e9f8;
+}
+        
+/* --- 2. STYLE CƠ BẢN & CHIA SẺ --- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-tap-highlight-color: transparent; }
+body {
+    font-family: var(--font-family-base);
+    font-size: 17px;
+    line-height: 1.4;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overscroll-behavior-y: contain;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+        
+/* --- 3. STYLE CHO DI ĐỘNG (iOS - Mobile-First) --- */
+.app-shell {
+    display: flex; flex-direction: column; flex-grow: 1;
+    width: 100%; margin: 0 auto;
+    background-color: var(--bg-primary);
+    overflow: hidden; position: relative;
+    padding-bottom: 85px;
+    transition: background-color 0.3s ease;
+}
+.app-header {
+    background-color: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-bottom: 0.5px solid var(--separator-color);
+    padding: 12px 16px;
+    font-size: 1em; font-weight: 600;
+    position: sticky; top: 0; z-index: 10;
+    text-align: center;
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+#appTitle { display: none; }
+.app-content-wrapper { flex-grow: 1; display: flex; flex-direction: column; }
+.app-content { flex-grow: 1; padding: 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.tab-content { display: none; animation: fadeInContent 0.3s ease-out; }
+.tab-content.active { display: block; }
+@keyframes fadeInContent { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.bottom-nav {
+    display: flex; width: 100%; z-index: 100;
+    position: fixed; bottom: 0; left: 0;
+    padding: 5px 0 15px 0;
+    background-color: rgba(249, 249, 251, 0.85);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-top: 0.5px solid var(--separator-color);
+    transition: border-color 0.3s ease;
+}
+.nav-button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: none; border: none; cursor: pointer;
+    flex-grow: 1; transition: color 0.2s ease, transform 0.1s ease;
+    font-size: 10px; gap: 2px; color: var(--text-secondary);
+}
+.nav-button:active { transform: scale(0.97); }
+.nav-button .icon { font-size: 22px; width: 28px; height: 28px; }
+.nav-button.active { color: var(--blue-primary); }
+
+.card {
+    background-color: var(--bg-secondary);
+    border-radius: var(--radius-l);
+    padding: 16px; margin-bottom: 20px;
+    transition: background-color 0.3s ease, border-radius 0.3s ease;
+}
+.card-header { font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+
+.stats-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.stat-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; padding: 4px 0; }
+.stat-label { color: var(--text-secondary); }
+.stat-value { font-weight: 600; color: var(--text-primary); text-align: right;}
+
+label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; padding-left: 4px; }
+input, select, textarea {
+    width: 100%; padding: 12px; border: 1px solid var(--separator-color);
+    border-radius: var(--radius-m); font-size: 1em; background-color: var(--input-bg);
+    color: var(--text-primary); transition: all 0.2s ease;
+    -webkit-appearance: none; appearance: none;
+    font-family: var(--font-family-base);
+}
+select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2386868B' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat; background-position: right 12px center; background-size: 1em;
+}
+input:focus, select:focus, textarea:focus {
+    border-color: var(--blue-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue-primary) 20%, transparent);
+    outline: none;
+}
+.form-group { margin-bottom: 16px; }
+
+.btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px; padding: 14px 20px; border: none; border-radius: var(--radius-m);
+    font-size: 1em; font-weight: 600; cursor: pointer; text-align: center;
+    transition: all 0.2s ease;
+    font-family: var(--font-family-base);
+}
+.btn:active { transform: scale(0.98); filter: brightness(0.9); }
+.btn-primary { background-color: var(--blue-primary); color: white; }
+.btn-secondary { background-color: var(--btn-secondary-bg); color: var(--text-primary); }
+.btn-danger { background-color: var(--red-destructive); color: white; }
+.btn-full-width { width: 100%; }
+.button-group { display: flex; gap: 12px; margin-top: 10px; }
+.button-group .btn { flex-grow: 1; }
+
+.calendar-controls-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+#currentMonthYear { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+.calendar-controls-header .btn-icon { background: none; border: none; font-size: 20px; color: var(--blue-primary); padding: 8px; cursor: pointer; }
+.calendar-table { width: 100%; border-collapse: separate; border-spacing: 5px; table-layout: fixed; }
+.calendar-table th { font-size: 13px; color: var(--text-secondary); padding: 8px 0; font-weight: 600; text-transform: uppercase; }
+.calendar-table td { border: none; height: 55px; background-color: var(--bg-secondary); border-radius: var(--radius-l); transition: all 0.2s ease; }
+.day-cell-content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 4px; position: relative; }
+.calendar-table td.editable .day-cell-content, .calendar-table td.timesheet-entry-allowed .day-cell-content { cursor: pointer; }
+.calendar-table td:not(.disabled-day):active { transform: scale(0.95); }
+.day-number { font-size: 1em; font-weight: 500; }
+.today .day-number { background-color: var(--blue-primary); color: white; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+body.theme-doraemon .today .day-number { background-color: var(--red-destructive); }
+body.theme-doraemon #currentMonthYear { color: var(--blue-primary); }
+body.theme-doraemon .calendar-controls-header .btn-icon { color: var(--red-destructive); }
+
+.shift-info { font-size: 18px; margin-top: 3px; line-height: 1; }
+.shift-info.empty { display: none; }
+.shift-info .fa-sun { color: #FF9F0A; } .shift-info .fa-moon { color: #5E5CE6; }
+.shift-info .fa-home { color: var(--green-confirm); } .shift-info .fa-star { color: var(--red-destructive); }
+
+.timesheet-indicator { width: 7px; height: 7px; background-color: var(--green-confirm); border-radius: 50%; display: none; position: absolute; top: 8px; right: 8px; }
+.timesheet-indicator.visible { display: block; }
+.disabled-day { background-color: transparent !important; } .disabled-day .day-cell-content { opacity: 0.3; }
+
+.switch { position: relative; display: inline-block; width: 51px; height: 31px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #E9E9EB; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 27px; width: 27px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+input:checked + .slider { background-color: var(--green-confirm); }
+input:checked + .slider:before { transform: translateX(20px); }
+
+.modal { display: none; position: fixed; z-index: 1001; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4); align-items: center; justify-content: center; padding: 16px; }
+.modal-content { background-color: var(--bg-secondary); padding: 0; width: 100%; box-shadow: 0 10px 30px var(--shadow-color); animation: slideInUp 0.3s cubic-bezier(0.25, 1, 0.5, 1); overflow: hidden; max-width: 320px; border-radius: 14px; }
+@keyframes slideInUp { from { opacity: 0; transform: translateY(30px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.modal-header { padding: 16px; text-align: center; } .modal-header h3 { font-size: 1em; font-weight: 600; }
+.modal-body { padding: 0 16px 16px 16px; }
+.modal-footer { padding: 0; display: flex; border-top: 0.5px solid var(--separator-color); }
+.modal-footer .btn { flex-grow: 1; padding: 14px; font-size: 1em; border-radius: 0; background-color: transparent; color: var(--blue-primary); font-weight: 400; }
+.modal-footer .btn:first-child { border-right: 0.5px solid var(--separator-color); font-weight: 600; }
+.modal-footer .btn-danger { color: var(--red-destructive); }
+#actionConfirmModal .modal-body p { text-align: center; margin-bottom: 4px; }
+
+.timesheet-log-table { width: 100%; border-collapse: collapse; }
+.timesheet-log-table td { padding: 12px 0; border-bottom: 1px solid var(--separator-color); }
+.timesheet-log-table tr:last-child td { border-bottom: none; }
+.timesheet-log-table td:nth-child(1) { font-weight: 600; }
+.timesheet-log-table td:nth-child(2) { text-align: center; font-size: 18px; }
+.timesheet-log-table td:nth-child(3) { color: var(--text-secondary); }
+.timesheet-log-table td:nth-child(4) { color: var(--text-secondary); text-align: right; font-size: 0.9em; }
+.no-timesheet-data { padding: 40px 20px; text-align: center; color: var(--text-secondary); }
+
+.toast-notification {
+    position: fixed; top: 16px; left: 50%; background-color: rgba(40,40,40,0.85);
+    color: white; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 1002; opacity: 0; font-size: 14px; font-weight: 500;
+    backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+    transition: all 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+    transform: translateY(-20px) translateX(-50%);
+}
+.toast-notification.show { opacity: 1; transform: translateY(24px) translateX(-50%); }
+
+/* --- 4. DESKTOP (macOS) OVERRIDES --- */
+@media (min-width: 768px) {
+    body.platform-desktop { background-color: #EFEFF4; }
+    .platform-desktop .app-shell {
+        flex-direction: row; max-width: 980px; height: calc(100vh - 80px);
+        margin: 40px auto; border-radius: var(--radius-l);
+        box-shadow: 0 10px 40px rgba(0,0,0,0.15); border: 1px solid rgba(0,0,0,0.1);
+        padding-bottom: 0;
+    }
+    .platform-desktop .app-shell::before {
+        content: ''; position: absolute; top: 0; left: 0; right: 0;
+        height: 40px; background: linear-gradient(#F8F8F8, #F0F0F0);
+        border-bottom: 1px solid #D8D8D8;
+        border-radius: var(--radius-l) var(--radius-l) 0 0; z-index: 5;
+    }
+    .platform-desktop .app-shell::after {
+        content: '● ● ●'; position: absolute; top: 14px; left: 12px;
+        font-family: sans-serif; font-size: 12px; letter-spacing: 5px;
+        color: #F95C5B; text-shadow: 10px 0 #FBCB2E, 20px 0 #28C840; z-index: 6;
+    }
+    .platform-desktop .app-header { display: none; }
+    .platform-desktop #appTitle { display: block; font-size: 26px; font-weight: 700; padding: 0 0 16px 0; }
+    .platform-desktop .app-content-wrapper { padding-top: 40px; }
+    .platform-desktop .bottom-nav {
+        position: static; flex: 0 0 220px; flex-direction: column;
+        justify-content: flex-start; padding: 55px 12px 12px 12px;
+        background-color: var(--sidebar-bg, #F5F5F5);
+        border-right: 1px solid var(--separator-color);
+        border-top: none; backdrop-filter: none;
+    }
+    .platform-desktop.theme-cute .bottom-nav { --sidebar-bg: #fff5fa; }
+    .platform-desktop.theme-doraemon .bottom-nav { --sidebar-bg: #f5fafd; }
+
+    .platform-desktop .nav-button {
+        flex-direction: row; justify-content: flex-start; gap: 12px; width: 100%;
+        padding: 10px 12px; border-radius: var(--radius-m); font-size: 15px;
+        font-weight: 500; margin-bottom: 4px; color: var(--text-primary);
+    }
+    .platform-desktop .nav-button:hover { background-color: rgba(0,0,0,0.05); }
+    .platform-desktop .nav-button.active { background-color: var(--blue-primary) !important; color: white; }
+    .platform-desktop .nav-button .icon { font-size: 18px; width: 22px; }
+    .platform-desktop .stats-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+
+<!-- script.js -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const body = document.body;
+    const isMobile = ('ontouchstart' in window) || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    body.classList.remove('platform-mobile', 'platform-desktop');
+    body.classList.add(isMobile ? 'platform-mobile' : 'platform-desktop');
+
+    // --- DOM Elements ---
+    const mainAppTitle = document.getElementById('appTitle');
+    const headerTitle = document.getElementById('headerTitle');
+    const themeSelector = document.getElementById('themeSelector');
+    const bottomNavButtons = document.querySelectorAll('.nav-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const calendarDaysElement = document.getElementById('calendarDays');
+    const calendarHeaderRowElement = document.getElementById('calendarHeaderRow');
+    const currentMonthYearElement = document.getElementById('currentMonthYear');
+    const prevMonthBtn = document.getElementById('prevMonthBtn');
+    const nextMonthBtn = document.getElementById('nextMonthBtn');
+    const editScheduleBtn = document.getElementById('editScheduleBtn');
+    const saveScheduleBtn = document.getElementById('saveScheduleBtn');
+    const firstDaySwitch = document.getElementById('firstDaySwitch');
+    const baseHoursInput = document.getElementById('baseHoursInput');
+    
+    // Modals & Forms
+    const timesheetModal = document.getElementById('timesheetModal');
+    const modalTitleElement = document.getElementById('modalTitle');
+    const timesheetDateInput = document.getElementById('timesheetDate');
+    const entryTypeSelect = document.getElementById('entryType');
+    const overtimeFields = document.getElementById('overtimeFields');
+    const overtimeHoursInput = document.getElementById('overtimeHours');
+    const overtimeMinutesInput = document.getElementById('overtimeMinutes');
+    const notesInput = document.getElementById('notes');
+    const actionConfirmModal = document.getElementById('actionConfirmModal');
+    const actionConfirmModalTitle = document.getElementById('actionConfirmModalTitle');
+    const actionConfirmDateInput = document.getElementById('actionConfirmDate');
+    
+    // Stats & Logs
+    const timesheetLogBody = document.getElementById('timesheetLogBody');
+    const noTimesheetDataMsg = document.getElementById('noTimesheetDataMsg');
+    const logFilterTypeSelect = document.getElementById('logFilterType');
+    const applyLogFilterBtn = document.getElementById('applyLogFilterBtn');
+    const statsTotalWorkDays = document.getElementById('statsTotalWorkDays');
+    const statsActualWorkDays = document.getElementById('statsActualWorkDays');
+    const statsLeaveDays = document.getElementById('statsLeaveDays');
+    const statsTotalHours = document.getElementById('statsTotalHours');
+    const statsOvertimeHours = document.getElementById('statsOvertimeHours');
+
+    // --- State & Constants ---
+    let currentDate = new Date();
+    let isEditMode = false;
+    let scheduleData = {}, timesheetEntries = {};
+    let firstDayIsMonday = false, baseWorkHours = 8;
+    const SHIFT_CYCLE = ["", "ca-ngay", "ca-dem", "nghi", "ngay-le"];
+    const SHIFT_ICONS = { "ca-ngay": '<i class="fas fa-sun"></i>', "ca-dem": '<i class="fas fa-moon"></i>', "nghi": '<i class="fas fa-home"></i>', "ngay-le": '<i class="fas fa-star"></i>', "": "" };
+    const LOCAL_STORAGE_KEYS = { schedule: 'ts_schedule_v13', timesheet: 'ts_entries_v13', firstDay: 'ts_firstday_v13', theme: 'ts_theme_v13', baseHours: 'ts_basehours_v13' };
+
+    // --- Utilities ---
+    const showToast = (message, duration = 2500) => {
+        let toast = document.querySelector('.toast-notification');
+        if (toast) toast.remove();
+        toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.classList.add('show'), 10);
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.parentNode?.removeChild(toast), 400);
+        }, duration);
+    };
+    const formatDateStr = (dateStr) => { const [y, m, d] = dateStr.split('-'); return `${d}/${m}/${y}`; };
+
+    // --- Core Functions ---
+    const applyTheme = (themeName) => {
+        body.className = body.className.replace(/theme-\w+/g, '').trim();
+        if (themeName && themeName !== 'default') body.classList.add(`theme-${themeName}`);
+        localStorage.setItem(LOCAL_STORAGE_KEYS.theme, themeName);
+        if (themeSelector) themeSelector.value = themeName;
+    };
+    
+    const loadAllData = () => {
+        try {
+            scheduleData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.schedule)) || {};
+            timesheetEntries = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.timesheet)) || {};
+            firstDayIsMonday = localStorage.getItem(LOCAL_STORAGE_KEYS.firstDay) === 'true';
+            const savedTheme = localStorage.getItem(LOCAL_STORAGE_KEYS.theme) || 'default';
+            const savedHours = localStorage.getItem(LOCAL_STORAGE_KEYS.baseHours);
+            baseWorkHours = savedHours ? parseFloat(savedHours) : 8;
+            applyTheme(savedTheme);
+            if (firstDaySwitch) firstDaySwitch.checked = firstDayIsMonday;
+            if (baseHoursInput) baseHoursInput.value = baseWorkHours;
+        } catch (e) { showToast("Lỗi tải dữ liệu."); }
+    };
+
+    const persistAllData = () => {
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEYS.schedule, JSON.stringify(scheduleData));
+            localStorage.setItem(LOCAL_STORAGE_KEYS.timesheet, JSON.stringify(timesheetEntries));
+            localStorage.setItem(LOCAL_STORAGE_KEYS.firstDay, firstDayIsMonday);
+            localStorage.setItem(LOCAL_STORAGE_KEYS.baseHours, baseWorkHours);
+        } catch (e) { showToast("Lỗi không thể lưu dữ liệu!"); }
+    };
+    
+    const updateTitle = (title) => { mainAppTitle.textContent = title; headerTitle.textContent = title; };
+
+    const switchTab = (button) => {
+        bottomNavButtons.forEach(btn => btn.classList.remove('active'));
+        tabContents.forEach(content => content.classList.remove('active'));
+        button.classList.add('active');
+        const tabId = button.dataset.tab;
+        document.getElementById(tabId).classList.add('active');
+        updateTitle(button.dataset.title);
+        if (tabId === 'tabSoChamCong') {
+            updateStatistics();
+            renderTimesheetLog();
+        }
+    };
+
+    const renderCalendar = () => {
+        if (!calendarDaysElement) return;
+        const year = currentDate.getFullYear(), month = currentDate.getMonth();
+        const firstDayOfMonth = new Date(year, month, 1), daysInMonth = new Date(year, month + 1, 0).getDate();
+        const todayObj = new Date();
+        
+        currentMonthYearElement.textContent = `Tháng ${month + 1}, ${year}`;
+        const headers = firstDayIsMonday ? ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] : ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+        calendarHeaderRowElement.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
+        
+        let startDayOffset = firstDayIsMonday ? (firstDayOfMonth.getDay() === 0 ? 6 : firstDayOfMonth.getDay() - 1) : firstDayOfMonth.getDay();
+        
+        let cells = Array(startDayOffset).fill('<td class="disabled-day"></td>');
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isToday = day === todayObj.getDate() && month === todayObj.getMonth() && year === todayObj.getFullYear();
+            const shiftType = scheduleData[dateStr] || "";
+            const hasTimesheet = !!timesheetEntries[dateStr];
+            
+            let cellClasses = isToday ? 'today ' : '';
+            cellClasses += isEditMode ? 'editable' : 'timesheet-entry-allowed';
+            cells.push(`<td class="${cellClasses}" data-date="${dateStr}"><div class="day-cell-content"><span class="day-number">${day}</span><span class="shift-info ${!shiftType ? 'empty' : ''}">${SHIFT_ICONS[shiftType] || ''}</span><div class="timesheet-indicator ${hasTimesheet ? 'visible' : ''}"></div></div></td>`);
+        }
+        
+        let rowsHtml = '';
+        while(cells.length > 0) { rowsHtml += `<tr>${cells.splice(0, 7).join('')}</tr>`; }
+        calendarDaysElement.innerHTML = rowsHtml;
+    };
+
+    const updateStatistics = () => {
+        const year = currentDate.getFullYear(), month = currentDate.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        let stats = { schedDay: 0, schedNight: 0, actualDay: 0, actualNight: 0, paid: 0, unpaid: 0, company: 0, otMins: 0 };
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const schedule = scheduleData[dateStr], entry = timesheetEntries[dateStr];
+            if (schedule === 'ca-ngay') stats.schedDay++;
+            if (schedule === 'ca-dem') stats.schedNight++;
+            if (entry) {
+                if (entry.type === 'work' || entry.type === 'work_ot') ((schedule === 'ca-ngay' || schedule === 'ca-dem') ? (schedule === 'ca-ngay' ? stats.actualDay++ : stats.actualNight++) : stats.actualDay++);
+                if (entry.type === 'work_ot') stats.otMins += (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
+                if (entry.type === 'paid_leave') stats.paid++;
+                if (entry.type === 'unpaid_leave') stats.unpaid++;
+                if (entry.type === 'company_holiday') stats.company++;
+            }
+        }
+        statsTotalWorkDays.textContent = `${stats.schedDay + stats.schedNight} ngày (${stats.schedDay}S, ${stats.schedNight}Đ)`;
+        statsActualWorkDays.textContent = `${stats.actualDay + stats.actualNight} ngày (${stats.actualDay}S, ${stats.actualNight}Đ)`;
+        statsLeaveDays.textContent = `${stats.paid + stats.unpaid + stats.company} ngày (${stats.paid}P, ${stats.unpaid}KL, ${stats.company}Cty)`;
+        statsTotalHours.textContent = `${(stats.actualDay + stats.actualNight) * baseWorkHours} giờ`;
+        statsOvertimeHours.textContent = `${(stats.otMins / 60).toFixed(1)} giờ`;
+    };
+
+    const renderTimesheetLog = () => {
+        const sorted = getFilteredLogEntries().sort((a, b) => new Date(b[0]) - new Date(a[0]));
+        noTimesheetDataMsg.style.display = sorted.length === 0 ? 'block' : 'none';
+        timesheetLogBody.innerHTML = sorted.map(([dateStr, entry]) => {
+            const shiftType = scheduleData[dateStr] || "";
+            let workHours = 'Nghỉ';
+            if (entry.type === 'work') workHours = `${baseWorkHours} giờ`;
+            if (entry.type === 'work_ot') {
+                const totalMins = (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
+                workHours = `${baseWorkHours} giờ + ${(totalMins / 60).toFixed(1)} giờ TC`;
+            }
+            const entryTypeLabel = entryTypeSelect.querySelector(`option[value="${entry.type}"]`)?.textContent || entry.type;
+            return `<tr><td>${formatDateStr(dateStr)}</td><td>${SHIFT_ICONS[shiftType] || ''}</td><td>${workHours}</td><td>${entryTypeLabel}</td></tr>`;
+        }).join('');
+    };
+
+    // --- Event Handlers ---
+    const handleDayClick = (event) => {
+        const targetCell = event.target.closest('td[data-date]');
+        if (!targetCell) return;
+        const dateStr = targetCell.dataset.date;
+        if (isEditMode) {
+            const currentShift = scheduleData[dateStr] || "";
+            const nextIndex = (SHIFT_CYCLE.indexOf(currentShift) + 1) % SHIFT_CYCLE.length;
+            const newShift = SHIFT_CYCLE[nextIndex];
+            if (newShift) scheduleData[dateStr] = newShift; else delete scheduleData[dateStr];
+            renderCalendar();
+        } else {
+            timesheetEntries[dateStr] ? openActionConfirmModal(dateStr) : openTimesheetModal(dateStr);
+        }
+    };
+    
+    const handleConfirmTimesheet = () => {
+        const dateStr = timesheetDateInput.value;
+        const newEntry = { type: entryTypeSelect.value, notes: notesInput.value.trim() };
+        if (newEntry.type === 'work_ot') {
+            newEntry.overtimeHours = parseInt(overtimeHoursInput.value) || 0;
+            newEntry.overtimeMinutes = parseInt(overtimeMinutesInput.value) || 0;
+        }
+        timesheetEntries[dateStr] = newEntry;
+        persistAllData();
+        showToast(`Đã lưu chấm công!`);
+        timesheetModal.style.display = 'none';
+        renderCalendar();
+        if (document.getElementById('tabSoChamCong').classList.contains('active')) {
+            updateStatistics();
+            renderTimesheetLog();
+        }
+    };
+
+    // --- Add Event Listeners ---
+    bottomNavButtons.forEach(btn => btn.addEventListener('click', () => switchTab(btn)));
+    calendarDaysElement.addEventListener('click', handleDayClick);
+    prevMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(); if(document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(); });
+    nextMonthBtn.addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(); if(document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(); });
+    editScheduleBtn.addEventListener('click', () => { isEditMode = true; renderCalendar(); editScheduleBtn.style.display='none'; saveScheduleBtn.style.display='flex'; });
+    saveScheduleBtn.addEventListener('click', () => { isEditMode = false; persistAllData(); renderCalendar(); editScheduleBtn.style.display='flex'; saveScheduleBtn.style.display='none'; showToast('Đã lưu lịch!'); });
+    firstDaySwitch.addEventListener('change', (e) => { firstDayIsMonday = e.target.checked; persistAllData(); renderCalendar(); });
+    themeSelector.addEventListener('change', (e) => applyTheme(e.target.value));
+    baseHoursInput.addEventListener('change', (e) => {
+        const hours = parseFloat(e.target.value);
+        if (hours > 0 && hours <= 24) { baseWorkHours = hours; persistAllData(); showToast(`Đã cập nhật giờ làm cơ bản.`); if(document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics();}
+        else { showToast('Số giờ không hợp lệ.'); e.target.value = baseWorkHours; }
+    });
+    entryTypeSelect.addEventListener('change', () => { overtimeFields.style.display = entryTypeSelect.value === 'work_ot' ? 'block' : 'none'; });
+    timesheetModal.querySelector('.btn-confirm').addEventListener('click', handleConfirmTimesheet);
+    actionConfirmModal.querySelector('.btn-edit-timesheet').addEventListener('click', () => { openTimesheetModal(actionConfirmDateInput.value, timesheetEntries[actionConfirmDateInput.value]); actionConfirmModal.style.display = 'none'; });
+    actionConfirmModal.querySelector('.btn-delete-timesheet').addEventListener('click', () => { delete timesheetEntries[actionConfirmDateInput.value]; persistAllData(); showToast(`Đã xoá chấm công.`); actionConfirmModal.style.display = 'none'; renderCalendar(); if(document.getElementById('tabSoChamCong').classList.contains('active')) {updateStatistics(); renderTimesheetLog();} });
+    [timesheetModal, actionConfirmModal].forEach(modal => {
+        modal.addEventListener('click', e => { if (e.target === modal) e.target.style.display = 'none'; });
+        modal.querySelector('.btn-cancel')?.addEventListener('click', () => modal.style.display = 'none');
+    });
+    logFilterTypeSelect.addEventListener('change', () => {
+        document.getElementById('logDateRangePicker').style.display = logFilterTypeSelect.value === 'range' ? 'block' : 'none';
+        document.getElementById('logMonthPicker').style.display = logFilterTypeSelect.value === 'month' ? 'block' : 'none';
+        renderTimesheetLog();
+    });
+    applyLogFilterBtn.addEventListener('click', renderTimesheetLog);
+
+    // --- Init ---
+    const init = () => {
+        loadAllData();
+        renderCalendar();
+        updateStatistics();
+        updateTitle(document.querySelector('.nav-button.active').dataset.title);
+    };
+    init();
+});
+</script>
