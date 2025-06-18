@@ -1,417 +1,467 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>AI Watch App</title>
-    <style>
-        /* Base styles for the body */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: #000; /* Black background for watch feel */
-            color: #fff; /* White text */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh; /* Full viewport height */
-            overflow: hidden; /* Prevent body scroll */
-            touch-action: pan-y; /* Allow vertical scroll, disable horizontal for swipe */
-        }
-
-        /* Container mimicking Apple Watch screen dimensions for 38mm */
-        .watch-container {
-            width: 340px; /* Approximate width for 38mm */
-            height: 272px; /* Approximate height for 38mm */
-            background-color: #1c1c1c; /* Dark gray background for content */
-            border-radius: 20px; /* Rounded corners for watch display */
-            overflow: hidden;
-            position: relative;
-            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5); /* Subtle shadow */
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Tab navigation */
-        .tabs-container {
-            display: flex;
-            width: 200%; /* Two tabs side-by-side */
-            height: 100%;
-            transition: transform 0.3s ease-out; /* Smooth transition for swipes */
-        }
-
-        .tab-content {
-            width: 50%; /* Each tab takes half of the 200% width */
-            flex-shrink: 0; /* Prevent shrinking */
-            display: flex;
-            flex-direction: column;
-            padding: 10px;
-            box-sizing: border-box;
-            height: 100%;
-            overflow-y: auto; /* Allow scrolling within tab content */
-            -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-        }
-
-        /* Chat Tab */
-        .chat-header {
-            font-size: 1.2em;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        .chat-messages {
-            flex-grow: 1; /* Take available space */
-            overflow-y: auto;
-            word-wrap: break-word;
-            padding-right: 5px; /* Space for scrollbar */
-        }
-
-        .message {
-            margin-bottom: 8px;
-            padding: 6px 10px;
-            border-radius: 12px;
-            max-width: 80%;
-            line-height: 1.3;
-        }
-
-        .message.user {
-            background-color: #007aff; /* Apple blue */
-            align-self: flex-end;
-            margin-left: auto;
-            text-align: right;
-            border-bottom-right-radius: 2px;
-        }
-
-        .message.ai {
-            background-color: #3a3a3c; /* Dark gray for AI */
-            align-self: flex-start;
-            margin-right: auto;
-            border-bottom-left-radius: 2px;
-        }
-
-        .chat-input-container {
-            display: flex;
-            padding-top: 10px;
-            border-top: 1px solid #333;
-            margin-top: auto; /* Push to bottom */
-        }
-
-        .chat-input {
-            flex-grow: 1;
-            background-color: #3a3a3c;
-            border: none;
-            border-radius: 15px;
-            padding: 8px 12px;
-            color: #fff;
-            font-size: 0.9em;
-            outline: none;
-            margin-right: 5px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .send-button {
-            background-color: #007aff;
-            color: #fff;
-            border: none;
-            border-radius: 50%; /* Circular button */
-            width: 36px;
-            height: 36px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.2em;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out;
-            flex-shrink: 0;
-            padding: 0;
-        }
-
-        .send-button:active {
-            background-color: #005bb5;
-        }
-
-        /* Settings Tab */
-        .settings-header {
-            font-size: 1.2em;
-            font-weight: bold;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .setting-item {
-            margin-bottom: 15px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .setting-item label {
-            margin-bottom: 8px;
-            font-size: 1em;
-            color: #ccc;
-        }
-
-        .font-size-controls {
-            display: flex;
-            align-items: center;
-            width: 100%;
-            justify-content: center;
-        }
-
-        .font-size-button {
-            background-color: #007aff;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 6px 12px;
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out;
-            margin: 0 5px;
-        }
-
-        .font-size-button:active {
-            background-color: #005bb5;
-        }
-
-        .current-font-size {
-            font-size: 1.1em;
-            min-width: 30px;
-            text-align: center;
-        }
-
-        .loading-indicator {
-            text-align: center;
-            padding: 10px;
-            color: #888;
-            font-size: 0.9em;
-        }
-
-        /* Scrollbar styling for WebKit browsers */
-        ::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #3a3a3c;
-            border-radius: 2px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #555;
-            border-radius: 2px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #777;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AI Watch App (Scrollable)</title>
+  <style>
+    /* Base styles for the body */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #000;
+      /* Black background for watch feel */
+      color: #fff;
+      /* White text */
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      /* Ensure body takes full viewport height */
+      overflow-y: auto;
+      /* Allow normal page scrolling */
+      -webkit-overflow-scrolling: touch;
+      /* Smooth scrolling on iOS */
+    }
+    
+    /* Header for tab navigation */
+    .header {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0;
+      background-color: #1c1c1c;
+      /* Dark gray for header */
+      border-bottom: 1px solid #333;
+      position: sticky;
+      /* Keep header visible when scrolling */
+      top: 0;
+      z-index: 1000;
+    }
+    
+    .tab-button {
+      background-color: transparent;
+      color: #888;
+      /* Dimmed for inactive */
+      border: none;
+      padding: 8px 15px;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: color 0.2s ease-in-out;
+      border-radius: 10px;
+      /* Rounded corners for buttons */
+    }
+    
+    .tab-button.active {
+      color: #007aff;
+      /* Apple blue for active tab */
+    }
+    
+    /* Main content area for tabs */
+    .main-content-area {
+      flex-grow: 1;
+      /* Allow content to take available space */
+      padding: 10px;
+      max-width: 380px;
+      /* Max width to simulate watch-like narrowness, centered */
+      margin: 0 auto;
+      /* Center the content */
+      width: 100%;
+      /* Full width up to max-width */
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .tab-content {
+      display: none;
+      /* Hidden by default */
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      /* Take full height of its container */
+      min-height: calc(100vh - 70px);
+      /* Adjust based on header height, to allow initial scroll */
+      box-sizing: border-box;
+    }
+    
+    .tab-content.active {
+      display: flex;
+      /* Show active tab */
+    }
+    
+    /* Chat Tab */
+    .chat-header {
+      font-size: 1.2em;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 10px;
+      padding-top: 10px;
+    }
+    
+    .chat-messages {
+      flex-grow: 1;
+      /* Take available space within the chat tab */
+      overflow-y: auto;
+      /* Allow scrolling only within chat messages if they exceed this area's height */
+      word-wrap: break-word;
+      padding-right: 5px;
+      /* Space for scrollbar */
+    }
+    
+    .message {
+      margin-bottom: 8px;
+      padding: 6px 10px;
+      border-radius: 12px;
+      max-width: 80%;
+      line-height: 1.3;
+    }
+    
+    .message.user {
+      background-color: #007aff;
+      /* Apple blue */
+      align-self: flex-end;
+      margin-left: auto;
+      text-align: right;
+      border-bottom-right-radius: 2px;
+    }
+    
+    .message.ai {
+      background-color: #3a3a3c;
+      /* Dark gray for AI */
+      align-self: flex-start;
+      margin-right: auto;
+      border-bottom-left-radius: 2px;
+    }
+    
+    .chat-input-container {
+      position: fixed;
+      bottom: 10px;
+      width: 100%;
+      display: flex;
+      padding-top: 10px;
+      border-top: 1px solid #333;
+      margin-top: auto;
+      /* Push to bottom of the chat tab */
+      padding-bottom: 10px;
+      /* Add some padding at the bottom */
+    }
+    
+    .chat-input {
+      flex-grow: 1;
+      background-color: #3a3a3c;
+      border: none;
+      border-radius: 15px;
+      padding: 12px;
+      color: #fff;
+      font-size: 1.2em;
+      outline: none;
+      margin-right: 5px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .send-button {
+      background-color: #007aff;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      /* Circular button */
+      width: 100px;
+      height: 50px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.2em;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+      flex-shrink: 0;
+      padding: 0;
+    }
+    
+    .send-button:active {
+      background-color: #005bb5;
+    }
+    
+    /* Settings Tab */
+    .settings-header {
+      font-size: 1.2em;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 20px;
+      padding-top: 10px;
+    }
+    
+    .setting-item {
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .setting-item label {
+      margin-bottom: 8px;
+      font-size: 1em;
+      color: #ccc;
+    }
+    
+    .font-size-controls {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      justify-content: center;
+    }
+    
+    .font-size-button {
+      background-color: #007aff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 1.1em;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+      margin: 0 5px;
+    }
+    
+    .font-size-button:active {
+      background-color: #005bb5;
+    }
+    
+    .current-font-size {
+      font-size: 1.1em;
+      min-width: 30px;
+      text-align: center;
+    }
+    
+    .loading-indicator {
+      text-align: center;
+      padding: 10px;
+      color: #888;
+      font-size: 0.9em;
+    }
+    
+    /* Scrollbar styling for WebKit browsers */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #3a3a3c;
+      border-radius: 2px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 2px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: #777;
+    }
+    
+    /* Responsive adjustments for slightly larger screens (though still focused on mobile) */
+    @media (min-width: 400px) {
+      .main-content-area {
+        max-width: 420px;
+      }
+    }
+  </style>
 </head>
+
 <body>
-    <div class="watch-container" id="watchContainer">
-        <div class="tabs-container" id="tabsContainer">
-            <!-- Home Tab (Chat with AI) -->
-            <div class="tab-content" id="homeTab">
-                <div class="chat-header">Trò chuyện với AI</div>
-                <div class="chat-messages" id="chatMessages">
-                    <div class="message ai">Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?</div>
-                </div>
-                <div class="chat-input-container">
-                    <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn của bạn...">
-                    <button class="send-button" id="sendButton">➤</button>
-                </div>
-            </div>
-
-            <!-- Settings Tab -->
-            <div class="tab-content" id="settingsTab">
-                <div class="settings-header">Cài đặt</div>
-                <div class="setting-item">
-                    <label for="fontSize">Kích thước chữ:</label>
-                    <div class="font-size-controls">
-                        <button class="font-size-button" id="decreaseFont">-</button>
-                        <span class="current-font-size" id="currentFontSize">1.0em</span>
-                        <button class="font-size-button" id="increaseFont">+</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+  <div class="header">
+    <button class="tab-button active" id="homeTabButton">Trò chuyện</button>
+    <button class="tab-button" id="settingsTabButton">Cài đặt</button>
+  </div>
+  
+  <div class="main-content-area">
+    <!-- Home Tab (Chat with AI) -->
+    <div class="tab-content active" id="homeTab">
+      <div class="chat-header">Trò chuyện với AI</div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="message ai">Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?</div>
+      </div>
+      <div class="chat-input-container">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn của bạn...">
+        <button class="send-button" id="sendButton">➤</button>
+      </div>
     </div>
-
-    <script>
-        // Global variables provided by the Canvas environment (Firestore-related, but good practice to include if needed later)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Gemini API key from the user's prompt
-        const GEMINI_API_KEY = "AIzaSyBtktalr9ziLgKxKOgHTBuwqXUT2L_WWJI";
-        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-        // DOM elements
-        const watchContainer = document.getElementById('watchContainer');
-        const tabsContainer = document.getElementById('tabsContainer');
-        const chatMessages = document.getElementById('chatMessages');
-        const chatInput = document.getElementById('chatInput');
-        const sendButton = document.getElementById('sendButton');
-        const decreaseFontButton = document.getElementById('decreaseFont');
-        const increaseFontButton = document.getElementById('increaseFont');
-        const currentFontSizeSpan = document.getElementById('currentFontSize');
-
-        let currentTab = 0; // 0 for Home, 1 for Settings
-        let startX = 0;
-        let chatHistory = [{ role: "model", parts: [{ text: "Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?" }] }];
-        let currentFontSize = 1.0; // Default font size in em
-
-        /**
-         * Adds a message to the chat display.
-         * @param {string} text - The message text.
-         * @param {string} sender - 'user' or 'ai'.
-         */
-        function addMessage(text, sender) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message', sender);
-            messageElement.textContent = text;
-            chatMessages.appendChild(messageElement);
-            // Scroll to the bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        /**
-         * Sends a message to the Gemini API and displays the response.
-         */
-        async function sendMessage() {
-            const userMessage = chatInput.value.trim();
-            if (userMessage === "") {
-                return;
-            }
-
-            addMessage(userMessage, 'user');
-            chatInput.value = ''; // Clear input
-
-            // Add user message to chat history for context
-            chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
-
-            // Show a loading indicator
-            const loadingIndicator = document.createElement('div');
-            loadingIndicator.classList.add('loading-indicator');
-            loadingIndicator.textContent = "AI đang phản hồi...";
-            chatMessages.appendChild(loadingIndicator);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-
-            const payload = { contents: chatHistory };
-
-            try {
-                const response = await fetch(GEMINI_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`API error: ${response.status} - ${errorData.error.message || response.statusText}`);
-                }
-
-                const result = await response.json();
-
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
-                    const aiResponseText = result.candidates[0].content.parts[0].text;
-                    chatHistory.push({ role: "model", parts: [{ text: aiResponseText }] });
-                    chatMessages.removeChild(loadingIndicator); // Remove loading indicator
-                    addMessage(aiResponseText, 'ai');
-                } else {
-                    console.error("Unexpected API response structure:", result);
-                    chatMessages.removeChild(loadingIndicator);
-                    addMessage("Xin lỗi, tôi không thể tạo phản hồi. Vui lòng thử lại.", 'ai');
-                    chatHistory.pop(); // Remove user message from history if AI failed
-                }
-            } catch (error) {
-                console.error("Error calling Gemini API:", error);
-                chatMessages.removeChild(loadingIndicator);
-                addMessage("Đã xảy ra lỗi khi kết nối với AI. Vui lòng kiểm tra kết nối internet của bạn.", 'ai');
-                chatHistory.pop(); // Remove user message from history if API call failed
-            }
-        }
-
-        /**
-         * Updates the font size for chat messages.
-         */
-        function updateFontSize() {
-            chatMessages.style.fontSize = `${currentFontSize}em`;
-            currentFontSizeSpan.textContent = `${currentFontSize.toFixed(1)}em`;
-        }
-
-        /**
-         * Handles swipe gestures to switch tabs.
-         * @param {TouchEvent} e - The touch event.
-         */
-        function handleTouchStart(e) {
-            startX = e.touches[0].clientX;
-        }
-
-        /**
-         * Handles the end of a touch gesture to determine swipe direction.
-         * @param {TouchEvent} e - The touch event.
-         */
-        function handleTouchEnd(e) {
-            const endX = e.changedTouches[0].clientX;
-            const diffX = endX - startX;
-
-            // Define a threshold for swipe detection (e.g., 50 pixels)
-            const swipeThreshold = 50;
-
-            if (Math.abs(diffX) > swipeThreshold) {
-                if (diffX < 0 && currentTab < 1) { // Swipe left
-                    currentTab++;
-                } else if (diffX > 0 && currentTab > 0) { // Swipe right
-                    currentTab--;
-                }
-                updateTabDisplay();
-            }
-        }
-
-        /**
-         * Updates the display to show the current tab.
-         */
-        function updateTabDisplay() {
-            tabsContainer.style.transform = `translateX(-${currentTab * 50}%)`;
-        }
-
-        // Event Listeners
-        sendButton.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+    
+    <!-- Settings Tab -->
+    <div class="tab-content" id="settingsTab">
+      <div class="settings-header">Cài đặt</div>
+      <div class="setting-item">
+        <label for="fontSize">Kích thước chữ:</label>
+        <div class="font-size-controls">
+          <button class="font-size-button" id="decreaseFont">-</button>
+          <span class="current-font-size" id="currentFontSize">1.0em</span>
+          <button class="font-size-button" id="increaseFont">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Global variables provided by the Canvas environment (Firestore-related, but good practice to include if needed later)
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    
+    // Gemini API key from the user's prompt
+    const GEMINI_API_KEY = "AIzaSyBtktalr9ziLgKxKOgHTBuwqXUT2L_WWJI";
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    
+    // DOM elements
+    const homeTabButton = document.getElementById('homeTabButton');
+    const settingsTabButton = document.getElementById('settingsTabButton');
+    const homeTabContent = document.getElementById('homeTab');
+    const settingsTabContent = document.getElementById('settingsTab');
+    
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendButton = document.getElementById('sendButton');
+    const decreaseFontButton = document.getElementById('decreaseFont');
+    const increaseFontButton = document.getElementById('increaseFont');
+    const currentFontSizeSpan = document.getElementById('currentFontSize');
+    
+    let chatHistory = [{ role: "model", parts: [{ text: "Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?" }] }];
+    let currentFontSize = 1.0; // Default font size in em
+    
+    /**
+     * Switches between tabs.
+     * @param {string} tabName - The name of the tab to switch to ('home' or 'settings').
+     */
+    function switchTab(tabName) {
+      // Deactivate all tab buttons and content
+      homeTabButton.classList.remove('active');
+      settingsTabButton.classList.remove('active');
+      homeTabContent.classList.remove('active');
+      settingsTabContent.classList.remove('active');
+      
+      // Activate the selected tab button and content
+      if (tabName === 'home') {
+        homeTabButton.classList.add('active');
+        homeTabContent.classList.add('active');
+        chatMessages.scrollTop = chatMessages.scrollHeight; // Scroll to bottom on tab switch
+      } else if (tabName === 'settings') {
+        settingsTabButton.classList.add('active');
+        settingsTabContent.classList.add('active');
+      }
+    }
+    
+    /**
+     * Adds a message to the chat display.
+     * @param {string} text - The message text.
+     * @param {string} sender - 'user' or 'ai'.
+     */
+    function addMessage(text, sender) {
+      const messageElement = document.createElement('div');
+      messageElement.classList.add('message', sender);
+      messageElement.textContent = text;
+      chatMessages.appendChild(messageElement);
+      // Scroll to the bottom
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    /**
+     * Sends a message to the Gemini API and displays the response.
+     */
+    async function sendMessage() {
+      const userMessage = chatInput.value.trim();
+      if (userMessage === "") {
+        return;
+      }
+      
+      addMessage(userMessage, 'user');
+      chatInput.value = ''; // Clear input
+      
+      // Add user message to chat history for context
+      chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+      
+      // Show a loading indicator
+      const loadingIndicator = document.createElement('div');
+      loadingIndicator.classList.add('loading-indicator');
+      loadingIndicator.textContent = "AI đang phản hồi...";
+      chatMessages.appendChild(loadingIndicator);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      
+      const payload = { contents: chatHistory };
+      
+      try {
+        const response = await fetch(GEMINI_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
-
-        increaseFontButton.addEventListener('click', () => {
-            if (currentFontSize < 1.5) { // Max font size limit
-                currentFontSize += 0.1;
-                updateFontSize();
-            }
-        });
-
-        decreaseFontButton.addEventListener('click', () => {
-            if (currentFontSize > 0.8) { // Min font size limit
-                currentFontSize -= 0.1;
-                updateFontSize();
-            }
-        });
-
-        // Add touch listeners to the watch container for swiping
-        watchContainer.addEventListener('touchstart', handleTouchStart);
-        watchContainer.addEventListener('touchend', handleTouchEnd);
-
-        // Initial setup
-        updateFontSize(); // Set initial font size display
-        updateTabDisplay(); // Ensure correct tab is shown on load
-    </script>
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(`API error: ${response.status} - ${errorData.error.message || response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.candidates && result.candidates.length > 0 &&
+          result.candidates[0].content && result.candidates[0].content.parts &&
+          result.candidates[0].content.parts.length > 0) {
+          const aiResponseText = result.candidates[0].content.parts[0].text;
+          chatHistory.push({ role: "model", parts: [{ text: aiResponseText }] });
+          chatMessages.removeChild(loadingIndicator); // Remove loading indicator
+          addMessage(aiResponseText, 'ai');
+        } else {
+          console.error("Unexpected API response structure:", result);
+          chatMessages.removeChild(loadingIndicator);
+          addMessage("Xin lỗi, tôi không thể tạo phản hồi. Vui lòng thử lại.", 'ai');
+          chatHistory.pop(); // Remove user message from history if AI failed
+        }
+      } catch (error) {
+        console.error("Error calling Gemini API:", error);
+        chatMessages.removeChild(loadingIndicator);
+        addMessage("Đã xảy ra lỗi khi kết nối với AI. Vui lòng kiểm tra kết nối internet của bạn.", 'ai');
+        chatHistory.pop(); // Remove user message from history if API call failed
+      }
+    }
+    
+    /**
+     * Updates the font size for chat messages.
+     */
+    function updateFontSize() {
+      chatMessages.style.fontSize = `${currentFontSize}em`;
+      currentFontSizeSpan.textContent = `${currentFontSize.toFixed(1)}em`;
+    }
+    
+    // Event Listeners
+    homeTabButton.addEventListener('click', () => switchTab('home'));
+    settingsTabButton.addEventListener('click', () => switchTab('settings'));
+    
+    sendButton.addEventListener('click', sendMessage);
+    chatInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+    
+    increaseFontButton.addEventListener('click', () => {
+      if (currentFontSize < 3) { // Max font size limit
+        currentFontSize += 0.1;
+        updateFontSize();
+      }
+    });
+    
+    decreaseFontButton.addEventListener('click', () => {
+      if (currentFontSize > 0.8) { // Min font size limit
+        currentFontSize -= 0.1;
+        updateFontSize();
+      }
+    });
+    
+    // Initial setup
+    updateFontSize(); // Set initial font size display
+    switchTab('home'); // Ensure home tab is shown on load
+  </script>
 </body>
+
 </html>
