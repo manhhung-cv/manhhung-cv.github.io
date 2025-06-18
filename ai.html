@@ -5,113 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Gemini Watch App</title>
     <style>
-        /* --- General Reset & Base Styles --- */
-        /* CSS Variables for dynamic font sizing. These are global. */
+        /* --- CSS Variables for dynamic heights and font sizing --- */
         :root {
+            /* These will be set by JavaScript dynamically */
+            --fixed-header-height: 0px;
+            --fixed-footer-height: 0px;
+
             --message-font-size: 10.5px; /* Kích thước font mặc định cho tin nhắn */
             --input-font-size: 11px;    /* Kích thước font mặc định cho ô nhập liệu */
             --button-font-size: 12px;   /* Kích thước font mặc định cho nút */
             --preview-font-size: 16px;  /* Kích thước font mặc định cho phần xem trước */
         }
 
+        /* --- General Reset & Base Styles --- */
         html, body {
             margin: 0;
             padding: 0;
-            height: 100%;
+            height: 100%; /* html và body chiếm toàn bộ chiều cao viewport */
             width: 100%;
-            overflow: hidden; /* Ngăn cuộn ngoài ý muốn ở cấp độ body */
+            overflow: hidden; /* Ngăn html/body có thanh cuộn mặc định ban đầu */
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
             background-color: #000;
             color: #fff;
             font-size: 13px; /* Kích thước font cơ sở cho các phần tử không động */
-            display: flex; /* Sử dụng flexbox cho body để quản lý layout chính */
-            flex-direction: column;
         }
 
-        /* --- Page Wrapper for Swipe Functionality --- */
-        #pageWrapper {
-            display: flex;
-            width: 200vw; /* 200% chiều rộng của viewport để chứa 2 trang */
-            height: 100%; /* Chiếm toàn bộ chiều cao của body */
-            transition: transform 0.3s ease-out; /* Hiệu ứng chuyển động khi vuốt */
-            flex-shrink: 0; /* Ngăn pageWrapper co lại */
-        }
-
-        /* --- Individual Page/Tab Styles --- */
-        .page {
-            width: 100vw; /* Mỗi trang chiếm 100% chiều rộng của viewport */
-            height: 100%; /* Chiếm toàn bộ chiều cao của pageWrapper */
-            flex-shrink: 0; /* Ngăn các trang co lại */
-            display: flex;
-            flex-direction: column; /* Bố cục nội dung theo cột */
-            box-sizing: border-box;
-        }
-
-        /* --- Header Styles (Common for both pages) --- */
-        .header {
-            flex-shrink: 0; /* Header không co lại */
-            padding: 5px;
-            text-align: center;
-            background-color: #000; /* Đảm bảo nền khớp */
-        }
-
-        h1 {
-            font-size: 16px;
-            margin: 0; /* Loại bỏ margin mặc định */
-        }
-
-        /* --- CHAT PAGE Specific Styles --- */
-        #chatPage {
-            padding-bottom: 0px; /* Sẽ được điều chỉnh bằng JS để chừa chỗ cho input-area */
-        }
-
-        #chatBoxContainer {
-            flex-grow: 1; /* Cho phép vùng này mở rộng để chiếm hết không gian còn lại */
-            overflow-y: auto; /* Kích hoạt cuộn cho nội dung chat */
+        body {
+            /* Main scroll container */
+            overflow-y: auto; /* Cho phép body cuộn nội dung */
             -webkit-overflow-scrolling: touch; /* Cuộn mượt trên iOS/WatchOS */
-            background-color: #111;
-            border-radius: 8px;
-            margin: 0 5px 5px 5px; /* Margin xung quanh container của chatbox */
-            padding: 6px; /* Padding bên trong chatbox */
-            display: flex;
-            flex-direction: column; /* Để bong bóng chat xếp chồng */
-            gap: 4px; /* Khoảng cách giữa các bong bóng */
+            box-sizing: border-box; /* Padding được tính vào kích thước */
+            
+            /* Padding để chừa chỗ cho fixed header/footer */
+            padding-top: var(--fixed-header-height, 0px);
+            padding-bottom: var(--fixed-footer-height, 0px);
         }
 
-        /* Ẩn thanh cuộn cho WebKit browsers (Safari/Chrome/WatchOS) */
-        #chatBoxContainer::-webkit-scrollbar {
+        /* Ẩn thanh cuộn của body cho WebKit browsers (Safari/Chrome/WatchOS) */
+        body::-webkit-scrollbar {
             display: none;
         }
         /* For Firefox */
-        #chatBoxContainer {
+        body {
             scrollbar-width: none;
         }
 
-        .message {
-            max-width: 88%;
-            padding: 5px 8px;
-            border-radius: 10px;
-            font-size: var(--message-font-size); /* Sử dụng biến CSS */
-            line-height: 1.2;
-            word-wrap: break-word;
-        }
-
-        .user-message {
-            align-self: flex-end; /* Căn phải */
-            background-color: #007aff;
-            color: #fff;
-        }
-
-        .ai-message {
-            align-self: flex-start; /* Căn trái */
-            background-color: #333;
-            color: #fff;
-        }
-
-        .chat-input-area {
-            flex-shrink: 0; /* Không co lại */
+        /* --- Fixed Header --- */
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100; /* Đảm bảo nó luôn nằm trên cùng */
+            background-color: #000; /* Nền đen để che nội dung bên dưới */
+            box-sizing: border-box;
             padding: 5px;
-            background-color: #000; /* Nền khớp với body */
+            text-align: center;
+        }
+        .fixed-header h1 {
+            font-size: 16px;
+            margin: 0;
+        }
+
+        /* --- Fixed Bottom Area (Input + Buttons) --- */
+        .fixed-bottom-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            z-index: 100; /* Đảm bảo nó luôn nằm trên cùng */
+            background-color: #000; /* Nền đen để che nội dung bên dưới */
+            box-sizing: border-box;
+            padding: 5px; /* Padding cho toàn bộ khu vực dưới */
         }
 
         .input-group {
@@ -127,8 +92,8 @@
             padding: 6px;
             border-radius: 5px;
             margin-bottom: 5px;
-            width: 100%; /* Chiếm toàn bộ chiều rộng có sẵn trong group */
-            box-sizing: border-box; /* Tính padding vào width */
+            width: 100%; /* Chiếm toàn bộ chiều rộng có sẵn */
+            box-sizing: border-box;
             font-size: var(--input-font-size); /* Sử dụng biến CSS */
         }
 
@@ -157,18 +122,70 @@
             margin-bottom: 3px;
             padding: 0 5px;
         }
-
         .error-message {
             color: #ff3b30;
         }
 
+        /* --- Page Wrapper for Swipe Functionality (Content Area) --- */
+        #pageWrapper {
+            display: flex;
+            width: 200vw; /* 200% chiều rộng của viewport để chứa 2 trang */
+            /* Height will be determined by content, allowing body to scroll */
+            transition: transform 0.3s ease-out; /* Hiệu ứng chuyển động khi vuốt */
+            box-sizing: border-box;
+        }
+
+        /* --- Individual Page/Tab Styles --- */
+        .page {
+            width: 100vw; /* Mỗi trang chiếm 100% chiều rộng của viewport */
+            flex-shrink: 0; /* Ngăn các trang co lại khi pageWrapper flex */
+            display: flex; /* Mỗi trang là một flex container để bố cục nội dung dọc */
+            flex-direction: column;
+            box-sizing: border-box;
+            padding: 0 5px; /* Padding ngang cho nội dung trong mỗi trang */
+        }
+
+        /* --- CHAT PAGE Specific Styles (content flows naturally) --- */
+        #chatPageContent { /* Inner wrapper for chat messages */
+            flex-grow: 1; /* Cho phép nội dung chat mở rộng để cuộn */
+            display: flex;
+            flex-direction: column;
+            gap: 4px; /* Khoảng cách giữa các bong bóng chat */
+            padding-top: 5px; /* Padding trên cho bong bóng chat */
+            padding-bottom: 5px; /* Padding dưới cho bong bóng chat */
+            background-color: #111; /* Nền cho khu vực chat */
+            border-radius: 8px; /* Bo góc cho khu vực chat */
+            margin-top: 5px; /* Khoảng cách với header */
+            margin-bottom: 5px; /* Khoảng cách với footer */
+        }
+
+        .message {
+            max-width: 88%;
+            padding: 5px 8px;
+            border-radius: 10px;
+            font-size: var(--message-font-size); /* Sử dụng biến CSS */
+            line-height: 1.2;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            align-self: flex-end; /* Căn phải */
+            background-color: #007aff;
+            color: #fff;
+        }
+
+        .ai-message {
+            align-self: flex-start; /* Căn trái */
+            background-color: #333;
+            color: #fff;
+        }
+
         /* --- SETTINGS PAGE Specific Styles --- */
         #settingsPage {
-            padding: 10px 5px;
-            justify-content: flex-start;
-            align-items: center;
-            gap: 10px;
-            text-align: center;
+            justify-content: flex-start; /* Căn nội dung từ trên xuống */
+            align-items: center; /* Căn giữa theo chiều ngang */
+            padding-top: 10px; /* Padding trên cho trang cài đặt */
+            padding-bottom: 10px; /* Padding dưới cho trang cài đặt */
         }
 
         .settings-section {
@@ -219,33 +236,24 @@
     </style>
 </head>
 <body>
+    <!-- Fixed Header -->
+    <div id="fixedHeader" class="fixed-header">
+        <h1>Gemini Watch App</h1>
+    </div>
+
+    <!-- Page Wrapper for Swiping Content -->
+    <!-- This div will contain all page content and its padding will be adjusted by JS -->
     <div id="pageWrapper">
         <!-- CHAT PAGE -->
         <div id="chatPage" class="page">
-            <div class="header">
-                <h1>Gemini Chat</h1>
-            </div>
-
-            <div id="chatBoxContainer">
+            <div id="chatPageContent">
                 <div class="message ai-message">Chào bạn! Tôi có thể giúp gì cho bạn?</div>
-            </div>
-
-            <div class="chat-input-area">
-                <div id="loadingIndicator" class="loading" style="display: none;">Đang tải...</div>
-                <div id="errorMessage" class="error-message" style="display: none;"></div>
-                <div class="input-group">
-                    <input type="text" id="promptInput" placeholder="Nhập câu hỏi của bạn...">
-                    <button id="sendButton">Gửi</button>
-                </div>
+                <!-- More chat messages will be added here -->
             </div>
         </div>
 
         <!-- SETTINGS PAGE -->
         <div id="settingsPage" class="page">
-            <div class="header">
-                <h1>Cài đặt</h1>
-            </div>
-
             <div class="settings-section">
                 <div class="settings-label">Kích thước chữ:</div>
                 <div id="fontSizePreview" class="font-size-preview">Aa Bb Cc</div>
@@ -261,19 +269,32 @@
         </div>
     </div>
 
+    <!-- Fixed Bottom Area (Input + Buttons) -->
+    <div id="fixedFooter" class="fixed-bottom-area">
+        <div id="loadingIndicator" class="loading" style="display: none;">Đang tải...</div>
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <div class="input-group">
+            <input type="text" id="promptInput" placeholder="Nhập câu hỏi của bạn...">
+            <button id="sendButton">Gửi</button>
+        </div>
+    </div>
+
     <script>
-        const API_KEY = "AIzaSyBtktalr9ziLgKxKOgHTBuwqXUT2L_WWJI"; // Your API Key
+        const API_KEY = "AIzaSyBtktalr9ziLgKxKOgHTBuwqXUT2L_WWJI"; // Khóa API của bạn
+        // LƯU Ý QUAN TRỌNG: Khóa API bạn cung cấp ở trên là ví dụ. Vui lòng thay thế bằng khóa API hợp lệ của bạn từ Google Cloud Console.
         const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
         // --- DOM Elements ---
         const pageWrapper = document.getElementById('pageWrapper');
         const chatPage = document.getElementById('chatPage');
-        const chatBoxContainer = document.getElementById('chatBoxContainer');
+        const chatPageContent = document.getElementById('chatPageContent'); // The new div for chat content
         const promptInput = document.getElementById('promptInput');
         const sendButton = document.getElementById('sendButton');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const errorMessageDiv = document.getElementById('errorMessage');
-        const chatInputArea = document.querySelector('.chat-input-area');
+
+        const fixedHeader = document.getElementById('fixedHeader');
+        const fixedFooter = document.getElementById('fixedFooter');
 
         const fontSizePreview = document.getElementById('fontSizePreview');
         const decreaseFontButton = document.getElementById('decreaseFont');
@@ -287,80 +308,84 @@
         const swipeThreshold = 50; // Pixels to confirm a swipe
 
         // --- Font Size Management ---
-        const MIN_FONT_SIZE = 9.5; // Minimum font size for messages
-        const MAX_FONT_SIZE = 22.5; // Increased maximum font size for messages (to allow larger text)
-        const FONT_SIZE_STEP = 1.5; // Larger step for more noticeable changes
-        
-        // Use a single variable to store the scaling factor for all dynamic text.
-        // It represents how many steps (FONT_SIZE_STEP) away from the base font size we are.
+        const MIN_FONT_SIZE = 9.5; // Kích thước font nhỏ nhất cho tin nhắn
+        const MAX_FONT_SIZE = 24.5; // Kích thước font lớn nhất cho tin nhắn (tăng thêm)
+        const FONT_SIZE_STEP = 2; // Bước tăng/giảm font lớn hơn để có sự thay đổi rõ rệt
+
+        // Biến này lưu trữ hệ số tỷ lệ, thay vì kích thước font trực tiếp.
+        // Nó giúp dễ dàng điều chỉnh nhiều font size cùng lúc.
         let currentScaleFactor = parseFloat(localStorage.getItem('fontSizeScaleFactor') || '0');
 
         function applyFontSize() {
-            // Base font sizes as defined in CSS variables (initial values)
+            // Các kích thước font cơ sở (initial values from CSS variables)
             const baseMessageFontSize = 10.5;
             const baseInputFontSize = 11;
             const baseButtonFontSize = 12;
             const basePreviewFontSize = 16;
 
-            // Calculate scaled font sizes based on currentScaleFactor
+            // Tính toán kích thước font đã thay đổi dựa trên scaleFactor
             let scaledMessageFontSize = baseMessageFontSize + (currentScaleFactor * FONT_SIZE_STEP);
             let scaledInputFontSize = baseInputFontSize + (currentScaleFactor * FONT_SIZE_STEP);
             let scaledButtonFontSize = baseButtonFontSize + (currentScaleFactor * FONT_SIZE_STEP);
             // Preview scales a bit more aggressively for better visual feedback
             let scaledPreviewFontSize = basePreviewFontSize + (currentScaleFactor * FONT_SIZE_STEP * 1.5); 
 
-            // Clamp values to min/max ranges
+            // Đảm bảo kích thước font nằm trong khoảng min/max
             scaledMessageFontSize = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, scaledMessageFontSize));
-            scaledInputFontSize = Math.max(baseInputFontSize - FONT_SIZE_STEP * 2, scaledInputFontSize); // Allow input to go a bit smaller than its base too
-            scaledButtonFontSize = Math.max(baseButtonFontSize - FONT_SIZE_STEP * 2, scaledButtonFontSize); // Allow button to go a bit smaller
-            scaledPreviewFontSize = Math.max(basePreviewFontSize - FONT_SIZE_STEP * 2, scaledPreviewFontSize);
+            // Các font khác cũng được clamp để không quá nhỏ/lớn so với ý muốn
+            scaledInputFontSize = Math.max(baseInputFontSize - FONT_SIZE_STEP * 2, Math.min(MAX_FONT_SIZE + 2, scaledInputFontSize));
+            scaledButtonFontSize = Math.max(baseButtonFontSize - FONT_SIZE_STEP * 2, Math.min(MAX_FONT_SIZE + 2, scaledButtonFontSize));
+            scaledPreviewFontSize = Math.max(basePreviewFontSize - FONT_SIZE_STEP * 2, Math.min(MAX_FONT_SIZE + 6, scaledPreviewFontSize));
 
-            // Update CSS variables on the root (<html> element)
+
+            // Cập nhật các biến CSS trên phần tử gốc (<html>)
             document.documentElement.style.setProperty('--message-font-size', `${scaledMessageFontSize}px`);
             document.documentElement.style.setProperty('--input-font-size', `${scaledInputFontSize}px`);
             document.documentElement.style.setProperty('--button-font-size', `${scaledButtonFontSize}px`);
             document.documentElement.style.setProperty('--preview-font-size', `${scaledPreviewFontSize}px`);
 
-            // Apply font size to existing messages if they were added before size change
+            // Áp dụng font size cho các tin nhắn hiện có (nếu chúng được thêm vào trước khi thay đổi size)
             document.querySelectorAll('.message').forEach(msg => {
                 msg.style.fontSize = `${scaledMessageFontSize}px`;
             });
             
-            // Save the scale factor to localStorage
+            // Lưu hệ số tỷ lệ vào localStorage
             localStorage.setItem('fontSizeScaleFactor', currentScaleFactor);
         }
 
         function changeFontSize(direction) {
             currentScaleFactor += direction;
-            // Recalculate and re-clamp currentScaleFactor based on actual scaledMessageFontSize to prevent overflow
-            const baseMessageFontSize = 10.5; // Re-declare base for clamping logic
+            // Đảm bảo currentScaleFactor không vượt quá giới hạn dựa trên MIN/MAX_FONT_SIZE
+            const baseMessageFontSize = 10.5;
             if (baseMessageFontSize + (currentScaleFactor * FONT_SIZE_STEP) < MIN_FONT_SIZE) {
-                currentScaleFactor = Math.floor((MIN_FONT_SIZE - baseMessageFontSize) / FONT_SIZE_STEP);
+                currentScaleFactor = Math.ceil((MIN_FONT_SIZE - baseMessageFontSize) / FONT_SIZE_STEP);
             }
             if (baseMessageFontSize + (currentScaleFactor * FONT_SIZE_STEP) > MAX_FONT_SIZE) {
-                currentScaleFactor = Math.ceil((MAX_FONT_SIZE - baseMessageFontSize) / FONT_SIZE_STEP);
+                currentScaleFactor = Math.floor((MAX_FONT_SIZE - baseMessageFontSize) / FONT_SIZE_STEP);
             }
             
             applyFontSize();
-            // Important: Re-adjust padding after font size change as input area height WILL change
-            adjustChatPagePadding();
+            // Quan trọng: Sau khi thay đổi font, cần điều chỉnh padding của body vì chiều cao fixed-footer có thể thay đổi
+            adjustBodyPadding();
         }
 
-        // --- Layout Adjustments (for fixed input area) ---
-        function adjustChatPagePadding() {
-            const inputAreaHeight = chatInputArea.offsetHeight;
-            // Add a small safety padding to ensure no overlap, crucial for small screens
-            const safetyPadding = 5; 
-            chatPage.style.paddingBottom = `${inputAreaHeight + safetyPadding}px`;
-            // Ensure chatBoxContainer doesn't have an conflicting bottom margin
-            chatBoxContainer.style.marginBottom = '0';
+        // --- Layout Adjustments (for fixed header/footer) ---
+        function adjustBodyPadding() {
+            const headerHeight = fixedHeader.offsetHeight;
+            const footerHeight = fixedFooter.offsetHeight;
+
+            // Cập nhật biến CSS để body tự điều chỉnh padding
+            document.documentElement.style.setProperty('--fixed-header-height', `${headerHeight}px`);
+            document.documentElement.style.setProperty('--fixed-footer-height', `${footerHeight}px`);
         }
 
         // --- Chat Functionality ---
         function displayError(message) {
             errorMessageDiv.textContent = message;
             errorMessageDiv.style.display = 'block';
-            chatBoxContainer.scrollTop = chatBoxContainer.scrollHeight;
+            // Cuộn body để hiển thị lỗi, không phải chatBoxContainer
+            document.body.scrollTop = document.body.scrollHeight; 
+            document.documentElement.scrollTop = document.documentElement.scrollHeight; // For cross-browser compatibility
         }
 
         function clearError() {
@@ -374,8 +399,10 @@
             messageDiv.classList.add(sender === 'user' ? 'user-message' : 'ai-message');
             messageDiv.textContent = text;
             // Font size for new messages will be automatically set by CSS variable
-            chatBoxContainer.appendChild(messageDiv);
-            chatBoxContainer.scrollTop = chatBoxContainer.scrollHeight; // Auto-scroll to the latest message
+            chatPageContent.appendChild(messageDiv); // Thêm vào chatPageContent mới
+            // Cuộn body để hiển thị tin nhắn mới, không phải chatBoxContainer
+            document.body.scrollTop = document.body.scrollHeight;
+            document.documentElement.scrollTop = document.documentElement.scrollHeight;
         }
 
         async function sendMessage() {
@@ -387,7 +414,7 @@
 
             clearError();
             addMessage(prompt, 'user');
-            promptInput.value = ''; // Clear input immediately
+            promptInput.value = ''; // Xóa input ngay lập tức
             
             loadingIndicator.style.display = 'block';
             sendButton.disabled = true;
@@ -442,21 +469,23 @@
         }
 
         function handleTouchStart(e) {
-            // If on chat page and chatBoxContainer is scrollable, prioritize vertical scroll.
-            // This prevents accidental horizontal swipe when intending to scroll vertically.
-            if (currentPageIndex === 0 && chatBoxContainer.scrollHeight > chatBoxContainer.clientHeight) {
+            // If currently on Chat page (index 0) and body content is scrollable vertically
+            if (currentPageIndex === 0 && (document.body.scrollHeight > window.innerHeight || document.documentElement.scrollHeight > window.innerHeight)) {
                 const touchY = e.touches[0].clientY;
-                const chatBoxRect = chatBoxContainer.getBoundingClientRect();
-                if (touchY >= chatBoxRect.top && touchY <= chatBoxRect.bottom) {
-                    // Touch started inside the scrollable chatbox, allow native scroll
-                    // Keep transition for quick revert if no scroll happens
-                    pageWrapper.style.transition = 'transform 0.3s ease-out';
-                    return; 
+                // Get the main content area (pageWrapper) boundaries
+                const pageWrapperRect = pageWrapper.getBoundingClientRect();
+                
+                // Check if touch started within the main content area (excluding fixed header/footer)
+                if (touchY >= pageWrapperRect.top && touchY <= pageWrapperRect.bottom) {
+                    // Touch started inside scrollable content, allow native vertical scroll
+                    // Prevent default to disable horizontal swipe only if vertical scroll isn't happening
+                    // This is complex for mixed gestures, often best handled by native WebView if it supports it.
+                    // For now, let's allow vertical scroll, and if horizontal swipe is strong enough, it will transition.
+                    // e.preventDefault(); // CAUTION: This would disable vertical scroll if horizontal swipe logic dominates
                 }
             }
-
             startX = e.touches[0].clientX;
-            pageWrapper.style.transition = 'none'; // Turn off transition for active swipe
+            pageWrapper.style.transition = 'none'; // Tắt transition khi bắt đầu vuốt
         }
 
         function handleTouchMove(e) {
@@ -466,16 +495,16 @@
         }
 
         function handleTouchEnd(e) {
-            pageWrapper.style.transition = 'transform 0.3s ease-out'; // Turn transition back on
+            pageWrapper.style.transition = 'transform 0.3s ease-out'; // Bật lại transition
             
             const endX = e.changedTouches[0].clientX;
             const diffX = endX - startX;
 
-            if (diffX < -swipeThreshold && currentPageIndex < 1) { // Swipe left (next page)
+            if (diffX < -swipeThreshold && currentPageIndex < 1) { // Vuốt sang trái (next page)
                 goToPage(currentPageIndex + 1);
-            } else if (diffX > swipeThreshold && currentPageIndex > 0) { // Swipe right (previous page)
+            } else if (diffX > swipeThreshold && currentPageIndex > 0) { // Vuốt sang phải (previous page)
                 goToPage(currentPageIndex - 1);
-            } else { // Not enough swipe, revert to current page
+            } else { // Không đủ ngưỡng, quay về trang cũ
                 goToPage(currentPageIndex);
             }
         }
@@ -491,22 +520,26 @@
         decreaseFontButton.addEventListener('click', () => changeFontSize(-1));
         increaseFontButton.addEventListener('click', () => changeFontSize(1));
 
+        // Lắng nghe sự kiện vuốt trên toàn bộ pageWrapper
         pageWrapper.addEventListener('touchstart', handleTouchStart);
         pageWrapper.addEventListener('touchmove', handleTouchMove);
         pageWrapper.addEventListener('touchend', handleTouchEnd);
 
         // --- Initial Setup on Load ---
         window.addEventListener('load', () => {
-            applyFontSize(); // Apply initial font size from localStorage or default
-            adjustChatPagePadding(); // Adjust padding for chat page
-            // Add an initial message to ensure chat box is visible
-            // This line is commented out as there's already an initial message in HTML
-            // addMessage("Chào bạn! Tôi có thể giúp gì cho bạn?", 'ai');
+            adjustBodyPadding(); // Điều chỉnh padding body sau khi các fixed elements đã có chiều cao
+            applyFontSize(); // Áp dụng kích thước font ban đầu
+            // Có thể thêm một vài tin nhắn giả để kiểm tra cuộn
+            // addMessage("Đây là tin nhắn demo 1 để kiểm tra cuộn.", 'ai');
+            // addMessage("Đây là tin nhắn demo 2. Thử xoay núm Digital Crown hoặc vuốt dọc để cuộn nhé!", 'ai');
+            // addMessage("Demo 3, Demo 4, Demo 5, Demo 6, Demo 7, Demo 8, Demo 9, Demo 10. Đây là một tin nhắn rất dài để xem nó xuống dòng như thế nào trên màn hình nhỏ. Hãy cuộn xuống để xem thêm!", 'ai');
         });
 
-        // ResizeObserver to adjust padding if input-area changes size (e.g., WatchOS soft keyboard)
-        const resizeObserver = new ResizeObserver(adjustChatPagePadding);
-        resizeObserver.observe(chatInputArea);
+        // ResizeObserver để điều chỉnh padding nếu fixed header/footer thay đổi kích thước (ví dụ: bàn phím ảo WatchOS)
+        const headerObserver = new ResizeObserver(adjustBodyPadding);
+        headerObserver.observe(fixedHeader);
+        const footerObserver = new ResizeObserver(adjustBodyPadding);
+        footerObserver.observe(fixedFooter);
     </script>
 </body>
 </html>
