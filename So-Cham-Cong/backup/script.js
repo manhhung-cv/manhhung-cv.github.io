@@ -23,7 +23,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const baseHoursInput = document.getElementById('baseHoursInput');
     const startWorkDayInput = document.getElementById('startWorkDayInput');
     const displayModeSelect = document.getElementById('displayModeSelect');
-    const currencySelector = document.getElementById('currencySelector'); // NEW: currencySelector
 
     // Modals & Forms
     const timesheetModal = document.getElementById('timesheetModal');
@@ -74,27 +73,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const quickEditControls = document.getElementById('quickEditControls');
 
 
-    // --- State & Constants (Các biến này giờ được gắn vào window để calc.js có thể truy cập) ---
+    // --- State & Constants ---
     let currentDate = new Date();
     let isEditMode = false;
-    window.scheduleData = {};
-    window.timesheetEntries = {};
+    window.scheduleData = {}; // Thay đổi từ 'let scheduleData'
+    window.timesheetEntries = {}; // Thay đổi từ 'let timesheetEntries'
     let firstDayIsMonday = false;
-    window.baseWorkHours = 8;
-    window.startWorkDay = 1;
+    window.baseWorkHours = 8; // Thay đổi từ 'let baseWorkHours'
+    window.startWorkDay = 1; // Thay đổi từ 'let startWorkDay'
     let displayMode = 'fullMonth';
-    let currentCurrency = 'VND'; // NEW: currentCurrency
-    window.currentCurrency = currentCurrency; // Gắn vào window để calc.js truy cập
-
     const SHIFT_CYCLE = ["", "ca-ngay", "ca-dem", "nghi", "ngay-le"];
     const SHIFT_ICONS = { "ca-ngay": '<i class="fas fa-sun"></i>', "ca-dem": '<i class="fas fa-moon"></i>', "nghi": '<i class="fas fa-home"></i>', "ngay-le": '<i class="fas fa-star"></i>', "": "" };
+    // Thay đổi LOCAL_STORAGE_KEYS để phản ánh các biến global mới
     const LOCAL_STORAGE_KEYS = {
-        schedule: 'ts_schedule_v16', timesheet: 'ts_entries_v16', firstDay: 'ts_firstday_v16',
-        theme: 'ts_theme_v16', baseHours: 'ts_basehours_v16', startWorkDay: 'ts_startworkday_v16',
-        displayMode: 'ts_displaymode_v16',
-        currency: 'ts_currency_v1' // NEW: Khóa cho tiền tệ
+        schedule: 'ts_schedule_v16',
+        timesheet: 'ts_entries_v16',
+        firstDay: 'ts_firstday_v16',
+        theme: 'ts_theme_v16',
+        baseHours: 'ts_basehours_v16',
+        startWorkDay: 'ts_startworkday_v16',
+        displayMode: 'ts_displaymode_v16'
     };
-
     // Drag selection for quick edit
     let isDragging = false;
     let dragSelection = [];
@@ -124,8 +123,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
     // --- Utilities ---
-    // Hàm showToast giờ là global
-    window.showToast = (message, duration = 2500) => {
+    const showToast = (message, duration = 2500) => {
         let toast = document.querySelector('.toast-notification');
         if (toast) toast.remove();
         toast = document.createElement('div');
@@ -165,20 +163,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const savedStartWorkDay = localStorage.getItem(LOCAL_STORAGE_KEYS.startWorkDay);
             window.startWorkDay = savedStartWorkDay ? parseInt(savedStartWorkDay) : 1;
             displayMode = localStorage.getItem(LOCAL_STORAGE_KEYS.displayMode) || 'fullMonth';
-            // NEW: Load currentCurrency
-            currentCurrency = localStorage.getItem(LOCAL_STORAGE_KEYS.currency) || 'VND';
-            window.currentCurrency = currentCurrency; // Cập nhật biến global
-
 
             applyTheme(savedTheme);
             if (firstDayLabel) {
                 firstDayLabel.textContent = firstDayIsMonday ? 'T2' : 'CN';
             }
-            if (baseHoursInput) baseHoursInput.value = window.baseWorkHours;
-            if (startWorkDayInput) startWorkDayInput.value = window.startWorkDay;
+            if (baseHoursInput) baseHoursInput.value = window.baseWorkHours; // Cập nhật input
+            if (startWorkDayInput) startWorkDayInput.value = window.startWorkDay; // Cập nhật input
             if (displayModeSelect) displayModeSelect.value = displayMode;
-            if (currencySelector) currencySelector.value = currentCurrency; // NEW: Cập nhật selector tiền tệ
-        } catch (e) { window.showToast("Lỗi tải dữ liệu."); }
+        } catch (e) { window.showToast("Lỗi tải dữ liệu."); } // Sử dụng window.showToast
     };
 
     const persistAllData = () => {
@@ -189,8 +182,7 @@ document.addEventListener('DOMContentLoaded', function () {
             localStorage.setItem(LOCAL_STORAGE_KEYS.baseHours, window.baseWorkHours);
             localStorage.setItem(LOCAL_STORAGE_KEYS.startWorkDay, window.startWorkDay);
             localStorage.setItem(LOCAL_STORAGE_KEYS.displayMode, displayMode);
-            localStorage.setItem(LOCAL_STORAGE_KEYS.currency, currentCurrency); // NEW: Persist currentCurrency
-        } catch (e) { window.showToast("Lỗi không thể lưu dữ liệu!"); }
+        } catch (e) { window.showToast("Lỗi không thể lưu dữ liệu!"); } // Sử dụng window.showToast
     };
 
     const updateTitle = (title) => { mainAppTitle.textContent = title; headerTitle.textContent = title; };
@@ -205,10 +197,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (tabId === 'tabSoChamCong') {
             updateStatistics();
             renderTimesheetLog();
-        } else if (tabId === 'tabMayTinh') {
-            if (window.initCalcTab) {
-                window.initCalcTab();
-            }
         }
     };
 
@@ -225,14 +213,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let workPeriodStartMonthRef = currentDate.getMonth();
         let workPeriodStartYearRef = currentDate.getFullYear();
-        if (currentDate.getDate() < window.startWorkDay) {
+        if (currentDate.getDate() < startWorkDay) {
             workPeriodStartMonthRef = (workPeriodStartMonthRef === 0) ? 11 : workPeriodStartMonthRef - 1;
             workPeriodStartYearRef = (currentDate.getMonth() === 0) ? workPeriodStartYearRef - 1 : workPeriodStartYearRef;
         }
-        const workPeriodStartDateActual = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, window.startWorkDay);
+        const workPeriodStartDateActual = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, startWorkDay);
         workPeriodStartDateActual.setHours(0, 0, 0, 0);
 
-        const workPeriodEndDateActual = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, window.startWorkDay - 1);
+        const workPeriodEndDateActual = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, startWorkDay - 1);
         workPeriodEndDateActual.setHours(23, 59, 59, 999);
 
 
@@ -295,8 +283,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 const dateStr = dayInfo.dateStr;
                 const currentDateForCell = dayInfo.date;
                 const isToday = currentDateForCell.getTime() === todayObj.getTime();
-                const shiftType = window.scheduleData[dateStr] || "";
-                const hasTimesheet = !!window.timesheetEntries[dateStr];
+                const shiftType = scheduleData[dateStr] || "";
+                const hasTimesheet = !!timesheetEntries[dateStr];
 
                 let cellClasses = '';
                 if (isToday) {
@@ -345,23 +333,23 @@ document.addEventListener('DOMContentLoaded', function () {
         let workPeriodStartMonthRef = month;
         let workPeriodStartYearRef = year;
 
-        if (today.getDate() < window.startWorkDay) {
+        if (today.getDate() < startWorkDay) {
             workPeriodStartMonthRef = (workPeriodStartMonthRef === 0) ? 11 : workPeriodStartMonthRef - 1;
             workPeriodStartYearRef = (month === 0) ? workPeriodStartYearRef - 1 : workPeriodStartYearRef;
         }
 
-        const startStatsDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, window.startWorkDay);
+        const startStatsDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, startWorkDay);
         startStatsDate.setHours(0, 0, 0, 0);
 
-        const endStatsDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, window.startWorkDay - 1);
+        const endStatsDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, startWorkDay - 1);
         endStatsDate.setHours(23, 59, 59, 999);
 
         console.log('--- Update Statistics ---');
         console.log('System Current Date:', today.toLocaleDateString('vi-VN'));
-        console.log('Start Work Day Setting:', window.startWorkDay);
+        console.log('Start Work Day Setting:', startWorkDay);
         console.log('Calculated Stats Period: From', startStatsDate.toLocaleDateString('vi-VN'), 'To', endStatsDate.toLocaleDateString('vi-VN'));
-        console.log('Timesheet Entries Sample (first 5):', Object.entries(window.timesheetEntries).slice(0, 5));
-        console.log('Schedule Data Sample (first 5):', Object.entries(window.scheduleData).slice(0, 5));
+        console.log('Timesheet Entries Sample (first 5):', Object.entries(timesheetEntries).slice(0, 5));
+        console.log('Schedule Data Sample (first 5):', Object.entries(scheduleData).slice(0, 5));
 
 
         let stats = {
@@ -377,8 +365,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         for (let d = new Date(startStatsDate); d <= endStatsDate; d.setDate(d.getDate() + 1)) {
             const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            const schedule = window.scheduleData[dateStr] || "";
-            const entry = window.timesheetEntries[dateStr];
+            const schedule = scheduleData[dateStr] || "";
+            const entry = timesheetEntries[dateStr];
 
             if (schedule === 'ca-ngay') stats.schedDay++;
             if (schedule === 'ca-dem') stats.schedNight++;
@@ -403,12 +391,12 @@ document.addEventListener('DOMContentLoaded', function () {
         statsTotalWorkDays.textContent = `${stats.schedDay + stats.schedNight} ngày (${stats.schedDay}S, ${stats.schedNight}Đ)`;
         statsActualWorkDays.textContent = `${stats.actualDay + stats.actualNight} ngày (${stats.actualDay}S, ${stats.actualNight}Đ)`;
         statsLeaveDays.textContent = `${stats.paid + stats.unpaid + stats.company} ngày (${stats.paid}P, ${stats.unpaid}KL, ${stats.company}Cty)`;
-        statsTotalHours.textContent = `${((stats.actualDay + stats.actualNight) * window.baseWorkHours).toFixed(1)} giờ`;
+        statsTotalHours.textContent = `${((stats.actualDay + stats.actualNight) * baseWorkHours).toFixed(1)} giờ`;
         statsOvertimeHours.textContent = `${(stats.otMins / 60).toFixed(1)} giờ`;
     };
 
     const getFilteredLogEntries = () => {
-        let filtered = Object.entries(window.timesheetEntries);
+        let filtered = Object.entries(timesheetEntries);
         const filterType = logFilterTypeSelect.value;
         const logStartDate = document.getElementById('logStartDate').value;
         const logEndDate = document.getElementById('logEndDate').value;
@@ -427,13 +415,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const sorted = getFilteredLogEntries().sort((a, b) => new Date(b[0]) - new Date(a[0]));
         noTimesheetDataMsg.style.display = sorted.length === 0 ? 'block' : 'none';
         timesheetLogBody.innerHTML = sorted.map(([dateStr, entry]) => {
-            const shiftType = window.scheduleData[dateStr] || "";
+            const shiftType = scheduleData[dateStr] || "";
             let workHours = 'Nghỉ';
             if (entry.type === 'work' || entry.type === 'work_ot') {
                 const totalMins = (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
                 workHours = totalMins > 0
-                    ? `${window.baseWorkHours}h + ${(totalMins / 60).toFixed(1)}h TC`
-                    : `${window.baseWorkHours}h`;
+                    ? `${baseWorkHours}h + ${(totalMins / 60).toFixed(1)}h TC`
+                    : `${baseWorkHours}h`;
             }
             const entryTypeLabel = entryTypeSelect.querySelector(`option[value="${entry.type}"]`)?.textContent || entry.type;
             return `<tr><td>${formatDateStr(dateStr)}</td><td>${SHIFT_ICONS[shiftType] || ''}</td><td>${workHours}</td><td>${entryTypeLabel}</td></tr>`;
@@ -447,22 +435,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (dataType === 'all') {
             dataToExport = {
-                schedule: window.scheduleData,
-                timesheet: window.timesheetEntries,
+                schedule: scheduleData,
+                timesheet: timesheetEntries,
                 settings: {
                     firstDayIsMonday,
-                    baseWorkHours: window.baseWorkHours,
-                    startWorkDay: window.startWorkDay,
+                    baseWorkHours,
+                    startWorkDay,
                     displayMode,
                     theme: localStorage.getItem(LOCAL_STORAGE_KEYS.theme)
                 }
             };
             filename += 'full_data.json';
         } else if (dataType === 'schedule') {
-            dataToExport = window.scheduleData;
+            dataToExport = scheduleData;
             filename += 'lich_lam_viec.json';
         } else if (dataType === 'timesheet') {
-            dataToExport = window.timesheetEntries;
+            dataToExport = timesheetEntries;
             filename += 'so_cham_cong.json';
         }
 
@@ -476,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function () {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        window.showToast('Đã xuất dữ liệu!');
+        showToast('Đã xuất dữ liệu!');
     };
 
     const importData = (event) => {
@@ -493,11 +481,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Check if it's the full export format
                 if (imported.schedule && imported.timesheet && imported.settings) {
                     if (confirm('Dữ liệu nhập vào sẽ GHI ĐÈ toàn bộ lịch làm việc, chấm công và cài đặt. Bạn có chắc chắn muốn tiếp tục?')) {
-                        window.scheduleData = imported.schedule;
-                        window.timesheetEntries = imported.timesheet;
+                        scheduleData = imported.schedule;
+                        timesheetEntries = imported.timesheet;
                         firstDayIsMonday = imported.settings.firstDayIsMonday;
-                        window.baseWorkHours = imported.settings.baseWorkHours;
-                        window.startWorkDay = imported.settings.startWorkDay;
+                        baseWorkHours = imported.settings.baseWorkHours;
+                        startWorkDay = imported.settings.startWorkDay;
                         displayMode = imported.settings.displayMode;
                         applyTheme(imported.settings.theme);
 
@@ -505,28 +493,28 @@ document.addEventListener('DOMContentLoaded', function () {
                         if (firstDayLabel) {
                             firstDayLabel.textContent = firstDayIsMonday ? 'T2' : 'CN';
                         }
-                        if (baseHoursInput) baseHoursInput.value = window.baseWorkHours;
-                        if (startWorkDayInput) startWorkDayInput.value = window.startWorkDay;
+                        if (baseHoursInput) baseHoursInput.value = baseWorkHours;
+                        if (startWorkDayInput) startWorkDayInput.value = startWorkDay;
                         if (displayModeSelect) displayModeSelect.value = displayMode;
 
-                        window.showToast('Đã nhập toàn bộ dữ liệu!');
+                        showToast('Đã nhập toàn bộ dữ liệu!');
                     } else {
-                        window.showToast('Nhập dữ liệu đã huỷ.');
+                        showToast('Nhập dữ liệu đã huỷ.');
                         return;
                     }
                 } else if (imported.schedule || imported.timesheet) {
                     // This might be an older full export or just schedule/timesheet
                     if (confirm('Dữ liệu nhập vào sẽ GHI ĐÈ lịch làm việc HOẶC chấm công hiện tại. Bạn có chắc chắn muốn tiếp tục?')) {
                         if (imported.schedule) {
-                            window.scheduleData = imported.schedule;
-                            window.showToast('Đã nhập lịch làm việc!');
+                            scheduleData = imported.schedule;
+                            showToast('Đã nhập lịch làm việc!');
                         }
                         if (imported.timesheet) {
-                            window.timesheetEntries = imported.timesheet;
-                            window.showToast('Đã nhập dữ liệu chấm công!');
+                            timesheetEntries = imported.timesheet;
+                            showToast('Đã nhập dữ liệu chấm công!');
                         }
                     } else {
-                        window.showToast('Nhập dữ liệu đã huỷ.');
+                        showToast('Nhập dữ liệu đã huỷ.');
                         return;
                     }
                 } else {
@@ -534,33 +522,33 @@ document.addEventListener('DOMContentLoaded', function () {
                     const isScheduleLike = Object.keys(imported).every(key => typeof imported[key] === 'string' && SHIFT_CYCLE.includes(imported[key]));
                     const isTimesheetLike = Object.keys(imported).every(key => typeof imported[key] === 'object' && imported[key] !== null && 'type' in imported[key]);
 
-                    if (isScheduleLike && isTimesheetLike) {
+                    if (isScheduleLike && isTimesheetLike) { // Highly unlikely, but for safety
                         if (confirm('Dữ liệu nhập vào có vẻ chứa cả lịch và chấm công. Dữ liệu hiện tại sẽ bị GHI ĐÈ. Bạn có chắc chắn muốn tiếp tục?')) {
-                            window.scheduleData = imported;
-                            window.timesheetEntries = imported;
-                            window.showToast('Đã nhập dữ liệu lịch và chấm công!');
+                            scheduleData = imported;
+                            timesheetEntries = imported; // This logic might be flawed if 'imported' contains both and overwrite each other. Refine as needed.
+                            showToast('Đã nhập dữ liệu lịch và chấm công!');
                         } else {
-                            window.showToast('Nhập dữ liệu đã huỷ.');
+                            showToast('Nhập dữ liệu đã huỷ.');
                             return;
                         }
                     } else if (isScheduleLike) {
                         if (confirm('Dữ liệu nhập vào có vẻ là lịch làm việc. Lịch làm việc hiện tại sẽ bị GHI ĐÈ. Bạn có chắc chắn muốn tiếp tục?')) {
-                            window.scheduleData = imported;
-                            window.showToast('Đã nhập lịch làm việc!');
+                            scheduleData = imported;
+                            showToast('Đã nhập lịch làm việc!');
                         } else {
-                            window.showToast('Nhập dữ liệu đã huỷ.');
+                            showToast('Nhập dữ liệu đã huỷ.');
                             return;
                         }
                     } else if (isTimesheetLike) {
                         if (confirm('Dữ liệu nhập vào có vẻ là chấm công. Dữ liệu chấm công hiện tại sẽ bị GHI ĐÈ. Bạn có chắc chắn muốn tiếp tục?')) {
-                            window.timesheetEntries = imported;
-                            window.showToast('Đã nhập dữ liệu chấm công!');
+                            timesheetEntries = imported;
+                            showToast('Đã nhập dữ liệu chấm công!');
                         } else {
-                            window.showToast('Nhập dữ liệu đã huỷ.');
+                            showToast('Nhập dữ liệu đã huỷ.');
                             return;
                         }
                     } else {
-                        window.showToast('Cấu trúc file JSON không hợp lệ.');
+                        showToast('Cấu trúc file JSON không hợp lệ.');
                         return;
                     }
                 }
@@ -571,37 +559,37 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderTimesheetLog();
             } catch (error) {
                 console.error('Error importing data:', error);
-                window.showToast('Lỗi khi đọc file JSON. Vui lòng kiểm tra định dạng.');
+                showToast('Lỗi khi đọc file JSON. Vui lòng kiểm tra định dạng.');
             }
         };
         reader.readAsText(file);
     };
 
     const exportCsv = () => {
-        const filteredEntries = getFilteredLogEntries().sort((a, b) => new Date(b[0]) - new Date(a[0]));
+        const filteredEntries = getFilteredLogEntries().sort((a, b) => new Date(a[0]) - new Date(b[0]));
         if (filteredEntries.length === 0) {
-            window.showToast('Không có dữ liệu để xuất CSV.');
+            showToast('Không có dữ liệu để xuất CSV.');
             return;
         }
 
         let csvContent = "Ngày,Loại ca dự kiến,Giờ làm,Giờ tăng ca,Loại chấm công,Ghi chú\n";
 
         filteredEntries.forEach(([dateStr, entry]) => {
-            const shiftType = window.scheduleData[dateStr] || "Không có lịch";
+            const shiftType = scheduleData[dateStr] || "Không có lịch";
             const entryTypeLabel = entryTypeSelect.querySelector(`option[value="${entry.type}"]`)?.textContent || entry.type;
 
             let hoursWorked = '';
             let overtimeHours = '';
 
             if (entry.type === 'work' || entry.type === 'work_ot') {
-                hoursWorked = window.baseWorkHours;
+                hoursWorked = baseWorkHours;
                 overtimeHours = ((entry.overtimeHours || 0) + (entry.overtimeMinutes || 0) / 60).toFixed(1);
             } else {
                 hoursWorked = '0';
                 overtimeHours = '0';
             }
 
-            const notes = entry.notes ? `"${entry.notes.replace(/"/g, '""')}"` : '';
+            const notes = entry.notes ? `"${entry.notes.replace(/"/g, '""')}"` : ''; // Handle commas and quotes in notes
 
             csvContent += `${formatDateStr(dateStr)},${shiftType},${hoursWorked},${overtimeHours},${entryTypeLabel},${notes}\n`;
         });
@@ -615,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function () {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        window.showToast('Đã tải file CSV!');
+        showToast('Đã tải file CSV!');
     };
 
 
@@ -624,6 +612,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const targetCell = event.target.closest('td[data-date]');
         if (!targetCell) return;
 
+        // If it's a structural disabled-day (empty cell), do nothing
         if (targetCell.classList.contains('disabled-day') && !targetCell.dataset.date) {
             return;
         }
@@ -632,39 +621,45 @@ document.addEventListener('DOMContentLoaded', function () {
         const cellDate = new Date(dateStr);
         cellDate.setHours(0, 0, 0, 0);
 
-        let workPeriodStartDateForCurrentView = new Date(currentDate.getFullYear(), currentDate.getMonth(), window.startWorkDay);
-        if (currentDate.getDate() < window.startWorkDay) {
+        // Determine the work period that *this calendar view is based on* for interaction logic
+        let workPeriodStartDateForCurrentView = new Date(currentDate.getFullYear(), currentDate.getMonth(), startWorkDay);
+        if (currentDate.getDate() < startWorkDay) { // if current month's display corresponds to previous calendar month's work period
             workPeriodStartDateForCurrentView.setMonth(workPeriodStartDateForCurrentView.getMonth() - 1);
         }
         workPeriodStartDateForCurrentView.setHours(0, 0, 0, 0);
-        let workPeriodEndDateForCurrentView = new Date(workPeriodStartDateForCurrentView.getFullYear(), workPeriodStartDateForCurrentView.getMonth() + 1, window.startWorkDay - 1);
+        let workPeriodEndDateForCurrentView = new Date(workPeriodStartDateForCurrentView.getFullYear(), workPeriodStartDateForCurrentView.getMonth() + 1, startWorkDay - 1);
         workPeriodEndDateForCurrentView.setHours(23, 59, 59, 999);
 
         const isInWorkPeriod = cellDate >= workPeriodStartDateForCurrentView && cellDate <= workPeriodEndDateForCurrentView;
 
         if (isEditMode) {
+            // NEW: Kiểm tra nếu cho phép bỏ qua cuối tuần và ngày đó là cuối tuần
             if (!allowWeekendEdit && isWeekend(cellDate)) {
-                window.showToast("Không thể sửa lịch vào Thứ Bảy hoặc Chủ Nhật.");
-                return;
+                showToast("Không thể sửa lịch vào Thứ Bảy hoặc Chủ Nhật.");
+                return; // Bỏ qua nếu là cuối tuần và cài đặt không cho phép
             }
 
-            const currentShift = window.scheduleData[dateStr] || "";
+            // In edit mode, all visible days are editable
+            const currentShift = scheduleData[dateStr] || "";
             const nextIndex = (SHIFT_CYCLE.indexOf(currentShift) + 1) % SHIFT_CYCLE.length;
             const newShift = SHIFT_CYCLE[nextIndex];
             if (newShift) {
-                window.scheduleData[dateStr] = newShift;
+                scheduleData[dateStr] = newShift;
             } else {
-                delete window.scheduleData[dateStr];
+                delete scheduleData[dateStr];
             }
             renderCalendar();
         } else {
+            // In view mode:
             if (displayMode === 'fullMonth') {
-                window.timesheetEntries[dateStr] ? openActionConfirmModal(dateStr) : openTimesheetModal(dateStr);
+                // In fullMonth mode, all displayed days are freely clickable for timesheet entry.
+                timesheetEntries[dateStr] ? openActionConfirmModal(dateStr) : openTimesheetModal(dateStr);
             } else { // 'workPeriod' mode
+                // In workPeriod mode, only days strictly within the work period are clickable for timesheet entry.
                 if (isInWorkPeriod) {
-                    window.timesheetEntries[dateStr] ? openActionConfirmModal(dateStr) : openTimesheetModal(dateStr);
+                    timesheetEntries[dateStr] ? openActionConfirmModal(dateStr) : openTimesheetModal(dateStr);
                 } else {
-                    window.showToast("Bạn chỉ có thể chấm công cho các ngày trong chu kỳ làm việc hiện tại.");
+                    showToast("Bạn chỉ có thể chấm công cho các ngày trong chu kỳ làm việc hiện tại.");
                 }
             }
         }
@@ -674,7 +669,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateStr = timesheetDateInput.value;
         const entryType = entryTypeSelect.value;
         const newEntry = { type: entryType, notes: notesInput.value.trim() };
-        if (entryType === 'work' || entryType === 'work_ot') {
+        if (entryType === 'work' || entryType === 'work_ot') { // Apply overtime for 'work' type as well
             const otHours = parseInt(overtimeHoursInput.value) || 0;
             const otMins = parseInt(overtimeMinutesInput.value) || 0;
             if (otHours > 0 || otMins > 0) {
@@ -682,18 +677,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 newEntry.overtimeMinutes = otMins;
             }
         }
-        window.timesheetEntries[dateStr] = newEntry;
+        timesheetEntries[dateStr] = newEntry;
         persistAllData();
-        window.showToast(`Đã lưu chấm công!`);
+        showToast(`Đã lưu chấm công!`);
         timesheetModal.style.display = 'none';
         renderCalendar();
         if (document.getElementById('tabSoChamCong').classList.contains('active')) {
             updateStatistics();
             renderTimesheetLog();
-        }
-        // NEW: Cập nhật UI của tab Máy Tính sau khi chấm công được lưu
-        if (document.getElementById('tabMayTinh').classList.contains('active') && window.initCalcTab) {
-            window.initCalcTab();
         }
     };
 
@@ -710,12 +701,13 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             entryTypeSelect.value = 'work';
         }
+        // Overtime fields are shown only if type is 'work' or 'work_ot' (if 'work_ot' existed)
         overtimeFields.style.display = (entryTypeSelect.value === 'work' || entryTypeSelect.value === 'work_ot') ? 'block' : 'none';
         timesheetModal.style.display = 'flex';
     };
 
     const openActionConfirmModal = (dateStr) => {
-        if (!window.timesheetEntries[dateStr]) return;
+        if (!timesheetEntries[dateStr]) return;
         actionConfirmModalTitle.textContent = `Ngày ${formatDateStr(dateStr)}`;
         actionConfirmDateInput.value = dateStr;
         actionConfirmModal.style.display = 'flex';
@@ -730,11 +722,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (displayMode === 'fullMonth') {
             currentDate.setMonth(currentDate.getMonth() - 1);
         } else { // 'workPeriod' mode
-            let newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), window.startWorkDay);
-            if (currentDate.getDate() < window.startWorkDay) {
+            // For workPeriod mode, navigate by shifting the *start* of the work period
+            let newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), startWorkDay);
+            if (currentDate.getDate() < startWorkDay) { // if current month's display corresponds to previous calendar month's work period
                 newDate.setMonth(newDate.getMonth() - 1);
             }
-            newDate.setMonth(newDate.getMonth() - 1);
+            newDate.setMonth(newDate.getMonth() - 1); // Go to previous work period
             currentDate = newDate;
         }
         renderCalendar();
@@ -745,11 +738,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (displayMode === 'fullMonth') {
             currentDate.setMonth(currentDate.getMonth() + 1);
         } else { // 'workPeriod' mode
-            let newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), window.startWorkDay);
-            if (currentDate.getDate() < window.startWorkDay) {
+            // For workPeriod mode, navigate by shifting the *start* of the work period
+            let newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), startWorkDay);
+            if (currentDate.getDate() < startWorkDay) { // if current month's display corresponds to previous calendar month's work period
                 newDate.setMonth(newDate.getMonth() - 1);
             }
-            newDate.setMonth(newDate.getMonth() + 1);
+            newDate.setMonth(newDate.getMonth() + 1); // Go to next work period
             currentDate = newDate;
         }
         renderCalendar();
@@ -762,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function () {
         renderCalendar();
         editScheduleBtn.style.display = 'none';
         saveScheduleBtn.style.display = 'flex';
-        quickEditControls.style.display = 'block';
+        quickEditControls.style.display = 'block'; // Show quick edit controls
     });
     saveScheduleBtn.addEventListener('click', () => {
         isEditMode = false;
@@ -770,55 +764,51 @@ document.addEventListener('DOMContentLoaded', function () {
         renderCalendar();
         editScheduleBtn.style.display = 'flex';
         saveScheduleBtn.style.display = 'none';
-        quickEditControls.style.display = 'none';
-        window.showToast('Đã lưu lịch!');
-        // NEW: Cập nhật UI của tab Máy Tính sau khi lịch được lưu
-        if (document.getElementById('tabMayTinh').classList.contains('active') && window.initCalcTab) {
-            window.initCalcTab();
-        }
+        quickEditControls.style.display = 'none'; // Hide quick edit controls
+        showToast('Đã lưu lịch!');
     });
 
     // NEW: Event listener cho nút chuyển đổi ngày đầu tuần
     if (toggleFirstDayBtn) {
         toggleFirstDayBtn.addEventListener('click', () => {
-            firstDayIsMonday = !firstDayIsMonday;
-            persistAllData();
-            renderCalendar();
-            firstDayLabel.textContent = firstDayIsMonday ? 'T2' : 'CN';
-            window.showToast(`Ngày bắt đầu tuần đã chuyển sang: ${firstDayIsMonday ? 'Thứ Hai' : 'Chủ Nhật'}`);
+            firstDayIsMonday = !firstDayIsMonday; // Đảo ngược trạng thái
+            persistAllData(); // Lưu vào LocalStorage
+            renderCalendar(); // Render lại lịch
+            firstDayLabel.textContent = firstDayIsMonday ? 'T2' : 'CN'; // Cập nhật label của nút
+            showToast(`Ngày bắt đầu tuần đã chuyển sang: ${firstDayIsMonday ? 'Thứ Hai' : 'Chủ Nhật'}`);
         });
     }
 
     themeSelector.addEventListener('change', (e) => applyTheme(e.target.value));
     baseHoursInput.addEventListener('change', (e) => {
         const hours = parseFloat(e.target.value);
-        if (hours > 0 && hours <= 24) { window.baseWorkHours = hours; persistAllData(); window.showToast(`Đã cập nhật giờ làm cơ bản.`); if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(); }
-        else { window.showToast('Số giờ không hợp lệ.'); e.target.value = window.baseWorkHours; }
+        if (hours > 0 && hours <= 24) { baseWorkHours = hours; persistAllData(); showToast(`Đã cập nhật giờ làm cơ bản.`); if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(); }
+        else { showToast('Số giờ không hợp lệ.'); e.target.value = baseWorkHours; }
     });
 
     startWorkDayInput.addEventListener('change', (e) => {
         let day = parseInt(e.target.value);
         if (isNaN(day) || day < 1 || day > 31) {
-            window.showToast('Ngày không hợp lệ (1-31).');
-            e.target.value = window.startWorkDay;
+            showToast('Ngày không hợp lệ (1-31).');
+            e.target.value = startWorkDay;
             return;
         }
-        window.startWorkDay = day;
+        startWorkDay = day;
         persistAllData();
-        window.showToast(`Đã cập nhật ngày bắt đầu công.`);
+        showToast(`Đã cập nhật ngày bắt đầu công.`);
         // When startWorkDay changes, re-align currentDate to the *new* current work period for consistency
         let today = new Date();
         let newCurrentDateRef;
-        if (displayMode === 'fullMonth') {
+        if (displayMode === 'fullMonth') { // In fullMonth, reset to 1st of current calendar month
             newCurrentDateRef = new Date(today.getFullYear(), today.getMonth(), 1);
         } else { // In workPeriod, reset to start of *current* work period
             let workPeriodStartMonth = today.getMonth();
             let workPeriodStartYear = today.getFullYear();
-            if (today.getDate() < window.startWorkDay) {
+            if (today.getDate() < startWorkDay) {
                 workPeriodStartMonth = (workPeriodStartMonth === 0) ? 11 : workPeriodStartMonth - 1;
                 workPeriodStartYear = (today.getMonth() === 0) ? workPeriodStartYear - 1 : workPeriodStartYear;
             }
-            newCurrentDateRef = new Date(workPeriodStartYear, workPeriodStartMonth, window.startWorkDay);
+            newCurrentDateRef = new Date(workPeriodStartYear, workPeriodStartMonth, startWorkDay);
         }
         currentDate = newCurrentDateRef;
         renderCalendar();
@@ -832,43 +822,24 @@ document.addEventListener('DOMContentLoaded', function () {
         // When display mode changes, reset currentDate to today's current work period or calendar month
         let today = new Date();
         if (displayMode === 'fullMonth') {
-            currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
+            currentDate = new Date(today.getFullYear(), today.getMonth(), 1); // Reset to 1st of current calendar month
         } else { // 'workPeriod' mode
             let workPeriodStartMonth = today.getMonth();
             let workPeriodStartYear = today.getFullYear();
-            if (today.getDate() < window.startWorkDay) {
+            if (today.getDate() < startWorkDay) {
                 workPeriodStartMonth = (workPeriodStartMonth === 0) ? 11 : workPeriodStartMonth - 1;
                 workPeriodStartYear = (today.getMonth() === 0) ? workPeriodStartYear - 1 : workPeriodStartYear;
             }
-            currentDate = new Date(workPeriodStartYear, workPeriodStartMonth, window.startWorkDay);
+            currentDate = new Date(workPeriodStartYear, workPeriodStartMonth, startWorkDay); // Reset to start of current work period
         }
         renderCalendar();
         if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics();
     });
 
-    // NEW: Event listener cho currencySelector
-    if (currencySelector) {
-        currencySelector.addEventListener('change', (e) => {
-            currentCurrency = e.target.value;
-            window.currentCurrency = currentCurrency;
-            persistAllData();
-            window.showToast(`Đã chuyển đổi tiền tệ sang: ${currentCurrency}`);
-
-            // Phát sự kiện tùy chỉnh để calc.js có thể lắng nghe
-            const event = new CustomEvent('currencyChanged', { detail: { currencyCode: currentCurrency } });
-            window.dispatchEvent(event);
-
-            // Nếu tab Máy Tính đang mở, cập nhật ngay
-            if (document.getElementById('tabMayTinh').classList.contains('active') && window.initCalcTab) {
-                window.initCalcTab();
-            }
-        });
-    }
-
     entryTypeSelect.addEventListener('change', () => { overtimeFields.style.display = entryTypeSelect.value === 'work' ? 'block' : 'none'; });
     timesheetModal.querySelector('.btn-confirm').addEventListener('click', handleConfirmTimesheet);
-    actionConfirmModal.querySelector('.btn-edit-timesheet').addEventListener('click', () => { openTimesheetModal(actionConfirmDateInput.value, window.timesheetEntries[actionConfirmDateInput.value]); actionConfirmModal.style.display = 'none'; });
-    actionConfirmModal.querySelector('.btn-delete-timesheet').addEventListener('click', () => { delete window.timesheetEntries[actionConfirmDateInput.value]; persistAllData(); window.showToast(`Đã xoá chấm công.`); actionConfirmModal.style.display = 'none'; renderCalendar(); if (document.getElementById('tabSoChamCong').classList.contains('active')) { updateStatistics(); renderTimesheetLog(); } });
+    actionConfirmModal.querySelector('.btn-edit-timesheet').addEventListener('click', () => { openTimesheetModal(actionConfirmDateInput.value, timesheetEntries[actionConfirmDateInput.value]); actionConfirmModal.style.display = 'none'; });
+    actionConfirmModal.querySelector('.btn-delete-timesheet').addEventListener('click', () => { delete timesheetEntries[actionConfirmDateInput.value]; persistAllData(); showToast(`Đã xoá chấm công.`); actionConfirmModal.style.display = 'none'; renderCalendar(); if (document.getElementById('tabSoChamCong').classList.contains('active')) { updateStatistics(); renderTimesheetLog(); } });
     [timesheetModal, actionConfirmModal].forEach(modal => {
         modal.addEventListener('click', e => { if (e.target === modal) e.target.style.display = 'none'; });
         modal.querySelector('.btn-cancel')?.addEventListener('click', () => modal.style.display = 'none');
@@ -908,11 +879,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const endDate = quickEndDateInput.value;
 
         if (!startDate || !endDate) {
-            window.showToast('Vui lòng chọn đầy đủ khoảng ngày.');
+            showToast('Vui lòng chọn đầy đủ khoảng ngày.');
             return;
         }
         if (new Date(startDate) > new Date(endDate)) {
-            window.showToast('Ngày bắt đầu không thể sau ngày kết thúc.');
+            showToast('Ngày bắt đầu không thể sau ngày kết thúc.');
             return;
         }
 
@@ -923,20 +894,21 @@ document.addEventListener('DOMContentLoaded', function () {
             const dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
             const dayOfWeek = current.getDay(); // 0 for Sunday, 6 for Saturday
 
+            // NEW: Bỏ qua cuối tuần nếu cài đặt cho phép
             if (!allowWeekendEdit && (dayOfWeek === 0 || dayOfWeek === 6)) {
                 // Do nothing for weekends if disabled
             } else {
                 if (type) {
-                    window.scheduleData[dateStr] = type;
+                    scheduleData[dateStr] = type;
                 } else {
-                    delete window.scheduleData[dateStr];
+                    delete scheduleData[dateStr];
                 }
             }
             current.setDate(current.getDate() + 1);
         }
         persistAllData();
         renderCalendar();
-        window.showToast('Đã áp dụng lịch nhanh!');
+        showToast('Đã áp dụng lịch nhanh!');
     });
 
     // --- Drag selection for quick edit (Cập nhật để hỗ trợ cảm ứng) ---
@@ -974,9 +946,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateStr = targetCell.dataset.date;
         const cellDate = new Date(dateStr);
 
+        // NEW: Bỏ qua cuối tuần khi bắt đầu kéo nếu cài đặt cho phép
         if (!allowWeekendEdit && isWeekend(cellDate)) {
-            window.showToast("Không thể kéo chọn cuối tuần.");
-            isDragging = false;
+            showToast("Không thể kéo chọn cuối tuần.");
+            isDragging = false; // Ngừng kéo nếu bắt đầu từ cuối tuần bị cấm
             return;
         }
 
@@ -1000,7 +973,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateStr = targetCell.dataset.date;
         const cellDate = new Date(dateStr);
 
+        // NEW: Bỏ qua cuối tuần khi kéo qua nếu cài đặt cho phép
         if (!allowWeekendEdit && isWeekend(cellDate)) {
+            // Không thêm vào dragSelection, không tô màu cell
             return;
         }
 
@@ -1021,19 +996,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
             dragSelection.forEach(dateStr => {
                 const cellDate = new Date(dateStr);
+                // NEW: Áp dụng thay đổi chỉ khi không phải cuối tuần HOẶC cho phép sửa cuối tuần
                 if (allowWeekendEdit || !isWeekend(cellDate)) {
                     if (quickEditType) {
-                        window.scheduleData[dateStr] = quickEditType;
+                        scheduleData[dateStr] = quickEditType;
                     } else {
-                        delete window.scheduleData[dateStr];
+                        delete scheduleData[dateStr];
                     }
                 }
             });
             persistAllData();
             renderCalendar();
-            window.showToast(`Đã áp dụng ${quickEditType ? quickEditType : 'xoá'} cho ${dragSelection.length} ngày.`);
+            showToast(`Đã áp dụng ${quickEditType ? quickEditType : 'xoá'} cho ${dragSelection.length} ngày.`);
             dragSelection = [];
         }
+        // Đảm bảo loại bỏ tất cả các lớp drag-selecting sau khi kết thúc kéo
         document.querySelectorAll('.drag-selecting').forEach(cell => cell.classList.remove('drag-selecting'));
     }
 
@@ -1042,7 +1019,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (calendarControlsHeader) {
         calendarControlsHeader.addEventListener('touchstart', (e) => {
             touchStartX = e.changedTouches[0].screenX;
-        }, { passive: true });
+        }, { passive: true }); // Dùng passive: true để tối ưu hiệu suất cuộn
 
         calendarControlsHeader.addEventListener('touchend', (e) => {
             touchEndX = e.changedTouches[0].screenX;
@@ -1054,12 +1031,14 @@ document.addEventListener('DOMContentLoaded', function () {
     // NEW: Thêm Event Listeners cho vuốt trên .calendar-table
     if (calendarDaysElement) {
         calendarDaysElement.addEventListener('touchstart', (e) => {
+            // Chỉ bắt đầu vuốt nếu không ở chế độ kéo chọn ngày (drag mode)
             if (!isEditMode || quickEditModeSelect.value !== 'drag') {
                 touchStartX = e.changedTouches[0].screenX;
             }
         }, { passive: true });
 
         calendarDaysElement.addEventListener('touchend', (e) => {
+            // Chỉ xử lý vuốt nếu không ở chế độ kéo chọn ngày (drag mode)
             if (!isEditMode || quickEditModeSelect.value !== 'drag') {
                 touchEndX = e.changedTouches[0].screenX;
                 handleSwipe();
@@ -1069,33 +1048,36 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // NEW: Logic cho việc nhấn vào #currentMonthYear để mở picker
     if (currentMonthYearElement) {
-        let pressTimeout;
-        let isLongPress = false;
+        let pressTimeout; // Biến để giữ timeout cho nhấn giữ
+        let isLongPress = false; // Cờ hiệu để xác định có phải nhấn giữ không
 
         const handlePressStart = (e) => {
-            e.preventDefault();
-            touchStartX = e.changedTouches ? e.changedTouches[0].screenX : e.clientX;
+            e.preventDefault(); // Ngăn hành vi mặc định của trình duyệt (ví dụ: bôi đen văn bản)
+            touchStartX = e.changedTouches ? e.changedTouches[0].screenX : e.clientX; // Ghi lại vị trí bắt đầu
             isLongPress = false;
             pressTimeout = setTimeout(() => {
                 isLongPress = true;
+                // Chuyển về tháng hiện tại
                 const today = new Date();
                 currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
                 renderCalendar();
-                window.showToast(`Đã chuyển đến tháng hiện tại: ${today.getMonth() + 1}/${today.getFullYear()}`);
+                showToast(`Đã chuyển đến tháng hiện tại: ${today.getMonth() + 1}/${today.getFullYear()}`);
                 if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics();
             }, LONG_PRESS_THRESHOLD);
         };
 
         const handlePressEnd = (e) => {
-            clearTimeout(pressTimeout);
+            clearTimeout(pressTimeout); // Xóa timeout khi nhấc ngón tay/thả chuột
             if (!isLongPress) {
+                // Nếu không phải nhấn giữ, mở modal chọn tháng/năm
                 openMonthYearPicker();
             }
         };
 
         const handlePressMove = (e) => {
+            // Nếu di chuyển quá một khoảng nhỏ, hủy nhấn giữ (giống như kéo)
             const currentX = e.changedTouches ? e.changedTouches[0].screenX : e.clientX;
-            if (Math.abs(currentX - touchStartX) > 10) {
+            if (Math.abs(currentX - touchStartX) > 10) { // Khoảng cách 10px để phân biệt click và kéo
                 clearTimeout(pressTimeout);
                 isLongPress = false;
             }
@@ -1104,7 +1086,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Gắn sự kiện cho cả chuột và cảm ứng
         currentMonthYearElement.addEventListener('mousedown', handlePressStart);
         currentMonthYearElement.addEventListener('mouseup', handlePressEnd);
-        currentMonthYearElement.addEventListener('mouseleave', () => clearTimeout(pressTimeout));
+        currentMonthYearElement.addEventListener('mouseleave', () => clearTimeout(pressTimeout)); // Nếu chuột rời khỏi element
 
         currentMonthYearElement.addEventListener('touchstart', handlePressStart, { passive: false });
         currentMonthYearElement.addEventListener('touchend', handlePressEnd, { passive: false });
@@ -1113,6 +1095,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // NEW: Hàm để mở modal chọn tháng/năm
     function openMonthYearPicker() {
+        // Điền tháng
         selectMonth.innerHTML = '';
         for (let i = 0; i < 12; i++) {
             const option = document.createElement('option');
@@ -1120,8 +1103,9 @@ document.addEventListener('DOMContentLoaded', function () {
             option.textContent = `Tháng ${i + 1}`;
             selectMonth.appendChild(option);
         }
-        selectMonth.value = currentDate.getMonth();
+        selectMonth.value = currentDate.getMonth(); // Chọn tháng hiện tại trên lịch
 
+        // Điền năm (ví dụ: 10 năm trước và 10 năm sau năm hiện tại)
         selectYear.innerHTML = '';
         const currentYear = currentDate.getFullYear();
         for (let i = currentYear - 10; i <= currentYear + 10; i++) {
@@ -1130,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', function () {
             option.textContent = i;
             selectYear.appendChild(option);
         }
-        selectYear.value = currentYear;
+        selectYear.value = currentYear; // Chọn năm hiện tại trên lịch
 
         monthYearPickerModal.style.display = 'flex';
     }
@@ -1143,7 +1127,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             currentDate.setFullYear(selectedYear);
             currentDate.setMonth(selectedMonth);
-            currentDate.setDate(1);
+            currentDate.setDate(1); // Đặt lại về ngày 1 để tránh lỗi với các tháng có ít ngày
 
             renderCalendar();
             monthYearPickerModal.style.display = 'none';
@@ -1151,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateStatistics();
                 renderTimesheetLog();
             }
-            window.showToast(`Đã chuyển đến ${selectMonth.options[selectMonth.selectedIndex].text}, ${selectedYear}`);
+            showToast(`Đã chuyển đến ${selectMonth.options[selectMonth.selectedIndex].text}, ${selectedYear}`);
         });
     }
 
@@ -1174,20 +1158,23 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- Init ---
     const init = () => {
         loadAllData();
+        // Initialize currentDate based on the loaded display mode and startWorkDay
+        // Logic này chỉ ảnh hưởng đến lịch hiển thị, không ảnh hưởng đến thống kê nữa.
         let today = new Date();
         if (displayMode === 'fullMonth') {
-            currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        } else {
+            currentDate = new Date(today.getFullYear(), today.getMonth(), 1); // Start at 1st of current calendar month
+        } else { // 'workPeriod' mode
             let workPeriodStartMonth = today.getMonth();
             let workPeriodStartYear = today.getFullYear();
-            if (today.getDate() < window.startWorkDay) {
+            if (today.getDate() < startWorkDay) {
                 workPeriodStartMonth = (workPeriodStartMonth === 0) ? 11 : workPeriodStartMonth - 1;
                 workPeriodStartYear = (today.getMonth() === 0) ? workPeriodStartYear - 1 : workPeriodStartYear;
             }
-            currentDate = new Date(workPeriodStartYear, workPeriodStartMonth, window.startWorkDay);
+            currentDate = new Date(workPeriodStartYear, workPeriodStartMonth, startWorkDay); // Start at beginning of current work period
         }
 
         renderCalendar();
+        // Dù tab nào đang active khi load, luôn cập nhật thống kê khi init
         updateStatistics();
         renderTimesheetLog();
         updateTitle(document.querySelector('.nav-button.active').dataset.title);
