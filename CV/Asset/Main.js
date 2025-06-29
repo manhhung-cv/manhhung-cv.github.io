@@ -270,7 +270,7 @@ function applyLanguage(language) {
 
 // ======= SET LANGUAGE =======
 function setLanguage(language, flagSrc) {
-    // localStorage.setItem('language', language);
+    localStorage.setItem('language', language);
     applyLanguage(language);
     document.getElementById('currentFlag').src = flagSrc;
     document.getElementById('languageDropdown').classList.remove('show');
@@ -341,9 +341,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let language = langFromHash[hashLang];
 
-    // if (!language) {
-    //     language = localStorage.getItem('language');
-    // }
+    if (!language) {
+        language = localStorage.getItem('language');
+    }
 
     if (!language) {
         // Await the IP detection if language is not found from hash or local storage
