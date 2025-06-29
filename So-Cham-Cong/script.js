@@ -202,14 +202,20 @@ document.addEventListener('DOMContentLoaded', function () {
         const tabId = button.dataset.tab;
         document.getElementById(tabId).classList.add('active');
         updateTitle(button.dataset.title);
-        if (tabId === 'tabSoChamCong') {
+        if (tabId === 'tabLichLamViec') {
+            document.body.style.overflow = 'hidden';
+        } else {
+           document.body.style.overflow = 'auto';
+        }
+
+        if (tabId === 'tabMayTinh' && window.initCalcTab) {
+            window.initCalcTab();
+        } else if (tabId === 'tabSoChamCong') {
             updateStatistics();
             renderTimesheetLog();
-        } else if (tabId === 'tabMayTinh') {
-            if (window.initCalcTab) {
-                window.initCalcTab();
-            }
         }
+
+
     };
 
     const renderCalendar = () => {
