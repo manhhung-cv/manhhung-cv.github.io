@@ -120,7 +120,63 @@ const products = [
         "notes": "CẤP 2,3 THIẾT BỊ ( xem cùng lúc 1 màn)",
         "category": "Tài khoản",
         "imageUrl": "./Asset/icon/Netflix.png"
+    },
+    {
+        "id": 12,
+        "name": "Google Drive 2Tb Chính chủ",
+        "duration": "12 Tháng",
+        "priceRoot": 2250000,
+        "priceNumeric": 400000,
+        "warranty": "Đến khi hết hạn.",
+        "notes": "Chính chủ",
+        "category": "Tài khoản",
+        "imageUrl": "./Asset/icon/GoogleDrive.png"
+    },
+    {
+        "id": 13,
+        "name": "Google Drive 5Tb",
+        "duration": "12 Tháng",
+        "priceRoot": 5625000,
+        "priceNumeric": 800000,
+        "warranty": "Đến khi hết hạn.",
+        "notes": "Chính chủ",
+        "category": "Tài khoản",
+        "imageUrl": "./Asset/icon/GoogleDrive.png"
+    },
+    {
+        "id": 14,
+        "name": "Google Drive 10Tb",
+        "duration": "12 Tháng",
+        "priceRoot": 11250000,
+        "priceNumeric": 1000000,
+        "warranty": "Đến khi hết hạn.",
+        "notes": "Chính chủ",
+        "category": "Tài khoản",
+        "imageUrl": "./Asset/icon/GoogleDrive.png"
+    },
+    {
+        "id": 15,
+        "name": "Autodesk 1 Apps chính chủ",
+        "duration": "12 Tháng",
+        "priceRoot": 24170383,
+        "priceNumeric": 200000,
+        "warranty": "Đến khi hết hạn.",
+        "notes": "Chính chủ",
+        "category": "Tài khoản",
+        "imageUrl": "./Asset/icon/Autodesk.png"
+    },
+    {
+        "id": 16,
+        "name": "Autodesk All Apps chính chủ",
+        "duration": "12 Tháng",
+        "priceRoot": 24170383,
+        "priceNumeric": 500000,
+        "warranty": "Đến khi hết hạn.",
+        "notes": "Chính chủ",
+        "category": "Tài khoản",
+        "imageUrl": "./Asset/icon/Autodesk.png"
     }
+    
 
 
 ];
@@ -353,7 +409,7 @@ function renderProducts(productsToRender) {
         productElement.innerHTML = `
             <img src="${product.imageUrl}" alt="${product.name}" class="w-full h-48 object-cover">
             <div class="p-4 flex flex-col flex-grow">
-                <h3 class="text-lg font-semibold text-gray-900 mb-1">${product.name}</h3>
+                <h3 class="text-lg font-semibold text-gray-900 mb-1 capitalize">${product.name}</h3>
                 <p class="text-gray-600 text-sm  flex-grow">${product.duration}</p>
                 <p class="text-red-500 text-xs mb-2 flex-grow">${product.warranty}</p>
                 <div class="flex items-center justify-between mt-auto">
@@ -1280,7 +1336,7 @@ function getStatusClass(status) {
 
 if (checkOrderBtn && orderCodeInput && orderResultDiv) {
     checkOrderBtn.addEventListener('click', async () => {
-        const rawInput = orderCodeInput.value.trim();
+        const rawInput = orderCodeInput.value.trim().toUpperCase();
 
         if (!rawInput) {
             showMessage("Vui lòng nhập mã đơn hàng để kiểm tra.", 3000, true);
@@ -1317,13 +1373,22 @@ if (checkOrderBtn && orderCodeInput && orderResultDiv) {
 
                 if (found) {
                     const statusClass = getStatusClass(found.status);
+                    const isoString = found.timestamp; // "2026-05-17T00:00:00+09:00"
+                    const date = new Date(isoString);
+
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const month = String(date.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
+                    const year = date.getFullYear();
+
+                    const formattedDate = `${day}/${month}/${year}`;
+
 
                     htmlResults += `
                       <div class="space-y-1">
                         <!-- Thông tin tóm tắt -->
                         <div class="grid grid-cols-2 gap-y-2">
                             <span class="text-gray-500 font-medium">Mã đơn:</span><span>${found.orderId}</span>
-                            <span class="text-gray-500 font-medium">Thời gian:</span><span>${found.timestamp}</span>
+                            <span class="text-gray-500 font-medium">Thời gian:</span><span>${formattedDate}</span>
                             <span class="text-gray-500 font-medium">Khách hàng:</span><span>${found.customerName}</span>
                             <span class="text-gray-500 font-medium">Sản phẩm:</span><span>${found.items}</span>
                             <span class="text-gray-500 font-medium">Bảo hành:</span><span>${found.warrantyCheck || 'Chưa kích hoạt'}</span>
