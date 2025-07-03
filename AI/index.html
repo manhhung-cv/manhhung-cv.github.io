@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AI Watch App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ------------------- */
+    /* --- Base Styles --- */
+    /* ------------------- */
+    :root {
+      --background-color: #000000;
+      --text-color: #ffffff;
+      --accent-color: #007aff;
+      --accent-active-color: #005bb5;
+      --danger-color: #ff3b30;
+      --danger-active-color: #c51f15;
+      --ui-gray-1: #1c1c1e;
+      --ui-gray-2: #2c2c2e;
+      --ui-gray-3: #3a3a3c;
+      --ui-gray-4: #8e8e93;
+      --desktop-bg: #111;
+    }
+
+    html {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+      overflow: hidden;
+    }
+
+    /* ---------------------------------- */
+    /* --- Desktop Container Styles --- */
+    /* ---------------------------------- */
+    .desktop-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 100vh;
+      background: var(--desktop-bg);
+    }
+
+    .app-wrapper {
+      position: relative;
+      overflow: hidden;
+      background-color: var(--background-color);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+    }
+
+    /* ------------------- */
+    /* --- App Content --- */
+    /* ------------------- */
+    .main-content-area {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translateX(20px);
+    }
+
+    .tab-content.active {
+      display: flex;
+      opacity: 1;
+      z-index: 1;
+      transform: translateX(0);
+    }
+
+    /* ---------------------- */
+    /* --- Chat Tab Styles -- */
+    /* ---------------------- */
+    .chat-messages {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .message {
+      padding: 8px 14px;
+      border-radius: 18px;
+      max-width: 85%;
+      line-height: 1.4;
+      word-wrap: break-word;
+      opacity: 0;
+      animation: fadeIn 0.3s ease forwards;
+    }
+    
+    @keyframes fadeIn {
+        to { opacity: 1; }
+    }
+
+    .message.user {
+      background-color: var(--accent-color);
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.ai {
+      background-color: var(--ui-gray-3);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    
+    .loading-indicator {
+      align-self: flex-start;
+      color: var(--ui-gray-4);
+      font-size: 0.9em;
+      padding: 8px 14px;
+    }
+
+    .chat-input-area {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      gap: 8px;
+      flex-shrink: 0;
+      background-color: var(--background-color);
+      border-top: 1px solid var(--ui-gray-1);
+    }
+
+    .chat-input {
+      flex-grow: 1;
+      background-color: var(--ui-gray-2);
+      border: 1px solid var(--ui-gray-1);
+      border-radius: 18px;
+      padding: 10px 15px;
+      color: var(--text-color);
+      font-size: 1em;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    .chat-input:focus {
+        border-color: var(--accent-color);
+    }
+
+    .send-button {
+      background-color: var(--accent-color);
+      color: var(--text-color);
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.2em;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      flex-shrink: 0;
+    }
+
+    .send-button:active {
+      background-color: var(--accent-active-color);
+      transform: scale(0.9);
+    }
+
+    /* -------------------------- */
+    /* --- Settings Tab Styles -- */
+    /* -------------------------- */
+    .settings-content {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        height: 100%;
+        box-sizing: border-box;
+        overflow-y: auto;
+    }
+    .settings-header {
+      font-size: 1.5em;
+      font-weight: 700;
+      text-align: center;
+      color: var(--text-color);
+      padding: 10px 0 20px 0;
+    }
+    .settings-group {
+        background-color: var(--ui-gray-2);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid var(--ui-gray-1);
+    }
+    .setting-item:last-child {
+        border-bottom: none;
+    }
+    .setting-item label {
+      font-size: 1em;
+      color: var(--text-color);
+    }
+    .font-size-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .font-size-button {
+      background-color: var(--ui-gray-3);
+      color: var(--text-color);
+      border: none;
+      border-radius: 8px;
+      width: 30px;
+      height: 30px;
+      font-size: 1.2em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease-in-out;
+    }
+    .current-font-size {
+      font-size: 1em;
+      min-width: 40px;
+      text-align: center;
+      font-weight: 600;
+      color: var(--ui-gray-4);
+    }
+    .action-button {
+        width: 100%;
+        padding: 15px;
+        font-size: 1em;
+        font-weight: 600;
+        border: none;
+        background: none;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    .action-button.clear-chat {
+        color: var(--danger-color);
+    }
+    .action-button.clear-chat:active {
+        background-color: var(--danger-active-color);
+        color: var(--text-color);
+    }
+    
+    /* ----------------- */
+    /* --- Navigation -- */
+    /* ----------------- */
+    .mobile-header {
+      display: none;
+      justify-content: space-around;
+      padding: 10px 0;
+      background-color: var(--background-color);
+      border-bottom: 1px solid var(--ui-gray-1);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+    .tab-button {
+      background: none;
+      border: none;
+      color: var(--ui-gray-4);
+      padding: 8px 15px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: color 0.2s, background-color 0.2s;
+    }
+    .tab-button.active {
+      color: var(--accent-color);
+    }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #777; }
+
+    /* --------------------------------- */
+    /* --- Media Query: Apple Watch  --- */
+    /* --- (max-width: 430px)        --- */
+    /* --------------------------------- */
+    @media (max-width: 430px) {
+      .app-wrapper {
+        width: 100%;
+        height: 100vh;
+        height: -webkit-fill-available;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+      }
+      .settings-header { display: none; }
+      .main-content-area {
+          padding-bottom: 0;
+      }
+    }
+
+    /* --------------------------------- */
+    /* --- Media Query: Mobile       --- */
+    /* --- (431px to 767px)          --- */
+    /* --------------------------------- */
+    @media (min-width: 431px) and (max-width: 767px) {
+       .app-wrapper {
+        width: 100%;
+        height: 100vh;
+        height: -webkit-fill-available;
+        border-radius: 0;
+        border: none;
+        box-shadow: none;
+      }
+      .mobile-header { display: flex; }
+      .main-content-area {
+          height: calc(100% - 55px);
+      }
+    }
+
+    /* --------------------------------- */
+    /* --- Media Query: Desktop      --- */
+    /* --------------------------------- */
+    @media (min-width: 768px) {
+      body { 
+        background: radial-gradient(circle, #444 0%, var(--desktop-bg) 100%);
+      }
+      .app-wrapper {
+        width: 390px;
+        height: 844px;
+        border-radius: 50px;
+        border: 10px solid #1c1c1e;
+        box-shadow: 0 25px 60px -15px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,255,255,0.05);
+      }
+      .mobile-header { display: flex; }
+      .main-content-area {
+          height: calc(100% - 55px);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="desktop-container">
+    <div class="app-wrapper">
+
+      <!-- Mobile/Desktop Header -->
+      <div class="mobile-header">
+        <button class="tab-button active" data-tab="home">Trò chuyện</button>
+        <button class="tab-button" data-tab="settings">Cài đặt</button>
+      </div>
+
+      <!-- Main Content Area -->
+      <div class="main-content-area">
+        
+        <!-- Home Tab (Chat with AI) -->
+        <div class="tab-content active" id="homeTab">
+          <div class="chat-messages" id="chatMessages">
+            <div class="message ai">Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?</div>
+          </div>
+          <div class="chat-input-area">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn...">
+            <button class="send-button" id="sendButton">▲</button>
+          </div>
+        </div>
+        
+        <!-- Settings Tab -->
+        <div class="tab-content" id="settingsTab">
+            <div class="settings-content">
+                <div class="settings-header">Cài đặt</div>
+                <div class="settings-group">
+                    <div class="setting-item">
+                        <label for="fontSize">Kích thước chữ</label>
+                        <div class="font-size-controls">
+                            <button class="font-size-button" id="decreaseFont">-</button>
+                            <span class="current-font-size" id="currentFontSize">16px</span>
+                            <button class="font-size-button" id="increaseFont">+</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <div class="setting-item">
+                        <button class="action-button clear-chat" id="clearChatButton">Xoá lịch sử trò chuyện</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- API Configuration ---
+      const GEMINI_API_KEY = "AIzaSyBtktalr9ziLgKxKOgHTBuwqXUT2L_WWJI";
+      const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+      // --- DOM Element References ---
+      const tabButtons = document.querySelectorAll('.tab-button');
+      const tabContents = document.querySelectorAll('.tab-content');
+      const chatMessages = document.getElementById('chatMessages');
+      const chatInput = document.getElementById('chatInput');
+      const sendButton = document.getElementById('sendButton');
+      const decreaseFontButton = document.getElementById('decreaseFont');
+      const increaseFontButton = document.getElementById('increaseFont');
+      const currentFontSizeSpan = document.getElementById('currentFontSize');
+      const mainContentArea = document.querySelector('.main-content-area');
+      const clearChatButton = document.getElementById('clearChatButton');
+
+      // --- State Management ---
+      const initialHistory = [{ role: "model", parts: [{ text: "Chào bạn! Tôi có thể giúp gì cho bạn hôm nay?" }] }];
+      let chatHistory = [...initialHistory];
+      let currentFontSize = 16;
+      let isRequestPending = false;
+      let clearChatConfirmTimeout;
+
+      // --- Functions ---
+
+      function switchTab(tabId) {
+        tabButtons.forEach(button => {
+          button.classList.toggle('active', button.dataset.tab === tabId);
+        });
+
+        tabContents.forEach(content => {
+          const isActive = content.id === `${tabId}Tab`;
+          content.classList.toggle('active', isActive);
+        });
+        
+        if (tabId === 'home') {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+      }
+
+      function addMessage(text, sender) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', sender);
+        messageElement.textContent = text;
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return messageElement;
+      }
+
+      function toggleLoadingIndicator(show) {
+          let indicator = chatMessages.querySelector('.loading-indicator');
+          if (show) {
+              if (!indicator) {
+                  indicator = document.createElement('div');
+                  indicator.classList.add('loading-indicator');
+                  indicator.textContent = "AI đang phản hồi...";
+                  chatMessages.appendChild(indicator);
+                  chatMessages.scrollTop = chatMessages.scrollHeight;
+              }
+          } else {
+              if (indicator) {
+                  indicator.remove();
+              }
+          }
+      }
+
+      async function sendMessage() {
+        const userMessage = chatInput.value.trim();
+        if (userMessage === "" || isRequestPending) return;
+
+        isRequestPending = true;
+        addMessage(userMessage, 'user');
+        chatInput.value = '';
+        chatInput.disabled = true;
+        sendButton.disabled = true;
+
+        chatHistory.push({ role: "user", parts: [{ text: userMessage }] });
+        toggleLoadingIndicator(true);
+
+        const payload = { contents: chatHistory };
+
+        try {
+          const response = await fetch(GEMINI_API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(`API error: ${response.status} - ${errorData.error.message || 'Unknown error'}`);
+          }
+
+          const result = await response.json();
+          const aiResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+          if (aiResponseText) {
+            chatHistory.push({ role: "model", parts: [{ text: aiResponseText }] });
+            addMessage(aiResponseText, 'ai');
+          } else {
+            throw new Error("Invalid API response structure.");
+          }
+
+        } catch (error) {
+          console.error("Error calling Gemini API:", error);
+          addMessage("Đã xảy ra lỗi kết nối. Vui lòng thử lại.", 'ai');
+          chatHistory.pop();
+        } finally {
+          toggleLoadingIndicator(false);
+          isRequestPending = false;
+          chatInput.disabled = false;
+          sendButton.disabled = false;
+          chatInput.focus();
+        }
+      }
+
+      function updateFontSize() {
+        document.body.style.fontSize = `${currentFontSize}px`;
+        currentFontSizeSpan.textContent = `${currentFontSize}px`;
+      }
+      
+      function handleClearChat() {
+          if (clearChatButton.dataset.confirming) {
+              // Perform the clear
+              chatHistory = [...initialHistory];
+              chatMessages.innerHTML = '';
+              addMessage(initialHistory[0].parts[0].text, 'model');
+              
+              // Reset button
+              clearTimeout(clearChatConfirmTimeout);
+              delete clearChatButton.dataset.confirming;
+              clearChatButton.textContent = 'Xoá lịch sử trò chuyện';
+              
+              // Switch back to chat
+              switchTab('home');
+          } else {
+              // Ask for confirmation
+              clearChatButton.dataset.confirming = 'true';
+              clearChatButton.textContent = 'Nhấn lần nữa để xác nhận';
+              
+              clearChatConfirmTimeout = setTimeout(() => {
+                  delete clearChatButton.dataset.confirming;
+                  clearChatButton.textContent = 'Xoá lịch sử trò chuyện';
+              }, 3000);
+          }
+      }
+
+      // --- Event Listeners ---
+      tabButtons.forEach(button => {
+        button.addEventListener('click', () => switchTab(button.dataset.tab));
+      });
+
+      sendButton.addEventListener('click', sendMessage);
+      chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      increaseFontButton.addEventListener('click', () => {
+        if (currentFontSize < 24) {
+          currentFontSize += 1;
+          updateFontSize();
+        }
+      });
+
+      decreaseFontButton.addEventListener('click', () => {
+        if (currentFontSize > 12) {
+          currentFontSize -= 1;
+          updateFontSize();
+        }
+      });
+      
+      clearChatButton.addEventListener('click', handleClearChat);
+
+      // Swipe gesture navigation
+      let touchStartX = 0;
+      let touchEndX = 0;
+
+      mainContentArea.addEventListener('touchstart', e => {
+          touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+
+      mainContentArea.addEventListener('touchend', e => {
+          touchEndX = e.changedTouches[0].screenX;
+          handleSwipeGesture();
+      });
+      
+      function handleSwipeGesture() {
+          if (window.innerWidth > 767) return;
+
+          const currentTab = document.querySelector('.tab-content.active').id;
+          if (touchEndX < touchStartX - 50) { 
+              if (currentTab === 'homeTab') switchTab('settings');
+          }
+          if (touchEndX > touchStartX + 50) {
+              if (currentTab === 'settingsTab') switchTab('home');
+          }
+      }
+
+      // --- Initial Setup ---
+      updateFontSize();
+      switchTab('home');
+    });
+  </script>
+</body>
+
+</html>
