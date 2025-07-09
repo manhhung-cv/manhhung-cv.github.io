@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Timesheet - Sổ Chấm Công Dễ Thương</title>
+    
+    <!-- Preload critical fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://kit.fontawesome.com/9392097706.js" crossorigin="anonymous"></script>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="./style.css">
+
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#5DADE2">
+
+    <!-- Icons -->
+    <link rel="icon" href="logo.png" />
+    <link rel="apple-touch-icon" href="logo.png" sizes="180x180" />
+
+    <!-- Open Graph -->
+    <meta property="og:image" content="logo.png" />
+    <meta property="og:title" content="Timesheet - Sổ Chấm Công Dễ Thương" />
+    <meta property="og:description" content="Ứng dụng quản lý lịch làm việc và chấm công với giao diện dễ thương, thân thiện" />
+
+</head>
+
+<body class="platform-mobile">
+
+    <!-- Authentication Container -->
+    <div id="authContainer" class="auth-container">
+        <div class="auth-card">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <img src="logo.png" alt="Timesheet Logo" style="width: 80px; height: 80px; border-radius: 50%; box-shadow: 0 4px 12px rgba(93, 173, 226, 0.3);">
+            </div>
+            <h2 id="authTitle">Đăng Nhập</h2>
+            <div id="authError" class="auth-error"></div>
+            <div class="form-group">
+                <label for="emailInput">
+                    <i class="fas fa-envelope" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                    Email
+                </label>
+                <input type="email" id="emailInput" placeholder="nhap@email.com">
+            </div>
+            <div class="form-group">
+                <label for="passwordInput">
+                    <i class="fas fa-lock" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                    Mật khẩu
+                </label>
+                <input type="password" id="passwordInput" placeholder="********">
+            </div>
+            <div class="form-group" id="nameInputGroup" style="display: none;">
+                <label for="nameInput">
+                    <i class="fas fa-user" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                    Tên của bạn
+                </label>
+                <input type="text" id="nameInput" placeholder="Nhập tên để xác nhận">
+            </div>
+
+            <div class="auth-buttons">
+                <button id="loginBtn" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Đăng Nhập
+                </button>
+                <button id="signupBtn" class="btn btn-secondary">
+                    <i class="fas fa-user-plus"></i>
+                    Đăng Ký
+                </button>
+            </div>
+            <a href="#" id="forgotPasswordLink">
+                <i class="fas fa-question-circle"></i>
+                Quên mật khẩu?
+            </a>
+            <a href="#" id="showLoginLink" style="display: none;">
+                <i class="fas fa-arrow-left"></i>
+                Đã có tài khoản? Đăng nhập
+            </a>
+        </div>
+    </div>
+
+    <!-- Main App Shell -->
+    <div id="appShell" class="app-shell" style="display:none;">
+        
+        <!-- App Header (Mobile) -->
+        <header class="app-header">
+            <h1 id="headerTitle">
+                <i class="fas fa-calendar-alt" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                Lịch Làm Việc
+            </h1>
+        </header>
+
+        <!-- App Content Wrapper -->
+        <div class="app-content-wrapper">
+            <main class="app-content">
+                <h1 id="appTitle" style="display: none;">
+                    <i class="fas fa-calendar-alt" style="margin-right: 12px; color: var(--primary-blue);"></i>
+                    Lịch Làm Việc
+                </h1>
+
+                <!-- Tab: Lịch Làm Việc -->
+                <div id="tabLichLamViec" class="tab-content active">
+                    <div class="card">
+                        <div class="flex">
+                            <div class="calendar-controls-header">
+                                <button id="prevMonthBtn" class="btn-icon" aria-label="Tháng trước">
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <h2 id="currentMonthYear">...</h2>
+                                <button id="nextMonthBtn" class="btn-icon" aria-label="Tháng sau">
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                            <div class="form-group" style="margin: 0;">
+                                <button id="toggleFirstDayBtn" class="btn btn-secondary">
+                                    <span id="firstDayLabel">T2</span>
+                                </button>
+                            </div>
+                            <div id="editScheduleBtnContainer">
+                                <button id="editScheduleBtn" class="btn btn-secondary">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button id="saveScheduleBtn" class="btn btn-primary" style="display:none;">
+                                    <i class="fas fa-check"></i>
+                                    Lưu Lịch
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Month/Year Picker Modal -->
+                        <div id="monthYearPickerModal" class="modal">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h3>
+                                        <i class="fas fa-calendar" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                                        Chọn Tháng & Năm
+                                    </h3>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="form-group">
+                                        <label for="selectMonth">Tháng:</label>
+                                        <select id="selectMonth"></select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="selectYear">Năm:</label>
+                                        <select id="selectYear"></select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i>
+                                        Hủy
+                                    </button>
+                                    <button type="button" class="btn btn-confirm-month-year btn-primary">
+                                        <i class="fas fa-check"></i>
+                                        Xác nhận
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Edit Controls -->
+                        <div id="quickEditControls" style="display:none;">
+                            <div class="card">
+                                <h3 class="card-header">
+                                    <i class="fas fa-magic"></i>
+                                    Sửa Lịch Nhanh
+                                </h3>
+                                <div class="form-group">
+                                    <label for="quickEditType">Chọn loại ca:</label>
+                                    <select id="quickEditType">
+                                        <option value="">🗑️ Xoá lịch</option>
+                                        <option value="ca-ngay">☀️ Ca sáng</option>
+                                        <option value="ca-dem">🌙 Ca tối</option>
+                                        <option value="nghi">🏠 Nghỉ</option>
+                                        <option value="ngay-le">⭐ Ngày lễ</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="quickEditMode">Chế độ chọn:</label>
+                                    <select id="quickEditMode">
+                                        <option value="range">📅 Chọn khoảng ngày</option>
+                                        <option value="drag">👆 Kéo thả trên lịch</option>
+                                    </select>
+                                </div>
+                                <div id="dateRangeInputs">
+                                    <div class="form-group">
+                                        <label for="quickStartDate">Từ ngày:</label>
+                                        <input type="date" id="quickStartDate">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="quickEndDate">Đến ngày:</label>
+                                        <input type="date" id="quickEndDate">
+                                    </div>
+                                    <button id="applyQuickEditBtn" class="btn btn-primary btn-full-width">
+                                        <i class="fas fa-magic"></i>
+                                        Áp dụng cho khoảng ngày
+                                    </button>
+                                </div>
+                                <div id="dragModeInstructions" style="display:none;">
+                                    <p style="color: var(--text-secondary); font-size: 14px; text-align: center; padding: 12px; background: var(--bg-primary); border-radius: var(--radius-md); margin-top: 16px;">
+                                        <i class="fas fa-hand-pointer" style="color: var(--primary-blue);"></i>
+                                        Nhấn và kéo trên lịch để chọn nhiều ngày
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calendar Table -->
+                        <table class="calendar-table">
+                            <thead>
+                                <tr id="calendarHeaderRow"></tr>
+                            </thead>
+                            <tbody id="calendarDays"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tab: Sổ Chấm Công -->
+                <div id="tabSoChamCong" class="tab-content">
+                    <div class="card" id="statsCard">
+                        <h3 class="card-header">
+                            <i class="fas fa-chart-bar"></i>
+                            Thống Kê Tháng Này
+                        </h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <span class="stat-label">
+                                    <i class="fas fa-calendar-check" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                                    Lịch làm:
+                                </span>
+                                <span class="stat-value" id="statsTotalWorkDays">...</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">
+                                    <i class="fas fa-check-circle" style="margin-right: 8px; color: var(--success-green);"></i>
+                                    Đã làm:
+                                </span>
+                                <span class="stat-value" id="statsActualWorkDays">...</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">
+                                    <i class="fas fa-home" style="margin-right: 8px; color: var(--accent-yellow);"></i>
+                                    Ngày nghỉ:
+                                </span>
+                                <span class="stat-value" id="statsLeaveDays">...</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">
+                                    <i class="fas fa-clock" style="margin-right: 8px; color: var(--secondary-pink);"></i>
+                                    Giờ làm:
+                                </span>
+                                <span class="stat-value" id="statsTotalHours">...</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">
+                                    <i class="fas fa-plus-circle" style="margin-right: 8px; color: var(--info);"></i>
+                                    Tăng ca:
+                                </span>
+                                <span class="stat-value" id="statsOvertimeHours">...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <i class="fas fa-filter"></i>
+                            Bộ lọc
+                        </div>
+                        <div class="filter-group">
+                            <div class="form-group">
+                                <label for="logFilterType">Lọc theo:</label>
+                                <select id="logFilterType">
+                                    <option value="all">📋 Tất cả</option>
+                                    <option value="range">📅 Khoảng ngày</option>
+                                    <option value="month">🗓️ Tháng cụ thể</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="logDateRangePicker" style="display:none;">
+                                <label for="logStartDate">Từ ngày:</label>
+                                <input type="date" id="logStartDate">
+                                <label for="logEndDate" style="margin-top: 10px;">Đến ngày:</label>
+                                <input type="date" id="logEndDate">
+                            </div>
+                            <div class="form-group" id="logMonthPicker" style="display:none;">
+                                <label for="logMonth">Chọn tháng:</label>
+                                <input type="month" id="logMonth">
+                            </div>
+                        </div>
+                        <div class="button-group">
+                            <button id="applyLogFilterBtn" class="btn btn-secondary">
+                                <i class="fas fa-filter"></i>
+                                Áp dụng
+                            </button>
+                            <button id="exportLogCsvBtn" class="btn btn-primary">
+                                <i class="fas fa-file-csv"></i>
+                                Tải CSV
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <table class="timesheet-log-table">
+                            <tbody id="timesheetLogBody"></tbody>
+                        </table>
+                        <p id="noTimesheetDataMsg" class="no-timesheet-data" style="display:none;">
+                            <i class="fas fa-inbox" style="font-size: 48px; color: var(--text-secondary); margin-bottom: 16px;"></i>
+                            <br>
+                            Chưa có dữ liệu chấm công.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Tab: Máy Tính -->
+                <div id="tabMayTinh" class="tab-content">
+                    <div class="card dashboard-header-controls">
+                        <button id="prevMonthCalcBtn" class="btn-icon" aria-label="Tháng trước">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <h2 id="currentMonthCalcYear">Tháng X, Năm Y</h2>
+                        <button id="nextMonthCalcBtn" class="btn-icon" aria-label="Tháng sau">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card card-summary">
+                            <h3 class="card-header">
+                                <i class="fas fa-money-bill-wave"></i>
+                                Thống Kê Lương Thực Tế
+                            </h3>
+                            <div class="stat-item">
+                                <span class="stat-label">💰 Lương cơ bản:</span>
+                                <span class="stat-value" id="luongCoBan">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">⏰ Lương tăng ca:</span>
+                                <span class="stat-value" id="luongTangCa">0</span>
+                            </div>
+                            <div class="stat-item" style="background: linear-gradient(135deg, var(--success-green), #A8E6CF); color: white; font-weight: 700;">
+                                <span class="stat-label">💎 Tổng lương:</span>
+                                <span class="stat-value total-value" id="tongLuong">0</span>
+                            </div>
+                        </div>
+
+                        <div class="card card-prediction">
+                            <h3 class="card-header">
+                                <i class="fas fa-crystal-ball"></i>
+                                Dự Đoán Lương
+                            </h3>
+                            <div class="form-group">
+                                <label for="gioTangCaGiaDinh">
+                                    <i class="fas fa-clock" style="margin-right: 8px; color: var(--accent-yellow);"></i>
+                                    Số giờ tăng ca dự kiến:
+                                </label>
+                                <input type="number" id="gioTangCaGiaDinh" class="form-control" value="0" min="0" step="0.5">
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">⏱️ Giờ làm cơ bản (dự kiến):</span>
+                                <span class="stat-value" id="soGioLamCoBanGiaDinh">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">⏰ Giờ tăng ca (dự kiến):</span>
+                                <span class="stat-value" id="soGioLamTangCaGiaDinh">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">💰 Lương cơ bản (dự kiến):</span>
+                                <span class="stat-value" id="duDoanLuongCoBan">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">⏰ Lương tăng ca (dự kiến):</span>
+                                <span class="stat-value" id="duDoanLuongTangCa">0</span>
+                            </div>
+                            <div class="stat-item" style="background: linear-gradient(135deg, var(--info), #A8D8EA); color: white; font-weight: 700;">
+                                <span class="stat-label">🔮 Tổng lương (dự kiến):</span>
+                                <span class="stat-value total-value" id="tongLuongDuDoan">0</span>
+                            </div>
+                        </div>
+
+                        <div class="card card-input">
+                            <h3 class="card-header">
+                                <i class="fas fa-edit"></i>
+                                Nhập Dữ Liệu Lương
+                            </h3>
+                            <div class="form-group">
+                                <label for="luongGio">
+                                    <i class="fas fa-coins" style="margin-right: 8px; color: var(--accent-yellow);"></i>
+                                    Số tiền lương giờ:
+                                </label>
+                                <input type="number" id="luongGio" class="form-control" value="0" min="0" step="1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="luongTangCaGio">
+                                    <i class="fas fa-plus-circle" style="margin-right: 8px; color: var(--secondary-pink);"></i>
+                                    Số tiền lương tăng ca giờ:
+                                </label>
+                                <input type="number" id="luongTangCaGio" class="form-control" value="0" min="0" step="1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="troCapCoDinh">
+                                    <i class="fas fa-hand-holding-usd" style="margin-right: 8px; color: var(--success-green);"></i>
+                                    Trợ cấp cố định:
+                                </label>
+                                <input type="number" id="troCapCoDinh" class="form-control" value="0" min="0" step="1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="troCapLinhHoat">
+                                    <i class="fas fa-gift" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                                    Trợ cấp linh hoạt:
+                                </label>
+                                <input type="number" id="troCapLinhHoat" class="form-control" value="0" min="0" step="1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="phiKhac">
+                                    <i class="fas fa-receipt" style="margin-right: 8px; color: var(--text-secondary);"></i>
+                                    Phí khác:
+                                </label>
+                                <input type="number" id="phiKhac" class="form-control" value="0" step="1000">
+                            </div>
+                            <button id="luuDuLieuBtn" class="btn btn-primary btn-full-width">
+                                <i class="fas fa-save"></i>
+                                Lưu Dữ Liệu
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Thông Tin -->
+                <div id="tabThongTin" class="tab-content">
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-heart" style="color: var(--secondary-pink);"></i>
+                            Chào mừng đến với Timesheet!
+                        </h3>
+                        <p style="text-align: center; margin-bottom: 24px;">
+                            <img src="logo.png" alt="Timesheet Logo" style="width: 120px; height: 120px; border-radius: 50%; box-shadow: var(--shadow-lg);">
+                        </p>
+                        <p>Ứng dụng này giúp bạn quản lý lịch làm việc và chấm công cá nhân một cách dễ dàng và trực quan với giao diện dễ thương, thân thiện.</p>
+                        
+                        <div style="background: linear-gradient(135deg, var(--bg-primary), #F0F8FF); padding: 24px; border-radius: var(--radius-lg); margin-top: 24px;">
+                            <h4 style="color: var(--primary-blue); margin-bottom: 16px;">
+                                <i class="fas fa-sparkles"></i>
+                                Tính năng nổi bật:
+                            </h4>
+                            <ul style="list-style: none; padding: 0;">
+                                <li style="margin-bottom: 12px; display: flex; align-items: center;">
+                                    <i class="fas fa-calendar-alt" style="color: var(--primary-blue); margin-right: 12px; width: 20px;"></i>
+                                    Quản lý lịch làm việc trực quan
+                                </li>
+                                <li style="margin-bottom: 12px; display: flex; align-items: center;">
+                                    <i class="fas fa-clock" style="color: var(--secondary-pink); margin-right: 12px; width: 20px;"></i>
+                                    Chấm công và tính giờ tăng ca
+                                </li>
+                                <li style="margin-bottom: 12px; display: flex; align-items: center;">
+                                    <i class="fas fa-chart-bar" style="color: var(--accent-yellow); margin-right: 12px; width: 20px;"></i>
+                                    Thống kê và báo cáo chi tiết
+                                </li>
+                                <li style="margin-bottom: 12px; display: flex; align-items: center;">
+                                    <i class="fas fa-calculator" style="color: var(--success-green); margin-right: 12px; width: 20px;"></i>
+                                    Tính toán lương tự động
+                                </li>
+                                <li style="display: flex; align-items: center;">
+                                    <i class="fas fa-mobile-alt" style="color: var(--info); margin-right: 12px; width: 20px;"></i>
+                                    Tương thích mọi thiết bị
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Cài Đặt -->
+                <div id="tabCaiDat" class="tab-content">
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-palette"></i>
+                            Giao diện
+                        </h3>
+                        <div class="form-group">
+                            <label for="themeSelector">Chọn chủ đề:</label>
+                            <select id="themeSelector">
+                                <option value="default">☀️ Sáng</option>
+                                <option value="dark">🌙 Tối</option>
+                                <option value="cute">💖 Dễ Thương</option>
+                                <option value="doraemon">🤖 Doraemon</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-calendar-day"></i>
+                            Ngày bắt đầu công
+                        </h3>
+                        <div class="form-group">
+                            <label for="startWorkDayInput">Ngày bắt đầu tính công hàng tháng:</label>
+                            <input type="number" id="startWorkDayInput" min="1" max="31" value="1">
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-eye"></i>
+                            Chế độ hiển thị lịch
+                        </h3>
+                        <div class="form-group">
+                            <label for="displayModeSelect">Chọn chế độ:</label>
+                            <select id="displayModeSelect">
+                                <option value="fullMonth">📅 Hiển thị toàn bộ tháng</option>
+                                <option value="workPeriod">🔄 Hiển thị theo chu kỳ công</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-money-bill"></i>
+                            Tiền tệ
+                        </h3>
+                        <div class="form-group">
+                            <label for="currencySelector">Chọn loại tiền:</label>
+                            <select id="currencySelector">
+                                <option value="VND">🇻🇳 VND đ</option>
+                                <option value="JPY">🇯🇵 JPY ¥</option>
+                                <option value="USD">🇺🇸 USD $</option>
+                                <option value="EUR">🇪🇺 EUR €</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-cog"></i>
+                            Dữ liệu cơ bản
+                        </h3>
+                        <div class="form-group">
+                            <label for="baseHoursInput">Số giờ làm cơ bản / ngày</label>
+                            <input type="number" id="baseHoursInput" min="1" max="24" value="8" step="0.5">
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-download"></i>
+                            Xuất dữ liệu
+                        </h3>
+                        <div class="form-group">
+                            <label for="exportDataType">Loại dữ liệu xuất:</label>
+                            <select id="exportDataType">
+                                <option value="all">📦 Toàn bộ</option>
+                                <option value="schedule">📅 Chỉ Lịch</option>
+                                <option value="timesheet">⏰ Chỉ Chấm Công</option>
+                            </select>
+                        </div>
+                        <div class="button-group">
+                            <button id="exportDataBtn" class="btn btn-secondary">
+                                <i class="fas fa-file-export"></i>
+                                Xuất File JSON
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3 class="card-header">
+                            <i class="fas fa-upload"></i>
+                            Nhập dữ liệu
+                        </h3>
+                        <div class="form-group">
+                            <label for="importFile">Nhập từ file JSON:</label>
+                            <input type="file" id="importFile" accept=".json" style="padding: 16px; border: 2px dashed var(--border-color); border-radius: var(--radius-md); background: var(--bg-primary); transition: all var(--transition-fast);">
+                        </div>
+                        <div class="button-group">
+                            <button id="importDataBtn" class="btn btn-primary">
+                                <i class="fas fa-file-import"></i>
+                                Nhập Dữ Liệu
+                            </button>
+                        </div>
+                        <p style="font-size: var(--text-sm); color: var(--text-secondary); margin-top: 16px; padding: 12px; background: var(--bg-primary); border-radius: var(--radius-md);">
+                            <i class="fas fa-info-circle" style="color: var(--info); margin-right: 8px;"></i>
+                            Lưu ý: Dữ liệu nhập sẽ ghi đè dữ liệu hiện tại.
+                        </p>
+                    </div>
+
+                    <div style="text-align: center; padding: 24px; background: linear-gradient(135deg, var(--secondary-pink), var(--accent-yellow)); border-radius: var(--radius-lg); color: white; margin-top: 24px;">
+                        <p style="margin: 0; font-weight: 600;">
+                            <i class="fas fa-heart" style="color: #FF6B6B; margin-right: 8px;"></i>
+                            Design by HunqD with Love
+                        </p>
+                        <p style="margin: 8px 0 0 0; font-size: var(--text-sm); opacity: 0.9;">
+                            Phiên bản: 2.0.0 - Redesigned
+                        </p>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-button active" data-tab="tabLichLamViec" data-title="Lịch Làm Việc">
+                <span class="icon"><i class="fas fa-calendar-alt"></i></span>
+                <span class="label">Lịch</span>
+            </button>
+            <button class="nav-button" data-tab="tabSoChamCong" data-title="Sổ Chấm Công">
+                <span class="icon"><i class="fas fa-clipboard-list"></i></span>
+                <span class="label">Sổ Công</span>
+            </button>
+            <button class="nav-button" data-tab="tabMayTinh" data-title="Máy tính">
+                <span class="icon"><i class="fas fa-calculator"></i></span>
+                <span class="label">Máy tính</span>
+            </button>
+            <button class="nav-button" data-tab="tabThongTin" data-title="Thông tin">
+                <span class="icon"><i class="fas fa-info-circle"></i></span>
+                <span class="label">Thông tin</span>
+            </button>
+            <button class="nav-button" data-tab="tabCaiDat" data-title="Cài Đặt">
+                <span class="icon"><i class="fas fa-cog"></i></span>
+                <span class="label">Cài Đặt</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Timesheet Modal -->
+    <div id="timesheetModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">
+                    <i class="fas fa-clock" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                    Chấm công
+                </h3>
+            </div>
+            <div class="modal-body">
+                <form id="timesheetForm">
+                    <input type="hidden" id="timesheetDate">
+                    <div class="form-group">
+                        <label for="entryType">
+                            <i class="fas fa-list" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                            Loại ngày công
+                        </label>
+                        <select id="entryType">
+                            <option value="work">💼 Ngày làm</option>
+                            <option value="paid_leave">🏖️ Nghỉ phép</option>
+                            <option value="unpaid_leave">🚫 Nghỉ không lương</option>
+                            <option value="company_holiday">🏢 Công ty cho nghỉ</option>
+                        </select>
+                    </div>
+                    <div id="overtimeFields" style="display: none;">
+                        <div class="form-group">
+                            <label for="overtimeHours">
+                                <i class="fas fa-plus-circle" style="margin-right: 8px; color: var(--accent-yellow);"></i>
+                                Giờ tăng ca:
+                            </label>
+                            <input type="number" id="overtimeHours" min="0" max="23" placeholder="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="overtimeMinutes">
+                                <i class="fas fa-clock" style="margin-right: 8px; color: var(--secondary-pink);"></i>
+                                Phút tăng ca:
+                            </label>
+                            <input type="number" id="overtimeMinutes" min="0" max="59" placeholder="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">
+                            <i class="fas fa-sticky-note" style="margin-right: 8px; color: var(--success-green);"></i>
+                            Ghi chú:
+                        </label>
+                        <textarea id="notes" rows="3" placeholder="Nhập ghi chú (tùy chọn)..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-cancel">
+                    <i class="fas fa-times"></i>
+                    Hủy
+                </button>
+                <button type="button" class="btn btn-confirm btn-primary">
+                    <i class="fas fa-check"></i>
+                    Xác nhận
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Confirm Modal -->
+    <div id="actionConfirmModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="actionConfirmModalTitle">
+                    <i class="fas fa-question-circle" style="margin-right: 8px; color: var(--primary-blue);"></i>
+                    Hành động
+                </h3>
+            </div>
+            <div class="modal-body">
+                <p style="text-align: center; margin-bottom: 16px;">Bạn muốn làm gì với mục chấm công này?</p>
+                <input type="hidden" id="actionConfirmDate">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-edit-timesheet">
+                    <i class="fas fa-pencil-alt"></i>
+                    Sửa
+                </button>
+                <button type="button" class="btn btn-danger btn-delete-timesheet">
+                    <i class="fas fa-trash-alt"></i>
+                    Xoá
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <!-- App Scripts -->
+    <script src="./script.js"></script>
+    <script src="./calc.js"></script>
+
+</body>
+</html>
+

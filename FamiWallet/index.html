@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fami Wallet - Ví điện tử của gia đình</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .hidden { display: none; }
+        .sidebar-link.active { background-color: #4f46e5; color: white; }
+        .sidebar-link.active svg { color: white; }
+        .tab-btn.active { border-color: #6366f1; color: #e5e7eb; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-300">
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="fixed inset-0 bg-slate-900 bg-opacity-80 flex items-center justify-center z-50 hidden">
+        <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-indigo-500"></div>
+    </div>
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="min-h-screen flex items-center justify-center p-4 bg-slate-800">
+        <div class="max-w-md w-full space-y-8 bg-slate-900 p-8 rounded-2xl shadow-lg">
+            <div>
+                <h2 id="auth-title" class="mt-6 text-center text-3xl font-extrabold text-white">Đăng nhập vào tài khoản</h2>
+            </div>
+            <form id="login-form" class="mt-8 space-y-6">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <input id="login-email" name="email" type="email" autocomplete="email" required class="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-700 bg-slate-800 placeholder-slate-500 text-white rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Địa chỉ email">
+                    </div>
+                    <div>
+                        <input id="login-password" name="password" type="password" autocomplete="current-password" required class="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-700 bg-slate-800 placeholder-slate-500 text-white rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Mật khẩu">
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="text-sm">
+                        <a href="#" id="forgot-password-link" class="font-medium text-indigo-400 hover:text-indigo-300"> Quên mật khẩu? </a>
+                    </div>
+                </div>
+                <div>
+                    <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-slate-900">
+                        Đăng nhập
+                    </button>
+                </div>
+            </form>
+            <form id="register-form" class="mt-8 space-y-6 hidden">
+                 <div class="rounded-md shadow-sm -space-y-px">
+                    <div>
+                        <input id="register-email" name="email" type="email" autocomplete="email" required class="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-700 bg-slate-800 placeholder-slate-500 text-white rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Địa chỉ email">
+                    </div>
+                    <div>
+                        <input id="register-password" name="password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-700 bg-slate-800 placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Mật khẩu">
+                    </div>
+                    <div>
+                        <input id="register-confirm-password" name="confirm-password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-3 border border-slate-700 bg-slate-800 placeholder-slate-500 text-white rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm" placeholder="Xác nhận mật khẩu">
+                    </div>
+                </div>
+                <div>
+                    <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-slate-900">
+                        Tạo tài khoản
+                    </button>
+                </div>
+            </form>
+            <div class="relative my-6">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-slate-700"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-slate-900 text-slate-500"> Hoặc tiếp tục với </span>
+                </div>
+            </div>
+            <div>
+                <button id="google-signin-btn" class="group relative w-full flex items-center justify-center py-3 px-4 border border-slate-700 text-sm font-medium rounded-md text-white bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-slate-900">
+                     <svg class="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.84 0-5.22-1.92-6.08-4.5H2.21v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.92 14.01c-.21-.66-.33-1.34-.33-2.01s.12-1.35.33-2.01V7.16H2.21C1.47 8.55 1 10.22 1 12s.47 3.45 1.21 4.84l3.71-2.83z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.21 6.84l3.71 2.83c.87-2.58 3.24-4.5 6.08-4.5z" fill="#EA4335"/><path d="M1 1h22v22H1z" fill="none"/></svg>
+                    Đăng nhập bằng Google
+                </button>
+            </div>
+            <p class="mt-2 text-center text-sm text-slate-500">
+                <span id="auth-switch-text">Chưa có tài khoản?</span>
+                <a href="#" id="auth-switch-link" class="font-medium text-indigo-400 hover:text-indigo-300"> Tạo tài khoản </a>
+            </p>
+        </div>
+    </div>
+    
+    <div id="onboarding-container" class="min-h-screen flex items-center justify-center p-4 bg-slate-800 hidden">
+        <div class="max-w-lg w-full space-y-8 bg-slate-900 p-8 rounded-2xl shadow-lg">
+            <div>
+                <h2 class="mt-6 text-center text-3xl font-extrabold text-white">Thiết lập tài khoản của bạn</h2>
+                <p class="mt-2 text-center text-sm text-slate-400">Vui lòng hoàn tất các thông tin sau để kích hoạt ví.</p>
+            </div>
+            <form id="onboarding-form" class="mt-8 space-y-6">
+                 <div>
+                    <label for="display-name" class="block text-sm font-medium text-slate-300">Tên hiển thị</label>
+                    <input id="display-name" name="displayName" type="text" required class="mt-1 appearance-none block w-full px-3 py-3 border border-slate-700 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="account-number" class="block text-sm font-medium text-slate-300">Số tài khoản (Tối đa 12 chữ số)</label>
+                    <input id="account-number" name="accountNumber" type="text" required pattern="\d{1,12}" title="Số tài khoản phải là số và có tối đa 12 chữ số." class="mt-1 appearance-none block w-full px-3 py-3 border border-slate-700 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    <p id="account-number-error" class="text-red-400 text-xs mt-1 hidden">Số tài khoản này đã tồn tại.</p>
+                </div>
+                <div>
+                    <label for="pin" class="block text-sm font-medium text-slate-300">Mã PIN (6 chữ số)</label>
+                    <input id="pin" name="pin" type="password" required pattern="\d{6}" title="Mã PIN phải là 6 chữ số." class="mt-1 appearance-none block w-full px-3 py-3 border border-slate-700 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="confirm-pin" class="block text-sm font-medium text-slate-300">Xác nhận mã PIN</label>
+                    <input id="confirm-pin" name="confirmPin" type="password" required class="mt-1 appearance-none block w-full px-3 py-3 border border-slate-700 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="deposit-code" class="block text-sm font-medium text-slate-300">Mã nạp tiền (Nếu có)</label>
+                    <input id="deposit-code" name="depositCode" type="text" class="mt-1 appearance-none block w-full px-3 py-3 border border-slate-700 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <div>
+                    <button type="submit" class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-slate-900">
+                        Hoàn tất & Kích hoạt ví
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Layout -->
+    <div id="app-container" class="hidden">
+        <div class="flex h-screen bg-slate-800">
+            <!-- Sidebar -->
+            <aside class="w-20 md:w-64 flex-shrink-0 bg-slate-900 p-4 flex flex-col">
+                <div class="text-2xl font-bold text-white mb-8 hidden md:block">FamiWallet</div>
+                 <div class="text-2xl font-bold text-white mb-8 md:hidden text-center">FW</div>
+                <nav class="flex-grow space-y-2">
+                    <a href="#" data-view="dashboard-view" class="sidebar-link flex items-center p-3 rounded-lg text-slate-300 hover:bg-slate-700">
+                        <svg class="h-6 w-6 mr-0 md:mr-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                        <span class="hidden md:inline">Tổng quan</span>
+                    </a>
+                    <a href="#" data-view="transfer-view" class="sidebar-link flex items-center p-3 rounded-lg text-slate-300 hover:bg-slate-700">
+                        <svg class="h-6 w-6 mr-0 md:mr-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        <span class="hidden md:inline">Chuyển & Nạp</span>
+                    </a>
+                    <a href="#" data-view="activity-view" class="sidebar-link flex items-center p-3 rounded-lg text-slate-300 hover:bg-slate-700">
+                        <svg class="h-6 w-6 mr-0 md:mr-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                        <span class="hidden md:inline">Hoạt động</span>
+                    </a>
+                    <a href="#" data-view="invest-view" class="sidebar-link flex items-center p-3 rounded-lg text-slate-300 hover:bg-slate-700">
+                         <svg class="h-6 w-6 mr-0 md:mr-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                        <span class="hidden md:inline">Đầu tư</span>
+                    </a>
+                    <a href="#" id="admin-sidebar-link" data-view="admin-view" class="sidebar-link hidden flex items-center p-3 rounded-lg text-slate-300 hover:bg-slate-700">
+                        <svg class="h-6 w-6 mr-0 md:mr-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <span class="hidden md:inline">Quản trị</span>
+                    </a>
+                </nav>
+                <div class="mt-auto space-y-2">
+                    <div id="header-user-info" class="p-3 border-t border-slate-700">
+                        <p id="header-display-name" class="font-semibold text-white hidden md:block"></p>
+                        <p id="header-account-number" class="text-sm text-slate-400 hidden md:block"></p>
+                    </div>
+                    <a href="#" data-view="settings-view" class="sidebar-link flex items-center p-3 rounded-lg text-slate-300 hover:bg-slate-700">
+                        <svg class="h-6 w-6 mr-0 md:mr-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <span class="hidden md:inline">Cài đặt</span>
+                    </a>
+                    <a href="#" id="logout-btn" class="sidebar-link flex items-center p-3 rounded-lg text-slate-300 hover:bg-slate-700">
+                        <svg class="h-6 w-6 mr-0 md:mr-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        <span class="hidden md:inline">Đăng xuất</span>
+                    </a>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 p-6 lg:p-10 overflow-y-auto">
+                <div id="dashboard-view" class="app-view"></div>
+                <div id="transfer-view" class="app-view hidden"></div>
+                <div id="activity-view" class="app-view hidden"></div>
+                <div id="invest-view" class="app-view hidden"></div>
+                <div id="settings-view" class="app-view hidden"></div>
+                <div id="admin-view" class="app-view hidden"></div>
+            </main>
+        </div>
+    </div>
+
+    <div id="notification-modal" class="fixed inset-0 bg-slate-900 bg-opacity-70 flex items-center justify-center z-40 hidden">
+        <div class="bg-slate-800 rounded-2xl shadow-lg p-6 max-w-md w-full border border-slate-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Thông báo</h3>
+                <button id="close-notification-modal" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="notification-list" class="space-y-3 max-h-96 overflow-y-auto"></div>
+        </div>
+    </div>
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900 bg-opacity-70 flex items-center justify-center z-40 hidden">
+        <div class="bg-slate-800 rounded-2xl shadow-lg p-8 max-w-sm w-full text-center border border-slate-700">
+            <h3 id="modal-title" class="text-xl font-bold text-white"></h3>
+            <p id="modal-message" class="text-slate-300 mt-2 mb-6"></p>
+            <div id="modal-content"></div>
+            <div id="modal-actions" class="mt-6 flex justify-center space-x-4">
+                <button id="modal-confirm-btn" class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Xác nhận</button>
+                <button id="modal-cancel-btn" class="px-6 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-500">Hủy</button>
+            </div>
+        </div>
+    </div>
+    <div id="pin-pad-modal" class="fixed inset-0 bg-slate-900 bg-opacity-70 flex items-center justify-center z-40 hidden">
+        <div class="bg-slate-800 rounded-2xl shadow-lg p-8 max-w-sm w-full text-center border border-slate-700">
+            <h3 class="text-xl font-bold text-white">Xác nhận giao dịch</h3>
+            <p class="text-slate-300 mt-2 mb-6">Vui lòng nhập mã PIN của bạn</p>
+            <div class="flex justify-center space-x-4 my-4">
+                <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+            </div>
+            <div class="grid grid-cols-3 gap-4"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signInWithPopup,
+            GoogleAuthProvider,
+            sendPasswordResetEmail,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore,
+            doc,
+            getDoc,
+            setDoc,
+            collection,
+            query,
+            where,
+            getDocs,
+            runTransaction,
+            addDoc,
+            onSnapshot,
+            serverTimestamp,
+            orderBy,
+            limit,
+            updateDoc,
+            deleteDoc,
+            writeBatch
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIG & INITIALIZATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBevgQ-MEoSg1tnLyvOFY8ndcKN7HvaahU",
+            authDomain: "fami-wallet.firebaseapp.com",
+            projectId: "fami-wallet",
+            storageBucket: "fami-wallet.firebasestorage.app",
+            messagingSenderId: "851225524722",
+            appId: "1:851225524722:web:023d64b5b0d7205045d36b",
+            measurementId: "G-4DNH0PN1CS"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- GLOBAL STATE ---
+        let currentUser = null;
+        let userData = null;
+        let pinInput = '';
+        let pinPromiseResolver = null;
+        
+        // --- UTILITY FUNCTIONS ---
+        const showLoading = () => document.getElementById('loading-spinner').classList.remove('hidden');
+        const hideLoading = () => document.getElementById('loading-spinner').classList.add('hidden');
+        const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount || 0);
+        const showModal = (title, message, content = '', onConfirm, onCancel) => {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-content').innerHTML = content;
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            const cancelBtn = document.getElementById('modal-cancel-btn');
+            const modal = document.getElementById('custom-modal');
+            confirmBtn.onclick = () => { if (onConfirm) onConfirm(); modal.classList.add('hidden'); };
+            cancelBtn.onclick = () => { if (onCancel) onCancel(); modal.classList.add('hidden'); };
+            confirmBtn.style.display = onConfirm ? 'inline-flex' : 'none';
+            cancelBtn.style.display = 'inline-flex';
+            if (!onCancel && !onConfirm) {
+                cancelBtn.textContent = 'Đóng';
+            } else {
+                cancelBtn.textContent = 'Hủy';
+            }
+            modal.classList.remove('hidden');
+        };
+        const hashPin = (pin) => CryptoJS.SHA256(pin + 'fami-wallet-salt').toString();
+
+        // --- VIEW & NAVIGATION MANAGEMENT ---
+        const switchView = (viewId) => {
+            document.querySelectorAll('.app-view').forEach(view => view.classList.add('hidden'));
+            const targetView = document.getElementById(viewId);
+            if (targetView) targetView.classList.remove('hidden');
+            
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.toggle('active', link.dataset.view === viewId);
+            });
+        };
+
+        // --- COMPONENT RENDERING FUNCTIONS ---
+        function renderHistoryTransaction(tx) {
+            const isSender = tx.fromUserId === currentUser.uid;
+            const amountClass = isSender ? 'text-red-400' : 'text-green-400';
+            const sign = isSender ? '-' : '+';
+            let title = '', subtitle = '';
+
+            switch(tx.type) {
+                case 'transfer':
+                    title = isSender ? `Chuyển tiền tới ${tx.toDisplayName}` : `Nhận tiền từ ${tx.fromDisplayName}`;
+                    subtitle = tx.message || 'Không có lời nhắn';
+                    break;
+                case 'deposit':
+                    title = 'Nạp tiền vào ví';
+                    subtitle = tx.method === 'code' ? 'Bằng mã nạp tiền' : 'Yêu cầu được duyệt';
+                    break;
+                case 'investment_in':
+                    title = 'Đầu tư vào quỹ';
+                    subtitle = 'Gửi tiền thành công';
+                    break;
+                case 'investment_out':
+                    title = 'Rút tiền từ quỹ';
+                    subtitle = 'Rút tiền thành công';
+                    break;
+            }
+
+            return `
+                <div class="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                    <div class="flex items-center">
+                        <div class="p-3 rounded-full ${isSender ? 'bg-red-900/50' : 'bg-green-900/50'}">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 ${amountClass}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                ${isSender ? '<path stroke-linecap="round" stroke-linejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />' : '<path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />'}
+                            </svg>
+                        </div>
+                        <div class="ml-4">
+                            <p class="font-semibold text-white">${title}</p>
+                            <p class="text-sm text-slate-400">${subtitle}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold ${amountClass}">${sign}${formatCurrency(tx.amount)}</p>
+                        <p class="text-xs text-slate-500">${tx.timestamp ? new Date(tx.timestamp.toDate()).toLocaleString('vi-VN') : ''}</p>
+                    </div>
+                </div>
+            `;
+        }
+        function renderPendingTransaction(tx) {
+            const isSender = tx.senderId === currentUser.uid;
+            let title, description, buttons;
+
+            if (isSender) {
+                title = `Đang chờ ${tx.recipientName} xác nhận`;
+                description = `Bạn đã gửi yêu cầu chuyển ${formatCurrency(tx.amount)}.`;
+                buttons = `<button data-tx-id="${tx.id}" class="cancel-transfer-btn px-3 py-1 bg-red-600 text-white text-sm rounded-md hover:bg-red-700">Hủy</button>`;
+            } else { // is recipient
+                title = `Yêu cầu nhận tiền từ ${tx.senderName}`;
+                description = `Bạn nhận được yêu cầu xác nhận cho khoản tiền ${formatCurrency(tx.amount)}.`;
+                buttons = `
+                    <button data-tx-id="${tx.id}" class="reject-transfer-btn px-3 py-1 bg-slate-600 text-white text-sm rounded-md hover:bg-slate-500">Từ chối</button>
+                    <button data-tx-id="${tx.id}" class="confirm-transfer-btn px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700">Xác nhận</button>
+                `;
+            }
+
+            return `
+                <div class="p-4 rounded-lg bg-slate-800 border border-slate-700">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-semibold text-yellow-400">${title}</p>
+                            <p class="text-sm text-slate-300">${description}</p>
+                            <p class="text-xs text-slate-500">Ngày tạo: ${tx.createdAt ? new Date(tx.createdAt.toDate()).toLocaleString('vi-VN') : ''}</p>
+                        </div>
+                        <div class="flex space-x-2">${buttons}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- VIEW RENDERING FUNCTIONS ---
+        function renderDashboardView() {
+            const view = document.getElementById('dashboard-view');
+            view.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-2">Chào mừng trở lại, ${userData.displayName}!</h1>
+                <p class="text-slate-400 mb-8">Đây là tổng quan tài chính của bạn hôm nay.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-700">
+                        <h2 class="text-lg font-semibold text-slate-300 mb-2">Số dư chính</h2>
+                        <p class="text-4xl font-bold text-white" id="dashboard-balance">${formatCurrency(userData.balance)}</p>
+                    </div>
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-700">
+                        <h2 class="text-lg font-semibold text-slate-300 mb-2">Đầu tư của bạn</h2>
+                        <p class="text-4xl font-bold text-green-400" id="dashboard-investment">${formatCurrency(userData.investmentShare || 0)}</p>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <h2 class="text-xl font-semibold text-white mb-4">Hoạt động gần đây</h2>
+                    <div id="recent-transactions-dashboard" class="space-y-3"></div>
+                </div>
+            `;
+        }
+        function renderTransferView() {
+            const view = document.getElementById('transfer-view');
+            view.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Chuyển & Nạp tiền</h1>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Transfer Column -->
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-700">
+                        <h2 class="text-xl font-semibold text-white mb-4">Chuyển tiền</h2>
+                        <form id="transfer-form" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-400">Số tài khoản người nhận</label>
+                                <div class="flex items-center">
+                                    <input type="text" id="transfer-recipient-account" required class="mt-1 block w-full px-3 py-2 border border-slate-600 bg-slate-800 rounded-l-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                    <button type="button" id="verify-recipient-btn" class="mt-1 px-4 py-2 bg-slate-700 text-white rounded-r-md hover:bg-slate-600">Kiểm tra</button>
+                                </div>
+                                <p id="recipient-name-display" class="mt-2 text-green-400 hidden"></p>
+                                <p id="recipient-error-display" class="mt-2 text-red-400 hidden"></p>
+                            </div>
+                            <div id="transfer-details" class="hidden space-y-4">
+                                <div>
+                                    <label for="transfer-amount" class="block text-sm font-medium text-slate-400">Số tiền</label>
+                                    <input type="number" id="transfer-amount" required class="mt-1 block w-full px-3 py-2 border border-slate-600 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                </div>
+                                <div>
+                                    <label for="transfer-message" class="block text-sm font-medium text-slate-400">Nội dung chuyển khoản</label>
+                                    <input type="text" id="transfer-message" placeholder="Tùy chọn" class="mt-1 block w-full px-3 py-2 border border-slate-600 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                </div>
+                                <button type="submit" class="w-full py-3 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700">Tạo lệnh chuyển tiền</button>
+                            </div>
+                        </form>
+                    </div>
+                    <!-- Deposit Column -->
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 space-y-6">
+                        <div>
+                            <h2 class="text-xl font-semibold text-white mb-4">Nạp tiền bằng Mã</h2>
+                             <form id="deposit-code-form" class="flex items-center space-x-2">
+                                <input type="text" id="deposit-code-input" placeholder="Nhập mã nạp tiền" required class="w-full px-3 py-2 border border-slate-600 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <button type="submit" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700">Áp dụng</button>
+                            </form>
+                        </div>
+                        <div class="border-t border-slate-700"></div>
+                        <div>
+                            <h2 class="text-xl font-semibold text-white mb-4">Nạp tiền bằng Yêu cầu</h2>
+                            <form id="deposit-request-form" class="flex items-center space-x-2">
+                                <input type="number" id="deposit-request-amount" placeholder="Nhập số tiền" required class="w-full px-3 py-2 border border-slate-600 bg-slate-800 rounded-md placeholder-slate-500 text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                <button type="submit" class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700">Gửi</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        function renderActivityView() {
+            const view = document.getElementById('activity-view');
+            view.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Hoạt động</h1>
+                <div class="mb-4 border-b border-slate-700">
+                    <nav class="-mb-px flex space-x-4" aria-label="Tabs">
+                        <button id="history-tab-btn" class="tab-btn active whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm text-slate-400 hover:text-white hover:border-slate-300">Lịch sử</button>
+                        <button id="pending-tab-btn" class="tab-btn whitespace-nowrap py-3 px-4 border-b-2 border-transparent font-medium text-sm text-slate-400 hover:text-white hover:border-slate-300">Đang xử lý</button>
+                    </nav>
+                </div>
+                <div id="history-tab-content" class="tab-content space-y-4 max-h-[70vh] overflow-y-auto pr-2"></div>
+                <div id="pending-tab-content" class="tab-content hidden space-y-4 max-h-[70vh] overflow-y-auto pr-2"></div>
+            `;
+        }
+        function renderInvestView() {
+            const view = document.getElementById('invest-view');
+            view.innerHTML = `
+                 <h1 class="text-3xl font-bold text-white mb-8">Quỹ Đầu tư chung</h1>
+                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-700">
+                        <h2 class="text-xl font-semibold text-white mb-4">Tổng quan Quỹ</h2>
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-sm text-slate-400">Tổng giá trị quỹ</p>
+                                <p id="invest-fund-total" class="text-3xl font-bold text-green-400">0 VND</p>
+                            </div>
+                             <div>
+                                <p class="text-sm text-slate-400">Phần của bạn</p>
+                                <p id="invest-user-share" class="text-2xl font-semibold text-green-300">0 VND</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900 p-6 rounded-xl border border-slate-700 space-y-6">
+                        <div>
+                            <h2 class="text-xl font-semibold text-white mb-4">Gửi tiền vào quỹ</h2>
+                            <form id="invest-form" class="space-y-4">
+                                <div>
+                                    <label for="investment-amount" class="block text-sm font-medium text-slate-400">Số tiền muốn đầu tư</label>
+                                    <input type="number" id="investment-amount" required class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                                <button type="submit" class="w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700">Gửi vào quỹ</button>
+                            </form>
+                        </div>
+                        <div class="border-t border-slate-700"></div>
+                        <div>
+                            <h2 class="text-xl font-semibold text-white mb-4">Rút tiền từ quỹ</h2>
+                            <form id="withdraw-form" class="space-y-4">
+                                <div>
+                                    <label for="withdraw-amount" class="block text-sm font-medium text-slate-400">Số tiền muốn rút</label>
+                                    <input type="number" id="withdraw-amount" required class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                                <button type="submit" class="w-full py-2 px-4 bg-red-600 text-white font-semibold rounded-md hover:bg-red-700">Rút khỏi quỹ</button>
+                            </form>
+                        </div>
+                    </div>
+                 </div>
+            `;
+        }
+        function renderSettingsView() {
+            const view = document.getElementById('settings-view');
+            view.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Cài đặt</h1>
+                <div class="max-w-xl mx-auto space-y-8">
+                     <div class="bg-slate-900 p-6 rounded-xl border border-slate-700">
+                        <h2 class="text-xl font-semibold text-white mb-4">Đổi mã PIN</h2>
+                        <form id="change-pin-form" class="space-y-4">
+                            <div>
+                                <label for="current-pin" class="block text-sm font-medium text-slate-400">Mã PIN hiện tại</label>
+                                <input type="password" id="current-pin" required class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-md px-3 py-2 text-white">
+                            </div>
+                             <div>
+                                <label for="new-pin" class="block text-sm font-medium text-slate-400">Mã PIN mới (6 chữ số)</label>
+                                <input type="password" id="new-pin" required pattern="\\d{6}" class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-md px-3 py-2 text-white">
+                            </div>
+                            <button type="submit" class="py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700">Lưu thay đổi</button>
+                        </form>
+                     </div>
+                </div>
+            `;
+        }
+        function renderAdminView() {
+            const view = document.getElementById('admin-view');
+            view.innerHTML = `
+                <h1 class="text-3xl font-bold text-white mb-8">Bảng điều khiển Quản trị</h1>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="space-y-8">
+                        <div class="bg-slate-900 p-6 rounded-xl border border-slate-700">
+                            <h2 class="text-xl font-semibold text-white mb-4">Yêu cầu Nạp tiền</h2>
+                            <div id="admin-deposit-requests" class="space-y-4 max-h-96 overflow-y-auto pr-2"></div>
+                        </div>
+                        <div class="bg-slate-900 p-6 rounded-xl border border-slate-700">
+                            <h2 class="text-xl font-semibold text-white mb-4">Tạo Mã Nạp tiền</h2>
+                            <form id="admin-create-code-form" class="space-y-4">
+                                <div>
+                                    <label for="admin-code-id" class="block text-sm font-medium text-slate-400">Mã (ví dụ: NAP50K)</label>
+                                    <input type="text" id="admin-code-id" required class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label for="admin-code-amount" class="block text-sm font-medium text-slate-400">Số tiền (VND)</label>
+                                    <input type="number" id="admin-code-amount" required class="mt-1 w-full bg-slate-800 border border-slate-600 rounded-md px-3 py-2 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                                <button type="submit" class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md hover:bg-indigo-700">Tạo mã</button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="space-y-8">
+                        <div class="bg-slate-900 p-6 rounded-xl border border-slate-700">
+                            <h2 class="text-xl font-semibold text-white mb-4">Quản lý Người dùng</h2>
+                            <div id="admin-user-list" class="space-y-4 max-h-[42rem] overflow-y-auto pr-2"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- DATA LISTENERS ---
+        function listenToRecentTransactions() {
+            const q = query(collection(db, "transactions"), where("participants", "array-contains", currentUser.uid));
+            onSnapshot(q, (snapshot) => {
+                const container = document.getElementById('recent-transactions-dashboard');
+                if (!container) return;
+                let transactions = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                transactions.sort((a,b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+                transactions = transactions.slice(0, 5);
+                container.innerHTML = '';
+                if (transactions.length === 0) {
+                    container.innerHTML = '<p class="text-slate-500 text-center py-4">Không có giao dịch nào gần đây.</p>';
+                    return;
+                }
+                transactions.forEach(tx => container.innerHTML += renderHistoryTransaction(tx));
+            }, (error) => console.error("Lỗi khi nghe giao dịch gần đây:", error));
+        }
+        function listenToUserData() {
+            const userDocRef = doc(db, "users", currentUser.uid);
+            onSnapshot(userDocRef, (doc) => {
+                if (doc.exists()) {
+                    userData = { id: doc.id, ...doc.data() };
+                    const balanceEl = document.getElementById('dashboard-balance');
+                    const investmentEl = document.getElementById('dashboard-investment');
+                    const headerNameEl = document.getElementById('header-display-name');
+                    const headerAccountEl = document.getElementById('header-account-number');
+                    if(balanceEl) balanceEl.textContent = formatCurrency(userData.balance);
+                    if(investmentEl) investmentEl.textContent = formatCurrency(userData.investmentShare || 0);
+                    if(headerNameEl) headerNameEl.textContent = userData.displayName;
+                    if(headerAccountEl) headerAccountEl.textContent = `STK: ${userData.accountNumber}`;
+                }
+            });
+        }
+        function listenToNotifications() {
+            const q = query(collection(db, 'pendingTransfers'), where('recipientId', '==', currentUser.uid), where('status', '==', 'pending'));
+            onSnapshot(q, (snapshot) => {
+                const notificationDot = document.getElementById('notification-dot');
+                const notificationList = document.getElementById('notification-list');
+                notificationDot.classList.toggle('hidden', snapshot.empty);
+                notificationList.innerHTML = '';
+                 if (snapshot.empty) {
+                    notificationList.innerHTML = '<p class="text-slate-500 text-center p-4">Bạn không có thông báo nào.</p>';
+                }
+                snapshot.forEach(docSnap => {
+                    const transfer = { id: docSnap.id, ...docSnap.data() };
+                    const div = document.createElement('div');
+                    div.className = 'p-4 rounded-lg bg-slate-700';
+                    div.innerHTML = `
+                        <h4 class="font-semibold text-white">Yêu cầu nhận tiền</h4>
+                        <p class="text-sm text-slate-300">${transfer.senderName} muốn chuyển cho bạn ${formatCurrency(transfer.amount)}.</p>
+                        <button class="goto-activity-btn mt-2 px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700">Xem & xác nhận</button>
+                    `;
+                    notificationList.appendChild(div);
+                });
+            });
+        }
+        function listenToActivity() {
+            const historyQuery = query(collection(db, "transactions"), where("participants", "array-contains", currentUser.uid));
+            onSnapshot(historyQuery, (snapshot) => {
+                const container = document.getElementById('history-tab-content');
+                if (!container) return;
+                let transactions = snapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+                transactions.sort((a,b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+                container.innerHTML = '';
+                if (transactions.length === 0) {
+                    container.innerHTML = '<p class="text-slate-500 text-center py-8">Lịch sử giao dịch trống.</p>';
+                    return;
+                }
+                transactions.forEach(tx => container.innerHTML += renderHistoryTransaction(tx));
+            }, error => console.error("Lỗi nghe lịch sử:", error));
+
+            let pendingSent = [];
+            let pendingReceived = [];
+            const pendingContainer = document.getElementById('pending-tab-content');
+
+            const renderAllPending = () => {
+                if (!pendingContainer) return;
+                const allPendingMap = new Map();
+                [...pendingSent, ...pendingReceived].forEach(tx => allPendingMap.set(tx.id, tx));
+                const allPending = Array.from(allPendingMap.values());
+                allPending.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                pendingContainer.innerHTML = '';
+                if (allPending.length === 0) {
+                    pendingContainer.innerHTML = '<p class="text-slate-500 text-center py-8">Không có giao dịch nào đang chờ xử lý.</p>';
+                    return;
+                }
+                allPending.forEach(tx => pendingContainer.innerHTML += renderPendingTransaction(tx));
+            };
+
+            const sentQuery = query(collection(db, 'pendingTransfers'), where('senderId', '==', currentUser.uid), where('status', '==', 'pending'));
+            onSnapshot(sentQuery, (snapshot) => {
+                pendingSent = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAllPending();
+            }, error => console.error("Lỗi nghe giao dịch đã gửi:", error));
+
+            const receivedQuery = query(collection(db, 'pendingTransfers'), where('recipientId', '==', currentUser.uid), where('status', '==', 'pending'));
+            onSnapshot(receivedQuery, (snapshot) => {
+                pendingReceived = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderAllPending();
+            }, error => console.error("Lỗi nghe giao dịch đã nhận:", error));
+        }
+        function listenToInvestmentFund() {
+            const fundDocRef = doc(db, "investmentFund", "main");
+            onSnapshot(fundDocRef, (doc) => {
+                if (doc.exists()) {
+                    const fundData = doc.data();
+                    const userShare = fundData.contributors?.[currentUser.uid] || 0;
+                    if (userData) userData.investmentShare = userShare;
+                    
+                    const investFundTotalEl = document.getElementById('invest-fund-total');
+                    const investUserShareEl = document.getElementById('invest-user-share');
+                    const adminFundTotalEl = document.getElementById('admin-fund-total');
+
+                    if (investFundTotalEl) investFundTotalEl.textContent = formatCurrency(fundData.totalBalance);
+                    if (investUserShareEl) investUserShareEl.textContent = formatCurrency(userShare);
+                    if (adminFundTotalEl) adminFundTotalEl.textContent = formatCurrency(fundData.totalBalance);
+                }
+            });
+        }
+        function listenToAdminData() {
+             const requestsQuery = query(collection(db, 'adminRequests'), where('status', '==', 'pending'));
+            onSnapshot(requestsQuery, snapshot => {
+                const container = document.getElementById('admin-deposit-requests');
+                if(!container) return;
+                container.innerHTML = '';
+                if (snapshot.empty) {
+                    container.innerHTML = `<p class="text-slate-500 text-center">Không có yêu cầu nào.</p>`;
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const req = { id: doc.id, ...doc.data() };
+                    container.innerHTML += `
+                        <div class="p-3 bg-slate-800 rounded-lg">
+                            <p class="font-semibold text-white">${req.userDisplayName} (${req.userAccountNumber})</p>
+                            <p class="text-slate-300">Yêu cầu nạp: <span class="font-bold text-green-400">${formatCurrency(req.amount)}</span></p>
+                            <div class="mt-2 space-x-2">
+                                <button data-req-id="${req.id}" data-user-id="${req.userId}" data-amount="${req.amount}" class="admin-approve-btn px-3 py-1 text-sm bg-green-600 rounded hover:bg-green-700">Duyệt</button>
+                                <button data-req-id="${req.id}" class="admin-reject-btn px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700">Từ chối</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+
+            const usersQuery = query(collection(db, 'users'));
+            onSnapshot(usersQuery, snapshot => {
+                const container = document.getElementById('admin-user-list');
+                if(!container) return;
+                container.innerHTML = '';
+                 if (snapshot.empty) {
+                    container.innerHTML = `<p class="text-slate-500 text-center">Không có người dùng nào.</p>`;
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const user = { id: doc.id, ...doc.data() };
+                    if (user.email === 'admin@hunq.wallet') return;
+                    container.innerHTML += `
+                        <div class="p-3 bg-slate-800 rounded-lg">
+                            <p class="font-semibold text-white">${user.displayName} <span class="text-xs text-slate-400">(${user.email})</span></p>
+                            <p class="text-slate-300">Số dư: <span class="font-bold text-white">${formatCurrency(user.balance)}</span></p>
+                            <div class="mt-2">
+                                <button data-user-id="${user.id}" data-user-name="${user.displayName}" class="admin-adjust-balance-btn px-3 py-1 text-sm bg-indigo-600 rounded hover:bg-indigo-700">Điều chỉnh</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        // --- EVENT HANDLERS & SETUP ---
+        function setupEventListeners() {
+            // Sidebar navigation
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (link.id !== 'logout-btn') {
+                        switchView(link.dataset.view);
+                    }
+                });
+            });
+            document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+            
+            // Notification Modal
+            const notificationBtn = document.getElementById('notification-btn');
+            const closeNotificationModalBtn = document.getElementById('close-notification-modal');
+            const notificationModal = document.getElementById('notification-modal');
+            const notificationList = document.getElementById('notification-list');
+            notificationBtn.addEventListener('click', () => notificationModal.classList.remove('hidden'));
+            closeNotificationModalBtn.addEventListener('click', () => notificationModal.classList.add('hidden'));
+            notificationList.addEventListener('click', (e) => {
+                if (e.target.classList.contains('goto-activity-btn')) {
+                    notificationModal.classList.add('hidden');
+                    switchView('activity-view');
+                    document.getElementById('pending-tab-btn').click();
+                }
+            });
+
+            // Universal event delegation for dynamic content
+            document.body.addEventListener('click', (e) => {
+                if (e.target && e.target.id === 'verify-recipient-btn') handleVerifyRecipient(e);
+                if (e.target && e.target.classList.contains('confirm-transfer-btn')) handleConfirmTransfer(e.target.dataset.txId, e.target);
+                if (e.target && e.target.classList.contains('reject-transfer-btn')) handleRejectTransfer(e.target.dataset.txId, e.target);
+                if (e.target && e.target.classList.contains('cancel-transfer-btn')) handleCancelTransfer(e.target.dataset.txId, e.target);
+                if (e.target && e.target.classList.contains('admin-approve-btn')) handleApproveDeposit(e.target.dataset.reqId, e.target.dataset.userId, e.target.dataset.amount, e.target);
+                if (e.target && e.target.classList.contains('admin-reject-btn')) handleRejectDeposit(e.target.dataset.reqId, e.target);
+                if (e.target && e.target.classList.contains('admin-adjust-balance-btn')) handleAdjustBalance(e.target.dataset.userId, e.target.dataset.userName);
+                if (e.target && (e.target.id === 'history-tab-btn' || e.target.id === 'pending-tab-btn')) handleTabSwitch(e);
+            });
+
+            document.body.addEventListener('submit', (e) => {
+                if(e.target && e.target.id === 'transfer-form') handleCreateTransfer(e);
+                if(e.target && e.target.id === 'deposit-code-form') handleDepositCode(e);
+                if(e.target && e.target.id === 'deposit-request-form') handleDepositRequest(e);
+                if(e.target && e.target.id === 'invest-form') handleInvest(e);
+                if(e.target && e.target.id === 'withdraw-form') handleWithdraw(e);
+                if(e.target && e.target.id === 'admin-create-code-form') handleAdminCreateCode(e);
+            });
+        }
+        
+        // --- MAIN APP INITIALIZATION ---
+        function initializeAppUI() {
+            renderDashboardView();
+            renderTransferView();
+            renderActivityView();
+            renderInvestView();
+            renderSettingsView();
+            
+            listenToUserData();
+            listenToRecentTransactions();
+            listenToNotifications();
+            listenToActivity();
+            listenToInvestmentFund();
+            
+            setupEventListeners();
+            
+            if (userData.email === 'admin@hunq.wallet') {
+                document.getElementById('admin-sidebar-link').classList.remove('hidden');
+                renderAdminView();
+                listenToAdminData();
+            }
+            
+            switchView('dashboard-view');
+        }
+
+        // --- AUTHENTICATION & ONBOARDING (Entry Point) ---
+        onAuthStateChanged(auth, async (user) => {
+            showLoading();
+            if (user) {
+                currentUser = user;
+                const userDocRef = doc(db, "users", user.uid);
+                const userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists()) {
+                    userData = { id: user.uid, ...userDocSnap.data() };
+                    initializeAppUI();
+                    document.getElementById('auth-container').classList.add('hidden');
+                    document.getElementById('onboarding-container').classList.add('hidden');
+                    document.getElementById('app-container').classList.remove('hidden');
+                } else {
+                    document.getElementById('auth-container').classList.add('hidden');
+                    document.getElementById('app-container').classList.add('hidden');
+                    document.getElementById('onboarding-container').classList.remove('hidden');
+                }
+            } else {
+                currentUser = null;
+                userData = null;
+                document.getElementById('app-container').classList.add('hidden');
+                document.getElementById('onboarding-container').classList.add('hidden');
+                document.getElementById('auth-container').classList.remove('hidden');
+            }
+            hideLoading();
+        });
+        
+        // Auth form listeners are now in a separate function to avoid being called too early
+        function setupAuthAndOnboardingListeners() {
+            document.getElementById('login-form').addEventListener('submit', async e => { e.preventDefault(); /* ... */ });
+            document.getElementById('register-form').addEventListener('submit', async e => { e.preventDefault(); /* ... */ });
+            document.getElementById('google-signin-btn').addEventListener('click', async () => { /* ... */ });
+            document.getElementById('forgot-password-link').addEventListener('click', e => { e.preventDefault(); /* ... */ });
+            document.getElementById('onboarding-form').addEventListener('submit', async e => { e.preventDefault(); /* ... */ });
+            document.getElementById('auth-switch-link').addEventListener('click', e => {
+                e.preventDefault();
+                document.getElementById('login-form').classList.toggle('hidden');
+                document.getElementById('register-form').classList.toggle('hidden');
+                //... text changes
+            });
+        }
+
+        setupAuthAndOnboardingListeners();
+        // The rest of the code (event handlers) would be defined here...
+    </script>
+</body>
+</html>
