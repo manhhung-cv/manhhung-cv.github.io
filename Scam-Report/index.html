@@ -589,14 +589,14 @@
         .admin-panel-header .toggle-icon { transition: transform 0.3s ease; }
         #admin-panel.expanded .toggle-icon { transform: rotate(180deg); }
 
-        #flagged-reports-list {
+        #admin-panel-content {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out;
             padding: 0 1rem;
         }
-        #admin-panel.expanded #flagged-reports-list {
-            max-height: 500px; /* Adjust as needed */
+        #admin-panel.expanded #admin-panel-content {
+            max-height: 1000px; /* Adjust as needed */
             padding: 0 1rem 1rem 1rem;
             overflow-y: auto;
         }
@@ -606,9 +606,39 @@
             border-radius: 0.5rem;
             margin-bottom: 0.5rem;
             border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .flagged-report-item p { margin: 0.25rem 0; }
         .reporter-link { cursor: pointer; color: var(--blue-600); text-decoration: underline; }
+
+        .collapsible-section {
+            margin-top: 1rem;
+            border-top: 1px solid var(--red-500);
+            padding-top: 1rem;
+        }
+        .collapsible-header {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .collapsible-header h4 { margin: 0; }
+        .collapsible-header .toggle-icon { transition: transform 0.3s ease; }
+        .collapsible-section.expanded .toggle-icon { transform: rotate(180deg); }
+
+        .collapsible-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, padding-top 0.5s ease-in-out;
+            padding-top: 0;
+        }
+        .collapsible-section.expanded .collapsible-content {
+            max-height: 500px; /* Adjust as needed */
+            overflow-y: auto;
+            padding-top: 1rem;
+        }
 
         /* --- Notification Toast --- */
         #notification {
@@ -678,8 +708,7 @@
             </div>
             <div id="filter-container" class="filter-container">
                 <button class="filter-btn active" data-filter="all">Tất cả</button>
-                <button class="filter-btn" data-filter="hakken">Kền</button>
-                <button class="filter-btn" data-filter="company">Công ty</button>
+                <button class="filter-btn" data-filter="company,hakken">Công ty / Kền</button>
                 <button class="filter-btn" data-filter="individual">Cá nhân</button>
                 <button class="filter-btn" data-filter="organization">Tổ chức</button>
             </div>
@@ -691,7 +720,19 @@
                 <h2><i class="fa-solid fa-triangle-exclamation"></i> Báo cáo sai phạm từ người dùng</h2>
                 <i class="fa-solid fa-chevron-down toggle-icon"></i>
             </div>
-            <div id="flagged-reports-list"></div>
+            <div id="admin-panel-content">
+                <div class="admin-section">
+                    <h4>Đang chờ xử lý</h4>
+                    <div id="pending-flags-list"></div>
+                </div>
+                <div id="resolved-flags-container" class="collapsible-section">
+                    <div class="collapsible-header">
+                        <h4>Đã xử lý</h4>
+                        <i class="fa-solid fa-chevron-down toggle-icon"></i>
+                    </div>
+                    <div id="resolved-flags-list" class="collapsible-content"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Company List Container for Masonry -->
@@ -994,7 +1035,9 @@
         // Admin Panel
         const adminPanel = document.getElementById('admin-panel');
         const adminPanelHeader = document.querySelector('.admin-panel-header');
-        const flaggedReportsList = document.getElementById('flagged-reports-list');
+        const resolvedFlagsContainer = document.getElementById('resolved-flags-container');
+        const pendingFlagsList = document.getElementById('pending-flags-list');
+        const resolvedFlagsList = document.getElementById('resolved-flags-list');
 
         // --- FUNCTIONS ---
 
@@ -1034,7 +1077,8 @@
             }
 
             if (currentFilter !== 'all') {
-                reportsToRender = reportsToRender.filter(c => c.classification === currentFilter);
+                const filters = currentFilter.split(',');
+                reportsToRender = reportsToRender.filter(c => filters.includes(c.classification));
             }
 
             reportsToRender.sort((a, b) => {
@@ -1236,23 +1280,41 @@
             if (unsubscribeFlags) unsubscribeFlags();
 
             unsubscribeFlags = onSnapshot(flagsRef, (snapshot) => {
-                flaggedReportsList.innerHTML = '';
-                if (snapshot.empty) {
-                    flaggedReportsList.innerHTML = '<p>Chưa có báo cáo sai phạm nào.</p>';
-                    return;
-                }
+                pendingFlagsList.innerHTML = '';
+                resolvedFlagsList.innerHTML = '';
+                
+                let hasPending = false;
+                let hasResolved = false;
+
                 snapshot.docs.forEach(doc => {
-                    const flag = doc.data();
+                    const flag = { id: doc.id, ...doc.data() };
                     const item = document.createElement('div');
                     item.className = 'flagged-report-item';
-                    item.innerHTML = `
-                        <p><strong>Đối tượng:</strong> ${flag.reportName}</p>
-                        <p><strong>Lý do:</strong> ${flag.reason}</p>
-                        <p><strong>Chi tiết:</strong> ${flag.details || 'Không có'}</p>
-                        <p><strong>Người báo cáo:</strong> <a href="#" class="reporter-link" data-reporter-id="${flag.flaggerId}">${flag.flaggerName}</a></p>
+                    
+                    let itemHTML = `
+                        <div>
+                            <p><strong>Đối tượng:</strong> ${flag.reportName}</p>
+                            <p><strong>Lý do:</strong> ${flag.reason}</p>
+                            <p><strong>Chi tiết:</strong> ${flag.details || 'Không có'}</p>
+                            <p><strong>Người báo cáo:</strong> <a href="#" class="reporter-link" data-reporter-id="${flag.flaggerId}">${flag.flaggerName}</a></p>
+                        </div>
                     `;
-                    flaggedReportsList.appendChild(item);
+
+                    if (flag.status !== 'resolved') {
+                        itemHTML += `<button class="card-button-icon mark-flag-read-btn" data-flag-id="${flag.id}" title="Đánh dấu đã đọc"><i class="fa-solid fa-check"></i></button>`;
+                        item.innerHTML = itemHTML;
+                        pendingFlagsList.appendChild(item);
+                        hasPending = true;
+                    } else {
+                        item.innerHTML = itemHTML;
+                        resolvedFlagsList.appendChild(item);
+                        hasResolved = true;
+                    }
                 });
+
+                if (!hasPending) pendingFlagsList.innerHTML = '<p>Chưa có báo cáo nào đang chờ xử lý.</p>';
+                if (!hasResolved) resolvedFlagsList.innerHTML = '<p>Chưa có báo cáo nào đã xử lý.</p>';
+
             });
         }
         
@@ -1410,6 +1472,10 @@
 
                 if (reportBtn) {
                     if (!currentUserData) { showNotification("Bạn cần đăng nhập để báo cáo nội dung.", "error"); openModal(loginModal); return; }
+                    if (currentUserData.strikes && currentUserData.strikes >= 3) {
+                        showNotification("Tài khoản của bạn đã bị hạn chế báo cáo do vi phạm.", "error");
+                        return;
+                    }
                     document.getElementById('item-to-report-id').value = reportBtn.closest('.company-card').dataset.id;
                     document.getElementById('item-to-report-name').textContent = reportBtn.dataset.name;
                     openModal(reportItemModal);
@@ -1567,7 +1633,8 @@
                         details: document.getElementById('report-item-details').value,
                         flaggerId: currentUserData.uid,
                         flaggerName: currentUserData.displayName,
-                        timestamp: serverTimestamp()
+                        timestamp: serverTimestamp(),
+                        status: 'pending' // Add initial status
                     });
                     showNotification("Đã gửi báo cáo sai phạm thành công.", "success");
                     closeModal(reportItemModal);
@@ -1587,6 +1654,21 @@
             adminPanelHeader.addEventListener('click', () => {
                 adminPanel.classList.toggle('expanded');
             });
+            adminPanel.addEventListener('click', async (e) => {
+                if (e.target.closest('.mark-flag-read-btn')) {
+                    const flagId = e.target.closest('.mark-flag-read-btn').dataset.flagId;
+                    try {
+                        await updateDoc(doc(db, "flags", flagId), { status: 'resolved' });
+                        showNotification("Đã đánh dấu là đã xử lý.", "success");
+                    } catch (error) {
+                        showNotification("Lỗi khi cập nhật.", "error");
+                    }
+                }
+            });
+            resolvedFlagsContainer.querySelector('.collapsible-header').addEventListener('click', () => {
+                resolvedFlagsContainer.classList.toggle('expanded');
+            });
+
 
             // Auth
             logoutButton.addEventListener('click', () => {
