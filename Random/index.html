@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cửa Hàng Thẻ Cào PRO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            touch-action: none;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        }
+        .scratch-card-container {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 5.5A.5.5 0 0 1 6 6v1a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5z"/><path d="M2 11h12v2H2z"/><path d="M2 15h12v2H2z"/><path d="M2 19h12v2H2z"/></svg>'), auto;
+        }
+        #scratch-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 0.75rem;
+        }
+        .notification {
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        .store-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .store-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 0 40px rgba(255,255,255,0.3);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 text-white">
+
+    <!-- Header -->
+    <header class="w-full max-w-md bg-white/20 backdrop-blur-sm p-4 rounded-xl shadow-lg mb-6 border border-white/30">
+        <div class="flex justify-between items-center">
+            <div>
+                <h2 class="font-bold text-lg text-gray-200">Số dư</h2>
+                <p class="text-3xl font-black text-white">
+                    <span id="user-balance">50000</span>đ
+                </p>
+            </div>
+            <button id="deposit-button" class="px-5 py-2 bg-green-500 text-white font-bold rounded-lg shadow-lg hover:bg-green-600 focus:outline-none ring-2 ring-white/50 hover:ring-white transition">
+                Nạp tiền
+            </button>
+        </div>
+    </header>
+
+    <!-- Vùng chứa thẻ cào -->
+    <div id="scratch-card-area" class="w-full max-w-md h-56 mb-6">
+        <div id="scratch-card-container" class="scratch-card-container w-full h-full bg-white rounded-xl shadow-2xl relative flex items-center justify-center overflow-hidden border-4 border-gray-300">
+            <div id="prize" class="text-center p-4">
+                 <p class="text-2xl font-bold text-gray-400">Mua thẻ từ cửa hàng bên dưới</p>
+            </div>
+            <canvas id="scratch-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- Cửa hàng thẻ -->
+    <div class="w-full max-w-md text-center mb-4">
+        <h1 class="text-4xl font-black tracking-wider uppercase">Cửa Hàng</h1>
+    </div>
+    <div class="w-full max-w-md grid grid-cols-2 gap-6">
+        <!-- Thẻ Thường -->
+        <div id="buy-regular-card" class="store-card cursor-pointer bg-gray-300 rounded-lg p-4 text-center text-gray-800 shadow-md border-2 border-gray-400">
+            <h3 class="font-bold text-xl">THẺ THƯỜNG</h3>
+            <p class="font-semibold text-lg">10.000đ</p>
+        </div>
+        <!-- Thẻ VIP -->
+        <div id="buy-vip-card" class="store-card cursor-pointer bg-gradient-to-br from-yellow-300 to-amber-500 rounded-lg p-4 text-center text-white shadow-lg border-2 border-yellow-200">
+            <h3 class="font-bold text-xl">THẺ VIP</h3>
+            <p class="font-semibold text-lg">50.000đ</p>
+        </div>
+    </div>
+
+    <!-- Modal Nạp tiền -->
+    <div id="deposit-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+        <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white text-gray-800">
+            <h3 class="text-lg leading-6 font-medium text-center">Nạp tiền vào tài khoản</h3>
+            <input type="number" id="deposit-amount" class="w-full mt-4 px-3 py-2 border rounded-lg focus:outline-none" placeholder="Nhập số tiền" />
+            <div class="mt-4 flex flex-col gap-2">
+                <button id="confirm-deposit" class="w-full px-4 py-2 bg-green-500 text-white font-medium rounded-md shadow-sm hover:bg-green-600">Xác nhận</button>
+                <button id="cancel-deposit" class="w-full px-4 py-2 bg-gray-200 font-medium rounded-md shadow-sm hover:bg-gray-300">Hủy</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Vùng chứa thông báo -->
+    <div id="notification-area" class="fixed top-5 right-5 z-50"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM Elements
+            const canvas = document.getElementById('scratch-canvas');
+            const ctx = canvas.getContext('2d');
+            const cardContainer = document.getElementById('scratch-card-container');
+            const prizeDisplay = document.getElementById('prize');
+            const buyRegularButton = document.getElementById('buy-regular-card');
+            const buyVipButton = document.getElementById('buy-vip-card');
+            const userBalanceDisplay = document.getElementById('user-balance');
+            const depositButton = document.getElementById('deposit-button');
+            const depositModal = document.getElementById('deposit-modal');
+            const confirmDepositButton = document.getElementById('confirm-deposit');
+            const cancelDepositButton = document.getElementById('cancel-deposit');
+            const depositAmountInput = document.getElementById('deposit-amount');
+            const notificationArea = document.getElementById('notification-area');
+
+            // Game State
+            let userBalance = 50000;
+            const cardCosts = { regular: 10000, vip: 50000 };
+            let isDrawing = false;
+            let currentCard = null;
+            let prizeArea = null; // {x, y, w, h}
+
+            // --- Sound Engine (Tone.js) ---
+            let soundsReady = false;
+            const sounds = {};
+            
+            function initSounds() {
+                sounds.buy = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination();
+                sounds.win = new Tone.PluckSynth().toDestination();
+                sounds.deposit = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.2 } }).toDestination();
+                sounds.scratch = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 } }).toDestination();
+                soundsReady = true;
+            }
+            
+            // User must interact first to enable audio
+            document.body.addEventListener('click', async () => {
+                if (!soundsReady) {
+                    await Tone.start();
+                    initSounds();
+                    console.log("Audio context started");
+                }
+            }, { once: true });
+
+            // Prize Pools
+            const prizes = {
+                regular: [
+                    { text: "Trúng 20.000đ", value: 20000 }, { text: "Hoàn lại vốn!", value: cardCosts.regular },
+                    { text: "Trúng 5.000đ", value: 5000 }, { text: "Chúc bạn may mắn!", value: 0 },
+                ],
+                vip: [
+                    { text: "JACKPOT! 500.000đ", value: 500000 }, { text: "Wow! Trúng 200.000đ", value: 200000 },
+                    { text: "Trúng 100.000đ", value: 100000 }, { text: "Thẻ VIP miễn phí!", value: cardCosts.vip },
+                ]
+            };
+
+            // --- Core Functions ---
+            function updateBalanceDisplay() {
+                userBalanceDisplay.textContent = userBalance.toLocaleString('vi-VN');
+            }
+
+            function showNotification(message, type = 'info') {
+                const colors = { info: 'bg-blue-500', success: 'bg-green-500', error: 'bg-red-500', vip: 'bg-amber-500' };
+                const notif = document.createElement('div');
+                notif.className = `notification text-white p-3 rounded-lg shadow-lg mb-2 transform translate-x-full opacity-0`;
+                notif.classList.add(colors[type] || colors.info);
+                notif.textContent = message;
+                notificationArea.appendChild(notif);
+                setTimeout(() => { notif.classList.remove('translate-x-full', 'opacity-0'); }, 10);
+                setTimeout(() => {
+                    notif.classList.add('opacity-0', 'transform', 'translate-x-full');
+                    setTimeout(() => notif.remove(), 500);
+                }, 3000);
+            }
+
+            function setCanvasSize() {
+                const rect = cardContainer.getBoundingClientRect();
+                canvas.width = rect.width;
+                canvas.height = rect.height;
+                // Define the prize area as the central 80% width and 50% height
+                prizeArea = {
+                    x: canvas.width * 0.1,
+                    y: canvas.height * 0.25,
+                    w: canvas.width * 0.8,
+                    h: canvas.height * 0.5
+                };
+            }
+
+            function drawCover(cardType) {
+                // 1. Draw metallic background
+                let gradient;
+                if (cardType === 'vip') {
+                    gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                    gradient.addColorStop(0, '#FDE047'); gradient.addColorStop(0.5, '#FBBF24'); gradient.addColorStop(1, '#F59E0B');
+                } else {
+                    gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+                    gradient.addColorStop(0, '#e0e0e0'); gradient.addColorStop(0.5, '#c0c0c0'); gradient.addColorStop(1, '#e0e0e0');
+                }
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 2. Draw cross-hatch security pattern
+                const patternCanvas = document.createElement('canvas');
+                const patternCtx = patternCanvas.getContext('2d');
+                const patternSize = 20;
+                patternCanvas.width = patternSize;
+                patternCanvas.height = patternSize;
+                patternCtx.strokeStyle = 'rgba(0,0,0,0.2)';
+                patternCtx.lineWidth = 1;
+                patternCtx.beginPath();
+                patternCtx.moveTo(0, patternSize); patternCtx.lineTo(patternSize, 0);
+                patternCtx.moveTo(0, 0); patternCtx.lineTo(patternSize, patternSize);
+                patternCtx.stroke();
+                
+                ctx.fillStyle = ctx.createPattern(patternCanvas, 'repeat');
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                canvas.classList.remove('hidden');
+            }
+            
+            function setupNewCard(cardType) {
+                const prizePool = prizes[cardType];
+                const randomPrize = prizePool[Math.floor(Math.random() * prizePool.length)];
+                currentCard = { type: cardType, prize: randomPrize, revealed: false };
+
+                prizeDisplay.innerHTML = `<p class="text-4xl font-black ${cardType === 'vip' ? 'text-amber-600' : 'text-blue-700'}">${randomPrize.text}</p>`;
+                
+                setCanvasSize();
+                drawCover(cardType);
+            }
+
+            function buyCard(cardType) {
+                if (!soundsReady) {
+                    showNotification("Vui lòng nhấp vào trang để bật âm thanh trước", "error");
+                    return;
+                }
+                const cost = cardCosts[cardType];
+                if (userBalance >= cost) {
+                    if (sounds.buy) sounds.buy.triggerAttackRelease('C5', '8n');
+                    userBalance -= cost;
+                    updateBalanceDisplay();
+                    setupNewCard(cardType);
+                } else {
+                    showNotification("Không đủ tiền!", 'error');
+                }
+            }
+            
+            function getBrushPos(x, y) {
+                const canvasRect = canvas.getBoundingClientRect();
+                return { x: x - canvasRect.left, y: y - canvasRect.top };
+            }
+
+            function checkPrizeReveal() {
+                if (!currentCard || !prizeArea) return;
+                const pixels = ctx.getImageData(prizeArea.x, prizeArea.y, prizeArea.w, prizeArea.h).data;
+                let transparentPixels = 0;
+                for (let i = 3; i < pixels.length; i += 4) { // Check only alpha channel
+                    if (pixels[i] === 0) transparentPixels++;
+                }
+                const totalPixelsInArea = prizeArea.w * prizeArea.h;
+                const percentage = (transparentPixels / totalPixelsInArea) * 100;
+                
+                if (percentage > 85) { // Reveal if 85% of the PRIZE AREA is clear
+                    revealPrize();
+                }
+            }
+
+            function revealPrize() {
+                if (!currentCard || currentCard.revealed) return;
+                currentCard.revealed = true;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.classList.add('hidden');
+
+                const prizeValue = currentCard.prize.value;
+                if (prizeValue > 0) {
+                    if (sounds.win) sounds.win.triggerAttackRelease('C5', '0.5');
+                    userBalance += prizeValue;
+                    updateBalanceDisplay();
+                    showNotification(`Trúng thưởng ${prizeValue.toLocaleString('vi-VN')}đ!`, 'success');
+                }
+            }
+
+            function scratch(e) {
+                if (!isDrawing || !currentCard || currentCard.revealed) return;
+                e.preventDefault();
+                if (sounds.scratch) sounds.scratch.triggerAttackRelease("8n");
+                const pos = getBrushPos(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY);
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 25, 0, Math.PI * 2, false);
+                ctx.fill();
+            }
+
+            function startScratching(e) {
+                if (!currentCard || currentCard.revealed) return;
+                isDrawing = true;
+                scratch(e);
+            }
+
+            function stopScratching() {
+                if (!isDrawing) return;
+                isDrawing = false;
+                checkPrizeReveal();
+            }
+
+            // --- Event Listeners ---
+            buyRegularButton.addEventListener('click', () => buyCard('regular'));
+            buyVipButton.addEventListener('click', () => buyCard('vip'));
+            window.addEventListener('resize', () => {
+                 if(currentCard && !currentCard.revealed) { setCanvasSize(); drawCover(currentCard.type); }
+            });
+
+            [canvas, cardContainer].forEach(el => {
+                el.addEventListener('mousedown', startScratching);
+                el.addEventListener('mousemove', scratch);
+                el.addEventListener('mouseup', stopScratching);
+                el.addEventListener('mouseleave', stopScratching);
+                el.addEventListener('touchstart', startScratching, { passive: false });
+                el.addEventListener('touchmove', scratch, { passive: false });
+                el.addEventListener('touchend', stopScratching);
+                el.addEventListener('touchcancel', stopScratching);
+            });
+
+            depositButton.addEventListener('click', () => depositModal.classList.remove('hidden'));
+            cancelDepositButton.addEventListener('click', () => depositModal.classList.add('hidden'));
+            confirmDepositButton.addEventListener('click', () => {
+                const amount = parseInt(depositAmountInput.value, 10);
+                if (!isNaN(amount) && amount > 0) {
+                    if (sounds.deposit) sounds.deposit.triggerAttackRelease('E5', '0.2');
+                    userBalance += amount;
+                    updateBalanceDisplay();
+                    showNotification(`Nạp thành công ${amount.toLocaleString('vi-VN')}đ`, 'success');
+                    depositAmountInput.value = '';
+                    depositModal.classList.add('hidden');
+                } else {
+                    showNotification('Số tiền không hợp lệ.', 'error');
+                }
+            });
+
+            // --- Initialization ---
+            function initializeApp() {
+                updateBalanceDisplay();
+                setCanvasSize();
+                canvas.classList.add('hidden');
+            }
+            initializeApp();
+        });
+    </script>
+</body>
+</html>
