@@ -23,7 +23,8 @@ import {
     writeBatch,
     deleteDoc,
     arrayUnion,
-    arrayRemove
+    arrayRemove,
+    increment
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // Cấu hình Firebase của bạn
@@ -92,7 +93,6 @@ const partner2CheckinStatus = document.getElementById('partner2-checkin-status')
 
 
 
-
 // --- HÀM TIỆN ÍCH ---
 const showView = (viewId) => {
     [authScreen, coupleCodeScreen, profileSetupScreen, mainApp].forEach(screen => screen.classList.add('hidden'));
@@ -128,10 +128,12 @@ const showConfirm = (message, onOk, onCancel = () => { }) => {
     cancelBtn.addEventListener('click', cancelListener);
 };
 
+
 const showAlert = (message) => {
     showConfirm(message, () => { });
     document.getElementById('confirm-cancel-btn').classList.add('hidden');
 };
+
 
 
 // --- QUẢN LÝ XÁC THỰC ---
@@ -336,7 +338,8 @@ function renderMainPage() {
     if (!coupleData) return;
     const startDateDisplay = document.querySelector('#start-date-display span');
     if (coupleData.startDate) {
-        const start = coupleData.startDate.toDate(); startDateDisplay.textContent = start.toLocaleDateString('vi-VN');
+        const start = coupleData.startDate.toDate();
+        // startDateDisplay.textContent = start.toLocaleDateString('vi-VN');
         const now = new Date(); const diffTime = Math.abs(now - start); const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         let years = now.getFullYear() - start.getFullYear(); let months = now.getMonth() - start.getMonth(); let days = now.getDate() - start.getDate();
         if (days < 0) { months--; days += new Date(now.getFullYear(), now.getMonth(), 0).getDate(); }
@@ -370,49 +373,97 @@ function renderPartnerCard(elementId, partner) {
 
 function renderEvents(docs) {
     const list = document.getElementById('event-list');
+    list.innerHTML = '';
     if (docs.length === 0) {
-        list.innerHTML = `<div class="card" style="text-align: center; color: #6b7280;">Chưa có sự kiện nào được thêm.</div>`;
+        list.innerHTML = `<div class="text-center text-gray-500 p-8 bg-white rounded-xl">Chưa có sự kiện nào được thêm.</div>`;
         return;
     }
-    list.innerHTML = docs.map(doc => {
-        const event = doc.data();
-        const eventDate = event.date.toDate();
+
+    docs.sort((a, b) => {
         const now = new Date();
-        now.setHours(0, 0, 0, 0);
+        const nextA = calculateNextOccurrence(a, now);
+        const nextB = calculateNextOccurrence(b, now);
+        return nextA - nextB;
+    });
 
-        let nextDate = new Date(eventDate);
-        nextDate.setHours(0, 0, 0, 0);
-
-        if (nextDate < now) {
-            switch (event.repeat) {
-                case 'daily': nextDate = now; break;
-                case 'weekly': while (nextDate < now) nextDate.setDate(nextDate.getDate() + 7); break;
-                case 'monthly': while (nextDate < now) nextDate.setMonth(nextDate.getMonth() + 1); break;
-                case 'yearly': while (nextDate < now) nextDate.setFullYear(nextDate.getFullYear() + 1); break;
-                case 'interval': while (nextDate < now) nextDate.setDate(nextDate.getDate() + event.intervalDays); break;
-            }
-        }
+    docs.forEach(eventData => {
+        const event = eventData;
+        const now = new Date();
+        const nextDate = calculateNextOccurrence(event, now);
 
         const diffTime = nextDate - now;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        return `
-                    <div class="event-card">
-                        <img src="${event.imageUrl || 'https://placehold.co/100x100/a5b4fc/4338ca?text=Event'}">
-                        <div class="details">
-                            <h4>${event.name}</h4>
-                            <p>${nextDate.toLocaleDateString('vi-VN')}</p>
-                            <p><i class="far fa-clock"></i> Lặp lại: ${getRepeatText(event.repeat, event.intervalDays)}</p>
-                        </div>
-                        <div class="countdown">
-                            <div class="days">${diffDays > 0 ? diffDays : 'Hôm nay'}</div>
-                            <div class="label">${diffDays > 0 ? 'ngày nữa' : ''}</div>
-                        </div>
-                    </div>
-                `;
-    }).join('');
-}
+        const eventElement = document.createElement('div');
+        eventElement.className = 'event-element'; // Changed from Tailwind classes
+        eventElement.innerHTML = `
+                <img src="${event.imageUrl || 'https://placehold.co/100x100/a5b4fc/4338ca?text=Event'}" class="event-image">
+                <div class="event-details">
+                    <h4 class="event-name">${event.name}</h4>
+                    <p class="event-date">${nextDate.toLocaleDateString('vi-VN')}</p>
+                    <p class="event-repeat"><i class="far fa-clock mr-1"></i> Lặp lại: ${getRepeatText(event.repeat, event.intervalDays)}</p>
+                </div>
+                <div class="event-countdown">
+                    <div class="event-days-value">${diffDays > 0 ? diffDays : 'Hôm nay'}</div>
+                    <div class="event-days-label">${diffDays > 0 ? 'ngày nữa' : ''}</div>
+                </div>
+                <button class="delete-event-btn" data-event-id="${event.id}">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            `;
+        list.appendChild(eventElement);
+    });
 
+    document.querySelectorAll('.delete-event-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const eventId = e.currentTarget.dataset.eventId;
+            showConfirm("Bạn có chắc chắn muốn xóa sự kiện này không?", () => {
+                deleteEvent(eventId);
+            });
+        });
+    });
+}
+function calculateNextOccurrence(event, now) {
+    const eventDate = event.date.toDate();
+    let nextDate = new Date(eventDate);
+    nextDate.setHours(0, 0, 0, 0);
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    if (nextDate >= today) return nextDate;
+
+    switch (event.repeat) {
+        case 'none': return nextDate;
+        case 'daily':
+            nextDate = today;
+            if (eventDate.getTime() % (24 * 60 * 60 * 1000) > today.getTime() % (24 * 60 * 60 * 1000)) {
+                nextDate.setDate(nextDate.getDate() + 1);
+            }
+            break;
+        case 'weekly':
+            while (nextDate < today) nextDate.setDate(nextDate.getDate() + 7);
+            break;
+        case 'monthly':
+            while (nextDate < today) nextDate.setMonth(nextDate.getMonth() + 1);
+            break;
+        case 'yearly':
+            while (nextDate < today) nextDate.setFullYear(nextDate.getFullYear() + 1);
+            break;
+        case 'interval':
+            while (nextDate < today) nextDate.setDate(nextDate.getDate() + event.intervalDays);
+            break;
+    }
+    return nextDate;
+}
+async function deleteEvent(eventId) {
+    try {
+        await deleteDoc(doc(db, "couples", coupleCode, "events", eventId));
+        showAlert("Sự kiện đã được xóa thành công.");
+    } catch (error) {
+        console.error("Lỗi xóa sự kiện:", error);
+        showAlert("Đã xảy ra lỗi khi xóa sự kiện.");
+    }
+}
 function getRepeatText(repeatType, interval) {
     const map = { 'none': 'Không', 'daily': 'Hàng ngày', 'weekly': 'Hàng tuần', 'monthly': 'Hàng tháng', 'yearly': 'Hàng năm' };
     return repeatType === 'interval' ? `Sau ${interval} ngày` : map[repeatType] || 'Không rõ';
@@ -541,17 +592,17 @@ resetFiltersBtn.addEventListener('click', () => {
 
 function renderStories(stories) {
     const feed = document.getElementById('story-feed');
+    if (!feed) return;
+
     if (stories.length === 0) {
-        feed.innerHTML = `<div class="card" style="text-align: center; color: #6b7280;">Không tìm thấy story nào phù hợp.</div>`;
+        feed.innerHTML = `<div class="story-card-no-results">Không tìm thấy story nào phù hợp.</div>`;
         return;
     }
-    const currentUserPartnerData = coupleData.partner1?.userId === userId ? coupleData.partner1 : coupleData.partner2;
-    const currentUserPhoto = currentUserPartnerData?.photoURL || 'https://placehold.co/150x150/fbcfe8/ec4899?text=?';
 
     feed.innerHTML = stories.map(story => {
-        const date = story.timestamp.toDate();
+        const date = story.timestamp?.toDate();
         const partner = story.authorId === coupleData.partner1?.userId ? coupleData.partner1 : coupleData.partner2;
-        const tagsHTML = story.tags ? story.tags.split(',').map(tag => `<span class="tag">${tag.trim()}</span>`).join(' ') : '';
+        const tagsHTML = story.tags ? story.tags.split(',').map(tag => `<span class="story-tag">${tag.trim()}</span>`).join(' ') : '';
         const isLiked = story.likes?.includes(userId);
 
         const likerNames = (story.likes || []).map(uid => {
@@ -560,70 +611,81 @@ function renderStories(stories) {
             return 'Một người';
         }).join(', ');
 
+        const canDelete = story.authorId === userId;
+
         return `
-                    <div class="story-card" id="story-${story.id}">
-                        <div class="content">
-                            <div class="author">
-                                <img src="${partner?.photoURL || 'https://placehold.co/150x150/fbcfe8/ec4899?text=?'}">
-                                <div>
-                                    <p class="author-name">${story.authorName}</p>
-                                    <p class="timestamp">${date.toLocaleString('vi-VN')}</p>
-                                </div>
-                            </div>
-                            <h3 class="title">${story.title || ''}</h3>
-                            <p class="text-content">${story.content}</p>
-                            <div class="meta">
-                                <div class="location">
-                                    ${story.location ? `<i class="fas fa-map-marker-alt"></i> ${story.location}` : ''}
-                                </div>
-                                <div class="tags">
-                                    ${tagsHTML}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="actions">
-                            <div class="action-buttons">
-                                <button class="like-btn ${isLiked ? 'liked' : ''}" data-story-id="${story.id}">
-                                    <i class="fas fa-heart"></i>
-                                </button>
-                                <button class="comment-toggle-btn" data-story-id="${story.id}">
-                                    <i class="fas fa-comment-alt"></i> <span class="comment-count">0</span>
-                                </button>
-                            </div>
-                            <div class="like-display">
-                                <span class="like-count">${story.likes?.length || 0}</span> lượt thích
-                                <span class="liker-names-display">${likerNames ? `bởi ${likerNames}` : ''}</span>
-                            </div>
-                            <div class="comment-input-area-toplevel">
-                                <div class="comment-input-container">
-                                    <img src="${currentUserPhoto}">
-                                    <input type="text" placeholder="Viết bình luận..." class="comment-input-toplevel" data-story-id="${story.id}">
-                                </div>
-                            </div>
-                            <div class="comment-section" id="comments-${story.id}">
-                                </div>
+            <div class="story-card" id="story-${story.id}">
+                ${canDelete ? `<button class="story-delete-btn" data-story-id="${story.id}"><i class="fas fa-trash-alt"></i></button>` : ''}
+                <div class="story-content-wrapper">
+                    <div class="story-author">
+                        <img src="${partner?.photoURL || 'https://placehold.co/150x150/fbcfe8/ec4899?text=?'}" class="story-author-img">
+                        <div class="story-author-info">
+                            <p class="name">${story.authorName}</p>
+                            <p class="date">${date ? date.toLocaleString('vi-VN') : 'Không có ngày'}</p>
                         </div>
                     </div>
-                `;
+                    <h3 class="story-title">${story.title || ''}</h3>
+                    <p class="story-content">${story.content}</p>
+                    <div class="story-meta">
+                        <div class="story-location">
+                            ${story.location ? `<i class="fas fa-map-marker-alt"></i> ${story.location}` : ''}
+                        </div>
+                        <div class="story-tags">
+                            ${tagsHTML}
+                        </div>
+                    </div>
+                </div>
+                <div class="story-footer">
+                    <div class="story-actions">
+                        <button class="like-btn ${isLiked ? 'liked' : ''}" data-story-id="${story.id}">
+                            <i class="fas fa-heart"></i>
+                             <span class="font-semibold like-count">${story.likes?.length || 0}</span>
+                        </button>
+                        <button class="message-story-btn" data-story-title="${story.title || 'bài viết này'}">
+                             <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
     }).join('');
 
     attachStoryInteractionListeners();
 }
 
 function attachStoryInteractionListeners() {
+    // Đổi tên class selector cho phù hợp nếu cần, ví dụ '.story-delete-btn'
     document.querySelectorAll('.like-btn').forEach(btn => {
         btn.onclick = () => toggleLike(btn.dataset.storyId);
     });
-    document.querySelectorAll('.comment-toggle-btn').forEach(btn => {
-        btn.onclick = () => toggleCommentSection(btn.dataset.storyId);
+    document.querySelectorAll('.message-story-btn').forEach(btn => {
+        btn.onclick = () => {
+            const storyTitle = btn.dataset.storyTitle;
+            chatInput.value = `Về story "${storyTitle}": `;
+            chatPopup.classList.add('active');
+            chatInput.focus();
+        };
     });
-    document.querySelectorAll('.comment-input-toplevel').forEach(input => {
-        input.onkeypress = (e) => {
-            if (e.key === 'Enter') {
-                postComment(input.dataset.storyId, null, input);
-            }
-        }
+    // Sử dụng class mới '.story-delete-btn'
+    document.querySelectorAll('.story-delete-btn').forEach(btn => {
+        btn.onclick = () => {
+            const storyId = btn.dataset.storyId;
+            showConfirm("Bạn có chắc chắn muốn xóa story này không?", () => {
+                deleteStory(storyId);
+            });
+        };
     });
+}
+
+
+async function deleteStory(storyId) {
+    try {
+        await deleteDoc(doc(db, "couples", coupleCode, "stories", storyId));
+        showAlert("Story đã được xóa thành công.");
+    } catch (error) {
+        console.error("Lỗi xóa story:", error);
+        showAlert("Đã xảy ra lỗi khi xóa story.");
+    }
 }
 
 async function toggleLike(storyId) {
@@ -844,7 +906,6 @@ function renderChatMessages(docs) {
         const isMe = msg.authorId === userId;
         return `
                     <div class="message-container ${isMe ? 'justify-end' : 'justify-start'}">
-                        ${isMe && currentChatMode === 'normal' ? `<button class="delete-msg-btn" data-message-id="${msg.id}"><i class="fas fa-trash-alt fa-xs"></i></button>` : ''}
                         <div class="message-content">
                             <div class="message-bubble ${isMe ? 'sent' : 'received'}">
                                 ${msg.content}
@@ -853,6 +914,7 @@ function renderChatMessages(docs) {
                                 ${msg.timestamp.toDate().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                             </div>
                         </div>
+                       ${isMe && currentChatMode === 'normal' ? `<button class="delete-msg-btn" data-message-id="${msg.id}"><i class="fas fa-trash-alt fa-xs"></i></button>` : ''}
                     </div>
                 `;
     }).join('');
@@ -881,6 +943,7 @@ async function handleChatCommand(command) {
         });
         return true;
     }
+
     return false;
 }
 
@@ -891,6 +954,14 @@ async function sendMessage() {
     if (currentChatMode === 'normal' && await handleChatCommand(content)) {
         chatInput.value = '';
         return;
+    }
+
+    if (content === '@feel:') {
+        return showAlert("Thiếu nội dung");
+    } else if (content.startsWith('@feel:')) {
+        const formattedContent = content.replace('@feel:', '');
+        FeelText(formattedContent);
+        return chatInput.value = '', showAlert("Đã thêm cảm nhận mới.");
     }
 
     const collectionName = currentChatMode === 'normal' ? 'chat_normal' : 'chat_secret';
@@ -937,6 +1008,27 @@ closeChatBtn.addEventListener('click', () => {
         showConfirm("Bạn có muốn xóa cuộc trò chuyện bí mật không?", async () => {
             await clearSecretChat();
         });
+    }
+});
+const commandToggleBtn = document.getElementById('command-toggle-btn');
+const commandPopup = document.getElementById('command-popup');
+
+commandToggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    commandPopup.classList.toggle('hidden');
+});
+
+document.querySelectorAll('.command-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        chatInput.value = btn.dataset.command;
+        commandPopup.classList.add('hidden');
+        chatInput.focus();
+    });
+});
+
+document.addEventListener('click', (e) => {
+    if (!commandPopup.contains(e.target) && e.target !== commandToggleBtn) {
+        commandPopup.classList.add('hidden');
     }
 });
 
@@ -1071,6 +1163,38 @@ document.getElementById('save-feeling-btn').addEventListener('click', async () =
     } catch (error) { console.error("Lỗi lưu cảm nhận:", error); showAlert("Không thể lưu cảm nhận."); }
 });
 
+
+
+async function FeelText(input) {
+    // Thêm kiểm tra coupleData để tránh lỗi "Cannot read properties of null"
+    if (!coupleData) {
+        console.error("Lỗi: coupleData chưa được tải hoặc là null/undefined.");
+        showAlert("Không thể lưu cảm nhận. Dữ liệu cặp đôi chưa sẵn sàng.");
+        return; // Dừng hàm nếu coupleData không hợp lệ
+    }
+
+    const newFeeling = input.trim();
+    // Xác định xem nên cập nhật cảm nhận của partner1 hay partner2
+    // Đảm bảo coupleData.partner1 và coupleData.partner2 cũng không phải là null
+    const partnerKey = coupleData.partner1 && coupleData.partner1.userId === userId ? 'partner1.feeling' : 'partner2.feeling';
+
+    // Thêm một kiểm tra nữa nếu partnerKey không xác định được (trường hợp userId không khớp)
+    if (!partnerKey) {
+        console.error("Lỗi: Không xác định được partner để lưu cảm nhận. userId có thể không khớp.");
+        showAlert("Không thể lưu cảm nhận. ID người dùng không hợp lệ.");
+        return;
+    }
+
+    try {
+        await updateDoc(doc(db, "couples", coupleCode), { [partnerKey]: newFeeling });
+        console.log("Cảm nhận đã được lưu thành công!");
+        // Bạn có thể thêm một thông báo thành công cho người dùng ở đây
+        // showAlert("Cảm nhận đã được lưu.");
+    } catch (error) {
+        console.error("Lỗi lưu cảm nhận:", error);
+        showAlert("Không thể lưu cảm nhận.");
+    }
+}
 
 // --- EVENT & SETTINGS LOGIC ---
 const eventModal = document.getElementById('event-modal');
