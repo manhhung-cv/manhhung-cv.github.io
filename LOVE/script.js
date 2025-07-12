@@ -906,14 +906,19 @@ function renderChatMessages(docs) {
         const isMe = msg.authorId === userId;
         return `
                     <div class="message-container ${isMe ? 'justify-end' : 'justify-start'}">
-                        <div class="message-content">
-                            <div class="message-bubble ${isMe ? 'sent' : 'received'}">
-                                ${msg.content}
+                        
+                          <div class="message-div">
+                          <div class="message-content">
+                                <div class="message-bubble ${isMe ? 'sent' : 'received'}">
+                                    ${msg.content}
+                                </div>
                             </div>
                             <div class="message-timestamp ${isMe ? 'text-right' : 'text-left'}">
-                                ${msg.timestamp.toDate().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                                    ${msg.timestamp.toDate().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
                             </div>
-                        </div>
+                          </div>
+                    
+                         
                        ${isMe && currentChatMode === 'normal' ? `<button class="delete-msg-btn" data-message-id="${msg.id}"><i class="fas fa-trash-alt fa-xs"></i></button>` : ''}
                     </div>
                 `;
