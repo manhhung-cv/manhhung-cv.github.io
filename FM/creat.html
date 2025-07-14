@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thêm Đài Phát Thanh</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            max-width: 700px;
+            margin: auto;
+            padding: 30px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1, h3 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        input[readonly] {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        #output {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #e9f7ef;
+            border: 1px dashed #a3e6b1;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre-wrap; /* Giữ định dạng dòng mới */
+        }
+        pre {
+            margin: 0;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            color: #333;
+        }
+        .info-text {
+            font-size: 0.9em;
+            color: #777;
+            margin-top: -10px;
+            margin-bottom: 15px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Thêm Đài Phát Thanh Mới 📻</h1>
+        <form id="stationForm">
+            <label for="name">Tên Đài:</label>
+            <input type="text" id="name" required placeholder="Ví dụ: VOV Giao thông Hà Nội">
+
+            <label for="genre">Thể loại:</label>
+            <input type="text" id="genre" required placeholder="Ví dụ: Tin tức Giao thông, Âm nhạc lãng mạn">
+
+            <label for="logo">URL Logo:</label>
+            <input type="text" id="logo" readonly placeholder="Logo sẽ tự động tạo từ Tên Đài">
+            <span class="info-text">*(URL Logo sẽ được tạo tự động từ "Tên Đài")*</span>
+
+            <label for="streamUrl">URL Luồng phát (Stream URL):</label>
+            <input type="text" id="streamUrl" required placeholder="Ví dụ: https://play.vovgiaothong.vn/live/gthn/playlist.m3u8">
+
+            <button type="submit">Thêm Đài</button>
+        </form>
+
+        <hr>
+
+        <h3>Dữ liệu Đài Phát Thanh đã nhập (JSON):</h3>
+        <pre id="output"></pre>
+    </div>
+
+    <script>
+        // Lắng nghe sự kiện submit của form
+        document.getElementById('stationForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Ngăn chặn hành vi gửi form mặc định
+
+            // Lấy giá trị từ các trường nhập liệu
+            const name = document.getElementById('name').value;
+            const genre = document.getElementById('genre').value;
+            const streamUrl = document.getElementById('streamUrl').value;
+
+            // Tạo URL logo tự động từ tên đài
+            // Thay thế khoảng trắng bằng dấu cộng và mã hóa URL để an toàn
+            const encodedName = encodeURIComponent(name.replace(/ /g, '+'));
+            const logo = `https://placehold.co/400x400/1c1c1e/444444?text=${encodedName}`;
+
+            // Tạo đối tượng đài phát thanh mới
+            const newStation = {
+                name: name,
+                genre: genre,
+                logo: logo,
+                streamUrl: streamUrl
+            };
+
+            // Lấy dữ liệu hiện có từ Local Storage hoặc khởi tạo mảng rỗng nếu chưa có
+            let stations = JSON.parse(localStorage.getItem('stations')) || [];
+            stations.push(newStation); // Thêm đài mới vào mảng
+            localStorage.setItem('stations', JSON.stringify(stations, null, 2)); // Lưu mảng cập nhật vào Local Storage với định dạng đẹp hơn
+
+            // Hiển thị dữ liệu JSON đã nhập trong thẻ <pre>
+            document.getElementById('output').textContent = JSON.stringify(stations, null, 2);
+
+            // Xóa nội dung form để người dùng có thể nhập đài tiếp theo
+            document.getElementById('stationForm').reset();
+        });
+
+        // Khi trang được tải, hiển thị dữ liệu đã có trong Local Storage (nếu có)
+        window.onload = function() {
+            let stations = JSON.parse(localStorage.getItem('stations')) || [];
+            document.getElementById('output').textContent = JSON.stringify(stations, null, 2);
+        };
+    </script>
+</body>
+</html>
