@@ -3,14 +3,14 @@
 // =================================================================
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyCQdfZcvfTJ6Oai-7rwaRLlM1ElxjqiAS0",
-  authDomain: "storage-b226a.firebaseapp.com",
-  databaseURL: "https://storage-b226a-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "storage-b226a",
-  storageBucket: "storage-b226a.firebasestorage.app",
-  messagingSenderId: "773716707827",
-  appId: "1:773716707827:web:31d8bf91f7184f7169ea86",
-  measurementId: "G-RZ3JK0V4F3"
+    apiKey: "AIzaSyCQdfZcvfTJ6Oai-7rwaRLlM1ElxjqiAS0",
+    authDomain: "storage-b226a.firebaseapp.com",
+    databaseURL: "https://storage-b226a-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "storage-b226a",
+    storageBucket: "storage-b226a.firebasestorage.app",
+    messagingSenderId: "773716707827",
+    appId: "1:773716707827:web:31d8bf91f7184f7169ea86",
+    measurementId: "G-RZ3JK0V4F3"
 };
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwWmdo70vWlz-5dRUIQFcmX77B_Uvplk5lb0B9mHPzSMssstKaW9YCZ1WWNiiHu3yzXew/exec";
 
@@ -28,7 +28,7 @@ let originalFiles = [];
 // =================================================================
 // QUẢN LÝ GIAO DIỆN (THEME)
 // =================================================================
-(function() {
+(function () {
     const themes = ['system', 'light', 'dark']; let currentTheme = localStorage.getItem('theme') || 'system';
     function applyTheme(theme) { Object.values(DOMElements.themeIcons).forEach(icon => icon.style.display = 'none'); DOMElements.themeIcons[theme].style.display = 'block'; document.documentElement.dataset.theme = theme === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme; }
     DOMElements.themeToggle.addEventListener('click', () => { currentTheme = themes[(themes.indexOf(currentTheme) + 1) % themes.length]; localStorage.setItem('theme', currentTheme); applyTheme(currentTheme); });
@@ -40,33 +40,33 @@ let originalFiles = [];
 // =================================================================
 // QUẢN LÝ XÁC THỰC
 // =================================================================
-(function() {
+(function () {
     auth.onAuthStateChanged(user => {
         DOMElements.loadingScreen.classList.add('hidden');
-        if (user) { DOMElements.authScreen.classList.add('hidden'); DOMElements.mainScreen.classList.remove('hidden'); DOMElements.userEmailDisplay.textContent = user.email; fetchFiles(); } 
+        if (user) { DOMElements.authScreen.classList.add('hidden'); DOMElements.mainScreen.classList.remove('hidden'); DOMElements.userEmailDisplay.textContent = user.email; fetchFiles(); }
         else { DOMElements.mainScreen.classList.add('hidden'); DOMElements.authScreen.classList.remove('hidden'); showAuthView('loginView'); }
     });
     function showAuthView(viewId) { ['loginView', 'registerView', 'forgotPasswordView'].forEach(id => DOMElements[id].classList.add('hidden')); DOMElements[viewId].classList.remove('hidden'); DOMElements.authStatus.style.display = 'none'; }
     function setAuthStatus(message, type) { const el = DOMElements.authStatus; el.textContent = message; el.className = `status-message status-${type}`; el.style.display = 'block'; }
     DOMElements.loginForm.addEventListener('submit', e => { e.preventDefault(); setAuthStatus('Đang đăng nhập...', 'info'); auth.signInWithEmailAndPassword(e.target.loginEmail.value, e.target.loginPassword.value).catch(err => setAuthStatus(`Lỗi: ${err.message}`, 'error')); });
-    
+
     // === HÀM ĐƯỢC SỬA LỖI ===
-    DOMElements.registerForm.addEventListener('submit', async e => { 
-        e.preventDefault(); 
-        const { registerEmail, registerPassword, inviteCode } = e.target; 
-        setAuthStatus('Đang kiểm tra mã...', 'info'); 
-        try { 
-            const docSnap = await db.collection('invitationCodes').doc(inviteCode.value.trim()).get(); 
+    DOMElements.registerForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const { registerEmail, registerPassword, inviteCode } = e.target;
+        setAuthStatus('Đang kiểm tra mã...', 'info');
+        try {
+            const docSnap = await db.collection('invitationCodes').doc(inviteCode.value.trim()).get();
             // SỬA LỖI: Bỏ dấu () ở docSnap.exists
-            if (docSnap.exists) { 
-                setAuthStatus('Mã hợp lệ. Đang tạo tài khoản...', 'info'); 
-                await auth.createUserWithEmailAndPassword(registerEmail.value, registerPassword.value); 
-            } else { 
-                setAuthStatus('Mã giới thiệu không hợp lệ.', 'error'); 
-            } 
-        } catch (err) { 
-            setAuthStatus(`Lỗi: ${err.message}`, 'error'); 
-        } 
+            if (docSnap.exists) {
+                setAuthStatus('Mã hợp lệ. Đang tạo tài khoản...', 'info');
+                await auth.createUserWithEmailAndPassword(registerEmail.value, registerPassword.value);
+            } else {
+                setAuthStatus('Mã giới thiệu không hợp lệ.', 'error');
+            }
+        } catch (err) {
+            setAuthStatus(`Lỗi: ${err.message}`, 'error');
+        }
     });
 
     DOMElements.forgotPasswordForm.addEventListener('submit', e => { e.preventDefault(); setAuthStatus('Đang gửi email...', 'info'); auth.sendPasswordResetEmail(e.target.forgotEmail.value).then(() => setAuthStatus('Đã gửi link khôi phục!', 'success')).catch(err => setAuthStatus(`Lỗi: ${err.message}`, 'error')); });
@@ -123,14 +123,14 @@ DOMElements.fileEditorList.addEventListener('click', (e) => {
 DOMElements.startUploadBtn.addEventListener('click', () => {
     const listItems = DOMElements.fileEditorList.querySelectorAll('li');
     if (listItems.length === 0) { alert("Vui lòng chọn ít nhất một tệp để tải lên."); return; }
-    if (listItems.length === 1) { uploadFilesIndividually(); } 
+    if (listItems.length === 1) { uploadFilesIndividually(); }
     else { DOMElements.fileCountSpan.textContent = listItems.length; DOMElements.uploadChoiceModal.classList.remove('hidden'); }
 });
 
 DOMElements.uploadIndividualBtn.addEventListener('click', () => { DOMElements.uploadChoiceModal.classList.add('hidden'); uploadFilesIndividually(); });
 DOMElements.uploadCompressBtn.addEventListener('click', () => {
     DOMElements.uploadChoiceModal.classList.add('hidden'); DOMElements.compressForm.reset();
-    const now = new Date(); const defaultName = `archive-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+    const now = new Date(); const defaultName = `HunqUP-${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
     DOMElements.compressForm['zip-filename'].value = defaultName; DOMElements.compressOptionsModal.classList.remove('hidden');
 });
 DOMElements.compressForm.addEventListener('submit', e => { e.preventDefault(); const filename = e.target['zip-filename'].value; const password = e.target['zip-password'].value; DOMElements.compressOptionsModal.classList.add('hidden'); compressAndUpload(filename, password); });
@@ -215,7 +215,13 @@ function displayFiles(response) {
         DOMElements.fileListContainer.classList.remove('hidden');
         response.data.forEach(file => {
             const row = DOMElements.fileListBody.insertRow();
-            row.innerHTML = `<td><a href="${file.fileUrl}" target="_blank">${escapeHtml(file.fileName)}</a></td><td>${escapeHtml(file.uploaderEmail)}</td><td>${escapeHtml(file.uploadDate)}</td><td>${escapeHtml(file.fileSize)}</td><td><button class="btn btn-copy" data-url="${escapeHtml(file.fileUrl)}">Sao chép</button></td>`;
+            row.innerHTML = `
+            <td><button class="btn btn-copy" data-url="${escapeHtml(file.fileUrl)}"><i class="fas fa-copy"></i></button></td>
+            <td><a href="${file.fileUrl}" target="_blank">${escapeHtml(file.fileName)}</a></td>
+            <td>${escapeHtml(file.fileSize)}</td>
+            <td>${escapeHtml(file.uploadDate)}</td>
+            <td>${escapeHtml(file.uploaderEmail)}</td>
+            `;
         });
     } else if (response.status === 'success') { DOMElements.noFilesMessage.classList.remove('hidden'); }
     else { throw new Error(response.message || 'Lỗi server.'); }
