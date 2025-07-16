@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình Phát Âm Thanh URL</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font for a modern look */
+        body {
+            font-family: "Inter", sans-serif;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 to-purple-100 p-4">
+    <div class="bg-white p-6 sm:p-8 rounded-xl shadow-2xl max-w-lg w-full transform transition-all duration-300 hover:scale-105">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Trình Phát Âm Thanh URL</h1>
+        <p class="text-center text-gray-600 mb-6">Nhập URL tệp MP3 (ví dụ: từ Google Drive) vào ô dưới đây để thử:</p>
+
+        <div class="flex flex-col items-center space-y-4">
+            <input
+                type="text"
+                id="audioUrlInput"
+                placeholder="Dán URL MP3 vào đây..."
+                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+            />
+            <button
+                onclick="loadAudio()"
+                class="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 ease-in-out transform hover:-translate-y-0.5"
+            >
+                Tải và Phát
+            </button>
+        </div>
+
+        <div id="message" class="mt-4 text-red-600 font-medium text-center"></div>
+
+        <audio controls id="audioPlayer" class="w-full mt-8 rounded-lg shadow-inner bg-gray-100">
+            Trình duyệt của bạn không hỗ trợ phần tử âm thanh.
+        </audio>
+    </div>
+
+    <script>
+        /**
+         * Tải và phát tệp âm thanh từ URL được cung cấp.
+         * Kiểm tra URL để đảm bảo nó là định dạng Google Drive hợp lệ.
+         */
+        function loadAudio() {
+            const urlInput = document.getElementById('audioUrlInput');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const messageDiv = document.getElementById('message');
+            const url = urlInput.value.trim();
+
+            // Xóa bất kỳ tin nhắn lỗi nào trước đó
+            messageDiv.textContent = "";
+
+            if (url) {
+                // Kiểm tra xem URL có phải là URL hợp lệ cho Google Drive direct download không
+                // Đây là một kiểm tra cơ bản; các URL khác có thể hoạt động nhưng chúng ta tập trung vào Google Drive
+                if (url.startsWith('https://drive.google.com/uc?export=') || url.startsWith('https://docs.google.com/uc?export=')) {
+                    audioPlayer.src = url;
+                    audioPlayer.load(); // Tải lại nguồn âm thanh để đảm bảo nó được cập nhật
+                    audioPlayer.play().catch(e => {
+                        // Xử lý lỗi nếu việc phát không thành công (ví dụ: do chính sách tự động phát của trình duyệt)
+                        console.error("Lỗi khi phát âm thanh:", e);
+                        messageDiv.textContent = "Không thể phát âm thanh. Vui lòng kiểm tra URL hoặc quyền truy cập tệp. Trình duyệt có thể đã chặn tự động phát. Vui lòng nhấp vào nút 'Tải và Phát' để bắt đầu.";
+                    });
+                } else {
+                    messageDiv.textContent = "URL không hợp lệ. Vui lòng nhập URL stream của MP3 từ Google Drive (ví dụ: bắt đầu bằng https://drive.google.com/uc?export=).";
+                    audioPlayer.src = ""; // Xóa nguồn âm thanh cũ
+                    audioPlayer.load(); // Tải lại để xóa trình phát
+                }
+            } else {
+                messageDiv.textContent = "Vui lòng nhập một URL.";
+                audioPlayer.src = ""; // Xóa nguồn âm thanh cũ
+                audioPlayer.load(); // Tải lại để xóa trình phát
+            }
+        }
+
+        /**
+         * Hàm này được gọi khi trang web được tải.
+         * Nó tự động điền URL ví dụ và hiển thị thông báo cho người dùng.
+         */
+        window.onload = function() {
+            // URL ban đầu từ yêu cầu của người dùng
+            const initialUrl = "https://drive.google.com/uc?export=download&id=16fFuxD9r89qMh7v54iEuoW4Xk-E0xZPI";
+            const audioUrlInput = document.getElementById('audioUrlInput');
+            const messageDiv = document.getElementById('message');
+
+            // Đặt giá trị ban đầu vào ô nhập liệu
+            audioUrlInput.value = initialUrl;
+
+            // Hiển thị thông báo hướng dẫn người dùng nhấp vào nút
+            messageDiv.textContent = "Vui lòng nhấp vào nút 'Tải và Phát' để bắt đầu nghe.";
+        };
+    </script>
+</body>
+</html>

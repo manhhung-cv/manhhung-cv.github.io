@@ -3,347 +3,475 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cửa Hàng Thẻ Cào PRO</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Vòng Quay May Mắn</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Be Vietnam Pro', sans-serif;
-            touch-action: none;
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            font-family: 'Roboto', sans-serif;
+            background-color: #1a202c; /* Dark background */
+            color: #e2e8f0; /* Light text */
         }
-        .scratch-card-container {
-            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 5.5A.5.5 0 0 1 6 6v1a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5z"/><path d="M2 11h12v2H2z"/><path d="M2 15h12v2H2z"/><path d="M2 19h12v2H2z"/></svg>'), auto;
+        .wheel-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+            margin: 2rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        #scratch-canvas {
+        #wheel {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            border-radius: 0.75rem;
+            border-radius: 50%;
+            border: 10px solid #4a5568; /* Gray border */
+            transition: transform 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+            background-image: conic-gradient(
+                #f56565 0% 12.5%, 
+                #ed8936 12.5% 25%, 
+                #ecc94b 25% 37.5%, 
+                #48bb78 37.5% 50%, 
+                #4299e1 50% 62.5%, 
+                #667eea 62.5% 75%, 
+                #9f7aea 75% 87.5%, 
+                #ed64a6 87.5% 100%
+            );
         }
-        .notification {
-            transition: opacity 0.5s, transform 0.5s;
+        .wheel-pointer {
+            position: absolute;
+            top: -10px; /* Adjusted position */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 40px solid #e53e3e; /* Red pointer */
+            z-index: 10;
         }
-        .store-card {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        .segment-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50px;
+            height: 50px;
+            margin-left: -25px; /* half width */
+            margin-top: -25px; /* half height */
+            border-radius: 50%;
+            border: 2px solid white;
+            background-color: #1a202c;
         }
-        .store-card:hover {
-            transform: scale(1.05);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 0 40px rgba(255,255,255,0.3);
+        #spinButton {
+            position: relative; /* Changed from absolute */
+            z-index: 20;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            border: 5px solid #4a5568;
+        }
+        /* Modal styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: #2d3748;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 1px solid #4a5568;
+            width: 90%;
+            max-width: 400px;
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4 text-white">
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
 
-    <!-- Header -->
-    <header class="w-full max-w-md bg-white/20 backdrop-blur-sm p-4 rounded-xl shadow-lg mb-6 border border-white/30">
-        <div class="flex justify-between items-center">
-            <div>
-                <h2 class="font-bold text-lg text-gray-200">Số dư</h2>
-                <p class="text-3xl font-black text-white">
-                    <span id="user-balance">50000</span>đ
-                </p>
+    <div class="w-full max-w-6xl mx-auto bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+
+        <h1 class="text-4xl md:text-5xl font-bold text-center text-white mb-2">Vòng Quay May Mắn</h1>
+        <p class="text-center text-gray-400 mb-6">Thử vận may của bạn ngay hôm nay!</p>
+
+        <!-- Stats Display -->
+        <div class="flex flex-col md:flex-row justify-around items-center mb-6 bg-gray-900 p-4 rounded-lg">
+            <div class="text-center mb-4 md:mb-0">
+                <p class="text-lg text-blue-400">Số Dư</p>
+                <p id="balance" class="text-2xl font-bold text-green-400">100,000 ₫</p>
             </div>
-            <button id="deposit-button" class="px-5 py-2 bg-green-500 text-white font-bold rounded-lg shadow-lg hover:bg-green-600 focus:outline-none ring-2 ring-white/50 hover:ring-white transition">
-                Nạp tiền
+            <div class="w-px h-12 bg-gray-600 hidden md:block"></div>
+            <div class="text-center">
+                <p class="text-lg text-blue-400">Lượt Quay</p>
+                <p id="spins" class="text-2xl font-bold text-yellow-400">5</p>
+            </div>
+        </div>
+
+        <!-- Game Area -->
+        <div class="flex flex-col lg:flex-row items-center justify-center gap-8">
+            <!-- Wheel -->
+            <div class="flex-shrink-0">
+                <div class="wheel-container">
+                    <div class="wheel-pointer"></div>
+                    <div id="wheel">
+                        <!-- Images will be injected here by JS -->
+                    </div>
+                    <button id="spinButton" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-xl shadow-lg transition duration-300 transform hover:scale-105 disabled:bg-gray-500 disabled:cursor-not-allowed">
+                        QUAY!
+                    </button>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="w-full lg:w-2/5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Nạp tiền -->
+                <div class="bg-gray-700 p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-center text-white">Nạp Tiền</h2>
+                    <div class="flex flex-col space-y-3">
+                        <input type="number" id="depositAmount" placeholder="Nhập số tiền" class="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="depositButton" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                            Nạp Ngay
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Mua lượt quay -->
+                <div class="bg-gray-700 p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-center text-white">Mua Lượt Quay</h2>
+                    <p class="text-center text-gray-300 mb-4">Giá: <span class="font-bold text-yellow-400">10,000 ₫ / lượt</span></p>
+                    <button id="buySpinButton" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">
+                        Mua 1 Lượt
+                    </button>
+                </div>
+
+                <!-- Intervention Controls -->
+                <div class="bg-gray-700 p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-center text-white">Can Thiệp Kết Quả</h2>
+                    <label for="interventionSelect" class="block text-sm font-medium text-gray-300 mb-2">Chọn kết quả:</label>
+                    <select id="interventionSelect" class="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <!-- Options will be populated by JS -->
+                    </select>
+                </div>
+
+                <!-- NEW: Speed Controls -->
+                <div class="bg-gray-700 p-6 rounded-lg shadow-md">
+                    <h2 class="text-2xl font-bold mb-4 text-center text-white">Tốc Độ Quay</h2>
+                    <label for="speedSelect" class="block text-sm font-medium text-gray-300 mb-2">Chọn tốc độ:</label>
+                    <select id="speedSelect" class="w-full p-3 bg-gray-800 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="normal">Bình thường</option>
+                        <option value="fast">Nhanh</option>
+                        <option value="instant">Siêu Nhanh</option>
+                    </select>
+                </div>
+                
+                <!-- Auto Spin Controls -->
+                <div class="bg-gray-700 p-6 rounded-lg shadow-md md:col-span-2">
+                    <h2 class="text-2xl font-bold mb-4 text-center text-white">Quay Tự Động</h2>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button id="spin5Button" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-500">Quay 5</button>
+                        <button id="spin10Button" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-500">Quay 10</button>
+                        <button id="spinAllButton" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md transition duration-300 disabled:bg-gray-500">Quay Hết</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prize Modal -->
+    <div id="prizeModal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h2 id="modalTitle" class="text-3xl font-bold text-yellow-300 mb-4">Kết Quả</h2>
+            <div id="prizeResultContainer" class="text-xl text-white mb-6 max-h-60 overflow-y-auto">
+                <!-- Results will be injected here -->
+            </div>
+            <button id="closeModalButton" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-md">
+                Đóng
             </button>
         </div>
-    </header>
-
-    <!-- Vùng chứa thẻ cào -->
-    <div id="scratch-card-area" class="w-full max-w-md h-56 mb-6">
-        <div id="scratch-card-container" class="scratch-card-container w-full h-full bg-white rounded-xl shadow-2xl relative flex items-center justify-center overflow-hidden border-4 border-gray-300">
-            <div id="prize" class="text-center p-4">
-                 <p class="text-2xl font-bold text-gray-400">Mua thẻ từ cửa hàng bên dưới</p>
-            </div>
-            <canvas id="scratch-canvas"></canvas>
-        </div>
     </div>
-
-    <!-- Cửa hàng thẻ -->
-    <div class="w-full max-w-md text-center mb-4">
-        <h1 class="text-4xl font-black tracking-wider uppercase">Cửa Hàng</h1>
-    </div>
-    <div class="w-full max-w-md grid grid-cols-2 gap-6">
-        <!-- Thẻ Thường -->
-        <div id="buy-regular-card" class="store-card cursor-pointer bg-gray-300 rounded-lg p-4 text-center text-gray-800 shadow-md border-2 border-gray-400">
-            <h3 class="font-bold text-xl">THẺ THƯỜNG</h3>
-            <p class="font-semibold text-lg">10.000đ</p>
-        </div>
-        <!-- Thẻ VIP -->
-        <div id="buy-vip-card" class="store-card cursor-pointer bg-gradient-to-br from-yellow-300 to-amber-500 rounded-lg p-4 text-center text-white shadow-lg border-2 border-yellow-200">
-            <h3 class="font-bold text-xl">THẺ VIP</h3>
-            <p class="font-semibold text-lg">50.000đ</p>
-        </div>
-    </div>
-
-    <!-- Modal Nạp tiền -->
-    <div id="deposit-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-        <div class="relative mx-auto p-5 border w-96 shadow-lg rounded-md bg-white text-gray-800">
-            <h3 class="text-lg leading-6 font-medium text-center">Nạp tiền vào tài khoản</h3>
-            <input type="number" id="deposit-amount" class="w-full mt-4 px-3 py-2 border rounded-lg focus:outline-none" placeholder="Nhập số tiền" />
-            <div class="mt-4 flex flex-col gap-2">
-                <button id="confirm-deposit" class="w-full px-4 py-2 bg-green-500 text-white font-medium rounded-md shadow-sm hover:bg-green-600">Xác nhận</button>
-                <button id="cancel-deposit" class="w-full px-4 py-2 bg-gray-200 font-medium rounded-md shadow-sm hover:bg-gray-300">Hủy</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Vùng chứa thông báo -->
-    <div id="notification-area" class="fixed top-5 right-5 z-50"></div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // DOM Elements
-            const canvas = document.getElementById('scratch-canvas');
-            const ctx = canvas.getContext('2d');
-            const cardContainer = document.getElementById('scratch-card-container');
-            const prizeDisplay = document.getElementById('prize');
-            const buyRegularButton = document.getElementById('buy-regular-card');
-            const buyVipButton = document.getElementById('buy-vip-card');
-            const userBalanceDisplay = document.getElementById('user-balance');
-            const depositButton = document.getElementById('deposit-button');
-            const depositModal = document.getElementById('deposit-modal');
-            const confirmDepositButton = document.getElementById('confirm-deposit');
-            const cancelDepositButton = document.getElementById('cancel-deposit');
-            const depositAmountInput = document.getElementById('deposit-amount');
-            const notificationArea = document.getElementById('notification-area');
+            // --- DOM Elements ---
+            const wheel = document.getElementById('wheel');
+            const spinButton = document.getElementById('spinButton');
+            const balanceEl = document.getElementById('balance');
+            const spinsEl = document.getElementById('spins');
+            const depositButton = document.getElementById('depositButton');
+            const depositAmountInput = document.getElementById('depositAmount');
+            const buySpinButton = document.getElementById('buySpinButton');
+            const prizeModal = document.getElementById('prizeModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const prizeResultContainer = document.getElementById('prizeResultContainer');
+            const closeModalButton = document.getElementById('closeModalButton');
+            const interventionSelect = document.getElementById('interventionSelect');
+            const speedSelect = document.getElementById('speedSelect');
+            const spin5Button = document.getElementById('spin5Button');
+            const spin10Button = document.getElementById('spin10Button');
+            const spinAllButton = document.getElementById('spinAllButton');
 
-            // Game State
-            let userBalance = 50000;
-            const cardCosts = { regular: 10000, vip: 50000 };
-            let isDrawing = false;
-            let currentCard = null;
-            let prizeArea = null; // {x, y, w, h}
+            // --- Game State & Config ---
+            let balance = 100000;
+            let spins = 5;
+            const spinCost = 10000;
+            let isSpinning = false;
+            let rotation = 0;
+            let forcedResultIndex = -1;
+            let spinSpeed = 'normal';
 
-            // --- Sound Engine (Tone.js) ---
-            let soundsReady = false;
-            const sounds = {};
-            
-            function initSounds() {
-                sounds.buy = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination();
-                sounds.win = new Tone.PluckSynth().toDestination();
-                sounds.deposit = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.2 } }).toDestination();
-                sounds.scratch = new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.01 } }).toDestination();
-                soundsReady = true;
-            }
-            
-            // User must interact first to enable audio
-            document.body.addEventListener('click', async () => {
-                if (!soundsReady) {
-                    await Tone.start();
-                    initSounds();
-                    console.log("Audio context started");
-                }
-            }, { once: true });
+            const prizes = [
+                { label: '1,000 ₫', value: 1000, image: 'https://placehold.co/50x50/f56565/white?text=1K' },
+                { label: 'Mất Lượt', value: 0, image: 'https://placehold.co/50x50/ed8936/white?text=X' },
+                { label: '5,000 ₫', value: 5000, image: 'https://placehold.co/50x50/ecc94b/black?text=5K' },
+                { label: 'Thêm Lượt Quay', value: 'extra_spin', image: 'https://placehold.co/50x50/48bb78/white?text=%2B1' },
+                { label: '50,000 ₫', value: 50000, image: 'https://placehold.co/50x50/4299e1/white?text=50K' },
+                { label: 'Chúc May Mắn', value: 0, image: 'https://placehold.co/50x50/667eea/white?text=:-(' },
+                { label: '10,000 ₫', value: 10000, image: 'https://placehold.co/50x50/9f7aea/white?text=10K' },
+                { label: '20,000 ₫', value: 20000, image: 'https://placehold.co/50x50/ed64a6/white?text=20K' },
+            ];
+            const segmentCount = prizes.length;
+            const segmentAngle = 360 / segmentCount;
 
-            // Prize Pools
-            const prizes = {
-                regular: [
-                    { text: "Trúng 20.000đ", value: 20000 }, { text: "Hoàn lại vốn!", value: cardCosts.regular },
-                    { text: "Trúng 5.000đ", value: 5000 }, { text: "Chúc bạn may mắn!", value: 0 },
-                ],
-                vip: [
-                    { text: "JACKPOT! 500.000đ", value: 500000 }, { text: "Wow! Trúng 200.000đ", value: 200000 },
-                    { text: "Trúng 100.000đ", value: 100000 }, { text: "Thẻ VIP miễn phí!", value: cardCosts.vip },
-                ]
+            // --- Functions ---
+            const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+
+            const updateTextUI = () => {
+                balanceEl.textContent = formatCurrency(balance);
+                spinsEl.textContent = spins;
             };
 
-            // --- Core Functions ---
-            function updateBalanceDisplay() {
-                userBalanceDisplay.textContent = userBalance.toLocaleString('vi-VN');
-            }
+            const updateAllButtonStates = () => {
+                const disableAll = isSpinning;
+                spinButton.disabled = disableAll || spins <= 0;
+                spin5Button.disabled = disableAll || spins < 5;
+                spin10Button.disabled = disableAll || spins < 10;
+                spinAllButton.disabled = disableAll || spins <= 0;
+                depositButton.disabled = disableAll;
+                buySpinButton.disabled = disableAll;
+                interventionSelect.disabled = disableAll;
+                speedSelect.disabled = disableAll;
+            };
 
-            function showNotification(message, type = 'info') {
-                const colors = { info: 'bg-blue-500', success: 'bg-green-500', error: 'bg-red-500', vip: 'bg-amber-500' };
-                const notif = document.createElement('div');
-                notif.className = `notification text-white p-3 rounded-lg shadow-lg mb-2 transform translate-x-full opacity-0`;
-                notif.classList.add(colors[type] || colors.info);
-                notif.textContent = message;
-                notificationArea.appendChild(notif);
-                setTimeout(() => { notif.classList.remove('translate-x-full', 'opacity-0'); }, 10);
-                setTimeout(() => {
-                    notif.classList.add('opacity-0', 'transform', 'translate-x-full');
-                    setTimeout(() => notif.remove(), 500);
-                }, 3000);
-            }
+            const drawPrizeImages = () => {
+                wheel.innerHTML = '';
+                const radius = 140;
+                prizes.forEach((prize, index) => {
+                    const angle = segmentAngle * index + (segmentAngle / 2);
+                    const imgEl = document.createElement('img');
+                    imgEl.src = prize.image;
+                    imgEl.alt = prize.label;
+                    imgEl.className = 'segment-image';
+                    imgEl.style.transform = `rotate(${angle}deg) translate(${radius}px) rotate(-${angle}deg)`;
+                    wheel.appendChild(imgEl);
+                });
+            };
 
-            function setCanvasSize() {
-                const rect = cardContainer.getBoundingClientRect();
-                canvas.width = rect.width;
-                canvas.height = rect.height;
-                // Define the prize area as the central 80% width and 50% height
-                prizeArea = {
-                    x: canvas.width * 0.1,
-                    y: canvas.height * 0.25,
-                    w: canvas.width * 0.8,
-                    h: canvas.height * 0.5
-                };
-            }
+            const populateInterventionSelect = () => {
+                interventionSelect.innerHTML = '<option value="-1">Ngẫu nhiên</option>';
+                prizes.forEach((prize, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = prize.label;
+                    interventionSelect.appendChild(option);
+                });
+            };
 
-            function drawCover(cardType) {
-                // 1. Draw metallic background
-                let gradient;
-                if (cardType === 'vip') {
-                    gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                    gradient.addColorStop(0, '#FDE047'); gradient.addColorStop(0.5, '#FBBF24'); gradient.addColorStop(1, '#F59E0B');
-                } else {
-                    gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-                    gradient.addColorStop(0, '#e0e0e0'); gradient.addColorStop(0.5, '#c0c0c0'); gradient.addColorStop(1, '#e0e0e0');
+            const handlePrize = (prize) => {
+                if (prize.value === 'extra_spin') {
+                    spins++;
+                } else if (prize.value > 0) {
+                    balance += prize.value;
                 }
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            };
 
-                // 2. Draw cross-hatch security pattern
-                const patternCanvas = document.createElement('canvas');
-                const patternCtx = patternCanvas.getContext('2d');
-                const patternSize = 20;
-                patternCanvas.width = patternSize;
-                patternCanvas.height = patternSize;
-                patternCtx.strokeStyle = 'rgba(0,0,0,0.2)';
-                patternCtx.lineWidth = 1;
-                patternCtx.beginPath();
-                patternCtx.moveTo(0, patternSize); patternCtx.lineTo(patternSize, 0);
-                patternCtx.moveTo(0, 0); patternCtx.lineTo(patternSize, patternSize);
-                patternCtx.stroke();
-                
-                ctx.fillStyle = ctx.createPattern(patternCanvas, 'repeat');
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                canvas.classList.remove('hidden');
-            }
+            const coreSpinLogic = () => {
+                return new Promise(resolve => {
+                    if (spins <= 0) {
+                        resolve(null);
+                        return;
+                    }
+
+                    spins--;
+                    updateTextUI();
+                    
+                    let stopIndex;
+                    if (forcedResultIndex !== -1) {
+                        stopIndex = forcedResultIndex;
+                        forcedResultIndex = -1;
+                        interventionSelect.value = -1;
+                    } else {
+                        stopIndex = Math.floor(Math.random() * segmentCount);
+                    }
+
+                    const winningPrize = prizes[stopIndex];
+                    const prizeAngle = stopIndex * segmentAngle + (segmentAngle / 2);
+                    const destinationAngle = 270;
+                    const fullSpins = 5 * 360;
+                    const currentAngleMod = rotation % 360;
+                    const finalAngleMod = (destinationAngle - prizeAngle + 360) % 360;
+                    const adjustment = (finalAngleMod - currentAngleMod + 360) % 360;
+                    rotation += fullSpins + adjustment;
+
+                    if (spinSpeed === 'instant') {
+                        wheel.style.transition = 'none';
+                        wheel.style.transform = `rotate(${rotation}deg)`;
+                        // Force reflow to apply transform instantly
+                        wheel.offsetHeight; 
+                        handlePrize(winningPrize);
+                        updateTextUI();
+                        resolve(winningPrize);
+                    } else {
+                        const spinDuration = spinSpeed === 'normal' ? 4000 : 2000;
+                        wheel.style.transition = `transform ${spinDuration / 1000}s cubic-bezier(0.25, 0.1, 0.25, 1)`;
+                        wheel.style.transform = `rotate(${rotation}deg)`;
+
+                        setTimeout(() => {
+                            handlePrize(winningPrize);
+                            updateTextUI();
+                            resolve(winningPrize);
+                        }, spinDuration);
+                    }
+                });
+            };
             
-            function setupNewCard(cardType) {
-                const prizePool = prizes[cardType];
-                const randomPrize = prizePool[Math.floor(Math.random() * prizePool.length)];
-                currentCard = { type: cardType, prize: randomPrize, revealed: false };
+            const displayResultsInModal = (results) => {
+                prizeResultContainer.innerHTML = '';
+                if (results.length === 1) {
+                    const prize = results[0];
+                    modalTitle.textContent = 'Chúc Mừng!';
+                    prizeResultContainer.innerHTML = `
+                        <p class="mb-2">Bạn đã trúng:</p>
+                        <div class="flex items-center justify-center mt-2 bg-gray-800 p-4 rounded-lg">
+                            <img src="${prize.image}" alt="${prize.label}" class="w-16 h-16 mr-4 rounded-full border-2 border-yellow-400">
+                            <span class="font-bold text-2xl text-yellow-300">${prize.label}</span>
+                        </div>
+                    `;
+                } else {
+                    modalTitle.textContent = `Kết quả ${results.length} lượt quay`;
+                    // Group results
+                    const groupedResults = new Map();
+                    results.forEach(prize => {
+                        if (groupedResults.has(prize.label)) {
+                            groupedResults.get(prize.label).count++;
+                        } else {
+                            groupedResults.set(prize.label, { prize: prize, count: 1 });
+                        }
+                    });
 
-                prizeDisplay.innerHTML = `<p class="text-4xl font-black ${cardType === 'vip' ? 'text-amber-600' : 'text-blue-700'}">${randomPrize.text}</p>`;
-                
-                setCanvasSize();
-                drawCover(cardType);
-            }
+                    let listHtml = '';
+                    groupedResults.forEach(({ prize, count }) => {
+                        listHtml += `
+                            <div class="flex items-center justify-start text-left p-2 border-b border-gray-600 last:border-b-0">
+                                <img src="${prize.image}" alt="${prize.label}" class="w-8 h-8 mr-3 rounded-full flex-shrink-0">
+                                <span class="flex-grow">${prize.label}</span>
+                                ${count > 1 ? `<span class="font-bold text-yellow-400">(x${count})</span>` : ''}
+                            </div>
+                        `;
+                    });
+                    prizeResultContainer.innerHTML = listHtml;
+                }
+                prizeModal.classList.remove('hidden');
+            };
 
-            function buyCard(cardType) {
-                if (!soundsReady) {
-                    showNotification("Vui lòng nhấp vào trang để bật âm thanh trước", "error");
+            const handleSingleSpin = async () => {
+                if (isSpinning) return;
+                isSpinning = true;
+                updateAllButtonStates();
+                const winningPrize = await coreSpinLogic();
+                isSpinning = false;
+                updateAllButtonStates();
+                if (winningPrize) {
+                    displayResultsInModal([winningPrize]);
+                }
+            };
+
+            const handleMultiSpin = async (count) => {
+                if (isSpinning) return;
+                let spinsToPerform = count === 'all' ? spins : count;
+                if (spins < spinsToPerform || spinsToPerform <= 0) {
+                    alert('Không đủ lượt quay!');
                     return;
                 }
-                const cost = cardCosts[cardType];
-                if (userBalance >= cost) {
-                    if (sounds.buy) sounds.buy.triggerAttackRelease('C5', '8n');
-                    userBalance -= cost;
-                    updateBalanceDisplay();
-                    setupNewCard(cardType);
-                } else {
-                    showNotification("Không đủ tiền!", 'error');
-                }
-            }
-            
-            function getBrushPos(x, y) {
-                const canvasRect = canvas.getBoundingClientRect();
-                return { x: x - canvasRect.left, y: y - canvasRect.top };
-            }
 
-            function checkPrizeReveal() {
-                if (!currentCard || !prizeArea) return;
-                const pixels = ctx.getImageData(prizeArea.x, prizeArea.y, prizeArea.w, prizeArea.h).data;
-                let transparentPixels = 0;
-                for (let i = 3; i < pixels.length; i += 4) { // Check only alpha channel
-                    if (pixels[i] === 0) transparentPixels++;
+                isSpinning = true;
+                updateAllButtonStates();
+                const resultsList = [];
+
+                for (let i = 0; i < spinsToPerform; i++) {
+                    if (spins <= 0) break;
+                    const winningPrize = await coreSpinLogic();
+                    if (winningPrize) {
+                        resultsList.push(winningPrize);
+                    }
+                     // Add a small delay for instant spins to keep the UI responsive
+                    if (spinSpeed === 'instant') {
+                        await new Promise(res => setTimeout(res, 10));
+                    }
                 }
-                const totalPixelsInArea = prizeArea.w * prizeArea.h;
-                const percentage = (transparentPixels / totalPixelsInArea) * 100;
                 
-                if (percentage > 85) { // Reveal if 85% of the PRIZE AREA is clear
-                    revealPrize();
+                isSpinning = false;
+                updateAllButtonStates();
+                
+                if (resultsList.length > 0) {
+                    displayResultsInModal(resultsList);
                 }
-            }
+            };
 
-            function revealPrize() {
-                if (!currentCard || currentCard.revealed) return;
-                currentCard.revealed = true;
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                canvas.classList.add('hidden');
-
-                const prizeValue = currentCard.prize.value;
-                if (prizeValue > 0) {
-                    if (sounds.win) sounds.win.triggerAttackRelease('C5', '0.5');
-                    userBalance += prizeValue;
-                    updateBalanceDisplay();
-                    showNotification(`Trúng thưởng ${prizeValue.toLocaleString('vi-VN')}đ!`, 'success');
-                }
-            }
-
-            function scratch(e) {
-                if (!isDrawing || !currentCard || currentCard.revealed) return;
-                e.preventDefault();
-                if (sounds.scratch) sounds.scratch.triggerAttackRelease("8n");
-                const pos = getBrushPos(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY);
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.beginPath();
-                ctx.arc(pos.x, pos.y, 25, 0, Math.PI * 2, false);
-                ctx.fill();
-            }
-
-            function startScratching(e) {
-                if (!currentCard || currentCard.revealed) return;
-                isDrawing = true;
-                scratch(e);
-            }
-
-            function stopScratching() {
-                if (!isDrawing) return;
-                isDrawing = false;
-                checkPrizeReveal();
-            }
-
-            // --- Event Listeners ---
-            buyRegularButton.addEventListener('click', () => buyCard('regular'));
-            buyVipButton.addEventListener('click', () => buyCard('vip'));
-            window.addEventListener('resize', () => {
-                 if(currentCard && !currentCard.revealed) { setCanvasSize(); drawCover(currentCard.type); }
-            });
-
-            [canvas, cardContainer].forEach(el => {
-                el.addEventListener('mousedown', startScratching);
-                el.addEventListener('mousemove', scratch);
-                el.addEventListener('mouseup', stopScratching);
-                el.addEventListener('mouseleave', stopScratching);
-                el.addEventListener('touchstart', startScratching, { passive: false });
-                el.addEventListener('touchmove', scratch, { passive: false });
-                el.addEventListener('touchend', stopScratching);
-                el.addEventListener('touchcancel', stopScratching);
-            });
-
-            depositButton.addEventListener('click', () => depositModal.classList.remove('hidden'));
-            cancelDepositButton.addEventListener('click', () => depositModal.classList.add('hidden'));
-            confirmDepositButton.addEventListener('click', () => {
+            const handleDeposit = () => {
                 const amount = parseInt(depositAmountInput.value, 10);
                 if (!isNaN(amount) && amount > 0) {
-                    if (sounds.deposit) sounds.deposit.triggerAttackRelease('E5', '0.2');
-                    userBalance += amount;
-                    updateBalanceDisplay();
-                    showNotification(`Nạp thành công ${amount.toLocaleString('vi-VN')}đ`, 'success');
+                    balance += amount;
                     depositAmountInput.value = '';
-                    depositModal.classList.add('hidden');
+                    updateTextUI();
+                    updateAllButtonStates();
                 } else {
-                    showNotification('Số tiền không hợp lệ.', 'error');
+                    alert('Vui lòng nhập một số tiền hợp lệ.');
                 }
-            });
+            };
 
-            // --- Initialization ---
-            function initializeApp() {
-                updateBalanceDisplay();
-                setCanvasSize();
-                canvas.classList.add('hidden');
-            }
-            initializeApp();
+            const handleBuySpin = () => {
+                if (balance >= spinCost) {
+                    balance -= spinCost;
+                    spins++;
+                    updateTextUI();
+                    updateAllButtonStates();
+                } else {
+                    alert('Số dư không đủ để mua lượt quay!');
+                }
+            };
+            
+            // --- Event Listeners ---
+            spinButton.addEventListener('click', handleSingleSpin);
+            spin5Button.addEventListener('click', () => handleMultiSpin(5));
+            spin10Button.addEventListener('click', () => handleMultiSpin(10));
+            spinAllButton.addEventListener('click', () => handleMultiSpin('all'));
+            depositButton.addEventListener('click', handleDeposit);
+            buySpinButton.addEventListener('click', handleBuySpin);
+            closeModalButton.addEventListener('click', () => prizeModal.classList.add('hidden'));
+            interventionSelect.addEventListener('change', (e) => {
+                forcedResultIndex = parseInt(e.target.value, 10);
+            });
+            speedSelect.addEventListener('change', (e) => {
+                spinSpeed = e.target.value;
+            });
+            
+            // --- Initial Setup ---
+            drawPrizeImages();
+            populateInterventionSelect();
+            updateTextUI();
+            updateAllButtonStates();
         });
     </script>
 </body>
