@@ -21,7 +21,11 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 const DOMElements = {
-    loadingScreen: document.getElementById('loadingScreen'), authScreen: document.getElementById('authScreen'), mainScreen: document.getElementById('mainScreen'), loginView: document.getElementById('loginView'), registerView: document.getElementById('registerView'), forgotPasswordView: document.getElementById('forgotPasswordView'), loginForm: document.getElementById('loginForm'), registerForm: document.getElementById('registerForm'), forgotPasswordForm: document.getElementById('forgotPasswordForm'), authStatus: document.getElementById('authStatus'), userEmailDisplay: document.getElementById('userEmailDisplay'), logoutButton: document.getElementById('logoutButton'), uploadStatus: document.getElementById('uploadStatus'), fileInput: document.getElementById('fileInput'), dropZone: document.getElementById('drop-zone'), fileEditorContainer: document.getElementById('file-editor-container'), fileEditorList: document.getElementById('file-editor-list'), startUploadBtn: document.getElementById('start-upload-btn'), uploadChoiceModal: document.getElementById('upload-choice-modal'), compressOptionsModal: document.getElementById('compress-options-modal'), fileCountSpan: document.getElementById('file-count'), uploadIndividualBtn: document.getElementById('upload-individual-btn'), uploadCompressBtn: document.getElementById('upload-compress-btn'), compressForm: document.getElementById('compress-form'), cancelCompressBtn: document.getElementById('cancel-compress-btn'), listLoader: document.getElementById('listLoader'), fileListContainer: document.getElementById('fileListContainer'), fileListBody: document.getElementById('fileListBody'), noFilesMessage: document.getElementById('noFilesMessage'), errorMessage: document.getElementById('errorMessage'), themeToggle: document.getElementById('theme-toggle'), themeIcons: { system: document.getElementById('theme-icon-system'), light: document.getElementById('theme-icon-light'), dark: document.getElementById('theme-icon-dark') }
+    loadingScreen: document.getElementById('loadingScreen'), 
+    authScreen: document.getElementById('authScreen'), 
+    mainScreen: document.getElementById('mainScreen'), 
+    loginView: document.getElementById('loginView'), 
+    registerView: document.getElementById('registerView'), forgotPasswordView: document.getElementById('forgotPasswordView'), loginForm: document.getElementById('loginForm'), registerForm: document.getElementById('registerForm'), forgotPasswordForm: document.getElementById('forgotPasswordForm'), authStatus: document.getElementById('authStatus'), userEmailDisplay: document.getElementById('userEmailDisplay'), logoutButton: document.getElementById('logoutButton'), uploadStatus: document.getElementById('uploadStatus'), fileInput: document.getElementById('fileInput'), dropZone: document.getElementById('drop-zone'), fileEditorContainer: document.getElementById('file-editor-container'), fileEditorList: document.getElementById('file-editor-list'), startUploadBtn: document.getElementById('start-upload-btn'), uploadChoiceModal: document.getElementById('upload-choice-modal'), compressOptionsModal: document.getElementById('compress-options-modal'), fileCountSpan: document.getElementById('file-count'), uploadIndividualBtn: document.getElementById('upload-individual-btn'), uploadCompressBtn: document.getElementById('upload-compress-btn'), compressForm: document.getElementById('compress-form'), cancelCompressBtn: document.getElementById('cancel-compress-btn'), listLoader: document.getElementById('listLoader'), fileListContainer: document.getElementById('fileListContainer'), fileListBody: document.getElementById('fileListBody'), noFilesMessage: document.getElementById('noFilesMessage'), errorMessage: document.getElementById('errorMessage'), themeToggle: document.getElementById('theme-toggle'), themeIcons: { system: document.getElementById('theme-icon-system'), light: document.getElementById('theme-icon-light'), dark: document.getElementById('theme-icon-dark') }
 };
 let originalFiles = [];
 
@@ -220,7 +224,6 @@ function displayFiles(response) {
             <td><a href="${file.fileUrl}" target="_blank">${escapeHtml(file.fileName)}</a></td>
             <td>${escapeHtml(file.fileSize)}</td>
             <td>${escapeHtml(file.uploadDate)}</td>
-            <td>${escapeHtml(file.uploaderEmail)}</td>
             `;
         });
     } else if (response.status === 'success') { DOMElements.noFilesMessage.classList.remove('hidden'); }
@@ -231,8 +234,8 @@ DOMElements.fileListBody.addEventListener('click', (e) => {
     const copyButton = e.target.closest('.btn-copy');
     if (copyButton) {
         navigator.clipboard.writeText(copyButton.dataset.url).then(() => {
-            const originalText = copyButton.textContent; copyButton.textContent = 'Đã chép!'; copyButton.disabled = true;
-            setTimeout(() => { copyButton.textContent = originalText; copyButton.disabled = false; }, 2000);
+            const originalText = copyButton.innerHTML; copyButton.innerHTML = '<i class="fas fa-check"></i>'; copyButton.disabled = true;
+            setTimeout(() => { copyButton.innerHTML = originalText; copyButton.disabled = false; }, 2000);
         }).catch(err => { console.error('Không thể sao chép link:', err); alert('Lỗi: Không thể sao chép link.'); });
     }
 });
