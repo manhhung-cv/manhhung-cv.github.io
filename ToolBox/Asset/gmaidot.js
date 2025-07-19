@@ -46,7 +46,7 @@ function initGmailTrick() {
                 const originalContent = buttonElement.innerHTML;
                 const buttonText = buttonElement.querySelector('.copy-text');
                 if (buttonText) {
-                    buttonText.textContent = 'Đã chép!';
+                    buttonText.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
                 } else {
                     buttonElement.innerHTML = '<span style="font-size: 0.875rem;">Đã chép!</span>';
                 }

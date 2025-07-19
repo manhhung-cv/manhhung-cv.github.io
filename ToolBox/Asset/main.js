@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         });
 
-        if (headerTitle) headerTitle.textContent = toolName;
+        if (headerTitle) headerTitle.innerHTML = '<div class="logo">Hunq</div>'+ toolName;
 
     }
 
