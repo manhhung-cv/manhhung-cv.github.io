@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -93,7 +94,7 @@
             transform: translateX(22px);
         }
 
-        #scanner-modal {
+        .modal-backdrop {
             backdrop-filter: blur(5px);
         }
     </style>
@@ -125,7 +126,7 @@
                 <div class="my-6 flex items-center justify-center"><span class="border-b w-1/5 lg:w-1/4"></span><span
                         class="text-xs text-center text-gray-500 uppercase mx-4">Hoặc</span><span
                         class="border-b w-1/5 lg:w-1/4"></span></div>
-                <button id="login-btn"
+                <button id="open-login-modal-btn"
                     class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"><i
                         class="fas fa-sign-in-alt mr-2"></i>Đăng Nhập / Đăng Ký</button>
             </div>
@@ -169,7 +170,7 @@
                                 class="fas fa-sign-out-alt mr-2"></i>Đăng Xuất</button>
                     </div>
                 </div>
-                <p class="text-xs text-gray-400 mt-2">User ID: <span id="display-user-id"></span></p>
+                <p class="text-xs text-gray-400 mt-2">Email: <span id="display-user-email"></span></p>
             </div>
 
             <div id="order-form-container" class="bg-white p-6 rounded-lg shadow-md mb-6">
@@ -232,9 +233,60 @@
         </div>
     </div>
 
+    <!-- Login/Register Modal -->
+    <div id="login-modal"
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-[90] p-4 modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 id="login-modal-title" class="text-xl font-bold">Đăng Nhập</h2>
+                <button id="close-login-modal-btn"
+                    class="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="login-form">
+                    <input type="email" id="login-email" placeholder="Email" class="w-full p-2 mb-4 border rounded"
+                        required>
+                    <input type="password" id="login-password" placeholder="Mật khẩu"
+                        class="w-full p-2 mb-4 border rounded" required>
+                    <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Đăng
+                        Nhập</button>
+                </form>
+                <form id="register-form" class="hidden">
+                    <input type="email" id="register-email" placeholder="Email" class="w-full p-2 mb-4 border rounded"
+                        required>
+                    <input type="password" id="register-password" placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                        class="w-full p-2 mb-4 border rounded" required>
+                    <button type="submit" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Đăng
+                        Ký</button>
+                </form>
+                <p class="text-center text-sm mt-4">
+                    <span id="login-text">Chưa có tài khoản? <a href="#" id="show-register-form"
+                            class="text-blue-600 hover:underline">Đăng ký ngay</a></span>
+                    <span id="register-text" class="hidden">Đã có tài khoản? <a href="#" id="show-login-form"
+                            class="text-blue-600 hover:underline">Đăng nhập</a></span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal"
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-[95] p-4 modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+            <h3 id="confirm-title" class="text-lg font-bold mb-4">Xác nhận hành động</h3>
+            <p id="confirm-message" class="mb-6">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+            <div class="flex justify-end space-x-4">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Hủy</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Xác
+                    nhận</button>
+            </div>
+        </div>
+    </div>
+
+
     <!-- Scanner Modal -->
     <div id="scanner-modal"
-        class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-[90] p-4">
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-[90] p-4 modal-backdrop">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div class="p-4 border-b flex justify-between items-center">
                 <h2 class="text-xl font-bold">Kiểm Tra Đơn Hàng</h2>
@@ -296,7 +348,7 @@
     <script type="module">
         // --- Firebase SDK Imports ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut, signInWithCustomToken, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, where, getDocs, deleteDoc, updateDoc, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase Config & Init ---
@@ -309,7 +361,8 @@
             messagingSenderId: "62807324372",
             appId: "1:62807324372:web:b658e72655d03b8b03ed41",
             measurementId: "G-Q05TTEEG73"
-        }; const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-order-manager';
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-order-manager';
         let app, auth, db;
         try {
             app = initializeApp(firebaseConfig);
@@ -345,6 +398,22 @@
         const toggleViewBtn = document.getElementById('toggle-view-btn');
         const editGroupNameBtn = document.getElementById('edit-group-name-btn');
         const tallyActions = document.getElementById('tally-actions');
+        const loginModal = document.getElementById('login-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+
+        // --- Audio Context ---
+        let audioContextStarted = false;
+        const successSound = new Tone.Synth().toDestination();
+        const errorSound = new Tone.Synth().toDestination();
+
+        function playSuccessSound() {
+            if (!audioContextStarted) { Tone.start(); audioContextStarted = true; }
+            successSound.triggerAttackRelease("C5", "8n");
+        }
+        function playErrorSound() {
+            if (!audioContextStarted) { Tone.start(); audioContextStarted = true; }
+            errorSound.triggerAttackRelease("C3", "8n");
+        }
 
         // --- Helper Functions ---
         const showView = (viewId) => {
@@ -368,18 +437,72 @@
         };
         const getPublicGroupCollectionPath = () => `/artifacts/${appId}/public/data/groups`;
 
+        const showConfirmModal = (title, message, onConfirm) => {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            confirmModal.classList.remove('hidden');
+
+            const confirmBtn = document.getElementById('confirm-ok-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+            const confirmHandler = () => {
+                onConfirm();
+                hideConfirmModal();
+            };
+
+            const cancelHandler = () => {
+                hideConfirmModal();
+            };
+
+            const hideConfirmModal = () => {
+                confirmModal.classList.add('hidden');
+                confirmBtn.removeEventListener('click', confirmHandler);
+                cancelBtn.removeEventListener('click', cancelHandler);
+            };
+
+            confirmBtn.addEventListener('click', confirmHandler);
+            cancelBtn.addEventListener('click', cancelHandler);
+        };
+
+
         // --- Authentication ---
-        const handleLogin = async () => {
+        const handleRegister = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
             loadingSpinner.style.display = 'flex';
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                await createUserWithEmailAndPassword(auth, email, password);
+                loginModal.classList.add('hidden');
+                // onAuthStateChanged will handle the rest
             } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    showToast('Email này đã được sử dụng.', 'error');
+                } else if (error.code === 'auth/weak-password') {
+                    showToast('Mật khẩu quá yếu.', 'error');
+                } else {
+                    showToast('Đăng ký thất bại.', 'error');
+                }
+                console.error("Register Error:", error);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        };
+
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            loadingSpinner.style.display = 'flex';
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                loginModal.classList.add('hidden');
+                showToast('Đăng nhập thành công!', 'success');
+                // onAuthStateChanged will handle the rest
+            } catch (error) {
+                showToast('Sai email hoặc mật khẩu.', 'error');
                 console.error("Login Error:", error);
-                showToast("Đăng nhập thất bại.", "error");
+            } finally {
                 loadingSpinner.style.display = 'none';
             }
         };
@@ -390,7 +513,7 @@
                 ordersListenerUnsubscribe = null;
             }
             await signOut(auth);
-            // onAuthStateChanged will handle UI changes
+            showToast("Đã đăng xuất thành công.", "success");
         };
 
         const handleGuestExit = () => {
@@ -424,7 +547,7 @@
                 }
             } catch (error) {
                 console.error("Error checking group:", error);
-                showToast("Lỗi khi kiểm tra thông tin nhóm.", "error");
+                showToast("Có lỗi xảy ra khi kiểm tra thông tin nhóm.", "error");
                 showView('auth-view');
             }
         };
@@ -473,7 +596,7 @@
                 const groupDocRef = doc(db, getPublicGroupCollectionPath(), groupCode);
                 const docSnap = await getDoc(groupDocRef);
                 if (docSnap.exists()) {
-                    if (!groupCodeFromUrlOrStorage) {
+                    if (!auth.currentUser) {
                         localStorage.setItem('guest_group_id', groupCode);
                     }
                     currentGroupId = groupCode;
@@ -484,15 +607,14 @@
                     if (groupCodeFromUrlOrStorage) {
                         localStorage.removeItem('guest_group_id');
                         history.pushState("", document.title, window.location.pathname + window.location.search);
-                        showView('auth-view');
                     }
                     showToast("Mã nhóm không tồn tại.", "error");
-                    loadingSpinner.style.display = 'none';
+                    showView('auth-view');
                 }
             } catch (error) {
                 console.error("Error viewing with code:", error);
                 showToast("Không thể tìm thấy nhóm.", "error");
-                loadingSpinner.style.display = 'none';
+                showView('auth-view');
             }
         };
 
@@ -648,7 +770,11 @@
 
             if (!isReadOnly) {
                 document.querySelectorAll('.edit-btn').forEach(btn => btn.addEventListener('click', (e) => handleEditOrder(e.currentTarget.dataset.id)));
-                document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', (e) => handleDeleteOrder(e.currentTarget.dataset.id)));
+                document.querySelectorAll('.delete-btn').forEach(btn => btn.addEventListener('click', (e) => {
+                    showConfirmModal('Xóa Đơn Hàng', 'Bạn có chắc chắn muốn xóa đơn hàng này?', () => {
+                        handleDeleteOrder(e.currentTarget.dataset.id);
+                    });
+                }));
             }
         };
 
@@ -666,11 +792,11 @@
             const orderCodes = orderCodesRaw.split('\n').map(code => code.trim()).filter(code => code);
             const ordersRef = collection(db, getPublicGroupCollectionPath(), currentGroupId, "orders");
             let addedCount = 0;
-            let duplicateCount = 0;
+            let duplicateCodes = [];
             const existingOrderCodes = new Set(allOrders.map(o => o.orderCode));
             for (const code of orderCodes) {
                 if (existingOrderCodes.has(code)) {
-                    duplicateCount++;
+                    duplicateCodes.push(code);
                     continue;
                 }
                 try {
@@ -687,8 +813,8 @@
                 }
             }
             let message = `Đã thêm ${addedCount} đơn hàng mới.`;
-            if (duplicateCount > 0) {
-                message += ` Bỏ qua ${duplicateCount} mã bị trùng.`;
+            if (duplicateCodes.length > 0) {
+                showToast(`Các mã sau đã tồn tại: ${duplicateCodes.join(', ')}`, 'error');
             }
             showToast(message, "success");
             document.getElementById('order-code-input').value = '';
@@ -762,12 +888,15 @@
 
             if (foundOrder) {
                 if (foundOrder.ownerName === selectedOwner) {
+                    playSuccessSound();
                     scanResultEl.innerHTML = `<span class="text-green-500">ĐÚNG HÀNG: ${decodedText}</span>`;
                     addOrderToLocalTally(foundOrder, selectedOwner);
                 } else {
+                    playErrorSound();
                     scanResultEl.innerHTML = `<span class="text-yellow-500">SAI HÀNG! Mã này thuộc về ${foundOrder.ownerName}.</span>`;
                 }
             } else {
+                playErrorSound();
                 scanResultEl.innerHTML = `<span class="text-red-500">Không tìm thấy mã '${decodedText}' trong dữ liệu.</span>`;
             }
         };
@@ -870,21 +999,38 @@
         };
 
         const handleClearTallyData = () => {
-            const confirmation = prompt("Hành động này sẽ xoá toàn bộ dữ liệu kiểm kê trên máy này. Nhập 'XOÁ' để xác nhận.");
-            if (confirmation === 'XOÁ') {
+            showConfirmModal('Xóa Dữ Liệu Kiểm Kê', 'Hành động này sẽ xoá toàn bộ dữ liệu kiểm kê trên máy này. Bạn có chắc chắn?', () => {
                 localStorage.removeItem(`tally_${currentGroupId}`);
                 renderTallyTable();
                 showToast("Đã xoá dữ liệu kiểm kê.", "success");
-            } else {
-                showToast("Hành động xoá đã bị huỷ.", "info");
-            }
+            });
         };
 
         // --- Event Listeners ---
-        document.getElementById('login-btn').addEventListener('click', handleLogin);
+        document.getElementById('open-login-modal-btn').addEventListener('click', () => loginModal.classList.remove('hidden'));
+        document.getElementById('close-login-modal-btn').addEventListener('click', () => loginModal.classList.add('hidden'));
+        document.getElementById('show-register-form').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('register-form').classList.remove('hidden');
+            document.getElementById('login-text').classList.add('hidden');
+            document.getElementById('register-text').classList.remove('hidden');
+            document.getElementById('login-modal-title').textContent = 'Đăng Ký';
+        });
+        document.getElementById('show-login-form').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('register-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('register-text').classList.add('hidden');
+            document.getElementById('login-text').classList.remove('hidden');
+            document.getElementById('login-modal-title').textContent = 'Đăng Nhập';
+        });
+
+        document.getElementById('login-form').addEventListener('submit', handleLogin);
+        document.getElementById('register-form').addEventListener('submit', handleRegister);
+
         document.getElementById('view-with-code-btn').addEventListener('click', () => handleViewGroupWithCode(null));
         document.getElementById('create-group-btn').addEventListener('click', handleCreateGroup);
-        // Logout/exit button listener is attached dynamically in loadGroupData
         document.getElementById('add-order-form').addEventListener('submit', handleAddOrder);
         document.getElementById('paste-button').addEventListener('click', handlePaste);
         document.getElementById('auto-paste-toggle').addEventListener('change', handleAutoPasteToggle);
@@ -932,32 +1078,30 @@
         document.getElementById('export-tally-excel-btn').addEventListener('click', handleExportTallyExcel);
         document.getElementById('clear-tally-btn').addEventListener('click', handleClearTallyData);
 
-        // --- Initial Load ---
-        const initialLoad = () => {
+        // --- App Initialization ---
+        onAuthStateChanged(auth, async (user) => {
             const groupCodeFromHash = window.location.hash.substring(1).toUpperCase();
-            if (groupCodeFromHash) {
-                handleViewGroupWithCode(groupCodeFromHash);
+
+            if (!user && groupCodeFromHash) {
+                history.pushState("", document.title, window.location.pathname + window.location.search);
+                await handleViewGroupWithCode(groupCodeFromHash);
                 return;
             }
 
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    localStorage.removeItem('guest_group_id');
-                    currentUserId = user.uid;
-                    document.getElementById('display-user-id').textContent = currentUserId;
-                    await checkUserGroup();
+            if (user) {
+                localStorage.removeItem('guest_group_id');
+                currentUserId = user.uid;
+                document.getElementById('display-user-email').textContent = user.email || 'Ẩn danh';
+                await checkUserGroup();
+            } else {
+                const savedGuestGroupId = localStorage.getItem('guest_group_id');
+                if (savedGuestGroupId) {
+                    await handleViewGroupWithCode(savedGuestGroupId);
                 } else {
-                    const savedGuestGroupId = localStorage.getItem('guest_group_id');
-                    if (savedGuestGroupId) {
-                        await handleViewGroupWithCode(savedGuestGroupId);
-                    } else {
-                        showView('auth-view');
-                    }
+                    showView('auth-view');
                 }
-            });
-        };
-
-        initialLoad();
+            }
+        });
 
     </script>
 </body>
