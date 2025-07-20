@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ lấy thông tin Facebook</title>
+    <style>
+        /* CSS for general styling */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #1877f2;
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+        
+        /* Styling for input fields and button */
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #606770;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dddfe2;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #1877f2;
+            box-shadow: 0 0 0 2px rgba(24, 119, 242, 0.2);
+            outline: none;
+        }
+
+        button {
+            background-color: #1877f2;
+            color: #ffffff;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #166fe5;
+        }
+        
+        button:disabled {
+            background-color: #a0bdf1;
+            cursor: not-allowed;
+        }
+
+        /* Styling for the result display area */
+        #result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #dddfe2;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #result.show {
+            display: flex;
+        }
+
+        #avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid #1877f2;
+            object-fit: cover;
+        }
+
+        #user-info p {
+            margin: 5px 0;
+            font-size: 16px;
+        }
+
+        #user-info p strong {
+            color: #1c1e21;
+        }
+        
+        /* Styling for messages (error, loading) */
+        #message {
+            margin-top: 20px;
+            font-weight: 500;
+        }
+        .error {
+            color: #fa383e;
+        }
+        .loading {
+            color: #1877f2;
+        }
+        
+        .disclaimer {
+            font-size: 12px;
+            color: #e74c3c;
+            margin-top: 15px;
+            text-align: center;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Lấy thông tin Facebook</h1>
+        
+        <div class="input-group">
+            <label for="accessToken">Access Token</label>
+            <input type="password" id="accessToken" placeholder="Nhập Access Token của bạn">
+        </div>
+
+        <div class="input-group">
+            <label for="profileInput">URL / ID / Username Profile</label>
+            <input type="text" id="profileInput" placeholder="Nhập URL, ID hoặc Username">
+        </div>
+
+        <button id="getInfoBtn">Lấy thông tin</button>
+
+        <p class="disclaimer">
+            <strong>Cảnh báo:</strong> Công cụ này sử dụng proxy của bên thứ ba để hoạt động. Không sử dụng Access Token quan trọng.
+        </p>
+
+        <div id="message"></div>
+
+        <div id="result">
+            <img id="avatar" src="" alt="Avatar">
+            <div id="user-info">
+                <p><strong>Tên:</strong> <span id="name"></span></p>
+                <p><strong>ID:</strong> <span id="userId"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const accessTokenInput = document.getElementById('accessToken');
+        const profileInput = document.getElementById('profileInput');
+        const getInfoBtn = document.getElementById('getInfoBtn');
+        const messageDiv = document.getElementById('message');
+        const resultDiv = document.getElementById('result');
+
+        // Function to show messages to the user
+        function showMessage(text, type = 'loading') {
+            messageDiv.textContent = text;
+            messageDiv.className = type;
+        }
+        
+        // Function to clear previous results and messages
+        function clearOutput() {
+            messageDiv.textContent = '';
+            resultDiv.classList.remove('show');
+        }
+
+        // Function to extract username or ID from a Facebook URL
+        function getFacebookIdFromUrl(url) {
+            let fullUrl = url;
+            if (!/^https?:\/\//i.test(url)) {
+                fullUrl = 'https://' + url;
+            }
+            try {
+                const urlObj = new URL(fullUrl);
+                const pathname = urlObj.pathname;
+                
+                const idParam = urlObj.searchParams.get('id');
+                if (pathname.includes('profile.php') && idParam) {
+                    return idParam;
+                }
+
+                const parts = pathname.split('/').filter(part => part);
+                if (parts.length > 0) {
+                    return parts[parts.length - 1];
+                }
+
+                return null;
+            } catch (error) {
+                console.error("Could not parse URL:", error);
+                return null;
+            }
+        }
+
+        // Main function to fetch user information
+        async function fetchFacebookInfo() {
+            clearOutput();
+            
+            const accessToken = accessTokenInput.value.trim();
+            const userInput = profileInput.value.trim();
+
+            if (!accessToken || !userInput) {
+                showMessage('Vui lòng nhập đầy đủ Access Token và URL/ID/Username Profile.', 'error');
+                return;
+            }
+
+            let userIdOrUsername;
+
+            if (userInput.includes('.') || userInput.includes('/')) {
+                userIdOrUsername = getFacebookIdFromUrl(userInput);
+            } else {
+                userIdOrUsername = userInput;
+            }
+
+            if (!userIdOrUsername) {
+                showMessage('URL Profile hoặc ID/Username không hợp lệ. Vui lòng kiểm tra lại.', 'error');
+                return;
+            }
+
+            getInfoBtn.disabled = true;
+            showMessage('Đang tải thông tin...', 'loading');
+            
+            // Construct the original Facebook Graph API URL using version 23.0
+            const fields = 'id,name,picture.width(200).height(200)';
+            const apiUrl = `https://graph.facebook.com/v23.0/${userIdOrUsername}?fields=${fields}&access_token=${accessToken}`;
+
+            // Use a third-party CORS proxy to bypass browser restrictions.
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            const finalApiUrl = proxyUrl + encodeURIComponent(apiUrl);
+
+            try {
+                // Fetch data through the proxy
+                const response = await fetch(finalApiUrl);
+                const data = await response.json();
+
+                if (data.error) {
+                    // Handle errors returned from Facebook's API
+                    console.error('API Error:', data.error);
+                    const errorMessage = data.error?.message || 'Đã xảy ra lỗi không xác định.';
+                    showMessage(`Lỗi: ${errorMessage}`, 'error');
+                } else {
+                    // Success: Display the information
+                    document.getElementById('name').textContent = data.name;
+                    document.getElementById('userId').textContent = data.id;
+                    document.getElementById('avatar').src = data.picture.data.url;
+                    resultDiv.classList.add('show');
+                    messageDiv.textContent = ''; // Clear loading message
+                }
+            } catch (error) {
+                // Network or other errors
+                console.error('Fetch Error:', error);
+                showMessage('Không thể lấy dữ liệu. Proxy có thể đã gặp lỗi hoặc phản hồi không hợp lệ.', 'error');
+            } finally {
+                // Re-enable the button
+                getInfoBtn.disabled = false;
+            }
+        }
+
+        // Add click event listener to the button
+        getInfoBtn.addEventListener('click', fetchFacebookInfo);
+    </script>
+
+</body>
+</html>
