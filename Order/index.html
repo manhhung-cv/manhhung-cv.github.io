@@ -11,32 +11,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
- <!-- Biểu tượng cho web -->
-    <link rel="icon" href="/Asset/logo/logo.png">
-
-    <!-- Biểu tượng iPhone -->
-    <link rel="apple-touch-icon" href="/Asset/logo/logo.png" sizes="150x150">
-
-    <!-- Primary Meta Tags -->
-    <title>Hunq PayGate</title>
-    <meta name="title" content="Hunq Order Checker" />
-    <meta name="description" content="Cổng thanh toán của Đinh Mạnh Hùng" />
-
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="Hunq.online/Order/" />
-    <meta property="og:title" content="Hunq Order Checker" />
-    <meta property="og:description" content="Kiểm soát hàng hoá, làm cho Thy xinh gái ❤️" />
-    <meta property="og:image" content="/Order/Grap/HunqOrder.png" />
-
-    <!-- X (Twitter) -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="Hunq.online/Order/" />
-    <meta property="twitter:title" content="Hunq Order Checker" />
-    <meta property="twitter:description" content="Kiểm soát hàng hoá, làm cho Thy xinh gái ❤️" />
-    <meta property="twitter:image" content="/Order/Grap/HunqOrder.png" />
-
-        <style>
+    <style>
         body {
             font-family: 'Inter', sans-serif;
         }
@@ -126,6 +101,24 @@
         #bulk-edit-btn:disabled {
             background-color: #9ca3af;
             cursor: not-allowed;
+        }
+
+        /* CSS cho chế độ chọn */
+        .selection-cell {
+            display: none;
+        }
+
+        .selection-mode-active .selection-cell {
+            display: table-cell;
+        }
+
+        .selection-mode-active .selection-row {
+            cursor: pointer;
+        }
+
+        .selection-mode-active .selection-row:hover {
+            background-color: #f0f9ff;
+            /* Light blue hover */
         }
     </style>
 </head>
@@ -269,8 +262,12 @@
                             <i class="fas fa-users mr-2"></i>Tách Bảng
                         </button>
                         <button id="open-scanner-btn"
-                            class="bg-green-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex-shrink-0">
+                            class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex-shrink-0">
                             <i class="fas fa-qrcode mr-2"></i>Kiểm Hàng
+                        </button>
+                        <button id="toggle-selection-mode-btn"
+                            class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex-shrink-0">
+                            <i class="fas fa-check-double mr-2"></i> Chọn
                         </button>
                     </div>
                 </div>
@@ -364,14 +361,13 @@
                 </div>
 
                 <div id="scanner-container" class="hidden">
-                    <label class="block text-sm font-medium mb-1">Bước 2: Quét mã đơn hàng</label>
-
-                    <div id="camera-selection-container" class="hidden mt-2 mb-2">
-                        <label for="camera-select" class="block text-sm font-medium mb-1">Bước 2.5: Chọn camera</label>
+                     <div id="camera-selection-container" class="hidden mt-4 mb-2">
+                        <label for="camera-select" class="block text-sm font-medium mb-1">Bước 1.5: Chọn camera</label>
                         <select id="camera-select"
                             class="w-full p-2 border border-gray-300 rounded-md bg-gray-50"></select>
                     </div>
-
+                    
+                    <label class="block text-sm font-medium mb-1">Bước 2: Quét mã đơn hàng</label>
                     <div id="qr-reader"
                         class="w-full md:w-96 mx-auto border-2 border-dashed border-gray-400 rounded-lg overflow-hidden">
                     </div>
@@ -443,7 +439,8 @@
         let html5QrCode = null;
         let isGroupedView = false;
         let selectedOrders = new Set();
-        let availableCameras = []; // To store the list of available cameras
+        let availableCameras = []; // <-- NEW: To store available cameras
+        let isSelectionModeActive = false;
 
         // --- UI Elements ---
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -468,6 +465,8 @@
         const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
         const bulkEditBtn = document.getElementById('bulk-edit-btn');
         const cameraSelect = document.getElementById('camera-select');
+        const cameraSelectionContainer = document.getElementById('camera-selection-container');
+        const toggleSelectionModeBtn = document.getElementById('toggle-selection-mode-btn');
 
 
         // --- Audio Context ---
@@ -799,8 +798,7 @@
 
                 document.getElementById('order-form-container').classList.toggle('hidden', isReadOnly || isGuestMode);
                 document.getElementById('edit-group-name-btn').classList.toggle('hidden', isReadOnly || isGuestMode);
-                bulkActionBar.classList.add('hidden');
-                document.getElementById('bulk-action-bar').classList.toggle('hidden', isReadOnly || isGuestMode)
+                toggleSelectionModeBtn.classList.toggle('hidden', isReadOnly || isGuestMode);
                 backToGroupsBtn.classList.toggle('hidden', isReadOnly);
 
                 const logoutBtn = document.getElementById('logout-btn');
@@ -847,8 +845,8 @@
                 return;
             }
 
-            const headerCheckboxHTML = isReadOnly ? '' : `<th class="w-12 px-6 py-3"><input type="checkbox" class="select-all-checkbox"></th>`;
-            const rowCheckboxHTML = (orderId) => isReadOnly ? '' : `<td class="px-6 py-4"><input type="checkbox" class="row-checkbox" data-id="${orderId}"></td>`;
+            const headerCheckboxHTML = isReadOnly ? '' : `<th class="w-12 px-6 py-3 selection-cell"><input type="checkbox" class="select-all-checkbox"></th>`;
+            const rowCheckboxHTML = (orderId) => isReadOnly ? '' : `<td class="px-6 py-4 selection-cell"><input type="checkbox" class="row-checkbox" data-id="${orderId}"></td>`;
 
             if (isGroupedView) {
                 const owners = [...new Set(orders.map(o => o.ownerName))].sort();
@@ -875,6 +873,7 @@
                     const tableBody = document.getElementById(tableId);
                     ownerOrders.forEach((order, index) => {
                         const row = document.createElement('tr');
+                        row.className = 'selection-row';
                         row.innerHTML = `
                             ${rowCheckboxHTML(order.id)}
                             <td class="px-6 py-4">${index + 1}</td>
@@ -905,6 +904,7 @@
                 const tableBody = document.getElementById(tableId);
                 orders.forEach((order, index) => {
                     const row = document.createElement('tr');
+                    row.className = 'selection-row';
                     row.innerHTML = `
                         ${rowCheckboxHTML(order.id)}
                         <td class="px-6 py-4">${index + 1}</td>
@@ -914,7 +914,26 @@
                     tableBody.appendChild(row);
                 });
             }
+
+            // Re-apply checked state for selected orders
+            selectedOrders.forEach(orderId => {
+                const checkbox = ordersContainer.querySelector(`.row-checkbox[data-id="${orderId}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+            updateAllSelectAllCheckboxes();
         };
+
+        function updateAllSelectAllCheckboxes() {
+            const tables = ordersContainer.querySelectorAll('table');
+            tables.forEach(table => {
+                const allRowCheckboxes = table.querySelectorAll('.row-checkbox');
+                const selectAllCheckbox = table.querySelector('.select-all-checkbox');
+                if (selectAllCheckbox) {
+                    const visibleCheckedCount = Array.from(allRowCheckboxes).filter(cb => cb.checked).length;
+                    selectAllCheckbox.checked = allRowCheckboxes.length > 0 && visibleCheckedCount === allRowCheckboxes.length;
+                }
+            });
+        }
 
         // --- Order Actions ---
         const handleAddOrder = async (e) => {
@@ -967,7 +986,8 @@
         function updateBulkActionBar() {
             if (isGuestMode) return;
             const count = selectedOrders.size;
-            if (count > 0) {
+
+            if (isSelectionModeActive && count > 0) {
                 bulkActionBar.classList.remove('hidden');
                 selectionCountEl.textContent = count;
 
@@ -1064,7 +1084,9 @@
                     }
                 });
             }
-            updateBulkActionBar();
+            if (e.target.matches('.row-checkbox, .select-all-checkbox')) {
+                updateBulkActionBar();
+            }
         });
 
         // --- Search and View Toggle ---
@@ -1084,15 +1106,13 @@
             scannerModal.classList.remove('hidden');
             scanResultEl.innerHTML = '';
             scannerContainer.classList.add('hidden');
+            cameraSelectionContainer.classList.add('hidden'); // Hide camera select by default
 
             const owners = [...new Set(allOrders.map(o => o.ownerName))].sort();
             scannerOwnerSelect.innerHTML = `<option value="">-- Vui lòng chọn --</option>` + owners.map(owner => `<option value="${owner}">${owner}</option>`).join('');
-            scannerOwnerSelect.value = ''; // Reset selection
+            scannerOwnerSelect.value = '';
 
-            const cameraSelectContainer = document.getElementById('camera-selection-container');
-            cameraSelectContainer.classList.add('hidden'); // Hide by default
-
-            // Get available cameras
+            // NEW: Get available cameras
             Html5Qrcode.getCameras().then(cameras => {
                 if (cameras && cameras.length) {
                     availableCameras = cameras;
@@ -1101,7 +1121,7 @@
                         cameraSelect.innerHTML = cameras.map(camera =>
                             `<option value="${camera.id}">${camera.label || `Camera ${camera.id}`}</option>`
                         ).join('');
-                        cameraSelectContainer.classList.remove('hidden');
+                        cameraSelectionContainer.classList.remove('hidden');
                     }
                 }
             }).catch(err => {
@@ -1114,7 +1134,12 @@
 
         const closeScanner = () => {
             if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => scannerModal.classList.add('hidden')).catch(err => console.log("QR Code failed to stop.", err));
+                html5QrCode.stop().then(() => {
+                    scannerModal.classList.add('hidden');
+                }).catch(err => {
+                    console.log("QR Code failed to stop.", err);
+                    scannerModal.classList.add('hidden');
+                });
             } else {
                 scannerModal.classList.add('hidden');
             }
@@ -1141,17 +1166,15 @@
                 scanResultEl.innerHTML = `<span class="text-red-500">Không tìm thấy mã '${decodedText}' trong dữ liệu.</span>`;
             }
         };
-        
-        // --- NEW: Function to start the scanner with correct configs ---
+
+        // UPDATED: Function to start the scanner with selected camera and better focus
         function startQrScanner() {
             const selectedOwner = scannerOwnerSelect.value;
-            
-            // Stop any existing scanner before starting a new one
+
             if (html5QrCode && html5QrCode.isScanning) {
                 html5QrCode.stop().catch(err => console.error("Lỗi khi dừng scanner cũ.", err));
             }
 
-            // Only proceed if an owner is selected
             if (!selectedOwner) {
                 scannerContainer.classList.add('hidden');
                 return;
@@ -1162,37 +1185,45 @@
             html5QrCode = new Html5Qrcode("qr-reader");
 
             const selectedCameraId = cameraSelect.value;
-            let constraints = {};
+            
+            // NEW: Enhanced constraints for focus
+            const constraints = {
+                facingMode: "environment", // Prioritize back camera
+                ...(selectedCameraId && { deviceId: { exact: selectedCameraId } }) // Use selected camera if available
+            };
 
-            // If cameras were detected and one is selected, use its ID.
-            // Otherwise, fall back to the default rear camera.
-            if (availableCameras.length > 0 && selectedCameraId) {
-                constraints = { deviceId: { exact: selectedCameraId } };
-            } else {
-                constraints = { facingMode: "environment" };
-            }
-
-            // Configuration for better scanning performance and distance
             const config = {
-                fps: 10, // Lower FPS can improve performance and detection stability
+                fps: 10,
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                    const qrboxSize = Math.floor(minEdge * 0.7); // Use 70% of the smaller edge
+                    const qrboxSize = Math.floor(minEdge * 0.7);
                     return {
                         width: qrboxSize,
                         height: qrboxSize
                     };
                 },
+                // NEW: Advanced config for continuous focus
+                advanced: [{
+                    focusMode: "continuous"
+                }],
                 experimentalFeatures: {
                     useBarCodeDetectorIfSupported: true
                 }
             };
 
-            html5QrCode.start(constraints, config, onScanSuccess, (err) => { 
-                // This error callback fires when no QR is found, leave empty to avoid console spam.
+            html5QrCode.start(constraints, config, onScanSuccess, (err) => {
+                 // You can add error handling for each frame scan here if needed
             }).catch(err => {
                 console.error("Không thể khởi động QR scanner.", err);
                 showToast(`Lỗi camera: ${err}`, 'error');
+                // Fallback for browsers that don't support advanced constraints
+                if (err.name === "ConstraintNotSatisfiedError") {
+                    showToast("Lỗi lấy nét, thử lại với cấu hình cơ bản.", "info");
+                    const basicConfig = { ...config };
+                    delete basicConfig.advanced;
+                    html5QrCode.start(constraints, basicConfig, onScanSuccess, ()=>{})
+                        .catch(e => showToast(`Không thể khởi động camera.`, "error"));
+                }
             });
         }
 
@@ -1361,8 +1392,8 @@
             }
             handleSearch();
         });
-
-        // --- NEW/UPDATED Event Listeners for scanner ---
+        
+        // NEW: Event listeners for scanner controls
         scannerOwnerSelect.addEventListener('change', startQrScanner);
         cameraSelect.addEventListener('change', startQrScanner);
 
@@ -1372,6 +1403,47 @@
         document.getElementById('clear-tally-btn').addEventListener('click', handleClearTallyData);
         bulkDeleteBtn.addEventListener('click', handleBulkDelete);
         bulkEditBtn.addEventListener('click', handleBulkEditOwner);
+
+        // --- Event Listeners for Selection Mode ---
+        toggleSelectionModeBtn.addEventListener('click', () => {
+            if (isGuestMode) {
+                showToast("Khách không thể sử dụng chức năng này.", "info");
+                return;
+            }
+            isSelectionModeActive = !isSelectionModeActive;
+            ordersContainer.classList.toggle('selection-mode-active', isSelectionModeActive);
+
+            if (isSelectionModeActive) {
+                toggleSelectionModeBtn.innerHTML = `<i class="fas fa-times mr-2"></i> Hủy`;
+                toggleSelectionModeBtn.classList.replace('bg-purple-500', 'bg-gray-700');
+                toggleSelectionModeBtn.classList.replace('hover:bg-purple-600', 'hover:bg-gray-800');
+            } else {
+                toggleSelectionModeBtn.innerHTML = `<i class="fas fa-check-double mr-2"></i> Chọn`;
+                toggleSelectionModeBtn.classList.replace('bg-gray-700', 'bg-purple-500');
+                toggleSelectionModeBtn.classList.replace('hover:bg-gray-800', 'hover:bg-purple-600');
+
+                // Clear all selections and hide the action bar
+                selectedOrders.clear();
+                document.querySelectorAll('.row-checkbox:checked').forEach(cb => cb.checked = false);
+                document.querySelectorAll('.select-all-checkbox:checked').forEach(cb => cb.checked = false);
+                updateBulkActionBar();
+            }
+        });
+
+        ordersContainer.addEventListener('click', (e) => {
+            // Only works in selection mode and if not clicking an interactive element directly
+            if (!isSelectionModeActive || e.target.closest('input, button, a')) return;
+
+            const row = e.target.closest('.selection-row');
+            if (row) {
+                const checkbox = row.querySelector('.row-checkbox');
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    // Manually dispatch a change event to trigger the existing logic
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
 
         // --- App Initialization ---
         onAuthStateChanged(auth, async (user) => {

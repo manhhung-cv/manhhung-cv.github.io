@@ -1,24 +1,1404 @@
- <!-- Biểu tượng cho web -->
-    <link rel="icon" href="/Asset/logo/logo.png">
+<!DOCTYPE html>
+<html lang="vi">
 
-    <!-- Biểu tượng iPhone -->
-    <link rel="apple-touch-icon" href="/Asset/logo/logo.png" sizes="150x150">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Trình Quản Lý Đơn Hàng Nhóm</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-    <!-- Primary Meta Tags -->
-    <title>Hunq PayGate</title>
-    <meta name="title" content="Hunq Order Checker" />
-    <meta name="description" content="Cổng thanh toán của Đinh Mạnh Hùng" />
+    <script src="./Asset/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="Hunq.online/Order/" />
-    <meta property="og:title" content="Hunq Order Checker" />
-    <meta property="og:description" content="Kiểm soát hàng hoá, làm cho Thy xinh gái ❤️" />
-    <meta property="og:image" content="/Order/Grap/HunqOrder.png" />
+        .hidden {
+            display: none;
+        }
 
-    <!-- X (Twitter) -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="Hunq.online/Order/" />
-    <meta property="twitter:title" content="Hunq Order Checker" />
-    <meta property="twitter:description" content="Kiểm soát hàng hoá, làm cho Thy xinh gái ❤️" />
-    <meta property="twitter:image" content="/Order/Grap/HunqOrder.png" />
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            color: white;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        .toast.success {
+            background-color: #28a745;
+        }
+
+        .toast.error {
+            background-color: #dc3545;
+        }
+
+        .toast.info {
+            background-color: #17a2b8;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 28px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #2563eb;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(22px);
+        }
+
+        .modal-backdrop {
+            backdrop-filter: blur(5px);
+        }
+
+        #bulk-edit-btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* CSS cho chế độ chọn */
+        .selection-cell {
+            display: none;
+        }
+
+        .selection-mode-active .selection-cell {
+            display: table-cell;
+        }
+
+        .selection-mode-active .selection-row {
+            cursor: pointer;
+        }
+
+        .selection-mode-active .selection-row:hover {
+            background-color: #f0f9ff;
+            /* Light blue hover */
+        }
+        
+        #qr-reader button {
+            background-color: #3b82f6 !important;
+            color: white !important;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 text-gray-900">
+
+    <div id="app-container" class="container mx-auto p-4 md:p-6">
+
+        <div id="loading-spinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100]">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+        </div>
+
+        <div id="auth-view">
+            <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl mt-10 p-8">
+                <h1 class="text-2xl font-bold text-center text-blue-600">Quản Lý Đơn Hàng Nhóm</h1>
+                <p class="text-center text-gray-600 mt-2">Đăng nhập để tạo nhóm hoặc nhập mã để xem đơn hàng.</p>
+                <div class="mt-8">
+                    <div class="relative"><input type="text" id="group-code-input"
+                            class="peer h-10 w-full border-b-2 border-gray-300 text-gray-900 focus:outline-none focus:border-blue-600"
+                            placeholder=" "><label for="group-code-input"
+                            class="absolute left-0 -top-3.5 text-gray-600 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-blue-600 peer-focus:text-sm">Nhập
+                            mã nhóm</label></div>
+                    <button id="view-with-code-btn"
+                        class="w-full mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"><i
+                            class="fas fa-eye mr-2"></i>Xem Với Mã Nhóm</button>
+                </div>
+                <div class="my-6 flex items-center justify-center"><span class="border-b w-1/5 lg:w-1/4"></span><span
+                        class="text-xs text-center text-gray-500 uppercase mx-4">Hoặc</span><span
+                        class="border-b w-1/5 lg:w-1/4"></span></div>
+                <button id="open-login-modal-btn"
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"><i
+                        class="fas fa-sign-in-alt mr-2"></i>Đăng Nhập / Đăng Ký</button>
+            </div>
+        </div>
+
+        <div id="create-group-view" class="hidden">
+            <div class="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl mt-10 p-8">
+                <h1 class="text-2xl font-bold text-center text-blue-600">Tạo Nhóm Mới</h1>
+                <p class="text-center text-gray-600 mt-2">Bạn chưa có nhóm nào. Hãy tạo một nhóm để bắt đầu.</p>
+                <div class="mt-8">
+                    <div class="relative"><input type="text" id="group-name-input"
+                            class="peer h-10 w-full border-b-2 border-gray-300 text-gray-900 focus:outline-none focus:border-blue-600"
+                            placeholder=" "><label for="group-name-input"
+                            class="absolute left-0 -top-3.5 text-gray-600 text-sm transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-2 peer-focus:-top-3.5 peer-focus:text-blue-600 peer-focus:text-sm">Tên
+                            nhóm</g>
+                    </div>
+                    <button id="create-group-btn"
+                        class="w-full mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"><i
+                            class="fas fa-users mr-2"></i>Tạo Nhóm</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="select-group-view" class="hidden">
+            <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-md mt-10 p-8">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <h1 class="text-2xl font-bold text-blue-600">Chọn Nhóm Của Bạn</h1>
+                    <div class="flex items-center gap-4">
+                        <button id="create-new-group-from-list-btn"
+                            class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"><i
+                                class="fas fa-plus mr-2"></i>Tạo Mới</button>
+                        <button id="user-logout-btn"
+                            class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300"><i
+                                class="fas fa-sign-out-alt mr-2"></i>Đăng Xuất</button>
+                    </div>
+                </div>
+                <div id="group-list-container" class="space-y-3">
+                </div>
+            </div>
+        </div>
+
+
+        <div id="main-app-view" class="hidden">
+            <div class="bg-white p-4 rounded-lg shadow-md mb-6">
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <button id="back-to-groups-btn" class="hidden text-gray-500 hover:text-blue-600"
+                            title="Quay lại danh sách nhóm"><i class="fas fa-arrow-left fa-lg"></i></button>
+                        <h1 id="display-group-name" class="text-2xl font-bold text-blue-600"></h1>
+                        <button id="edit-group-name-btn" class="hidden text-gray-500 hover:text-blue-600"
+                            title="Sửa tên nhóm"><i class="fas fa-pencil-alt"></i></button>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-sm text-gray-500"><span class="font-semibold">Mã nhóm:</span><span
+                                id="display-group-code" class="bg-gray-200 px-2 py-1 rounded font-mono"></span><button
+                                id="copy-group-code-btn" class="ml-2 text-blue-500 hover:text-blue-700"><i
+                                    class="fas fa-copy"></i></button></div>
+                        <button id="logout-btn"
+                            class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-sm"><i
+                                class="fas fa-sign-out-alt mr-2"></i>Đăng Xuất</button>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-400 mt-2">Email: <span id="display-user-email"></span></p>
+            </div>
+
+            <div id="order-form-container" class="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h2 class="text-xl font-semibold mb-4">Thêm Đơn Hàng Mới</h2>
+                <form id="add-order-form">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" id="owner-name-input" placeholder="Tên người sở hữu"
+                            class="w-full p-2 border border-gray-300 rounded-md bg-gray-50" required>
+                        <input type="text" id="notes-input" placeholder="Ghi chú (tùy chọn)"
+                            class="w-full p-2 border border-gray-300 rounded-md bg-gray-50">
+                    </div>
+                    <div class="mt-4">
+                        <label for="order-code-input" class="block text-sm font-medium text-gray-700 mb-1">Mã đơn hàng
+                            (mỗi mã một dòng)</label>
+                        <div class="relative">
+                            <textarea id="order-code-input" rows="4" placeholder="Dán mã đơn hàng vào đây..."
+                                class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 pr-24"></textarea>
+                            <button type="button" id="paste-button"
+                                class="absolute top-2 right-2 bg-blue-500 text-white px-3 py-1 rounded-md text-sm hover:bg-blue-600">
+                                <i class="fas fa-paste"></i> Dán
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-4">
+                        <button type="submit"
+                            class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                            <i class="fas fa-plus-circle mr-2"></i>Thêm Đơn
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <label for="auto-paste-toggle" class="text-sm font-medium">Tự động dán</label>
+                            <label class="switch">
+                                <input type="checkbox" id="auto-paste-toggle">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
+                    <h2 class="text-xl font-semibold">Danh Sách Đơn Hàng</h2>
+                    <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
+                        <input type="text" id="search-input" placeholder="Tìm theo mã đơn hoặc sở hữu..."
+                            class="w-full sm:w-auto flex-grow p-2 border border-gray-300 rounded-md bg-gray-50">
+                        <button id="toggle-view-btn"
+                            class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex-shrink-0">
+                            <i class="fas fa-users mr-2"></i>Tách Bảng
+                        </button>
+                        <button id="open-scanner-btn"
+                            class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex-shrink-0">
+                            <i class="fas fa-qrcode mr-2"></i>Kiểm Hàng
+                        </button>
+                        <button id="toggle-selection-mode-btn"
+                            class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex-shrink-0">
+                            <i class="fas fa-check-double mr-2"></i> Chọn
+                        </button>
+                    </div>
+                </div>
+
+                <div id="bulk-action-bar"
+                    class="hidden bg-blue-50 border border-blue-200 p-3 rounded-lg mb-4 flex items-center justify-between gap-4">
+                    <span class="font-semibold text-blue-800"><span id="selection-count">0</span> mục đã chọn</span>
+                    <div class="flex items-center gap-2">
+                        <button id="bulk-edit-btn"
+                            class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition duration-300"
+                            title="Sửa người sở hữu (chỉ khi các mục đã chọn có cùng chủ sở hữu)">
+                            <i class="fas fa-user-edit"></i> Sửa
+                        </button>
+                        <button id="bulk-delete-btn"
+                            class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg text-sm transition duration-300">
+                            <i class="fas fa-trash"></i> Xóa
+                        </button>
+                    </div>
+                </div>
+                <div id="orders-container" class="space-y-8">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-modal"
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-[90] p-4 modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 id="login-modal-title" class="text-xl font-bold">Đăng Nhập</h2>
+                <button id="close-login-modal-btn"
+                    class="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-6">
+                <form id="login-form">
+                    <input type="email" id="login-email" placeholder="Email" class="w-full p-2 mb-4 border rounded"
+                        required>
+                    <input type="password" id="login-password" placeholder="Mật khẩu"
+                        class="w-full p-2 mb-4 border rounded" required>
+                    <button type="submit" class="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600">Đăng
+                        Nhập</button>
+                </form>
+                <form id="register-form" class="hidden">
+                    <input type="email" id="register-email" placeholder="Email" class="w-full p-2 mb-4 border rounded"
+                        required>
+                    <input type="password" id="register-password" placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                        class="w-full p-2 mb-4 border rounded" required>
+                    <button type="submit" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600">Đăng
+                        Ký</button>
+                </form>
+                <p class="text-center text-sm mt-4">
+                    <span id="login-text">Chưa có tài khoản? <a href="#" id="show-register-form"
+                            class="text-blue-600 hover:underline">Đăng ký ngay</a></span>
+                    <span id="register-text" class="hidden">Đã có tài khoản? <a href="#" id="show-login-form"
+                            class="text-blue-600 hover:underline">Đăng nhập</a></span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div id="confirm-modal"
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-[95] p-4 modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+            <h3 id="confirm-title" class="text-lg font-bold mb-4">Xác nhận hành động</h3>
+            <p id="confirm-message" class="mb-6">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+            <div class="flex justify-end space-x-4">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Hủy</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Xác
+                    nhận</button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="scanner-modal"
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-[90] p-4 modal-backdrop">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div class="p-4 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">Kiểm Tra Đơn Hàng</h2>
+                <button id="close-scanner-btn"
+                    class="text-gray-500 hover:text-gray-800 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="p-6 flex-grow overflow-y-auto">
+                <div class="mb-4">
+                    <label for="scanner-owner-select" class="block text-sm font-medium mb-1">Bước 1: Chọn người nhận
+                        hàng để kiểm</label>
+                    <select id="scanner-owner-select"
+                        class="w-full mt-1 p-2 border border-gray-300 rounded-md bg-gray-50">
+                        <option value="">-- Vui lòng chọn --</option>
+                    </select>
+                </div>
+
+                <div id="scanner-container" class="hidden">
+                    <label class="block text-sm font-medium mb-1">Bước 2: Quét mã đơn hàng</label>
+                    <div id="qr-reader" class="w-full mx-auto border-gray-400 rounded-lg overflow-hidden">
+                    </div>
+                </div>
+
+                <div id="scan-result" class="mt-4 text-center font-semibold h-6"></div>
+
+                <div class="mt-6">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold">Danh sách đã kiểm kê</h3>
+                        <div id="tally-actions" class="hidden space-x-2">
+                            <button id="download-tally-img-btn" title="Tải ảnh"
+                                class="text-gray-500 hover:text-blue-600"><i class="fas fa-camera"></i></button>
+                            <button id="copy-tally-text-btn" title="Sao chép"
+                                class="text-gray-500 hover:text-blue-600"><i class="fas fa-copy"></i></button>
+                            <button id="export-tally-excel-btn" title="Xuất Excel"
+                                class="text-gray-500 hover:text-blue-600"><i class="fas fa-file-excel"></i></button>
+                            <button id="clear-tally-btn" title="Xóa dữ liệu" class="text-red-500 hover:text-red-700"><i
+                                    class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div id="tally-table-container" class="overflow-x-auto mt-2 border rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium uppercase">Mã Đơn</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium uppercase">Người Kiểm</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium uppercase">Thời Gian</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tally-table-body" class="divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-notification" class="toast"></div>
+
+    <script type="module">
+        // --- Firebase SDK Imports ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, addDoc, collection, onSnapshot, query, where, getDocs, deleteDoc, updateDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase Config & Init ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyArx-5hcMsrq9DHTcy5HvN_aVehrVDv3HM",
+            authDomain: "order-manager-d4042.firebaseapp.com",
+            projectId: "order-manager-d4042",
+            storageBucket: "order-manager-d4042.appspot.com",
+            messagingSenderId: "62807324372",
+            appId: "1:62807324372:web:b658e72655d03b8b03ed41",
+            measurementId: "G-Q05TTEEG73"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = firebaseConfig.appId;
+
+        // --- Global State ---
+        let currentUserId = null;
+        let currentGroupId = null;
+        let ordersListenerUnsubscribe = null;
+        let isAutoPasteEnabled = false;
+        let isGuestMode = false;
+        let allOrders = [];
+        let html5QrcodeScanner = null; // Updated for new scanner
+        let isGroupedView = false;
+        let selectedOrders = new Set();
+        let isSelectionModeActive = false;
+
+        // --- UI Elements ---
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const authView = document.getElementById('auth-view');
+        const createGroupView = document.getElementById('create-group-view');
+        const selectGroupView = document.getElementById('select-group-view');
+        const mainAppView = document.getElementById('main-app-view');
+        const searchInput = document.getElementById('search-input');
+        const ordersContainer = document.getElementById('orders-container');
+        const scannerModal = document.getElementById('scanner-modal');
+        const scannerOwnerSelect = document.getElementById('scanner-owner-select');
+        const scannerContainer = document.getElementById('scanner-container');
+        const scanResultEl = document.getElementById('scan-result');
+        const toggleViewBtn = document.getElementById('toggle-view-btn');
+        const editGroupNameBtn = document.getElementById('edit-group-name-btn');
+        const tallyActions = document.getElementById('tally-actions');
+        const loginModal = document.getElementById('login-modal');
+        const confirmModal = document.getElementById('confirm-modal');
+        const backToGroupsBtn = document.getElementById('back-to-groups-btn');
+        const bulkActionBar = document.getElementById('bulk-action-bar');
+        const selectionCountEl = document.getElementById('selection-count');
+        const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+        const bulkEditBtn = document.getElementById('bulk-edit-btn');
+        const toggleSelectionModeBtn = document.getElementById('toggle-selection-mode-btn');
+
+
+        // --- Audio Context ---
+        let audioContextStarted = false;
+        const successSound = new Tone.Synth().toDestination();
+        const errorSound = new Tone.Synth().toDestination();
+
+        function playSuccessSound() {
+            if (!audioContextStarted) { Tone.start(); audioContextStarted = true; }
+            successSound.triggerAttackRelease("C5", "8n");
+        }
+        function playErrorSound() {
+            if (!audioContextStarted) { Tone.start(); audioContextStarted = true; }
+            errorSound.triggerAttackRelease("C3", "8n");
+        }
+
+        // --- Helper Functions ---
+        const showView = (viewId) => {
+            [authView, createGroupView, mainAppView, selectGroupView].forEach(view => view.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+            loadingSpinner.style.display = 'none';
+        };
+        const showToast = (message, type = 'info') => {
+            const toast = document.getElementById('toast-notification');
+            toast.textContent = message;
+            toast.className = `toast show ${type}`;
+            setTimeout(() => { toast.className = 'toast'; }, 3000);
+        };
+        const generateRandomCode = (length = 8) => {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        };
+        const getPublicGroupCollectionPath = () => `/artifacts/${appId}/public/data/groups`;
+
+        const showConfirmModal = (title, message, onConfirm) => {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            confirmModal.classList.remove('hidden');
+
+            const confirmBtn = document.getElementById('confirm-ok-btn');
+            const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+            const confirmHandler = () => {
+                onConfirm();
+                hideConfirmModal();
+            };
+
+            const cancelHandler = () => {
+                showToast("Hành động đã được hủy.", "info");
+                hideConfirmModal();
+            };
+
+            const hideConfirmModal = () => {
+                confirmModal.classList.add('hidden');
+                confirmBtn.removeEventListener('click', confirmHandler);
+                cancelBtn.removeEventListener('click', cancelHandler);
+            };
+
+            confirmBtn.addEventListener('click', confirmHandler);
+            cancelBtn.addEventListener('click', cancelHandler);
+        };
+
+
+        // --- Authentication ---
+        const handleRegister = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            loadingSpinner.style.display = 'flex';
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                loginModal.classList.add('hidden');
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    showToast('Email này đã được sử dụng.', 'error');
+                } else if (error.code === 'auth/weak-password') {
+                    showToast('Mật khẩu quá yếu.', 'error');
+                } else {
+                    showToast('Đăng ký thất bại.', 'error');
+                }
+                console.error("Register Error:", error);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        };
+
+        const handleLogin = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            loadingSpinner.style.display = 'flex';
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                loginModal.classList.add('hidden');
+                showToast('Đăng nhập thành công!', 'success');
+            } catch (error) {
+                showToast('Sai email hoặc mật khẩu.', 'error');
+                console.error("Login Error:", error);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        };
+
+        const handleLogout = async () => {
+            if (ordersListenerUnsubscribe) {
+                ordersListenerUnsubscribe();
+                ordersListenerUnsubscribe = null;
+            }
+            await signOut(auth);
+            showToast("Đã đăng xuất thành công.", "success");
+        };
+
+        const handleGuestExit = () => {
+            localStorage.removeItem('guest_group_id');
+            if (ordersListenerUnsubscribe) {
+                ordersListenerUnsubscribe();
+                ordersListenerUnsubscribe = null;
+            }
+            currentGroupId = null;
+            isGuestMode = false;
+            allOrders = [];
+            history.pushState("", document.title, window.location.pathname + window.location.search);
+            showView('auth-view');
+            showToast("Đã thoát khỏi nhóm.", "info");
+        };
+
+        // --- Group Management ---
+        const renderGroupSelection = (groupDocs) => {
+            const container = document.getElementById('group-list-container');
+            container.innerHTML = '';
+            if (groupDocs.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500">Bạn chưa có nhóm nào. Hãy tạo một nhóm mới!</p>`;
+            }
+            groupDocs.forEach(doc => {
+                const group = doc.data();
+                const div = document.createElement('div');
+                div.className = 'p-4 border rounded-lg flex flex-col sm:flex-row justify-between items-center gap-3';
+                div.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-lg">${group.groupName}</p>
+                        <p class="text-sm text-gray-500 font-mono">${doc.id}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button data-group-id="${doc.id}" class="select-group-btn bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Chọn</button>
+                        <button data-group-id="${doc.id}" data-group-name="${group.groupName}" class="delete-group-btn bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Xóa</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+
+            document.querySelectorAll('.select-group-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    currentGroupId = e.currentTarget.dataset.groupId;
+                    isGuestMode = false;
+                    loadGroupData(currentGroupId);
+                });
+            });
+
+            document.querySelectorAll('.delete-group-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const groupId = e.currentTarget.dataset.groupId;
+                    const groupName = e.currentTarget.dataset.groupName;
+                    showConfirmModal(`Xóa Nhóm "${groupName}"`, 'Hành động này không thể hoàn tác. Tất cả đơn hàng trong nhóm cũng sẽ bị xóa.', () => {
+                        handleDeleteGroup(groupId);
+                    });
+                });
+            });
+        };
+
+        const checkUserGroup = async () => {
+            loadingSpinner.style.display = 'flex';
+            const groupsRef = collection(db, getPublicGroupCollectionPath());
+            const q = query(groupsRef, where("ownerId", "==", currentUserId));
+            try {
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    showView('create-group-view');
+                } else {
+                    renderGroupSelection(querySnapshot.docs);
+                    showView('select-group-view');
+                }
+            } catch (error) {
+                console.error("Error checking group:", error);
+                showToast("Có lỗi xảy ra khi kiểm tra thông tin nhóm.", "error");
+                showView('auth-view');
+            }
+        };
+
+        const handleCreateGroup = async () => {
+            const groupName = document.getElementById('group-name-input').value.trim();
+            if (!groupName) {
+                showToast("Vui lòng nhập tên nhóm.", "error");
+                return;
+            }
+            loadingSpinner.style.display = 'flex';
+            let newGroupId;
+            let groupExists = true;
+            while (groupExists) {
+                newGroupId = generateRandomCode();
+                const groupDocRef = doc(db, getPublicGroupCollectionPath(), newGroupId);
+                const docSnap = await getDoc(groupDocRef);
+                groupExists = docSnap.exists();
+            }
+            try {
+                const groupDocRef = doc(db, getPublicGroupCollectionPath(), newGroupId);
+                await setDoc(groupDocRef, {
+                    groupName: groupName,
+                    ownerId: currentUserId,
+                    createdAt: serverTimestamp()
+                });
+                currentGroupId = newGroupId;
+                isGuestMode = false;
+                await loadGroupData(currentGroupId);
+                showToast("Tạo nhóm thành công!", "success");
+            } catch (error) {
+                console.error("Error creating group:", error);
+                showToast("Tạo nhóm thất bại.", "error");
+                loadingSpinner.style.display = 'none';
+            }
+        };
+
+        const handleDeleteGroup = async (groupId) => {
+            loadingSpinner.style.display = 'flex';
+            try {
+                const ordersRef = collection(db, getPublicGroupCollectionPath(), groupId, "orders");
+                const ordersSnapshot = await getDocs(ordersRef);
+                const batch = writeBatch(db);
+                ordersSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+
+                const groupDocRef = doc(db, getPublicGroupCollectionPath(), groupId);
+                await deleteDoc(groupDocRef);
+
+                showToast("Đã xóa nhóm thành công.", "success");
+                await checkUserGroup();
+            } catch (error) {
+                console.error("Error deleting group:", error);
+                showToast("Xóa nhóm thất bại.", "error");
+                loadingSpinner.style.display = 'none';
+            }
+        };
+
+        const handleViewGroupWithCode = async (groupCodeFromUrlOrStorage) => {
+            const groupCode = groupCodeFromUrlOrStorage || document.getElementById('group-code-input').value.trim().toUpperCase();
+            if (!groupCode) {
+                showToast("Vui lòng nhập mã nhóm.", "error");
+                return;
+            }
+            loadingSpinner.style.display = 'flex';
+            try {
+                const groupDocRef = doc(db, getPublicGroupCollectionPath(), groupCode);
+                const docSnap = await getDoc(groupDocRef);
+                if (docSnap.exists()) {
+                    if (!auth.currentUser) {
+                        localStorage.setItem('guest_group_id', groupCode);
+                    }
+                    currentGroupId = groupCode;
+                    isGuestMode = true;
+                    await loadGroupData(currentGroupId, true);
+                    showToast(`Đang xem nhóm: ${docSnap.data().groupName}`, "info");
+                } else {
+                    if (groupCodeFromUrlOrStorage) {
+                        localStorage.removeItem('guest_group_id');
+                        history.pushState("", document.title, window.location.pathname + window.location.search);
+                    }
+                    showToast("Mã nhóm không tồn tại.", "error");
+                    showView('auth-view');
+                }
+            } catch (error) {
+                console.error("Error viewing with code:", error);
+                showToast("Không thể tìm thấy nhóm.", "error");
+                showView('auth-view');
+            }
+        };
+
+        const handleEditGroupName = async () => {
+            if (isGuestMode) return;
+            const currentName = document.getElementById('display-group-name').textContent;
+            const newName = prompt("Nhập tên nhóm mới:", currentName);
+
+            if (newName && newName.trim() !== '' && newName.trim() !== currentName) {
+                loadingSpinner.style.display = 'flex';
+                const groupDocRef = doc(db, getPublicGroupCollectionPath(), currentGroupId);
+                try {
+                    await updateDoc(groupDocRef, { groupName: newName.trim() });
+                    showToast("Đã cập nhật tên nhóm!", "success");
+                } catch (error) {
+                    console.error("Error updating group name:", error);
+                    showToast("Cập nhật tên nhóm thất bại.", "error");
+                } finally {
+                    loadingSpinner.style.display = 'none';
+                }
+            }
+        };
+
+        // --- Data Loading and Rendering ---
+        const loadGroupData = async (groupId, isReadOnly = false) => {
+            try {
+                const groupDocRef = doc(db, getPublicGroupCollectionPath(), groupId);
+                onSnapshot(groupDocRef, (docSnap) => {
+                    if (!docSnap.exists()) {
+                        showToast("Nhóm không còn tồn tại.", "error");
+                        isGuestMode ? handleGuestExit() : checkUserGroup();
+                        return;
+                    }
+                    document.getElementById('display-group-name').textContent = docSnap.data().groupName;
+                });
+
+                const displayCodeEl = document.getElementById('display-group-code');
+                const cleanURL = `${window.location.origin}${window.location.pathname}`;
+                const groupURL = `${cleanURL}#${groupId}`;
+
+                document.getElementById('copy-group-code-btn').dataset.copyLink = groupURL;
+
+                const urlLengthThreshold = 20;
+                if (groupURL.length > urlLengthThreshold) {
+                    displayCodeEl.textContent = groupId;
+                    displayCodeEl.previousElementSibling.textContent = 'Mã nhóm:';
+                } else {
+                    displayCodeEl.textContent = groupURL;
+                    displayCodeEl.previousElementSibling.textContent = 'Link mời:';
+                }
+
+                document.getElementById('order-form-container').classList.toggle('hidden', isReadOnly || isGuestMode);
+                document.getElementById('edit-group-name-btn').classList.toggle('hidden', isReadOnly || isGuestMode);
+                toggleSelectionModeBtn.classList.toggle('hidden', isReadOnly || isGuestMode);
+                backToGroupsBtn.classList.toggle('hidden', isReadOnly);
+
+                const logoutBtn = document.getElementById('logout-btn');
+                const newLogoutBtn = logoutBtn.cloneNode(true);
+                logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+
+                if (isReadOnly) {
+                    newLogoutBtn.innerHTML = `<i class="fas fa-door-open mr-2"></i>Thoát Nhóm`;
+                    newLogoutBtn.addEventListener('click', handleGuestExit);
+                } else {
+                    newLogoutBtn.innerHTML = `<i class="fas fa-sign-out-alt mr-2"></i>Đăng Xuất`;
+                    newLogoutBtn.addEventListener('click', handleLogout);
+                }
+
+                if (ordersListenerUnsubscribe) ordersListenerUnsubscribe();
+
+                const ordersRef = collection(db, getPublicGroupCollectionPath(), groupId, "orders");
+                ordersListenerUnsubscribe = onSnapshot(query(ordersRef), (querySnapshot) => {
+                    allOrders = [];
+                    selectedOrders.clear();
+                    querySnapshot.forEach(doc => {
+                        allOrders.push({ id: doc.id, ...doc.data() });
+                    });
+                    allOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                    handleSearch();
+                    updateBulkActionBar();
+                }, (error) => {
+                    console.error("Snapshot Error:", error);
+                    showToast("Không thể tải danh sách đơn hàng.", "error");
+                });
+                showView('main-app-view');
+            } catch (error) {
+                console.error("Error loading group data:", error);
+                showToast("Không thể tải dữ liệu nhóm.", "error");
+                showView('auth-view');
+            }
+        };
+
+        const renderOrders = (orders, isReadOnly) => {
+            ordersContainer.innerHTML = '';
+
+            if (orders.length === 0) {
+                ordersContainer.innerHTML = `<p class="text-center py-4">Không có đơn hàng nào khớp.</p>`;
+                return;
+            }
+
+            const headerCheckboxHTML = isReadOnly ? '' : `<th class="w-12 px-6 py-3 selection-cell"><input type="checkbox" class="select-all-checkbox"></th>`;
+            const rowCheckboxHTML = (orderId) => isReadOnly ? '' : `<td class="px-6 py-4 selection-cell"><input type="checkbox" class="row-checkbox" data-id="${orderId}"></td>`;
+
+            if (isGroupedView) {
+                const owners = [...new Set(orders.map(o => o.ownerName))].sort();
+                owners.forEach(owner => {
+                    const ownerOrders = orders.filter(o => o.ownerName === owner);
+                    const tableId = `table-for-${owner.replace(/[^a-zA-Z0-9]/g, '-')}`;
+                    const groupDiv = document.createElement('div');
+                    groupDiv.innerHTML = `
+                        <h3 class="text-lg font-semibold mb-2 p-2 bg-gray-200 rounded-t-lg">${owner} (${ownerOrders.length} đơn)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        ${headerCheckboxHTML}
+                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">STT</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">Mã Đơn Hàng</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium uppercase">Ghi Chú</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="${tableId}" class="bg-white divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>`;
+                    ordersContainer.appendChild(groupDiv);
+                    const tableBody = document.getElementById(tableId);
+                    ownerOrders.forEach((order, index) => {
+                        const row = document.createElement('tr');
+                        row.className = 'selection-row';
+                        row.innerHTML = `
+                            ${rowCheckboxHTML(order.id)}
+                            <td class="px-6 py-4">${index + 1}</td>
+                            <td class="px-6 py-4 font-mono">${order.orderCode || ''}</td>
+                            <td class="px-6 py-4">${order.notes || ''}</td>`;
+                        tableBody.appendChild(row);
+                    });
+                });
+            } else {
+                const tableId = `single-table`;
+                const tableContainer = document.createElement('div');
+                tableContainer.innerHTML = `
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    ${headerCheckboxHTML}
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase">STT</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase">Mã Đơn Hàng</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase">Sở Hữu</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium uppercase">Ghi Chú</th>
+                                </tr>
+                            </thead>
+                            <tbody id="${tableId}" class="bg-white divide-y divide-gray-200"></tbody>
+                        </table>
+                    </div>`;
+                ordersContainer.appendChild(tableContainer);
+                const tableBody = document.getElementById(tableId);
+                orders.forEach((order, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'selection-row';
+                    row.innerHTML = `
+                        ${rowCheckboxHTML(order.id)}
+                        <td class="px-6 py-4">${index + 1}</td>
+                        <td class="px-6 py-4 font-mono">${order.orderCode || ''}</td>
+                        <td class="px-6 py-4">${order.ownerName || ''}</td>
+                        <td class="px-6 py-4">${order.notes || ''}</td>`;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            // Re-apply checked state for selected orders
+            selectedOrders.forEach(orderId => {
+                const checkbox = ordersContainer.querySelector(`.row-checkbox[data-id="${orderId}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
+            updateAllSelectAllCheckboxes();
+        };
+
+        function updateAllSelectAllCheckboxes() {
+            const tables = ordersContainer.querySelectorAll('table');
+            tables.forEach(table => {
+                const allRowCheckboxes = table.querySelectorAll('.row-checkbox');
+                const selectAllCheckbox = table.querySelector('.select-all-checkbox');
+                if (selectAllCheckbox) {
+                    const visibleCheckedCount = Array.from(allRowCheckboxes).filter(cb => cb.checked).length;
+                    selectAllCheckbox.checked = allRowCheckboxes.length > 0 && visibleCheckedCount === allRowCheckboxes.length;
+                }
+            });
+        }
+
+        // --- Order Actions ---
+        const handleAddOrder = async (e) => {
+            e.preventDefault();
+            if (isGuestMode) return;
+            const ownerName = document.getElementById('owner-name-input').value.trim();
+            const notes = document.getElementById('notes-input').value.trim();
+            const orderCodesRaw = document.getElementById('order-code-input').value.trim();
+            if (!ownerName || !orderCodesRaw) {
+                showToast("Vui lòng nhập tên sở hữu và mã đơn hàng.", "error");
+                return;
+            }
+            const orderCodes = orderCodesRaw.split('\n').map(code => code.trim()).filter(code => code);
+            const ordersRef = collection(db, getPublicGroupCollectionPath(), currentGroupId, "orders");
+            let addedCount = 0;
+            let duplicateCodes = [];
+            const existingOrderCodes = new Set(allOrders.map(o => o.orderCode));
+
+            const batch = writeBatch(db);
+            for (const code of orderCodes) {
+                if (existingOrderCodes.has(code)) {
+                    duplicateCodes.push(code);
+                    continue;
+                }
+                const newOrderRef = doc(ordersRef);
+                batch.set(newOrderRef, {
+                    orderCode: code,
+                    ownerName: ownerName,
+                    notes: notes,
+                    createdAt: serverTimestamp()
+                });
+                addedCount++;
+            }
+            try {
+                await batch.commit();
+                let message = `Đã thêm ${addedCount} đơn hàng mới.`;
+                if (duplicateCodes.length > 0) {
+                    showToast(`Các mã sau đã tồn tại: ${duplicateCodes.join(', ')}`, 'error');
+                }
+                showToast(message, "success");
+                document.getElementById('order-code-input').value = '';
+                document.getElementById('notes-input').value = '';
+            } catch (error) {
+                console.error("Error adding orders:", error);
+                showToast(`Lỗi khi thêm đơn hàng hàng loạt.`, "error");
+            }
+        };
+
+        // --- BULK ACTION FUNCTIONS ---
+        function updateBulkActionBar() {
+            if (isGuestMode) return;
+            const count = selectedOrders.size;
+
+            if (isSelectionModeActive && count > 0) {
+                bulkActionBar.classList.remove('hidden');
+                selectionCountEl.textContent = count;
+
+                const selectedItems = allOrders.filter(order => selectedOrders.has(order.id));
+                const firstOwnerName = selectedItems.length > 0 ? selectedItems[0].ownerName : null;
+                const allHaveSameOwner = selectedItems.every(order => order.ownerName === firstOwnerName);
+
+                bulkEditBtn.disabled = !allHaveSameOwner;
+            } else {
+                bulkActionBar.classList.add('hidden');
+            }
+        }
+
+        async function handleBulkDelete() {
+            const count = selectedOrders.size;
+            if (count === 0) return;
+
+            showConfirmModal(
+                `Xóa ${count} mục`,
+                `Bạn có chắc chắn muốn xóa ${count} đơn hàng đã chọn không? Hành động này không thể hoàn tác.`,
+                async () => {
+                    loadingSpinner.style.display = 'flex';
+                    const batch = writeBatch(db);
+                    selectedOrders.forEach(orderId => {
+                        const docRef = doc(db, getPublicGroupCollectionPath(), currentGroupId, "orders", orderId);
+                        batch.delete(docRef);
+                    });
+
+                    try {
+                        await batch.commit();
+                        showToast(`Đã xóa thành công ${count} đơn hàng.`, 'success');
+                    } catch (error) {
+                        console.error("Bulk delete failed:", error);
+                        showToast("Xóa hàng loạt thất bại.", "error");
+                    } finally {
+                        loadingSpinner.style.display = 'none';
+                    }
+                }
+            );
+        }
+
+        async function handleBulkEditOwner() {
+            const selectedItems = allOrders.filter(order => selectedOrders.has(order.id));
+            if (selectedItems.length === 0) return;
+
+            const currentOwnerName = selectedItems[0].ownerName;
+            const newOwnerName = prompt("Nhập tên người sở hữu mới:", currentOwnerName);
+
+            if (newOwnerName && newOwnerName.trim() !== '' && newOwnerName.trim() !== currentOwnerName) {
+                loadingSpinner.style.display = 'flex';
+                const batch = writeBatch(db);
+                selectedOrders.forEach(orderId => {
+                    const docRef = doc(db, getPublicGroupCollectionPath(), currentGroupId, "orders", orderId);
+                    batch.update(docRef, { ownerName: newOwnerName.trim() });
+                });
+
+                try {
+                    await batch.commit();
+                    showToast(`Đã cập nhật ${selectedOrders.size} đơn hàng.`, 'success');
+                } catch (error) {
+                    console.error("Bulk edit failed:", error);
+                    showToast("Cập nhật hàng loạt thất bại.", "error");
+                } finally {
+                    loadingSpinner.style.display = 'none';
+                }
+            }
+        }
+
+        ordersContainer.addEventListener('change', (e) => {
+            if (e.target.matches('.row-checkbox')) {
+                const orderId = e.target.dataset.id;
+                if (e.target.checked) {
+                    selectedOrders.add(orderId);
+                } else {
+                    selectedOrders.delete(orderId);
+                }
+                const table = e.target.closest('table');
+                const allRowCheckboxes = table.querySelectorAll('.row-checkbox');
+                const selectAllCheckbox = table.querySelector('.select-all-checkbox');
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = allRowCheckboxes.length > 0 && Array.from(allRowCheckboxes).every(cb => cb.checked);
+                }
+
+            } else if (e.target.matches('.select-all-checkbox')) {
+                const table = e.target.closest('table');
+                const rowCheckboxes = table.querySelectorAll('.row-checkbox');
+                rowCheckboxes.forEach(checkbox => {
+                    checkbox.checked = e.target.checked;
+                    const orderId = checkbox.dataset.id;
+                    if (e.target.checked) {
+                        selectedOrders.add(orderId);
+                    } else {
+                        selectedOrders.delete(orderId);
+                    }
+                });
+            }
+            if (e.target.matches('.row-checkbox, .select-all-checkbox')) {
+                updateBulkActionBar();
+            }
+        });
+
+        // --- Search and View Toggle ---
+        const handleSearch = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const filteredOrders = searchTerm
+                ? allOrders.filter(order =>
+                    order.orderCode.toLowerCase().includes(searchTerm) ||
+                    order.ownerName.toLowerCase().includes(searchTerm)
+                )
+                : allOrders;
+            renderOrders(filteredOrders, isGuestMode);
+        };
+
+        // --- Scanner & Tally Logic ---
+        const openScanner = () => {
+            scannerModal.classList.remove('hidden');
+            scanResultEl.innerHTML = '';
+            scannerContainer.classList.add('hidden');
+
+            const owners = [...new Set(allOrders.map(o => o.ownerName))].sort();
+            scannerOwnerSelect.innerHTML = `<option value="">-- Vui lòng chọn --</option>` + owners.map(owner => `<option value="${owner}">${owner}</option>`).join('');
+            scannerOwnerSelect.value = ''; // Reset selection
+
+            renderTallyTable();
+        };
+
+        const closeScanner = () => {
+            scannerModal.classList.add('hidden');
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().catch(err => {
+                    console.log("Error clearing the scanner, may be already closed.", err);
+                });
+                html5QrcodeScanner = null;
+            }
+        };
+
+        const onScanSuccess = (decodedText, decodedResult) => {
+            const selectedOwner = scannerOwnerSelect.value;
+            if (!selectedOwner) return;
+
+            const foundOrder = allOrders.find(o => o.orderCode === decodedText);
+
+            if (foundOrder) {
+                if (foundOrder.ownerName === selectedOwner) {
+                    playSuccessSound();
+                    scanResultEl.innerHTML = `<span class="text-green-500">ĐÚNG HÀNG: ${decodedText}</span>`;
+                    addOrderToLocalTally(foundOrder, selectedOwner);
+                } else {
+                    playErrorSound();
+                    scanResultEl.innerHTML = `<span class="text-yellow-500">SAI HÀNG! Mã này thuộc về ${foundOrder.ownerName}.</span>`;
+                }
+            } else {
+                playErrorSound();
+                scanResultEl.innerHTML = `<span class="text-red-500">Không tìm thấy mã '${decodedText}' trong dữ liệu.</span>`;
+            }
+        };
+
+        const getTallyData = () => JSON.parse(localStorage.getItem(`tally_${currentGroupId}`) || '[]');
+        const saveTallyData = (data) => localStorage.setItem(`tally_${currentGroupId}`, JSON.stringify(data));
+
+        const addOrderToLocalTally = (order, tallyOwner) => {
+            const tallyData = getTallyData();
+            if (tallyData.some(item => item.orderCode === order.orderCode)) {
+                scanResultEl.innerHTML = `<span class="text-blue-500">Mã ${order.orderCode} đã được kiểm kê rồi.</span>`;
+                return;
+            }
+            tallyData.push({
+                orderCode: order.orderCode,
+                tallyOwner: tallyOwner,
+                timestamp: new Date().toISOString()
+            });
+            saveTallyData(tallyData);
+            showToast(`Đã kiểm kê: ${order.orderCode}`, 'success');
+            renderTallyTable();
+        };
+
+        const renderTallyTable = () => {
+            const tallyData = getTallyData();
+            const tableBody = document.getElementById('tally-table-body');
+            tableBody.innerHTML = '';
+            tallyData.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-4 py-2 font-mono">${item.orderCode}</td>
+                    <td class="px-4 py-2">${item.tallyOwner}</td>
+                    <td class="px-4 py-2 text-sm">${new Date(item.timestamp).toLocaleString('vi-VN')}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            tallyActions.classList.toggle('hidden', tallyData.length === 0);
+        };
+
+        const handlePaste = async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                const orderCodeInput = document.getElementById('order-code-input');
+                const currentValue = orderCodeInput.value.trim();
+                orderCodeInput.value = (currentValue ? currentValue + '\n' : '') + text;
+                orderCodeInput.focus();
+                showToast("Đã dán từ clipboard.", "info");
+            } catch (err) {
+                console.error('Failed to read clipboard contents: ', err);
+                showToast("Không thể đọc clipboard.", "error");
+            }
+        };
+
+        const handleAutoPasteToggle = (e) => {
+            isAutoPasteEnabled = e.target.checked;
+            showToast(`Tự động dán: ${isAutoPasteEnabled ? 'Bật' : 'Tắt'}`, "info");
+        };
+
+        window.addEventListener('focus', async () => {
+            if (isAutoPasteEnabled && mainAppView.offsetParent !== null && !isGuestMode) {
+                await handlePaste();
+            }
+        });
+
+        // --- Tally Actions ---
+        const handleDownloadTallyImage = () => {
+            const tableContainer = document.getElementById('tally-table-container');
+            html2canvas(tableContainer).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `kiem-ke-${currentGroupId}-${new Date().toISOString().slice(0, 10)}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        };
+
+        const handleCopyTallyText = () => {
+            const data = getTallyData();
+            const text = "Mã Đơn\tNgười Kiểm\tThời Gian\n" +
+                data.map(item => `${item.orderCode}\t${item.tallyOwner}\t${new Date(item.timestamp).toLocaleString('vi-VN')}`)
+                    .join('\n');
+            navigator.clipboard.writeText(text).then(() => {
+                showToast('Đã sao chép dữ liệu kiểm kê!', 'success');
+            }).catch(err => {
+                showToast('Sao chép thất bại.', 'error');
+            });
+        };
+
+        const handleExportTallyExcel = () => {
+            const data = getTallyData();
+            let csvContent = "data:text/csv;charset=utf-8,Mã Đơn,Người Kiểm,Thời Gian\n";
+            csvContent += data.map(item => `"${item.orderCode}","${item.tallyOwner}","${new Date(item.timestamp).toLocaleString('vi-VN')}"`).join("\n");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `kiem-ke-${currentGroupId}-${new Date().toISOString().slice(0, 10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        const handleClearTallyData = () => {
+            showConfirmModal('Xóa Dữ Liệu Kiểm Kê', 'Hành động này sẽ xoá toàn bộ dữ liệu kiểm kê trên máy này. Bạn có chắc chắn?', () => {
+                localStorage.removeItem(`tally_${currentGroupId}`);
+                renderTallyTable();
+                showToast("Đã xoá dữ liệu kiểm kê.", "success");
+            });
+        };
+
+        // --- Event Listeners ---
+        document.getElementById('open-login-modal-btn').addEventListener('click', () => loginModal.classList.remove('hidden'));
+        document.getElementById('close-login-modal-btn').addEventListener('click', () => loginModal.classList.add('hidden'));
+        document.getElementById('show-register-form').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('register-form').classList.remove('hidden');
+            document.getElementById('login-text').classList.add('hidden');
+            document.getElementById('register-text').classList.remove('hidden');
+            document.getElementById('login-modal-title').textContent = 'Đăng Ký';
+        });
+        document.getElementById('show-login-form').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('register-form').classList.add('hidden');
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('register-text').classList.add('hidden');
+            document.getElementById('login-text').classList.remove('hidden');
+            document.getElementById('login-modal-title').textContent = 'Đăng Nhập';
+        });
+
+        document.getElementById('login-form').addEventListener('submit', handleLogin);
+        document.getElementById('register-form').addEventListener('submit', handleRegister);
+        document.getElementById('user-logout-btn').addEventListener('click', handleLogout);
+
+        document.getElementById('view-with-code-btn').addEventListener('click', () => handleViewGroupWithCode(null));
+        document.getElementById('create-group-btn').addEventListener('click', handleCreateGroup);
+        document.getElementById('create-new-group-from-list-btn').addEventListener('click', () => showView('create-group-view'));
+        document.getElementById('add-order-form').addEventListener('submit', handleAddOrder);
+        document.getElementById('paste-button').addEventListener('click', handlePaste);
+        document.getElementById('auto-paste-toggle').addEventListener('change', handleAutoPasteToggle);
+
+        document.getElementById('copy-group-code-btn').addEventListener('click', (e) => {
+            const linkToCopy = e.currentTarget.dataset.copyLink;
+            if (linkToCopy) {
+                navigator.clipboard.writeText(linkToCopy)
+                    .then(() => showToast('Đã sao chép liên kết mời!', 'success'))
+                    .catch(() => showToast('Sao chép thất bại.', 'error'));
+            }
+        });
+
+        searchInput.addEventListener('input', handleSearch);
+        document.getElementById('open-scanner-btn').addEventListener('click', openScanner);
+        document.getElementById('close-scanner-btn').addEventListener('click', closeScanner);
+        editGroupNameBtn.addEventListener('click', handleEditGroupName);
+        backToGroupsBtn.addEventListener('click', checkUserGroup);
+
+        toggleViewBtn.addEventListener('click', () => {
+            isGroupedView = !isGroupedView;
+            if (isGroupedView) {
+                toggleViewBtn.innerHTML = `<i class="fas fa-table mr-2"></i>Gộp Bảng`;
+                toggleViewBtn.classList.remove('bg-gray-500', 'hover:bg-gray-600');
+                toggleViewBtn.classList.add('bg-blue-500', 'hover:bg-blue-600');
+            } else {
+                toggleViewBtn.innerHTML = `<i class="fas fa-users mr-2"></i>Tách Bảng`;
+                toggleViewBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                toggleViewBtn.classList.add('bg-gray-500', 'hover:bg-gray-600');
+            }
+            handleSearch();
+        });
+
+        scannerOwnerSelect.addEventListener('change', () => {
+            const selectedOwner = scannerOwnerSelect.value;
+            scannerContainer.classList.toggle('hidden', !selectedOwner);
+            scanResultEl.innerHTML = '';
+
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().catch(err => console.error("Error clearing old scanner", err));
+                html5QrcodeScanner = null;
+            }
+
+            if (selectedOwner) {
+                html5QrcodeScanner = new Html5QrcodeScanner(
+                    "qr-reader", 
+                    { 
+                        fps: 10, 
+                        qrbox: 250
+                    },
+                    false); 
+                html5QrcodeScanner.render(onScanSuccess);
+            }
+        });
+
+        document.getElementById('download-tally-img-btn').addEventListener('click', handleDownloadTallyImage);
+        document.getElementById('copy-tally-text-btn').addEventListener('click', handleCopyTallyText);
+        document.getElementById('export-tally-excel-btn').addEventListener('click', handleExportTallyExcel);
+        document.getElementById('clear-tally-btn').addEventListener('click', handleClearTallyData);
+        bulkDeleteBtn.addEventListener('click', handleBulkDelete);
+        bulkEditBtn.addEventListener('click', handleBulkEditOwner);
+
+        toggleSelectionModeBtn.addEventListener('click', () => {
+            if (isGuestMode) {
+                showToast("Khách không thể sử dụng chức năng này.", "info");
+                return;
+            }
+            isSelectionModeActive = !isSelectionModeActive;
+            ordersContainer.classList.toggle('selection-mode-active', isSelectionModeActive);
+
+            if (isSelectionModeActive) {
+                toggleSelectionModeBtn.innerHTML = `<i class="fas fa-times mr-2"></i> Hủy`;
+                toggleSelectionModeBtn.classList.replace('bg-purple-500', 'bg-gray-700');
+                toggleSelectionModeBtn.classList.replace('hover:bg-purple-600', 'hover:bg-gray-800');
+            } else {
+                toggleSelectionModeBtn.innerHTML = `<i class="fas fa-check-double mr-2"></i> Chọn`;
+                toggleSelectionModeBtn.classList.replace('bg-gray-700', 'bg-purple-500');
+                toggleSelectionModeBtn.classList.replace('hover:bg-gray-800', 'hover:bg-purple-600');
+
+                selectedOrders.clear();
+                document.querySelectorAll('.row-checkbox:checked').forEach(cb => cb.checked = false);
+                document.querySelectorAll('.select-all-checkbox:checked').forEach(cb => cb.checked = false);
+                updateBulkActionBar();
+            }
+        });
+
+        ordersContainer.addEventListener('click', (e) => {
+            if (!isSelectionModeActive || e.target.closest('input, button, a')) return;
+
+            const row = e.target.closest('.selection-row');
+            if (row) {
+                const checkbox = row.querySelector('.row-checkbox');
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
+
+        // --- App Initialization ---
+        onAuthStateChanged(auth, async (user) => {
+            const groupCodeFromHash = window.location.hash.substring(1).toUpperCase();
+
+            if (!user && groupCodeFromHash) {
+                history.pushState("", document.title, window.location.pathname + window.location.search);
+                await handleViewGroupWithCode(groupCodeFromHash);
+                return;
+            }
+
+            if (user) {
+                localStorage.removeItem('guest_group_id');
+                currentUserId = user.uid;
+                document.getElementById('display-user-email').textContent = user.email || 'Ẩn danh';
+                await checkUserGroup();
+            } else {
+                const savedGuestGroupId = localStorage.getItem('guest_group_id');
+                if (savedGuestGroupId) {
+                    await handleViewGroupWithCode(savedGuestGroupId);
+                } else {
+                    showView('auth-view');
+                }
+            }
+        });
+
+    </script>
+</body>
+
+</html>
