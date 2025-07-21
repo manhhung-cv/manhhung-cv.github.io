@@ -11,25 +11,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Biểu tượng cho web -->
     <link rel="icon" href="/Asset/logo/logo.png">
 
-    <!-- Biểu tượng iPhone -->
     <link rel="apple-touch-icon" href="/Asset/logo/logo.png" sizes="150x150">
 
-    <!-- Primary Meta Tags -->
     <title>Hunq PayGate</title>
     <meta name="title" content="Hunq PayGate" />
     <meta name="description" content="Cổng thanh toán của Đinh Mạnh Hùng" />
 
-    <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="Hunq.online/PayGate/" />
     <meta property="og:title" content="Hunq PayGate" />
     <meta property="og:description" content="Cổng thanh toán của Đinh Mạnh Hùng" />
     <meta property="og:image" content="/PayGate/Grap/HunqPayGate.png" />
 
-    <!-- X (Twitter) -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="Hunq.online/PayGate/" />
     <meta property="twitter:title" content="Hunq PayGate" />
@@ -225,6 +220,8 @@
                         <h1 id="display-group-name" class="text-2xl font-bold text-blue-600"></h1>
                         <button id="edit-group-name-btn" class="hidden text-gray-500 hover:text-blue-600"
                             title="Sửa tên nhóm"><i class="fas fa-pencil-alt"></i></button>
+                        <button id="change-group-code-btn" class="hidden text-gray-500 hover:text-orange-600"
+                            title="Đổi mã nhóm"><i class="fas fa-key"></i></button>
                     </div>
                     <div class="flex items-center space-x-4">
                         <div class="text-sm text-gray-500"><span class="font-semibold">Mã nhóm:</span><span
@@ -530,6 +527,9 @@
         const openScannerBtn = document.getElementById('open-scanner-btn');
         const toggleSelectionModeBtn = document.getElementById('toggle-selection-mode-btn');
         const importFileInput = document.getElementById('import-file-input');
+        // KHAI BÁO BIẾN CHO NÚT MỚI
+        const changeGroupCodeBtn = document.getElementById('change-group-code-btn');
+
 
         // UI Elements for new Dropdown
         const moreActionsBtn = document.getElementById('more-actions-btn');
@@ -663,6 +663,7 @@
             isGuestMode = false;
             allOrders = [];
             history.pushState("", document.title, window.location.pathname + window.location.search);
+            window.location.hash = '';
             showView('auth-view');
             showToast("Đã thoát khỏi nhóm.", "info");
         };
@@ -694,6 +695,7 @@
             document.querySelectorAll('.select-group-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     currentGroupId = e.currentTarget.dataset.groupId;
+                    window.location.hash = currentGroupId;
                     isGuestMode = false;
                     loadGroupData(currentGroupId);
                 });
@@ -752,6 +754,7 @@
                     createdAt: serverTimestamp()
                 });
                 currentGroupId = newGroupId;
+                window.location.hash = currentGroupId;
                 isGuestMode = false;
                 await loadGroupData(currentGroupId);
                 showToast("Tạo nhóm thành công!", "success");
@@ -806,7 +809,8 @@
                 } else {
                     if (groupCodeFromUrlOrStorage) {
                         localStorage.removeItem('guest_group_id');
-                        history.pushState("", document.title, window.location.pathname + window.location.search);
+                        history.pushState("", document.title, window.location.pathname);
+                        window.location.hash = '';
                     }
                     showToast("Mã nhóm không tồn tại.", "error");
                     showView('auth-view');
@@ -837,6 +841,80 @@
                 }
             }
         };
+        
+        // HÀM MỚI ĐỂ ĐỔI MÃ NHÓM
+        const handleChangeGroupCode = async () => {
+            if (isGuestMode) return;
+
+            const newGroupId = prompt("Nhập mã nhóm mới (chữ hoa, không dấu). Mã cũ sẽ bị xóa vĩnh viễn:")?.trim().toUpperCase();
+
+            if (!newGroupId || newGroupId === currentGroupId) {
+                showToast("Hành động đã được hủy hoặc mã mới không hợp lệ.", "info");
+                return;
+            }
+
+            loadingSpinner.style.display = 'flex';
+
+            const oldGroupRef = doc(db, getPublicGroupCollectionPath(), currentGroupId);
+            const newGroupRef = doc(db, getPublicGroupCollectionPath(), newGroupId);
+
+            try {
+                // Bước 1: Kiểm tra xem mã mới đã tồn tại chưa
+                const newGroupSnap = await getDoc(newGroupRef);
+                if (newGroupSnap.exists()) {
+                    showToast(`Mã nhóm "${newGroupId}" đã tồn tại. Vui lòng chọn mã khác.`, 'error');
+                    return;
+                }
+
+                // Bước 2: Lấy dữ liệu nhóm cũ và toàn bộ đơn hàng
+                const oldGroupData = (await getDoc(oldGroupRef)).data();
+                if (!oldGroupData) {
+                    showToast("Không tìm thấy dữ liệu nhóm cũ.", "error");
+                    return;
+                }
+
+                const oldOrdersRef = collection(oldGroupRef, "orders");
+                const oldOrdersSnap = await getDocs(oldOrdersRef);
+
+                // Bước 3: Dùng WriteBatch để thực hiện tất cả các thao tác cùng lúc (nguyên tử)
+                const batch = writeBatch(db);
+
+                // 3.1. Tạo nhóm mới với dữ liệu cũ
+                batch.set(newGroupRef, oldGroupData);
+
+                // 3.2. Sao chép từng đơn hàng sang nhóm mới
+                oldOrdersSnap.forEach(orderDoc => {
+                    const newOrderRef = doc(collection(newGroupRef, "orders"), orderDoc.id); // Giữ lại ID cũ của đơn hàng
+                    batch.set(newOrderRef, orderDoc.data());
+                });
+
+                // 3.3. Xóa từng đơn hàng trong nhóm cũ
+                oldOrdersSnap.forEach(orderDoc => {
+                    batch.delete(orderDoc.ref);
+                });
+
+                // 3.4. Xóa document nhóm cũ
+                batch.delete(oldGroupRef);
+
+                // Bước 4: Thực thi toàn bộ batch
+                await batch.commit();
+
+                showToast(`Đã đổi mã nhóm thành công thành "${newGroupId}"!`, "success");
+                
+                // Bước 5: Cập nhật lại trạng thái và giao diện
+                currentGroupId = newGroupId;
+                // Cập nhật URL để khi F5 không bị lỗi
+                window.location.hash = newGroupId;
+                await loadGroupData(currentGroupId);
+
+            } catch (error) {
+                console.error("Error changing group code:", error);
+                showToast("Đổi mã nhóm thất bại. Vui lòng thử lại.", "error");
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        };
+
 
         // --- Data Loading and Rendering ---
         const loadGroupData = async (groupId, isReadOnly = false) => {
@@ -850,24 +928,15 @@
                     }
                     document.getElementById('display-group-name').textContent = docSnap.data().groupName;
                 });
-
-                const displayCodeEl = document.getElementById('display-group-code');
-                const cleanURL = `${window.location.origin}${window.location.pathname}`;
-                const groupURL = `${cleanURL}#${groupId}`;
-
+                
+                document.getElementById('display-group-code').textContent = groupId;
+                const groupURL = `${window.location.origin}${window.location.pathname}#${groupId}`;
                 document.getElementById('copy-group-code-btn').dataset.copyLink = groupURL;
-
-                const urlLengthThreshold = 20;
-                if (groupURL.length > urlLengthThreshold) {
-                    displayCodeEl.textContent = groupId;
-                    displayCodeEl.previousElementSibling.textContent = 'Mã nhóm:';
-                } else {
-                    displayCodeEl.textContent = groupURL;
-                    displayCodeEl.previousElementSibling.textContent = 'Link mời:';
-                }
-
+                
                 document.getElementById('order-form-container').classList.toggle('hidden', isReadOnly || isGuestMode);
                 document.getElementById('edit-group-name-btn').classList.toggle('hidden', isReadOnly || isGuestMode);
+                // HIỂN THỊ NÚT ĐỔI MÃ NHÓM CHO CHỦ SỞ HỮU
+                changeGroupCodeBtn.classList.toggle('hidden', isReadOnly || isGuestMode); 
                 toggleSelectionModeBtn.classList.toggle('hidden', isReadOnly || isGuestMode);
                 document.getElementById('more-actions-container').classList.toggle('hidden', isReadOnly || isGuestMode);
 
@@ -1345,7 +1414,7 @@
             }
 
             const config = {
-                fps: 60,
+                fps: 10,
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
                     const qrboxSize = Math.floor(minEdge * 0.7);
@@ -1353,12 +1422,6 @@
                         width: qrboxSize,
                         height: qrboxSize
                     };
-                },
-                advanced: [{
-                    focusMode: "continuous"
-                }],
-                experimentalFeatures: {
-                    useBarCodeDetectorIfSupported: true
                 }
             };
 
@@ -1366,13 +1429,6 @@
             }).catch(err => {
                 console.error("Không thể khởi động QR scanner.", err);
                 showToast(`Lỗi camera: ${err}`, 'error');
-                if (err.name === "ConstraintNotSatisfiedError") {
-                    showToast("Lỗi lấy nét, thử lại với cấu hình cơ bản.", "info");
-                    const basicConfig = { ...config };
-                    delete basicConfig.advanced;
-                    html5QrCode.start(constraints, basicConfig, onScanSuccess, () => { })
-                        .catch(e => showToast(`Không thể khởi động camera.`, "error"));
-                }
             });
         }
 
@@ -1527,6 +1583,9 @@
         document.getElementById('close-scanner-btn').addEventListener('click', closeScanner);
         editGroupNameBtn.addEventListener('click', handleEditGroupName);
         backToGroupsBtn.addEventListener('click', checkUserGroup);
+        // GẮN SỰ KIỆN CHO NÚT ĐỔI MÃ NHÓM
+        changeGroupCodeBtn.addEventListener('click', handleChangeGroupCode);
+
 
         // --- Dropdown Menu Logic ---
         moreActionsBtn.addEventListener('click', (event) => {
@@ -1614,18 +1673,31 @@
         onAuthStateChanged(auth, async (user) => {
             const groupCodeFromHash = window.location.hash.substring(1).toUpperCase();
 
+            // Nếu có mã trong URL và chưa đăng nhập -> vào chế độ khách
             if (!user && groupCodeFromHash) {
-                history.pushState("", document.title, window.location.pathname + window.location.search);
+                history.pushState("", document.title, window.location.pathname); // Xóa mã khỏi URL để không bị lộ liễu
                 await handleViewGroupWithCode(groupCodeFromHash);
                 return;
             }
 
             if (user) {
+                // Đã đăng nhập
                 localStorage.removeItem('guest_group_id');
                 currentUserId = user.uid;
                 document.getElementById('display-user-email').textContent = user.email || 'Ẩn danh';
-                await checkUserGroup();
+
+                // Nếu có mã trong URL -> ưu tiên vào nhóm đó
+                if(groupCodeFromHash) {
+                    currentGroupId = groupCodeFromHash;
+                    isGuestMode = false; // Vì đã đăng nhập
+                    loadGroupData(currentGroupId);
+                } else {
+                    // Nếu không, kiểm tra các nhóm của user
+                    await checkUserGroup();
+                }
+
             } else {
+                // Chưa đăng nhập và cũng không có mã trong URL
                 const savedGuestGroupId = localStorage.getItem('guest_group_id');
                 if (savedGuestGroupId) {
                     await handleViewGroupWithCode(savedGuestGroupId);
