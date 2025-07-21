@@ -361,12 +361,12 @@
                 </div>
 
                 <div id="scanner-container" class="hidden">
-                     <div id="camera-selection-container" class="hidden mt-4 mb-2">
+                    <div id="camera-selection-container" class="hidden mt-4 mb-2">
                         <label for="camera-select" class="block text-sm font-medium mb-1">Bước 1.5: Chọn camera</label>
                         <select id="camera-select"
                             class="w-full p-2 border border-gray-300 rounded-md bg-gray-50"></select>
                     </div>
-                    
+
                     <label class="block text-sm font-medium mb-1">Bước 2: Quét mã đơn hàng</label>
                     <div id="qr-reader"
                         class="w-full md:w-96 mx-auto border-2 border-dashed border-gray-400 rounded-lg overflow-hidden">
@@ -1185,15 +1185,20 @@
             html5QrCode = new Html5Qrcode("qr-reader");
 
             const selectedCameraId = cameraSelect.value;
-            
+
             // NEW: Enhanced constraints for focus
-            const constraints = {
-                facingMode: "environment", // Prioritize back camera
-                ...(selectedCameraId && { deviceId: { exact: selectedCameraId } }) // Use selected camera if available
-            };
+            // Đoạn mã mới đã sửa lỗi
+            let constraints = {};
+            if (availableCameras.length > 0 && selectedCameraId) {
+                // Nếu người dùng đã chọn camera cụ thể, chỉ dùng deviceId
+                constraints = { deviceId: { exact: selectedCameraId } };
+            } else {
+                // Nếu không, dùng camera sau mặc định
+                constraints = { facingMode: "environment" };
+            }
 
             const config = {
-                fps: 10,
+                fps: 60,
                 qrbox: (viewfinderWidth, viewfinderHeight) => {
                     const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
                     const qrboxSize = Math.floor(minEdge * 0.7);
@@ -1212,7 +1217,7 @@
             };
 
             html5QrCode.start(constraints, config, onScanSuccess, (err) => {
-                 // You can add error handling for each frame scan here if needed
+                // You can add error handling for each frame scan here if needed
             }).catch(err => {
                 console.error("Không thể khởi động QR scanner.", err);
                 showToast(`Lỗi camera: ${err}`, 'error');
@@ -1221,7 +1226,7 @@
                     showToast("Lỗi lấy nét, thử lại với cấu hình cơ bản.", "info");
                     const basicConfig = { ...config };
                     delete basicConfig.advanced;
-                    html5QrCode.start(constraints, basicConfig, onScanSuccess, ()=>{})
+                    html5QrCode.start(constraints, basicConfig, onScanSuccess, () => { })
                         .catch(e => showToast(`Không thể khởi động camera.`, "error"));
                 }
             });
@@ -1392,7 +1397,7 @@
             }
             handleSearch();
         });
-        
+
         // NEW: Event listeners for scanner controls
         scannerOwnerSelect.addEventListener('change', startQrScanner);
         cameraSelect.addEventListener('change', startQrScanner);
