@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Đặt Lịch Hẹn - Tiệm Tóc (v10)</title>
+    <title>Hệ Thống Đặt Lịch Hẹn - Tiệm Tóc (v13 - Admin Tools)</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -53,7 +53,7 @@
                         <i data-feather="log-out" class="inline-block w-4 h-4 mr-2"></i>Đăng Xuất
                     </button>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <div class="bg-white p-4 rounded-lg shadow-sm">
                         <h3 class="font-semibold mb-2">Cài đặt Salon</h3>
                         <form id="adminSettingsForm" class="space-y-3">
@@ -72,10 +72,21 @@
                             <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-semibold">Lưu Cài Đặt</button>
                         </form>
                     </div>
-                    <div class="md:col-span-1 lg:col-span-3 bg-white p-4 rounded-lg shadow-sm">
-                        <h3 class="font-semibold mb-2">Yêu cầu tư vấn (Đặt chỗ nhanh)</h3>
+                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 class="font-semibold mb-2">Công cụ Dữ liệu</h3>
+                        <div class="space-y-2">
+                             <button id="exportCsvButton" class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-semibold">Xuất CSV</button>
+                             <button id="deleteAllButton" class="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 font-semibold">Xóa Toàn Bộ Dữ Liệu</button>
+                        </div>
+                    </div>
+                     <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 class="font-semibold mb-2">Yêu cầu tư vấn</h3>
                         <div id="quickBookingsList" class="space-y-2 max-h-48 overflow-y-auto"></div>
                     </div>
+                </div>
+                 <div class="mt-6 bg-white p-4 rounded-lg shadow-sm">
+                    <h3 class="font-semibold mb-2">Danh sách đã tư vấn</h3>
+                    <div id="consultedBookingsList" class="space-y-2 max-h-48 overflow-y-auto"></div>
                 </div>
             </div>
 
@@ -135,8 +146,7 @@
                             <input type="tel" id="myAppointmentsPhone" placeholder="Nhập số điện thoại của bạn" required class="flex-grow w-full rounded-md border-gray-300 shadow-sm text-lg p-3">
                             <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 font-bold text-base transition-all">Tìm Kiếm</button>
                         </form>
-                        <div id="myAppointmentsList" class="space-y-4">
-                            </div>
+                        <div id="myAppointmentsList" class="space-y-4"></div>
                     </div>
                 </div>
 
@@ -183,9 +193,8 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc, Timestamp, setDoc, getDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc, Timestamp, setDoc, getDoc, updateDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- CONFIG & STATE ---
         const firebaseConfig = {
             apiKey: "AIzaSyDmoz4VMGwlLz5lsrYiT6GQZHJlmkN5igo",
             authDomain: "salon-booking-39f42.firebaseapp.com",
@@ -198,12 +207,11 @@
         const appId = 'default-salon-app-v2';
 
         let db, auth, isAdmin = false;
-        let appointmentsColRef, quickBookingsColRef, configDocRef;
+        let appointmentsColRef, quickBookingsColRef, configDocRef, consultedBookingsColRef;
         let salonConfig = {};
-        let appointmentsListener = null, quickBookingsListener = null;
+        let appointmentsListener = null, quickBookingsListener = null, consultedBookingsListener = null;
         const ADMIN_UID_FALLBACK = "E9hxk3SkfwgdJRCzapOue4unfRf2";
 
-        // --- UI ELEMENTS ---
         const loginModal = document.getElementById('loginModal');
         const showLoginModalButton = document.getElementById('showLoginModalButton');
         const closeLoginModalButton = document.getElementById('closeLoginModalButton');
@@ -226,8 +234,10 @@
         const viewQuickBooking = document.getElementById('view-quick-booking');
         const myAppointmentsForm = document.getElementById('myAppointmentsForm');
         const myAppointmentsList = document.getElementById('myAppointmentsList');
+        const exportCsvButton = document.getElementById('exportCsvButton');
+        const deleteAllButton = document.getElementById('deleteAllButton');
+        const consultedBookingsList = document.getElementById('consultedBookingsList');
 
-        // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const app = initializeApp(firebaseConfig);
@@ -236,6 +246,7 @@
                 const basePath = `/artifacts/${appId}/public/data`;
                 appointmentsColRef = collection(db, `${basePath}/appointments`);
                 quickBookingsColRef = collection(db, `${basePath}/quickBookings`);
+                consultedBookingsColRef = collection(db, `${basePath}/consultedBookings`);
                 configDocRef = doc(db, `${basePath}/config/salonSettings`);
                 const today = new Date();
                 today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
@@ -250,7 +261,6 @@
             }
         });
 
-        // --- EVENT LISTENERS ---
         function setupEventListeners() {
             showLoginModalButton.addEventListener('click', () => { loginModal.classList.remove('hidden'); });
             closeLoginModalButton.addEventListener('click', () => { loginModal.classList.add('hidden'); });
@@ -267,9 +277,10 @@
             tabMyAppointments.addEventListener('click', () => switchTab('my-appointments'));
             tabQuickBooking.addEventListener('click', () => switchTab('quick-booking'));
             myAppointmentsForm.addEventListener('submit', handleMyAppointmentsLookup);
+            exportCsvButton.addEventListener('click', exportDataToCSV);
+            deleteAllButton.addEventListener('click', deleteAllData);
         }
         
-        // --- HELPER FUNCTIONS ---
         function maskInfo(value, type) {
             if (!value) return '';
             if (type === 'name') {
@@ -307,8 +318,6 @@
             });
         }
 
-
-        // --- AUTH & INITIALIZATION LOGIC ---
         async function handleAuthStateChange(user) {
             try {
                 const docSnap = await getDoc(configDocRef);
@@ -360,17 +369,18 @@
                 if(salonConfig.closingTime) adminSettingsForm.closingTime.value = salonConfig.closingTime;
                 if(salonConfig.maxCapacity) adminSettingsForm.maxCapacity.value = salonConfig.maxCapacity;
                 listenForQuickBookings();
+                listenForConsultedBookings();
             } else {
                 adminPanel.classList.add('hidden');
                 adminAppointmentsSection.classList.add('hidden');
                 showLoginModalButton.classList.remove('hidden');
                 if (quickBookingsListener) { quickBookingsListener(); quickBookingsListener = null; }
+                if (consultedBookingsListener) { consultedBookingsListener(); consultedBookingsListener = null; }
             }
             fetchAppointmentsForDate(bookingDateInput.value);
             feather.replace();
         }
         
-        // --- CORE BOOKING FUNCTIONS ---
         function fetchAppointmentsForDate(date) {
             if (appointmentsListener) appointmentsListener();
             const q = query(appointmentsColRef, where("date", "==", date));
@@ -461,17 +471,21 @@
             } catch (error) { Swal.fire('Lỗi', 'Không thể lưu cài đặt.', 'error'); }
         }
 
-        // --- MY APPOINTMENTS LOGIC ---
         async function handleMyAppointmentsLookup(e) {
             e.preventDefault();
             const phone = document.getElementById('myAppointmentsPhone').value.trim();
             if (!phone) return;
             myAppointmentsList.innerHTML = `<p class="text-center text-gray-500">Đang tìm kiếm...</p>`;
-            const q = query(appointmentsColRef, where("phone", "==", phone), where("status", "!=", "cancelled"));
-            const snapshot = await getDocs(q);
-            const userAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            userAppointments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
-            renderMyAppointments(userAppointments);
+            try {
+                const q = query(appointmentsColRef, where("phone", "==", phone), where("status", "in", ["pending", "confirmed", "rejected"]));
+                const snapshot = await getDocs(q);
+                const userAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                userAppointments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+                renderMyAppointments(userAppointments);
+            } catch (error) {
+                 console.error("Lookup failed:", error);
+                 myAppointmentsList.innerHTML = `<p class="text-center text-red-500">Đã có lỗi xảy ra khi tra cứu.</p>`;
+            }
         }
 
         function renderMyAppointments(appointments) {
@@ -510,13 +524,11 @@
             const card = e.target.closest('.border');
             const viewMode = card.querySelector('.apt-view-mode');
             const editMode = card.querySelector('.apt-edit-mode');
-            
             const { value: phone } = await Swal.fire({
                 title: 'Xác nhận chủ nhân lịch hẹn', input: 'tel',
                 inputLabel: 'Vui lòng nhập SĐT để chỉnh sửa.', showCancelButton: true,
                 inputValidator: (value) => !value && 'Bạn cần nhập số điện thoại!'
             });
-
             if (phone && phone === aptData.phone) {
                 editMode.innerHTML = `
                     <div><label class="block text-sm font-medium">Tên khách hàng</label><input type="text" value="${aptData.name}" class="edit-name-input mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
@@ -527,13 +539,9 @@
                     </div>`;
                 viewMode.classList.add('hidden');
                 editMode.classList.remove('hidden');
-
                 editMode.querySelector('.save-changes-btn').addEventListener('click', async () => {
                     const appointmentRef = doc(db, appointmentsColRef.path, aptData.id);
-                    await updateDoc(appointmentRef, { 
-                        name: editMode.querySelector('.edit-name-input').value, 
-                        phone: editMode.querySelector('.edit-phone-input').value 
-                    });
+                    await updateDoc(appointmentRef, { name: editMode.querySelector('.edit-name-input').value, phone: editMode.querySelector('.edit-phone-input').value });
                     Swal.fire('Thành công!', 'Đã cập nhật lịch hẹn.', 'success');
                     myAppointmentsForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
                 });
@@ -561,7 +569,6 @@
             }
         }
         
-        // --- ADMIN & OTHER FUNCTIONS ---
         function renderAppointmentsList(appointmentsForDay) {
             if (!isAdmin) return;
             const statusMap = { pending: 'Chờ xác nhận', confirmed: 'Đã xác nhận', rejected: 'Đã từ chối', cancelled: 'Đã hủy' };
@@ -603,16 +610,84 @@
                 document.getElementById('quickBookingsList').innerHTML = requests.map(req => `
                     <div class="bg-slate-50 p-2 rounded-md flex justify-between items-center">
                         <p>${req.phone} - <span class="text-xs text-gray-500">${new Date(req.createdAt.toDate()).toLocaleString('vi-VN')}</span></p>
-                        <button class="delete-quick-btn text-gray-400 hover:text-red-600" data-id="${req.id}"><i data-feather="check-circle" class="w-5 h-5"></i></button>
-                    </div>`).join('') || `<p class="text-center text-gray-500 p-4">Chưa có yêu cầu nào.</p>`;
+                        <button class="consulted-btn text-green-500 hover:text-green-700" data-id="${req.id}" title="Đánh dấu đã tư vấn"><i data-feather="check-circle" class="w-5 h-5"></i></button>
+                    </div>`).join('') || `<p class="text-center text-gray-500 p-2">Chưa có yêu cầu nào.</p>`;
                 
-                document.querySelectorAll('.delete-quick-btn').forEach(btn => {
+                document.querySelectorAll('.consulted-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
-                        if (confirm('Đánh dấu là đã xử lý?')) await deleteDoc(doc(db, quickBookingsColRef.path, btn.dataset.id));
+                        const docId = btn.dataset.id;
+                        const docRef = doc(db, quickBookingsColRef.path, docId);
+                        const docSnap = await getDoc(docRef);
+                        if(docSnap.exists()){
+                            const data = docSnap.data();
+                            await setDoc(doc(consultedBookingsColRef), { ...data, consultedAt: Timestamp.now() });
+                            await deleteDoc(docRef);
+                        }
                     });
                 });
                 feather.replace();
             });
+        }
+
+        function listenForConsultedBookings() {
+            if (consultedBookingsListener) consultedBookingsListener();
+            consultedBookingsListener = onSnapshot(query(consultedBookingsColRef), (snapshot) => {
+                const requests = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.consultedAt.toMillis() - a.createdAt.toMillis());
+                consultedBookingsList.innerHTML = requests.map(req => `
+                    <div class="bg-slate-100 p-2 rounded-md flex justify-between items-center opacity-70">
+                        <p>${req.phone} - <span class="text-xs text-gray-500">Đã tư vấn lúc ${new Date(req.consultedAt.toDate()).toLocaleString('vi-VN')}</span></p>
+                    </div>`).join('') || `<p class="text-center text-gray-500 p-2">Chưa có dữ liệu.</p>`;
+            });
+        }
+
+        async function exportDataToCSV() {
+            if (!confirm("Bạn có muốn xuất toàn bộ dữ liệu lịch hẹn ra file CSV không?")) return;
+            try {
+                const snapshot = await getDocs(query(appointmentsColRef));
+                if (snapshot.empty) return Swal.fire('Không có dữ liệu', 'Chưa có lịch hẹn nào để xuất.', 'info');
+                let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+                csvContent += "ID,Booking ID,Tên,SĐT,Dịch vụ,Ngày,Giờ,Trạng thái,Lý do từ chối\r\n";
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const row = [`"${doc.id}"`,`"${data.bookingId||''}"`,`"${data.name||''}"`,`"${data.phone||''}"`,`"${data.service||''}"`,`"${data.date||''}"`,`"${data.time||''}"`,`"${data.status||''}"`,`"${data.rejectionReason||''}"`].join(',');
+                    csvContent += row + "\r\n";
+                });
+                const link = document.createElement("a");
+                link.setAttribute("href", encodeURI(csvContent));
+                link.setAttribute("download", `danh_sach_lich_hen_${new Date().toISOString().slice(0,10)}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error("Error exporting data: ", error);
+                Swal.fire('Lỗi', 'Không thể xuất dữ liệu.', 'error');
+            }
+        }
+
+        async function deleteAllData() {
+            const { isConfirmed } = await Swal.fire({
+                title: 'BẠN CÓ CHẮC KHÔNG?', html: "Hành động này sẽ **XÓA TOÀN BỘ** dữ liệu lịch hẹn. <br>Hành động này <strong>KHÔNG THỂ</strong> hoàn tác.",
+                icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33',
+                confirmButtonText: 'Vâng, tôi hiểu và muốn xóa!', cancelButtonText: 'Hủy'
+            });
+            if (!isConfirmed) return;
+            const { value: confirmationText } = await Swal.fire({
+                title: 'Xác nhận lần cuối', input: 'text', inputLabel: 'Vui lòng gõ "DELETE" để xác nhận xóa.',
+                showCancelButton: true,
+                inputValidator: (value) => (value !== 'DELETE') && 'Bạn phải gõ đúng chữ "DELETE" để xác nhận!'
+            });
+            if (confirmationText === 'DELETE') {
+                try {
+                    const snapshot = await getDocs(query(appointmentsColRef));
+                    const batch = writeBatch(db);
+                    snapshot.docs.forEach(doc => { batch.delete(doc.ref); });
+                    await batch.commit();
+                    Swal.fire('Đã Xóa!', 'Toàn bộ dữ liệu lịch hẹn đã được xóa.', 'success');
+                } catch (error) {
+                    console.error("Error deleting data: ", error);
+                    Swal.fire('Lỗi', 'Không thể xóa dữ liệu.', 'error');
+                }
+            }
         }
         
         function switchTab(tabName) {
