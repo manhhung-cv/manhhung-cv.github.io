@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Đặt Lịch Hẹn - Tiệm Tóc (v10)</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; background-color: #f7f7f7; }
+        .tab-active { border-color: #4f46e5; color: #4f46e5; background-color: #eef2ff; }
+        .timeslot {
+            border: 2px solid #e5e7eb; padding: 0.5rem; border-radius: 0.375rem;
+            font-weight: 600; transition: all 0.2s ease-in-out; cursor: pointer;
+        }
+        .timeslot:hover:not(.disabled) { border-color: #a5b4fc; background-color: #eef2ff; }
+        .timeslot.disabled { background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; border-color: #e5e7eb; }
+        .timeslot-selected { background-color: #4f46e5; color: white; border-color: #4f46e5; }
+
+        .status-badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .status-pending { background-color: #fef9c3; color: #ca8a04; }
+        .status-confirmed { background-color: #dcfce7; color: #16a34a; }
+        .status-rejected { background-color: #fee2e2; color: #dc2626; }
+        .status-cancelled { background-color: #e5e7eb; color: #4b5563; }
+    </style>
+</head>
+
+<body class="antialiased text-slate-800">
+
+    <div class="min-h-screen flex flex-col items-center p-4 bg-gray-50">
+        <div class="w-full max-w-6xl mx-auto">
+            <header class="text-center mb-8 relative">
+                <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Salon Tóc Chuyên Nghiệp</h1>
+                <p class="mt-2 text-lg text-slate-600">Hệ thống quản lý và đặt lịch hẹn thông minh</p>
+                <div class="absolute top-0 right-0">
+                    <button id="showLoginModalButton" class="bg-white text-indigo-600 font-semibold px-4 py-2 rounded-lg shadow hover:bg-indigo-50 transition-all">
+                        <i data-feather="log-in" class="inline-block w-4 h-4 mr-2"></i>Admin
+                    </button>
+                </div>
+            </header>
+
+            <div id="adminPanel" class="hidden bg-indigo-50 border-2 border-dashed border-indigo-200 p-6 rounded-2xl mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-indigo-800 flex items-center"><i data-feather="settings" class="mr-2"></i>Bảng Điều Khiển Admin</h2>
+                    <button id="logoutButton" class="bg-red-500 text-white font-semibold px-4 py-2 rounded-lg shadow hover:bg-red-600 transition-all">
+                        <i data-feather="log-out" class="inline-block w-4 h-4 mr-2"></i>Đăng Xuất
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 class="font-semibold mb-2">Cài đặt Salon</h3>
+                        <form id="adminSettingsForm" class="space-y-3">
+                            <div>
+                                <label for="openingTime" class="block text-sm font-medium">Giờ mở cửa</label>
+                                <input type="time" id="openingTime" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                            <div>
+                                <label for="closingTime" class="block text-sm font-medium">Giờ đóng cửa</label>
+                                <input type="time" id="closingTime" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                            <div>
+                                <label for="maxCapacity" class="block text-sm font-medium">Sức chứa / khung giờ</label>
+                                <input type="number" id="maxCapacity" min="1" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-semibold">Lưu Cài Đặt</button>
+                        </form>
+                    </div>
+                    <div class="md:col-span-1 lg:col-span-3 bg-white p-4 rounded-lg shadow-sm">
+                        <h3 class="font-semibold mb-2">Yêu cầu tư vấn (Đặt chỗ nhanh)</h3>
+                        <div id="quickBookingsList" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+
+            <main class="bg-white p-6 rounded-2xl shadow-lg">
+                <div class="flex border-b mb-6">
+                    <button id="tab-booking" class="tab-active py-2 px-4 font-semibold border-b-2">📅 Đặt Lịch Mới</button>
+                    <button id="tab-my-appointments" class="py-2 px-4 font-semibold text-gray-500 border-b-2 border-transparent">📖 Lịch Hẹn Của Tôi</button>
+                    <button id="tab-quick-booking" class="py-2 px-4 font-semibold text-gray-500 border-b-2 border-transparent">⚡ Đặt Chỗ Nhanh</button>
+                </div>
+
+                <div id="view-booking">
+                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <h2 class="text-xl font-bold mb-4">1. Điền thông tin của bạn</h2>
+                            <form id="bookingForm" class="space-y-4">
+                                <div>
+                                    <label for="customerName" class="block text-sm font-medium text-slate-700">Tên khách hàng</label>
+                                    <input type="text" id="customerName" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="phoneNumber" class="block text-sm font-medium text-slate-700">Số điện thoại</label>
+                                    <input type="tel" id="phoneNumber" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                </div>
+                                <div>
+                                    <label for="service" class="block text-sm font-medium text-slate-700">Dịch vụ</label>
+                                    <select id="service" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                                        <option>Cắt tóc nam</option>
+                                        <option>Cắt tóc nữ</option>
+                                        <option>Gội đầu & sấy</option>
+                                        <option>Nhuộm tóc</option>
+                                        <option>Uốn/Duỗi tóc</option>
+                                    </select>
+                                </div>
+                                <input type="hidden" id="selectedTime" required>
+                                <button type="submit" id="submitButton" class="w-full bg-indigo-600 text-white px-4 py-3 rounded-md hover:bg-indigo-700 font-bold text-base transition-all">Hoàn Tất Đặt Lịch</button>
+                            </form>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold mb-4">2. Chọn ngày và giờ</h2>
+                            <div>
+                                <label for="bookingDate" class="block text-sm font-medium text-slate-700">Chọn ngày</label>
+                                <input type="date" id="bookingDate" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                            </div>
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Chọn giờ</label>
+                                <div id="timeSlotsContainer" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-my-appointments" class="hidden">
+                    <div class="max-w-2xl mx-auto">
+                        <h2 class="text-2xl font-bold mb-4 text-center">Lịch Hẹn Của Tôi</h2>
+                        <p class="text-slate-600 mb-6 text-center">Nhập số điện thoại để xem và quản lý các lịch hẹn của bạn.</p>
+                        <form id="myAppointmentsForm" class="flex gap-2 mb-8">
+                            <input type="tel" id="myAppointmentsPhone" placeholder="Nhập số điện thoại của bạn" required class="flex-grow w-full rounded-md border-gray-300 shadow-sm text-lg p-3">
+                            <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 font-bold text-base transition-all">Tìm Kiếm</button>
+                        </form>
+                        <div id="myAppointmentsList" class="space-y-4">
+                            </div>
+                    </div>
+                </div>
+
+                <div id="view-quick-booking" class="hidden">
+                     <div class="max-w-md mx-auto text-center">
+                        <h2 class="text-2xl font-bold mb-2">Đặt Chỗ Nhanh</h2>
+                        <p class="text-slate-600 mb-6">Chỉ cần để lại số điện thoại, chúng tôi sẽ gọi lại tư vấn và sắp xếp lịch hẹn cho bạn ngay!</p>
+                        <form id="quickBookingForm" class="flex gap-2">
+                            <input type="tel" id="quickPhoneNumber" placeholder="Nhập số điện thoại của bạn" required class="flex-grow w-full rounded-md border-gray-300 shadow-sm text-lg p-3">
+                            <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 font-bold text-base transition-all">Gửi Yêu Cầu</button>
+                        </form>
+                    </div>
+                </div>
+            </main>
+
+            <div id="adminAppointmentsSection" class="hidden mt-10 w-full max-w-6xl mx-auto">
+                <h2 class="text-2xl font-bold mb-4">Danh Sách Lịch Hẹn (Admin View)</h2>
+                <div id="appointmentsList" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm">
+            <h2 class="text-2xl font-bold text-center mb-6">Đăng Nhập Admin</h2>
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Mật khẩu</label>
+                    <input type="password" id="password" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
+                </div>
+                <p id="loginError" class="text-sm text-red-600 hidden"></p>
+                <div class="flex items-center justify-between pt-4">
+                    <button type="button" id="closeLoginModalButton" class="text-gray-600 hover:text-gray-900">Hủy</button>
+                    <button type="submit" class="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-md hover:bg-indigo-700">Đăng Nhập</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc, Timestamp, setDoc, getDoc, updateDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIG & STATE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmoz4VMGwlLz5lsrYiT6GQZHJlmkN5igo",
+            authDomain: "salon-booking-39f42.firebaseapp.com",
+            projectId: "salon-booking-39f42",
+            storageBucket: "salon-booking-39f42.firebasestorage.app",
+            messagingSenderId: "499019851171",
+            appId: "1:499019851171:web:9a4731d7d2c5faf1182616",
+            measurementId: "G-ZRLC3JQMLZ"
+        };
+        const appId = 'default-salon-app-v2';
+
+        let db, auth, isAdmin = false;
+        let appointmentsColRef, quickBookingsColRef, configDocRef;
+        let salonConfig = {};
+        let appointmentsListener = null, quickBookingsListener = null;
+        const ADMIN_UID_FALLBACK = "E9hxk3SkfwgdJRCzapOue4unfRf2";
+
+        // --- UI ELEMENTS ---
+        const loginModal = document.getElementById('loginModal');
+        const showLoginModalButton = document.getElementById('showLoginModalButton');
+        const closeLoginModalButton = document.getElementById('closeLoginModalButton');
+        const loginForm = document.getElementById('loginForm');
+        const loginError = document.getElementById('loginError');
+        const logoutButton = document.getElementById('logoutButton');
+        const adminPanel = document.getElementById('adminPanel');
+        const bookingForm = document.getElementById('bookingForm');
+        const quickBookingForm = document.getElementById('quickBookingForm');
+        const adminSettingsForm = document.getElementById('adminSettingsForm');
+        const bookingDateInput = document.getElementById('bookingDate');
+        const timeSlotsContainer = document.getElementById('timeSlotsContainer');
+        const adminAppointmentsSection = document.getElementById('adminAppointmentsSection');
+        const appointmentsList = document.getElementById('appointmentsList');
+        const tabBooking = document.getElementById('tab-booking');
+        const tabMyAppointments = document.getElementById('tab-my-appointments');
+        const tabQuickBooking = document.getElementById('tab-quick-booking');
+        const viewBooking = document.getElementById('view-booking');
+        const viewMyAppointments = document.getElementById('view-my-appointments');
+        const viewQuickBooking = document.getElementById('view-quick-booking');
+        const myAppointmentsForm = document.getElementById('myAppointmentsForm');
+        const myAppointmentsList = document.getElementById('myAppointmentsList');
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                const basePath = `/artifacts/${appId}/public/data`;
+                appointmentsColRef = collection(db, `${basePath}/appointments`);
+                quickBookingsColRef = collection(db, `${basePath}/quickBookings`);
+                configDocRef = doc(db, `${basePath}/config/salonSettings`);
+                const today = new Date();
+                today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+                bookingDateInput.value = today.toISOString().slice(0, 10);
+                bookingDateInput.min = today.toISOString().slice(0, 10);
+                onAuthStateChanged(auth, handleAuthStateChange);
+                setupEventListeners();
+                feather.replace();
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                Swal.fire('Lỗi Khởi Tạo', 'Không thể tải ứng dụng. Vui lòng thử lại.', 'error');
+            }
+        });
+
+        // --- EVENT LISTENERS ---
+        function setupEventListeners() {
+            showLoginModalButton.addEventListener('click', () => { loginModal.classList.remove('hidden'); });
+            closeLoginModalButton.addEventListener('click', () => { loginModal.classList.add('hidden'); });
+            loginForm.addEventListener('submit', handleLogin);
+            logoutButton.addEventListener('click', handleLogout);
+            bookingForm.addEventListener('submit', handleBookingSubmit);
+            quickBookingForm.addEventListener('submit', handleQuickBookingSubmit);
+            adminSettingsForm.addEventListener('submit', handleAdminSettingsSave);
+            bookingDateInput.addEventListener('change', () => {
+                document.getElementById('selectedTime').value = '';
+                fetchAppointmentsForDate(bookingDateInput.value);
+            });
+            tabBooking.addEventListener('click', () => switchTab('booking'));
+            tabMyAppointments.addEventListener('click', () => switchTab('my-appointments'));
+            tabQuickBooking.addEventListener('click', () => switchTab('quick-booking'));
+            myAppointmentsForm.addEventListener('submit', handleMyAppointmentsLookup);
+        }
+        
+        // --- HELPER FUNCTIONS ---
+        function maskInfo(value, type) {
+            if (!value) return '';
+            if (type === 'name') {
+                const parts = value.trim().split(' ');
+                if (parts.length > 1) { const lastName = parts[parts.length - 1]; return `${parts[0]}... ${lastName}`; }
+                return `${value.charAt(0)}${'*'.repeat(Math.max(0, value.length - 1))}`;
+            }
+            if (type === 'phone' && value.length > 6) return `${value.substring(0, 3)}****${value.substring(value.length - 3)}`;
+            return value;
+        }
+
+        function showModernSuccessNotification(apt) {
+            Swal.fire({
+                title: 'Đặt Lịch Thành Công!',
+                html: `
+                    <div class="text-left p-4">
+                        <p class="text-lg">Cảm ơn <strong>${apt.name}</strong>!</p>
+                        <p>Lịch hẹn của bạn đã được ghi nhận và đang chờ xác nhận.</p>
+                        <div class="mt-4 text-left bg-indigo-50 p-3 rounded-lg">
+                            <p><strong>Mã đặt lịch:</strong> <span class="font-bold text-indigo-600">${apt.bookingId}</span></p>
+                            <p><strong>Thời gian:</strong> ${apt.time} - ${apt.date}</p>
+                        </div>
+                        <p class="text-sm text-slate-500 mt-3">Sử dụng SĐT của bạn để tra cứu trong mục "Lịch Hẹn Của Tôi".</p>
+                    </div>`,
+                icon: 'success',
+                confirmButtonText: 'Tuyệt vời!',
+                cancelButtonText: 'Sao chép mã',
+                showCancelButton: true,
+            }).then((result) => {
+                if (result.dismiss === Swal.DismissReason.cancel) {
+                    navigator.clipboard.writeText(apt.bookingId).then(() => {
+                         Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã sao chép!', showConfirmButton: false, timer: 1500 });
+                    });
+                }
+            });
+        }
+
+
+        // --- AUTH & INITIALIZATION LOGIC ---
+        async function handleAuthStateChange(user) {
+            try {
+                const docSnap = await getDoc(configDocRef);
+                if (docSnap.exists()) {
+                    salonConfig = docSnap.data();
+                } else {
+                    salonConfig = { openingTime: "09:00", closingTime: "20:00", maxCapacity: 2, adminUID: ADMIN_UID_FALLBACK };
+                    if (user && user.uid === ADMIN_UID_FALLBACK) await setDoc(configDocRef, salonConfig);
+                }
+                if (user && !user.isAnonymous) {
+                    isAdmin = user.uid === salonConfig.adminUID || user.uid === ADMIN_UID_FALLBACK;
+                    if (!isAdmin) await handleLogout();
+                } else if (user && user.isAnonymous) {
+                    isAdmin = false;
+                } else {
+                    isAdmin = false; await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth state change error:", error);
+                isAdmin = false;
+            } finally {
+                setupUIBasedOnAuth();
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            loginError.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, loginForm.email.value, loginForm.password.value);
+                loginModal.classList.add('hidden');
+                loginForm.reset();
+            } catch (error) {
+                loginError.textContent = "Email hoặc mật khẩu không đúng.";
+                loginError.classList.remove('hidden');
+            }
+        }
+
+        async function handleLogout() {
+            try { await signOut(auth); } catch (error) { console.error("Logout failed:", error); }
+        }
+
+        function setupUIBasedOnAuth() {
+            if (isAdmin) {
+                adminPanel.classList.remove('hidden');
+                adminAppointmentsSection.classList.remove('hidden');
+                showLoginModalButton.classList.add('hidden');
+                if(salonConfig.openingTime) adminSettingsForm.openingTime.value = salonConfig.openingTime;
+                if(salonConfig.closingTime) adminSettingsForm.closingTime.value = salonConfig.closingTime;
+                if(salonConfig.maxCapacity) adminSettingsForm.maxCapacity.value = salonConfig.maxCapacity;
+                listenForQuickBookings();
+            } else {
+                adminPanel.classList.add('hidden');
+                adminAppointmentsSection.classList.add('hidden');
+                showLoginModalButton.classList.remove('hidden');
+                if (quickBookingsListener) { quickBookingsListener(); quickBookingsListener = null; }
+            }
+            fetchAppointmentsForDate(bookingDateInput.value);
+            feather.replace();
+        }
+        
+        // --- CORE BOOKING FUNCTIONS ---
+        function fetchAppointmentsForDate(date) {
+            if (appointmentsListener) appointmentsListener();
+            const q = query(appointmentsColRef, where("date", "==", date));
+            appointmentsListener = onSnapshot(q, (snapshot) => {
+                let appointmentsForDay = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTimeSlotsForBooking(appointmentsForDay);
+                if (isAdmin) {
+                    renderAppointmentsList(appointmentsForDay);
+                }
+            });
+        }
+        
+        function renderTimeSlotsForBooking(appointmentsForDay = []) {
+            const html = getTimeSlotsHTML(appointmentsForDay);
+            timeSlotsContainer.innerHTML = html || `<p class="col-span-full text-center text-gray-500 p-4">Vui lòng chọn ngày để xem khung giờ.</p>`;
+            timeSlotsContainer.querySelectorAll('.timeslot:not(.disabled)').forEach(slot => slot.addEventListener('click', handleTimeSlotClick));
+        }
+
+        function getTimeSlotsHTML(appointmentsForDay = []) {
+            const { openingTime, closingTime, maxCapacity } = salonConfig;
+            if (!openingTime || !closingTime || !maxCapacity) return `<p class="col-span-full text-red-500 p-4">Admin chưa cài đặt giờ hoạt động.</p>`;
+            const selectedDateStr = bookingDateInput.value;
+            const now = new Date();
+            const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+            let currentTime = new Date(`${selectedDateStr}T${openingTime}`);
+            const closingDateTime = new Date(`${selectedDateStr}T${closingTime}`);
+            let html = '';
+            while (currentTime < closingDateTime) {
+                const timeStr = currentTime.toTimeString().slice(0, 5);
+                const bookingsAtTime = appointmentsForDay.filter(apt => apt.time === timeStr && (apt.status === 'pending' || apt.status === 'confirmed')).length;
+                const isFull = bookingsAtTime >= maxCapacity;
+                const isPast = selectedDateStr < todayStr || (selectedDateStr === todayStr && timeStr < now.toTimeString().slice(0, 5));
+                const isDisabled = isFull || isPast;
+                html += `<button type="button" data-time="${timeStr}" class="timeslot ${isDisabled ? 'disabled' : ''}" ${isDisabled ? 'disabled' : ''}>${isFull ? 'Hết chỗ' : timeStr}</button>`;
+                currentTime.setMinutes(currentTime.getMinutes() + 30);
+            }
+            return html;
+        }
+
+        function handleTimeSlotClick(e) {
+            document.querySelectorAll('.timeslot-selected').forEach(el => el.classList.remove('timeslot-selected'));
+            e.currentTarget.classList.add('timeslot-selected');
+            document.getElementById('selectedTime').value = e.currentTarget.dataset.time;
+        }
+
+        async function handleBookingSubmit(e) {
+            e.preventDefault();
+            const phone = bookingForm.phoneNumber.value.trim();
+            if (!document.getElementById('selectedTime').value) return Swal.fire('Thiếu thông tin', 'Vui lòng chọn một khung giờ còn trống.', 'warning');
+            try {
+                const q = query(appointmentsColRef, where("phone", "==", phone), where("status", "in", ["pending", "confirmed"]));
+                if ((await getDocs(q)).size >= 2) return Swal.fire('Đã đạt giới hạn', 'Bạn đã có 2 lịch hẹn đang hoạt động.', 'error');
+            } catch (error) { return Swal.fire('Lỗi', 'Không thể kiểm tra lịch hẹn hiện tại.', 'error'); }
+            const newAppointment = {
+                name: bookingForm.customerName.value.trim(), phone, service: bookingForm.service.value,
+                date: bookingDateInput.value, time: document.getElementById('selectedTime').value,
+                createdAt: Timestamp.now(), bookingId: `S${Date.now().toString().slice(-6)}`, status: 'pending'
+            };
+            try {
+                await addDoc(appointmentsColRef, newAppointment);
+                showModernSuccessNotification(newAppointment);
+                bookingForm.reset();
+                document.getElementById('selectedTime').value = '';
+                document.querySelectorAll('.timeslot-selected').forEach(el => el.classList.remove('timeslot-selected'));
+            } catch (error) { Swal.fire('Thất Bại', 'Đã có lỗi xảy ra. Vui lòng thử lại.', 'error'); }
+        }
+
+        async function handleQuickBookingSubmit(e) {
+            e.preventDefault();
+            try {
+                await addDoc(quickBookingsColRef, { phone: quickBookingForm.quickPhoneNumber.value.trim(), createdAt: Timestamp.now() });
+                Swal.fire('Đã Gửi Yêu Cầu', 'Cảm ơn bạn! Tư vấn viên sẽ liên hệ với bạn sớm nhất.', 'success');
+                quickBookingForm.reset();
+            } catch (error) { Swal.fire('Thất Bại', 'Không thể gửi yêu cầu. Vui lòng thử lại.', 'error'); }
+        }
+
+        async function handleAdminSettingsSave(e) {
+            e.preventDefault();
+            const newConfig = {
+                openingTime: adminSettingsForm.openingTime.value, closingTime: adminSettingsForm.closingTime.value,
+                maxCapacity: parseInt(adminSettingsForm.maxCapacity.value, 10), adminUID: auth.currentUser.uid
+            };
+            try {
+                await setDoc(configDocRef, newConfig);
+                salonConfig = newConfig;
+                fetchAppointmentsForDate(bookingDateInput.value);
+                Swal.fire('Đã Lưu', 'Cài đặt salon đã được cập nhật.', 'success');
+            } catch (error) { Swal.fire('Lỗi', 'Không thể lưu cài đặt.', 'error'); }
+        }
+
+        // --- MY APPOINTMENTS LOGIC ---
+        async function handleMyAppointmentsLookup(e) {
+            e.preventDefault();
+            const phone = document.getElementById('myAppointmentsPhone').value.trim();
+            if (!phone) return;
+            myAppointmentsList.innerHTML = `<p class="text-center text-gray-500">Đang tìm kiếm...</p>`;
+            const q = query(appointmentsColRef, where("phone", "==", phone), where("status", "!=", "cancelled"));
+            const snapshot = await getDocs(q);
+            const userAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            userAppointments.sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+            renderMyAppointments(userAppointments);
+        }
+
+        function renderMyAppointments(appointments) {
+            if (appointments.length === 0) {
+                myAppointmentsList.innerHTML = `<p class="text-center text-gray-500 p-4">Không tìm thấy lịch hẹn nào với số điện thoại này.</p>`;
+                return;
+            }
+            const statusText = { pending: 'Chờ xác nhận', confirmed: 'Đã xác nhận', rejected: 'Đã từ chối' };
+            myAppointmentsList.innerHTML = appointments.map(apt => {
+                const canAct = apt.status === 'pending';
+                return `
+                <div class="border rounded-lg p-4 bg-white shadow-sm transition-all duration-300">
+                    <div class="apt-view-mode">
+                        <div class="flex justify-between items-start">
+                            <p class="font-bold text-lg">${maskInfo(apt.name, 'name')}</p>
+                            <span class="status-badge status-${apt.status}">${statusText[apt.status] || apt.status}</span>
+                        </div>
+                        <p class="text-slate-600 text-2xl font-bold">${apt.time} - ${apt.date}</p>
+                        <p class="text-sm text-slate-500">${apt.service}</p>
+                        <p class="text-xs text-slate-400 mt-2">SĐT: ${maskInfo(apt.phone, 'phone')}</p>
+                        <div class="mt-3 flex gap-2">
+                           <button data-apt='${JSON.stringify(apt)}' class="edit-apt-btn w-1/2 text-center py-2 rounded-md font-semibold ${canAct ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}" ${!canAct ? 'disabled' : ''}>Sửa lịch</button>
+                           <button data-id="${apt.id}" class="cancel-apt-btn w-1/2 text-center py-2 rounded-md font-semibold ${canAct ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}" ${!canAct ? 'disabled' : ''}>Hủy lịch</button>
+                        </div>
+                    </div>
+                    <div class="apt-edit-mode hidden space-y-3"></div>
+                </div>`;
+            }).join('');
+
+            myAppointmentsList.querySelectorAll('.edit-apt-btn:not(:disabled)').forEach(btn => btn.addEventListener('click', handleEditAppointmentClick));
+            myAppointmentsList.querySelectorAll('.cancel-apt-btn:not(:disabled)').forEach(btn => btn.addEventListener('click', handleCancelAppointmentClick));
+        }
+
+        async function handleEditAppointmentClick(e) {
+            const aptData = JSON.parse(e.currentTarget.dataset.apt);
+            const card = e.target.closest('.border');
+            const viewMode = card.querySelector('.apt-view-mode');
+            const editMode = card.querySelector('.apt-edit-mode');
+            
+            const { value: phone } = await Swal.fire({
+                title: 'Xác nhận chủ nhân lịch hẹn', input: 'tel',
+                inputLabel: 'Vui lòng nhập SĐT để chỉnh sửa.', showCancelButton: true,
+                inputValidator: (value) => !value && 'Bạn cần nhập số điện thoại!'
+            });
+
+            if (phone && phone === aptData.phone) {
+                editMode.innerHTML = `
+                    <div><label class="block text-sm font-medium">Tên khách hàng</label><input type="text" value="${aptData.name}" class="edit-name-input mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
+                    <div><label class="block text-sm font-medium">Số điện thoại</label><input type="tel" value="${aptData.phone}" class="edit-phone-input mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
+                    <div class="flex gap-2 mt-3">
+                        <button data-id="${aptData.id}" class="save-changes-btn w-1/2 bg-green-600 text-white font-semibold py-2 rounded-md hover:bg-green-700">Lưu thay đổi</button>
+                        <button type="button" class="cancel-edit-btn w-1/2 bg-gray-200 py-2 rounded-md">Hủy</button>
+                    </div>`;
+                viewMode.classList.add('hidden');
+                editMode.classList.remove('hidden');
+
+                editMode.querySelector('.save-changes-btn').addEventListener('click', async () => {
+                    const appointmentRef = doc(db, appointmentsColRef.path, aptData.id);
+                    await updateDoc(appointmentRef, { 
+                        name: editMode.querySelector('.edit-name-input').value, 
+                        phone: editMode.querySelector('.edit-phone-input').value 
+                    });
+                    Swal.fire('Thành công!', 'Đã cập nhật lịch hẹn.', 'success');
+                    myAppointmentsForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                });
+                editMode.querySelector('.cancel-edit-btn').addEventListener('click', () => {
+                    editMode.classList.add('hidden'); viewMode.classList.remove('hidden');
+                });
+            } else if (phone) {
+                Swal.fire('Lỗi!', 'Số điện thoại không khớp.', 'error');
+            }
+        }
+
+        async function handleCancelAppointmentClick(e) {
+            const aptId = e.currentTarget.dataset.id;
+            const { isConfirmed } = await Swal.fire({
+                title: 'Bạn có chắc chắn?', text: "Bạn sẽ không thể hoàn tác hành động này!",
+                icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6', confirmButtonText: 'Vâng, hủy lịch!', cancelButtonText: 'Không'
+            });
+            if(isConfirmed) {
+                try {
+                    await updateDoc(doc(db, appointmentsColRef.path, aptId), { status: 'cancelled' });
+                    Swal.fire('Đã Hủy!', 'Lịch hẹn của bạn đã được hủy.', 'success');
+                    myAppointmentsForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                } catch { Swal.fire('Lỗi!', 'Không thể hủy lịch hẹn. Vui lòng thử lại.', 'error'); }
+            }
+        }
+        
+        // --- ADMIN & OTHER FUNCTIONS ---
+        function renderAppointmentsList(appointmentsForDay) {
+            if (!isAdmin) return;
+            const statusMap = { pending: 'Chờ xác nhận', confirmed: 'Đã xác nhận', rejected: 'Đã từ chối', cancelled: 'Đã hủy' };
+            const classMap = { pending: 'status-pending', confirmed: 'status-confirmed', rejected: 'status-rejected', cancelled: 'status-cancelled' };
+            appointmentsList.innerHTML = appointmentsForDay.map(apt => `
+                <div class="bg-slate-50 p-3 rounded-lg border">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <p class="font-semibold">${apt.time} - ${apt.name}</p>
+                            <p class="text-sm text-slate-600">${apt.service} | ${apt.phone}</p>
+                            <p class="text-xs text-slate-500 mt-1">Mã: ${apt.bookingId}</p>
+                        </div>
+                        <span class="status-badge ${classMap[apt.status] || ''}">${statusMap[apt.status] || apt.status}</span>
+                    </div>
+                    ${apt.status === 'pending' ? `<div class="mt-2 pt-2 border-t flex gap-2">
+                        <button class="admin-action-btn flex-1 bg-green-100 text-green-700 py-1 rounded hover:bg-green-200" data-action="confirm" data-id="${apt.id}">Xác nhận</button>
+                        <button class="admin-action-btn flex-1 bg-red-100 text-red-700 py-1 rounded hover:bg-red-200" data-action="reject" data-id="${apt.id}">Từ chối</button>
+                    </div>` : ''}
+                     ${apt.status === 'rejected' && apt.rejectionReason ? `<p class="mt-2 text-xs text-red-600">Lý do: ${apt.rejectionReason}</p>` : ''}
+                </div>`).join('') || `<p class="text-center text-gray-500 p-4">Không có lịch hẹn nào.</p>`;
+            appointmentsList.querySelectorAll('.admin-action-btn').forEach(btn => btn.addEventListener('click', handleAdminAction));
+        }
+        
+        async function handleAdminAction(e) {
+            const { action, id } = e.currentTarget.dataset;
+            const appointmentRef = doc(db, appointmentsColRef.path, id);
+            if (action === 'confirm') {
+                if (confirm('Xác nhận lịch hẹn này?')) await updateDoc(appointmentRef, { status: 'confirmed' });
+            } else if (action === 'reject') {
+                const reason = prompt('Lý do từ chối:');
+                if (reason) await updateDoc(appointmentRef, { status: 'rejected', rejectionReason: reason });
+            }
+        }
+
+        function listenForQuickBookings() {
+            if (quickBookingsListener) quickBookingsListener();
+            quickBookingsListener = onSnapshot(query(quickBookingsColRef), (snapshot) => {
+                const requests = snapshot.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.createdAt.toMillis() - a.createdAt.toMillis());
+                document.getElementById('quickBookingsList').innerHTML = requests.map(req => `
+                    <div class="bg-slate-50 p-2 rounded-md flex justify-between items-center">
+                        <p>${req.phone} - <span class="text-xs text-gray-500">${new Date(req.createdAt.toDate()).toLocaleString('vi-VN')}</span></p>
+                        <button class="delete-quick-btn text-gray-400 hover:text-red-600" data-id="${req.id}"><i data-feather="check-circle" class="w-5 h-5"></i></button>
+                    </div>`).join('') || `<p class="text-center text-gray-500 p-4">Chưa có yêu cầu nào.</p>`;
+                
+                document.querySelectorAll('.delete-quick-btn').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        if (confirm('Đánh dấu là đã xử lý?')) await deleteDoc(doc(db, quickBookingsColRef.path, btn.dataset.id));
+                    });
+                });
+                feather.replace();
+            });
+        }
+        
+        function switchTab(tabName) {
+            const tabs = { booking: tabBooking, 'my-appointments': tabMyAppointments, 'quick-booking': tabQuickBooking };
+            const views = { booking: viewBooking, 'my-appointments': viewMyAppointments, 'quick-booking': viewQuickBooking };
+            Object.values(tabs).forEach(t => t.classList.remove('tab-active'));
+            Object.values(views).forEach(v => v.classList.add('hidden'));
+            tabs[tabName].classList.add('tab-active');
+            views[tabName].classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
