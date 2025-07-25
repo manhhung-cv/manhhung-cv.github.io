@@ -5,100 +5,153 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ Thống Đặt Lịch Hẹn - Tiệm Tóc (v13 - Admin Tools)</title>
 
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="styles.css">
-
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+    <style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; background-color: #f7f7f7; }
+        .tab-active { border-color: #4f46e5; color: #4f46e5; background-color: #eef2ff; }
+
+        .timeslot, .service-option {
+            border: 2px solid #e5e7eb; padding: 0.5rem; border-radius: 0.375rem;
+            font-weight: 600; transition: all 0.2s ease-in-out; cursor: pointer;
+            text-align: center;
+        }
+
+        .timeslot:hover:not(.disabled), .service-option:hover {
+            border-color: #a5b4fc; background-color: #eef2ff;
+        }
+
+        .timeslot.disabled {
+            background-color: #f3f4f6; color: #9ca3af; cursor: not-allowed; border-color: #e5e7eb;
+        }
+
+        .timeslot-selected, .service-selected {
+            background-color: #4f46e5; color: white; border-color: #4f46e5;
+        }
+
+        .status-badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .status-pending { background-color: #fef9c3; color: #ca8a04; }
+        .status-confirmed { background-color: #dcfce7; color: #16a34a; }
+        .status-rejected { background-color: #fee2e2; color: #dc2626; }
+        .status-cancelled { background-color: #e5e7eb; color: #4b5563; }
+
+        .contact-method-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem; /* 14px */
+            line-height: 1.25rem; /* 20px */
+            font-weight: 600;
+            border: 1px solid #d1d5db; /* gray-300 */
+            background-color: white;
+            transition: all 0.2s;
+            flex-grow: 1;
+        }
+        .contact-method-btn:first-child { border-top-left-radius: 0.375rem; border-bottom-left-radius: 0.375rem; }
+        .contact-method-btn:last-child { border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem; }
+        .contact-method-btn:not(:first-child) { margin-left: -1px; }
+        .contact-method-btn.active-method {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
+            border-color: #4f46e5; /* indigo-600 */
+            z-index: 10;
+        }
+        
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+
+    </style>
 </head>
 
-<body>
+<body class="antialiased text-slate-800">
 
-    <div class="page-container">
-        <div class="content-wrapper">
-            <header class="main-header">
-                <h1 class="title">Salon Tóc Chuyên Nghiệp</h1>
-                <p class="subtitle">Hệ thống quản lý và đặt lịch hẹn thông minh</p>
-                <div class="header-admin-button">
-                    <button id="showLoginModalButton" class="button button-admin-login">
-                        <i data-feather="log-in" class="icon-inline"></i>Admin
+    <div class="min-h-screen flex flex-col items-center p-4 bg-gray-50">
+        <div class="w-full max-w-6xl mx-auto">
+            <header class="text-center mb-8 relative">
+                <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Salon Tóc Chuyên Nghiệp</h1>
+                <p class="mt-2 text-lg text-slate-600">Hệ thống quản lý và đặt lịch hẹn thông minh</p>
+                <div class="absolute top-0 right-0">
+                    <button id="showLoginModalButton" class="bg-white text-indigo-600 font-semibold px-4 py-2 rounded-lg shadow hover:bg-indigo-50 transition-all">
+                        <i data-feather="log-in" class="inline-block w-4 h-4 mr-2"></i>Admin
                     </button>
                 </div>
             </header>
 
-            <div id="adminPanel" class="admin-panel hidden">
-                <div class="admin-panel-header">
-                    <h2 class="admin-panel-title"><i data-feather="settings" class="icon-title"></i>Bảng Điều Khiển Admin</h2>
-                    <button id="logoutButton" class="button button-logout">
-                        <i data-feather="log-out" class="icon-inline"></i>Đăng Xuất
+            <div id="adminPanel" class="hidden bg-indigo-50 border-2 border-dashed border-indigo-200 p-6 rounded-2xl mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-indigo-800 flex items-center"><i data-feather="settings" class="mr-2"></i>Bảng Điều Khiển Admin</h2>
+                    <button id="logoutButton" class="bg-red-500 text-white font-semibold px-4 py-2 rounded-lg shadow hover:bg-red-600 transition-all">
+                        <i data-feather="log-out" class="inline-block w-4 h-4 mr-2"></i>Đăng Xuất
                     </button>
                 </div>
-                <div class="admin-grid">
-                    <div class="admin-card">
-                        <h3 class="admin-card-title">Cài đặt Salon</h3>
-                        <form id="adminSettingsForm" class="form-spacing">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 class="font-semibold mb-2">Cài đặt Salon</h3>
+                        <form id="adminSettingsForm" class="space-y-3">
                             <div>
-                                <label for="openingTime" class="form-label">Giờ mở cửa</label>
-                                <input type="time" id="openingTime" class="form-input">
+                                <label for="openingTime" class="block text-sm font-medium">Giờ mở cửa</label>
+                                <input type="time" id="openingTime" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
-                                <label for="closingTime" class="form-label">Giờ đóng cửa</label>
-                                <input type="time" id="closingTime" class="form-input">
+                                <label for="closingTime" class="block text-sm font-medium">Giờ đóng cửa</label>
+                                <input type="time" id="closingTime" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
                             <div>
-                                <label for="maxCapacity" class="form-label">Sức chứa / khung giờ</label>
-                                <input type="number" id="maxCapacity" min="1" class="form-input">
+                                <label for="maxCapacity" class="block text-sm font-medium">Sức chứa / khung giờ</label>
+                                <input type="number" id="maxCapacity" min="1" class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
-                            <button type="submit" class="button button-primary button-full">Lưu Cài Đặt</button>
+                            <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 font-semibold">Lưu Cài Đặt</button>
                         </form>
                     </div>
-                    <div class="admin-card">
-                        <h3 class="admin-card-title">Công cụ Dữ liệu</h3>
-                        <div class="data-tools">
-                             <button id="exportCsvButton" class="button button-success button-full">Xuất CSV</button>
-                             <button id="deleteAllButton" class="button button-danger button-full">Xóa Toàn Bộ Dữ Liệu</button>
+                    <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 class="font-semibold mb-2">Công cụ Dữ liệu</h3>
+                        <div class="space-y-2">
+                             <button id="exportCsvButton" class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-semibold">Xuất CSV</button>
+                             <button id="deleteAllButton" class="w-full bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 font-semibold">Xóa Toàn Bộ Dữ Liệu</button>
                         </div>
                     </div>
-                     <div class="admin-card">
-                        <h3 class="admin-card-title">Yêu cầu tư vấn</h3>
-                        <div id="quickBookingsList" class="card-list"></div>
+                     <div class="bg-white p-4 rounded-lg shadow-sm">
+                        <h3 class="font-semibold mb-2">Yêu cầu tư vấn</h3>
+                        <div id="quickBookingsList" class="space-y-2 max-h-48 overflow-y-auto"></div>
                     </div>
                 </div>
-                 <div class="admin-card-full">
-                    <h3 class="admin-card-title">Danh sách đã tư vấn</h3>
-                    <div id="consultedBookingsList" class="card-list"></div>
+                 <div class="mt-6 bg-white p-4 rounded-lg shadow-sm">
+                    <h3 class="font-semibold mb-2">Danh sách đã tư vấn</h3>
+                    <div id="consultedBookingsList" class="space-y-2 max-h-48 overflow-y-auto"></div>
                 </div>
             </div>
 
-            <main class="main-content">
-                <div class="tabs-container">
-                    <button id="tab-booking" class="tab-button tab-active">📅 Đặt Lịch Mới</button>
-                    <button id="tab-my-appointments" class="tab-button">📖 Lịch Hẹn Của Tôi</button>
-                    <button id="tab-quick-booking" class="tab-button">⚡ Đặt Chỗ Nhanh</button>
+            <main class="bg-white p-6 rounded-2xl shadow-lg">
+                <div class="flex border-b mb-6">
+                    <button id="tab-booking" class="tab-active py-2 px-4 font-semibold border-b-2">📅 Đặt Lịch Mới</button>
+                    <button id="tab-my-appointments" class="py-2 px-4 font-semibold text-gray-500 border-b-2 border-transparent">📖 Lịch Hẹn Của Tôi</button>
+                    <button id="tab-quick-booking" class="py-2 px-4 font-semibold text-gray-500 border-b-2 border-transparent">⚡ Đặt Chỗ Nhanh</button>
                 </div>
 
                 <div id="view-booking">
-                     <div class="booking-grid">
-                        <div class="form-column">
-                            <h2 class="section-title">1. Điền thông tin của bạn</h2>
-                            <form id="bookingForm" class="form-spacing-large">
+                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <h2 class="text-xl font-bold mb-4">1. Điền thông tin của bạn</h2>
+                            <form id="bookingForm" class="space-y-4">
                                 <div>
-                                    <label for="customerName" class="form-label">Tên khách hàng</label>
-                                    <input type="text" id="customerName" required class="form-input">
+                                    <label for="customerName" class="block text-sm font-medium text-slate-700">Tên khách hàng</label>
+                                    <input type="text" id="customerName" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                                 </div>
                                 <div>
-                                    <label for="phoneNumber" class="form-label">Số điện thoại</label>
-                                    <input type="tel" id="phoneNumber" required class="form-input" placeholder="Ví dụ: 0912345678">
-                                    <p id="phoneNumberError" class="form-error hidden"></p>
+                                    <label for="phoneNumber" class="block text-sm font-medium text-slate-700">Số điện thoại</label>
+                                    <input type="tel" id="phoneNumber" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm" placeholder="Ví dụ: 0912345678">
+                                    <p id="phoneNumberError" class="text-red-600 text-sm mt-1 hidden"></p>
                                 </div>
                                 <div>
-                                    <label class="form-label">Dịch vụ</label>
-                                    <div id="serviceOptionsContainer" class="service-grid">
+                                    <label class="block text-sm font-medium text-slate-700">Dịch vụ</label>
+                                    <div id="serviceOptionsContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
                                         <button type="button" class="service-option" data-service="Cắt tóc nam">Cắt tóc nam</button>
                                         <button type="button" class="service-option" data-service="Cắt tóc nữ">Cắt tóc nữ</button>
                                         <button type="button" class="service-option" data-service="Gội đầu & sấy">Gội đầu & sấy</button>
@@ -109,51 +162,51 @@
                                 </div>
                                 <input type="hidden" id="selectedTime" required>
                                 
-                                <div class="g-recaptcha" data-sitekey="6LdLW4wrAAAAAMmnPaZxJtljjYKTpFBsinAv4F9x"></div>
-                                <button type="submit" id="submitButton" class="button button-primary button-full button-large">Hoàn Tất Đặt Lịch</button>
+                                <div class="g-recaptcha" data-sitekey="6LfBXYwrAAAAAKBB0r3aCkCTYkjt1AdTG8rws7Jw"></div>
+                                <button type="submit" id="submitButton" class="w-full bg-indigo-600 text-white px-4 py-3 rounded-md hover:bg-indigo-700 font-bold text-base transition-all">Hoàn Tất Đặt Lịch</button>
                             </form>
                         </div>
-                        <div class="time-column">
-                            <h2 class="section-title">2. Chọn ngày và giờ</h2>
+                        <div>
+                            <h2 class="text-xl font-bold mb-4">2. Chọn ngày và giờ</h2>
                             <div>
-                                <label for="bookingDate" class="form-label">Chọn ngày</label>
-                                <input type="date" id="bookingDate" required class="form-input">
+                                <label for="bookingDate" class="block text-sm font-medium text-slate-700">Chọn ngày</label>
+                                <input type="date" id="bookingDate" required class="mt-1 w-full rounded-md border-gray-300 shadow-sm">
                             </div>
-                            <div class="time-selection">
-                                <label class="form-label">Chọn giờ</label>
-                                <div id="timeSlotsContainer" class="timeslot-grid"></div>
+                            <div class="mt-4">
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Chọn giờ</label>
+                                <div id="timeSlotsContainer" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2"></div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div id="view-my-appointments" class="hidden">
-                    <div class="lookup-container">
-                        <h2 class="section-title text-center">Lịch Hẹn Của Tôi</h2>
-                        <p class="section-subtitle text-center">Nhập số điện thoại để xem và quản lý các lịch hẹn của bạn.</p>
-                        <form id="myAppointmentsForm" class="lookup-form">
-                            <input type="tel" id="myAppointmentsPhone" placeholder="Nhập số điện thoại của bạn" required class="form-input form-input-large">
-                            <p id="myAppointmentsPhoneError" class="form-error hidden"></p>
-                            <button type="submit" class="button button-primary button-full button-large">Tìm Kiếm</button>
+                    <div class="max-w-2xl mx-auto">
+                        <h2 class="text-2xl font-bold mb-4 text-center">Lịch Hẹn Của Tôi</h2>
+                        <p class="text-slate-600 mb-6 text-center">Nhập số điện thoại để xem và quản lý các lịch hẹn của bạn.</p>
+                        <form id="myAppointmentsForm" class="flex flex-col gap-2 mb-8">
+                            <input type="tel" id="myAppointmentsPhone" placeholder="Nhập số điện thoại của bạn" required class="flex-grow w-full rounded-md border-gray-300 shadow-sm text-lg p-3">
+                            <p id="myAppointmentsPhoneError" class="text-red-600 text-sm -mt-1 hidden"></p>
+                            <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 font-bold text-base transition-all mt-2">Tìm Kiếm</button>
                         </form>
-                        <div id="myAppointmentsList" class="appointments-lookup-list"></div>
+                        <div id="myAppointmentsList" class="space-y-4"></div>
                     </div>
                 </div>
 
                 <div id="view-quick-booking" class="hidden">
-                     <div class="quick-booking-container">
-                        <h2 class="section-title">Đặt Chỗ Nhanh</h2>
-                        <p class="section-subtitle">Để lại tên và thông tin liên hệ, chúng tôi sẽ gọi lại tư vấn và sắp xếp lịch hẹn cho bạn ngay!</p>
-                        <form id="quickBookingForm" class="form-spacing-large">
+                     <div class="max-w-md mx-auto text-center">
+                        <h2 class="text-2xl font-bold mb-2">Đặt Chỗ Nhanh</h2>
+                        <p class="text-slate-600 mb-6">Để lại tên và thông tin liên hệ, chúng tôi sẽ gọi lại tư vấn và sắp xếp lịch hẹn cho bạn ngay!</p>
+                        <form id="quickBookingForm" class="space-y-4">
                              <div>
                                 <label for="quickCustomerName" class="sr-only">Tên của bạn</label>
-                                <input type="text" id="quickCustomerName" placeholder="Nhập tên của bạn" required class="form-input form-input-large text-center">
-                                <p id="quickCustomerNameError" class="form-error text-left hidden"></p>
+                                <input type="text" id="quickCustomerName" placeholder="Nhập tên của bạn" required class="text-center flex-grow w-full rounded-md border-gray-300 shadow-sm text-lg p-3">
+                                <p id="quickCustomerNameError" class="text-red-600 text-sm mt-1 text-left hidden"></p>
                             </div>
 
                              <div>
-                                <label class="form-label">Chọn phương thức liên hệ</label>
-                                <div id="contactMethodToggle" class="contact-method-group">
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Chọn phương thức liên hệ</label>
+                                <div id="contactMethodToggle" class="flex justify-center rounded-md shadow-sm" role="group">
                                     <button type="button" data-method="phone" class="contact-method-btn active-method">SĐT</button>
                                     <button type="button" data-method="facebook" class="contact-method-btn">Facebook</button>
                                     <button type="button" data-method="zalo" class="contact-method-btn">Zalo</button>
@@ -161,109 +214,108 @@
                                 <input type="hidden" id="selectedContactMethod" value="phone">
                             </div>
 
-                            <div class="contact-input-wrapper">
-                                 <i id="contactIcon" data-feather="phone" class="contact-icon"></i>
-                                 <input type="tel" id="quickContactInfo" placeholder="Nhập số điện thoại" required class="form-input form-input-large text-center with-icon">
-                                 <p id="quickContactInfoError" class="form-error text-left hidden"></p>
+                            <div class="relative">
+                                 <i id="contactIcon" data-feather="phone" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10"></i>
+                                 <input type="tel" id="quickContactInfo" placeholder="Nhập số điện thoại" required class="text-center flex-grow w-full rounded-md border-gray-300 shadow-sm text-lg p-3 pl-12">
+                                 <p id="quickContactInfoError" class="text-red-600 text-sm mt-1 text-left hidden"></p>
                             </div>
 
-                            <div class="recaptcha-center">
-                                <div class="g-recaptcha" data-sitekey="6LckrQ8qAAAAAGcVjOqO-tYI5paxb2rstIe3M2bY"></div>
-                            </div>
+                            <div class="flex justify-center">
+                                <div class="g-recaptcha" data-sitekey="6LfBXYwrAAAAAKBB0r3aCkCTYkjt1AdTG8rws7Jw"></div>
+                                </div>
 
-                            <button type="submit" class="button button-primary button-full button-large">Gửi Yêu Cầu</button>
+                            <button type="submit" class="w-full bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 font-bold text-base transition-all !mt-6">Gửi Yêu Cầu</button>
                         </form>
                     </div>
                 </div>
             </main>
 
-            <footer class="main-footer">
-                <p class="footer-text">
+            <footer class="text-center mt-10 py-4 border-t">
+                <p class="text-sm text-slate-500">
                     &copy; 2024 Salon Tóc Chuyên Nghiệp.
-                    <a href="#" id="privacyPolicyLink" class="footer-link">Chính sách Quyền riêng tư</a>.
+                    <a href="#" id="privacyPolicyLink" class="text-indigo-600 hover:underline">Chính sách Quyền riêng tư</a>.
                 </p>
             </footer>
 
-            <div id="adminAppointmentsSection" class="admin-appointments-section hidden">
-                <h2 class="section-title">Danh Sách Lịch Hẹn (Admin View)</h2>
-                <div id="appointmentsList" class="admin-appointments-list"></div>
+            <div id="adminAppointmentsSection" class="hidden mt-10 w-full max-w-6xl mx-auto">
+                <h2 class="text-2xl font-bold mb-4">Danh Sách Lịch Hẹn (Admin View)</h2>
+                <div id="appointmentsList" class="space-y-3 max-h-[60vh] overflow-y-auto pr-2"></div>
             </div>
         </div>
     </div>
 
-    <div id="loginModal" class="modal hidden">
-        <div class="modal-content">
-            <h2 class="modal-title">Đăng Nhập Admin</h2>
-            <form id="loginForm" class="form-spacing-large">
+    <div id="loginModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm">
+            <h2 class="text-2xl font-bold text-center mb-6">Đăng Nhập Admin</h2>
+            <form id="loginForm" class="space-y-4">
                 <div>
-                    <label for="email" class="form-label">Email</label>
-                    <input type="email" id="email" required class="form-input">
+                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
                 </div>
                 <div>
-                    <label for="password" class="form-label">Mật khẩu</label>
-                    <input type="password" id="password" required class="form-input">
+                    <label for="password" class="block text-sm font-medium text-gray-700">Mật khẩu</label>
+                    <input type="password" id="password" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm">
                 </div>
-                <p id="loginError" class="form-error hidden"></p>
-                <div class="modal-actions">
-                    <button type="button" id="closeLoginModalButton" class="button-link">Hủy</button>
-                    <button type="submit" class="button button-primary">Đăng Nhập</button>
+                <p id="loginError" class="text-sm text-red-600 hidden"></p>
+                <div class="flex items-center justify-between pt-4">
+                    <button type="button" id="closeLoginModalButton" class="text-gray-600 hover:text-gray-900">Hủy</button>
+                    <button type="submit" class="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-md hover:bg-indigo-700">Đăng Nhập</button>
                 </div>
             </form>
         </div>
     </div>
     
-    <div id="privacyPolicyModal" class="modal hidden">
-        <div class="modal-content modal-large">
-            <div class="modal-body">
-                <div class="modal-header">
-                    <h2 class="modal-title no-margin">Chính sách Quyền riêng tư</h2>
-                    <button id="closePrivacyModalButton" class="button-icon">
-                        <i data-feather="x" class="icon-close"></i>
+    <div id="privacyPolicyModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl transform transition-all">
+            <div class="p-6">
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <h2 class="text-2xl font-bold text-slate-800">Chính sách Quyền riêng tư</h2>
+                    <button id="closePrivacyModalButton" class="text-gray-400 hover:text-gray-600">
+                        <i data-feather="x" class="w-6 h-6"></i>
                     </button>
                 </div>
-                <div class="privacy-content">
+                <div class="mt-4 space-y-4 text-slate-600 max-h-[70vh] overflow-y-auto pr-4">
                     <p>Cập nhật lần cuối: 24/07/2024</p>
                     <p>Cảm ơn bạn đã sử dụng hệ thống đặt lịch của Salon Tóc Chuyên Nghiệp ("chúng tôi"). Chúng tôi cam kết bảo vệ thông tin cá nhân của bạn. Chính sách này giải thích cách chúng tôi thu thập, sử dụng và bảo vệ dữ liệu của bạn.</p>
 
-                    <h3 class="privacy-subtitle">1. Thông tin chúng tôi thu thập</h3>
+                    <h3 class="text-lg font-semibold text-slate-700">1. Thông tin chúng tôi thu thập</h3>
                     <p>Chúng tôi thu thập các loại thông tin sau khi bạn sử dụng dịch vụ của chúng tôi:</p>
-                    <ul class="privacy-list">
+                    <ul class="list-disc list-inside space-y-1">
                         <li><strong>Thông tin cá nhân bạn cung cấp:</strong> Tên, số điện thoại, và/hoặc thông tin liên hệ qua mạng xã hội (Facebook, Zalo) mà bạn nhập vào các biểu mẫu đặt lịch.</li>
                         <li><strong>Thông tin dịch vụ:</strong> Dịch vụ bạn chọn, ngày và giờ hẹn.</li>
                         <li><strong>Thông tin kỹ thuật tự động:</strong> Để đảm bảo an ninh và chống spam, chúng tôi tự động thu thập thông tin về thiết bị của bạn, bao gồm địa chỉ IP, loại trình duyệt (ví dụ: Chrome, Firefox), và loại thiết bị (ví dụ: Di động, Máy tính để bàn).</li>
                     </ul>
 
-                    <h3 class="privacy-subtitle">2. Mục đích sử dụng thông tin</h3>
+                    <h3 class="text-lg font-semibold text-slate-700">2. Mục đích sử dụng thông tin</h3>
                     <p>Chúng tôi sử dụng thông tin thu thập được cho các mục đích sau:</p>
-                     <ul class="privacy-list">
+                     <ul class="list-disc list-inside space-y-1">
                         <li><strong>Quản lý lịch hẹn:</strong> Để xác nhận, nhắc nhở, và quản lý lịch hẹn của bạn tại salon.</li>
                         <li><strong>Liên hệ với bạn:</strong> Để gửi thông báo xác nhận, hoặc liên hệ khi có thay đổi về lịch hẹn.</li>
                         <li><strong>Cải thiện dịch vụ:</strong> Để phân tích và cải thiện trải nghiệm người dùng trên trang web đặt lịch.</li>
                         <li><strong>An ninh và chống Spam:</strong> Để xác định và ngăn chặn các hành vi đặt lịch giả mạo hoặc spam, bảo vệ hệ thống của chúng tôi.</li>
                     </ul>
 
-                    <h3 class="privacy-subtitle">3. Chia sẻ thông tin</h3>
+                    <h3 class="text-lg font-semibold text-slate-700">3. Chia sẻ thông tin</h3>
                     <p>Chúng tôi cam kết không bán, trao đổi, hoặc chuyển giao thông tin cá nhân của bạn cho bất kỳ bên thứ ba nào, trừ các trường hợp được yêu cầu bởi pháp luật.</p>
                     
-                    <h3 class="privacy-subtitle">4. Bảo mật thông tin</h3>
+                    <h3 class="text-lg font-semibold text-slate-700">4. Bảo mật thông tin</h3>
                     <p>Thông tin của bạn được lưu trữ trên nền tảng cơ sở dữ liệu an toàn (Firebase) và chúng tôi áp dụng các biện pháp kỹ thuật cần thiết để bảo vệ dữ liệu của bạn khỏi truy cập trái phép.</p>
 
-                    <h3 class="privacy-subtitle">5. Thay đổi chính sách</h3>
+                    <h3 class="text-lg font-semibold text-slate-700">5. Thay đổi chính sách</h3>
                     <p>Chúng tôi có thể cập nhật chính sách này theo thời gian. Mọi thay đổi sẽ được đăng trên trang này. Chúng tôi khuyến khích bạn thường xuyên xem lại Chính sách Quyền riêng tư để cập nhật thông tin.</p>
 
-                    <h3 class="privacy-subtitle">6. Liên hệ</h3>
+                    <h3 class="text-lg font-semibold text-slate-700">6. Liên hệ</h3>
                     <p>Nếu bạn có bất kỳ câu hỏi nào về chính sách này, vui lòng liên hệ với chúng tôi.</p>
                 </div>
-                <div class="modal-footer">
-                     <button id="acceptPrivacyButton" class="button button-primary">Tôi đã hiểu</button>
+                <div class="mt-6 text-right">
+                     <button id="acceptPrivacyButton" class="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-md hover:bg-indigo-700">Tôi đã hiểu</button>
                 </div>
             </div>
         </div>
     </div>
-    
+
+
     <script type="module">
-        // The entire JavaScript content provided in the prompt goes here.
-        // It does not need to be modified as it only manipulates the DOM.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc, Timestamp, setDoc, getDoc, updateDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
@@ -566,13 +618,13 @@
         
         function renderTimeSlotsForBooking(appointmentsForDay = []) {
             const html = getTimeSlotsHTML(appointmentsForDay);
-            timeSlotsContainer.innerHTML = html || `<p class="timeslot-placeholder">Vui lòng chọn ngày để xem khung giờ.</p>`;
+            timeSlotsContainer.innerHTML = html || `<p class="col-span-full text-center text-gray-500 p-4">Vui lòng chọn ngày để xem khung giờ.</p>`;
             timeSlotsContainer.querySelectorAll('.timeslot:not(.disabled)').forEach(slot => slot.addEventListener('click', handleTimeSlotClick));
         }
 
         function getTimeSlotsHTML(appointmentsForDay = []) {
             const { openingTime, closingTime, maxCapacity } = salonConfig;
-            if (!openingTime || !closingTime || !maxCapacity) return `<p class="timeslot-error">Admin chưa cài đặt giờ hoạt động.</p>`;
+            if (!openingTime || !closingTime || !maxCapacity) return `<p class="col-span-full text-red-500 p-4">Admin chưa cài đặt giờ hoạt động.</p>`;
             const selectedDateStr = bookingDateInput.value;
             const now = new Date();
             const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -774,31 +826,31 @@
             myAppointmentsList.innerHTML = appointments.map(apt => {
                 const canAct = apt.status === 'pending';
                 return `
-                <div class="appointment-card-user">
+                <div class="border rounded-lg p-4 bg-white shadow-sm transition-all duration-300">
                     <div class="apt-view-mode">
-                        <div class="appointment-card-header">
-                            <p class="appointment-card-name">${maskInfo(apt.name, 'name')}</p>
+                        <div class="flex justify-between items-start">
+                            <p class="font-bold text-lg">${maskInfo(apt.name, 'name')}</p>
                             <span class="status-badge status-${apt.status}">${statusText[apt.status] || apt.status}</span>
                         </div>
-                        <p class="appointment-card-time">${apt.time} - ${apt.date}</p>
-                        <p class="appointment-card-service">${apt.service}</p>
-                        <p class="appointment-card-phone">SĐT: ${maskInfo(apt.phone, 'phone')}</p>
-                        <div class="appointment-card-actions">
-                           <button data-apt='${JSON.stringify(apt)}' class="button-card-action button-edit" ${!canAct ? 'disabled' : ''}>Sửa lịch</button>
-                           <button data-id="${apt.id}" class="button-card-action button-cancel" ${!canAct ? 'disabled' : ''}>Hủy lịch</button>
+                        <p class="text-slate-600 text-2xl font-bold">${apt.time} - ${apt.date}</p>
+                        <p class="text-sm text-slate-500">${apt.service}</p>
+                        <p class="text-xs text-slate-400 mt-2">SĐT: ${maskInfo(apt.phone, 'phone')}</p>
+                        <div class="mt-3 flex gap-2">
+                           <button data-apt='${JSON.stringify(apt)}' class="edit-apt-btn w-1/2 text-center py-2 rounded-md font-semibold ${canAct ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}" ${!canAct ? 'disabled' : ''}>Sửa lịch</button>
+                           <button data-id="${apt.id}" class="cancel-apt-btn w-1/2 text-center py-2 rounded-md font-semibold ${canAct ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}" ${!canAct ? 'disabled' : ''}>Hủy lịch</button>
                         </div>
                     </div>
-                    <div class="apt-edit-mode hidden form-spacing"></div>
+                    <div class="apt-edit-mode hidden space-y-3"></div>
                 </div>`;
             }).join('');
 
-            myAppointmentsList.querySelectorAll('.button-edit:not(:disabled)').forEach(btn => btn.addEventListener('click', handleEditAppointmentClick));
-            myAppointmentsList.querySelectorAll('.button-cancel:not(:disabled)').forEach(btn => btn.addEventListener('click', handleCancelAppointmentClick));
+            myAppointmentsList.querySelectorAll('.edit-apt-btn:not(:disabled)').forEach(btn => btn.addEventListener('click', handleEditAppointmentClick));
+            myAppointmentsList.querySelectorAll('.cancel-apt-btn:not(:disabled)').forEach(btn => btn.addEventListener('click', handleCancelAppointmentClick));
         }
 
         async function handleEditAppointmentClick(e) {
             const aptData = JSON.parse(e.currentTarget.dataset.apt);
-            const card = e.target.closest('.appointment-card-user');
+            const card = e.target.closest('.border');
             const viewMode = card.querySelector('.apt-view-mode');
             const editMode = card.querySelector('.apt-edit-mode');
             const { value: phone } = await Swal.fire({
@@ -808,15 +860,15 @@
             });
             if (phone && phone === aptData.phone) {
                 editMode.innerHTML = `
-                    <div><label class="form-label">Tên khách hàng</label><input type="text" value="${aptData.name}" class="edit-name-input form-input"></div>
+                    <div><label class="block text-sm font-medium">Tên khách hàng</label><input type="text" value="${aptData.name}" class="edit-name-input mt-1 w-full rounded-md border-gray-300 shadow-sm"></div>
                     <div>
-                        <label class="form-label">Số điện thoại</label>
-                        <input type="tel" value="${aptData.phone}" class="edit-phone-input form-input">
-                        <p class="edit-phone-error form-error hidden"></p>
+                        <label class="block text-sm font-medium">Số điện thoại</label>
+                        <input type="tel" value="${aptData.phone}" class="edit-phone-input mt-1 w-full rounded-md border-gray-300 shadow-sm">
+                        <p class="edit-phone-error text-red-600 text-sm mt-1 hidden"></p>
                     </div>
-                    <div class="appointment-card-actions">
-                        <button data-id="${aptData.id}" class="save-changes-btn button-card-action button-success-inline">Lưu thay đổi</button>
-                        <button type="button" class="cancel-edit-btn button-card-action button-secondary-inline">Hủy</button>
+                    <div class="flex gap-2 mt-3">
+                        <button data-id="${aptData.id}" class="save-changes-btn w-1/2 bg-green-600 text-white font-semibold py-2 rounded-md hover:bg-green-700">Lưu thay đổi</button>
+                        <button type="button" class="cancel-edit-btn w-1/2 bg-gray-200 py-2 rounded-md">Hủy</button>
                     </div>`;
                 viewMode.classList.add('hidden');
                 editMode.classList.remove('hidden');
@@ -871,25 +923,25 @@
             appointmentsList.innerHTML = appointmentsForDay.map(apt => {
                 const spamTooltip = apt.spamCheck ? `IP: ${apt.spamCheck.ip || 'N/A'}\nThiết bị: ${apt.spamCheck.device}\nTrình duyệt: ${apt.spamCheck.browser}` : 'Không có dữ liệu spam.';
                 return `
-                <div class="admin-appointment-card">
-                    <div class="admin-appointment-info">
+                <div class="bg-slate-50 p-3 rounded-lg border">
+                    <div class="flex items-center justify-between gap-4">
                         <div>
-                            <p class="admin-appointment-time-name">${apt.time} - ${apt.name}</p>
-                            <p class="admin-appointment-details">${apt.service} | ${apt.phone}</p>
-                            <p class="admin-appointment-id">Mã: ${apt.bookingId}</p>
+                            <p class="font-semibold">${apt.time} - ${apt.name}</p>
+                            <p class="text-sm text-slate-600">${apt.service} | ${apt.phone}</p>
+                            <p class="text-xs text-slate-500 mt-1">Mã: ${apt.bookingId}</p>
                         </div>
-                        <div class="admin-appointment-status-group">
-                             <i data-feather="shield" class="icon-shield" title="${spamTooltip}"></i>
+                        <div class="flex items-center gap-2">
+                             <i data-feather="shield" class="w-4 h-4 text-gray-400" title="${spamTooltip}"></i>
                              <span class="status-badge ${classMap[apt.status] || ''}">${statusMap[apt.status] || apt.status}</span>
                         </div>
                     </div>
-                    ${apt.status === 'pending' ? `<div class="admin-action-bar">
-                        <button class="admin-action-btn admin-confirm-btn" data-action="confirm" data-id="${apt.id}">Xác nhận</button>
-                        <button class="admin-action-btn admin-reject-btn" data-action="reject" data-id="${apt.id}">Từ chối</button>
+                    ${apt.status === 'pending' ? `<div class="mt-2 pt-2 border-t flex gap-2">
+                        <button class="admin-action-btn flex-1 bg-green-100 text-green-700 py-1 rounded hover:bg-green-200" data-action="confirm" data-id="${apt.id}">Xác nhận</button>
+                        <button class="admin-action-btn flex-1 bg-red-100 text-red-700 py-1 rounded hover:bg-red-200" data-action="reject" data-id="${apt.id}">Từ chối</button>
                     </div>` : ''}
-                     ${apt.status === 'rejected' && apt.rejectionReason ? `<p class="admin-rejection-reason">Lý do: ${apt.rejectionReason}</p>` : ''}
+                     ${apt.status === 'rejected' && apt.rejectionReason ? `<p class="mt-2 text-xs text-red-600">Lý do: ${apt.rejectionReason}</p>` : ''}
                 </div>`
-            }).join('') || `<p class="placeholder-text">Không có lịch hẹn nào.</p>`;
+            }).join('') || `<p class="text-center text-gray-500 p-4">Không có lịch hẹn nào.</p>`;
             feather.replace();
         }
         
@@ -912,28 +964,28 @@
                     const icons = { phone: 'phone', facebook: 'facebook', zalo: 'message-circle' };
                     let contactDisplay;
                     if (req.contactMethod === 'phone') {
-                        contactDisplay = `<span class="contact-text">${req.contactInfo}</span>`;
+                        contactDisplay = `<span class="font-mono">${req.contactInfo}</span>`;
                     } else {
-                        contactDisplay = `<a href="${req.contactInfo}" target="_blank" class="contact-link" title="${req.contactInfo}">${req.contactInfo}</a>`;
+                        contactDisplay = `<a href="${req.contactInfo}" target="_blank" class="text-indigo-600 hover:underline truncate" title="${req.contactInfo}">${req.contactInfo}</a>`;
                     }
                     
                     const spamTooltip = req.spamCheck ? `IP: ${req.spamCheck.ip || 'N/A'}\nThiết bị: ${req.spamCheck.device}\nTrình duyệt: ${req.spamCheck.browser}` : 'Không có dữ liệu spam.';
                     
                     return `
-                    <div class="quick-booking-card">
+                    <div class="bg-slate-50 p-3 rounded-md flex justify-between items-center text-sm">
                         <div>
-                            <p class="quick-booking-name">${req.name}</p>
-                            <div class="quick-booking-contact">
-                                <i data-feather="${icons[req.contactMethod] || 'help-circle'}" class="icon-contact-method"></i>
+                            <p class="font-semibold">${req.name}</p>
+                            <div class="flex items-center gap-2 text-slate-600 mt-1">
+                                <i data-feather="${icons[req.contactMethod] || 'help-circle'}" class="w-4 h-4"></i>
                                 ${contactDisplay}
                             </div>
                         </div>
-                        <div class="quick-booking-actions">
-                            <i data-feather="shield" class="icon-shield" title="${spamTooltip}"></i>
-                            <button class="consulted-btn" data-id="${req.id}" title="Đánh dấu đã tư vấn"><i data-feather="check-circle" class="icon-check"></i></button>
+                        <div class="flex items-center gap-2">
+                            <i data-feather="shield" class="w-4 h-4 text-gray-400" title="${spamTooltip}"></i>
+                            <button class="consulted-btn text-green-500 hover:text-green-700 flex-shrink-0" data-id="${req.id}" title="Đánh dấu đã tư vấn"><i data-feather="check-circle" class="w-5 h-5"></i></button>
                         </div>
                     </div>`
-                }).join('') || `<p class="placeholder-text">Chưa có yêu cầu nào.</p>`;
+                }).join('') || `<p class="text-center text-gray-500 p-2">Chưa có yêu cầu nào.</p>`;
                 
                 document.querySelectorAll('.consulted-btn').forEach(btn => {
                     btn.addEventListener('click', async (e) => {
@@ -959,25 +1011,25 @@
                      const icons = { phone: 'phone', facebook: 'facebook', zalo: 'message-circle' };
                     let contactDisplay;
                     if (req.contactMethod === 'phone') {
-                        contactDisplay = `<span class="contact-text">${req.contactInfo}</span>`;
+                        contactDisplay = `<span class="font-mono">${req.contactInfo}</span>`;
                     } else {
-                        contactDisplay = `<a href="${req.contactInfo}" target="_blank" class="contact-link" title="${req.contactInfo}">${req.contactInfo}</a>`;
+                        contactDisplay = `<a href="${req.contactInfo}" target="_blank" class="text-indigo-600 hover:underline truncate" title="${req.contactInfo}">${req.contactInfo}</a>`;
                     }
                     const spamTooltip = req.spamCheck ? `IP: ${req.spamCheck.ip || 'N/A'}\nThiết bị: ${req.spamCheck.device}\nTrình duyệt: ${req.spamCheck.browser}` : 'Không có dữ liệu spam.';
 
                     return `
-                    <div class="consulted-booking-card">
-                        <div class="consulted-booking-header">
-                            <p class="consulted-booking-name">${req.name}</p>
-                            <i data-feather="shield" class="icon-shield-consulted" title="${spamTooltip}"></i>
+                    <div class="bg-slate-100 p-3 rounded-md opacity-70 text-sm">
+                        <div class="flex justify-between">
+                            <p class="font-semibold">${req.name}</p>
+                            <i data-feather="shield" class="w-4 h-4 text-gray-500" title="${spamTooltip}"></i>
                         </div>
-                        <div class="quick-booking-contact">
-                            <i data-feather="${icons[req.contactMethod] || 'help-circle'}" class="icon-contact-method"></i>
+                        <div class="flex items-center gap-2 text-slate-600 mt-1">
+                            <i data-feather="${icons[req.contactMethod] || 'help-circle'}" class="w-4 h-4"></i>
                             ${contactDisplay}
                         </div>
-                        <p class="consulted-time">Đã tư vấn lúc ${new Date(req.consultedAt.toDate()).toLocaleString('vi-VN')}</p>
+                        <p class="text-xs text-gray-500 mt-1">Đã tư vấn lúc ${new Date(req.consultedAt.toDate()).toLocaleString('vi-VN')}</p>
                     </div>`
-                }).join('') || `<p class="placeholder-text">Chưa có dữ liệu.</p>`;
+                }).join('') || `<p class="text-center text-gray-500 p-2">Chưa có dữ liệu.</p>`;
                  feather.replace();
             });
         }

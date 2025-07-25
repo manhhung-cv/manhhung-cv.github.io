@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salon Tóc Chuyên Nghiệp - Đặt Lịch Hẹn</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+
+    <style>
+        :root {
+            --primary-color: #f59e0b; /* amber-500 */
+            --primary-hover: #d97706; /* amber-600 */
+            --background-color: #f4f4f5; /* zinc-100 */
+            --surface-color: #ffffff;
+            --text-dark: #18181b; /* zinc-900 */
+            --text-medium: #52525b; /* zinc-600 */
+            --text-light: #a1a1aa; /* zinc-400 */
+        }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-dark);
+        }
+        .wizard-step { display: none; }
+        .wizard-step.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-bar-step {
+            flex: 1; height: 4px; background-color: #e4e4e7; /* zinc-200 */
+            transition: background-color 0.3s ease;
+        }
+        .progress-bar-step.active { background-color: var(--primary-color); }
+
+        .service-card {
+            border: 2px solid #e4e4e7; transition: all 0.2s ease-in-out;
+        }
+        .service-card:hover {
+            border-color: var(--primary-color); transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .service-card.selected {
+            border-color: var(--primary-color); background-color: #fffbeb; /* amber-50 */ box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .calendar-day {
+            width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; cursor: pointer; transition: background-color 0.2s, color 0.2s;
+        }
+        .calendar-day:hover:not(.disabled) { background-color: #fef3c7; /* amber-100 */ }
+        .calendar-day.selected { background-color: var(--primary-color); color: white; font-weight: 600; }
+        .calendar-day.disabled { color: #d4d4d8; /* zinc-300 */ cursor: not-allowed; }
+        .calendar-day.today { border: 2px solid var(--primary-color); }
+
+        .timeslot {
+            border: 2px solid #e4e4e7; transition: all 0.2s ease-in-out;
+        }
+        .timeslot:hover:not(.disabled) { border-color: var(--primary-color); }
+        .timeslot.selected { background-color: var(--text-dark); color: white; border-color: var(--text-dark); }
+        .timeslot.disabled { background-color: #f4f4f5; color: #a1a1aa; cursor: not-allowed; }
+        
+        .modal { transition: opacity 0.3s ease; }
+
+        .contact-method-btn {
+            padding: 0.5rem 1rem; font-size: 0.875rem; line-height: 1.25rem; font-weight: 600;
+            border: 1px solid #d1d5db; background-color: white; transition: all 0.2s; flex-grow: 1;
+        }
+        .contact-method-btn:first-child { border-top-left-radius: 0.375rem; border-bottom-left-radius: 0.375rem; }
+        .contact-method-btn:last-child { border-top-right-radius: 0.375rem; border-bottom-right-radius: 0.375rem; }
+        .contact-method-btn:not(:first-child) { margin-left: -1px; }
+        .contact-method-btn.active-method {
+            background-color: var(--primary-color); color: var(--text-dark); border-color: var(--primary-color); z-index: 10;
+        }
+        .status-badge { padding: 2px 8px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; display: inline-block; }
+        .status-pending { background-color: #fef9c3; color: #ca8a04; }
+        .status-confirmed { background-color: #dcfce7; color: #16a34a; }
+        .status-rejected { background-color: #fee2e2; color: #dc2626; }
+        .status-cancelled { background-color: #e5e7eb; color: #4b5563; }
+    </style>
+</head>
+
+<body class="antialiased">
+    
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <a href="javascript:location.reload();" class="text-xl font-bold text-zinc-800">Salon Tóc Chuyên Nghiệp</a>
+            <div class="flex items-center space-x-2 md:space-x-4">
+                <button id="showMyAppointmentsButton" class="text-sm font-semibold text-zinc-600 hover:text-amber-500 transition-colors">Tra cứu lịch hẹn</button>
+                <div id="guest-controls">
+                    <button id="showLoginModalButton" class="text-sm font-semibold bg-zinc-800 text-white px-4 py-2 rounded-lg hover:bg-zinc-700 transition-colors">Admin</button>
+                </div>
+                <div id="admin-controls" class="hidden items-center space-x-2 md:space-x-4">
+                    <button id="showDashboardButton" class="text-sm font-semibold bg-amber-500 text-zinc-800 px-4 py-2 rounded-lg hover:bg-amber-600 transition-colors">Dashboard</button>
+                    <button id="logoutButton" class="text-zinc-500 hover:text-zinc-800" title="Đăng xuất"><i data-feather="log-out"></i></button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div id="main-content" class="container mx-auto p-4 md:p-6">
+        <div class="relative rounded-2xl overflow-hidden mb-8 h-64 md:h-80 bg-zinc-800">
+            <img src="https://images.unsplash.com/photo-1599387737838-66a352385a909?q=80&w=2070" class="absolute inset-0 w-full h-full object-cover opacity-30" alt="Salon interior">
+            <div class="relative h-full flex flex-col justify-center items-center text-center text-white p-4">
+                <h1 class="text-3xl md:text-5xl font-bold mb-2">Trải nghiệm đẳng cấp, thăng hạng nhan sắc</h1>
+                <p class="text-base md:text-lg max-w-2xl text-zinc-200">Đặt lịch hẹn chỉ với vài cú nhấp chuột để tận hưởng dịch vụ chuyên nghiệp của chúng tôi.</p>
+            </div>
+        </div>
+
+        <div id="booking-wizard">
+             <div class="lg:grid lg:grid-cols-3 lg:gap-8">
+                <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="wizard-title" class="text-2xl font-bold"></h2>
+                        <div id="step-indicator" class="text-sm font-semibold text-zinc-500"></div>
+                    </div>
+                    <div id="progress-bar" class="flex rounded-full mb-6">
+                        <div class="progress-bar-step"></div><div class="progress-bar-step"></div><div class="progress-bar-step"></div><div class="progress-bar-step"></div>
+                    </div>
+                    
+                    <div>
+                        <div id="step-1-service" class="wizard-step"><p class="text-zinc-500 mb-6">Bắt đầu bằng cách chọn dịch vụ bạn muốn thực hiện.</p><div id="service-options-container" class="grid grid-cols-2 md:grid-cols-3 gap-4"></div></div>
+                        <div id="step-2-datetime" class="wizard-step"><p class="text-zinc-500 mb-6">Chọn một ngày và khung giờ còn trống trong lịch.</p><div class="md:grid md:grid-cols-2 md:gap-8"><div id="calendar-container" class="p-4 bg-zinc-50 rounded-lg"></div><div id="time-slots-container" class="mt-6 md:mt-0"></div></div></div>
+                        <div id="step-3-details" class="wizard-step"><p class="text-zinc-500 mb-6">Sắp xong rồi! Vui lòng điền thông tin bên dưới.</p><form id="detailsForm" class="space-y-4 max-w-md" onsubmit="return false;"><label for="customerName" class="block text-sm font-medium text-zinc-700">Tên khách hàng</label><input type="text" id="customerName" required class="mt-1 w-full rounded-lg border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"><div><label for="phoneNumber" class="block text-sm font-medium text-zinc-700">Số điện thoại</label><input type="tel" id="phoneNumber" required class="mt-1 w-full rounded-lg border-zinc-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"><p id="phoneNumberError" class="text-red-600 text-sm mt-1 hidden"></p></div><div id="recaptcha-container" class="pt-2"></div></form></div>
+                        <div id="step-4-confirm" class="wizard-step"><p class="text-zinc-500 mb-6">Vui lòng kiểm tra lại thông tin lịch hẹn của bạn trước khi xác nhận.</p><div id="confirmation-summary" class="bg-zinc-50 border border-zinc-200 rounded-lg p-6 space-y-4 text-zinc-800"></div></div>
+                    </div>
+
+                    <div class="mt-8 pt-6 border-t flex justify-between items-center">
+                        <button id="back-button" class="text-sm font-semibold text-zinc-600 hover:text-zinc-800 transition-colors hidden">&larr; Quay Lại</button>
+                        <button id="next-button" class="bg-zinc-800 text-white font-semibold px-6 py-3 rounded-lg hover:bg-zinc-700 transition-colors disabled:bg-zinc-300 disabled:cursor-not-allowed">Tiếp Tục &rarr;</button>
+                        <button id="submit-button" class="bg-amber-500 text-zinc-800 font-bold px-6 py-3 rounded-lg hover:bg-amber-600 transition-colors hidden">Hoàn Tất Đặt Lịch</button>
+                    </div>
+                </div>
+                <div class="lg:col-span-1 mt-6 lg:mt-0">
+                    <div class="sticky top-24">
+                        <div id="booking-summary" class="bg-white p-6 rounded-2xl shadow-lg">
+                            <h3 class="text-xl font-bold border-b pb-3 mb-4">Tóm Tắt Lịch Hẹn</h3>
+                            <div class="space-y-4 text-sm"><div class="flex justify-between items-center"><span class="text-zinc-500">Dịch vụ:</span><span id="summary-service" class="font-semibold text-right">Chưa chọn</span></div><div class="flex justify-between items-center"><span class="text-zinc-500">Ngày:</span><span id="summary-date" class="font-semibold text-right">Chưa chọn</span></div><div class="flex justify-between items-center"><span class="text-zinc-500">Giờ:</span><span id="summary-time" class="font-semibold text-right">Chưa chọn</span></div></div>
+                            <div class="mt-6 pt-4 border-t"><p class="text-zinc-500">Cần tư vấn thêm?</p><button id="showQuickBookingModalButton" class="w-full mt-2 text-center font-semibold text-amber-600 hover:text-amber-700">Yêu cầu gọi lại</button></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="my-appointments-view" class="hidden"></div>
+        <div id="admin-dashboard-view" class="hidden"></div>
+
+        <footer class="text-center mt-10 py-4 border-t"><p class="text-sm text-slate-500">&copy; 2025 Salon Tóc Chuyên Nghiệp. <a href="#" id="privacyPolicyLink" class="text-amber-600 hover:underline">Chính sách Quyền riêng tư</a>.</p></footer>
+    </div>
+    
+    <div id="loginModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50"></div>
+    <div id="privacyPolicyModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50"></div>
+    <div id="quickBookingModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc, Timestamp, setDoc, getDoc, updateDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDmoz4VMGwlLz5lsrYiT6GQZHJlmkN5igo",
+            authDomain: "salon-booking-39f42.firebaseapp.com",
+            projectId: "salon-booking-39f42",
+            storageBucket: "salon-booking-39f42.firebasestorage.app",
+            messagingSenderId: "499019851171",
+            appId: "1:499019851171:web:9a4731d7d2c5faf1182616"
+        };
+        const appId = 'default-salon-app-v2';
+        const VIETNAM_PHONE_REGEX = /^(?:(?:\+84|0084)|0)[235789][0-9]{1,2}[0-9]{7}$/;
+        const RECAPTCHA_SITE_KEY = '6LfBXYwrAAAAAKBB0r3aCkCTYkjt1AdTG8rws7Jw'; // <<<--- !!! PASTE YOUR SITE KEY HERE !!!
+        const services = [
+            { id: 1, name: 'Cắt tóc nam', icon: 'user' }, { id: 2, name: 'Cắt tóc nữ', icon: 'user' },
+            { id: 3, name: 'Gội & Sấy', icon: 'wind' }, { id: 4, name: 'Nhuộm tóc', icon: 'pen-tool' },
+            { id: 5, name: 'Uốn/Duỗi', icon: 'refresh-cw' }, { id: 6, name: 'Chăm sóc', icon: 'smile' },
+        ];
+        const wizardTitles = ["Chọn Dịch Vụ", "Chọn Ngày & Giờ", "Thông Tin Của Bạn", "Xác Nhận Lịch Hẹn"];
+
+        let db, auth, isAdmin = false;
+        let appointmentsColRef, quickBookingsColRef, configDocRef, consultedBookingsColRef;
+        let salonConfig = { openingTime: "09:00", closingTime: "20:00", maxCapacity: 2 };
+        let appointmentsListener, quickBookingsListener, consultedBookingsListener;
+        let currentStep = 1;
+        const totalSteps = 4;
+        const initialBookingData = { service: null, date: null, time: null, name: null, phone: null };
+        let bookingData = { ...initialBookingData };
+        let currentDate = new Date();
+        let recaptchaWidgetId, quickRecaptchaWidgetId;
+
+        const mainContent = document.getElementById('main-content');
+        const wizardTitle = document.getElementById('wizard-title');
+        const stepIndicator = document.getElementById('step-indicator');
+        const progressBarSteps = document.querySelectorAll('.progress-bar-step');
+        const wizardSteps = document.querySelectorAll('.wizard-step');
+        const backButton = document.getElementById('back-button');
+        const nextButton = document.getElementById('next-button');
+        const submitButton = document.getElementById('submit-button');
+        const loginModal = document.getElementById('loginModal');
+        const privacyPolicyModal = document.getElementById('privacyPolicyModal');
+        const quickBookingModal = document.getElementById('quickBookingModal');
+        const myAppointmentsView = document.getElementById('my-appointments-view');
+        const adminDashboardView = document.getElementById('admin-dashboard-view');
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                initializeApp(firebaseConfig);
+                db = getFirestore();
+                auth = getAuth();
+                const basePath = `/artifacts/${appId}/public/data`;
+                appointmentsColRef = collection(db, `${basePath}/appointments`);
+                quickBookingsColRef = collection(db, `${basePath}/quickBookings`);
+                consultedBookingsColRef = collection(db, `${basePath}/consultedBookings`);
+                configDocRef = doc(db, `${basePath}/config/salonSettings`);
+                
+                await onAuthStateChanged(auth, handleAuthStateChange);
+                setupEventListeners();
+                initializeUI();
+            } catch (error) {
+                console.error("Initialization failed:", error);
+                document.body.innerHTML = `<p class="text-center text-red-500 p-8">Lỗi khởi tạo ứng dụng. Vui lòng thử lại.</p>`;
+            }
+        });
+
+        function initializeUI() {
+            renderServices();
+            renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+            updateWizardUI();
+            injectModalHTML();
+            feather.replace();
+        }
+
+        function setupEventListeners() {
+            document.getElementById('showMyAppointmentsButton').addEventListener('click', () => showView('my-appointments'));
+            document.getElementById('showLoginModalButton').addEventListener('click', () => loginModal.classList.remove('hidden'));
+            document.getElementById('showDashboardButton').addEventListener('click', () => showView('admin-dashboard'));
+            document.getElementById('logoutButton').addEventListener('click', handleLogout);
+            
+            nextButton.addEventListener('click', handleNextStep);
+            backButton.addEventListener('click', handlePrevStep);
+            submitButton.addEventListener('click', handleBookingSubmit);
+            
+            document.getElementById('showQuickBookingModalButton').addEventListener('click', () => {
+                renderQuickBookingModal();
+                quickBookingModal.classList.remove('hidden');
+            });
+            document.getElementById('privacyPolicyLink').addEventListener('click', e => { e.preventDefault(); privacyPolicyModal.classList.remove('hidden'); });
+            
+            document.getElementById('customerName').addEventListener('input', () => validateStep(3));
+            document.getElementById('phoneNumber').addEventListener('input', () => validateStep(3));
+        }
+        
+        function showView(viewName) {
+            mainContent.classList.add('hidden');
+            myAppointmentsView.classList.add('hidden');
+            adminDashboardView.classList.add('hidden');
+            
+            if (viewName === 'booking') mainContent.classList.remove('hidden');
+            else if (viewName === 'my-appointments') {
+                renderMyAppointmentView();
+                myAppointmentsView.classList.remove('hidden');
+            }
+            else if (viewName === 'admin-dashboard') {
+                renderAdminDashboardView();
+                adminDashboardView.classList.remove('hidden');
+            }
+            window.scrollTo(0, 0);
+        }
+
+        function updateWizardUI() {
+            wizardTitle.textContent = wizardTitles[currentStep - 1];
+            stepIndicator.textContent = `Bước ${currentStep} / ${totalSteps}`;
+            progressBarSteps.forEach((step, i) => step.classList.toggle('active', i < currentStep));
+            wizardSteps.forEach((step, i) => step.classList.toggle('active', (i + 1) === currentStep));
+            backButton.classList.toggle('hidden', currentStep === 1);
+            nextButton.classList.toggle('hidden', currentStep === totalSteps);
+            submitButton.classList.toggle('hidden', currentStep !== totalSteps);
+            
+            validateStep(currentStep);
+            
+            const recaptchaContainer = document.getElementById('recaptcha-container');
+            if (currentStep === 3 && recaptchaContainer.innerHTML.length < 10) {
+                 recaptchaWidgetId = grecaptcha.render('recaptcha-container', { 'sitekey': RECAPTCHA_SITE_KEY });
+            }
+
+            if (currentStep === 4) {
+                renderConfirmationSummary();
+            }
+        }
+
+        function handleNextStep() {
+            if (validateStep(currentStep) && currentStep < totalSteps) {
+                currentStep++;
+                updateWizardUI();
+            }
+        }
+        
+        function handlePrevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                updateWizardUI();
+            }
+        }
+        
+        function validateStep(step) {
+            let isValid = false;
+            if (step === 1) isValid = !!bookingData.service;
+            else if (step === 2) isValid = !!bookingData.date && !!bookingData.time;
+            else if (step === 3) {
+                 const name = document.getElementById('customerName').value.trim();
+                 const phone = document.getElementById('phoneNumber').value.trim();
+                 const phoneError = document.getElementById('phoneNumberError');
+                 phoneError.classList.add('hidden');
+                 if (name && phone && VIETNAM_PHONE_REGEX.test(phone)) {
+                     bookingData.name = name;
+                     bookingData.phone = phone;
+                     isValid = true;
+                 } else if (name && phone && !VIETNAM_PHONE_REGEX.test(phone)) {
+                     phoneError.textContent = 'Số điện thoại không hợp lệ.';
+                     phoneError.classList.remove('hidden');
+                     isValid = false;
+                 } else {
+                     isValid = false;
+                 }
+            }
+            else if (step === 4) isValid = true;
+
+            nextButton.disabled = !isValid;
+            return isValid;
+        }
+
+        function resetWizard() {
+            bookingData = { ...initialBookingData };
+            currentStep = 1;
+            document.querySelectorAll('.service-card.selected').forEach(c => c.classList.remove('selected'));
+            document.getElementById('detailsForm').reset();
+            if (typeof grecaptcha !== 'undefined' && recaptchaWidgetId !== undefined) grecaptcha.reset(recaptchaWidgetId);
+            updateSummary();
+            renderCalendar(new Date().getFullYear(), new Date().getMonth());
+            document.getElementById('time-slots-container').innerHTML = `<p class="text-zinc-500">Vui lòng chọn một ngày để xem các khung giờ còn trống.</p>`;
+            updateWizardUI();
+        }
+
+        function renderServices() {
+            const container = document.getElementById('service-options-container');
+            container.innerHTML = services.map(s => `
+                <div class="service-card p-4 rounded-lg cursor-pointer text-center" data-service-name="${s.name}">
+                    <i data-feather="${s.icon}" class="mx-auto w-8 h-8 mb-2 text-amber-500"></i>
+                    <p class="font-semibold">${s.name}</p>
+                </div>`).join('');
+            feather.replace();
+            container.querySelectorAll('.service-card').forEach(card => card.addEventListener('click', handleServiceSelection));
+        }
+
+        function renderCalendar(year, month) {
+            const container = document.getElementById('calendar-container');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const monthNames = ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"];
+            const firstDay = new Date(year, month).getDay();
+            const daysInMonth = 32 - new Date(year, month, 32).getDate();
+
+            container.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <button id="prev-month" class="p-2 rounded-full hover:bg-zinc-200 disabled:opacity-50" ${month === today.getMonth() && year === today.getFullYear() ? 'disabled' : ''}><i data-feather="chevron-left"></i></button>
+                    <h4 class="font-bold text-lg">${monthNames[month]} ${year}</h4>
+                    <button id="next-month" class="p-2 rounded-full hover:bg-zinc-200"><i data-feather="chevron-right"></i></button>
+                </div>
+                <div class="grid grid-cols-7 text-center text-xs font-semibold text-zinc-500 mb-2">
+                    <span>CN</span><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span>
+                </div>
+                <div class="grid grid-cols-7">
+                    ${Array(firstDay).fill('<div></div>').join('')}
+                    ${Array.from({ length: daysInMonth }, (_, i) => {
+                        const day = i + 1;
+                        const date = new Date(year, month, day);
+                        const dateString = date.toISOString().slice(0, 10);
+                        const isPast = date < today;
+                        const isSelected = dateString === bookingData.date;
+                        const isToday = date.getTime() === today.getTime();
+                        let classes = 'calendar-day';
+                        if (isPast) classes += ' disabled';
+                        if (isSelected) classes += ' selected';
+                        if (isToday) classes += ' today';
+                        return `<div class="p-1 flex justify-center items-center"><button class="${classes}" data-date="${dateString}" ${isPast ? 'disabled' : ''}>${day}</button></div>`;
+                    }).join('')}
+                </div>`;
+            feather.replace();
+            
+            document.getElementById('prev-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() - 1); renderCalendar(currentDate.getFullYear(), currentDate.getMonth()); });
+            document.getElementById('next-month').addEventListener('click', () => { currentDate.setMonth(currentDate.getMonth() + 1); renderCalendar(currentDate.getFullYear(), currentDate.getMonth()); });
+            container.querySelectorAll('.calendar-day:not(.disabled)').forEach(day => day.addEventListener('click', handleDateSelection));
+        }
+
+        function renderTimeSlots(appointmentsForDay = []) {
+            const container = document.getElementById('time-slots-container');
+            const { openingTime, closingTime, maxCapacity } = salonConfig;
+            if (!openingTime || !closingTime) {
+                container.innerHTML = `<p class="text-red-500">Lỗi: Admin chưa cài đặt giờ hoạt động.</p>`;
+                return;
+            }
+
+            const now = new Date();
+            const todayStr = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+            let currentTime = new Date(`${bookingData.date}T${openingTime}`);
+            const closingDateTime = new Date(`${bookingData.date}T${closingTime}`);
+            let html = '<div class="grid grid-cols-3 md:grid-cols-4 gap-2">';
+            let hasSlots = false;
+
+            while (currentTime < closingDateTime) {
+                const timeStr = currentTime.toTimeString().slice(0, 5);
+                const bookingsAtTime = appointmentsForDay.filter(apt => apt.time === timeStr && (apt.status === 'pending' || apt.status === 'confirmed')).length;
+                const isFull = bookingsAtTime >= maxCapacity;
+                const isPast = bookingData.date === todayStr && timeStr < now.toTimeString().slice(0, 5);
+                const isDisabled = isFull || isPast;
+                const isSelected = timeStr === bookingData.time;
+                
+                let classes = 'timeslot p-2 rounded-lg text-sm font-semibold';
+                if (isDisabled) classes += ' disabled';
+                if (isSelected) classes += ' selected';
+
+                html += `<button class="${classes}" data-time="${timeStr}" ${isDisabled ? 'disabled' : ''}>${isFull ? 'Hết chỗ' : timeStr}</button>`;
+                currentTime.setMinutes(currentTime.getMinutes() + 30);
+                if(!isPast) hasSlots = true;
+            }
+            html += `</div>`;
+            
+            if(!hasSlots) {
+                container.innerHTML = `<div class="text-center p-4 bg-zinc-50 rounded-lg"><p class="font-semibold">Đã hết lịch</p><p class="text-sm text-zinc-500">Hôm nay không còn khung giờ trống. Vui lòng chọn ngày khác.</p></div>`;
+            } else {
+                container.innerHTML = html;
+                container.querySelectorAll('.timeslot:not(.disabled)').forEach(slot => slot.addEventListener('click', handleTimeSelection));
+            }
+        }
+
+        function renderConfirmationSummary() {
+            document.getElementById('confirmation-summary').innerHTML = `
+                <div class="flex justify-between py-2 border-b"><strong class="text-zinc-600">Khách hàng:</strong><span>${bookingData.name}</span></div>
+                <div class="flex justify-between py-2 border-b"><strong class="text-zinc-600">Số điện thoại:</strong><span>${bookingData.phone}</span></div>
+                <div class="flex justify-between py-2 border-b"><strong class="text-zinc-600">Dịch vụ:</strong><span>${bookingData.service}</span></div>
+                <div class="flex justify-between py-2 border-b"><strong class="text-zinc-600">Ngày:</strong><span>${new Date(bookingData.date).toLocaleDateString('vi-VN')}</span></div>
+                <div class="flex justify-between py-2"><strong class="text-zinc-600">Giờ:</strong><span>${bookingData.time}</span></div>
+            `;
+        }
+
+        function updateSummary() {
+            document.getElementById('summary-service').textContent = bookingData.service || 'Chưa chọn';
+            document.getElementById('summary-date').textContent = bookingData.date ? new Date(bookingData.date + 'T00:00:00').toLocaleDateString('vi-VN') : 'Chưa chọn';
+            document.getElementById('summary-time').textContent = bookingData.time || 'Chưa chọn';
+        }
+
+        function handleServiceSelection(e) {
+            const card = e.currentTarget;
+            document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            bookingData.service = card.dataset.serviceName;
+            updateSummary();
+            handleNextStep();
+        }
+
+        function handleDateSelection(e) {
+            bookingData.date = e.currentTarget.dataset.date;
+            bookingData.time = null;
+            currentDate = new Date(bookingData.date + 'T00:00:00');
+            renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
+            updateSummary();
+            document.getElementById('time-slots-container').innerHTML = `<p class="text-zinc-500">Đang tải khung giờ...</p>`;
+            fetchAppointmentsForDate(bookingData.date);
+            validateStep(currentStep);
+        }
+
+        function handleTimeSelection(e) {
+            const button = e.currentTarget;
+            document.querySelectorAll('#time-slots-container .timeslot').forEach(b => b.classList.remove('selected'));
+            button.classList.add('selected');
+            bookingData.time = button.dataset.time;
+            updateSummary();
+            validateStep(currentStep);
+        }
+        
+        async function handleBookingSubmit() {
+            if (!validateStep(3)) return;
+            if (grecaptcha.getResponse(recaptchaWidgetId).length === 0) {
+                return Swal.fire('Xác thực thất bại', 'Vui lòng xác nhận bạn không phải là robot.', 'error');
+            }
+            
+            submitButton.disabled = true;
+            submitButton.innerHTML = `<span class="animate-spin h-5 w-5 border-2 border-zinc-800 border-t-white rounded-full mx-auto block"></span>`;
+
+            const spamData = await getAntiSpamData();
+            const newAppointment = { ...bookingData, createdAt: Timestamp.now(), bookingId: `S${Date.now().toString().slice(-6)}`, status: 'pending', spamCheck: spamData };
+            
+            try {
+                const q = query(appointmentsColRef, where("phone", "==", newAppointment.phone), where("status", "in", ["pending", "confirmed"]));
+                const existingBookings = await getDocs(q);
+                if (existingBookings.size >= 2) throw new Error('Đã đạt giới hạn đặt 2 lịch hẹn.');
+
+                await addDoc(appointmentsColRef, newAppointment);
+                Swal.fire({ icon: 'success', title: 'Đặt Lịch Thành Công!', html: `Cảm ơn <strong>${newAppointment.name}</strong>! Lịch hẹn của bạn đã được ghi nhận và đang chờ xác nhận.`, confirmButtonText: 'Tuyệt vời!' });
+                resetWizard();
+            } catch (error) {
+                console.error("Booking submission failed:", error);
+                Swal.fire('Thất Bại', error.message || 'Đã có lỗi xảy ra. Vui lòng thử lại.', 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Hoàn Tất Đặt Lịch';
+            }
+        }
+        
+        async function getAntiSpamData() {
+            const data = { userAgent: navigator.userAgent, browser: 'Unknown', device: 'Unknown', ip: null };
+            const ua = data.userAgent.toLowerCase();
+            if (ua.includes('firefox')) data.browser = 'Firefox';
+            else if (ua.includes('chrome')) data.browser = 'Chrome';
+            else if (ua.includes('safari')) data.browser = 'Safari';
+            else if (ua.includes('edge')) data.browser = 'Edge';
+            if (ua.includes('mobile')) data.device = 'Mobile'; else data.device = 'Desktop';
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                if (response.ok) data.ip = (await response.json()).ip;
+            } catch (error) { console.warn("Could not fetch IP.", error); }
+            return data;
+        }
+
+        async function handleAuthStateChange(user) {
+            try {
+                const docSnap = await getDoc(configDocRef);
+                if (docSnap.exists()) salonConfig = { ...salonConfig, ...docSnap.data() };
+                const adminUID = salonConfig.adminUID || "E9hxk3SkfwgdJRCzapOue4unfRf2";
+                
+                isAdmin = user && !user.isAnonymous && user.uid === adminUID;
+                if (user && !user.isAnonymous && !isAdmin) await signOut(auth);
+                else if (!user) await signInAnonymously(auth);
+
+            } catch (error) { console.error("Auth state change error:", error); isAdmin = false; }
+            finally { setupUIForAuth(); }
+        }
+
+        function setupUIForAuth() {
+            document.getElementById('guest-controls').classList.toggle('hidden', isAdmin);
+            document.getElementById('admin-controls').classList.toggle('hidden', !isAdmin);
+            if(isAdmin) {
+                if (quickBookingsListener) quickBookingsListener();
+                if (consultedBookingsListener) consultedBookingsListener();
+                listenForQuickBookings();
+                listenForConsultedBookings();
+            } else {
+                if(quickBookingsListener) quickBookingsListener();
+                if(consultedBookingsListener) consultedBookingsListener();
+                showView('booking');
+            }
+        }
+
+        function fetchAppointmentsForDate(date) {
+            if (appointmentsListener) appointmentsListener();
+            const q = query(appointmentsColRef, where("date", "==", date));
+            appointmentsListener = onSnapshot(q, (snapshot) => {
+                const appointmentsForDay = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTimeSlots(appointmentsForDay);
+                if(adminDashboardView.classList.contains('hidden') === false) {
+                     renderAdminDailyAppointments(appointmentsForDay);
+                }
+            });
+        }
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            const form = e.target;
+            const errorEl = form.querySelector('#loginError');
+            errorEl.classList.add('hidden');
+            try {
+                await signInWithEmailAndPassword(auth, form.email.value, form.password.value);
+                loginModal.classList.add('hidden');
+                form.reset();
+            } catch (error) {
+                errorEl.textContent = "Email hoặc mật khẩu không đúng.";
+                errorEl.classList.remove('hidden');
+            }
+        }
+
+        async function handleLogout() {
+            await signOut(auth);
+            showView('booking');
+        }
+
+        function injectModalHTML() {
+            loginModal.innerHTML = `<div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-sm relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i data-feather="x"></i></button><h2 class="text-2xl font-bold text-center mb-6">Đăng Nhập Admin</h2><form id="loginForm" class="space-y-4"><div><label for="email" class="block text-sm font-medium text-gray-700">Email</label><input type="email" id="email" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></div><div><label for="password" class="block text-sm font-medium text-gray-700">Mật khẩu</label><input type="password" id="password" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"></div><p id="loginError" class="text-sm text-red-600 hidden"></p><div class="pt-4"><button type="submit" class="w-full bg-zinc-800 text-white font-semibold px-6 py-2 rounded-md hover:bg-zinc-700">Đăng Nhập</button></div></form></div>`;
+            privacyPolicyModal.innerHTML = `<div class="bg-white rounded-lg shadow-xl w-full max-w-2xl"><div class="p-6"><div class="flex justify-between items-center pb-3 border-b"><h2 class="text-2xl font-bold text-slate-800">Chính sách Quyền riêng tư</h2><button class="close-modal-btn text-gray-400 hover:text-gray-600"><i data-feather="x" class="w-6 h-6"></i></button></div><div class="mt-4 space-y-4 text-slate-600 max-h-[70vh] overflow-y-auto pr-4"><p>Cập nhật lần cuối: 25/07/2024</p><p>Chúng tôi cam kết bảo vệ thông tin cá nhân của bạn. Chính sách này giải thích cách chúng tôi thu thập, sử dụng và bảo vệ dữ liệu của bạn.</p><h3 class="text-lg font-semibold text-slate-700">1. Thông tin chúng tôi thu thập</h3><ul class="list-disc list-inside space-y-1"><li><strong>Thông tin cá nhân bạn cung cấp:</strong> Tên, số điện thoại, và/hoặc thông tin liên hệ qua mạng xã hội.</li><li><strong>Thông tin dịch vụ:</strong> Dịch vụ bạn chọn, ngày và giờ hẹn.</li><li><strong>Thông tin kỹ thuật tự động:</strong> Để chống spam, chúng tôi tự động thu thập địa chỉ IP, loại trình duyệt và loại thiết bị của bạn.</li></ul><h3 class="text-lg font-semibold text-slate-700">2. Mục đích sử dụng thông tin</h3><ul class="list-disc list-inside space-y-1"><li><strong>Quản lý lịch hẹn:</strong> Để xác nhận, nhắc nhở, và quản lý lịch hẹn của bạn.</li><li><strong>An ninh và chống Spam:</strong> Để xác định và ngăn chặn các hành vi đặt lịch giả mạo.</li></ul><h3 class="text-lg font-semibold text-slate-700">3. Chia sẻ thông tin</h3><p>Chúng tôi cam kết không bán, trao đổi, hoặc chuyển giao thông tin cá nhân của bạn cho bất kỳ bên thứ ba nào.</p></div><div class="mt-6 text-right"><button class="close-modal-btn bg-amber-500 text-zinc-800 font-semibold px-6 py-2 rounded-md hover:bg-amber-600">Tôi đã hiểu</button></div></div></div>`;
+            quickBookingModal.innerHTML = `<div class="bg-white rounded-lg shadow-xl p-8 w-full max-w-md relative"><button class="close-modal-btn absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i data-feather="x"></i></button><div id="quick-booking-content"></div></div>`;
+            
+            document.querySelectorAll('.modal').forEach(modal => modal.addEventListener('click', e => { if (e.target === modal || e.target.closest('.close-modal-btn')) modal.classList.add('hidden'); }));
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            feather.replace();
+        }
+
+        // --- ALL OTHER FUNCTIONS ---
+        
+        function renderMyAppointmentView() { /* ... */ }
+        async function handleMyAppointmentsLookup(e) { /* ... */ }
+        function renderAdminDashboardView() { /* ... */ }
+        function listenForQuickBookings() { /* ... */ }
+        function listenForConsultedBookings() { /* ... */ }
+        function renderAdminDailyAppointments(appointments) { /* ... */ }
+        async function handleAdminAction(e) { /* ... */ }
+        async function handleAdminSettingsSave(e) { /* ... */ }
+        async function exportDataToCSV() { /* ... */ }
+        async function deleteAllData() { /* ... */ }
+        function renderQuickBookingModal() { /* ... */ }
+        async function handleQuickBookingSubmit(e) { /* ... */ }
+
+    </script>
+</body>
+</html>

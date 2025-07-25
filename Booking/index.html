@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Đặt Lịch Hẹn - Tiệm Tóc (v13 - Admin Tools)</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles.css">
+
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+
+<body>
+
+    <div class="page-container">
+        <div class="content-wrapper">
+            <header class="main-header">
+                <h1 class="title">Salon Tóc Chuyên Nghiệp</h1>
+                <p class="subtitle">Hệ thống quản lý và đặt lịch hẹn thông minh</p>
+                <div class="header-admin-button">
+                    <button id="showLoginModalButton" class="button button-admin-login">
+                        <i data-feather="log-in" class="icon-inline"></i>Admin
+                    </button>
+                </div>
+            </header>
+
+            <div id="adminPanel" class="admin-panel hidden">
+                <div class="admin-panel-header">
+                    <h2 class="admin-panel-title"><i data-feather="settings" class="icon-title"></i>Bảng Điều Khiển Admin</h2>
+                    <button id="logoutButton" class="button button-logout">
+                        <i data-feather="log-out" class="icon-inline"></i>Đăng Xuất
+                    </button>
+                </div>
+                <div class="admin-grid">
+                    <div class="admin-card">
+                        <h3 class="admin-card-title">Cài đặt Salon</h3>
+                        <form id="adminSettingsForm" class="form-spacing">
+                            <div>
+                                <label for="openingTime" class="form-label">Giờ mở cửa</label>
+                                <input type="time" id="openingTime" class="form-input">
+                            </div>
+                            <div>
+                                <label for="closingTime" class="form-label">Giờ đóng cửa</label>
+                                <input type="time" id="closingTime" class="form-input">
+                            </div>
+                            <div>
+                                <label for="maxCapacity" class="form-label">Sức chứa / khung giờ</label>
+                                <input type="number" id="maxCapacity" min="1" class="form-input">
+                            </div>
+                            <button type="submit" class="button button-primary button-full">Lưu Cài Đặt</button>
+                        </form>
+                    </div>
+                    <div class="admin-card">
+                        <h3 class="admin-card-title">Công cụ Dữ liệu</h3>
+                        <div class="data-tools">
+                             <button id="exportCsvButton" class="button button-success button-full">Xuất CSV</button>
+                             <button id="deleteAllButton" class="button button-danger button-full">Xóa Toàn Bộ Dữ Liệu</button>
+                        </div>
+                    </div>
+                     <div class="admin-card">
+                        <h3 class="admin-card-title">Yêu cầu tư vấn</h3>
+                        <div id="quickBookingsList" class="card-list"></div>
+                    </div>
+                </div>
+                 <div class="admin-card-full">
+                    <h3 class="admin-card-title">Danh sách đã tư vấn</h3>
+                    <div id="consultedBookingsList" class="card-list"></div>
+                </div>
+            </div>
+
+            <main class="main-content">
+                <div class="tabs-container">
+                    <button id="tab-booking" class="tab-button tab-active">📅 Đặt Lịch Mới</button>
+                    <button id="tab-my-appointments" class="tab-button">📖 Lịch Hẹn Của Tôi</button>
+                    <button id="tab-quick-booking" class="tab-button">⚡ Đặt Chỗ Nhanh</button>
+                </div>
+
+                <div id="view-booking">
+                     <div class="booking-grid">
+                        <div class="form-column">
+                            <h2 class="section-title">1. Điền thông tin của bạn</h2>
+                            <form id="bookingForm" class="form-spacing-large">
+                                <div>
+                                    <label for="customerName" class="form-label">Tên khách hàng</label>
+                                    <input type="text" id="customerName" required class="form-input">
+                                </div>
+                                <div>
+                                    <label for="phoneNumber" class="form-label">Số điện thoại</label>
+                                    <input type="tel" id="phoneNumber" required class="form-input" placeholder="Ví dụ: 0912345678">
+                                    <p id="phoneNumberError" class="form-error hidden"></p>
+                                </div>
+                                <div>
+                                    <label class="form-label">Dịch vụ</label>
+                                    <div id="serviceOptionsContainer" class="service-grid">
+                                        <button type="button" class="service-option" data-service="Cắt tóc nam">Cắt tóc nam</button>
+                                        <button type="button" class="service-option" data-service="Cắt tóc nữ">Cắt tóc nữ</button>
+                                        <button type="button" class="service-option" data-service="Gội đầu & sấy">Gội đầu & sấy</button>
+                                        <button type="button" class="service-option" data-service="Nhuộm tóc">Nhuộm tóc</button>
+                                        <button type="button" class="service-option" data-service="Uốn/Duỗi tóc">Uốn/Duỗi tóc</button>
+                                    </div>
+                                    <input type="hidden" id="selectedService" required>
+                                </div>
+                                <input type="hidden" id="selectedTime" required>
+                                
+                                <div class="g-recaptcha" data-sitekey="6LfBXYwrAAAAAKBB0r3aCkCTYkjt1AdTG8rws7Jw"></div>
+                                <button type="submit" id="submitButton" class="button button-primary button-full button-large">Hoàn Tất Đặt Lịch</button>
+                            </form>
+                        </div>
+                        <div class="time-column">
+                            <h2 class="section-title">2. Chọn ngày và giờ</h2>
+                            <div>
+                                <label for="bookingDate" class="form-label">Chọn ngày</label>
+                                <input type="date" id="bookingDate" required class="form-input">
+                            </div>
+                            <div class="time-selection">
+                                <label class="form-label">Chọn giờ</label>
+                                <div id="timeSlotsContainer" class="timeslot-grid"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-my-appointments" class="hidden">
+                    <div class="lookup-container">
+                        <h2 class="section-title text-center">Lịch Hẹn Của Tôi</h2>
+                        <p class="section-subtitle text-center">Nhập số điện thoại để xem và quản lý các lịch hẹn của bạn.</p>
+                        <form id="myAppointmentsForm" class="lookup-form">
+                            <input type="tel" id="myAppointmentsPhone" placeholder="Nhập số điện thoại của bạn" required class="form-input form-input-large">
+                            <p id="myAppointmentsPhoneError" class="form-error hidden"></p>
+                            <button type="submit" class="button button-primary button-full button-large">Tìm Kiếm</button>
+                        </form>
+                        <div id="myAppointmentsList" class="appointments-lookup-list"></div>
+                    </div>
+                </div>
+
+                <div id="view-quick-booking" class="hidden">
+                     <div class="quick-booking-container">
+                        <h2 class="section-title">Đặt Chỗ Nhanh</h2>
+                        <p class="section-subtitle">Để lại tên và thông tin liên hệ, chúng tôi sẽ gọi lại tư vấn và sắp xếp lịch hẹn cho bạn ngay!</p>
+                        <form id="quickBookingForm" class="form-spacing-large">
+                             <div>
+                                <label for="quickCustomerName" class="sr-only">Tên của bạn</label>
+                                <input type="text" id="quickCustomerName" placeholder="Nhập tên của bạn" required class="form-input form-input-large text-center">
+                                <p id="quickCustomerNameError" class="form-error text-left hidden"></p>
+                            </div>
+
+                             <div>
+                                <label class="form-label">Chọn phương thức liên hệ</label>
+                                <div id="contactMethodToggle" class="contact-method-group">
+                                    <button type="button" data-method="phone" class="contact-method-btn active-method">SĐT</button>
+                                    <button type="button" data-method="facebook" class="contact-method-btn">Facebook</button>
+                                    <button type="button" data-method="zalo" class="contact-method-btn">Zalo</button>
+                                </div>
+                                <input type="hidden" id="selectedContactMethod" value="phone">
+                            </div>
+
+                            <div class="contact-input-wrapper">
+                                 <i id="contactIcon" data-feather="phone" class="contact-icon"></i>
+                                 <input type="tel" id="quickContactInfo" placeholder="Nhập số điện thoại" required class="form-input form-input-large text-center with-icon">
+                                 <p id="quickContactInfoError" class="form-error text-left hidden"></p>
+                            </div>
+
+                            <div class="recaptcha-center">
+                                <div class="g-recaptcha" data-sitekey="6LfBXYwrAAAAAKBB0r3aCkCTYkjt1AdTG8rws7Jw"></div>
+                            </div>
+
+                            <button type="submit" class="button button-primary button-full button-large">Gửi Yêu Cầu</button>
+                        </form>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="main-footer">
+                <p class="footer-text">
+                    &copy; 2024 Salon Tóc Chuyên Nghiệp.
+                    <a href="#" id="privacyPolicyLink" class="footer-link">Chính sách Quyền riêng tư</a>.
+                </p>
+            </footer>
+
+            <div id="adminAppointmentsSection" class="admin-appointments-section hidden">
+                <h2 class="section-title">Danh Sách Lịch Hẹn (Admin View)</h2>
+                <div id="appointmentsList" class="admin-appointments-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginModal" class="modal hidden">
+        <div class="modal-content">
+            <h2 class="modal-title">Đăng Nhập Admin</h2>
+            <form id="loginForm" class="form-spacing-large">
+                <div>
+                    <label for="email" class="form-label">Email</label>
+                    <input type="email" id="email" required class="form-input">
+                </div>
+                <div>
+                    <label for="password" class="form-label">Mật khẩu</label>
+                    <input type="password" id="password" required class="form-input">
+                </div>
+                <p id="loginError" class="form-error hidden"></p>
+                <div class="modal-actions">
+                    <button type="button" id="closeLoginModalButton" class="button-link">Hủy</button>
+                    <button type="submit" class="button button-primary">Đăng Nhập</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="privacyPolicyModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <div class="modal-body">
+                <div class="modal-header">
+                    <h2 class="modal-title no-margin">Chính sách Quyền riêng tư</h2>
+                    <button id="closePrivacyModalButton" class="button-icon">
+                        <i data-feather="x" class="icon-close"></i>
+                    </button>
+                </div>
+                <div class="privacy-content">
+                    <p>Cập nhật lần cuối: 24/07/2024</p>
+                    <p>Cảm ơn bạn đã sử dụng hệ thống đặt lịch của Salon Tóc Chuyên Nghiệp ("chúng tôi"). Chúng tôi cam kết bảo vệ thông tin cá nhân của bạn. Chính sách này giải thích cách chúng tôi thu thập, sử dụng và bảo vệ dữ liệu của bạn.</p>
+
+                    <h3 class="privacy-subtitle">1. Thông tin chúng tôi thu thập</h3>
+                    <p>Chúng tôi thu thập các loại thông tin sau khi bạn sử dụng dịch vụ của chúng tôi:</p>
+                    <ul class="privacy-list">
+                        <li><strong>Thông tin cá nhân bạn cung cấp:</strong> Tên, số điện thoại, và/hoặc thông tin liên hệ qua mạng xã hội (Facebook, Zalo) mà bạn nhập vào các biểu mẫu đặt lịch.</li>
+                        <li><strong>Thông tin dịch vụ:</strong> Dịch vụ bạn chọn, ngày và giờ hẹn.</li>
+                        <li><strong>Thông tin kỹ thuật tự động:</strong> Để đảm bảo an ninh và chống spam, chúng tôi tự động thu thập thông tin về thiết bị của bạn, bao gồm địa chỉ IP, loại trình duyệt (ví dụ: Chrome, Firefox), và loại thiết bị (ví dụ: Di động, Máy tính để bàn).</li>
+                    </ul>
+
+                    <h3 class="privacy-subtitle">2. Mục đích sử dụng thông tin</h3>
+                    <p>Chúng tôi sử dụng thông tin thu thập được cho các mục đích sau:</p>
+                     <ul class="privacy-list">
+                        <li><strong>Quản lý lịch hẹn:</strong> Để xác nhận, nhắc nhở, và quản lý lịch hẹn của bạn tại salon.</li>
+                        <li><strong>Liên hệ với bạn:</strong> Để gửi thông báo xác nhận, hoặc liên hệ khi có thay đổi về lịch hẹn.</li>
+                        <li><strong>Cải thiện dịch vụ:</strong> Để phân tích và cải thiện trải nghiệm người dùng trên trang web đặt lịch.</li>
+                        <li><strong>An ninh và chống Spam:</strong> Để xác định và ngăn chặn các hành vi đặt lịch giả mạo hoặc spam, bảo vệ hệ thống của chúng tôi.</li>
+                    </ul>
+
+                    <h3 class="privacy-subtitle">3. Chia sẻ thông tin</h3>
+                    <p>Chúng tôi cam kết không bán, trao đổi, hoặc chuyển giao thông tin cá nhân của bạn cho bất kỳ bên thứ ba nào, trừ các trường hợp được yêu cầu bởi pháp luật.</p>
+                    
+                    <h3 class="privacy-subtitle">4. Bảo mật thông tin</h3>
+                    <p>Thông tin của bạn được lưu trữ trên nền tảng cơ sở dữ liệu an toàn (Firebase) và chúng tôi áp dụng các biện pháp kỹ thuật cần thiết để bảo vệ dữ liệu của bạn khỏi truy cập trái phép.</p>
+
+                    <h3 class="privacy-subtitle">5. Thay đổi chính sách</h3>
+                    <p>Chúng tôi có thể cập nhật chính sách này theo thời gian. Mọi thay đổi sẽ được đăng trên trang này. Chúng tôi khuyến khích bạn thường xuyên xem lại Chính sách Quyền riêng tư để cập nhật thông tin.</p>
+
+                    <h3 class="privacy-subtitle">6. Liên hệ</h3>
+                    <p>Nếu bạn có bất kỳ câu hỏi nào về chính sách này, vui lòng liên hệ với chúng tôi.</p>
+                </div>
+                <div class="modal-footer">
+                     <button id="acceptPrivacyButton" class="button button-primary">Tôi đã hiểu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    
+</body>
+<script type="module" src="./main.js"></script>
+</html>
