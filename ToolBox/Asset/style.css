@@ -11,6 +11,7 @@
     --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --border-radius: 12px;
     --transition-speed: 0.3s;
+    --accent-color: #000;
 }
 
 /* --- Biến màu cho Giao diện Tối --- */
@@ -23,6 +24,7 @@ html[data-theme='dark'] {
     --text-secondary: #8e8e93;
     --border-color: #38383a;
     --shadow-color: rgba(255, 255, 255, 0.1);
+    --accent-color: #fff;
 }
 
 * {
@@ -2195,4 +2197,678 @@ textarea {
         align-items: stretch;
     }
 
+}
+
+
+
+/* --- Bắt đầu khối CSS cho công cụ chuyển đổi --- */
+/* Tất cả các quy tắc từ đây sẽ chỉ áp dụng bên trong #tool-size-conversion */
+#tool-size-conversion {
+    /* --- Kiểu dáng cho container chính --- */
+    font-family: var(--font-family);
+    color: var(--text-color);
+    background-color: var(--card-background);
+    width: 100%;
+    padding: 2.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 6px -1px var(--shadow-color-light), 0 2px 4px -2px var(--shadow-color-light);
+    border: 1px solid var(--border-color);
+    position: relative;
+}
+
+/* Hiệu ứng xuất hiện */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Tiêu đề */
+#tool-size-conversion .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+#tool-size-conversion h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--accent-color);
+    margin: 0;
+}
+
+#tool-size-conversion .subtitle {
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    font-size: 1.1rem;
+}
+
+/* Nhãn cho các bước */
+#tool-size-conversion .step-label {
+    display: block;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 1rem;
+}
+
+/* Container cho các khối lựa chọn */
+#tool-size-conversion .selection-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+/* Kiểu dáng cho từng khối lựa chọn và input */
+#tool-size-conversion .selectable-block,
+#tool-size-conversion .dynamic-input {
+    background-color: var(--background-color);
+    padding: 0.85rem;
+    border-radius: 10px;
+    text-align: center;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+    font-weight: 600;
+    font-size: 1rem;
+    font-family: inherit;
+    box-sizing: border-box;
+    position: relative;
+}
+
+#tool-size-conversion .selectable-block:hover,
+#tool-size-conversion .dynamic-input:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px var(--shadow-color-light), 0 4px 6px -4px var(--shadow-color-light);
+}
+
+#tool-size-conversion .selectable-block.active,
+#tool-size-conversion .dynamic-input:focus {
+    border-color: var(--accent-color);
+    background-color: var(--primary-light);
+    color: var(--accent-color);
+    box-shadow: none;
+    transform: translateY(0);
+    outline: none;
+}
+
+/* Nút tùy chỉnh đặc biệt */
+#tool-size-conversion .custom-size-btn {
+    color: var(--accent-color);
+    background-color: transparent;
+    border: 2px dashed var(--accent-color);
+}
+
+#tool-size-conversion .custom-size-btn:hover {
+    background-color: var(--primary-light);
+    border-style: solid;
+}
+
+/* Vùng kết quả */
+#tool-size-conversion #results-container {
+    margin-top: 2.5rem;
+    min-height: 150px;
+}
+
+#tool-size-conversion #results-placeholder {
+    text-align: center;
+    padding: 3rem 1rem;
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-secondary);
+    transition: all var(--transition-speed) ease;
+}
+
+#tool-size-conversion .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+    animation: fadeIn 0.5s ease;
+}
+
+#tool-size-conversion .result-item {
+    background-color: var(--background-color);
+    padding: 1rem;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    position: relative;
+    /* For tooltip */
+}
+
+#tool-size-conversion .result-item .standard-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    word-wrap: break-word;
+}
+
+#tool-size-conversion .result-item .size-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--accent-color);
+}
+
+/* Hộp cảnh báo */
+#tool-size-conversion .info-box {
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 500;
+    animation: fadeIn 0.5s ease;
+    background-color: #fffbe6;
+    border: 1px solid #fde047;
+    color: #a16207;
+}
+
+/* Nút Lưu và Xem */
+#tool-size-conversion .action-button {
+    background-color: var(--accent-color);
+    color: var(--card-background);
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+#tool-size-conversion .action-button:hover {
+    background-color: var(--accent-color-dark);
+}
+
+#tool-size-conversion #save-result-button-container {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+#tool-size-conversion #view-saved-button {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    padding: 0.5rem 1rem;
+}
+
+#tool-size-conversion #view-saved-button:hover {
+    background-color: #e5e7eb;
+}
+
+
+/* Modal styles */
+#tool-size-conversion .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(17, 24, 39, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+#tool-size-conversion .modal-content {
+    background-color: var(--background-color);
+    padding: 2rem;
+    border-radius: var(--border-radius);
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+#tool-size-conversion .modal-content h2 {
+    margin-top: 0;
+    font-size: 1.5rem;
+    color: var(--accent-color);
+}
+
+#tool-size-conversion .modal-content input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+    box-sizing: border-box;
+}
+
+#tool-size-conversion .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+#tool-size-conversion .modal-actions .secondary-button {
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+#tool-size-conversion .modal-actions .secondary-button:hover {
+    background-color: #d1d5db;
+}
+
+#tool-size-conversion .saved-items-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#tool-size-conversion .saved-item {
+    background-color: var(--background-color);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+#tool-size-conversion .saved-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+#tool-size-conversion .saved-item-header strong {
+    font-size: 1.1rem;
+    color: var(--accent-color);
+}
+
+#tool-size-conversion .saved-item-details {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.5rem;
+}
+
+#tool-size-conversion .delete-button {
+    background: #fee2e2;
+    color: #ef4444;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    cursor: pointer;
+    font-weight: bold;
+    flex-shrink: 0;
+    margin-left: 1rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+#tool-size-conversion .delete-button:hover {
+    background-color: #fca5a5;
+}
+
+/* Tooltip cho hệ cỡ */
+#tool-size-conversion .size-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 8px;
+    background-color: #333;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 10;
+}
+
+#tool-size-conversion .selectable-block:hover .size-tooltip,
+#tool-size-conversion .result-item:hover .size-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+/* Lớp tiện ích */
+#tool-size-conversion .hidden {
+    display: none !important;
+}
+
+#tool-size-conversion .section {
+    margin-bottom: 2rem;
+    animation: fadeIn 0.4s ease forwards;
+}
+
+/* Tối ưu cho Mobile */
+@media (max-width: 640px) {
+
+
+    #tool-size-conversion {
+        padding: 1.5rem;
+    }
+
+    #tool-size-conversion h1 {
+        font-size: 2rem;
+    }
+
+    #tool-size-conversion .subtitle {
+        font-size: 1rem;
+    }
+
+    #tool-size-conversion .modal-content {
+        padding: 1.5rem;
+    }
+
+    #tool-size-conversion #view-saved-button {
+        top: 1rem;
+        right: 1rem;
+        padding: 0.4rem 0.8rem;
+    }
+
+    #tool-size-conversion .action-button {
+        padding: 0.5rem 1rem;
+    }
+}
+
+#tool-electric {
+    font-family: var(--font-family);
+    color: var(--text-color);
+    line-height: 1.6;
+}
+
+#tool-electric *,
+#tool-electric *::before,
+#tool-electric *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+#tool-electric h1,
+#tool-electric h2,
+#tool-electric h3 {
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+#tool-electric .tool-wrapper {
+    background-color: var(--card-background);
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 30px var(--shadow-color);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+#tool-electric .tabs-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.5rem;
+    background-color: var(--background-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+#tool-electric .tab-btn {
+    padding: 0.5rem 1rem;
+    margin: 0.25rem;
+    border: none;
+    background-color: transparent;
+    color: var(--text-secondary);
+    border-radius: calc(var(--border-radius) - 4px);
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
+}
+
+#tool-electric .tab-btn:hover {
+    background-color: var(--primary-light);
+    color: var(--accent-color);
+}
+
+#tool-electric .tab-btn.active {
+    background-color: var(--accent-color);
+    color: var(--primary-color);}
+
+#tool-electric .tab-content {
+    padding: 1.5rem;
+}
+
+#tool-electric .tab-panel {
+    display: none;
+}
+
+#tool-electric .tab-panel.active {
+    display: block;
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#tool-electric .tab-panel h2 {
+    font-size: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem;
+}
+
+#tool-electric .explanation-box {
+    background-color: var(--background-color);
+    border-left: 4px solid var(--accent-blue);
+    padding: 1rem;
+    border-radius: calc(var(--border-radius) / 2);
+    margin-bottom: 1.5rem;
+}
+
+#tool-electric .explanation-box p {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+#tool-electric .explanation-box .formula {
+    font-family: 'Courier New', Courier, monospace;
+    background-color: var(--primary-light);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    color: var(--text-color);
+    display: inline-block;
+    margin-top: 0.5rem;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+    word-break: break-all;
+}
+
+#tool-electric .grid-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+#tool-electric .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+#tool-electric .form-group .input-group {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 0.5rem;
+}
+
+#tool-electric label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+#tool-electric .input-wrapper {
+    position: relative;
+}
+
+#tool-electric input[type="text"],
+#tool-electric input[type="number"],
+#tool-electric select {
+    width: 100%;
+    background-color: var(--background-color);
+    border: 1px solid var(--border-color);
+    border-radius: calc(var(--border-radius) - 4px);
+    padding: 0.75rem;
+    color: var(--text-color);
+    font-size: 1rem;
+    transition: border-color var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
+}
+
+#tool-electric input:focus,
+#tool-electric select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+#tool-electric .input-wrapper span {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+
+#tool-electric button {
+    padding: 0.75rem 1.5rem;
+    border-radius: calc(var(--border-radius) - 4px);
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease, background-color var(--transition-speed) ease;
+}
+
+#tool-electric button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px var(--shadow-color);
+}
+
+#tool-electric .btn-primary {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+#tool-electric .btn-primary:hover {
+    background-color: #333;
+}
+
+#tool-electric .btn-danger {
+    background-color: var(--accent-red);
+    color: white;
+}
+
+#tool-electric .btn-danger:hover {
+    background-color: #c82333;
+}
+
+#tool-electric .result-area {
+    background-color: var(--background-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 1.5rem;
+}
+
+#tool-electric .result-item {
+    width: 100%;
+}
+
+#tool-electric .result-item .label {
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+#tool-electric .result-item .value {
+    font-weight: 700;
+}
+
+#tool-electric .result-item .value.large {
+    font-size: 2.25rem;
+    color: var(--accent-green);
+}
+
+#tool-electric .result-item .value.medium {
+    font-size: 1.875rem;
+    color: var(--accent-yellow);
+}
+
+#tool-electric .result-item+.result-item {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+#tool-electric .hidden {
+    display: none !important;
+}
+
+#tool-electric .text-center {
+    text-align: center;
+}
+
+#tool-electric .space-y-4>*+* {
+    margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+    #tool-electric .grid-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    #tool-electric .grid-container-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    #tool-electric .grid-container-5 {
+        grid-template-columns: repeat(5, 1fr);
+        align-items: center;
+    }
+
+    #tool-electric .tab-content {
+        padding: 2rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    #tool-electric .grid-container.lg-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2rem;
+    }
 }

@@ -399,6 +399,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         stats.actualDay++;
                     }
                     stats.otMins += (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
+                } else if (entry.type === 'holiday_work') {
+                    stats.otMins += (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
                 }
                 if (entry.type === 'paid_leave') stats.paid++;
                 if (entry.type === 'unpaid_leave') stats.unpaid++;
@@ -440,6 +442,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 workHours = totalMins > 0
                     ? `${window.baseWorkHours}h + ${(totalMins / 60).toFixed(1)}h TC`
                     : `${window.baseWorkHours}h`;
+            } else if (entry.type === 'holiday_work') {
+                const totalMins = (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
+                workHours = `${(totalMins / 60).toFixed(1)}h TC`;
             }
             const entryTypeLabel = entryTypeSelect.querySelector(`option[value="${entry.type}"]`)?.textContent || entry.type;
             return `<tr><td>${formatDateStr(dateStr)}</td><td>${SHIFT_ICONS[shiftType] || ''}</td><td>${workHours}</td><td>${entryTypeLabel}</td></tr>`;
@@ -680,7 +685,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const dateStr = timesheetDateInput.value;
         const entryType = entryTypeSelect.value;
         const newEntry = { type: entryType, notes: notesInput.value.trim() };
-        if (entryType === 'work' || entryType === 'work_ot') {
+        if (['work', 'work_ot', 'holiday_work'].includes(entryType)) {
             const otHours = parseInt(overtimeHoursInput.value) || 0;
             const otMins = parseInt(overtimeMinutesInput.value) || 0;
             if (otHours > 0 || otMins > 0) {
@@ -716,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             entryTypeSelect.value = 'work';
         }
-        overtimeFields.style.display = (entryTypeSelect.value === 'work' || entryTypeSelect.value === 'work_ot') ? 'block' : 'none';
+        overtimeFields.style.display = ['work', 'work_ot', 'holiday_work'].includes(entryTypeSelect.value) ? 'block' : 'none';
         timesheetModal.style.display = 'flex';
     };
 
@@ -871,7 +876,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    entryTypeSelect.addEventListener('change', () => { overtimeFields.style.display = entryTypeSelect.value === 'work' ? 'block' : 'none'; });
+    entryTypeSelect.addEventListener('change', () => { overtimeFields.style.display = ['work', 'work_ot', 'holiday_work'].includes(entryTypeSelect.value) ? 'block' : 'none'; });
     timesheetModal.querySelector('.btn-confirm').addEventListener('click', handleConfirmTimesheet);
     actionConfirmModal.querySelector('.btn-edit-timesheet').addEventListener('click', () => { openTimesheetModal(actionConfirmDateInput.value, window.timesheetEntries[actionConfirmDateInput.value]); actionConfirmModal.style.display = 'none'; });
     actionConfirmModal.querySelector('.btn-delete-timesheet').addEventListener('click', () => { delete window.timesheetEntries[actionConfirmDateInput.value]; persistAllData(); window.showToast(`Đã xoá chấm công.`); actionConfirmModal.style.display = 'none'; renderCalendar(); if (document.getElementById('tabSoChamCong').classList.contains('active')) { updateStatistics(); renderTimesheetLog(); } });
