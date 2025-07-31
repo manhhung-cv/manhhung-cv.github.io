@@ -1,3 +1,14 @@
+const version = "1.2.0";
+const updated = "31/07/2025";
+
+const infoBox = document.getElementById('info-gmail-trick');
+if (infoBox) {
+    infoBox.innerHTML = `
+     <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
+      Phiên bản: <strong>${version}</strong> • Cập nhật: <strong>${updated}</strong>
+  `;
+}
+
 
 function initGmailTrick() {
     const toolContainer = document.getElementById('gmail-trick');
@@ -6,7 +17,6 @@ function initGmailTrick() {
     // --- DOM Element References ---
     const generateBtn = toolContainer.querySelector('#generateBtn');
     const emailInput = toolContainer.querySelector('#emailInput');
-    const errorMessage = toolContainer.querySelector('#error-message');
     const deleteConfirmModal = toolContainer.querySelector('#deleteConfirmModal');
     const cancelDeleteBtnModal = toolContainer.querySelector('#deleteConfirmModal .btn-cancel');
     const confirmDeleteBtn = toolContainer.querySelector('#confirmDeleteBtn');
@@ -48,7 +58,7 @@ function initGmailTrick() {
                 if (buttonText) {
                     buttonText.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
                 } else {
-                    buttonElement.innerHTML = '<span style="font-size: 0.875rem;">Đã chép!</span>';
+                    buttonElement.innerHTML = '<span style="font-size: 0.875rem;"><i class="fas fa-check"></i></span>';
                 }
                 setTimeout(() => {
                     buttonElement.innerHTML = originalContent;
@@ -56,7 +66,7 @@ function initGmailTrick() {
             }
         } catch (err) {
             console.error('Failed to copy text: ', err);
-            alert('Không thể sao chép.');
+            Alert('Không thể sao chép.');
         }
         document.body.removeChild(textarea);
     }
@@ -170,8 +180,8 @@ function initGmailTrick() {
                             <div class="history-item-content">
                                 <div class="history-item-header">
                                     <span class="history-item-email">${item.email}${countDisplay}</span>
-                                    <button class="copy-btn individual-copy" data-clipboard-text="${item.email}" title="Sao chép lại">
-                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                    <button class="btn" data-clipboard-text="${item.email}" title="Sao chép lại">
+                                        <i class="far fa-clone"></i>
                                     </button>
                                 </div>
                                 <p class="history-item-timestamp">${timestampLabel}${formattedDate}</p>
@@ -215,7 +225,7 @@ function initGmailTrick() {
         if (cardsData.length === 0) {
             cardsContainer.innerHTML = `
                         <div class="empty-state">
-                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            <i class="fas fa-inbox"></i>
                             <h3>Chưa có email nào</h3>
                             <p>Hãy nhập một email để bắt đầu tạo biến thể.</p>
                         </div>`;
@@ -236,21 +246,20 @@ function initGmailTrick() {
         if (email && !email.includes('@')) email += '@gmail.com';
 
         if (!email || !email.endsWith('@gmail.com')) {
-            errorMessage.textContent = 'Vui lòng nhập một địa chỉ Gmail hợp lệ.'; return;
+            Alert('Vui lòng nhập một địa chỉ Gmail hợp lệ.', 'w'); return;
         }
         const username = email.split('@')[0];
         if (username.length === 0) {
-            errorMessage.textContent = 'Tên người dùng không thể để trống.'; return;
+            Alert('Tên người dùng không thể để trống.', 'w'); return;
         }
-        if (username.length > 15) {
-            errorMessage.textContent = 'Tên người dùng quá dài để tránh treo trình duyệt.'; return;
+        if (username.length > 12) {
+            Alert('Tên người dùng quá dài để tránh treo trình duyệt.', 'e'); return;
         }
 
-        errorMessage.textContent = '';
         const cardsData = getCardsFromStorage();
 
         if (cardsData.some(card => card.email === email)) {
-            errorMessage.textContent = 'Email này đã được thêm.'; return;
+            Alert('Email này đã được thêm.'); return;
         }
 
         const newCard = { id: Date.now(), email: email };
@@ -279,34 +288,32 @@ function initGmailTrick() {
 
     function createResultCard(id, originalEmail, variations) {
         const card = document.createElement('div');
-        card.className = 'card-item';
+        card.className = 'mailbox';
         card.dataset.id = id;
 
         const listItems = variations.map(variation => `
                     <div class="variation-item">
                         <span>${variation}@gmail.com</span>
-                        <button class="copy-btn individual-copy" data-clipboard-text="${variation}@gmail.com">
-                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        </button>
+                        <button class="btn-secondary copy-btn individual-copy" data-clipboard-text="${variation}@gmail.com">
+                        <i class="far fa-clone"></i>                        </button>
                     </div>`).join('');
 
         const allEmailsText = variations.map(v => `${v}@gmail.com`).join('\n');
 
         card.innerHTML = `
-                    <div class="card-header">
-                        <div>
-                            <p class="original-email-label">Email gốc</p>
-                            <h3 class="original-email">${originalEmail}</h3>
-                            <p class="variations-count">Đã tạo <span>${variations.length}</span> biến thể.</p>
+                    <div class="mailhead">
+                        <div class="head">
+                            <h3>${originalEmail}</h3>
+                            <p>${variations.length} Gmail</p>
                         </div>
-                        <button class="delete-btn">
-                            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button class="btn btn-primary delete-btn">
+                            <i class="fas fa-ban"></i>
                         </button>
                     </div>
                     <div class="variations-list custom-scrollbar">${listItems}</div>
                     <div class="card-footer">
-                        <button class="copy-all-btn copy-btn" data-clipboard-text="${allEmailsText}">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1rem; height: 1rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m9.375 0-9.375 0" /></svg>
+                        <button class="btn btn-primary" data-clipboard-text="${allEmailsText}">
+                           <i class="far fa-clone"></i>
                             <span class="copy-text">Sao chép tất cả (${variations.length})</span>
                         </button>
                     </div>`;
@@ -328,7 +335,7 @@ function initGmailTrick() {
         }
         const deleteBtn = e.target.closest('.delete-btn');
         if (deleteBtn) {
-            cardToDelete = deleteBtn.closest('.card-item');
+            cardToDelete = deleteBtn.closest('.mailbox');
             openModal();
         }
     });

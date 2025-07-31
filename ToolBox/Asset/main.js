@@ -20,6 +20,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const htmlElement = document.documentElement;
 
+    function detectPlatform() {
+        const isMac = /Mac|iPhone|iPad/i.test(navigator.platform) || /Mac OS/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isWindows = /Win/i.test(navigator.platform);
+
+        const keyCombo = document.getElementById('keyCombo');
+        const deviceIcon = document.getElementById('deviceIcon');
+
+        // Xử lý cho keyCombo
+        if (isMac) {
+            keyCombo.innerHTML = '⌘ K';
+        } else {
+            keyCombo.innerHTML = 'Ctrl K';
+        }
+
+        // Xử lý cho deviceIcon
+        if (isMac || isIOS) {
+            deviceIcon.innerHTML = '<i class="fab fa-apple"></i>';
+        } else if (isAndroid) {
+            deviceIcon.innerHTML = '<i class="fab fa-android"></i>';
+        } else if (isWindows) {
+            deviceIcon.innerHTML = '<i class="fab fa-windows"></i>';
+        } else {
+            deviceIcon.textContent = 'Unknown';
+        }
+    }
+
+    detectPlatform();
 
 
     // =================================================================
@@ -121,9 +150,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const activeTool = document.getElementById(toolId);
 
         if (activeTool) activeTool.classList.add('visible');
-
-
-
         let toolName = 'Công cụ';
 
         allNavButtons.forEach(btn => {
@@ -142,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         });
 
-        if (headerTitle) headerTitle.innerHTML = '<div class="logo">Hunq</div>'+ toolName;
+        if (headerTitle) headerTitle.innerHTML = '<div class="logo">Hunq</div>' + toolName;
 
     }
 
@@ -244,8 +270,60 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Initialization ---
 
-    switchTool('tool-welcome');
+    switchTool('gmail-trick');
 
     populatePalette();
 
 });
+
+
+function Alert(text, type = 'n' , time = 3000) {
+    const types = {
+        s: { icon: 'fa-circle-check', class: 'alert-success' },
+        e: { icon: 'fa-circle-xmark', class: 'alert-error' },
+        w: { icon: 'fa-triangle-exclamation', class: 'alert-warning' },
+        i: { icon: 'fa-circle-info', class: 'alert-info' },
+        n: { icon: 'fa-bell', class: 'alert-notification' }
+    };
+
+    const alertType = types[type] || types.n;
+
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertType.class}`;
+    alert.innerHTML = `
+    <i class="fas ${alertType.icon}"></i>
+    <span style="flex: 1;">${text}</span>
+    <button class="close-btn" title="Đóng">&times;</button>
+    `;
+
+    const container = document.getElementById('alertContainer');
+
+    // Giới hạn tối đa 3 thông báo
+    while (container.children.length >= 3) {
+        container.removeChild(container.firstChild);
+    }
+
+    container.appendChild(alert);
+
+    // Đóng tự động
+    const timeout = setTimeout(() => closeAlert(), time);
+
+    // Đóng khi click nút
+    const closeBtn = alert.querySelector('.close-btn');
+    function closeAlert() {
+        alert.classList.add('fade-out');
+        setTimeout(() => {
+            if (alert.parentNode) alert.parentNode.removeChild(alert);
+        }, 300);
+    }
+
+    closeBtn.addEventListener('click', () => {
+        clearTimeout(timeout);
+        closeAlert();
+    });
+}
+Alert("Chào bạn!", 3000000);                    // Mặc định 3s, thông báo thường
+Alert("Thành công!", 20000, 's');       // Success
+// Alert("Lỗi hệ thống!", 4000, 'e');     // Error
+// Alert("Cảnh báo!", 3500, 'w');         // Warning
+// Alert("Thông tin chi tiết", 3000, 'i');// Info
