@@ -180,7 +180,7 @@ function initGmailTrick() {
                             <div class="history-item-content">
                                 <div class="history-item-header">
                                     <span class="history-item-email">${item.email}${countDisplay}</span>
-                                    <button class="btn" data-clipboard-text="${item.email}" title="Sao chép lại">
+                                    <button class="btn copy-btn" data-clipboard-text="${item.email}" title="Sao chép lại">
                                         <i class="far fa-clone"></i>
                                     </button>
                                 </div>
