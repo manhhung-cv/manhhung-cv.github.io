@@ -322,8 +322,4 @@ function Alert(text, type = 'n' , time = 3000) {
         closeAlert();
     });
 }
-Alert("Chào bạn!", 3000000);                    // Mặc định 3s, thông báo thường
-Alert("Thành công!", 20000, 's');       // Success
-// Alert("Lỗi hệ thống!", 4000, 'e');     // Error
-// Alert("Cảnh báo!", 3500, 'w');         // Warning
-// Alert("Thông tin chi tiết", 3000, 'i');// Info
+Alert("Chào bạn!", 3000);
