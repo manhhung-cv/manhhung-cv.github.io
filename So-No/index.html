@@ -761,6 +761,8 @@
             let debtsCollection = null;
             let unsubscribe = null;
             let debtsCache = [];
+            let gradientColor1 = localStorage.getItem('gradientColor1') || '#89d3ff';
+            let gradientColor2 = localStorage.getItem('gradientColor2') || '#ffa8e5';
 
             // --- DOM ELEMENTS ---
             const loader = document.getElementById('loader');
@@ -829,9 +831,8 @@
                 URL.revokeObjectURL(url);
             };
             
-            // [FIX] Sửa lỗi logic định dạng tiền tệ
             const formatCurrency = (num, currency) => {
-                const effectiveCurrency = currency || 'VND'; // Đặt giá trị mặc định
+                const effectiveCurrency = currency || 'VND';
                 num = num || 0;
 
                 if (effectiveCurrency === 'JPY') {
@@ -860,6 +861,24 @@
             const closeModal = () => modalContainer.innerHTML = '';
 
             // --- LOGIC GIAO DIỆN & CHỦ ĐỀ ---
+            const hexToRgb = (hex) => {
+                let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            };
+
+            const applyGradientColors = (hex1, hex2) => {
+                const rgb1 = hexToRgb(hex1);
+                const rgb2 = hexToRgb(hex2);
+                if (rgb1 && rgb2) {
+                    const gradient = `radial-gradient(circle at 10% 20%, rgba(${rgb1.r}, ${rgb1.g}, ${rgb1.b}, 0.2), transparent 50%), radial-gradient(circle at 80% 90%, rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, 0.2), transparent 50%)`;
+                    document.documentElement.style.setProperty('--bg-gradient', gradient);
+                }
+            };
+
             const applyTheme = (theme) => {
                 const htmlEl = document.documentElement;
                 htmlEl.removeAttribute('data-theme');
@@ -885,6 +904,7 @@
                 const savedOpacity = localStorage.getItem('glassOpacity') || '60';
                 applyTheme(savedTheme);
                 applyOpacity(savedOpacity);
+                applyGradientColors(gradientColor1, gradientColor2);
             };
 
             // --- DỊCH VỤ LƯU TRỮ (STORAGE SERVICE) ---
@@ -1176,6 +1196,14 @@
                                         <option value="yen" ${jpyDisplayMode === 'yen' ? 'selected' : ''}>Theo Yên (¥)</option>
                                     </select>
                                 </div>
+                                <div class="setting-item">
+                                    <span>Màu nền 1</span>
+                                    <input type="color" id="gradient-color-1" value="${gradientColor1}">
+                                </div>
+                                <div class="setting-item">
+                                    <span>Màu nền 2</span>
+                                    <input type="color" id="gradient-color-2" value="${gradientColor2}">
+                                </div>
                             </div>
                             <div class="settings-section">
                                 <h3>Dữ liệu</h3>
@@ -1218,6 +1246,19 @@
                     jpyDisplayMode = e.target.value;
                     localStorage.setItem('jpyDisplayMode', jpyDisplayMode);
                     filterAndRender();
+                });
+                
+                const colorPicker1 = modal.querySelector('#gradient-color-1');
+                const colorPicker2 = modal.querySelector('#gradient-color-2');
+                colorPicker1.addEventListener('input', (e) => {
+                    gradientColor1 = e.target.value;
+                    localStorage.setItem('gradientColor1', gradientColor1);
+                    applyGradientColors(gradientColor1, gradientColor2);
+                });
+                colorPicker2.addEventListener('input', (e) => {
+                    gradientColor2 = e.target.value;
+                    localStorage.setItem('gradientColor2', gradientColor2);
+                    applyGradientColors(gradientColor1, gradientColor2);
                 });
 
                 modal.querySelector('#export-data-btn').addEventListener('click', () => {
@@ -1275,7 +1316,7 @@
                                     <div class="form-group">
                                         <label>Loại tiền tệ</label>
                                         <select id="debt-currency" required>
-                                            <option value="VND" ${debt?.currency === 'VND' ? 'selected' : ''}>VND</option>
+                                            <option value="VND" ${!debt || debt?.currency === 'VND' ? 'selected' : ''}>VND</option>
                                             <option value="USD" ${debt?.currency === 'USD' ? 'selected' : ''}>USD</option>
                                             <option value="JPY" ${debt?.currency === 'JPY' ? 'selected' : ''}>JPY</option>
                                         </select>
