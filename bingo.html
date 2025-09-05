@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bingo Đa Giao Diện</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;700&family=Patrick+Hand&family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- General Structure (Theme-agnostic) --- */
+        .app-container { transition: background-color 0.5s ease; }
+        .bingo-panel { transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, backdrop-filter 0.3s ease; }
+        .bingo-button { transition: all 0.2s ease-out; }
+        .bingo-cell { transition: all 0.3s ease; }
+        .history-chip { transition: all 0.3s ease; flex-shrink: 0; }
+        #called-numbers-history { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,0.2) transparent; }
+        #called-numbers-history::-webkit-scrollbar { height: 8px; }
+        #called-numbers-history::-webkit-scrollbar-track { background: transparent; }
+        #called-numbers-history::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 4px; }
+        @keyframes pop { 0% { transform: scale(0.8); } 100% { transform: scale(1); } }
+        .pop-animation { animation: pop 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
+        .modal-overlay { transition: opacity 0.3s ease; }
+        .modal-content { transition: transform 0.3s ease, opacity 0.3s ease; }
+
+        /* --- Theme: Cute --- */
+        .theme-cute { font-family: 'Fredoka', sans-serif; background-color: #fdf2f8; color: #4b5563; }
+        .theme-cute .bingo-panel { background-color: white; border-radius: 1.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+        .theme-cute .bingo-button { border-radius: 0.75rem; color: white; font-weight: bold; transform: scale(1); }
+        .theme-cute .bingo-button:hover { transform: scale(1.05); }
+        .theme-cute .btn-start { background-color: #34d399; } .theme-cute .btn-start:hover { background-color: #10b981; }
+        .theme-cute .btn-next { background-color: #fb923c; } .theme-cute .btn-next:hover { background-color: #f97316; }
+        .theme-cute .btn-reset { background-color: #f87171; } .theme-cute .btn-reset:hover { background-color: #ef4444; }
+        .theme-cute .btn-apply { background-color: #60a5fa; } .theme-cute .btn-apply:hover { background-color: #3b82f6; }
+        .theme-cute .main-panel { background-color: #fecaca; }
+        .theme-cute .current-number-display { color: #dc2626; }
+        .theme-cute .bingo-cell { background-color: #f3f4f6; color: #9ca3af; border-radius: 0.5rem; }
+        .theme-cute .bingo-cell.called { background-color: #facc15; color: white; transform: scale(1.1); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .theme-cute .history-chip { background-color: #e0e7ff; color: #4f46e5; border-radius: 9999px; }
+        .theme-cute .title { color: #ef4444; }
+
+        /* --- Theme: Minecraft --- */
+        .theme-minecraft { font-family: 'Silkscreen', sans-serif; background-color: #3c6233; color: white; image-rendering: pixelated; }
+        .theme-minecraft .bingo-panel { background-color: #402d20; border: 4px solid #000; box-shadow: inset 0 0 0 4px #5a5a5a, inset 0 0 0 8px #a8a8a8; }
+        .theme-minecraft .bingo-button { background-color: #a8a8a8; color: #fff; text-shadow: 2px 2px #000000a0; border: 4px solid; border-color: #dcdcdc #5a5a5a #5a5a5a #dcdcdc; }
+        .theme-minecraft .bingo-button:active { border-color: #5a5a5a #dcdcdc #dcdcdc #5a5a5a; transform: translateY(2px); }
+        .theme-minecraft .btn-start { background-color: #589b45; }
+        .theme-minecraft .btn-next { background-color: #4a80a4; }
+        .theme-minecraft .btn-reset { background-color: #a44a4a; }
+        .theme-minecraft .btn-apply { background-color: #4a80a4; }
+        .theme-minecraft .main-panel { border: 4px solid #000; box-shadow: inset 0 0 0 4px #2e2e2e, inset 0 0 0 8px #5a5a5a; }
+        .theme-minecraft .current-number-display { font-family: 'Press Start 2P', cursive; color: #facc15; }
+        .theme-minecraft .bingo-cell { background-color: #5a5a5a; color: #dcdcdc; border: 2px solid #2e2e2e; }
+        .theme-minecraft .bingo-cell.called { background-color: #4a80a4; color: white; border-width: 4px; border-color: #a4c8e0; }
+        .theme-minecraft .history-chip { background-color: #2e2e2e; color: #facc15; border-radius: 9999px; border: 2px solid #5a5a5a; }
+        .theme-minecraft .title { font-family: 'Press Start 2P', cursive; }
+
+        /* --- Theme: Pencil --- */
+        .theme-pencil { font-family: 'Patrick Hand', cursive; background-color: #f5f3ef; color: #333; }
+        .theme-pencil .bingo-panel { background-color: #ffffff; border: 2px solid #4a4a4a; border-radius: 4px 2px 5px 3px; box-shadow: 3px 3px 0px 0px #d4d4d4; }
+        .theme-pencil .bingo-button { border-radius: 4px; color: #333; font-size: 1.1rem; border: 2px solid #4a4a4a; }
+        .theme-pencil .bingo-button:active { transform: translate(1px, 1px); }
+        .theme-pencil .btn-start { background-color: #c6f6d5; }
+        .theme-pencil .btn-next { background-color: #fed7aa; }
+        .theme-pencil .btn-reset { background-color: #feb2b2; }
+        .theme-pencil .btn-apply { background-color: #bee3f8; }
+        .theme-pencil .main-panel { background-color: #fffde7; }
+        .theme-pencil .current-number-display { color: #e53e3e; font-size: 8rem; }
+        .theme-pencil .bingo-cell { background-color: #f7fafc; color: #718096; border: 1px solid #e2e8f0; border-radius: 3px; }
+        .theme-pencil .bingo-cell.called { background-color: #ffecb3; color: #333; border: 2px solid #f9a825; transform: rotate(-2deg); }
+        .theme-pencil .history-chip { background-color: white; border: 2px solid #718096; border-radius: 50%; width: 2.75rem; height: 2.75rem; }
+        .theme-pencil .title { color: #2d3748; }
+
+        /* --- Theme: Ballpoint Pen --- */
+        .theme-ballpoint { font-family: 'Patrick Hand', cursive; background-color: #e3f2fd; color: #0d47a1; }
+        .theme-ballpoint .bingo-panel { background-color: #ffffff; border: 2px solid #90caf9; border-radius: 2px; box-shadow: 2px 2px 0px 0px #bbdefb; }
+        .theme-ballpoint .bingo-button { border-radius: 4px; color: #0d47a1; font-size: 1.1rem; border: 2px solid #42a5f5; }
+        .theme-ballpoint .bingo-button:active { transform: translate(1px, 1px); box-shadow: none; }
+        .theme-ballpoint .btn-start { background-color: #c8e6c9; }
+        .theme-ballpoint .btn-next { background-color: #ffccbc; }
+        .theme-ballpoint .btn-reset { background-color: #ffcdd2; }
+        .theme-ballpoint .btn-apply { background-color: #d1c4e9; }
+        .theme-ballpoint .main-panel { background-color: #e1f5fe; }
+        .theme-ballpoint .current-number-display { color: #01579b; font-size: 8rem; }
+        .theme-ballpoint .bingo-cell { background-color: #f8f9fa; color: #495057; border: 1px dashed #90caf9; }
+        .theme-ballpoint .bingo-cell.called { background-color: #bbdefb; color: #0d47a1; border: 2px solid #0d47a1; border-radius: 50%; font-weight: bold; }
+        .theme-ballpoint .history-chip { background-color: white; border: 2px solid #42a5f5; border-radius: 50%; width: 2.75rem; height: 2.75rem; }
+        .theme-ballpoint .title { color: #01579b; }
+
+        /* --- Theme: Liquid Glass --- */
+        .theme-liquid { font-family: 'Inter', sans-serif; background-image: linear-gradient(to top, #a18cd1 0%, #fbc2eb 100%); color: white; }
+        .theme-liquid .bingo-panel { background-color: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 1.5rem; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        .theme-liquid .bingo-button { border-radius: 0.75rem; color: white; font-weight: 500; }
+        .theme-liquid .bingo-button:hover { filter: brightness(1.1); }
+        .theme-liquid .btn-start { background-color: rgba(22, 163, 74, 0.7); }
+        .theme-liquid .btn-next { background-color: rgba(59, 130, 246, 0.7); }
+        .theme-liquid .btn-reset { background-color: rgba(239, 68, 68, 0.7); }
+        .theme-liquid .btn-apply { background-color: rgba(107, 114, 128, 0.7); }
+        .theme-liquid .main-panel { background-color: rgba(255, 255, 255, 0.3); }
+        .theme-liquid .current-number-display { color: white; text-shadow: 0 0 15px rgba(0,0,0,0.2); }
+        .theme-liquid .bingo-cell { background-color: rgba(255, 255, 255, 0.15); color: rgba(255, 255, 255, 0.7); border-radius: 0.75rem; }
+        .theme-liquid .bingo-cell.called { background-color: rgba(255, 255, 255, 0.8); color: #a18cd1; font-weight: bold; }
+        .theme-liquid .history-chip { background-color: rgba(255, 255, 255, 0.2); border-radius: 9999px; }
+        .theme-liquid .title { color: white; text-shadow: 0 0 10px rgba(0,0,0,0.1); }
+
+        /* --- Theme: Basic --- */
+        .theme-basic { font-family: sans-serif; background-color: #f3f4f6; color: #111827; }
+        .theme-basic .bingo-panel { background-color: white; border: 1px solid #d1d5db; border-radius: 0.5rem; }
+        .theme-basic .bingo-button { border-radius: 0.375rem; color: white; font-weight: 500; }
+        .theme-basic .btn-start { background-color: #2563eb; }
+        .theme-basic .btn-next { background-color: #9333ea; }
+        .theme-basic .btn-reset { background-color: #dc2626; }
+        .theme-basic .btn-apply { background-color: #6b7280; }
+        .theme-basic .main-panel { background-color: #1f2937; }
+        .theme-basic .current-number-display { color: white; }
+        .theme-basic .bingo-cell { background-color: #e5e7eb; color: #4b5563; }
+        .theme-basic .bingo-cell.called { background-color: #16a34a; color: white; font-weight: bold; }
+        .theme-basic .history-chip { background-color: #dbeafe; color: #1e40af; border-radius: 0.375rem; padding: 0.25rem 0.5rem; }
+        .theme-basic .title { color: #111827; }
+    </style>
+</head>
+<body>
+
+    <div id="app-container" class="app-container">
+        <div class="w-full max-w-7xl mx-auto p-4 lg:p-6">
+            <div class="lg:grid lg:grid-cols-5 lg:gap-8 lg:h-[calc(100vh-3rem)]">
+                
+                <!-- Left Column -->
+                <div class="lg:col-span-2 flex flex-col h-full">
+                    <div class="bingo-panel main-panel p-6 text-center flex-grow flex flex-col">
+                        <div class="flex-grow flex flex-col justify-center">
+                            <p class="text-sm uppercase tracking-widest">Số Mới Gọi</p>
+                            <div id="current-number-display" class="current-number-display font-bold my-4 flex items-center justify-center text-8xl lg:text-9xl">...</div>
+                            <div class="mt-4">
+                                <p class="text-xs uppercase tracking-widest opacity-75 mb-2">Lịch sử gần đây</p>
+                                <div id="called-numbers-history" class="flex items-center gap-3 overflow-x-auto pb-2 -mx-6 px-6">
+                                    <span class="opacity-50 text-sm">Chưa có số nào được gọi</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-auto space-y-4 pt-6">
+                            <div class="grid grid-cols-3 gap-4">
+                                <button id="reset-btn" class="w-full h-16 flex items-center justify-center bingo-button btn-reset">
+                                    <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 11A8.1 8.1 0 0012 4a8.5 8.5 0 00-7.6 4.9L4 12" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12a8.5 8.5 0 01-7.6 4.9L12 20a8.1 8.1 0 01-8-8.1" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 19v-5h5" /></svg>
+                                </button>
+                                <button id="start-pause-btn" class="w-full h-16 flex items-center justify-center bingo-button btn-start">
+                                    <svg id="play-icon" class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <svg id="pause-icon" class="w-8 h-8 hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                </button>
+                                <button id="next-btn" class="w-full h-16 flex items-center justify-center bingo-button btn-next">
+                                    <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                                </button>
+                            </div>
+                             <div class="flex items-center gap-3 bg-black/10 p-3 rounded-md">
+                                <label for="speed-slider" class="text-xs font-medium whitespace-nowrap">Tốc độ gọi:</label>
+                                <input id="speed-slider" type="range" min="1" max="10" value="5" class="w-full h-4 bg-black/20 rounded-lg appearance-none cursor-pointer">
+                                <span id="speed-value" class="text-xs font-bold w-16 text-center">6 giây</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="lg:col-span-3 flex flex-col gap-6 mt-8 lg:mt-0 lg:overflow-y-auto pr-2">
+                    <div class="bingo-panel p-6 flex-grow flex flex-col">
+                        <h2 id="bingo-board-title" class="title text-lg font-bold text-center mb-4 flex-shrink-0">Bảng Dò Số</h2>
+                        <div id="bingo-board" class="grid grid-cols-10 gap-2 flex-grow"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Settings Button -->
+        <button id="open-settings-btn" class="bingo-button btn-apply fixed bottom-6 right-6 h-16 w-16 rounded-full flex items-center justify-center shadow-lg">
+            <svg class="h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden opacity-0">
+            <div class="modal-content bingo-panel p-6 max-w-lg w-full opacity-0 transform scale-95 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="title text-2xl">Cài Đặt</h3>
+                    <button id="close-settings-btn" class="bingo-button h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-full btn-reset">X</button>
+                </div>
+                <div class="space-y-6">
+                     <div class="bg-black/10 p-4 rounded-md space-y-3">
+                        <label class="text-sm font-medium">Giới hạn số</label>
+                         <div class="flex flex-col sm:flex-row items-center gap-4">
+                            <input type="number" id="max-number-input" value="90" min="10" max="200" class="bg-black/10 border-2 border-black/20 text-lg rounded-md block w-full p-2 text-center">
+                            <button id="apply-settings-btn" class="w-full sm:w-auto flex-shrink-0 py-3 px-4 bingo-button btn-apply">Lưu & Đặt lại</button>
+                        </div>
+                     </div>
+                    <div class="bg-black/10 p-4 rounded-md space-y-3">
+                        <div class="flex justify-between items-center">
+                            <label class="text-sm font-medium">Đọc số:</label>
+                            <input type="checkbox" id="speak-toggle" class="h-6 w-6" checked/>
+                        </div>
+                        <div id="voice-controls" class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3 items-end">
+                                <div>
+                                    <label for="language-select" class="text-xs font-medium">Ngôn ngữ:</label>
+                                    <select id="language-select" class="w-full bg-white/80 text-black border-2 border-black/20 text-sm rounded-md p-1 mt-1"></select>
+                                </div>
+                                <button id="test-voice-btn" class="w-full py-1 px-2 bingo-button btn-next text-xs">Nghe thử</button>
+                            </div>
+                            <div>
+                                <label for="voice-select" class="text-xs font-medium">Giọng đọc:</label>
+                                <select id="voice-select" class="w-full bg-white/80 text-black border-2 border-black/20 text-sm rounded-md p-1 mt-1"></select>
+                            </div>
+                            <div>
+                                <label for="rate-slider" class="text-xs font-medium">Tốc độ đọc: <span id="rate-value">1</span></label>
+                                <input id="rate-slider" type="range" min="0.5" max="2" value="1" step="0.1" class="w-full h-4 bg-black/20 rounded-lg appearance-none cursor-pointer mt-1">
+                            </div>
+                            <div>
+                                <label for="pitch-slider" class="text-xs font-medium">Ngữ điệu: <span id="pitch-value">1</span></label>
+                                <input id="pitch-slider" type="range" min="0" max="2" value="1" step="0.1" class="w-full h-4 bg-black/20 rounded-lg appearance-none cursor-pointer mt-1">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-black/10 p-4 rounded-md">
+                        <div class="flex justify-between items-center">
+                            <label for="theme-select" class="text-sm font-medium">Giao diện:</label>
+                            <select id="theme-select" class="w-auto bg-white/80 text-black border-2 border-black/20 text-sm rounded-md p-2">
+                                <option value="cute">Dễ Thương</option>
+                                <option value="minecraft">Minecraft</option>
+                                <option value="pencil">Bút Chì</option>
+                                <option value="ballpoint">Bút Bi</option>
+                                <option value="liquid">Liquid Glass</option>
+                                <option value="basic">Cơ Bản</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Confirmation Modal -->
+        <div id="reset-modal" class="modal-overlay fixed inset-0 bg-black/50 flex items-center justify-center p-4 hidden opacity-0">
+            <div class="modal-content bingo-panel p-6 text-center max-w-sm w-full opacity-0 transform scale-95">
+                <h3 class="title text-xl font-bold mb-4">Xác nhận</h3>
+                <p class="mb-6">Bạn có chắc chắn muốn bắt đầu lại không? Toàn bộ tiến trình sẽ bị mất.</p>
+                <div class="flex justify-center gap-4">
+                    <button id="confirm-reset-no" class="bingo-button btn-apply py-2 px-6">Không</button>
+                    <button id="confirm-reset-yes" class="bingo-button btn-reset py-2 px-6">Có, Chơi lại</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const appContainer = document.getElementById('app-container');
+        const currentNumberDisplay = document.getElementById('current-number-display');
+        const startPauseBtn = document.getElementById('start-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        const bingoBoard = document.getElementById('bingo-board');
+        const calledNumbersHistory = document.getElementById('called-numbers-history');
+        const maxNumberInput = document.getElementById('max-number-input');
+        const bingoBoardTitle = document.getElementById('bingo-board-title');
+        const themeSelect = document.getElementById('theme-select');
+        const applySettingsBtn = document.getElementById('apply-settings-btn');
+        
+        // Modal elements
+        const resetModal = document.getElementById('reset-modal');
+        const confirmResetYes = document.getElementById('confirm-reset-yes');
+        const confirmResetNo = document.getElementById('confirm-reset-no');
+        const settingsModal = document.getElementById('settings-modal');
+        const openSettingsBtn = document.getElementById('open-settings-btn');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        
+        // Voice controls
+        const speakToggle = document.getElementById('speak-toggle');
+        const voiceControls = document.getElementById('voice-controls');
+        const languageSelect = document.getElementById('language-select');
+        const voiceSelect = document.getElementById('voice-select');
+        const rateSlider = document.getElementById('rate-slider');
+        const rateValue = document.getElementById('rate-value');
+        const pitchSlider = document.getElementById('pitch-slider');
+        const pitchValue = document.getElementById('pitch-value');
+        const testVoiceBtn = document.getElementById('test-voice-btn');
+
+        // --- Game & Speech State ---
+        let allNumbers = [], availableNumbers = [], calledNumbers = [];
+        let intervalId = null, isGameRunning = false, speed = 6000;
+        const synth = window.speechSynthesis;
+        let voices = [];
+
+        // --- Functions ---
+        function setTheme(themeName) {
+            appContainer.className = `app-container theme-${themeName}`;
+            localStorage.setItem('bingoTheme', themeName);
+            themeSelect.value = themeName;
+        }
+
+        function speak(text) {
+            if (!speakToggle.checked || !synth || voices.length === 0 || !text) return;
+            synth.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.onerror = (e) => console.error('Speech synthesis error:', e);
+            const selectedVoiceName = voiceSelect.value;
+            const selectedVoice = voices.find(v => v.name === selectedVoiceName);
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+                utterance.rate = rateSlider.value;
+                utterance.pitch = pitchSlider.value;
+                synth.speak(utterance);
+            }
+        }
+
+        function populateVoiceList() {
+            const selectedLanguage = languageSelect.value;
+            const voicesForLanguage = voices.filter(voice => voice.lang === selectedLanguage);
+            voiceSelect.innerHTML = '';
+            voicesForLanguage.forEach(voice => {
+                const option = document.createElement('option');
+                option.textContent = voice.name;
+                option.value = voice.name;
+                voiceSelect.appendChild(option);
+            });
+        }
+
+        function populateLanguageList() {
+            voices = synth.getVoices();
+            if (voices.length === 0) return;
+            const languages = [...new Set(voices.map(voice => voice.lang))].sort();
+            languageSelect.innerHTML = '';
+            languages.forEach(lang => {
+                const option = document.createElement('option');
+                option.textContent = lang;
+                option.value = lang;
+                languageSelect.appendChild(option);
+            });
+            const defaultLang = languages.find(l => l.startsWith('vi')) || languages.find(l => l.startsWith('en')) || languages[0];
+            if (defaultLang) languageSelect.value = defaultLang;
+            populateVoiceList();
+        }
+
+        function setPlayIcon() {
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        }
+
+        function setPauseIcon() {
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+        }
+
+        function init() {
+            if (intervalId) clearInterval(intervalId);
+            isGameRunning = false;
+            intervalId = null;
+            const totalNumbers = parseInt(maxNumberInput.value, 10) || 90;
+            maxNumberInput.value = totalNumbers; 
+            bingoBoardTitle.textContent = `Bảng Dò Số (1 - ${totalNumbers})`;
+            allNumbers = Array.from({ length: totalNumbers }, (_, i) => i + 1);
+            availableNumbers = [...allNumbers];
+            calledNumbers = [];
+            currentNumberDisplay.textContent = '...';
+            currentNumberDisplay.classList.remove('pop-animation');
+            setPlayIcon();
+            startPauseBtn.disabled = false;
+            calledNumbersHistory.innerHTML = '<span class="opacity-50 text-sm">Chưa có số nào được gọi</span>';
+            bingoBoard.innerHTML = '';
+            allNumbers.forEach(num => {
+                const cell = document.createElement('div');
+                cell.id = `cell-${num}`;
+                cell.textContent = num;
+                cell.className = 'bingo-cell w-full aspect-square flex items-center justify-center text-sm md:text-base font-bold';
+                bingoBoard.appendChild(cell);
+            });
+            speak("Bắt đầu trò chơi mới!");
+        }
+
+        function updateUI(newNumber) {
+            currentNumberDisplay.textContent = newNumber;
+            currentNumberDisplay.classList.add('pop-animation');
+            setTimeout(() => currentNumberDisplay.classList.remove('pop-animation'), 500);
+            const cell = document.getElementById(`cell-${newNumber}`);
+            if (cell) cell.classList.add('called');
+            if (calledNumbers.length === 1) calledNumbersHistory.innerHTML = '';
+            const historyChip = document.createElement('span');
+            historyChip.textContent = newNumber;
+            historyChip.className = 'history-chip flex items-center justify-center font-bold w-12 h-12';
+            calledNumbersHistory.prepend(historyChip);
+        }
+
+        function drawNumber() {
+            if (availableNumbers.length === 0) {
+                currentNumberDisplay.textContent = 'HẾT!';
+                speak("Đã hết số.");
+                clearInterval(intervalId);
+                intervalId = null;
+                isGameRunning = false;
+                setPlayIcon();
+                startPauseBtn.disabled = true;
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * availableNumbers.length);
+            const newNumber = availableNumbers[randomIndex];
+            availableNumbers.splice(randomIndex, 1);
+            calledNumbers.push(newNumber);
+            updateUI(newNumber);
+            speak(`Số ${newNumber}`);
+        }
+
+        function toggleGame() {
+            if (availableNumbers.length === 0) return;
+            isGameRunning = !isGameRunning;
+            if (isGameRunning) {
+                setPauseIcon();
+                drawNumber();
+                intervalId = setInterval(drawNumber, speed);
+            } else {
+                setPlayIcon();
+                clearInterval(intervalId);
+                speak("Tạm dừng");
+            }
+        }
+        
+        function showModal(modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('.modal-content').classList.remove('opacity-0', 'scale-95');
+            }, 10);
+        }
+
+        function hideModal(modal) {
+            modal.classList.add('opacity-0');
+            modal.querySelector('.modal-content').classList.add('opacity-0', 'scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // --- Event Listeners ---
+        startPauseBtn.addEventListener('click', toggleGame);
+        nextBtn.addEventListener('click', () => {
+             if (!isGameRunning && availableNumbers.length > 0) drawNumber();
+        });
+        resetBtn.addEventListener('click', () => {
+            if (isGameRunning && calledNumbers.length > 0) {
+                showModal(resetModal);
+            } else {
+                init();
+            }
+        });
+        applySettingsBtn.addEventListener('click', () => {
+            init();
+            hideModal(settingsModal);
+        });
+        
+        confirmResetYes.addEventListener('click', () => {
+            init();
+            hideModal(resetModal);
+        });
+        confirmResetNo.addEventListener('click', () => hideModal(resetModal));
+        
+        openSettingsBtn.addEventListener('click', () => showModal(settingsModal));
+        closeSettingsBtn.addEventListener('click', () => hideModal(settingsModal));
+
+        speedSlider.addEventListener('input', (e) => {
+            const value = e.target.value;
+            speed = (11 - value) * 1000;
+            speedValue.textContent = `${11 - value} giây`;
+            if (isGameRunning) {
+                clearInterval(intervalId);
+                intervalId = setInterval(drawNumber, speed);
+            }
+        });
+        themeSelect.addEventListener('change', (e) => setTheme(e.target.value));
+        
+        speakToggle.addEventListener('change', () => {
+            voiceControls.style.display = speakToggle.checked ? 'block' : 'none';
+        });
+        languageSelect.addEventListener('change', populateVoiceList);
+        testVoiceBtn.addEventListener('click', () => speak('Đây là giọng đọc mẫu'));
+        rateSlider.addEventListener('input', (e) => rateValue.textContent = parseFloat(e.target.value).toFixed(1));
+        pitchSlider.addEventListener('input', (e) => pitchValue.textContent = parseFloat(e.target.value).toFixed(1));
+
+        // --- Initial Load ---
+        window.onload = () => {
+            if (synth) {
+                speechSynthesis.onvoiceschanged = populateLanguageList;
+                if (speechSynthesis.getVoices().length > 0) populateLanguageList();
+            }
+            const savedTheme = localStorage.getItem('bingoTheme') || 'cute';
+            setTheme(savedTheme);
+            speedValue.textContent = `${11 - speedSlider.value} giây`;
+            init();
+        };
+    </script>
+</body>
+</html>
