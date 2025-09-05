@@ -117,7 +117,7 @@
         .theme-vip {
             background-color: var(--bg-dark);
             color: var(--text-primary-dark);
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23facc15' fill-opacity='0.07'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23facc15' fill-opacity='0.07'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
         }
 
         .theme-vip .card {
@@ -244,7 +244,7 @@
 
         /* Status Indicator Styles */
         .status-dot {
-            transition: background-color 0.3s;
+            transition: 0.3s;
         }
 
         .theme-normal .status-dot {
@@ -387,6 +387,14 @@
                                             <button class="copy-btn" data-target="bank-name"></button>
                                         </div>
                                     </div>
+                                     <!-- Branch Info -->
+                                    <div id="branch-info-line" class="info-line hidden">
+                                        <p class="text-sm text-secondary">Chi nhánh</p>
+                                        <div class="flex items-center">
+                                            <p id="branch-name" class="text-base font-semibold text-primary mr-2"></p>
+                                            <button class="copy-btn" data-target="branch-name"></button>
+                                        </div>
+                                    </div>
                                     <div class="info-line">
                                         <p class="text-sm text-secondary">Số tài khoản</p>
                                         <div class="flex items-center">
@@ -398,7 +406,7 @@
                                         <p class="text-sm text-secondary">Chủ tài khoản</p>
                                         <div class="flex items-center">
                                             <p id="account-name" class="text-base font-semibold text-primary mr-2"></p>
-                                              </p><button class="copy-btn" data-target="account-name"></button>
+                                            <button class="copy-btn" data-target="account-name"></button>
                                         </div>
                                     </div>
                                     <div class="info-line">
@@ -435,6 +443,8 @@
                     name: "Vietcombank",
                     accountNumber: "1015894887",
                     accountName: "DINH MANH HUNG",
+                    branch: null,
+                    region: "ALL",
                     logo: "./icon/Icon-Vietcombank.webp",
                     qrImagePath: "./QR/VCB-QR.png",
                     content: "Thanh toan Hunq Store"
@@ -443,6 +453,8 @@
                     name: "BVBank",
                     accountNumber: "99MM24030M09540726",
                     accountName: "MOMO_DINH MANH HUNG",
+                    branch: null,
+                    region: "ALL",
                     logo: "./icon/Icon-BVBank.png",
                     qrImagePath: "./QR/Momo-QR.png",
                     content: "Thanh toan Hunq Store"
@@ -451,18 +463,22 @@
                     name: "Ví MoMo",
                     accountNumber: "Đang cập nhật",
                     accountName: "Đang cập nhật",
+                    branch: null,
+                    region: "ALL",
                     logo: "./icon/Icon-Momo.png",
                     qrImagePath: "./icon/Icon-Momo.png",
                     content: "Đang cập nhật"
                 },
                 yucho: {
                     name: "Yucho",
-                    accountNumber: "12090-16218251",
+                    accountNumber: "16218251",
                     accountName: "ディン マン フン",
+                    branch: "12090",
+                    region: "JP",
                     logo: "./icon/Icon-Yucho.png",
                     qrImagePath: "./icon/Icon-Yucho.png",
                     content: "Chuyen tien",
-                    password: "123" // <-- Mật khẩu mẫu
+                    password: null 
                 },
             };
 
@@ -490,57 +506,93 @@
             const bankNameEl = document.getElementById('bank-name');
             const accountNumberEl = document.getElementById('account-number');
             const accountNameEl = document.getElementById('account-name');
+            const branchNameEl = document.getElementById('branch-name');
+            const branchInfoLine = document.getElementById('branch-info-line');
             const transferContentEl = document.getElementById('transfer-content');
 
             let activeProviderButton = null;
+            let urlParams = {
+                theme: 'online',
+                ref: null,
+                regions: []
+            };
 
             // --- FUNCTIONS ---
-            function setPageStatus(status) {
+            function parseUrlParams() {
+                // Combine parameters from both query string (?) and hash (#) for more flexibility.
+                const searchString = window.location.search.substring(1);
+                const hashString = window.location.hash.substring(1);
+                const fullParamsString = [searchString, hashString].filter(Boolean).join('&');
+
+                if (!fullParamsString) return;
+
+                const params = fullParamsString.split('&');
+                const validRegions = ['VN', 'JP', 'US'];
+
+                params.forEach(param => {
+                    if (!param) return;
+                    // Handle parameters like ?VIP or #JP that don't have a value
+                    const [key, value] = param.split('=').map(s => s.trim());
+                    
+                    if (key.toUpperCase() === 'VIP' && !value) {
+                        urlParams.theme = 'vip';
+                    } else if (key.toUpperCase() === 'REF') {
+                        let refValue = value || '';
+                        refValue = decodeURIComponent(refValue).replace(/^['"]|['"]$/g, '');
+                        urlParams.ref = refValue;
+                    } else if (validRegions.includes(key.toUpperCase()) && !value) {
+                        urlParams.regions.push(key.toUpperCase());
+                    }
+                });
+            }
+
+            function initializePage(status, params) {
                 body.className = 'min-h-screen flex flex-col';
                 maintenanceMessage.classList.add('hidden');
                 errorMessage.classList.add('hidden');
 
+                let themeClass = '';
+                let statusLabel = '';
+
                 switch (status) {
                     case 'vip':
-                        body.classList.add('theme-vip');
-                        statusText.textContent = 'VIP';
+                        themeClass = 'theme-vip';
+                        statusLabel = 'VIP';
                         break;
                     case 'maintenance':
-                        body.classList.add('status-maintenance');
-                        statusText.textContent = 'Bảo trì';
+                        themeClass = 'status-maintenance';
+                        statusLabel = 'Bảo trì';
                         maintenanceMessage.classList.remove('hidden');
                         break;
                     case 'error':
-                        body.classList.add('status-error');
-                        statusText.textContent = 'Lỗi';
+                        themeClass = 'status-error';
+                        statusLabel = 'Lỗi';
                         errorMessage.classList.remove('hidden');
                         break;
                     case 'online':
                     default:
-                        body.classList.add('theme-normal');
-                        statusText.textContent = 'Đang hoạt động';
+                        themeClass = 'theme-normal';
+                        statusLabel = 'Đang hoạt động';
                         break;
                 }
 
-                initPaymentMethods(status);
+                body.classList.add(themeClass);
+                statusText.textContent = statusLabel;
+                
+                initPaymentMethods(status, params);
             }
 
             function copyToClipboard(text, btn) {
                 const originalTooltip = btn.querySelector('.tooltip-text').textContent;
-                const textarea = document.createElement('textarea');
-                textarea.value = text;
-                document.body.appendChild(textarea);
-                textarea.select();
-                try {
-                    document.execCommand('copy');
+                navigator.clipboard.writeText(text).then(() => {
                     btn.querySelector('.tooltip-text').textContent = 'Đã chép!';
-                } catch (err) {
+                }).catch(err => {
                     btn.querySelector('.tooltip-text').textContent = 'Lỗi!';
-                }
-                document.body.removeChild(textarea);
-                setTimeout(() => {
-                    btn.querySelector('.tooltip-text').textContent = originalTooltip;
-                }, 1500);
+                }).finally(() => {
+                    setTimeout(() => {
+                        btn.querySelector('.tooltip-text').textContent = originalTooltip;
+                    }, 1500);
+                });
             }
 
             function updateDisplay(providerKey) {
@@ -552,34 +604,54 @@
                 bankNameEl.textContent = info.name;
                 accountNumberEl.textContent = info.accountNumber;
                 accountNameEl.textContent = info.accountName;
-                transferContentEl.textContent = info.content;
+                
+                if(info.branch) {
+                    branchNameEl.textContent = info.branch;
+                    branchInfoLine.classList.remove('hidden');
+                } else {
+                    branchInfoLine.classList.add('hidden');
+                }
+
+                transferContentEl.textContent = urlParams.ref || info.content;
 
                 const qrUrl = info.qrImagePath;
                 qrImage.src = qrUrl;
                 downloadQrBtn.href = qrUrl;
                 downloadQrBtn.download = `QR-${info.name.replace(/\s/g, '')}.png`;
             }
-
-            function initPaymentMethods(status) {
+            
+            function initPaymentMethods(status, params) {
                 paymentMethodsContainer.innerHTML = '';
                 if (status === 'online' || status === 'vip') {
                     Object.keys(bankingInfo).forEach(key => {
                         const info = bankingInfo[key];
+                        
+                        const allowedRegions = params.regions;
+
+                        // If no regions are in the URL, only show 'ALL' accounts.
+                        // Otherwise, show accounts matching the URL regions, plus 'ALL' accounts.
+                        if (allowedRegions.length === 0) {
+                            if (info.region !== 'ALL') {
+                                return; // On default page, hide non-ALL accounts
+                            }
+                        } else {
+                            if (!allowedRegions.includes(info.region) && info.region !== 'ALL') {
+                                return; // If regions are specified, hide accounts that don't match and aren't ALL
+                            }
+                        }
+
                         const button = document.createElement('button');
                         button.className = 'payment-method border-2 border-color p-4 rounded-lg flex items-center space-x-4';
                         button.dataset.provider = key;
                         button.innerHTML = `<img src="${info.logo}" alt="${info.name}" class="h-8 w-auto object-contain rounded-md"><span class="font-semibold text-primary">${info.name}</span>`;
                         
                         button.addEventListener('click', () => {
-                            // Deactivate previous button
                             if(activeProviderButton) {
                                 activeProviderButton.classList.remove('active');
                             }
-                            // Activate current button
                             button.classList.add('active');
                             activeProviderButton = button;
 
-                            // Hide all right panels first
                             detailsPlaceholder.classList.add('hidden');
                             paymentDetailsContainer.classList.add('hidden');
                             passwordEntryContainer.classList.add('hidden');
@@ -587,12 +659,10 @@
                             passwordError.textContent = '';
                             
                             if (info.password) {
-                                // Show password form
                                 passwordEntryContainer.classList.remove('hidden');
-                                passwordForm.dataset.provider = key; // Store provider key
+                                passwordForm.dataset.provider = key;
                                 passwordInput.focus();
                             } else {
-                                // Show details directly
                                 paymentDetailsContainer.classList.remove('hidden');
                                 updateDisplay(key);
                             }
@@ -623,28 +693,45 @@
                 }
             });
 
-            // --- INITIALIZATION ---
-            window.addEventListener('DOMContentLoaded', (event) => {
-                const currentHash = window.location.hash;
-
-                if (currentHash === '#VIP') {
-                    setPageStatus('vip');
-                } else {
-                    setPageStatus('online');
-                }
-            });
-
-            document.querySelectorAll('.copy-btn').forEach(btn => {
-                btn.classList.add('relative', 'p-1', 'rounded-full', 'hover:bg-gray-200');
-                btn.innerHTML = `<svg class="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg><span class="tooltip"><span class="tooltip-text">Sao chép</span></span>`;
-                btn.addEventListener('click', (e) => {
-                    const targetId = e.currentTarget.dataset.target;
-                    const textToCopy = document.getElementById(targetId).textContent;
-                    copyToClipboard(textToCopy, e.currentTarget);
+            function createCopyButtons() {
+                 document.querySelectorAll('.copy-btn').forEach(btn => {
+                    btn.classList.add('relative', 'p-1', 'rounded-full', 'hover:bg-gray-200');
+                    btn.innerHTML = `<svg class="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg><span class="tooltip"><span class="tooltip-text">Sao chép</span></span>`;
+                    btn.addEventListener('click', (e) => {
+                        const targetId = e.currentTarget.dataset.target;
+                        const textToCopy = document.getElementById(targetId).textContent;
+                        copyToClipboard(textToCopy, e.currentTarget);
+                    });
                 });
-            });
+            }
+
+            // --- MODIFIED: INITIALIZATION LOGIC ---
+            function runApplication() {
+                // 1. Reset global state on each run
+                urlParams = { theme: 'online', ref: null, regions: [] };
+                activeProviderButton = null;
+
+                // 2. Parse the current URL to populate the state
+                parseUrlParams();
+
+                // 3. Initialize the page based on the parsed state
+                initializePage(urlParams.theme, urlParams);
+                createCopyButtons();
+
+                // 4. Ensure the right panel is reset to the placeholder view
+                detailsPlaceholder.classList.remove('hidden');
+                paymentDetailsContainer.classList.add('hidden');
+                passwordEntryContainer.classList.add('hidden');
+            }
+
+            // Run the application on initial page load
+            runApplication();
+
+            // Re-run the application whenever the URL hash changes (for client-side navigation)
+            window.addEventListener('hashchange', runApplication);
         });
     </script>
 </body>
 
 </html>
+
