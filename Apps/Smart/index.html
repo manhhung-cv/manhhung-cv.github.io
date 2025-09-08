@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FridgeMaster - Smart Refrigerator Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2e7d32;
+            --primary-light: #4caf50;
+            --primary-dark: #1b5e20;
+            --secondary: #ff8f00;
+            --warning: #ffc107;
+            --danger: #d32f2f;
+            --light: #f5f5f5;
+            --dark: #333;
+            --gray: #9e9e9e;
+            --gray-light: #e0e0e0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        /* Header Styles */
+        header {
+            background-color: var(--primary);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .logo i {
+            font-size: 1.8rem;
+        }
+
+        nav ul {
+            display: flex;
+            list-style: none;
+            gap: 1.5rem;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        nav a:hover, nav a.active {
+            background-color: var(--primary-dark);
+        }
+
+        /* Main Content */
+        main {
+            padding: 2rem 0;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .page-title {
+            margin-bottom: 1.5rem;
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Dashboard */
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 40px;
+            border: 1px solid var(--gray-light);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray);
+        }
+
+        .filter-select {
+            padding: 0.75rem;
+            border: 1px solid var(--gray-light);
+            border-radius: 4px;
+            background-color: white;
+            min-width: 150px;
+        }
+
+        .food-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .food-card {
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .food-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .food-status {
+            height: 8px;
+        }
+
+        .status-safe {
+            background-color: var(--primary);
+        }
+
+        .status-warning {
+            background-color: var(--warning);
+        }
+
+        .status-danger {
+            background-color: var(--danger);
+        }
+
+        .food-content {
+            padding: 1.5rem;
+        }
+
+        .food-name {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .food-details {
+            color: var(--gray);
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .food-expiry {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-light);
+        }
+
+        .food-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: white;
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+        }
+
+        /* Input Methods */
+        .input-methods {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .method-card {
+            flex: 1;
+            min-width: 250px;
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .method-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .method-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .method-title {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-light);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        /* Voice Assistant */
+        .voice-assistant {
+            text-align: center;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .voice-icon {
+            font-size: 4rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .voice-icon.listening {
+            color: var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .voice-response {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: var(--light);
+            border-radius: 8px;
+            min-height: 100px;
+        }
+
+        /* Barcode Section */
+        .barcode-container {
+            text-align: center;
+        }
+
+        .scanner-placeholder {
+            width: 100%;
+            max-width: 400px;
+            height: 300px;
+            background-color: var(--gray-light);
+            margin: 0 auto 1.5rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray);
+            font-size: 1.5rem;
+        }
+
+        .quick-add-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Stats and Analytics */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 0.5rem 0;
+        }
+
+        .chart-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .chart-placeholder {
+            height: 300px;
+            background-color: var(--light);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray);
+        }
+
+        /* Shopping List */
+        .shopping-list {
+            background-color: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .shopping-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .shopping-item:last-child {
+            border-bottom: none;
+        }
+
+        .shopping-item input[type="checkbox"] {
+            margin-right: 1rem;
+            transform: scale(1.5);
+        }
+
+        .shopping-item .item-name {
+            flex: 1;
+        }
+
+        .item-completed {
+            text-decoration: line-through;
+            color: var(--gray);
+        }
+
+        .add-item-form {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .add-item-form input {
+            flex: 1;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            nav ul {
+                gap: 0.5rem;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .food-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .input-methods {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-refrigerator"></i>
+                    <span>FridgeMaster</span>
+                </div>
+                <nav>
+                    <ul>
+                        <li><a href="#" class="nav-link active" data-page="dashboard">Tủ lạnh</a></li>
+                        <li><a href="#" class="nav-link" data-page="add-item">Thêm thực phẩm</a></li>
+                        <li><a href="#" class="nav-link" data-page="recipes">Gợi ý công thức</a></li>
+                        <li><a href="#" class="nav-link" data-page="analytics">Phân tích</a></li>
+                        <li><a href="#" class="nav-link" data-page="shopping">Danh sách mua sắm</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Dashboard Page -->
+        <section id="dashboard" class="page active">
+            <h2 class="page-title"><i class="fas fa-refrigerator"></i> Tủ lạnh của tôi</h2>
+            
+            <div class="filters">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Tìm kiếm thực phẩm...">
+                </div>
+                <select class="filter-select">
+                    <option value="all">Tất cả thực phẩm</option>
+                    <option value="safe">Còn hạn sử dụng</option>
+                    <option value="warning">Sắp hết hạn</option>
+                    <option value="expired">Đã hết hạn</option>
+                </select>
+                <select class="filter-select">
+                    <option value="name">Sắp xếp theo tên</option>
+                    <option value="date">Sắp xếp theo ngày thêm</option>
+                    <option value="expiry">Sắp xếp theo hạn sử dụng</option>
+                </select>
+            </div>
+            
+            <div class="food-grid">
+                <!-- Food items will be dynamically added here -->
+                <div class="food-card">
+                    <div class="food-status status-safe"></div>
+                    <div class="food-content">
+                        <h3 class="food-name">Sữa tươi</h3>
+                        <div class="food-details">1000 ml · 1 hộp</div>
+                        <div class="food-expiry">
+                            <span>Hạn sử dụng:</span>
+                            <span>15/09/2023</span>
+                        </div>
+                        <div class="food-actions">
+                            <button class="btn btn-primary btn-sm">Sửa</button>
+                            <button class="btn btn-secondary btn-sm">Đã dùng</button>
+                            <button class="btn btn-danger btn-sm">Vứt bỏ</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="food-card">
+                    <div class="food-status status-warning"></div>
+                    <div class="food-content">
+                        <h3 class="food-name">Thịt gà</h3>
+                        <div class="food-details">500 g · 1 gói</div>
+                        <div class="food-expiry">
+                            <span>Hạn sử dụng:</span>
+                            <span>05/09/2023</span>
+                        </div>
+                        <div class="food-actions">
+                            <button class="btn btn-primary btn-sm">Sửa</button>
+                            <button class="btn btn-secondary btn-sm">Đã dùng</button>
+                            <button class="btn btn-danger btn-sm">Vứt bỏ</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="food-card">
+                    <div class="food-status status-danger"></div>
+                    <div class="food-content">
+                        <h3 class="food-name">Rau xà lách</h3>
+                        <div class="food-details">200 g · 1 bó</div>
+                        <div class="food-expiry">
+                            <span>Hạn sử dụng:</span>
+                            <span>01/09/2023</span>
+                        </div>
+                        <div class="food-actions">
+                            <button class="btn btn-primary btn-sm">Sửa</button>
+                            <button class="btn btn-secondary btn-sm">Đã dùng</button>
+                            <button class="btn btn-danger btn-sm">Vứt bỏ</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="food-card">
+                    <div class="food-status status-safe"></div>
+                    <div class="food-content">
+                        <h3 class="food-name">Trứng gà</h3>
+                        <div class="food-details">10 quả · 1 vỉ</div>
+                        <div class="food-expiry">
+                            <span>Hạn sử dụng:</span>
+                            <span>20/09/2023</span>
+                        </div>
+                        <div class="food-actions">
+                            <button class="btn btn-primary btn-sm">Sửa</button>
+                            <button class="btn btn-secondary btn-sm">Đã dùng</button>
+                            <button class="btn btn-danger btn-sm">Vứt bỏ</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Add Item Page -->
+        <section id="add-item" class="page">
+            <h2 class="page-title"><i class="fas fa-plus-circle"></i> Thêm thực phẩm mới</h2>
+            
+            <div class="input-methods">
+                <div class="method-card" data-method="manual">
+                    <div class="method-icon">
+                        <i class="fas fa-keyboard"></i>
+                    </div>
+                    <h3 class="method-title">Nhập thủ công</h3>
+                    <p>Thêm thực phẩm bằng cách điền thông tin chi tiết</p>
+                </div>
+                
+                <div class="method-card" data-method="voice">
+                    <div class="method-icon">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <h3 class="method-title">Nhập bằng giọng nói</h3>
+                    <p>Thêm thực phẩm bằng giọng nói tiếng Việt</p>
+                </div>
+                
+                <div class="method-card" data-method="barcode">
+                    <div class="method-icon">
+                        <i class="fas fa-barcode"></i>
+                    </div>
+                    <h3 class="method-title">Quét mã vạch</h3>
+                    <p>Quét mã vạch sản phẩm để thêm nhanh</p>
+                </div>
+            </div>
+            
+            <!-- Manual Input Form -->
+            <div id="manual-input" class="input-form">
+                <h3>Thông tin thực phẩm</h3>
+                
+                <form id="food-form">
+                    <div class="form-group">
+                        <label class="form-label" for="productName">Tên sản phẩm</label>
+                        <input type="text" id="productName" class="form-control" placeholder="Vd: Táo, Sữa tươi, Thịt gà...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="quantity">Số lượng</label>
+                        <input type="number" id="quantity" class="form-control" min="1" value="1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="weightVolume">Khối lượng/Dung tích</label>
+                        <input type="number" id="weightVolume" class="form-control" placeholder="Vd: 500">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="unit">Đơn vị</label>
+                        <input type="text" id="unit" class="form-control" placeholder="Vd: g, ml, quả, hộp...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="expirationDate">Ngày hết hạn</label>
+                        <input type="date" id="expirationDate" class="form-control">
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="reset" class="btn">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary">Thêm vào tủ lạnh</button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Voice Input Interface -->
+            <div id="voice-input" class="input-form" style="display: none;">
+                <div class="voice-assistant">
+                    <div class="voice-icon" id="voice-button">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <p>Nhấn vào biểu tượng micro và nói để thêm thực phẩm</p>
+                    
+                    <div class="voice-response">
+                        <p>Ví dụ: "Thêm 500 gram thịt gà hết hạn vào thứ sáu tuần này"</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Barcode Input Interface -->
+            <div id="barcode-input" class="input-form" style="display: none;">
+                <div class="barcode-container">
+                    <div class="scanner-placeholder">
+                        <i class="fas fa-barcode"></i> Khu vực quét mã vạch
+                    </div>
+                    
+                    <div class="quick-add-toggle">
+                        <label for="quick-add">Thêm nhanh:</label>
+                        <input type="checkbox" id="quick-add" checked>
+                    </div>
+                    
+                    <p>Hoặc nhập mã vạch thủ công:</p>
+                    <div class="form-group" style="max-width: 300px; margin: 0 auto;">
+                        <input type="text" class="form-control" placeholder="Nhập mã vạch">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recipes Page -->
+        <section id="recipes" class="page">
+            <h2 class="page-title"><i class="fas fa-utensils"></i> Gợi ý công thức nấu ăn</h2>
+            
+            <div class="filters">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Tìm kiếm công thức...">
+                </div>
+                <button class="btn btn-primary">Tìm công thức với nguyên liệu sắp hết hạn</button>
+            </div>
+            
+            <div class="food-grid">
+                <!-- Recipe cards will be displayed here -->
+                <div class="food-card">
+                    <div class="food-content">
+                        <h3 class="food-name">Gà xào sả ớt</h3>
+                        <div class="food-details">Cần: Thịt gà, sả, ớt, tỏi, nước mắm</div>
+                        <div class="food-actions">
+                            <button class="btn btn-primary">Xem công thức</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="food-card">
+                    <div class="food-content">
+                        <h3 class="food-name">Salad rau trộn</h3>
+                        <div class="food-details">Cần: Rau xà lách, cà chua, dầu oliu, giấm</div>
+                        <div class="food-actions">
+                            <button class="btn btn-primary">Xem công thức</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="food-card">
+                    <div class="food-content">
+                        <h3 class="food-name">Trứng chiên</h3>
+                        <div class="food-details">Cần: Trứng, hành lá, nước mắm</div>
+                        <div class="food-actions">
+                            <button class="btn btn-primary">Xem công thức</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Analytics Page -->
+        <section id="analytics" class="page">
+            <h2 class="page-title"><i class="fas fa-chart-pie"></i> Phân tích & Thống kê</h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Tổng giá trị lãng phí</h3>
+                    <div class="stat-value">350.000đ</div>
+                    <p>Trong tháng 9/2023</p>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Thực phẩm sắp hết hạn</h3>
+                    <div class="stat-value">7</div>
+                    <p>Sản phẩm cần sử dụng sớm</p>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Tiết kiệm được</h3>
+                    <div class="stat-value">120.000đ</div>
+                    <p>Nhờ sử dụng FridgeMaster</p>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h3>Thống kê lãng phí thực phẩm</h3>
+                <div class="chart-placeholder">
+                    Biểu đồ cột thể hiện thực phẩm bị lãng phí
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h3>Loại thực phẩm được sử dụng nhiều nhất</h3>
+                <div class="chart-placeholder">
+                    Biểu đồ tròn thể hiện tỷ lệ các loại thực phẩm
+                </div>
+            </div>
+        </section>
+
+        <!-- Shopping List Page -->
+        <section id="shopping" class="page">
+            <h2 class="page-title"><i class="fas fa-shopping-cart"></i> Danh sách mua sắm</h2>
+            
+            <div class="shopping-list">
+                <div class="shopping-item">
+                    <input type="checkbox" id="item1">
+                    <label for="item1" class="item-name">Sữa tươi</label>
+                    <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                </div>
+                
+                <div class="shopping-item">
+                    <input type="checkbox" id="item2">
+                    <label for="item2" class="item-name">Trứng gà</label>
+                    <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                </div>
+                
+                <div class="shopping-item">
+                    <input type="checkbox" id="item3" checked>
+                    <label for="item3" class="item-name item-completed">Rau xà lách</label>
+                    <button class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                </div>
+                
+                <div class="add-item-form">
+                    <input type="text" class="form-control" placeholder="Thêm mục mới...">
+                    <button class="btn btn-primary">Thêm</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetPage = this.getAttribute('data-page');
+                
+                // Update active nav link
+                document.querySelectorAll('.nav-link').forEach(navLink => {
+                    navLink.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // Show target page
+                document.querySelectorAll('.page').forEach(page => {
+                    page.classList.remove('active');
+                });
+                document.getElementById(targetPage).classList.add('active');
+            });
+        });
+
+        // Input method selection
+        document.querySelectorAll('.method-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const method = this.getAttribute('data-method');
+                
+                // Hide all input forms
+                document.querySelectorAll('.input-form').forEach(form => {
+                    form.style.display = 'none';
+                });
+                
+                // Show selected input form
+                document.getElementById(`${method}-input`).style.display = 'block';
+            });
+        });
+
+        // Voice input simulation
+        const voiceButton = document.getElementById('voice-button');
+        voiceButton.addEventListener('click', function() {
+            this.classList.toggle('listening');
+            
+            if (this.classList.contains('listening')) {
+                const response = document.querySelector('.voice-response');
+                response.innerHTML = '<p>Đang lắng nghe... Hãy nói "Thêm 500 gram thịt gà hết hạn vào thứ sáu tuần này"</p>';
+                
+                // Simulate voice recognition after 3 seconds
+                setTimeout(() => {
+                    response.innerHTML = `
+                        <p><strong>Bạn đã nói:</strong> "Thêm 500 gram thịt gà hết hạn vào thứ sáu tuần này"</p>
+                        <p><strong>Xác nhận:</strong> Thêm 500g thịt gà với hạn sử dụng 08/09/2023?</p>
+                        <div style="margin-top: 10px;">
+                            <button class="btn btn-primary btn-sm">Xác nhận</button>
+                            <button class="btn btn-sm">Hủy</button>
+                        </div>
+                    `;
+                    voiceButton.classList.remove('listening');
+                }, 3000);
+            }
+        });
+
+        // Form submission
+        document.getElementById('food-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Thực phẩm đã được thêm vào tủ lạnh!');
+            this.reset();
+        });
+    </script>
+</body>
+</html>

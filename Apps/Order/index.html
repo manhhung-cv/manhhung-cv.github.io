@@ -433,6 +433,9 @@
                                         <i class="fas fa-table w-6 mr-2"></i> <span id="toggle-view-text">Tách
                                             Bảng</span>
                                     </a>
+                                    <a href="#" id="dropdown-copy" class="flex items-center px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary-hover)] hover:text-[var(--text-accent)] transition" role="menuitem">
+                                        <i class="fas fa-copy w-6 mr-2"></i> <span>Sao chép dữ liệu</span>
+                                    </a>
                                     <a href="#" id="dropdown-import"
                                         class="flex items-center px-4 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg-secondary-hover)] hover:text-[var(--text-accent)] transition"
                                         role="menuitem">
@@ -646,6 +649,20 @@
         </div>
     </div>
 
+    <div id="copy-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[95] p-4 modal-backdrop">
+        <div class="bg-[var(--bg-secondary)] rounded-3xl shadow-xl w-full max-w-sm p-6 text-center">
+            <h3 class="text-lg font-bold mb-4 text-[var(--text-primary)]">Sao chép dữ liệu đơn hàng</h3>
+            <p class="mb-6 text-[var(--text-secondary)]">Chọn thông tin bạn muốn sao chép vào clipboard.</p>
+            <div class="space-y-3">
+                <button data-copy-type="all" class="copy-option-btn w-full bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-300 transition">Sao chép tất cả</button>
+                <button data-copy-type="stt" class="copy-option-btn w-full bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-300 transition">Chỉ sao chép STT</button>
+                <button data-copy-type="code" class="copy-option-btn w-full bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-300 transition">Chỉ sao chép Mã đơn</button>
+                <button data-copy-type="owner" class="copy-option-btn w-full bg-slate-200 text-slate-700 font-semibold py-3 rounded-xl hover:bg-slate-300 transition">Chỉ sao chép Người sở hữu</button>
+            </div>
+            <button id="copy-modal-cancel-btn" class="mt-6 text-sm text-slate-500 hover:text-slate-700">Hủy</button>
+        </div>
+    </div>
+
     <div id="toast-notification" class="toast"></div>
 
     <script type="module">
@@ -698,11 +715,13 @@
         const openScannerBtn = document.getElementById('open-scanner-btn');
         const toggleSelectionModeBtn = document.getElementById('toggle-selection-mode-btn');
         const importFileInput = document.getElementById('import-file-input');
+        const copyModal = document.getElementById('copy-modal');
 
         // Main list actions
         const moreActionsBtn = document.getElementById('more-actions-btn');
         const dropdownMenu = document.getElementById('dropdown-menu');
         const dropdownToggleView = document.getElementById('dropdown-toggle-view');
+        const dropdownCopy = document.getElementById('dropdown-copy');
         const dropdownImport = document.getElementById('dropdown-import');
         const dropdownExport = document.getElementById('dropdown-export');
 
@@ -1116,6 +1135,35 @@
             };
             reader.readAsText(file);
         };
+        const copyOrderData = (type) => {
+            if (allOrders.length === 0) {
+                showToast("Không có dữ liệu để sao chép.", "info");
+                return;
+            }
+            const searchTerm = searchInput.value.toLowerCase();
+            const displayedOrders = searchTerm ? allOrders.filter(o => o.orderCode.toLowerCase().includes(searchTerm) || o.ownerName.toLowerCase().includes(searchTerm)) : allOrders;
+            
+            let textToCopy = '';
+            switch (type) {
+                case 'all':
+                    textToCopy = displayedOrders.map((order, index) => `${index + 1}\t${order.orderCode}\t${order.ownerName}`).join('\n');
+                    break;
+                case 'stt':
+                    textToCopy = displayedOrders.map((order, index) => `${index + 1}`).join('\n');
+                    break;
+                case 'code':
+                    textToCopy = displayedOrders.map(order => order.orderCode).join('\n');
+                    break;
+                case 'owner':
+                    textToCopy = displayedOrders.map(order => order.ownerName).join('\n');
+                    break;
+                default: return;
+            }
+            navigator.clipboard.writeText(textToCopy).then(
+                () => showToast('Đã sao chép vào clipboard!', 'success'),
+                () => showToast('Sao chép thất bại.', 'error')
+            );
+        };
         ordersContainer.addEventListener('change', (e) => {
             if (e.target.matches('.row-checkbox, .select-all-checkbox')) {
                 const isSelectAll = e.target.matches('.select-all-checkbox');
@@ -1386,6 +1434,26 @@
             moreActionsBtn.addEventListener('click', (e) => { e.stopPropagation(); dropdownMenu.classList.toggle('hidden'); });
             window.addEventListener('click', (e) => { if (!dropdownMenu.classList.contains('hidden') && !moreActionsBtn.contains(e.target)) dropdownMenu.classList.add('hidden'); if (!headerSettingsMenu.classList.contains('hidden') && !headerSettingsBtn.contains(e.target)) headerSettingsMenu.classList.add('hidden'); if (!manualSuggestionsList.classList.contains('hidden') && !manualOrderCodeInput.contains(e.target)) manualSuggestionsList.classList.add('hidden'); });
             dropdownToggleView.addEventListener('click', (e) => { e.preventDefault(); isGroupedView = !isGroupedView; document.getElementById('toggle-view-text').textContent = isGroupedView ? 'Gộp Bảng' : 'Tách Bảng'; handleSearch(); dropdownMenu.classList.add('hidden'); });
+            dropdownCopy.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (allOrders.length === 0) {
+                    showToast("Không có dữ liệu để sao chép.", "info");
+                    return;
+                }
+                copyModal.classList.remove('hidden');
+                dropdownMenu.classList.add('hidden');
+            });
+            document.getElementById('copy-modal-cancel-btn').addEventListener('click', () => {
+                copyModal.classList.add('hidden');
+            });
+            copyModal.addEventListener('click', (e) => {
+                const button = e.target.closest('.copy-option-btn');
+                if (button) {
+                    const copyType = button.dataset.copyType;
+                    copyOrderData(copyType);
+                    copyModal.classList.add('hidden');
+                }
+            });
             dropdownImport.addEventListener('click', (e) => { e.preventDefault(); if (isGuestMode) { showToast("Khách không thể dùng chức năng này.", "info"); return; } importFileInput.click(); dropdownMenu.classList.add('hidden'); });
             importFileInput.addEventListener('change', handleImport); dropdownExport.addEventListener('click', (e) => { e.preventDefault(); handleExport(); dropdownMenu.classList.add('hidden'); });
             scannerOwnerSelect.addEventListener('change', () => { const owner = scannerOwnerSelect.value; scanResultEl.textContent = ''; manualOrderCodeInput.value = ''; manualSuggestionsList.classList.add('hidden'); if (owner) { scannerMethodContainer.classList.remove('hidden'); if (showQrScannerTab.classList.contains('active')) startQrScanner(); } else { scannerMethodContainer.classList.add('hidden'); if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop().catch(console.error); } });
@@ -1471,3 +1539,4 @@
 </body>
 
 </html>
+
