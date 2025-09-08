@@ -494,6 +494,7 @@
                     <button type="submit"
                         class="w-full bg-[var(--accent-primary)] text-white py-3 rounded-xl hover:bg-[var(--accent-primary-hover)] font-bold transition">Đăng
                         Nhập</button>
+                    <p class="text-center text-sm mt-3"><a href="#" id="forgot-password-link" class="font-semibold text-[var(--text-accent)] hover:underline">Quên mật khẩu?</a></p>
                 </form>
                 <form id="register-form" class="hidden">
                     <input type="email" id="register-email" placeholder="Email"
@@ -648,7 +649,7 @@
             </div>
         </div>
     </div>
-
+    
     <div id="copy-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[95] p-4 modal-backdrop">
         <div class="bg-[var(--bg-secondary)] rounded-3xl shadow-xl w-full max-w-sm p-6 text-center">
             <h3 class="text-lg font-bold mb-4 text-[var(--text-primary)]">Sao chép dữ liệu đơn hàng</h3>
@@ -668,7 +669,7 @@
     <script type="module">
         // Firebase SDK Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, onSnapshot, query, where, getDocs, deleteDoc, updateDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Firebase Config & Init
@@ -842,6 +843,20 @@
                 showToast('Sai email hoặc mật khẩu.', 'error');
             } finally {
                 loadingSpinner.style.display = 'none';
+            }
+        };
+        const handleForgotPassword = async () => {
+            const email = prompt("Vui lòng nhập email của bạn để đặt lại mật khẩu:");
+            if (email) {
+                loadingSpinner.style.display = 'flex';
+                try {
+                    await sendPasswordResetEmail(auth, email);
+                    showToast("Email đặt lại mật khẩu đã được gửi!", "success");
+                } catch (error) {
+                    showToast("Lỗi: " + error.message, "error");
+                } finally {
+                    loadingSpinner.style.display = 'none';
+                }
             }
         };
         const handleLogout = async () => {
@@ -1423,6 +1438,10 @@
             document.getElementById('close-login-modal-btn').addEventListener('click', () => loginModal.classList.add('hidden'));
             document.getElementById('show-register-form').addEventListener('click', (e) => { e.preventDefault(); loginModal.querySelector('#login-form').classList.add('hidden'); loginModal.querySelector('#register-form').classList.remove('hidden'); loginModal.querySelector('#login-text').classList.add('hidden'); loginModal.querySelector('#register-text').classList.remove('hidden'); loginModal.querySelector('#login-modal-title').textContent = 'Đăng Ký'; });
             document.getElementById('show-login-form').addEventListener('click', (e) => { e.preventDefault(); loginModal.querySelector('#register-form').classList.add('hidden'); loginModal.querySelector('#login-form').classList.remove('hidden'); loginModal.querySelector('#register-text').classList.add('hidden'); loginModal.querySelector('#login-text').classList.remove('hidden'); loginModal.querySelector('#login-modal-title').textContent = 'Đăng Nhập'; });
+            document.getElementById('forgot-password-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                handleForgotPassword();
+            });
             document.getElementById('login-form').addEventListener('submit', handleLogin); document.getElementById('register-form').addEventListener('submit', handleRegister); document.getElementById('user-logout-btn').addEventListener('click', handleLogout);
             document.getElementById('view-with-code-btn').addEventListener('click', () => handleViewGroupWithCode(null)); document.getElementById('create-group-btn').addEventListener('click', handleCreateGroup); document.getElementById('create-new-group-from-list-btn').addEventListener('click', () => showView('create-group-view'));
             document.getElementById('add-order-form').addEventListener('submit', handleAddOrder); document.getElementById('paste-button').addEventListener('click', handlePaste); document.getElementById('auto-paste-toggle').addEventListener('change', handleAutoPasteToggle);
@@ -1539,4 +1558,3 @@
 </body>
 
 </html>
-
