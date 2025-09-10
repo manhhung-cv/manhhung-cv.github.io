@@ -196,8 +196,21 @@
             background-size: cover;
             background-position: center;
             position: relative;
+            overflow: hidden;
         }
-        .game-scene::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.3), transparent 50%); }
+        #decoration-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        .game-scene > * {
+            position: relative;
+            z-index: 1;
+        }
+        .game-scene::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.3), transparent 50%); z-index: 0;}
         .counter-card {
             background: rgba(0,0,0,0.2);
             backdrop-filter: blur(10px);
@@ -274,50 +287,72 @@
             font-size: 28px;
         }
         .item-feed { display: flex; flex-direction: column; gap: var(--spacing-md); }
-        .story-card, .event-card { animation: fadeInUp 0.5s backwards; }
-        .story-card .card-body { padding: var(--spacing-md); }
-        .story-author { font-weight: 600; }
-        .story-timestamp { font-size: 12px; color: var(--text-tertiary); margin-bottom: var(--spacing-sm); }
-        .story-title { font-weight: 700; font-size: 18px; margin-bottom: var(--spacing-sm); }
-        .story-content { line-height: 1.6; }
-        .card-footer {
-            padding: var(--spacing-sm) var(--spacing-md);
-            background: var(--background-primary);
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        
+        /* Story Card (Facebook Style) */
+        .story-card {
+            background: var(--background-secondary);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            animation: fadeInUp 0.5s backwards;
         }
-        .action-btn { background: none; border: none; color: var(--text-tertiary); font-size: 18px; cursor: pointer; display: flex; align-items: center; gap: var(--spacing-sm); }
+        .story-header { display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-md); }
+        .story-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .story-author-info { flex-grow: 1; }
+        .story-author { font-weight: 600; }
+        .story-timestamp { font-size: 12px; color: var(--text-tertiary); }
+        .story-content { padding: 0 var(--spacing-md) var(--spacing-md); line-height: 1.6; white-space: pre-wrap; }
+        .story-image { width: 100%; max-height: 50vh; object-fit: cover; }
+        .story-stats { padding: var(--spacing-sm) var(--spacing-md); font-size: 14px; color: var(--text-tertiary); border-bottom: 1px solid var(--border-color); }
+        .story-actions { display: flex; justify-content: space-around; padding: var(--spacing-sm); }
+        .action-btn { background: none; border: none; color: var(--text-secondary); font-size: 16px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-sm); border-radius: var(--radius-sm); flex-grow: 1; justify-content: center; }
+        .action-btn:hover { background-color: var(--border-color); }
         .like-btn.liked { color: var(--primary-color); }
 
-        .event-card { display: flex; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md); }
-        .event-image { width: 60px; height: 60px; border-radius: var(--radius-md); object-fit: cover; }
-        .event-details { flex-grow: 1; }
-        .event-title { font-weight: 600; }
-        .event-date { font-size: 14px; color: var(--text-secondary); }
-        .event-countdown { text-align: right; }
-        .event-days-count { font-size: 24px; font-weight: 700; color: var(--primary-color); }
-        .event-days-label { font-size: 12px; color: var(--text-tertiary); }
-        
-        #chat-fab {
-            position: fixed;
-            bottom: calc(90px + env(safe-area-inset-bottom));
-            right: var(--spacing-lg);
-            width: 56px; height: 56px;
-            border-radius: 50%;
-            background: var(--primary-color);
+        /* Event Card (Enhanced) */
+        .event-card {
+            position: relative;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
             color: var(--white);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 22px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-            transition: transform var(--transition-fast), background-color var(--transition-fast);
-            z-index: 1001;
-            border: none;
-            cursor: pointer;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: var(--spacing-md);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            animation: fadeInUp 0.5s backwards;
+            transition: height 0.3s ease-in-out;
         }
-        #chat-fab:active { transform: scale(0.95); }
-
+        .event-card.upcoming {
+            height: 240px;
+        }
+        .event-card-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transform: scale(1.05);
+            transition: transform 0.4s ease-out;
+        }
+        .event-card:hover .event-card-bg { transform: scale(1.1); }
+        .event-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent 60%);
+        }
+        .event-info { position: relative; z-index: 1; }
+        .event-title { font-size: 22px; font-weight: 700; text-shadow: 0 1px 3px #000; }
+        .event-date { font-size: 14px; opacity: 0.9; }
+        .countdown-container { display: flex; gap: var(--spacing-md); margin-top: var(--spacing-sm); }
+        .countdown-unit { text-align: center; }
+        .countdown-value { font-size: 24px; font-weight: 700; }
+        .countdown-label { font-size: 10px; text-transform: uppercase; opacity: 0.8; }
+        .event-card.upcoming .event-title { font-size: 28px; }
+        .event-card.upcoming .countdown-value { font-size: 32px; }
+        
+        
         /* --- Settings Tab --- */
         .accordion-item { border-bottom: 1px solid var(--border-color); }
         .accordion-header {
@@ -364,18 +399,15 @@
         .modal-footer { display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-lg); }
         .modal-footer .btn { flex: 1; }
 
-        /* --- Chat --- */
-        .chat-view {
-            position: fixed; inset: 0;
-            display: flex; flex-direction: column;
-            background: var(--background-primary);
-            transform: translateY(100%);
-            transition: transform var(--transition-medium);
-            z-index: 1002;
+        /* --- Chat Tab --- */
+        #chat-content .page-content {
+            padding: 0;
+            height: calc(100dvh - 82px); /* Full viewport minus nav bar */
+            display: flex;
+            flex-direction: column;
         }
-        .chat-view.active { transform: translateY(0); }
         .chat-header {
-            padding: var(--spacing-md) var(--spacing-md) var(--spacing-sm);
+            padding: var(--spacing-sm) var(--spacing-md);
             padding-top: calc(var(--spacing-md) + env(safe-area-inset-top));
             border-bottom: 1px solid var(--border-color);
             background: var(--background-secondary);
@@ -390,7 +422,7 @@
             padding: var(--spacing-md);
             overflow-y: auto;
             display: flex;
-            flex-direction: column-reverse;
+            flex-direction: column;
         }
         .message-group { margin-bottom: var(--spacing-md); display: flex; flex-direction: column; }
         .message-group.is-me { align-items: flex-end; }
@@ -411,7 +443,7 @@
         .chat-input-area {
             position: relative;
             padding: var(--spacing-sm) var(--spacing-md);
-            padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom));
+            /* This padding is now handled by the main nav bar's safe area */
             background: var(--background-secondary);
             border-top: 1px solid var(--border-color);
             display: flex;
@@ -518,6 +550,7 @@
             <!-- Main Tab -->
             <div id="main-content" class="tab-content active">
                 <div id="game-scene" class="game-scene">
+                    <canvas id="decoration-canvas"></canvas>
                     <div class="counter-card">
                         <div id="day-counter" class="day-counter">...</div>
                         <div id="ymd-counter" class="ymd-counter">...</div>
@@ -554,6 +587,28 @@
                         <button id="add-story-btn" class="btn btn-primary" style="padding: 8px 12px; border-radius: 12px;"><i class="fas fa-plus"></i></button>
                     </div>
                     <div id="story-feed" class="item-feed"></div>
+                </div>
+            </div>
+
+            <!-- Chat Tab -->
+            <div id="chat-content" class="tab-content">
+                <div class="page-content">
+                     <div class="chat-header">
+                        <button id="chat-mode-toggle" class="btn" style="background: none; padding: 8px; font-size: 18px;"><i class="fas fa-lock"></i></button>
+                        <h3 class="chat-title">Trò chuyện</h3>
+                        <div style="width: 40px;"></div>
+                    </div>
+                    <div id="chat-messages" class="chat-messages"></div>
+                    <div class="chat-input-area">
+                        <div id="command-popup" class="hidden">
+                            <button class="command-btn" data-command="@feel">@feel: Đặt cảm xúc</button>
+                            <button class="command-btn" data-command="@del-me">@del-me: Xoá tin nhắn của tôi</button>
+                            <button class="command-btn" data-command="@del-all">@del-all: Xoá toàn bộ cuộc trò chuyện</button>
+                        </div>
+                        <button id="command-toggle-btn" class="btn" style="background: none; padding: 0 12px; color: var(--text-tertiary);"><i class="fas fa-at"></i></button>
+                        <input id="chat-input" type="text" placeholder="Nhắn tin yêu thương..." class="chat-input">
+                        <button id="chat-send-btn" class="btn btn-primary chat-send-btn"><i class="fas fa-paper-plane"></i></button>
+                    </div>
                 </div>
             </div>
 
@@ -604,6 +659,15 @@
                                         <label>URL Nền Trang Chính</label>
                                         <input id="setting-game-background" type="text" placeholder="Dán URL hình ảnh..." class="input-field">
                                     </div>
+                                    <div class="setting-group">
+                                        <label>Hiệu ứng trang trí</label>
+                                        <select id="setting-decoration" class="input-field">
+                                            <option value="none">Không có</option>
+                                            <option value="sakura">Hoa anh đào rơi</option>
+                                            <option value="snow">Tuyết rơi</option>
+                                            <option value="stars">Sao băng</option>
+                                        </select>
+                                    </div>
                                     <button id="save-info-btn" class="btn btn-primary btn-full">Lưu</button>
                                 </div>
                             </div>
@@ -629,36 +693,16 @@
             </div>
         </main>
 
-        <button id="chat-fab" class="btn btn-primary" style="position: fixed; right: var(--spacing-md); bottom: calc(90px + env(safe-area-inset-bottom)); z-index: 1001; width: 56px; height: 56px; border-radius: 50%; padding: 0; box-shadow: 0 8px 24px rgba(0,0,0,0.15);"><i class="fas fa-comments" style="font-size: 22px;"></i></button>
         <nav class="main-nav">
             <div class="nav-wrapper">
                 <a class="nav-link active" data-tab="main"><i class="fas fa-heart"></i><span>Chính</span></a>
                 <a class="nav-link" data-tab="streak"><i class="fas fa-fire-alt"></i><span>Streak</span></a>
                 <a class="nav-link" data-tab="story"><i class="fas fa-book-open"></i><span>Kỷ Niệm</span></a>
+                <a class="nav-link" data-tab="chat"><i class="fas fa-comments"></i><span>Nhắn Tin</span></a>
                 <a class="nav-link" data-tab="events"><i class="fas fa-calendar-alt"></i><span>Sự kiện</span></a>
                 <a class="nav-link" data-tab="settings"><i class="fas fa-cog"></i><span>Cài đặt</span></a>
             </div>
         </nav>
-    </div>
-
-    <!-- Chat View -->
-    <div id="chat-view" class="chat-view">
-        <div class="chat-header">
-            <button id="chat-mode-toggle" class="btn" style="background: none; padding: 8px; font-size: 18px;"><i class="fas fa-lock"></i></button>
-            <h3 class="chat-title">Trò chuyện</h3>
-            <button id="close-chat-btn" class="btn" style="background: none; color: var(--text-tertiary); padding: 8px;"><i class="fas fa-times"></i></button>
-        </div>
-        <div id="chat-messages" class="chat-messages"></div>
-        <div class="chat-input-area">
-            <div id="command-popup" class="hidden">
-                <button class="command-btn" data-command="@feel">@feel: Đặt cảm xúc</button>
-                <button class="command-btn" data-command="@del-me">@del-me: Xoá tin nhắn của tôi</button>
-                <button class="command-btn" data-command="@del-all">@del-all: Xoá toàn bộ cuộc trò chuyện</button>
-            </div>
-            <button id="command-toggle-btn" class="btn" style="background: none; padding: 0 12px; color: var(--text-tertiary);"><i class="fas fa-at"></i></button>
-            <input id="chat-input" type="text" placeholder="Nhắn tin yêu thương..." class="chat-input">
-            <button id="chat-send-btn" class="btn btn-primary chat-send-btn"><i class="fas fa-paper-plane"></i></button>
-        </div>
     </div>
 
     <!-- Modals -->
@@ -667,7 +711,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, onSnapshot, orderBy, Timestamp, deleteDoc, arrayUnion, arrayRemove, increment, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, onSnapshot, orderBy, Timestamp, deleteDoc, arrayUnion, arrayRemove, increment, writeBatch, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAr9tTx-Q0OWrJ4Iaslb33-o1PJLe1S3GQ",
@@ -686,7 +730,7 @@
         let currentUser, userId, coupleCode, coupleData;
         let unsubscribers = [];
         let currentChatMode = 'normal';
-        let feelingCountdownInterval;
+        let feelingCountdownInterval, eventCountdownInterval, decorationAnimationId;
         let pressTimer = null;
         const $ = (s) => document.querySelector(s);
         const $$ = (s) => document.querySelectorAll(s);
@@ -704,6 +748,8 @@
             unsubscribers.forEach(unsub => unsub());
             unsubscribers = [];
             if (feelingCountdownInterval) clearInterval(feelingCountdownInterval);
+            if (eventCountdownInterval) clearInterval(eventCountdownInterval);
+            if (decorationAnimationId) cancelAnimationFrame(decorationAnimationId);
         };
 
         // --- AUTHENTICATION ---
@@ -752,7 +798,8 @@
                     createdAt: Timestamp.now(), 
                     gameBackgroundURL: 'https://i.ibb.co/L1pS1XF/pixel-art-sakura-tree-and-mountain-landscape-for-8bit-game-free-vector.jpg', 
                     streak: { count: 0, lastCheckIn: null, p1_checkedToday: false, p2_checkedToday: false },
-                    chatMode: 'normal'
+                    chatMode: 'normal',
+                    decoration: 'none'
                 });
             } else {
                 if (!coupleDocSnap.exists()) return showError('couple-code-error', 'Mã không tồn tại.');
@@ -782,16 +829,14 @@
                 if (currentChatMode === 'secret') renderChat(snap.docs.map(d => d.data()));
             });
             feelingCountdownInterval = setInterval(updateFeelingCountdowns, 1000);
+            eventCountdownInterval = setInterval(updateEventCountdowns, 1000);
         }
 
         function renderAll() {
             applyTheme(coupleData.theme);
             if (!coupleData.partner1 || !coupleData.partner2) {
-                if ((coupleData.partner1 && coupleData.partner1.userId === userId) || !coupleData.partner1) {
-                     renderProfileSetupModal(1);
-                } else if ((coupleData.partner2 && coupleData.partner2.userId === userId) || !coupleData.partner2) {
-                     renderProfileSetupModal(2);
-                }
+                const partnerKey = (coupleData.partner1 && coupleData.partner1.userId === userId) ? 1 : 2;
+                renderProfileSetupModal(partnerKey);
             }
             renderMainPage();
             renderStreak();
@@ -837,6 +882,7 @@
             $('#game-scene').style.backgroundImage = `url('${coupleData.gameBackgroundURL}')`;
             renderPartner('#partner-1-char', coupleData.partner1);
             renderPartner('#partner-2-char', coupleData.partner2);
+            startDecorationAnimation(coupleData.decoration);
         }
         function renderPartner(containerId, partner) {
             const container = $(containerId);
@@ -919,47 +965,83 @@
         });
 
         function renderStories(stories) {
+            const p1Avatar = coupleData?.partner1?.photoURL;
+            const p2Avatar = coupleData?.partner2?.photoURL;
             $('#story-feed').innerHTML = stories.length === 0 ? `<div class="card" style="text-align: center;">Chưa có kỷ niệm nào được viết.</div>` : stories.map(s => `
                 <div class="story-card" data-id="${s.id}">
-                    <div class="card-body">
-                        <p class="story-author">${s.authorName}</p>
-                        <p class="story-timestamp">${s.timestamp.toDate().toLocaleString('vi-VN')}</p>
-                        ${s.title ? `<h3 class="story-title">${s.title}</h3>` : ''}
-                        <p class="story-content">${s.content}</p>
+                    <div class="story-header">
+                        <img src="${s.authorId === coupleData?.partner1?.userId ? p1Avatar : p2Avatar}" class="story-avatar">
+                        <div class="story-author-info">
+                            <div class="story-author">${s.authorName}</div>
+                            <div class="story-timestamp">${s.timestamp.toDate().toLocaleString('vi-VN')}</div>
+                        </div>
                     </div>
-                    <div class="card-footer">
-                        <button class="action-btn like-btn ${s.likes?.includes(userId) ? 'liked' : ''}"><i class="fas fa-heart"></i> ${s.likes?.length || 0}</button>
-                        ${s.authorId === userId ? `<button class="action-btn delete-story-btn"><i class="fas fa-trash"></i></button>`: ''}
+                    ${s.content ? `<div class="story-content">${s.content}</div>` : ''}
+                    ${s.imageUrl ? `<img src="${s.imageUrl}" class="story-image">` : ''}
+                    <div class="story-stats">${s.likes?.length || 0} lượt thích</div>
+                    <div class="story-actions">
+                        <button class="action-btn like-btn ${s.likes?.includes(userId) ? 'liked' : ''}"><i class="fas fa-heart"></i> Thích</button>
+                        ${s.authorId === userId ? `<button class="action-btn delete-story-btn"><i class="fas fa-trash"></i> Xoá</button>`: ''}
                     </div>
                 </div>
             `).join('');
         }
         
         function renderEvents(events) {
-             $('#event-list').innerHTML = events.length === 0 ? `<div class="card" style="text-align: center;">Chưa có sự kiện nào.</div>` : events.map(e => {
+            const eventList = $('#event-list');
+            const sortedEvents = events.map(e => {
                 const nextDate = e.date.toDate();
                  if (e.repeat === 'yearly' && nextDate < new Date()) {
                     let year = new Date().getFullYear();
                     nextDate.setFullYear(year);
                     if (nextDate < new Date()) nextDate.setFullYear(year + 1);
                 }
-                const diffDays = Math.ceil((nextDate - new Date()) / 864e5);
-                return `
-                 <div class="event-card">
-                    <img src="${e.imageUrl || `https://placehold.co/100x100/${e.repeat === 'yearly' ? 'a5b4fc' : 'fbcfe8'}/fff?text=EVENT`}" class="event-image">
-                    <div class="event-details">
-                        <p class="event-title">${e.name}</p>
-                        <p class="event-date">${nextDate.toLocaleDateString('vi-VN')}</p>
-                    </div>
-                    <div class="event-countdown">
-                        <p class="event-days-count">${diffDays > 0 ? diffDays : '🎉'}</p>
-                        <p class="event-days-label">${diffDays > 0 ? 'ngày' : 'Hôm nay!'}</p>
+                return {...e, nextDate};
+            }).sort((a,b) => a.nextDate - b.nextDate);
+
+            eventList.innerHTML = sortedEvents.length === 0 ? `<div class="card" style="text-align: center;">Chưa có sự kiện nào.</div>` : sortedEvents.map((e, index) => `
+                 <div class="event-card ${index === 0 ? 'upcoming' : ''}">
+                    <div class="event-card-bg" style="background-image: url(${e.imageUrl || 'https://i.ibb.co/L1pS1XF/pixel-art-sakura-tree-and-mountain-landscape-for-8bit-game-free-vector.jpg'})"></div>
+                    <div class="event-info">
+                         <h3 class="event-title">${e.name}</h3>
+                         <p class="event-date">${e.nextDate.toLocaleDateString('vi-VN')}</p>
+                         <div class="countdown-container" data-date="${e.nextDate.toISOString()}">
+                            <!-- Countdown will be rendered by JS -->
+                         </div>
                     </div>
                  </div>`
-             }).join('');
+             ).join('');
+        }
+        
+        function updateEventCountdowns() {
+            $$('.countdown-container').forEach(el => {
+                const targetDate = new Date(el.dataset.date);
+                const diff = targetDate - new Date();
+                
+                if(diff < 0) {
+                    el.innerHTML = '<span>🎉</span>';
+                    return;
+                }
+
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+                el.innerHTML = `
+                    <div class="countdown-unit"><div class="countdown-value">${d}</div><div class="countdown-label">Ngày</div></div>
+                    <div class="countdown-unit"><div class="countdown-value">${h}</div><div class="countdown-label">Giờ</div></div>
+                    <div class="countdown-unit"><div class="countdown-value">${m}</div><div class="countdown-label">Phút</div></div>
+                    <div class="countdown-unit"><div class="countdown-value">${s}</div><div class="countdown-label">Giây</div></div>
+                `;
+            });
         }
 
+
         function renderChat(messages) {
+            const chatMessages = $('#chat-messages');
+            const shouldScroll = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < 1;
+
             const groupedMessages = messages.reduce((acc, msg) => {
                 const lastGroup = acc[acc.length - 1];
                 if (lastGroup && lastGroup.authorId === msg.authorId && msg.timestamp.toMillis() - lastGroup.messages[lastGroup.messages.length - 1].timestamp.toMillis() < 300000) {
@@ -970,12 +1052,15 @@
                 return acc;
             }, []);
             
-            $('#chat-messages').innerHTML = groupedMessages.map(group => `
+            chatMessages.innerHTML = groupedMessages.map(group => `
                 <div class="message-group ${group.authorId === userId ? 'is-me' : 'is-other'}">
                     ${group.messages.map(msg => `<div class="message-bubble ${group.authorId === userId ? 'is-me' : 'is-other'}">${msg.content}</div>`).join('')}
                 </div>
             `).join('');
-             $('#chat-messages').scrollTop = $('#chat-messages').scrollHeight;
+            
+            if(shouldScroll) {
+                 chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
         }
 
         function renderSettings() {
@@ -999,6 +1084,7 @@
             $('#partner-info-settings').innerHTML = renderPartner(partner1) + renderPartner(partner2);
             $('#setting-start-date').value = coupleData.startDate ? getDateString(coupleData.startDate.toDate()) : '';
             $('#setting-game-background').value = coupleData.gameBackgroundURL || '';
+            $('#setting-decoration').value = coupleData.decoration || 'none';
             // Account
             $('#setting-couple-code').value = coupleCode;
         }
@@ -1071,6 +1157,10 @@
                     });
                 }
             }
+            // Edit feeling from speech bubble
+            if(e.target.closest('.edit-feeling-btn')) {
+                document.body.dispatchEvent(new Event('edit-feeling', {bubbles: true}));
+            }
         });
         
         document.body.addEventListener('edit-feeling', () => {
@@ -1116,15 +1206,17 @@
 
         $('#add-story-btn').addEventListener('click', () => {
             const modal = createModal('story-modal', 'Viết Kỷ Niệm', 
-                `<input id="story-title-input" placeholder="Tiêu đề..." class="input-field">
-                <textarea id="story-content-input" placeholder="Hôm nay có gì vui..." rows="5" class="input-field" style="resize:vertical;"></textarea>`,
+                `<input id="story-title-input" placeholder="Tiêu đề (tuỳ chọn)" class="input-field">
+                <textarea id="story-content-input" placeholder="Hôm nay có gì vui..." rows="5" class="input-field" style="resize:vertical;"></textarea>
+                <input id="story-image-url" placeholder="URL hình ảnh (tuỳ chọn)" class="input-field">`,
                 `<button id="post-story-btn" class="btn btn-primary btn-full">Đăng</button>`
             );
             modal.querySelector('#post-story-btn').addEventListener('click', async () => {
                 const title = modal.querySelector('#story-title-input').value;
                 const content = modal.querySelector('#story-content-input').value;
-                if(!content) return;
-                await addDoc(collection(db, "couples", coupleCode, "stories"), { title, content, authorId: userId, authorName: coupleData.partner1.userId === userId ? coupleData.partner1.name : coupleData.partner2.name, timestamp: Timestamp.now(), likes: [] });
+                const imageUrl = modal.querySelector('#story-image-url').value;
+                if(!content && !imageUrl) return;
+                await addDoc(collection(db, "couples", coupleCode, "stories"), { title, content, imageUrl, authorId: userId, authorName: coupleData.partner1.userId === userId ? coupleData.partner1.name : coupleData.partner2.name, timestamp: Timestamp.now(), likes: [] });
                 modal.remove();
             });
         });
@@ -1158,30 +1250,10 @@
         // Chat
         function updateChatUI() {
             const isSecret = currentChatMode === 'secret';
-            $('#chat-header').classList.toggle('secret-mode', isSecret);
+            $('#chat-content .chat-header').classList.toggle('secret-mode', isSecret);
             $('#chat-mode-toggle').style.color = isSecret ? 'var(--white)' : 'var(--text-primary)';
-            $('#chat-title').textContent = isSecret ? 'Trò chuyện (Bí mật)' : 'Trò chuyện';
+            $('#chat-content .chat-title').textContent = isSecret ? 'Trò chuyện (Bí mật)' : 'Trò chuyện';
         }
-
-        $('#chat-fab').addEventListener('click', () => $('#chat-view').classList.add('active'));
-        $('#close-chat-btn').addEventListener('click', () => {
-            if (currentChatMode === 'secret') {
-                 createModal('confirm-exit-secret', 'Rời khỏi chế độ Bí mật?', 
-                 `<p>Bạn có muốn xoá toàn bộ lịch sử cuộc trò chuyện bí mật này không?</p>`,
-                 `<button class="btn btn-secondary" id="dont-delete">Không, giữ lại</button>
-                  <button class="btn btn-danger" id="do-delete">Có, xoá hết</button>`)
-                  .addEventListener('click', async (e) => {
-                       if(e.target.closest('#dont-delete') || e.target.closest('#do-delete')) {
-                            if (e.target.closest('#do-delete')) await clearSecretChat();
-                            await updateDoc(doc(db, "couples", coupleCode), { chatMode: 'normal' });
-                            $('#confirm-exit-secret').remove();
-                            $('#chat-view').classList.remove('active');
-                       }
-                  });
-            } else {
-                $('#chat-view').classList.remove('active');
-            }
-        });
 
         $('#chat-mode-toggle').addEventListener('click', async () => {
             if (currentChatMode === 'secret') {
@@ -1202,12 +1274,23 @@
         });
         
         $('#command-toggle-btn').addEventListener('click', () => $('#command-popup').classList.toggle('hidden'));
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.chat-input-area')) {
+                $('#command-popup').classList.add('hidden');
+            }
+        });
+
         $('#command-popup').addEventListener('click', (e) => {
             const commandBtn = e.target.closest('.command-btn');
             if (commandBtn) {
-                $('#chat-input').value = commandBtn.dataset.command;
+                const command = commandBtn.dataset.command;
+                 if (command === '@feel') {
+                     document.body.dispatchEvent(new Event('edit-feeling', {bubbles: true}));
+                 } else {
+                    $('#chat-input').value = command;
+                    $('#chat-input').focus();
+                 }
                 $('#command-popup').classList.add('hidden');
-                $('#chat-input').focus();
             }
         });
 
@@ -1279,7 +1362,8 @@
         $('#save-info-btn').addEventListener('click', async () => {
             let updates = {
                 startDate: Timestamp.fromDate(new Date($('#setting-start-date').value)),
-                gameBackgroundURL: $('#setting-game-background').value.trim()
+                gameBackgroundURL: $('#setting-game-background').value.trim(),
+                decoration: $('#setting-decoration').value
             };
              $$('#partner-info-settings input').forEach(input => {
                 const pNum = coupleData.partner1.userId === input.dataset.partnerId ? 'partner1' : 'partner2';
@@ -1290,8 +1374,132 @@
         $('#copy-code-btn').addEventListener('click', () => navigator.clipboard.writeText(coupleCode));
         $('#logout-btn').addEventListener('click', () => signOut(auth));
 
+        // --- DECORATION ANIMATION ---
+        function startDecorationAnimation(effect) {
+            if (decorationAnimationId) cancelAnimationFrame(decorationAnimationId);
+            const canvas = $('#decoration-canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (effect === 'none' || !effect) return;
+
+            let particles = [];
+            
+            if (effect === 'snow') {
+                for (let i = 0; i < 100; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                        r: Math.random() * 3 + 1, d: Math.random() * 1 + 1
+                    });
+                }
+                const animate = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+                    ctx.beginPath();
+                    for (let i = 0; i < particles.length; i++) {
+                        const p = particles[i];
+                        ctx.moveTo(p.x, p.y);
+                        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2, true);
+                    }
+                    ctx.fill();
+                    
+                    for (let i = 0; i < particles.length; i++) {
+                        const p = particles[i];
+                        p.y += p.d;
+                        p.x += Math.sin(p.y / 50) * 0.2;
+                        if (p.y > canvas.height) {
+                           particles[i] = {x: Math.random() * canvas.width, y: -10, r: p.r, d: p.d};
+                        }
+                    }
+                    decorationAnimationId = requestAnimationFrame(animate);
+                };
+                animate();
+
+            } else if (effect === 'sakura') {
+                 for (let i = 0; i < 50; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                        s: Math.random() * 2 + 3, d: Math.random() * 1 + 1,
+                        r: Math.random() * 360, rotSpeed: (Math.random() - 0.5) * 1
+                    });
+                }
+                const animate = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.fillStyle = `rgba(255, 192, 203, 0.8)`;
+                    ctx.font = "20px serif";
+                    for (let i = 0; i < particles.length; i++) {
+                        const p = particles[i];
+                        ctx.save();
+                        ctx.translate(p.x, p.y);
+                        ctx.rotate(p.r * Math.PI / 180);
+                        ctx.fillText('🌸', 0, 0);
+                        ctx.restore();
+                        
+                        p.y += p.d;
+                        p.x += Math.sin(p.y / 50) * 0.5;
+                        p.r += p.rotSpeed;
+                        if (p.y > canvas.height) {
+                           particles[i] = {x: Math.random() * canvas.width, y: -20, s: p.s, d: p.d, r: p.r, rotSpeed: p.rotSpeed};
+                        }
+                    }
+                    decorationAnimationId = requestAnimationFrame(animate);
+                };
+                animate();
+
+            } else if (effect === 'stars') {
+                let stars = [];
+                let shootingStars = [];
+                for (let i = 0; i < 150; i++) {
+                    stars.push({
+                        x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                        r: Math.random() * 1.5, o: Math.random(), fade: Math.random() > 0.5 ? 'in' : 'out'
+                    });
+                }
+                const createShootingStar = () => ({
+                    x: Math.random() * canvas.width, y: -10,
+                    len: Math.random() * 80 + 50, speed: Math.random() * 5 + 8,
+                    life: 1, active: true
+                });
+                for(let i = 0; i < 3; i++) shootingStars.push(createShootingStar());
+
+                const animate = () => {
+                    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                    gradient.addColorStop(0, '#0f0c29');
+                    gradient.addColorStop(0.5, '#302b63');
+                    gradient.addColorStop(1, '#24243e');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                    stars.forEach(s => {
+                        ctx.fillStyle = `rgba(255, 255, 255, ${s.o})`;
+                        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+                        if(s.fade === 'in') s.o += 0.005; else s.o -= 0.005;
+                        if(s.o <= 0.1) s.fade = 'in'; if(s.o >= 1) s.fade = 'out';
+                    });
+
+                    shootingStars.forEach(ss => {
+                        if (ss.active) {
+                            const grad = ctx.createLinearGradient(ss.x, ss.y, ss.x - ss.len, ss.y - ss.len);
+                            grad.addColorStop(0, `rgba(255, 255, 255, ${ss.life})`);
+                            grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                            ctx.strokeStyle = grad;
+                            ctx.lineWidth = 1.5;
+                            ctx.beginPath(); ctx.moveTo(ss.x, ss.y); ctx.lineTo(ss.x - ss.len, ss.y - ss.len); ctx.stroke();
+                            ss.x += ss.speed; ss.y += ss.speed; ss.life -= 0.02;
+                            if (ss.y > canvas.height + ss.len || ss.x > canvas.width + ss.len) ss.active = false;
+                        } else if (Math.random() < 0.005) {
+                            Object.assign(ss, createShootingStar());
+                        }
+                    });
+                    
+                    decorationAnimationId = requestAnimationFrame(animate);
+                };
+                animate();
+            }
+        }
     </script>
 </body>
-
 </html>
 
