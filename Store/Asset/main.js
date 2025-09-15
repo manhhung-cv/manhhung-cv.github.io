@@ -57,6 +57,9 @@ let usersMap = new Map(); // Cache for user data
 let adminOrderView = 'list'; // 'list' o
 // r 'grid'
 let productViewMode = 'grid'; // 'grid' or 'list'
+let manualOrderItems = []; // State for manual order items
+let allProductsCache = []; // Cache for all products for manual order search
+
 // --- UI ELEMENTS ---
 const loader = document.getElementById('loader');
 const pages = document.querySelectorAll('.page');
@@ -71,6 +74,7 @@ const cartItemCount = document.getElementById('cart-item-count');
 const cartItemCountMobile = document.getElementById('cart-item-count-mobile');
 const profileInfoModal = document.getElementById('profile-info-modal');
 const confirmationModal = document.getElementById('confirmation-modal');
+const manualOrderModal = document.getElementById('manual-order-modal');
 
 
 // --- UTILS ---
@@ -501,6 +505,8 @@ const fetchAndDisplayProducts = async (searchTerm = '') => {
             id: doc.id,
             ...doc.data()
         }));
+        
+        allProductsCache = productsData; // Cache for manual order search
 
         if (searchTerm) {
             searchTerm = searchTerm.toLowerCase();
@@ -563,70 +569,68 @@ const fetchAndDisplayProducts = async (searchTerm = '') => {
     }
 };
 
-const fetchAndDisplayProductDetail = async (productSlug) => {
+const fetchAndDisplayProductDetail = async (productId) => {
     showLoader();
     try {
-        // Truy vấn Firestore bằng trường 'slug'
-        const q = query(collection(db, "products"), where("slug", "==", productSlug));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            const productDoc = querySnapshot.docs[0];
-            const product = {
-                id: productDoc.id,
-                ...productDoc.data()
-            };
+        const productDocRef = doc(db, "products", productId);
+        const productDoc = await getDoc(productDocRef);
+        if (productDoc.exists()) {
+            const product = { id: productDoc.id, ...productDoc.data() };
             const hasVariants = product.variants && product.variants.length > 0;
 
             let variantsHTML = '';
             if (hasVariants) {
                 variantsHTML = `
-                <div class="mb-6">
-                    <h3 class="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Chọn phân loại:</h3>
-                    <div id="variant-options" class="flex flex-wrap gap-2">
-                        ${product.variants.map((variant, index) => `
-                            <label class="block">
-                                <input type="radio" name="variant" value="${index}" class="sr-only peer" ${index === 0 ? 'checked' : ''}>
-                                <div class="cursor-pointer rounded-xl px-4 py-2 text-sm font-medium border bg-white dark:bg-slate-800 dark:border-slate-600 peer-checked:bg-blue-100 peer-checked:text-blue-800 peer-checked:border-blue-500 dark:peer-checked:bg-blue-900/50 dark:peer-checked:text-blue-300">
-                                    ${variant.name}
-                                </div>
-                            </label>
-                        `).join('')}
-                    </div>
-                </div>
-                `;
-            }
-
-            productDetailPage.innerHTML = `
-                <div class="royal-card p-4 sm:p-6 rounded-2xl">
-                     <div class="mb-4">
-                         <a href="#home" class="text-sm text-blue-600 hover:underline inline-flex items-center gap-1 dark:text-blue-400"><i data-lucide="arrow-left" class="w-4 h-4"></i>Quay lại</a>
-                     </div>
-                    <div class="grid md:grid-cols-2 gap-6 sm:gap-8">
-                        <div>
-                            <img src="${product.imageUrl || 'https://placehold.co/600x600/e2e8f0/cbd5e0?text=Image'}" alt="${product.name}" class="w-full rounded-xl aspect-square object-cover">
-                        </div>
-                        <div>
-                            <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100">${product.name}</h1>
-                            <div class="my-4" id="product-price-display"></div>
-                            ${variantsHTML}
-                            <p class="text-slate-600 mb-6 dark:text-slate-300 whitespace-pre-wrap">${product.description}</p>
-                            <p class="text-sm text-slate-500 mb-4 dark:text-slate-400">Số lượng còn lại: <span id="product-stock-display"></span></p>
-                            <div class="flex items-center space-x-4">
-                                 <div class="flex items-center border border-gray-300 rounded-xl dark:border-slate-600">
-                                     <button id="detail-decrease-qty" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-l-xl dark:text-slate-300 dark:hover:bg-slate-700">-</button>
-                                     <input id="detail-quantity" type="number" value="1" min="1" class="w-16 text-center border-l border-r focus:outline-none dark:bg-transparent dark:border-slate-600 dark:text-white">
-                                     <button id="detail-increase-qty" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-r-xl dark:text-slate-300 dark:hover:bg-slate-700">+</button>
-                                 </div>
-                                <button id="add-to-cart-btn-detail" class="flex-1 bg-blue-500 text-white font-semibold py-3 px-6 rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
-                                    <i data-lucide="shopping-cart" class="w-5 h-5"></i>
-                                    Thêm vào giỏ hàng
-                                </button>
+                        <div class="mb-6">
+                            <h3 class="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Chọn phân loại:</h3>
+                            <div id="variant-options" class="flex flex-wrap gap-2">
+                                ${product.variants.map((variant, index) => `
+                                    <label class="block">
+                                        <input type="radio" name="variant" value="${index}" class="sr-only peer" ${index === 0 ? 'checked' : ''}>
+                                        <div class="cursor-pointer rounded-xl px-4 py-2 text-sm font-medium border bg-white dark:bg-slate-800 dark:border-slate-600 peer-checked:bg-blue-100 peer-checked:text-blue-800 peer-checked:border-blue-500 dark:peer-checked:bg-blue-900/50 dark:peer-checked:text-blue-300">
+                                            ${variant.name}
+                                        </div>
+                                    </label>
+                                `).join('')}
                             </div>
                         </div>
-                    </div>
-                </div>
-            `;
+                        `;
+            }
+
+
+            productDetailPage.innerHTML = `
+                        <div class="royal-card p-4 sm:p-6 rounded-2xl">
+                             <div class="mb-4">
+                                 <a href="#home" class="text-sm text-blue-600 hover:underline inline-flex items-center gap-1 dark:text-blue-400"><i data-lucide="arrow-left" class="w-4 h-4"></i>Quay lại</a>
+                             </div>
+                            <div class="grid md:grid-cols-2 gap-6 sm:gap-8">
+                                <div>
+                                    <img src="${product.imageUrl || 'https://placehold.co/600x600/e2e8f0/cbd5e0?text=Image'}" alt="${product.name}" class="w-full rounded-xl aspect-square object-cover">
+                                </div>
+                                <div>
+                                    <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100">${product.name}</h1>
+                                    <div class="my-4" id="product-price-display">
+                                        </div>
+                                    
+                                    ${variantsHTML}
+
+                                    <p class="text-slate-600 mb-6 dark:text-slate-300 whitespace-pre-wrap">${product.description}</p>
+                                    <p class="text-sm text-slate-500 mb-4 dark:text-slate-400">Số lượng còn lại: <span id="product-stock-display"></span></p>
+                                    <div class="flex items-center space-x-4">
+                                         <div class="flex items-center border border-gray-300 rounded-xl dark:border-slate-600">
+                                             <button id="detail-decrease-qty" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-l-xl dark:text-slate-300 dark:hover:bg-slate-700">-</button>
+                                             <input id="detail-quantity" type="number" value="1" min="1" class="w-16 text-center border-l border-r focus:outline-none dark:bg-transparent dark:border-slate-600 dark:text-white">
+                                             <button id="detail-increase-qty" class="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-r-xl dark:text-slate-300 dark:hover:bg-slate-700">+</button>
+                                         </div>
+                                        <button id="add-to-cart-btn-detail" class="flex-1 bg-blue-500 text-white font-semibold py-3 px-6 rounded-xl hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+                                            <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                                            Thêm vào giỏ hàng
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
             lucide.createIcons();
 
             const updateVariantDetails = () => {
@@ -645,14 +649,13 @@ const fetchAndDisplayProductDetail = async (productSlug) => {
                     if (parseInt(document.getElementById('detail-quantity').value) > variant.stock) {
                         document.getElementById('detail-quantity').value = variant.stock;
                     }
-                    const addToCartBtn = document.getElementById('add-to-cart-btn-detail');
-                    addToCartBtn.disabled = variant.stock === 0;
+                    document.getElementById('add-to-cart-btn-detail').disabled = variant.stock === 0;
                     if (variant.stock === 0) {
-                        addToCartBtn.innerHTML = 'Hết hàng';
-                        addToCartBtn.classList.replace('bg-blue-500', 'bg-slate-400');
+                        document.getElementById('add-to-cart-btn-detail').textContent = 'Hết hàng';
+                        document.getElementById('add-to-cart-btn-detail').classList.replace('bg-blue-500', 'bg-slate-400');
                     } else {
-                        addToCartBtn.innerHTML = `<i data-lucide="shopping-cart" class="w-5 h-5"></i> Thêm vào giỏ hàng`;
-                        addToCartBtn.classList.replace('bg-slate-400', 'bg-blue-500');
+                        document.getElementById('add-to-cart-btn-detail').innerHTML = `<i data-lucide="shopping-cart" class="w-5 h-5"></i> Thêm vào giỏ hàng`;
+                        document.getElementById('add-to-cart-btn-detail').classList.replace('bg-slate-400', 'bg-blue-500');
                         lucide.createIcons();
                     }
                 }
@@ -662,7 +665,6 @@ const fetchAndDisplayProductDetail = async (productSlug) => {
                 updateVariantDetails();
                 document.getElementById('variant-options').addEventListener('change', updateVariantDetails);
             }
-
         } else {
             productDetailPage.innerHTML = `<p class="text-center text-red-500">Sản phẩm không tồn tại.</p>`;
         }
@@ -672,7 +674,7 @@ const fetchAndDisplayProductDetail = async (productSlug) => {
     } finally {
         hideLoader();
     }
-};
+}
 
 // --- SEARCH ---
 document.getElementById('search-input-desktop').addEventListener('input', (e) => handleSearch(e.target.value));
@@ -1038,15 +1040,25 @@ const placeOrder = async (paymentMethod) => {
 };
 
 const statusClasses = {
+
     'Chờ xác nhận': 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
+
     'Chờ thanh toán': 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300',
-    'Đang hoạt động': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
+
+    'Đang hoạt động': 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+
     'Đang giao hàng': 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+
     'Đã giao hàng': 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+
     'Đã huỷ': 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+
     'Từ chối': 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
+
     'Chờ hoàn tiền': 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300',
+
     'Hết hạn': 'bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
+
 };
 
 
@@ -1759,7 +1771,7 @@ function sendOrderEmail(orderId, user, orderDetails) {
 }
 
 // --- MODAL BACKDROP CLOSE ---
-[productModal, discountCodeModal, profileInfoModal, adminEditUserModal, paymentModal, confirmationModal].forEach(modal => {
+[productModal, discountCodeModal, profileInfoModal, adminEditUserModal, paymentModal, confirmationModal, manualOrderModal].forEach(modal => {
     if (modal) {
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
@@ -1785,6 +1797,189 @@ const addVariantRow = (variant = {}) => {
 };
 
 document.getElementById('add-variant-btn').addEventListener('click', () => addVariantRow());
+
+// --- MANUAL ORDER MODAL LOGIC ---
+const showManualOrderModalBtn = document.getElementById('show-manual-order-modal');
+const closeManualOrderModalBtn = document.getElementById('close-manual-order-modal');
+const cancelManualOrderFormBtn = document.getElementById('cancel-manual-order-form');
+const manualOrderForm = document.getElementById('manual-order-form');
+const manualOrderProductSearch = document.getElementById('manual-order-product-search');
+const manualOrderSearchResults = document.getElementById('manual-order-search-results');
+const manualOrderItemsList = document.getElementById('manual-order-items-list');
+
+const resetManualOrderForm = () => {
+    manualOrderForm.reset();
+    manualOrderItems = [];
+    renderManualOrderItems();
+    manualOrderSearchResults.innerHTML = '';
+    manualOrderSearchResults.classList.add('hidden');
+};
+
+showManualOrderModalBtn.addEventListener('click', () => {
+    resetManualOrderForm();
+    manualOrderModal.classList.remove('hidden');
+});
+
+closeManualOrderModalBtn.addEventListener('click', () => {
+    manualOrderModal.classList.add('hidden');
+});
+
+cancelManualOrderFormBtn.addEventListener('click', () => {
+    manualOrderModal.classList.add('hidden');
+});
+
+
+manualOrderProductSearch.addEventListener('input', (e) => {
+    const searchTerm = e.target.value.toLowerCase();
+    if (searchTerm.length < 2) {
+        manualOrderSearchResults.classList.add('hidden');
+        return;
+    }
+    
+    const results = allProductsCache.filter(p => p.name.toLowerCase().includes(searchTerm));
+    
+    if (results.length > 0) {
+        manualOrderSearchResults.innerHTML = results.map(p => `
+            <div class="p-2 hover:bg-slate-100 dark:hover:bg-slate-600 cursor-pointer" data-product-id="${p.id}">
+                <p class="font-medium text-sm">${p.name}</p>
+                <p class="text-xs text-slate-500">${p.variants.length} phân loại</p>
+            </div>
+        `).join('');
+        manualOrderSearchResults.classList.remove('hidden');
+    } else {
+        manualOrderSearchResults.classList.add('hidden');
+    }
+});
+
+manualOrderSearchResults.addEventListener('click', (e) => {
+    const productDiv = e.target.closest('[data-product-id]');
+    if (productDiv) {
+        const productId = productDiv.dataset.productId;
+        const product = allProductsCache.find(p => p.id === productId);
+        
+        // For simplicity, we'll add the first variant. A more complex UI would let the admin choose.
+        const variant = product.variants[0];
+        
+        const existingItem = manualOrderItems.find(item => item.productId === productId && item.variantName === variant.name);
+        
+        if(existingItem) {
+            existingItem.quantity++;
+        } else {
+            manualOrderItems.push({
+                productId: product.id,
+                productName: product.name,
+                variantName: variant.name,
+                price: variant.price,
+                imageUrl: product.imageUrl,
+                quantity: 1
+            });
+        }
+        
+        renderManualOrderItems();
+        manualOrderProductSearch.value = '';
+        manualOrderSearchResults.classList.add('hidden');
+    }
+});
+
+const renderManualOrderItems = () => {
+    if (manualOrderItems.length === 0) {
+        manualOrderItemsList.innerHTML = `<p class="text-slate-500 text-sm p-4 text-center">Chưa có sản phẩm nào.</p>`;
+    } else {
+        manualOrderItemsList.innerHTML = manualOrderItems.map((item, index) => `
+            <div class="flex items-center gap-2 text-sm">
+                <div class="flex-grow">
+                    <p class="font-medium">${item.productName} <span class="text-xs text-slate-500">(${item.variantName})</span></p>
+                    <p class="text-xs">${formatCurrency(item.price)}</p>
+                </div>
+                <input type="number" value="${item.quantity}" min="1" class="manual-item-qty w-16 text-center bg-transparent rounded-md border-slate-300 p-1" data-index="${index}">
+                <button class="remove-manual-item-btn text-red-500 p-1" data-index="${index}"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+            </div>
+        `).join('');
+        lucide.createIcons();
+    }
+    updateManualOrderTotal();
+};
+
+const updateManualOrderTotal = () => {
+    const subtotal = manualOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discount = parseFloat(document.getElementById('manual-order-discount').value) || 0;
+    const total = subtotal - discount;
+
+    document.getElementById('manual-order-subtotal').textContent = formatCurrency(subtotal);
+    document.getElementById('manual-order-total').textContent = formatCurrency(total < 0 ? 0 : total);
+};
+
+
+manualOrderItemsList.addEventListener('change', (e) => {
+    if (e.target.classList.contains('manual-item-qty')) {
+        const index = parseInt(e.target.dataset.index);
+        const newQty = parseInt(e.target.value);
+        if (newQty > 0) {
+            manualOrderItems[index].quantity = newQty;
+            renderManualOrderItems();
+        }
+    }
+});
+
+manualOrderItemsList.addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.remove-manual-item-btn');
+    if(removeBtn) {
+        const index = parseInt(removeBtn.dataset.index);
+        manualOrderItems.splice(index, 1);
+        renderManualOrderItems();
+    }
+});
+
+document.getElementById('manual-order-discount').addEventListener('input', updateManualOrderTotal);
+
+manualOrderForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('manual-order-email').value.trim();
+    const name = document.getElementById('manual-order-name').value.trim();
+    
+    if(!email || !name || manualOrderItems.length === 0) {
+        showToast('Vui lòng điền email, tên và thêm ít nhất 1 sản phẩm.', true);
+        return;
+    }
+    
+    showLoader();
+
+    try {
+        const subtotal = manualOrderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const discount = parseFloat(document.getElementById('manual-order-discount').value) || 0;
+        const total = subtotal - discount > 0 ? subtotal - discount : 0;
+        
+        const q = query(collection(db, "orders"));
+        const allOrdersSnapshot = await getDocs(q);
+        const displayOrderId = `MANUAL-${String(allOrdersSnapshot.size + 1).padStart(5, '0')}`;
+
+        await addDoc(collection(db, "orders"), {
+            displayOrderId,
+            userId: 'MANUAL_ORDER',
+            userName: name,
+            userEmail: email,
+            userPhone: document.getElementById('manual-order-phone').value.trim(),
+            userAddress: document.getElementById('manual-order-address').value.trim(),
+            paymentMethod: 'manual',
+            items: manualOrderItems,
+            subtotal,
+            discountAmount: discount,
+            total,
+            status: 'Đang hoạt động', // Or 'Chờ thanh toán', etc.
+            createdAt: new Date(),
+        });
+
+        showToast(`Đã tạo đơn hàng thủ công ${displayOrderId}`);
+        manualOrderModal.classList.add('hidden');
+    } catch (error) {
+        showToast('Lỗi tạo đơn hàng thủ công.', true);
+        console.error("Manual order creation error:", error);
+    } finally {
+        hideLoader();
+    }
+});
+
+
 
 // --- EVENT DELEGATION for dynamic content ---
 document.body.addEventListener('click', async (e) => {
