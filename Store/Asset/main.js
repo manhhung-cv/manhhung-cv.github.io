@@ -361,7 +361,17 @@ const navigate = () => {
                 displayAdminDashboard();
                 break;
             case 'login':
-                if (currentUser && !currentUser.isAnonymous) window.location.hash = '#home';
+                if (currentUser && !currentUser.isAnonymous) {
+                    window.location.hash = '#home';
+                } else {
+                    // Gọi hàm render giao diện của bạn ở đây
+                    const loginPage = renderLoginPage(); // Hoặc gọi hàm mountUi() của bạn
+
+                    // Kiểm tra kết quả trả về
+                    if (loginPage === null) {
+                        console.error("Không thể render trang đăng nhập.");
+                    }
+                }
                 break;
         }
     } else {
@@ -369,6 +379,29 @@ const navigate = () => {
         fetchAndDisplayProducts();
     }
 };
+
+
+// Thêm hàm này vào tệp main.js
+function renderLoginPage() {
+    console.log("Đang render giao diện trang đăng nhập...");
+
+    const loginPageElement = document.getElementById('login-page');
+
+    // Kiểm tra xem trang đăng nhập có tồn tại không
+    if (!loginPageElement) {
+        console.error('Không tìm thấy phần tử #login-page trong HTML!');
+        return null; // Trả về null thay vì undefined để dễ debug hơn
+    }
+
+    // Ví dụ: bạn có thể thêm một thông báo chào mừng vào trang
+    const welcomeMessage = loginPageElement.querySelector('h1');
+    if (welcomeMessage) {
+        welcomeMessage.textContent = "Chào mừng trở lại!";
+    }
+
+    // Rất quan trọng: Trả về phần tử DOM mà bạn đã làm việc
+    return loginPageElement;
+}
 
 window.addEventListener('hashchange', navigate);
 // =========================================================================
@@ -2080,26 +2113,26 @@ document.getElementById('hunq-paygate-link').addEventListener('click', async (e)
 });
 
 // --- EMAIL NOTIFICATION (Placeholder) ---
-function sendOrderEmail(orderId, user, orderDetails) {
-    console.log(`
-                ===== EMAIL SIMULATION =====
-                To: ${user.email}
-                Subject: Xác nhận đơn hàng #${orderId}
-                
-                Chào ${user.name},
-                Cảm ơn bạn đã đặt hàng tại MyShop.
-                
-                Chi tiết đơn hàng:
-                ${orderDetails.items.map(item => `- ${item.productName} (${item.variantName}) x ${item.quantity}: ${formatCurrency(item.price * item.quantity)}`).join('\n')}
-                
-                Tổng cộng: ${formatCurrency(orderDetails.total)}
-                Phương thức thanh toán: ${orderDetails.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản'}
-                Trạng thái: ${orderDetails.status}
-                
-                Chúng tôi sẽ xử lý đơn hàng của bạn sớm nhất.
-                ===========================
-            `);
-}
+// function sendOrderEmail(orderId, user, orderDetails) {
+//     console.log(`
+//                 ===== EMAIL SIMULATION =====
+//                 To: ${user.email}
+//                 Subject: Xác nhận đơn hàng #${orderId}
+
+//                 Chào ${user.name},
+//                 Cảm ơn bạn đã đặt hàng tại MyShop.
+
+//                 Chi tiết đơn hàng:
+//                 ${orderDetails.items.map(item => `- ${item.productName} (${item.variantName}) x ${item.quantity}: ${formatCurrency(item.price * item.quantity)}`).join('\n')}
+
+//                 Tổng cộng: ${formatCurrency(orderDetails.total)}
+//                 Phương thức thanh toán: ${orderDetails.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản'}
+//                 Trạng thái: ${orderDetails.status}
+
+//                 Chúng tôi sẽ xử lý đơn hàng của bạn sớm nhất.
+//                 ===========================
+//             `);
+// }
 
 // --- MODAL BACKDROP CLOSE ---
 [productModal, discountCodeModal, profileInfoModal, adminEditUserModal, paymentModal, confirmationModal].forEach(modal => {
