@@ -7,7 +7,13 @@ import {
     signInWithPopup,
     GoogleAuthProvider,
     setPersistence,
-    browserLocalPersistence // Import for saving login session
+    browserLocalPersistence,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendPasswordResetEmail,
+    updateProfile,
+    signInWithRedirect, // Import signInWithRedirect
+    getRedirectResult
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import {
     getFirestore,
@@ -93,6 +99,92 @@ const showToast = (message, isError = false) => {
         toast.className = toast.className.replace('translate-y-0', 'translate-y-20');
         setTimeout(() => toast.classList.add('hidden'), 300);
     }, 3000);
+};
+
+const handleEmailRegistration = async (e) => {
+    e.preventDefault();
+    showLoader();
+
+    const name = document.getElementById('register-name').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const phone = document.getElementById('register-phone').value;
+    const address = document.getElementById('register-address').value;
+
+    if (!email.endsWith('@gmail.com')) {
+        showToast('Chỉ cho phép đăng ký bằng địa chỉ email @gmail.com.', true);
+        hideLoader();
+        return;
+    }
+
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        await updateProfile(user, { displayName: name });
+
+        await setDoc(doc(db, "users", user.uid), {
+            name: name,
+            email: email,
+            photoURL: '',
+            phone: phone,
+            address: address,
+            isAdmin: false,
+            isRestricted: false
+        });
+
+        showToast('Đăng ký thành công! Chào mừng bạn.');
+        window.location.hash = '#home';
+
+    } catch (error) {
+        if (error.code === 'auth/email-already-in-use') {
+            showToast('Email này đã được sử dụng.', true);
+        } else {
+            showToast('Lỗi đăng ký: ' + error.message, true);
+        }
+        console.error("Registration Error: ", error);
+    } finally {
+        hideLoader();
+    }
+};
+
+const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    showLoader();
+
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showToast('Đăng nhập thành công!');
+        window.location.hash = '#home';
+    } catch (error) {
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            showToast('Email hoặc mật khẩu không chính xác.', true);
+        } else {
+            showToast('Lỗi đăng nhập: ' + error.message, true);
+        }
+        console.error("Login Error: ", error);
+    } finally {
+        hideLoader();
+    }
+};
+
+const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('reset-email-input').value;
+    showLoader();
+    try {
+        await sendPasswordResetEmail(auth, email);
+        document.getElementById('forgot-password-modal').classList.add('hidden');
+        showToast('Đã gửi liên kết đặt lại mật khẩu. Vui lòng kiểm tra email.');
+    } catch (error) {
+        showToast('Lỗi: ' + error.message, true);
+        console.error("Password Reset Error: ", error);
+    } finally {
+        hideLoader();
+    }
 };
 
 const showConfirmationModal = (title, message, onConfirm) => {
@@ -291,42 +383,66 @@ document.addEventListener('DOMContentLoaded', () => {
     setPersistence(auth, browserLocalPersistence)
         .then(() => {
             onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    const userDoc = await getDoc(doc(db, "users", user.uid));
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        if (userData.isRestricted) {
-                            showToast('Tài khoản của bạn đã bị hạn chế.', true);
-                            await signOut(auth);
-                            return;
+                try { // BẮT ĐẦU TRY-CATCH
+                    if (user) {
+                        // Người dùng đã đăng nhập
+                        const userDoc = await getDoc(doc(db, "users", user.uid));
+                        if (userDoc.exists()) {
+                            const userData = userDoc.data();
+                            if (userData.isRestricted) {
+                                showToast('Tài khoản của bạn đã bị hạn chế.', true);
+                                await signOut(auth);
+                                // Dừng xử lý sau khi đăng xuất
+                                return;
+                            }
+                            currentUser = {
+                                uid: user.uid,
+                                ...userData
+                            };
+                            updateUIForLoggedInUser();
+                            adminLink.classList.toggle('hidden', !currentUser.isAdmin);
+                        } else if (!user.isAnonymous) {
+                            // Trường hợp đăng nhập bằng Google/Email nhưng chưa có data trong Firestore
+                            // (Xảy ra khi đăng nhập lần đầu tiên mà hàm handleGoogleSignIn bị lỗi)
+                            console.warn("User authenticated but no data in Firestore. Creating new record.");
+                            const newUser = {
+                                name: user.displayName || '',
+                                email: user.email,
+                                photoURL: user.photoURL || '',
+                                phone: user.phoneNumber || '',
+                                address: '',
+                                isAdmin: false,
+                                isRestricted: false
+                            };
+                            await setDoc(doc(db, "users", user.uid), newUser);
+                            currentUser = { uid: user.uid, ...newUser };
+                            updateUIForLoggedInUser();
+                            adminLink.classList.add('hidden');
                         }
-                        currentUser = {
-                            uid: user.uid,
-                            ...userData
-                        };
-                        updateUIForLoggedInUser();
-                        adminLink.classList.toggle('hidden', !currentUser.isAdmin);
-                    } else if (user && !user.isAnonymous) {
-                        currentUser = {
-                            uid: user.uid,
-                            email: user.email,
-                            name: user.displayName,
-                            photoURL: user.photoURL,
-                            isAdmin: false
-                        };
+                        listenToCartChanges();
+                    } else {
+                        // Người dùng đã đăng xuất
+                        currentUser = null;
+                        updateUIForLoggedOutUser();
                     }
-                    listenToCartChanges();
-                } else {
+                } catch (error) { // BẮT LỖI
+                    console.error("Lỗi nghiêm trọng trong onAuthStateChanged:", error);
+                    showToast("Đã xảy ra lỗi khi xác thực tài khoản.", true);
                     currentUser = null;
                     updateUIForLoggedOutUser();
-                }
-                if (!authReady) {
-                    authReady = true;
-                    navigate();
+                    await signOut(auth); // Đảm bảo đăng xuất hẳn nếu có lỗi
+                } finally { // LUÔN LUÔN CHẠY
+                    // Chỉ điều hướng sau khi đã xử lý xong logic đăng nhập
+                    if (!authReady) {
+                        authReady = true;
+                        navigate();
+                    }
                 }
             });
+        })
+        .catch((error) => {
+            console.error("Error setting persistence: ", error);
         });
-
     // --- EVENT LISTENERS ---
     window.addEventListener('hashchange', navigate);
 
@@ -433,9 +549,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.addEventListener('click', async (e) => {
         if (e.target.closest('#google-signin-btn')) handleGoogleSignIn();
         if (e.target.closest('#logout-button')) {
-             await signOut(auth);
-             showToast('Đã đăng xuất.');
-             window.location.hash = '#login';
+            await signOut(auth);
+            showToast('Đã đăng xuất.');
+            window.location.hash = '#login';
         }
         if (e.target.closest('#edit-profile-link')) triggerProfileUpdateModal();
         if (e.target.closest('.remove-variant-btn')) e.target.closest('.variant-row').remove();
@@ -453,15 +569,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (selectedVariant) addToCart(productId, selectedVariant, 1);
             }
         }
-        
+
         if (e.target.closest('#add-to-cart-btn-detail')) {
             const urlParts = window.location.hash.substring(1).split('/');
             const productSlug = urlParts[1];
             const q = query(collection(db, "products"), where("slug", "==", productSlug));
             const snapshot = await getDocs(q);
-            if(!snapshot.empty) {
+            if (!snapshot.empty) {
                 const productDoc = snapshot.docs[0];
-                const product = {id: productDoc.id, ...productDoc.data()};
+                const product = { id: productDoc.id, ...productDoc.data() };
                 const selectedVariantIndex = document.querySelector('input[name="variant"]:checked')?.value || 0;
                 const selectedVariant = product.variants[selectedVariantIndex];
                 if (selectedVariant) {
@@ -471,9 +587,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-    
+
     document.body.addEventListener('submit', async (e) => {
-        if (e.target.id === 'product-form') { 
+        if (e.target.id === 'product-form') {
             e.preventDefault();
             // ... Logic to handle product form submission
         }
@@ -496,53 +612,89 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('hunqStoreImageGallery', filenames);
         showToast('Đã lưu danh sách ảnh thành công!');
     });
+
+    // Login/Register Tab
+    const loginTab = document.getElementById('login-tab-btn');
+    const registerTab = document.getElementById('register-tab-btn');
+    const loginForm = document.getElementById('login-form-container');
+    const registerForm = document.getElementById('register-form-container');
+
+    if (loginTab) {
+        loginTab.addEventListener('click', () => {
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+            loginTab.classList.add('border-blue-500', 'text-blue-500');
+            loginTab.classList.remove('border-transparent', 'text-slate-500');
+            registerTab.classList.remove('border-blue-500', 'text-blue-500');
+            registerTab.classList.add('border-transparent', 'text-slate-500');
+        });
+    }
+    if (registerTab) {
+        registerTab.addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+            registerTab.classList.add('border-blue-500', 'text-blue-500');
+            registerTab.classList.remove('border-transparent', 'text-slate-500');
+            loginTab.classList.remove('border-blue-500', 'text-blue-500');
+            loginTab.classList.add('border-transparent', 'text-slate-500');
+        });
+    }
+
+    // Form submissions
+    document.getElementById('email-login-form')?.addEventListener('submit', handleEmailLogin);
+    document.getElementById('email-register-form')?.addEventListener('submit', handleEmailRegistration);
+    document.getElementById('forgot-password-form')?.addEventListener('submit', handlePasswordReset);
+
+    // Forgot password modal
+    const forgotPasswordModal = document.getElementById('forgot-password-modal');
+    document.getElementById('forgot-password-link')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        forgotPasswordModal.classList.remove('hidden');
+    });
+    document.getElementById('cancel-reset-btn')?.addEventListener('click', () => {
+        forgotPasswordModal.classList.add('hidden');
+    });
+});
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+            // User has just signed in via redirect and returned to the app.
+            // You can now access the user's information.
+            const user = result.user;
+            const userDocRef = doc(db, "users", user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) {
+                await setDoc(userDocRef, {
+                    name: user.displayName || '',
+                    email: user.email,
+                    photoURL: user.photoURL || '',
+                    phone: user.phoneNumber || '',
+                    address: '',
+                    isAdmin: false,
+                    isRestricted: false
+                });
+                showToast('Chào mừng bạn đến với MyShop!');
+            } else {
+                showToast('Đăng nhập thành công!');
+            }
+            // Navigate the user to the home page or their dashboard.
+            window.location.hash = '#home';
+        }
+    } catch (error) {
+        console.error("Error getting redirect result:", error);
+        showToast(`Lỗi xác thực: ${error.message}`, true);
+    } finally {
+        // It's a good practice to hide a loader if you have one for this process
+        hideLoader();
+    }
+
+    // ... rest of your DOMContentLoaded code ...
 });
 
 
 
-
-// --- AUTHENTICATION ---
-setPersistence(auth, browserLocalPersistence)
-    .then(() => {
-        onAuthStateChanged(auth, async (user) => {
-            authReady = true; // Mark that the initial check is complete
-            if (user) {
-                // User is signed in.
-                const userDocRef = doc(db, `users`, user.uid);
-                const userDoc = await getDoc(userDocRef);
-
-                if (userDoc.exists()) {
-                    const userData = userDoc.data();
-                    // NEW: Check if user is restricted
-                    if (userData.isRestricted === true) {
-                        showToast('Tài khoản của bạn đã bị hạn chế. Vui lòng liên hệ admin.', true);
-                        await signOut(auth); // The subsequent auth state change will handle UI cleanup
-                        return; // Stop further processing for this user
-                    }
-                    currentUser = { uid: user.uid, email: user.email, ...userData, isAnonymous: user.isAnonymous };
-                    updateUIForLoggedInUser();
-                    if (currentUser.isAdmin) {
-                        adminLink.classList.remove('hidden');
-                    } else {
-                        adminLink.classList.add('hidden');
-                        if (window.location.hash === '#admin') window.location.hash = '#home';
-                    }
-                } else if (!user.isAnonymous) {
-                    console.error("User document not found for a signed-in user.");
-                    currentUser = { uid: user.uid, email: user.email, name: user.displayName, photoURL: user.photoURL, phone: '', address: '', isAdmin: false, isAnonymous: false };
-                }
-                listenToCartChanges();
-            } else {
-                // User is signed out.
-                currentUser = null;
-                updateUIForLoggedOutUser();
-            }
-            navigate(); // Navigate after auth state is confirmed
-        });
-    })
-    .catch((error) => {
-        console.error("Error setting persistence: ", error);
-    });
 
 const triggerProfileUpdateModal = (callback = null) => {
     if (!currentUser) return;
@@ -574,37 +726,11 @@ const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
         showLoader();
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-
-        // Check if user exists in Firestore, if not, create a new document
-        const userDocRef = doc(db, "users", user.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (!userDoc.exists()) {
-            await setDoc(userDocRef, {
-                name: user.displayName || '',
-                email: user.email,
-                photoURL: user.photoURL || '',
-                phone: user.phoneNumber || '',
-                address: '',
-                isAdmin: false,
-                isRestricted: false // NEW: Default to not restricted
-            });
-            showToast('Chào mừng bạn đến với MyShop!');
-        } else {
-            const existingData = userDoc.data();
-            // Update photoURL if it has changed, but keep existing name/phone/address
-            if (existingData.photoURL !== user.photoURL) {
-                await setDoc(userDocRef, { photoURL: user.photoURL }, { merge: true });
-            }
-            showToast('Đăng nhập thành công!');
-        }
-        window.location.hash = '#home';
+        // This will navigate the user away to the Google sign-in page
+        await signInWithRedirect(auth, provider);
     } catch (error) {
-        console.error("Google Sign-In Error:", error);
+        console.error("Google Sign-In Redirect Error:", error);
         showToast(`Lỗi đăng nhập: ${error.code}`, true);
-    } finally {
         hideLoader();
     }
 };
@@ -2430,3 +2556,78 @@ productListViewBtn.addEventListener('click', () => {
     fetchAndDisplayProducts(document.getElementById('search-input-desktop').value);
 });
 // END: Thêm đoạn code này
+
+// Thêm các biến này vào gần đầu tệp main.js
+const imageGalleryModal = document.getElementById('image-gallery-modal');
+const galleryGrid = document.getElementById('gallery-grid');
+const galleryFilenamesInput = document.getElementById('gallery-filenames-input');
+const saveGalleryListBtn = document.getElementById('save-gallery-list-btn');
+const productImageUrlInput = document.getElementById('product-image-url-input');
+const productImagePreview = document.getElementById('product-image-preview');
+
+// --- HÀM MỚI ĐỂ XỬ LÝ THƯ VIỆN ẢNH ---
+
+// Hàm mở thư viện và hiển thị ảnh
+const openImageGallery = () => {
+    const filenamesString = localStorage.getItem('hunqStoreImageGallery');
+    if (!filenamesString) {
+        galleryGrid.innerHTML = '<p class="col-span-full text-center text-slate-500">Thư viện trống. Vui lòng thêm danh sách tên file ảnh trong khu vực Quản lý Thư viện ảnh.</p>';
+    } else {
+        const filenames = filenamesString.split('\n').filter(name => name.trim() !== '');
+        galleryGrid.innerHTML = filenames.map(filename => `
+            <img src="./Logo/${filename.trim()}" 
+                 data-filename="${filename.trim()}"
+                 alt="${filename.trim()}" 
+                 class="gallery-item cursor-pointer aspect-square object-contain rounded-lg p-1 hover:ring-2 ring-blue-500 transition-all bg-slate-100 dark:bg-slate-700">
+        `).join('');
+    }
+    imageGalleryModal.classList.remove('hidden');
+};
+
+// Hàm chọn một ảnh từ thư viện
+const selectImageFromGallery = (e) => {
+    if (e.target.classList.contains('gallery-item')) {
+        const filename = e.target.dataset.filename;
+        const imageUrl = `./Logo/${filename}`;
+
+        productImageUrlInput.value = imageUrl;
+        productImagePreview.src = imageUrl;
+
+        imageGalleryModal.classList.add('hidden');
+    }
+};
+
+// --- GẮN SỰ KIỆN ---
+
+// Thêm các sự kiện này vào trong sự kiện DOMContentLoaded hoặc một hàm khởi tạo
+document.addEventListener('DOMContentLoaded', () => {
+    // ... các code khác của bạn ...
+
+    // Sự kiện cho nút "Lưu danh sách" ảnh
+    if (saveGalleryListBtn) {
+        saveGalleryListBtn.addEventListener('click', () => {
+            localStorage.setItem('hunqStoreImageGallery', galleryFilenamesInput.value);
+            showToast('Đã lưu danh sách ảnh thành công!');
+        });
+    }
+
+    // Tải danh sách đã lưu vào textarea khi trang được tải
+    if (galleryFilenamesInput) {
+        galleryFilenamesInput.value = localStorage.getItem('hunqStoreImageGallery') || '';
+    }
+
+    // Sự kiện cho nút mở thư viện và đóng
+    document.body.addEventListener('click', e => {
+        if (e.target.closest('#open-gallery-btn')) {
+            openImageGallery();
+        }
+        if (e.target.closest('#close-gallery-btn')) {
+            imageGalleryModal.classList.add('hidden');
+        }
+    });
+
+    // Sự kiện click để chọn ảnh
+    if (galleryGrid) {
+        galleryGrid.addEventListener('click', selectImageFromGallery);
+    }
+});
