@@ -78,6 +78,9 @@ const cartItemCountMobile = document.getElementById('cart-item-count-mobile');
 const profileInfoModal = document.getElementById('profile-info-modal');
 const confirmationModal = document.getElementById('confirmation-modal');
 const manualOrderModal = document.getElementById('manual-order-modal');
+const mobileSearchWrapper = document.getElementById('mobile-search-wrapper');
+const searchInputMobile = document.getElementById('search-input-mobile');
+const mobileSearchToggleBtn = document.getElementById('mobile-search-toggle-btn');
 
 
 // --- UTILS ---
@@ -412,31 +415,58 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
     applyTheme(localStorage.getItem('theme') || 'system');
 
-    // --- INITIAL AUTHENTICATION CHECK ---
-    setPersistence(auth, browserLocalPersistence)
-        .then(() => {
+    // --- HÀM KHỞI TẠO XÁC THỰC (QUAN TRỌNG NHẤT) ---
+    const initializeAuth = async () => {
+        showLoader(); // Hiển thị loader khi bắt đầu quá trình xác thực
+
+        try {
+            // Bước 1: Xử lý kết quả chuyển hướng ĐẦU TIÊN. Đây là phần sửa lỗi quan trọng.
+            // Nó xử lý thông tin đăng nhập từ Google trước khi làm bất cứ điều gì khác.
+            const result = await getRedirectResult(auth);
+            if (result) {
+                // Khối này chỉ chạy nếu người dùng vừa đăng nhập thông qua chuyển hướng.
+                const user = result.user;
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
+
+                if (!userDoc.exists()) {
+                    // Tạo một tài liệu người dùng mới trong Firestore nếu đây là lần đầu tiên họ đăng nhập.
+                    await setDoc(userDocRef, {
+                        name: user.displayName || '',
+                        email: user.email,
+                        photoURL: user.photoURL || '',
+                        phone: user.phoneNumber || '',
+                        address: '',
+                        isAdmin: false,
+                        isRestricted: false
+                    });
+                    showToast('Chào mừng bạn đến với MyShop!');
+                }
+                // Trình nghe 'onAuthStateChanged' bên dưới sẽ xử lý phần còn lại của các bản cập nhật giao diện người dùng.
+            }
+
+            // Bước 2: Thiết lập lưu trữ trạng thái đăng nhập cho phiên làm việc.
+            await setPersistence(auth, browserLocalPersistence);
+
+            // Bước 3: Bây giờ, thiết lập trình nghe chính. Nó sẽ chạy với trạng thái người dùng chính xác.
             onAuthStateChanged(auth, async (user) => {
-                try { // BẮT ĐẦU TRY-CATCH
+                try {
                     if (user) {
-                        // Người dùng đã đăng nhập
+                        // Người dùng đã đăng nhập.
                         const userDoc = await getDoc(doc(db, "users", user.uid));
                         if (userDoc.exists()) {
                             const userData = userDoc.data();
                             if (userData.isRestricted) {
                                 showToast('Tài khoản của bạn đã bị hạn chế.', true);
                                 await signOut(auth);
-                                // Dừng xử lý sau khi đăng xuất
-                                return;
+                                return; // Dừng xử lý
                             }
-                            currentUser = {
-                                uid: user.uid,
-                                ...userData
-                            };
+                            currentUser = { uid: user.uid, ...userData };
                             updateUIForLoggedInUser();
                             adminLink.classList.toggle('hidden', !currentUser.isAdmin);
-                        } else if (!user.isAnonymous) {
-                            // Trường hợp đăng nhập bằng Google/Email nhưng chưa có data trong Firestore
-                            // (Xảy ra khi đăng nhập lần đầu tiên mà hàm handleGoogleSignIn bị lỗi)
+                        } else {
+                            // Trường hợp này là dự phòng cho người dùng đã được xác thực
+                            // nhưng không có tài liệu trong Firestore.
                             console.warn("User authenticated but no data in Firestore. Creating new record.");
                             const newUser = {
                                 name: user.displayName || '',
@@ -454,28 +484,43 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         listenToCartChanges();
                     } else {
-                        // Người dùng đã đăng xuất
+                        // Người dùng đã đăng xuất.
                         currentUser = null;
                         updateUIForLoggedOutUser();
                     }
-                } catch (error) { // BẮT LỖI
+                } catch (error) {
                     console.error("Lỗi nghiêm trọng trong onAuthStateChanged:", error);
                     showToast("Đã xảy ra lỗi khi xác thực tài khoản.", true);
                     currentUser = null;
                     updateUIForLoggedOutUser();
-                    await signOut(auth); // Đảm bảo đăng xuất hẳn nếu có lỗi
-                } finally { // LUÔN LUÔN CHẠY
-                    // Chỉ điều hướng sau khi đã xử lý xong logic đăng nhập
+                    await signOut(auth); // Đảm bảo người dùng được đăng xuất hoàn toàn khi có lỗi.
+                } finally {
+                    // Cờ 'authReady' này đảm bảo việc điều hướng chỉ xảy ra một lần
+                    // sau khi trạng thái xác thực ban đầu được xác nhận.
                     if (!authReady) {
                         authReady = true;
-                        navigate();
+                        navigate(); // Điều hướng khi tải trang lần đầu
+                        hideLoader(); // Ẩn loader sau khi trang đã sẵn sàng
                     }
                 }
             });
-        })
-        .catch((error) => {
-            console.error("Error setting persistence: ", error);
-        });
+
+        } catch (error) {
+            // Bắt lỗi từ getRedirectResult hoặc setPersistence
+            console.error("Lỗi trong quá trình khởi tạo xác thực:", error);
+            showToast(`Lỗi xác thực: ${error.message}`, true);
+            hideLoader();
+            // Vẫn chạy điều hướng để hiển thị trang đã đăng xuất
+            if (!authReady) {
+                authReady = true;
+                navigate();
+            }
+        }
+    };
+
+    // --- BẮT ĐẦU QUÁ TRÌNH XÁC THỰC ---
+    initializeAuth();
+
     // --- EVENT LISTENERS ---
     window.addEventListener('hashchange', navigate);
 
@@ -500,6 +545,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('scroll', () => {
         backToTopBtn.classList.toggle('hidden', window.scrollY <= 300);
     });
+
+    // Thêm vào trong hàm DOMContentLoaded
+    if (mobileSearchToggleBtn) {
+        mobileSearchToggleBtn.addEventListener('click', () => {
+            // Chuyển đổi trạng thái hiển thị của ô tìm kiếm
+            mobileSearchWrapper.classList.toggle('hidden');
+
+            // Nếu ô tìm kiếm đang được hiển thị, tự động focus vào nó
+            if (!mobileSearchWrapper.classList.contains('hidden')) {
+                searchInputMobile.focus();
+            }
+        });
+    }
 
     const productGridViewBtn = document.getElementById('product-view-grid-btn');
     const productListViewBtn = document.getElementById('product-view-list-btn');
@@ -754,19 +812,45 @@ const triggerProfileUpdateModal = (callback = null) => {
     profileInfoModal.classList.remove('hidden');
 };
 
+      const handleGoogleSignIn = async () => {
+            const provider = new GoogleAuthProvider();
+            try {
+                showLoader();
+                const result = await signInWithPopup(auth, provider);
+                const user = result.user;
 
-const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-        showLoader();
-        // This will navigate the user away to the Google sign-in page
-        await signInWithRedirect(auth, provider);
-    } catch (error) {
-        console.error("Google Sign-In Redirect Error:", error);
-        showToast(`Lỗi đăng nhập: ${error.code}`, true);
-        hideLoader();
-    }
-};
+                // Check if user exists in Firestore, if not, create a new document
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
+
+                if (!userDoc.exists()) {
+                    await setDoc(userDocRef, {
+                        name: user.displayName || '',
+                        email: user.email,
+                        photoURL: user.photoURL || '',
+                        phone: user.phoneNumber || '',
+                        address: '',
+                        isAdmin: false,
+                        isRestricted: false // NEW: Default to not restricted
+                    });
+                    showToast('Chào mừng bạn đến với MyShop!');
+                } else {
+                    const existingData = userDoc.data();
+                    // Update photoURL if it has changed, but keep existing name/phone/address
+                    if (existingData.photoURL !== user.photoURL) {
+                        await setDoc(userDocRef, { photoURL: user.photoURL }, { merge: true });
+                    }
+                    showToast('Đăng nhập thành công!');
+                }
+                window.location.hash = '#home';
+            } catch (error) {
+                console.error("Google Sign-In Error:", error);
+                showToast(`Lỗi đăng nhập: ${error.code}`, true);
+            } finally {
+                hideLoader();
+            }
+        };
+
 
 const updateUIForLoggedInUser = () => {
     loggedInView.classList.remove('hidden');
@@ -793,10 +877,7 @@ const updateUIForLoggedOutUser = () => {
     userMenu.classList.add('hidden');
     adminLink.classList.add('hidden');
     updateCartCount(0);
-    document.getElementById('mobile-auth-link').href = "#login";
-    document.getElementById('mobile-auth-link').onclick = null;
-    document.querySelector('#mobile-auth-link span').textContent = 'Đăng nhập';
-};
+   };
 
 userMenuButton.addEventListener('click', () => {
     userMenu.classList.toggle('hidden');
@@ -823,7 +904,11 @@ const renderPrice = (product) => {
     const maxPrice = Math.max(...prices);
 
     let priceDisplay;
-    if (minPrice === maxPrice) {
+    if (minPrice === -1) {
+        priceDisplay = 'Liên hệ';
+    } else if (minPrice === 0 && maxPrice === 0) {
+        priceDisplay = 'Miễn phí';
+    } else if (minPrice === maxPrice) {
         priceDisplay = formatCurrency(minPrice);
     } else {
         priceDisplay = `${formatCurrency(minPrice).replace(/\s*₫/g, '')} - ${formatCurrency(maxPrice)}`;
@@ -891,43 +976,57 @@ const fetchAndDisplayProducts = async (searchTerm = '') => {
 
         productList.innerHTML = productsData.map(product => {
             const hasMultipleVariants = product.variants && product.variants.length > 1;
+            // Tính tổng số lượng tồn kho của tất cả các phiên bản
+            const totalStock = product.variants.reduce((stock, variant) => stock + variant.stock, 0);
 
-            const buttonClasses = "w-full px-3 py-2 rounded-lg text-sm font-semibold transition-colors bg-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white dark:bg-slate-700 dark:text-blue-400 dark:hover:bg-blue-500 dark:hover:text-white";
-            const buttonHTML = hasMultipleVariants ?
-                `<a href="#product/${product.slug}" class="${buttonClasses} text-center">Chọn mua</a>` :
-                `<button data-product-id="${product.id}" data-variant-index="0" class="add-to-cart-quick ${buttonClasses}">Thêm vào giỏ</button>`;
+            const buttonClasses = "w-full px-3 py-2 rounded-lg text-sm font-semibold transition-colors";
+            let buttonHTML;
+
+            // 1. Kiểm tra nếu hết hàng
+            if (totalStock === 0) {
+                buttonHTML = `<div class="${buttonClasses} text-center bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400 cursor-not-allowed">Hết hàng</div>`;
+            }
+            // 2. Nếu còn hàng, hiển thị nút mua hàng
+            else {
+                const activeClasses = "bg-blue-100 text-blue-600 hover:bg-blue-500 hover:text-white dark:bg-slate-700 dark:text-blue-400 dark:hover:bg-blue-500 dark:hover:text-white";
+                if (hasMultipleVariants) {
+                    buttonHTML = `<a href="#product/${product.slug}" class="${buttonClasses} ${activeClasses} text-center">Chọn mua</a>`;
+                } else {
+                    buttonHTML = `<button data-product-id="${product.id}" data-variant-index="0" class="add-to-cart-quick ${buttonClasses} ${activeClasses}">Thêm vào giỏ</button>`;
+                }
+            }
 
             if (productViewMode === 'grid') {
                 return `
-                    <div class="royal-card rounded-2xl overflow-hidden flex flex-col group transition-shadow hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/20">
-                        <a href="#product/${product.slug}" class="block">
-                            <img src="${product.imageUrl || 'https://placehold.co/400x400/e2e8f0/cbd5e0?text=Image'}" alt="${product.name}" class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300">
-                        </a>
-                        <div class="p-3 flex flex-col flex-grow">
-                            <a href="#product/${product.slug}" class="block">
-                                <h3 class="font-medium text-sm text-slate-800 dark:text-slate-200 h-10 line-clamp-2">${product.name}</h3>
-                            </a>
-                            <div class="mt-1 mb-2">${renderPrice(product)}</div>
-                            <div class="mt-auto">${buttonHTML}</div>
-                        </div>
-                    </div>`;
-            } else { // List View
+            <div class="royal-card rounded-2xl overflow-hidden flex flex-col group transition-shadow hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/20">
+                <a href="#product/${product.slug}" class="block">
+                    <img src="${product.imageUrl || 'https://placehold.co/400x400/e2e8f0/cbd5e0?text=Image'}" alt="${product.name}" class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300">
+                </a>
+                <div class="p-3 flex flex-col flex-grow">
+                    <a href="#product/${product.slug}" class="block">
+                        <h3 class="font-medium text-sm text-slate-800 dark:text-slate-200 h-10 line-clamp-2">${product.name}</h3>
+                    </a>
+                    <div class="mt-1 mb-2">${renderPrice(product)}</div>
+                    <div class="mt-auto">${buttonHTML}</div>
+                </div>
+            </div>`;
+            } else { // Chế độ xem danh sách (List View)
                 return `
-                    <div class="royal-card rounded-2xl overflow-hidden flex flex-col sm:flex-row group transition-shadow hover:shadow-xl w-full">
-                        <a href="#product/${product.slug}" class="block sm:w-1/4">
-                            <img src="${product.imageUrl || 'https://placehold.co/400x400/e2e8f0/cbd5e0?text=Image'}" alt="${product.name}" class="w-full h-48 sm:h-full object-cover">
-                        </a>
-                        <div class="p-4 flex flex-col flex-grow sm:w-3/4">
-                             <a href="#product/${product.slug}" class="block">
-                                <h3 class="font-semibold text-lg dark:text-slate-100">${product.name}</h3>
-                            </a>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 flex-grow">${product.description}</p>
-                            <div class="flex flex-col sm:flex-row sm:items-center justify-between mt-4">
-                                <div class="mb-3 sm:mb-0">${renderPrice(product)}</div>
-                                <div class="w-full sm:w-auto sm:max-w-[150px]">${buttonHTML}</div>
-                            </div>
-                        </div>
-                    </div>`;
+            <div class="royal-card rounded-2xl overflow-hidden flex flex-col sm:flex-row group transition-shadow hover:shadow-xl w-full">
+                <a href="#product/${product.slug}" class="block sm:w-1/4">
+                    <img src="${product.imageUrl || 'https://placehold.co/400x400/e2e8f0/cbd5e0?text=Image'}" alt="${product.name}" class="w-full h-48 sm:h-full object-cover">
+                </a>
+                <div class="p-4 flex flex-col flex-grow sm:w-3/4">
+                     <a href="#product/${product.slug}" class="block">
+                        <h3 class="font-semibold text-lg dark:text-slate-100">${product.name}</h3>
+                    </a>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 flex-grow">${product.description}</p>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mt-4">
+                        <div class="mb-3 sm:mb-0">${renderPrice(product)}</div>
+                        <div class="w-full sm:w-auto sm:max-w-[150px]">${buttonHTML}</div>
+                    </div>
+                </div>
+            </div>`;
             }
         }).join('');
         lucide.createIcons();
