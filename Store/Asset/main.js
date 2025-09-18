@@ -416,59 +416,30 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(localStorage.getItem('theme') || 'system');
 
     // --- HÀM KHỞI TẠO XÁC THỰC (QUAN TRỌNG NHẤT) ---
-    const initializeAuth = async () => {
-        showLoader(); // Hiển thị loader khi bắt đầu quá trình xác thực
+    const initializeAuth = () => {
+        setPersistence(auth, browserLocalPersistence)
+            .then(() => {
+                onAuthStateChanged(auth, async (user) => {
+                    if (!authReady) {
+                        showLoader();
+                    }
 
-        try {
-            // Bước 1: Xử lý kết quả chuyển hướng ĐẦU TIÊN. Đây là phần sửa lỗi quan trọng.
-            // Nó xử lý thông tin đăng nhập từ Google trước khi làm bất cứ điều gì khác.
-            const result = await getRedirectResult(auth);
-            if (result) {
-                // Khối này chỉ chạy nếu người dùng vừa đăng nhập thông qua chuyển hướng.
-                const user = result.user;
-                const userDocRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
-
-                if (!userDoc.exists()) {
-                    // Tạo một tài liệu người dùng mới trong Firestore nếu đây là lần đầu tiên họ đăng nhập.
-                    await setDoc(userDocRef, {
-                        name: user.displayName || '',
-                        email: user.email,
-                        photoURL: user.photoURL || '',
-                        phone: user.phoneNumber || '',
-                        address: '',
-                        isAdmin: false,
-                        isRestricted: false
-                    });
-                    showToast('Chào mừng bạn đến với MyShop!');
-                }
-                // Trình nghe 'onAuthStateChanged' bên dưới sẽ xử lý phần còn lại của các bản cập nhật giao diện người dùng.
-            }
-
-            // Bước 2: Thiết lập lưu trữ trạng thái đăng nhập cho phiên làm việc.
-            await setPersistence(auth, browserLocalPersistence);
-
-            // Bước 3: Bây giờ, thiết lập trình nghe chính. Nó sẽ chạy với trạng thái người dùng chính xác.
-            onAuthStateChanged(auth, async (user) => {
-                try {
                     if (user) {
-                        // Người dùng đã đăng nhập.
-                        const userDoc = await getDoc(doc(db, "users", user.uid));
+                        const userDocRef = doc(db, "users", user.uid);
+                        const userDoc = await getDoc(userDocRef);
                         if (userDoc.exists()) {
                             const userData = userDoc.data();
                             if (userData.isRestricted) {
                                 showToast('Tài khoản của bạn đã bị hạn chế.', true);
                                 await signOut(auth);
-                                return; // Dừng xử lý
+                                return;
                             }
                             currentUser = { uid: user.uid, ...userData };
                             updateUIForLoggedInUser();
                             adminLink.classList.toggle('hidden', !currentUser.isAdmin);
                         } else {
-                            // Trường hợp này là dự phòng cho người dùng đã được xác thực
-                            // nhưng không có tài liệu trong Firestore.
-                            console.warn("User authenticated but no data in Firestore. Creating new record.");
-                            const newUser = {
+                            // Tạo người dùng mới nếu chưa tồn tại trong Firestore
+                            const newUserProfile = {
                                 name: user.displayName || '',
                                 email: user.email,
                                 photoURL: user.photoURL || '',
@@ -477,45 +448,27 @@ document.addEventListener('DOMContentLoaded', () => {
                                 isAdmin: false,
                                 isRestricted: false
                             };
-                            await setDoc(doc(db, "users", user.uid), newUser);
-                            currentUser = { uid: user.uid, ...newUser };
+                            await setDoc(userDocRef, newUserProfile);
+                            currentUser = { uid: user.uid, ...newUserProfile };
                             updateUIForLoggedInUser();
-                            adminLink.classList.add('hidden');
                         }
                         listenToCartChanges();
                     } else {
-                        // Người dùng đã đăng xuất.
                         currentUser = null;
                         updateUIForLoggedOutUser();
                     }
-                } catch (error) {
-                    console.error("Lỗi nghiêm trọng trong onAuthStateChanged:", error);
-                    showToast("Đã xảy ra lỗi khi xác thực tài khoản.", true);
-                    currentUser = null;
-                    updateUIForLoggedOutUser();
-                    await signOut(auth); // Đảm bảo người dùng được đăng xuất hoàn toàn khi có lỗi.
-                } finally {
-                    // Cờ 'authReady' này đảm bảo việc điều hướng chỉ xảy ra một lần
-                    // sau khi trạng thái xác thực ban đầu được xác nhận.
+
                     if (!authReady) {
                         authReady = true;
-                        navigate(); // Điều hướng khi tải trang lần đầu
-                        hideLoader(); // Ẩn loader sau khi trang đã sẵn sàng
+                        navigate(); // Điều hướng sau khi xác thực xong
+                        hideLoader();
                     }
-                }
+                });
+            })
+            .catch((error) => {
+                console.error("Lỗi khi thiết lập persistence:", error);
+                hideLoader();
             });
-
-        } catch (error) {
-            // Bắt lỗi từ getRedirectResult hoặc setPersistence
-            console.error("Lỗi trong quá trình khởi tạo xác thực:", error);
-            showToast(`Lỗi xác thực: ${error.message}`, true);
-            hideLoader();
-            // Vẫn chạy điều hướng để hiển thị trang đã đăng xuất
-            if (!authReady) {
-                authReady = true;
-                navigate();
-            }
-        }
     };
 
     // --- BẮT ĐẦU QUÁ TRÌNH XÁC THỰC ---
@@ -812,7 +765,7 @@ const triggerProfileUpdateModal = (callback = null) => {
     profileInfoModal.classList.remove('hidden');
 };
 
-      const handleGoogleSignIn = async () => {
+const handleGoogleSignIn = async () => {
             const provider = new GoogleAuthProvider();
             try {
                 showLoader();
@@ -852,23 +805,41 @@ const triggerProfileUpdateModal = (callback = null) => {
         };
 
 
+
+// Thay thế hàm cũ bằng hàm này trong Store/Asset/main.js
+
 const updateUIForLoggedInUser = () => {
     loggedInView.classList.remove('hidden');
     loggedOutView.classList.add('hidden');
 
+    // Cập nhật avatar và thông tin người dùng trong menu
     const userAvatar = document.getElementById('user-avatar');
-    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.email)}&background=6366f1&color=fff`;
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || currentUser.email)}&background=3b82f6&color=fff`;
     userAvatar.src = currentUser.photoURL || defaultAvatar;
     userAvatar.onerror = () => { userAvatar.src = defaultAvatar; };
 
     document.getElementById('user-menu-name').textContent = currentUser.name || 'Người dùng';
     document.getElementById('user-menu-email').textContent = currentUser.email;
 
-    document.getElementById('mobile-auth-link').href = "#"; // Prevent navigation
-    document.getElementById('mobile-auth-link').onclick = () => {
-        userMenu.classList.toggle('hidden');
-    };
-    document.querySelector('#mobile-auth-link span').textContent = 'Tài khoản';
+    // **PHẦN SỬA LỖI QUAN TRỌNG**
+    // Dòng code này sẽ kiểm tra quyền admin của người dùng hiện tại
+    // và quyết định hiển thị hoặc ẩn link "Trang Admin" một cách chính xác.
+    adminLink.classList.toggle('hidden', !currentUser.isAdmin);
+
+    // Cập nhật link "Tài khoản" trên thanh điều hướng di động
+    const mobileAuthLink = document.getElementById('mobile-auth-link');
+    if (mobileAuthLink) {
+        mobileAuthLink.href = "#"; // Ngăn chuyển trang khi nhấp
+        mobileAuthLink.onclick = (e) => {
+            e.preventDefault();
+            // Xử lý hành động mở menu hoặc trang cá nhân trên di động tại đây nếu cần
+            window.location.hash = '#orders'; // Ví dụ: chuyển đến trang đơn hàng
+        };
+        const mobileAuthText = mobileAuthLink.querySelector('span');
+        if (mobileAuthText) {
+            mobileAuthText.textContent = 'Tài khoản';
+        }
+    }
 };
 
 const updateUIForLoggedOutUser = () => {
@@ -877,7 +848,7 @@ const updateUIForLoggedOutUser = () => {
     userMenu.classList.add('hidden');
     adminLink.classList.add('hidden');
     updateCartCount(0);
-   };
+};
 
 userMenuButton.addEventListener('click', () => {
     userMenu.classList.toggle('hidden');
@@ -1881,7 +1852,7 @@ const fetchAdminUsers = async () => {
 
         userListEl.innerHTML = usersSnapshot.docs.map(doc => {
             const user = { id: doc.id, ...doc.data() };
-            const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.email)}&background=6366f1&color=fff`;
+            const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || user.email)}&background=3b82f6&color=fff`;
             const avatarSrc = user.photoURL || defaultAvatar;
             const isRestricted = user.isRestricted || false;
             return `
