@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FamiBank</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;700&family=Open+Sans:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        body.theme-binance { --bg-primary: #121212; --bg-secondary: #1E1E1E; --bg-tertiary: #2a2a2a; --bg-card: linear-gradient(135deg, #2a2a2a, #1E1E1E); --bg-accent: #F0B90B; --bg-accent-hover: #d8a60a; --text-primary: #EAECEF; --text-secondary: #848e9c; --text-on-accent: #121212; --border-color: #333333; --shadow-color: rgba(0, 0, 0, 0.4); --success-color: #0ECB81; --danger-color: #F6465D; }
+        body.theme-roblox { --bg-primary: #E1E1E1; --bg-secondary: #FFFFFF; --bg-tertiary: #F0F0F0; --bg-card: linear-gradient(135deg, #FFFFFF, #F0F0F0); --bg-accent: #00A2FF; --bg-accent-hover: #008ee6; --text-primary: #393B3D; --text-secondary: #7C8999; --text-on-accent: #FFFFFF; --border-color: #D3D5D7; --shadow-color: rgba(0, 0, 0, 0.1); --font-family: 'Open Sans', sans-serif; --success-color: #00B06F; --danger-color: #CC2A2B; }
+        .bg-primary { background-color: var(--bg-primary); } .bg-secondary { background-color: var(--bg-secondary); } .bg-tertiary { background-color: var(--bg-tertiary); } .bg-card { background: var(--bg-card); } .bg-accent { background-color: var(--bg-accent); } .hover\:bg-accent-hover:hover { background-color: var(--bg-accent-hover); } .text-primary { color: var(--text-primary); } .text-secondary { color: var(--text-secondary); } .text-on-accent { color: var(--text-on-accent); } .border-color { border-color: var(--border-color); } .app-font { font-family: var(--font-family); } .app-shadow { box-shadow: 0 4px 14px 0 var(--shadow-color); } .ring-accent { --tw-ring-color: var(--bg-accent) } .text-success { color: var(--success-color); } .text-danger { color: var(--danger-color); }
+        .pin-dot { width: 1rem; height: 1rem; border-radius: 50%; border: 2px solid var(--text-secondary); transition: background-color 0.2s; }
+        .pin-dot.active { background-color: var(--bg-accent); border-color: var(--bg-accent); }
+        .nav-btn.active { color: var(--bg-accent); }
+        #login-view, #register-view, #app-view, .modal-overlay, #pin-modal, .app-tab { display: none; }
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7); z-index: 100; }
+        .spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-left-color: #fff; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .lang-switcher button.active { background-color: var(--bg-accent); color: var(--text-on-accent); }
+    </style>
+</head>
+<body class="bg-primary app-font theme-binance">
+
+    <div id="app-container" class="max-w-md mx-auto min-h-screen bg-primary text-primary flex flex-col">
+        <div id="loading-overlay" class="items-center justify-center hidden"><div class="spinner"></div></div>
+        <div id="toast-notification" class="fixed top-5 right-5 bg-secondary text-primary px-4 py-2 rounded-lg app-shadow z-50 opacity-0 transition-opacity duration-300"><p id="toast-message"></p></div>
+
+        <div id="login-view" class="p-8 h-screen flex flex-col justify-center relative">
+             <div class="lang-switcher absolute top-6 right-6 flex items-center bg-tertiary rounded-full text-xs font-bold">
+                <button data-lang="vi" class="py-1 px-3 rounded-full">VI</button>
+                <button data-lang="en" class="py-1 px-3 rounded-full">EN</button>
+            </div>
+            <div class="text-center mb-10">
+                <i class="fas fa-shield-alt text-6xl text-accent"></i>
+                <h1 class="text-4xl font-bold text-primary mt-4">FamiBank</h1>
+                <p class="text-secondary" data-translate-key="loginSlogan">Your trusted financial partner</p>
+            </div>
+            <div class="space-y-4">
+                <input id="login-email" type="email" data-translate-key-placeholder="emailPlaceholder" placeholder="Email" class="w-full p-4 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                <input id="login-password" type="password" data-translate-key-placeholder="passwordPlaceholder" placeholder="Password" class="w-full p-4 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+            </div>
+            <button id="login-btn" class="w-full mt-8 p-4 rounded-lg bg-accent text-on-accent font-bold hover:bg-accent-hover transition-colors text-lg" data-translate-key="signIn">Sign In</button>
+            <p class="text-center mt-6 text-secondary"><span data-translate-key="noAccount">No account?</span> <button id="show-register-btn" class="font-bold text-accent" data-translate-key="registerNow">Register now</button></p>
+        </div>
+
+        <div id="register-view" class="p-8 min-h-screen flex flex-col justify-center relative">
+            <button id="back-to-login-btn" class="absolute top-8 left-8 text-secondary text-2xl"><i class="fas fa-arrow-left"></i></button>
+             <div class="lang-switcher absolute top-6 right-6 flex items-center bg-tertiary rounded-full text-xs font-bold">
+                <button data-lang="vi" class="py-1 px-3 rounded-full">VI</button>
+                <button data-lang="en" class="py-1 px-3 rounded-full">EN</button>
+            </div>
+            <div class="text-center mb-8">
+                <i class="fas fa-user-plus text-5xl text-accent"></i>
+                <h1 class="text-3xl font-bold text-primary mt-4" data-translate-key="getStarted">Get Started</h1>
+                <p class="text-secondary" data-translate-key="createAccountPrompt">Create your new account</p>
+            </div>
+            <div class="space-y-4">
+                <input id="reg-name" type="text" data-translate-key-placeholder="fullNamePlaceholder" placeholder="Full Name" class="w-full p-4 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                <input id="reg-username" type="text" data-translate-key-placeholder="usernamePlaceholder" placeholder="Username" class="w-full p-4 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                <input id="reg-account-number" type="number" data-translate-key-placeholder="accountNumberPlaceholder" placeholder="Account Number" class="w-full p-4 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                <input id="reg-email" type="email" data-translate-key-placeholder="emailPlaceholder" placeholder="Email" class="w-full p-4 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                <input id="reg-password" type="password" data-translate-key-placeholder="passwordPlaceholder" placeholder="Password" class="w-full p-4 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                <input id="reg-pin" type="password" inputmode="numeric" data-translate-key-placeholder="pinPlaceholder" placeholder="6-digit PIN" maxlength="6" class="w-full p-4 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+            </div>
+            <button id="register-btn" class="w-full mt-8 p-4 rounded-lg bg-accent text-on-accent font-bold hover:bg-accent-hover transition-colors text-lg" data-translate-key="createAccount">Create Account</button>
+            <p class="text-center mt-6 text-secondary"><span data-translate-key="haveAccount">Have an account?</span> <button id="show-login-btn-bottom" class="font-bold text-accent" data-translate-key="signIn">Sign In</button></p>
+        </div>
+
+        <div id="app-view" class="flex-grow flex flex-col">
+            <main class="flex-grow p-4 overflow-y-auto">
+                <div id="home-tab" class="app-tab">
+                    <header class="flex justify-between items-center mb-6">
+                        <div class="flex items-center gap-3">
+                            <div id="user-avatar" class="w-12 h-12 rounded-full bg-tertiary flex items-center justify-center font-bold text-xl text-accent"></div>
+                            <div>
+                                <p class="text-md text-secondary" data-translate-key="welcome">Welcome,</p>
+                                <h2 id="user-display-name" class="text-xl font-bold text-primary"></h2>
+                            </div>
+                        </div>
+                    </header>
+                    <div class="bg-card rounded-xl p-6 app-shadow relative">
+                        <p class="text-sm text-secondary" data-translate-key="totalBalance">Total Balance</p>
+                        <div class="flex items-center gap-3">
+                            <p id="user-balance" class="text-4xl font-bold text-primary my-2">0 ₫</p>
+                            <button id="balance-visibility-btn"><i class="fas fa-eye text-secondary"></i></button>
+                        </div>
+                        <div class="text-sm text-primary font-mono tracking-widest mt-4">
+                            <span id="user-account-number"></span> <button id="copy-acc-btn" class="ml-2 text-secondary"><i class="far fa-copy"></i></button>
+                        </div>
+                        <i class="fas fa-sim-card text-4xl text-secondary opacity-20 absolute top-4 right-6"></i>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 text-center mt-8">
+                         <div class="flex flex-col items-center">
+                            <button data-action="transfer" class="action-btn w-16 h-16 bg-secondary rounded-full app-shadow flex items-center justify-center"><i class="fas fa-paper-plane text-2xl text-accent"></i></button>
+                            <span class="text-xs mt-2 font-medium text-primary" data-translate-key="transfer">Transfer</span>
+                        </div>
+                         <div class="flex flex-col items-center">
+                            <button data-action="deposit" class="action-btn w-16 h-16 bg-secondary rounded-full app-shadow flex items-center justify-center"><i class="fas fa-wallet text-2xl text-accent"></i></button>
+                             <span class="text-xs mt-2 font-medium text-primary" data-translate-key="deposit">Deposit</span>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <button data-action="withdraw" class="action-btn w-16 h-16 bg-secondary rounded-full app-shadow flex items-center justify-center"><i class="fas fa-money-bill-wave text-2xl text-accent"></i></button>
+                            <span class="text-xs mt-2 font-medium text-primary" data-translate-key="withdraw">Withdraw</span>
+                        </div>
+                    </div>
+                    <div class="mt-8">
+                        <h3 class="text-lg font-bold text-primary" data-translate-key="recentTransactions">Recent Transactions</h3>
+                        <div id="recent-transaction-history" class="mt-4 space-y-3"></div>
+                    </div>
+                </div>
+
+                <div id="history-tab" class="app-tab">
+                    <h1 class="text-2xl font-bold text-primary mb-4" data-translate-key="transactionHistory">Transaction History</h1>
+                    <div id="full-transaction-history" class="space-y-3"></div>
+                </div>
+
+                <div id="settings-tab" class="app-tab">
+                    <h1 class="text-2xl font-bold text-primary mb-6" data-translate-key="settings">Settings</h1>
+                    <div class="space-y-6">
+                        <div class="bg-secondary p-4 rounded-lg">
+                            <h3 class="font-bold text-primary mb-3" data-translate-key="profile">Profile</h3>
+                            <div class="flex items-center gap-3">
+                                <input id="update-name-input" type="text" data-translate-key-placeholder="yourNamePlaceholder" placeholder="Your Name" class="flex-grow p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                                <button id="update-name-btn" class="p-3 rounded-lg bg-accent text-on-accent font-bold hover:bg-accent-hover" data-translate-key="save">Save</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-secondary p-4 rounded-lg">
+                             <h3 class="font-bold text-primary mb-3">Thông tin tài khoản</h3>
+                             <div class="space-y-3">
+                                <input id="update-username-input" type="text" placeholder="Username mới" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                                <input id="update-account-number-input" type="number" placeholder="Số tài khoản mới" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                             </div>
+                             <button id="update-account-info-btn" class="w-full mt-4 p-3 rounded-lg bg-tertiary text-primary font-bold">Lưu thay đổi Username/STK</button>
+                        </div>
+                        
+                        <div class="bg-secondary p-4 rounded-lg">
+                            <h3 class="font-bold text-primary mb-3" data-translate-key="security">Security</h3>
+                            <button id="show-change-pin-modal-btn" class="w-full p-3 rounded-lg bg-tertiary text-primary font-bold" data-translate-key="changePin">Change PIN</button>
+                        </div>
+                        
+                        <div class="bg-secondary p-4 rounded-lg">
+                            <h3 class="font-bold text-primary mb-3" data-translate-key="language">Language</h3>
+                             <div class="lang-switcher flex gap-4">
+                                <button data-lang="vi" class="flex-1 p-3 rounded-md bg-tertiary text-primary">Tiếng Việt</button>
+                                <button data-lang="en" class="flex-1 p-3 rounded-md bg-tertiary text-primary">English</button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-secondary p-4 rounded-lg">
+                            <h3 class="font-bold text-primary mb-3" data-translate-key="theme">Theme</h3>
+                            <div class="flex gap-4">
+                                <button data-theme="theme-binance" class="theme-switcher flex-1 p-3 rounded-md text-on-accent bg-accent">Binance</button>
+                                <button data-theme="theme-roblox" class="theme-switcher flex-1 p-3 rounded-md bg-tertiary text-primary">Roblox</button>
+                            </div>
+                        </div>
+                        
+                        <button id="logout-btn" class="w-full flex items-center justify-center gap-3 p-4 bg-tertiary rounded-lg text-danger font-bold"><i class="fas fa-sign-out-alt"></i><span data-translate-key="logout">Logout</span></button>
+                    </div>
+                </div>
+
+                 <div id="admin-tab" class="app-tab">
+                    <h1 class="text-2xl font-bold text-primary mb-4" data-translate-key="adminPanel">Admin Panel</h1>
+                    
+                    <div class="mt-8">
+                        <h2 class="text-lg font-bold mb-4 text-primary">Quản lý người dùng</h2>
+                        <div id="admin-user-list" class="space-y-4"></div>
+                    </div>
+
+                    <div class="bg-secondary p-4 rounded-lg app-shadow my-6">
+                        <h2 class="text-lg font-bold mb-3 text-primary" data-translate-key="createDepositCode">Create Deposit Code</h2>
+                        <div class="space-y-3">
+                            <input id="admin-deposit-code" type="text" data-translate-key-placeholder="depositCodePlaceholder" placeholder="Code (e.g., NAP100)" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                            <input id="admin-deposit-amount" type="number" data-translate-key-placeholder="amountPlaceholder" placeholder="Amount" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                        </div>
+                        <button id="create-deposit-code-btn" class="w-full mt-4 p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="createCode">Create Code</button>
+                    </div>
+                    <div class="mt-8">
+                        <h2 class="text-lg font-bold mb-4 text-primary" data-translate-key="depositCodeManagement">Deposit Code Management</h2>
+                        <div id="deposit-codes-list" class="space-y-4"></div>
+                    </div>
+                    <div class="mt-8">
+                        <h2 class="text-lg font-bold mb-4 text-primary" data-translate-key="pendingWithdrawals">Pending Withdrawal Requests</h2>
+                        <div id="withdrawal-requests" class="space-y-4"></div>
+                    </div>
+                </div>
+            </main>
+            
+            <footer id="bottom-nav" class="bg-secondary w-full grid grid-cols-3 text-center py-3 app-shadow sticky bottom-0">
+                <button data-tab="home-tab" class="nav-btn flex flex-col items-center text-secondary active"><i class="fas fa-home text-xl"></i><span class="text-xs" data-translate-key="home">Home</span></button>
+                <button data-tab="history-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-history text-xl"></i><span class="text-xs" data-translate-key="history">History</span></button>
+                <button data-tab="settings-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-cog text-xl"></i><span class="text-xs" data-translate-key="settings">Settings</span></button>
+                <button data-tab="admin-tab" id="nav-admin-btn" class="nav-btn flex-col items-center text-secondary hidden"><i class="fas fa-user-shield text-xl"></i><span class="text-xs" data-translate-key="admin">Admin</span></button>
+            </footer>
+        </div>
+    </div>
+
+    <div id="edit-deposit-code-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
+        <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow">
+            <h3 class="font-bold text-lg mb-4 text-primary" data-translate-key="editDepositCode">Edit Deposit Code</h3>
+            <div class="space-y-3">
+                <input id="edit-code-id" type="hidden">
+                <div>
+                    <label class="text-xs text-secondary" data-translate-key="code">Code</label>
+                    <input id="edit-code-display" type="text" disabled class="w-full p-3 rounded-lg bg-tertiary border border-color opacity-50">
+                </div>
+                <div>
+                    <label class="text-xs text-secondary" data-translate-key="amount">Amount</label>
+                    <input id="edit-code-amount" type="number" data-translate-key-placeholder="amountPlaceholder" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Cancel</button>
+                <button id="confirm-edit-code-btn" class="w-full p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="saveChanges">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    <div id="confirm-delete-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
+        <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow text-center">
+            <i class="fas fa-exclamation-triangle text-4xl text-danger mb-4"></i>
+            <h3 class="font-bold text-lg mb-2 text-primary" data-translate-key="confirmDelete">Confirm Deletion</h3>
+            <p id="delete-confirmation-message" class="text-secondary text-sm mb-6"></p>
+            <div class="flex gap-3 mt-4">
+                <button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Cancel</button>
+                <button id="confirm-delete-btn" class="w-full p-2 bg-danger text-white font-bold rounded-md" data-translate-key="delete">Delete</button>
+            </div>
+        </div>
+    </div>
+    <div id="transfer-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4"><div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow"><h3 class="font-bold text-lg mb-4 text-primary" data-translate-key="transferFunds">Transfer Funds</h3><div class="space-y-3"><input id="transfer-recipient" type="text" data-translate-key-placeholder="recipientPlaceholder" placeholder="Recipient Username/Email/ACC" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"><input id="transfer-amount" type="number" data-translate-key-placeholder="amountPlaceholder" placeholder="Amount" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"><input id="transfer-content" type="text" data-translate-key-placeholder="notePlaceholder" placeholder="Note" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"></div><div class="flex gap-3 mt-4"><button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Cancel</button><button id="confirm-transfer-btn" class="w-full p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="confirm">Confirm</button></div></div></div>
+    <div id="deposit-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4"><div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow"><h3 class="font-bold text-lg mb-4 text-primary" data-translate-key="deposit">Deposit</h3><input id="deposit-code" type="text" data-translate-key-placeholder="enterDepositCode" placeholder="Enter deposit code" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"><div class="flex gap-3 mt-4"><button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Cancel</button><button id="confirm-deposit-btn" class="w-full p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="deposit">Deposit</button></div></div></div>
+    <div id="withdraw-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4"><div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow"><h3 class="font-bold text-lg mb-4 text-primary" data-translate-key="requestWithdraw">Request Withdraw</h3><div class="space-y-3"><input id="withdraw-amount" type="number" data-translate-key-placeholder="amountPlaceholder" placeholder="Amount" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"><input id="withdraw-reason" type="text" data-translate-key-placeholder="reasonPlaceholder" placeholder="Reason" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"></div><div class="flex gap-3 mt-4"><button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Cancel</button><button id="confirm-withdraw-btn" class="w-full p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="sendRequest">Send Request</button></div></div></div>
+    <div id="pin-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4"><div class="bg-secondary p-6 rounded-lg w-full max-w-xs app-shadow flex flex-col items-center"><h3 class="font-bold text-lg mb-2 text-primary" data-translate-key="enterPin">Enter PIN</h3><p class="text-secondary text-sm mb-4" data-translate-key="enterPinPrompt">Please enter your PIN to authorize</p><div id="pin-dots-container" class="flex gap-3 mb-6"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div><input type="password" id="pin-input" inputmode="numeric" maxlength="6" class="absolute opacity-0"><button class="modal-close-btn mt-2 text-secondary" data-translate-key="cancel">Cancel</button></div></div>
+    <div id="change-pin-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4"><div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow"><h3 class="font-bold text-lg mb-4 text-primary" data-translate-key="changePin">Change PIN</h3><div class="space-y-3"><input id="current-pin" type="password" inputmode="numeric" maxlength="6" data-translate-key-placeholder="currentPinPlaceholder" placeholder="Current PIN" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"><input id="new-pin" type="password" inputmode="numeric" maxlength="6" data-translate-key-placeholder="newPinPlaceholder" placeholder="New PIN" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"><input id="confirm-new-pin" type="password" inputmode="numeric" maxlength="6" data-translate-key-placeholder="confirmNewPinPlaceholder" placeholder="Confirm New PIN" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent"></div><div class="flex gap-3 mt-4"><button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Cancel</button><button id="confirm-pin-change-btn" class="w-full p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="confirmChange">Confirm Change</button></div></div></div>
+    <div id="review-withdrawal-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
+        <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow">
+            <h3 class="font-bold text-lg mb-4 text-primary" data-translate-key="reviewWithdrawal">Duyệt yêu cầu rút tiền</h3>
+            <div class="bg-tertiary p-3 rounded-md mb-4 text-sm">
+                <p><span class="text-secondary">Từ:</span> <strong id="review-user-name" class="text-primary"></strong></p>
+                <p><span class="text-secondary">STK:</span> <strong id="review-user-acc" class="text-primary font-mono"></strong></p>
+                <p><span class="text-secondary">Số tiền yêu cầu:</span> <strong id="review-requested-amount" class="text-accent"></strong></p>
+                <p><span class="text-secondary">Lý do:</span> <em id="review-user-reason" class="text-primary"></em></p>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-secondary" data-translate-key="approvalAmount">Số tiền duyệt</label>
+                    <input id="review-approval-amount" type="number" data-translate-key-placeholder="amountPlaceholder" placeholder="Số tiền" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                </div>
+                <div>
+                    <label class="text-xs text-secondary" data-translate-key="messageToUser">Tin nhắn cho người dùng (Lý do từ chối)</label>
+                    <input id="review-admin-message" type="text" data-translate-key-placeholder="messagePlaceholder" placeholder="Nhập tin nhắn..." class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button id="confirm-reject-btn" class="w-full p-2 bg-danger text-white font-bold rounded-md" data-translate-key="reject">Từ chối</button>
+                <button id="confirm-approve-btn" class="w-full p-2 bg-success text-white font-bold rounded-md" data-translate-key="approve">Đồng ý</button>
+            </div>
+            <button class="modal-close-btn w-full mt-2 text-center text-secondary text-sm" data-translate-key="cancel">Hủy</button>
+        </div>
+    </div>
+    <div id="confirm-delete-request-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
+        <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow text-center">
+            <i class="fas fa-exclamation-triangle text-4xl text-danger mb-4"></i>
+            <h3 class="font-bold text-lg mb-2 text-primary" data-translate-key="confirmDelete">Xác nhận Xóa</h3>
+            <p id="delete-request-confirmation-message" class="text-secondary text-sm mb-6">Bạn có chắc muốn xóa yêu cầu này không? Hành động này không thể hoàn tác.</p>
+            <div class="flex gap-3 mt-4">
+                <button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Hủy</button>
+                <button id="confirm-delete-request-btn" class="w-full p-2 bg-danger text-white font-bold rounded-md" data-translate-key="delete">Xóa</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="admin-edit-user-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
+        <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow">
+            <h3 class="font-bold text-lg mb-4 text-primary">Chỉnh sửa người dùng</h3>
+            <input type="hidden" id="admin-edit-user-id">
+            <div class="space-y-3">
+                 <input id="admin-edit-display-name" type="text" placeholder="Họ và Tên" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                 <input id="admin-edit-username" type="text" placeholder="Username" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                 <input id="admin-edit-account-number" type="number" placeholder="Số tài khoản" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                 <input id="admin-edit-balance" type="number" placeholder="Số dư" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
+                 <input id="admin-edit-email" type="email" placeholder="Email" disabled class="w-full p-3 rounded-lg bg-tertiary border border-color opacity-50">
+            </div>
+            <div class="flex gap-3 mt-4">
+                <button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Hủy</button>
+                <button id="admin-confirm-edit-user-btn" class="w-full p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="saveChanges">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./main.js" type="module"></script>
+</body>
+</html>
