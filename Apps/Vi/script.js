@@ -1,14 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
     // [FIREBASE] 1. CẤU HÌNH FIREBASE
     // !!! QUAN TRỌNG: Dán đối tượng firebaseConfig của bạn vào đây
-    const firebaseConfig = {
-        apiKey: "AIza...",
-        authDomain: "your-project-id.firebaseapp.com",
-        projectId: "your-project-id",
-        storageBucket: "your-project-id.appspot.com",
-        messagingSenderId: "...",
-        appId: "..."
-    };
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBFkJ7yKDrBhtjRCxdPez-9UBn1KG2fIR0",
+  authDomain: "wallet-smart-hunq.firebaseapp.com",
+  projectId: "wallet-smart-hunq",
+  storageBucket: "wallet-smart-hunq.firebasestorage.app",
+  messagingSenderId: "694911402153",
+  appId: "1:694911402153:web:e9afe6b7839c08666129b8",
+  measurementId: "G-P6HVSKR5B5"
+};
 
     // [FIREBASE] Khởi tạo Firebase
     firebase.initializeApp(firebaseConfig);
