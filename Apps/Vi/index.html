@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,91 +10,486 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore-compat.js"></script>
     <style>
-        :root { --radius-sm: 0.5rem; --radius-md: 0.75rem; --radius-lg: 1.25rem; --radius-full: 9999px; }
-        .theme-dark { --primary-color: #d4af37; --background-color: #0a1931; --card-background: #183153; --text-primary: #f0f2f5; --text-secondary: #a8b2c2; --income-color: #50c878; --expense-color: #ff6b6b; --border-color: #2a4a75; --highlight-color: rgba(255, 255, 255, 0.05); }
-        .theme-light { --primary-color: #00529C; --background-color: #f4f7fa; --card-background: #ffffff; --text-primary: #121212; --text-secondary: #6E757C; --income-color: #28a745; --expense-color: #dc3545; --border-color: #e1e4e8; --highlight-color: rgba(0, 0, 0, 0.03); }
-        .theme-mint { --primary-color: #00C6AE; --background-color: #111827; --card-background: #1F2937; --text-primary: #ffffff; --text-secondary: #9CA3AF; --income-color: #34D399; --expense-color: #F87171; --border-color: #374151; --highlight-color: rgba(255, 255, 255, 0.05); }
-        .theme-luxury { --primary-color: #E6B33D; --background-color: #121212; --card-background: #1E1E1E; --text-primary: #EAEAEA; --text-secondary: #8A8A8A; --income-color: #6AAB9C; --expense-color: #C97C7C; --border-color: #333333; --highlight-color: rgba(255, 255, 255, 0.05); }
-
-        html { scroll-behavior: smooth; }
-        body { font-family: 'Be Vietnam Pro', sans-serif; background-color: var(--background-color); color: var(--text-primary); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        * { transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out; }
-        .app-container { max-width: 420px; margin: auto; background-color: var(--background-color); min-height: 100vh; display: flex; flex-direction: column; position: relative; }
-        .main-content { flex-grow: 1; padding-bottom: 80px; }
-        .screen { display: none; }
-        .screen.active { display: block; animation: fadeIn 0.4s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; max-width: 420px; margin: auto; background-color: var(--card-background); border-top: 1px solid var(--border-color); display: flex; justify-content: space-around; z-index: 50; box-shadow: 0 -4px 20px rgba(0,0,0,0.2); }
-        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; font-weight: 500; color: var(--text-secondary); cursor: pointer; width: 20%; padding: 8px 0; }
-        .nav-item i { font-size: 20px; margin-bottom: 4px; }
-        .nav-item.active { color: var(--primary-color); }
-        .nav-item:hover { color: var(--primary-color); transform: translateY(-2px); }
-
-        #fab-main { background-color: var(--primary-color); color: var(--background-color); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); box-shadow: 0 6px 20px rgba(0,0,0,0.3); border-radius: var(--radius-full); }
-        .theme-light #fab-main { color: white; }
-        #fab-container.active #fab-main { transform: rotate(135deg); }
-        .fab-action { display: flex; align-items: center; margin-bottom: 16px; opacity: 0; transform: translateY(10px) scale(0.9); transition: opacity 0.2s ease-out, transform 0.2s ease-out; visibility: hidden; }
-        #fab-container.active .fab-action { opacity: 1; transform: translateY(0) scale(1); visibility: visible; }
-        #fab-container.active .fab-action:nth-child(1) { transition-delay: 0.15s; } #fab-container.active .fab-action:nth-child(2) { transition-delay: 0.1s; } #fab-container.active .fab-action:nth-child(3) { transition-delay: 0.05s; } #fab-container.active .fab-action:nth-child(4) { transition-delay: 0s; }
-        .mini-fab { border-radius: var(--radius-full); }
-        .mini-fab:hover { transform: scale(1.1); background-color: var(--highlight-color); }
-        #fab-backdrop { background-color: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 99; opacity: 0; visibility: hidden; transition: opacity 0.3s ease; }
-        #fab-backdrop.active { opacity: 1; visibility: visible; }
-
-        .modal-backdrop { background-color: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s; }
-        .modal-backdrop.visible { opacity: 1; visibility: visible; }
-        .modal-content { background-color: var(--card-background); border: 1px solid var(--border-color); transform: translateY(20px) scale(0.98); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s; max-height: 90vh; opacity: 0; overflow-y: auto; border-radius: var(--radius-lg); }
-        .modal-backdrop.visible .modal-content { transform: translateY(0) scale(1); opacity: 1; }
+        :root {
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1.25rem;
+            --radius-full: 9999px;
+        }
         
-        .form-input, .form-select { border: 1px solid var(--border-color); background-color: var(--background-color); color: var(--text-primary); border-radius: var(--radius-md); }
-        .form-input:focus, .form-select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 20%, transparent); }
+        .theme-dark {
+            --primary-color: #d4af37;
+            --background-color: #0a1931;
+            --card-background: #183153;
+            --text-primary: #f0f2f5;
+            --text-secondary: #a8b2c2;
+            --income-color: #50c878;
+            --expense-color: #ff6b6b;
+            --border-color: #2a4a75;
+            --highlight-color: rgba(255, 255, 255, 0.05);
+        }
         
-        .btn { transition: all 0.2s; border-radius: var(--radius-md); font-weight: 600; padding: 0.75rem 1rem; }
-        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
-        .btn-primary { background-color: var(--primary-color); color: var(--background-color); }
-        .theme-light .btn-primary { color: white; }
-        .btn-secondary { background-color: var(--highlight-color); color: var(--text-secondary); border: 1px solid var(--border-color); }
-
-        .quick-action-btn { background-color: var(--card-background); border-radius: var(--radius-full); }
-        .quick-action-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .theme-light {
+            --primary-color: #00529C;
+            --background-color: #f4f7fa;
+            --card-background: #ffffff;
+            --text-primary: #121212;
+            --text-secondary: #6E757C;
+            --income-color: #28a745;
+            --expense-color: #dc3545;
+            --border-color: #e1e4e8;
+            --highlight-color: rgba(0, 0, 0, 0.03);
+        }
         
-        .dashboard-tab-container { background-color: var(--card-background); padding: 4px; border-radius: var(--radius-md); }
-        .dashboard-tab { color: var(--text-secondary); position: relative; z-index: 2; border-radius: var(--radius-sm); }
-        .dashboard-tab.active { color: var(--text-primary); }
-        #dashboard-tab-glider { position: absolute; top: 4px; bottom: 4px; background-color: var(--background-color); border-radius: 0.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
-        .dashboard-tab-content { display: none; }
-        .dashboard-tab-content.active { display: block; animation: fadeIn 0.4s; }
-        .info-card-pane { display: none; position: absolute; width: 100%; animation: fadeIn 0.3s; }
-        .info-card-pane.active { display: block; }
-        .info-card-tab { cursor: pointer; text-align: center; color: var(--text-secondary); padding: 6px 12px; border-radius: var(--radius-md); }
-        .info-card-tab.active { color: var(--primary-color); background-color: var(--highlight-color); }
-        .list-item { border-radius: var(--radius-lg); transition: transform 0.2s ease, background-color 0.2s ease; }
-        .list-item:hover { transform: translateX(4px); background-color: var(--highlight-color); }
+        .theme-mint {
+            --primary-color: #00C6AE;
+            --background-color: #111827;
+            --card-background: #1F2937;
+            --text-primary: #ffffff;
+            --text-secondary: #9CA3AF;
+            --income-color: #34D399;
+            --expense-color: #F87171;
+            --border-color: #374151;
+            --highlight-color: rgba(255, 255, 255, 0.05);
+        }
         
-        summary { list-style: none !important; }
-        summary::-webkit-details-marker { display: none !important; }
-        .list-item { list-style-type: none !important; }
-
-        .progress-bar { background-color: var(--border-color); border-radius: var(--radius-full); }
-        .progress-bar-inner { background-color: var(--primary-color); border-radius: var(--radius-full); }
-        .timeline-icon { background-color: var(--card-background); border: 2px solid var(--border-color); }
-        .timeline-connector { background-color: var(--border-color); }
+        .theme-luxury {
+            --primary-color: #E6B33D;
+            --background-color: #121212;
+            --card-background: #1E1E1E;
+            --text-primary: #EAEAEA;
+            --text-secondary: #8A8A8A;
+            --income-color: #6AAB9C;
+            --expense-color: #C97C7C;
+            --border-color: #333333;
+            --highlight-color: rgba(255, 255, 255, 0.05);
+        }
         
-        .setting-card { background-color: var(--card-background); padding: 1rem; border-radius: var(--radius-lg); }
-        .setting-item { display: flex; align-items: center; justify-content: space-between; }
-        .theme-btn { border: 2px solid transparent; padding: 0.5rem; display: flex; flex-direction: column; align-items: center; font-size: 0.75rem; border-radius: var(--radius-md); }
-        .theme-btn.active { border-color: var(--primary-color); }
-        .theme-swatch { width: 100%; height: 20px; border-radius: var(--radius-sm); margin-bottom: 8px; border: 1px solid var(--border-color); }
+        html {
+            scroll-behavior: smooth;
+        }
         
-        .category-chip { padding: 6px 14px; border-radius: var(--radius-full); background-color: var(--background-color); border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 14px; cursor: pointer; font-weight: 500;}
-        .category-chip:hover { border-color: var(--primary-color); }
-        .category-chip.active { background-color: var(--primary-color); color: var(--background-color); font-weight: 600; border-color: var(--primary-color); }
-        .theme-light .category-chip.active { color: white; }
-
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
-        .theme-light input[type="date"]::-webkit-calendar-picker-indicator { filter: none; }
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        * {
+            transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out, border-color 0.2s ease-in-out, transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        
+        .app-container {
+            max-width: 420px;
+            margin: auto;
+            background-color: var(--background-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .main-content {
+            flex-grow: 1;
+            padding-bottom: 80px;
+        }
+        
+        .screen {
+            display: none;
+        }
+        
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+            
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 420px;
+            margin: auto;
+            background-color: var(--card-background);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            z-index: 50;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            cursor: pointer;
+            width: 20%;
+            padding: 8px 0;
+        }
+        
+        .nav-item i {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        
+        .nav-item.active {
+            color: var(--primary-color);
+        }
+        
+        .nav-item:hover {
+            color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+        
+        #fab-main {
+            display: none;
+            background-color: var(--primary-color);
+            color: var(--background-color);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            border-radius: var(--radius-full);
+        }
+        
+        #fab-container {
+            display: none;
+        }
+        
+        .theme-light #fab-main {
+            color: white;
+        }
+        
+        #fab-container.active #fab-main {
+            transform: rotate(135deg);
+        }
+        
+        .fab-action {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+            opacity: 0;
+            transform: translateY(10px) scale(0.9);
+            transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+            visibility: hidden;
+        }
+        
+        #fab-container.active .fab-action {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            visibility: visible;
+        }
+        
+        #fab-container.active .fab-action:nth-child(1) {
+            transition-delay: 0.15s;
+        }
+        
+        #fab-container.active .fab-action:nth-child(2) {
+            transition-delay: 0.1s;
+        }
+        
+        #fab-container.active .fab-action:nth-child(3) {
+            transition-delay: 0.05s;
+        }
+        
+        #fab-container.active .fab-action:nth-child(4) {
+            transition-delay: 0s;
+        }
+        
+        .mini-fab {
+            border-radius: var(--radius-full);
+        }
+        
+        .mini-fab:hover {
+            transform: scale(1.1);
+            background-color: var(--highlight-color);
+        }
+        
+        #fab-backdrop {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(2px);
+            z-index: 99;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+        }
+        
+        #fab-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s;
+        }
+        
+        .modal-backdrop.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background-color: var(--card-background);
+            border: 1px solid var(--border-color);
+            transform: translateY(20px) scale(0.98);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+            max-height: 90vh;
+            opacity: 0;
+            overflow-y: auto;
+            border-radius: var(--radius-lg);
+        }
+        
+        .modal-backdrop.visible .modal-content {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+        
+        .form-input,
+        .form-select {
+            border: 1px solid var(--border-color);
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            border-radius: var(--radius-md);
+        }
+        
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 20%, transparent);
+        }
+        
+        .btn {
+            transition: all 0.2s;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: var(--background-color);
+        }
+        
+        .theme-light .btn-primary {
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: var(--highlight-color);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .quick-action-btn {
+            background-color: var(--card-background);
+            border-radius: var(--radius-full);
+        }
+        
+        .quick-action-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dashboard-tab-container {
+            background-color: var(--card-background);
+            padding: 4px;
+            border-radius: var(--radius-md);
+        }
+        
+        .dashboard-tab {
+            color: var(--text-secondary);
+            position: relative;
+            z-index: 2;
+            border-radius: var(--radius-sm);
+        }
+        
+        .dashboard-tab.active {
+            color: var(--text-primary);
+        }
+        
+        #dashboard-tab-glider {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            background-color: var(--background-color);
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: left 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        
+        .dashboard-tab-content {
+            display: none;
+        }
+        
+        .dashboard-tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s;
+        }
+        
+        .info-card-pane {
+            display: none;
+            position: absolute;
+            width: 100%;
+            animation: fadeIn 0.3s;
+        }
+        
+        .info-card-pane.active {
+            display: block;
+        }
+        
+        .info-card-tab {
+            cursor: pointer;
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+        }
+        
+        .info-card-tab.active {
+            color: var(--primary-color);
+            background-color: var(--highlight-color);
+        }
+        
+        .list-item {
+            border-radius: var(--radius-lg);
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        
+        .list-item:hover {
+            transform: translateX(4px);
+            background-color: var(--highlight-color);
+        }
+        
+        summary {
+            list-style: none !important;
+        }
+        
+        summary::-webkit-details-marker {
+            display: none !important;
+        }
+        
+        .list-item {
+            list-style-type: none !important;
+        }
+        
+        .progress-bar {
+            background-color: var(--border-color);
+            border-radius: var(--radius-full);
+        }
+        
+       .progress-bar-inner { 
+    background-color: var(--primary-color); 
+    border-radius: var(--radius-full); 
+    transition: width 0.5s ease-in-out; /* <-- Thêm dòng này */
+}
+        
+        .timeline-icon {
+            background-color: var(--card-background);
+            border: 2px solid var(--border-color);
+        }
+        
+        .timeline-connector {
+            background-color: var(--border-color);
+        }
+        
+        .setting-card {
+            background-color: var(--card-background);
+            padding: 1rem;
+            border-radius: var(--radius-lg);
+        }
+        
+        .setting-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .theme-btn {
+            border: 2px solid transparent;
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.75rem;
+            border-radius: var(--radius-md);
+        }
+        
+        .theme-btn.active {
+            border-color: var(--primary-color);
+        }
+        
+        .theme-swatch {
+            width: 100%;
+            height: 20px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .category-chip {
+            padding: 6px 14px;
+            border-radius: var(--radius-full);
+            background-color: var(--background-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .category-chip:hover {
+            border-color: var(--primary-color);
+        }
+        
+        .category-chip.active {
+            background-color: var(--primary-color);
+            color: var(--background-color);
+            font-weight: 600;
+            border-color: var(--primary-color);
+        }
+        
+        .theme-light .category-chip.active {
+            color: white;
+        }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.8);
+            cursor: pointer;
+        }
+        
+        .theme-light input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: none;
+        }
         
         /* [NEW] History Screen Styles */
         .date-header {
@@ -104,6 +500,7 @@
             border-bottom: 1px solid var(--border-color);
             margin-bottom: 8px;
         }
+        
         #history-filters {
             display: grid;
             grid-template-columns: 1fr;
@@ -113,18 +510,22 @@
             transition: max-height 0.5s ease, opacity 0.5s ease;
             opacity: 0;
         }
+        
         details[open] #history-filters {
-            max-height: 300px; /* Adjust as needed */
+            max-height: 300px;
+            /* Adjust as needed */
             opacity: 1;
         }
+        
         /* [MODIFIED] History Screen Styles */
         /* [NEW] Thẻ bao bọc các giao dịch trong một ngày */
         .day-group-card {
             background-color: var(--card-background);
             border-radius: var(--radius-lg);
             margin-bottom: 1rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            overflow: hidden; /* Đảm bảo các item bên trong tuân thủ bo góc */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            /* Đảm bảo các item bên trong tuân thủ bo góc */
         }
         
         /* Tiêu đề ngày, giờ nằm bên trong thẻ */
@@ -136,41 +537,119 @@
             background-color: var(--highlight-color);
             border-bottom: 1px solid var(--border-color);
         }
-
+        
         /* Giao dịch bây giờ không cần nền hoặc bóng đổ riêng */
         .transaction-item {
-            padding: 12px 16px; /* Tăng khoảng đệm để dễ nhìn hơn */
+            padding: 12px 16px;
+            /* Tăng khoảng đệm để dễ nhìn hơn */
             border-bottom: 1px solid var(--border-color);
             border-radius: 0;
             box-shadow: none;
         }
-
+        
         /* Bỏ đường kẻ cho giao dịch cuối cùng trong mỗi thẻ ngày */
         .day-group-card .transaction-item:last-child {
             border-bottom: none;
         }
+        /* [MỚI] CSS cho Toast Notification */
+#toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
     </style>
 </head>
+
 <body class="theme-dark">
     <div class="app-container">
         <main class="main-content">
             <div id="dashboard-screen" class="screen active p-4">
-                <header class="mb-6 flex justify-between items-center"><div><h1 class="text-2xl font-bold">Tổng Quan</h1><p style="color:var(--text-secondary)">Chào mừng bạn trở lại!</p></div><button id="toggle-balance-visibility" class="p-3 text-xl" style="color: var(--text-secondary);"><i class="fas fa-eye"></i></button></header>
-                <div class="info-card p-6 rounded-2xl shadow-lg mb-6" style="background-color: var(--card-background);"><div id="info-card-content" class="relative min-h-[96px]"><div id="balance-view" class="info-card-pane active"><p class="text-sm" style="color: var(--text-secondary);">Tổng số dư</p><p id="total-balance" class="text-4xl font-bold tracking-tight my-1"></p><div class="flex justify-between text-sm mt-2"><div><p class="text-xs" style="color: var(--text-secondary);">Thu nhập tháng</p><p id="total-income" class="font-semibold"></p></div><div class="text-right"><p class="text-xs" style="color: var(--text-secondary);">Chi tiêu tháng</p><p id="total-expense" class="font-semibold"></p></div></div></div><div id="savings-view" class="info-card-pane"><p class="text-sm" style="color: var(--text-secondary);">Đã tiết kiệm</p><p id="total-saved" class="text-4xl font-bold tracking-tight my-1" style="color: var(--primary-color);"></p><p id="total-saving-target" class="text-sm" style="color: var(--text-secondary);"></p></div><div id="expenses-view" class="info-card-pane"><p class="text-sm" style="color: var(--text-secondary);">Chi phí tháng này</p><p id="total-monthly-expenses" class="text-4xl font-bold tracking-tight my-1" style="color: var(--expense-color);"></p><p id="total-expenses-count" class="text-sm" style="color: var(--text-secondary);"></p></div></div><div class="h-[1px] my-4" style="background-color: var(--border-color);"></div><div id="info-card-nav" class="flex justify-around text-xs font-semibold"><div class="info-card-tab active" data-view="balance">Tổng Quan</div><div class="info-card-tab" data-view="savings">Tiết Kiệm</div><div class="info-card-tab" data-view="expenses">Chi Phí</div></div></div>
-                <div class="grid grid-cols-4 gap-4 text-center mb-8"><div><button id="quick-action-expense" class="quick-action-btn w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-arrow-down text-2xl" style="color: var(--expense-color);"></i></button><p class="text-xs font-medium" style="color: var(--text-secondary)">Chi Tiêu</p></div><div><button id="quick-action-income" class="quick-action-btn w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-arrow-up text-2xl" style="color: var(--income-color);"></i></button><p class="text-xs font-medium" style="color: var(--text-secondary)">Thu Nhập</p></div><div><button id="quick-action-transfer" class="quick-action-btn w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-exchange-alt text-2xl" style="color: var(--primary-color);"></i></button><p class="text-xs font-medium" style="color: var(--text-secondary)">Chuyển Tiền</p></div><div><button id="quick-action-add-wallet" class="quick-action-btn w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-plus text-2xl" style="color: var(--text-secondary);"></i></button><p class="text-xs font-medium" style="color: var(--text-secondary)">Thêm Ví</p></div></div>
-                <div><div class="dashboard-tab-container relative flex mb-4 p-1 rounded-lg"><div id="dashboard-tab-glider" class="absolute w-1/2 h-[calc(100%-8px)] top-1"></div><button class="dashboard-tab active font-semibold py-2 px-4 w-1/2" data-tab="wallets">Tài Khoản</button><button class="dashboard-tab font-semibold py-2 px-4 w-1/2" data-tab="recent">Giao Dịch Gần Đây</button></div><div><div id="wallets-content" class="dashboard-tab-content active space-y-3"></div><div id="recent-transactions-content" class="dashboard-tab-content space-y-3"></div></div></div>
-            </div>
-
+                <header class="mb-6 flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-bold">Tổng Quan</h1>
+                        <p style="color:var(--text-secondary)">Chào mừng bạn trở lại!</p>
+                    </div><button id="toggle-balance-visibility" class="p-3 text-xl" style="color: var(--text-secondary);"><i class="fas fa-eye"></i></button>
+                </header>
+                <div class="info-card p-6 rounded-2xl shadow-lg mb-6" style="background-color: var(--card-background);">
+                    <div id="info-card-content" class="relative min-h-[96px]">
+                        <div id="balance-view" class="info-card-pane active">
+                            <p class="text-sm" style="color: var(--text-secondary);">Tổng số dư</p>
+                            <p id="total-balance" class="text-4xl font-bold tracking-tight my-1"></p>
+                            <div class="flex justify-between text-sm mt-2">
+                                <div>
+                                    <p class="text-xs" style="color: var(--text-secondary);">Thu nhập tháng</p>
+                                    <p id="total-income" class="font-semibold"></p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-xs" style="color: var(--text-secondary);">Chi tiêu tháng</p>
+                                    <p id="total-expense" class="font-semibold"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="savings-view" class="info-card-pane">
+                            <p class="text-sm" style="color: var(--text-secondary);">Đã tiết kiệm</p>
+                            <p id="total-saved" class="text-4xl font-bold tracking-tight my-1" style="color: var(--primary-color);"></p>
+                            <p id="total-saving-target" class="text-sm" style="color: var(--text-secondary);"></p>
+                        </div>
+                        <div id="expenses-view" class="info-card-pane">
+                            <p class="text-sm" style="color: var(--text-secondary);">Chi phí tháng này</p>
+                            <p id="total-monthly-expenses" class="text-4xl font-bold tracking-tight my-1" style="color: var(--expense-color);"></p>
+                            <p id="total-expenses-count" class="text-sm" style="color: var(--text-secondary);"></p>
+                        </div>
+                    </div>
+                    <div class="h-[1px] my-4" style="background-color: var(--border-color);"></div>
+                    <div id="info-card-nav" class="flex justify-around text-xs font-semibold">
+                        <div class="info-card-tab active" data-view="balance">Tổng Quan</div>
+                        <div class="info-card-tab" data-view="savings">Tiết Kiệm</div>
+                        <div class="info-card-tab" data-view="expenses">Chi Phí</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-4 gap-4 text-center mb-8">
+                    <div><button id="quick-action-expense" class="quick-action-btn w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-arrow-down text-2xl" style="color: var(--expense-color);"></i></button>
+                        <p class="text-xs font-medium" style="color: var(--text-secondary)">Chi Tiêu</p>
+                    </div>
+                    <div><button id="quick-action-income" class="quick-action-btn w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-arrow-up text-2xl" style="color: var(--income-color);"></i></button>
+                        <p class="text-xs font-medium" style="color: var(--text-secondary)">Thu Nhập</p>
+                    </div>
+                    <div><button id="quick-action-transfer" class="quick-action-btn w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-exchange-alt text-2xl" style="color: var(--primary-color);"></i></button>
+                        <p class="text-xs font-medium" style="color: var(--text-secondary)">Chuyển Tiền</p>
+                    </div>
+                    <div><button id="quick-action-add-wallet" class="quick-action-btn w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-2"><i class="fas fa-plus text-2xl" style="color: var(--text-secondary);"></i></button>
+                        <p class="text-xs font-medium" style="color: var(--text-secondary)">Thêm Ví</p>
+                    </div>
+                </div>
+                    <div class="dashboard-tab-container relative flex mb-4 p-1 rounded-lg">
+                        <div id="dashboard-tab-glider" class="absolute w-1/2 h-[calc(100%-8px)] top-1">
+                            
+                        </div><button class="dashboard-tab active font-semibold py-2 px-4 w-1/2" data-tab="wallets">Tài Khoản</button>
+<button class="dashboard-tab font-semibold py-2 px-4 w-1/2" data-tab="recent-transactions">Giao Dịch Gần Đây</button>
+                    </div>
+                    <div>
+                        <div id="wallets-content" class="dashboard-tab-content active space-y-3"></div>
+                        <div id="recent-transactions-content" class="dashboard-tab-content space-y-3"></div>
+                    </div>
+                    </div>
+                  
+                    
+<div>
+    <div id="wallets-content" class="dashboard-tab-content active space-y-3"></div>
+    <div id="recent-transactions-content" class="dashboard-tab-content space-y-3"></div>
+</div>
             <div id="history-screen" class="screen p-4">
-                 <header class="mb-4">
+                <header class="mb-4">
                     <h1 class="text-2xl font-bold">Lịch Sử Giao Dịch</h1>
                     <div class="mt-4"><input type="search" id="history-search-input" class="form-input w-full p-3 text-base" placeholder="🔎 Tìm theo hạng mục, ghi chú..."></div>
                     <details class="mt-2">
                         <summary class="cursor-pointer text-sm font-semibold py-2" style="color: var(--primary-color);">Bộ lọc nâng cao <i class="fas fa-chevron-down text-xs ml-1"></i></summary>
                         <div id="history-filters" class="p-4 mt-2 rounded-lg space-y-4" style="background-color: var(--card-background);">
                             <div class="grid grid-cols-2 gap-4">
-                                <div><label for="history-type-filter" class="text-xs font-medium" style="color:var(--text-secondary)">Loại GD</label><select id="history-type-filter" class="form-select mt-1 w-full"><option value="all">Tất cả</option><option value="income">Khoản thu</option><option value="expense">Khoản chi</option></select></div>
-                                <div><label for="history-wallet-filter" class="text-xs font-medium" style="color:var(--text-secondary)">Ví</label><select id="history-wallet-filter" class="form-select mt-1 w-full"><option value="all">Tất cả</option></select></div>
+                                <div><label for="history-type-filter" class="text-xs font-medium" style="color:var(--text-secondary)">Loại GD</label><select id="history-type-filter" class="form-select mt-1 w-full">
+                                        <option value="all">Tất cả</option>
+                                        <option value="income">Khoản thu</option>
+                                        <option value="expense">Khoản chi</option>
+                                    </select></div>
+                                <div><label for="history-wallet-filter" class="text-xs font-medium" style="color:var(--text-secondary)">Ví</label><select id="history-wallet-filter" class="form-select mt-1 w-full">
+                                        <option value="all">Tất cả</option>
+                                    </select></div>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
                                 <div><label for="history-start-date" class="text-xs font-medium" style="color:var(--text-secondary)">Từ ngày</label><input type="date" id="history-start-date" class="form-input mt-1 w-full"></div>
@@ -178,29 +657,245 @@
                             </div>
                         </div>
                     </details>
-                 </header>
-                 <div id="full-transaction-list" class="space-y-1"></div>
+                </header>
+                <div id="full-transaction-list" class="space-y-1"></div>
             </div>
-
-            <div id="savings-screen" class="screen p-4"><header class="mb-6 flex justify-between items-center"><h1 class="text-2xl font-bold">Mục Tiêu Tiết Kiệm</h1><button id="add-saving-goal-btn" class="btn btn-primary !py-2 !px-4 flex items-center"><i class="fas fa-plus mr-2"></i>Thêm</button></header><div id="saving-goals-list" class="space-y-4"></div></div>
-            <div id="expenses-screen" class="screen p-4"><header class="mb-6 flex justify-between items-center"><h1 class="text-2xl font-bold">Chi Phí Định Kỳ</h1><button id="add-recurring-expense-btn" class="btn btn-primary !py-2 !px-4 flex items-center"><i class="fas fa-plus mr-2"></i>Thêm</button></header><div id="recurring-expenses-timeline"></div></div>
-            <div id="settings-screen" class="screen p-4"><header class="mb-6"><h1 class="text-2xl font-bold">Cài Đặt</h1></header><div class="space-y-4"><div class="setting-card"><h3 class="text-lg font-bold mb-4">Giao diện</h3><div class="grid grid-cols-2 gap-4"><button class="theme-btn" data-theme="dark"><div class="theme-swatch" style="background: linear-gradient(45deg, #0a1931, #183153);"></div><span class="text-sm">Bóng Đêm</span></button><button class="theme-btn" data-theme="light"><div class="theme-swatch" style="background: linear-gradient(45deg, #f4f7fa, #ffffff);"></div><span class="text-sm">Cổ Điển</span></button><button class="theme-btn" data-theme="mint"><div class="theme-swatch" style="background: linear-gradient(45deg, #111827, #1F2937);"></div><span class="text-sm">Bạc Hà</span></button><button class="theme-btn" data-theme="luxury"><div class="theme-swatch" style="background: linear-gradient(45deg, #121212, #1E1E1E);"></div><span class="text-sm">Sang Trọng</span></button></div></div><div class="setting-card"><div class="setting-item"><div class="flex items-center"><i class="fas fa-money-bill-wave w-8 text-center text-xl mr-4" style="color: var(--text-secondary)"></i><p class="font-semibold">Tiền tệ chính</p></div><select id="currency-select" class="form-select w-40"><option value="VND">Việt Nam Đồng (VNĐ)</option><option value="USD">US Dollar ($)</option><option value="JPY">Japanese Yen (¥)</option></select></div></div><div class="setting-card"><h3 class="text-lg font-bold mb-4">Quản lý Dữ liệu</h3><div class="flex gap-4"><button id="export-data-btn" class="btn btn-secondary w-full flex items-center justify-center gap-2"><i class="fas fa-upload"></i>Xuất File</button><button id="import-data-btn" class="btn btn-secondary w-full flex items-center justify-center gap-2"><i class="fas fa-download"></i>Nhập File</button><input type="file" id="import-file-input" class="hidden" accept=".json"></div></div><div class="setting-card"><div class="setting-item"><div class="flex items-center"><i class="fas fa-trash-alt w-8 text-center text-xl mr-4" style="color: var(--expense-color);"></i><p class="font-semibold">Xóa Dữ Liệu</p></div><button id="reset-data-btn" class="btn font-bold" style="background-color: var(--expense-color); color: white;">Xóa Toàn Bộ</button></div></div></div></div>
+            
+            <div id="savings-screen" class="screen p-4">
+                <header class="mb-6 flex justify-between items-center">
+                    <h1 class="text-2xl font-bold">Mục Tiêu Tiết Kiệm</h1><button id="add-saving-goal-btn" class="btn btn-primary !py-2 !px-4 flex items-center"><i class="fas fa-plus mr-2"></i>Thêm</button>
+                </header>
+                <div id="saving-goals-list" class="space-y-4"></div>
+            </div>
+            <div id="expenses-screen" class="screen p-4">
+                <header class="mb-6 flex justify-between items-center">
+                    <h1 class="text-2xl font-bold">Chi Phí Định Kỳ</h1><button id="add-recurring-expense-btn" class="btn btn-primary !py-2 !px-4 flex items-center"><i class="fas fa-plus mr-2"></i>Thêm</button>
+                </header>
+                <div id="recurring-expenses-timeline"></div>
+            </div>
+            <div id="settings-screen" class="screen p-4">
+                <header class="mb-6">
+                    <h1 class="text-2xl font-bold">Cài Đặt</h1>
+                </header>
+                
+                <div id="account-management-card" class="setting-card mb-4">
+                    <div id="logged-out-view">
+                        <h3 class="text-lg font-bold mb-2">Đồng bộ hóa đám mây</h3>
+                        <p class="text-sm mb-4" style="color: var(--text-secondary);">Đăng nhập để lưu trữ dữ liệu an toàn và truy cập từ bất kỳ đâu.</p>
+                        <button id="login-google-btn" class="btn btn-primary w-full flex items-center justify-center gap-2">
+                            <i class="fab fa-google"></i>
+                            <span>Đăng nhập với Google</span>
+                        </button>
+                    </div>
+                    
+                    <div id="logged-in-view" class="hidden">
+                        <div class="flex items-center mb-4">
+                            <img id="user-avatar" class="w-12 h-12 rounded-full mr-4" src="" alt="Avatar">
+                            <div>
+                                <p id="user-display-name" class="font-bold"></p>
+                                <p id="user-email" class="text-sm" style="color: var(--text-secondary);"></p>
+                            </div>
+                        </div>
+                        <button id="logout-btn" class="btn btn-secondary w-full">Đăng xuất</button>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="setting-card">
+                        <h3 class="text-lg font-bold mb-4">Giao diện</h3>
+                        <div class="grid grid-cols-2 gap-4"><button class="theme-btn" data-theme="dark">
+                                <div class="theme-swatch" style="background: linear-gradient(45deg, #0a1931, #183153);"></div><span class="text-sm">Bóng Đêm</span>
+                            </button><button class="theme-btn" data-theme="light">
+                                <div class="theme-swatch" style="background: linear-gradient(45deg, #f4f7fa, #ffffff);"></div><span class="text-sm">Cổ Điển</span>
+                            </button><button class="theme-btn" data-theme="mint">
+                                <div class="theme-swatch" style="background: linear-gradient(45deg, #111827, #1F2937);"></div><span class="text-sm">Bạc Hà</span>
+                            </button><button class="theme-btn" data-theme="luxury">
+                                <div class="theme-swatch" style="background: linear-gradient(45deg, #121212, #1E1E1E);"></div><span class="text-sm">Sang Trọng</span>
+                            </button></div>
+                    </div>
+                    <div class="setting-card">
+                        <div class="setting-item">
+                            <div class="flex items-center"><i class="fas fa-money-bill-wave w-8 text-center text-xl mr-4" style="color: var(--text-secondary)"></i>
+                                <p class="font-semibold">Tiền tệ chính</p>
+                            </div><select id="currency-select" class="form-select w-40">
+                                <option value="VND">Việt Nam Đồng (VNĐ)</option>
+                                <option value="USD">US Dollar ($)</option>
+                                <option value="JPY">Japanese Yen (¥)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-card">
+                        <h3 class="text-lg font-bold mb-4">Quản lý Dữ liệu</h3>
+                        <div class="flex gap-4"><button id="export-data-btn" class="btn btn-secondary w-full flex items-center justify-center gap-2"><i class="fas fa-upload"></i>Xuất File</button><button id="import-data-btn" class="btn btn-secondary w-full flex items-center justify-center gap-2"><i class="fas fa-download"></i>Nhập File</button><input type="file" id="import-file-input" class="hidden" accept=".json"></div>
+                    </div>
+                    <div class="setting-card">
+                        <div class="setting-item">
+                            <div class="flex items-center"><i class="fas fa-trash-alt w-8 text-center text-xl mr-4" style="color: var(--expense-color);"></i>
+                                <p class="font-semibold">Xóa Dữ Liệu</p>
+                            </div><button id="reset-data-btn" class="btn font-bold" style="background-color: var(--expense-color); color: white;">Xóa Toàn Bộ</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
-
+        
         <div id="fab-backdrop" class="fixed inset-0"></div>
-        <div id="fab-container" class="fixed bottom-20 right-4 z-[100] flex flex-col items-end"><div class="fab-action"><span class="fab-action-label mr-3 rounded-md px-3 py-1 text-sm bg-gray-700 text-white">Thêm Mục Tiêu</span><button id="fab-action-saving" class="mini-fab w-12 h-12 rounded-full flex items-center justify-center"><i class="fas fa-piggy-bank"></i></button></div><div class="fab-action"><span class="fab-action-label mr-3 rounded-md px-3 py-1 text-sm bg-gray-700 text-white">Chuyển Tiền</span><button id="fab-action-transfer" class="mini-fab w-12 h-12 rounded-full flex items-center justify-center"><i class="fas fa-exchange-alt"></i></button></div><div class="fab-action"><span class="fab-action-label mr-3 rounded-md px-3 py-1 text-sm bg-gray-700 text-white">Thu Nhập</span><button id="fab-action-income" class="mini-fab w-12 h-12 rounded-full flex items-center justify-center"><i class="fas fa-arrow-up"></i></button></div><div class="fab-action"><span class="fab-action-label mr-3 rounded-md px-3 py-1 text-sm bg-gray-700 text-white">Chi Tiêu</span><button id="fab-action-expense" class="mini-fab w-12 h-12 rounded-full flex items-center justify-center"><i class="fas fa-arrow-down"></i></button></div><button id="fab-main" class="w-16 h-16 flex items-center justify-center shadow-lg"><i class="fas fa-plus text-2xl"></i></button></div>
-        <nav class="bottom-nav"><div class="nav-item active" data-screen="dashboard-screen"><i class="fas fa-home"></i><span>Tổng quan</span></div><div class="nav-item" data-screen="history-screen"><i class="fas fa-history"></i><span>Lịch sử</span></div><div class="nav-item" data-screen="savings-screen"><i class="fas fa-piggy-bank"></i><span>Tiết kiệm</span></div><div class="nav-item" data-screen="expenses-screen"><i class="fas fa-calendar-alt"></i><span>Chi phí</span></div><div class="nav-item" data-screen="settings-screen"><i class="fas fa-cog"></i><span>Cài đặt</span></div></nav>
+        <div id="fab-container" class="fixed bottom-20 right-4 z-[100] flex flex-col items-end">
+            <div class="fab-action"><span class="fab-action-label mr-3 rounded-md px-3 py-1 text-sm bg-gray-700 text-white">Thêm Mục Tiêu</span><button id="fab-action-saving" class="mini-fab w-12 h-12 rounded-full flex items-center justify-center"><i class="fas fa-piggy-bank"></i></button></div>
+            <div class="fab-action"><span class="fab-action-label mr-3 rounded-md px-3 py-1 text-sm bg-gray-700 text-white">Chuyển Tiền</span><button id="fab-action-transfer" class="mini-fab w-12 h-12 rounded-full flex items-center justify-center"><i class="fas fa-exchange-alt"></i></button></div>
+            <div class="fab-action"><span class="fab-action-label mr-3 rounded-md px-3 py-1 text-sm bg-gray-700 text-white">Thu Nhập</span><button id="fab-action-income" class="mini-fab w-12 h-12 rounded-full flex items-center justify-center"><i class="fas fa-arrow-up"></i></button></div>
+            <div class="fab-action"><span class="fab-action-label mr-3 rounded-md px-3 py-1 text-sm bg-gray-700 text-white">Chi Tiêu</span><button id="fab-action-expense" class="mini-fab w-12 h-12 rounded-full flex items-center justify-center"><i class="fas fa-arrow-down"></i></button></div><button id="fab-main" class="w-16 h-16 flex items-center justify-center shadow-lg"><i class="fas fa-plus text-2xl"></i></button>
+        </div>
+        <nav class="bottom-nav">
+            <div class="nav-item active" data-screen="dashboard-screen"><i class="fas fa-home"></i><span>Tổng quan</span></div>
+            <div class="nav-item" data-screen="history-screen"><i class="fas fa-history"></i><span>Lịch sử</span></div>
+            <div class="nav-item" data-screen="savings-screen"><i class="fas fa-piggy-bank"></i><span>Tiết kiệm</span></div>
+            <div class="nav-item" data-screen="expenses-screen"><i class="fas fa-calendar-alt"></i><span>Chi phí</span></div>
+            <div class="nav-item" data-screen="settings-screen"><i class="fas fa-cog"></i><span>Cài đặt</span></div>
+        </nav>
     </div>
-
-    <div id="add-transaction-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center"><div class="modal-content p-6 w-11/12 max-w-sm"><h2 id="transaction-modal-title" class="text-xl font-bold mb-4"></h2><form id="transaction-form" novalidate><div class="grid grid-cols-3 gap-2 mb-4 p-1 rounded-lg" style="background-color: var(--background-color);"><button type="button" data-type="expense" class="transaction-type-btn btn !py-2 !px-1 text-sm">Chi Tiêu</button><button type="button" data-type="income" class="transaction-type-btn btn !py-2 !px-1 text-sm">Thu Nhập</button><button type="button" data-type="transfer" class="transaction-type-btn btn !py-2 !px-1 text-sm">Chuyển tiền</button></div><div id="transaction-fields"><div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền</label><input type="number" step="any" id="amount" class="form-input w-full p-2" placeholder="0"></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Hạng mục</label><div id="category-chips-container" class="flex flex-wrap gap-2 mt-1"></div><div id="add-category-form" class="hidden w-full flex gap-2 mt-2"><input type="text" id="new-category-name" class="form-input flex-grow p-2" placeholder="Tên hạng mục mới"><button type="button" id="save-new-category-btn" class="btn btn-primary !p-2">Lưu</button></div><input type="hidden" id="category"></div><div class="mb-3"><label id="wallet-select-label" class="block text-sm font-medium mb-1"></label><select id="wallet-select" class="form-select w-full p-2"></select></div><div class="mb-3"><label for="transaction-date" class="block text-sm font-medium mb-1">Ngày</label><input type="date" id="transaction-date" class="form-input w-full p-2"></div></div><div id="transfer-fields" class="hidden"><div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền</label><input type="number" step="any" id="transfer-amount" class="form-input w-full p-2" placeholder="0"></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Từ ví</label><select id="from-wallet-select" class="form-select w-full p-2"></select></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Đến ví</label><select id="to-wallet-select" class="form-select w-full p-2"></select></div><div class="mb-3"><label for="transfer-date" class="block text-sm font-medium mb-1">Ngày</label><input type="date" id="transfer-date" class="form-input w-full p-2"></div></div><div class="mb-4"><label class="block text-sm font-medium mb-1">Ghi chú</label><input type="text" id="description" class="form-input w-full p-2" placeholder="Tùy chọn"></div><div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Lưu</button></div></form></div></div>
-    <div id="edit-transaction-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center"><div class="modal-content p-6 w-11/12 max-w-sm"><h2 class="text-xl font-bold mb-4">Chỉnh Sửa Giao Dịch</h2><form id="edit-transaction-form" novalidate><div class="mb-3"><div class="flex rounded-md shadow-sm"><button type="button" id="edit-type-expense" class="btn w-1/2 !rounded-r-none">Chi Tiêu</button><button type="button" id="edit-type-income" class="btn w-1/2 !rounded-l-none">Thu Nhập</button></div></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền</label><input type="number" step="any" id="edit-amount" class="form-input w-full p-2" required></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Hạng mục</label><div id="edit-category-chips-container" class="flex flex-wrap gap-2 mt-1"></div><div id="edit-add-category-form" class="hidden w-full flex gap-2 mt-2"><input type="text" id="edit-new-category-name" class="form-input flex-grow p-2" placeholder="Tên hạng mục mới"><button type="button" class="save-new-category-btn btn btn-primary !p-2">Lưu</button></div><input type="hidden" id="edit-category" required></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Chọn ví</label><select id="edit-wallet-select" class="form-select w-full p-2" required></select></div><div class="mb-3"><label for="edit-transaction-date" class="block text-sm font-medium mb-1">Ngày</label><input type="date" id="edit-transaction-date" class="form-input w-full p-2" required></div><div class="mb-4"><label class="block text-sm font-medium mb-1">Ghi chú</label><input type="text" id="edit-description" class="form-input w-full p-2"></div><div class="flex space-x-2"><button type="button" id="delete-transaction-btn" class="btn !py-3 w-1/3" style="background-color: var(--expense-color); color: white;">Xóa</button><button type="button" class="btn-cancel-modal btn btn-secondary w-1/3">Hủy</button><button type="submit" class="btn btn-primary w-1/3">Lưu</button></div></form></div></div>
-    <div id="add-wallet-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center"><div class="modal-content p-6 w-11/12 max-w-sm"><h2 class="text-xl font-bold mb-4">Thêm Ví Mới</h2><form id="wallet-form"><div class="mb-3"><label class="block text-sm font-medium mb-1">Tên ví</p><input type="text" id="wallet-name" class="form-input w-full p-2" placeholder="VD: Tiền mặt, Ngân hàng" required></div><div class="mb-4"><label class="block text-sm font-medium mb-1">Số dư ban đầu</p><input type="number" step="any" id="initial-balance" class="form-input w-full p-2" placeholder="0" required value="0"></div><div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Tạo ví</button></div></form></div></div>
-    <div id="edit-wallet-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center"><div class="modal-content p-6 w-11/12 max-w-sm"><h2 class="text-xl font-bold mb-4">Chỉnh Sửa Ví</h2><form id="edit-wallet-form"><div class="mb-3"><label class="block text-sm font-medium mb-1">Tên ví</p><input type="text" id="edit-wallet-name" class="form-input w-full p-2" required></div><div class="mb-4"><label class="block text-sm font-medium mb-1">Số dư hiện tại</p><input type="number" step="any" id="edit-wallet-balance" class="form-input w-full p-2" required></div><div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Lưu Thay Đổi</button></div></form></div></div>
-    <div id="confirm-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center"><div class="modal-content text-center p-6 w-11/12 max-w-sm"><h2 id="confirm-title" class="text-xl font-bold mb-2">Xác nhận</h2><p id="confirm-message" class="mb-6 whitespace-pre-wrap" style="color: var(--text-secondary);"></p><div class="flex space-x-3"><button id="confirm-cancel-btn" class="btn btn-secondary w-1/2">Hủy</button><button id="confirm-ok-btn" class="btn btn-primary w-1/2">Đồng ý</button></div></div></div>
-    <div id="saving-goal-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center"><div class="modal-content p-6 w-11/12 max-w-sm"><h2 id="saving-goal-modal-title" class="text-xl font-bold mb-4"></h2><form id="saving-goal-form"><div class="mb-3"><label class="block text-sm font-medium mb-1">Tên mục tiêu</label><input type="text" id="saving-name" class="form-input w-full p-2" required></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Icon (Emoji)</label><input type="text" id="saving-icon" class="form-input w-full p-2" placeholder="🚗"></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền mục tiêu</label><input type="number" id="saving-target" class="form-input w-full p-2" required></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Hạn chót (Tùy chọn)</label><input type="date" id="saving-deadline" class="form-input w-full p-2"></div><div class="mb-4"><label class="block text-sm font-medium mb-1">Ghi chú</label><textarea id="saving-note" rows="2" class="form-input w-full p-2"></textarea></div><div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Lưu</button></div></form></div></div>
-    <div id="recurring-expense-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center"><div class="modal-content p-6 w-11/12 max-w-sm"><h2 id="recurring-expense-modal-title" class="text-xl font-bold mb-4"></h2><form id="recurring-expense-form"><div class="mb-3"><label class="block text-sm font-medium mb-1">Tên chi phí</label><input type="text" id="expense-name" class="form-input w-full p-2" required></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Icon (Emoji)</label><input type="text" id="expense-icon" class="form-input w-full p-2" placeholder="🏠"></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền</label><input type="number" id="expense-amount" class="form-input w-full p-2" required></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Loại</label><select id="expense-type" class="form-select w-full p-2"><option value="fixed">Cố định</option><option value="flexible">Linh hoạt</option></select></div><div class="mb-3"><label class="block text-sm font-medium mb-1">Ngày (hàng tháng)</label><input type="number" id="expense-date" class="form-input w-full p-2" placeholder="VD: 15" min="1" max="31" required></div><div class="mb-4"><label class="block text-sm font-medium mb-1">Ghi chú</label><textarea id="expense-note" rows="2" class="form-input w-full p-2"></textarea></div><div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Lưu</button></div></form></div></div>
-    <div id="add-to-saving-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center"><div class="modal-content p-6 w-11/12 max-w-sm"><h2 class="text-xl font-bold mb-4">Nạp tiền tiết kiệm</h2><form id="add-to-saving-form"><div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền nạp</label><input type="number" id="add-saving-amount" class="form-input w-full p-2" required></div><div class="mb-4"><label class="block text-sm font-medium mb-1">Từ ví</label><select id="add-saving-wallet-select" class="form-select w-full p-2" required></select></div><div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Nạp</button></div></form></div></div>
+    
+    <div id="add-transaction-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+        <div class="modal-content p-6 w-11/12 max-w-sm">
+            <h2 id="transaction-modal-title" class="text-xl font-bold mb-4"></h2>
+            <form id="transaction-form" novalidate>
+                <div class="grid grid-cols-3 gap-2 mb-4 p-1 rounded-lg" style="background-color: var(--background-color);"><button type="button" data-type="expense" class="transaction-type-btn btn !py-2 !px-1 text-sm">Chi Tiêu</button><button type="button" data-type="income" class="transaction-type-btn btn !py-2 !px-1 text-sm">Thu Nhập</button><button type="button" data-type="transfer" class="transaction-type-btn btn !py-2 !px-1 text-sm">Chuyển tiền</button></div>
+                <div id="transaction-fields">
+                    <div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền</label><input type="number" step="any" id="amount" class="form-input w-full p-2" placeholder="0"></div>
+                    <div class="mb-3"><label class="block text-sm font-medium mb-1">Hạng mục</label>
+                        <div id="category-chips-container" class="flex flex-wrap gap-2 mt-1"></div>
+                        <div id="add-category-form" class="hidden w-full flex gap-2 mt-2"><input type="text" id="new-category-name" class="form-input flex-grow p-2" placeholder="Tên hạng mục mới"><button type="button" id="save-new-category-btn" class="btn btn-primary !p-2">Lưu</button></div><input type="hidden" id="category">
+                    </div>
+                    <div class="mb-3"><label id="wallet-select-label" class="block text-sm font-medium mb-1"></label><select id="wallet-select" class="form-select w-full p-2"></select></div>
+                    <div class="mb-3"><label for="transaction-date" class="block text-sm font-medium mb-1">Ngày</label><input type="date" id="transaction-date" class="form-input w-full p-2"></div>
+                </div>
+                <div id="transfer-fields" class="hidden">
+                    <div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền</label><input type="number" step="any" id="transfer-amount" class="form-input w-full p-2" placeholder="0"></div>
+                    <div class="mb-3"><label class="block text-sm font-medium mb-1">Từ ví</label><select id="from-wallet-select" class="form-select w-full p-2"></select></div>
+                    <div class="mb-3"><label class="block text-sm font-medium mb-1">Đến ví</label><select id="to-wallet-select" class="form-select w-full p-2"></select></div>
+                    <div class="mb-3"><label for="transfer-date" class="block text-sm font-medium mb-1">Ngày</label><input type="date" id="transfer-date" class="form-input w-full p-2"></div>
+                </div>
+                <div class="mb-4"><label class="block text-sm font-medium mb-1">Ghi chú</label><input type="text" id="description" class="form-input w-full p-2" placeholder="Tùy chọn"></div>
+                <div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Lưu</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="edit-transaction-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+        <div class="modal-content p-6 w-11/12 max-w-sm">
+            <h2 class="text-xl font-bold mb-4">Chỉnh Sửa Giao Dịch</h2>
+            <form id="edit-transaction-form" novalidate>
+                <div class="mb-3">
+                    <div class="flex rounded-md shadow-sm"><button type="button" id="edit-type-expense" class="btn w-1/2 !rounded-r-none">Chi Tiêu</button><button type="button" id="edit-type-income" class="btn w-1/2 !rounded-l-none">Thu Nhập</button></div>
+                </div>
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền</label><input type="number" step="any" id="edit-amount" class="form-input w-full p-2" required></div>
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Hạng mục</label>
+                    <div id="edit-category-chips-container" class="flex flex-wrap gap-2 mt-1"></div>
+                    <div id="edit-add-category-form" class="hidden w-full flex gap-2 mt-2"><input type="text" id="edit-new-category-name" class="form-input flex-grow p-2" placeholder="Tên hạng mục mới"><button type="button" class="save-new-category-btn btn btn-primary !p-2">Lưu</button></div><input type="hidden" id="edit-category" required>
+                </div>
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Chọn ví</label><select id="edit-wallet-select" class="form-select w-full p-2" required></select></div>
+                <div class="mb-3"><label for="edit-transaction-date" class="block text-sm font-medium mb-1">Ngày</label><input type="date" id="edit-transaction-date" class="form-input w-full p-2" required></div>
+                <div class="mb-4"><label class="block text-sm font-medium mb-1">Ghi chú</label><input type="text" id="edit-description" class="form-input w-full p-2"></div>
+                <div class="flex space-x-2"><button type="button" id="delete-transaction-btn" class="btn !py-3 w-1/3" style="background-color: var(--expense-color); color: white;">Xóa</button><button type="button" class="btn-cancel-modal btn btn-secondary w-1/3">Hủy</button><button type="submit" class="btn btn-primary w-1/3">Lưu</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="add-wallet-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+        <div class="modal-content p-6 w-11/12 max-w-sm">
+            <h2 class="text-xl font-bold mb-4">Thêm Ví Mới</h2>
+            <form id="wallet-form">
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Tên ví</p><input type="text" id="wallet-name" class="form-input w-full p-2" placeholder="VD: Tiền mặt, Ngân hàng" required></div>
+                <div class="mb-4"><label class="block text-sm font-medium mb-1">Số dư ban đầu</p><input type="number" step="any" id="initial-balance" class="form-input w-full p-2" placeholder="0" required value="0"></div>
+                <div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Tạo ví</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="edit-wallet-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+        <div class="modal-content p-6 w-11/12 max-w-sm">
+            <h2 class="text-xl font-bold mb-4">Chỉnh Sửa Ví</h2>
+            <form id="edit-wallet-form">
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Tên ví</p><input type="text" id="edit-wallet-name" class="form-input w-full p-2" required></div>
+                <div class="mb-4"><label class="block text-sm font-medium mb-1">Số dư hiện tại</p><input type="number" step="any" id="edit-wallet-balance" class="form-input w-full p-2" required></div>
+                <div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Lưu Thay Đổi</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="withdraw-from-saving-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+    <div class="modal-content p-6 w-11/12 max-w-sm">
+        <h2 class="text-xl font-bold mb-4">Rút tiền tiết kiệm</h2>
+        <form id="withdraw-from-saving-form">
+            <div class="mb-3">
+                <label class="block text-sm font-medium mb-1">Số tiền rút</label>
+                <input type="number" id="withdraw-saving-amount" class="form-input w-full p-2" required>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Vào ví</label>
+                <select id="withdraw-saving-wallet-select" class="form-select w-full p-2" required></select>
+            </div>
+            <div class="flex space-x-3">
+                <button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button>
+                <button type="submit" class="btn btn-primary w-1/2">Rút tiền</button>
+            </div>
+        </form>
+    </div>
+</div>
+    <div id="confirm-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+        <div class="modal-content text-center p-6 w-11/12 max-w-sm">
+            <h2 id="confirm-title" class="text-xl font-bold mb-2">Xác nhận</h2>
+            <p id="confirm-message" class="mb-6 whitespace-pre-wrap" style="color: var(--text-secondary);"></p>
+            <div class="flex space-x-3"><button id="confirm-cancel-btn" class="btn btn-secondary w-1/2">Hủy</button><button id="confirm-ok-btn" class="btn btn-primary w-1/2">Đồng ý</button></div>
+        </div>
+    </div>
+    <div id="saving-goal-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+        <div class="modal-content p-6 w-11/12 max-w-sm">
+            <h2 id="saving-goal-modal-title" class="text-xl font-bold mb-4"></h2>
+            <form id="saving-goal-form">
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Tên mục tiêu</label><input type="text" id="saving-name" class="form-input w-full p-2" required></div>
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Icon (Emoji)</label><input type="text" id="saving-icon" class="form-input w-full p-2" placeholder="🚗"></div>
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền mục tiêu</label><input type="number" id="saving-target" class="form-input w-full p-2" required></div>
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Hạn chót (Tùy chọn)</label><input type="date" id="saving-deadline" class="form-input w-full p-2"></div>
+                <div class="mb-4"><label class="block text-sm font-medium mb-1">Ghi chú</label><textarea id="saving-note" rows="2" class="form-input w-full p-2"></textarea></div>
+                <div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Lưu</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="recurring-expense-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+        <div class="modal-content p-6 w-11/12 max-w-sm">
+            <h2 id="recurring-expense-modal-title" class="text-xl font-bold mb-4"></h2>
+            <form id="recurring-expense-form">
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Tên chi phí</label><input type="text" id="expense-name" class="form-input w-full p-2" required></div>
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Icon (Emoji)</label><input type="text" id="expense-icon" class="form-input w-full p-2" placeholder="🏠"></div>
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền</label><input type="number" id="expense-amount" class="form-input w-full p-2" required></div>
+<div class="mb-3">
+    <label class="block text-sm font-medium mb-1">Loại</label>
+    <select id="expense-type" class="form-select w-full p-2">
+        <option value="fixed">Cố định</option>
+        <option value="flexible">Linh hoạt</option>
+    </select>
+</div>
+<div id="expense-date-wrapper" class="mb-3">
+    <label class="block text-sm font-medium mb-1">Ngày (hàng tháng)</label>
+    <input type="number" id="expense-date" class="form-input w-full p-2" placeholder="VD: 15" min="1" max="31" required>
+</div>
+                <div class="mb-4"><label class="block text-sm font-medium mb-1">Ghi chú</label><textarea id="expense-note" rows="2" class="form-input w-full p-2"></textarea></div>
+                <div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Lưu</button></div>
+            </form>
+        </div>
+    </div>
+    <div id="add-to-saving-modal" class="modal-backdrop fixed inset-0 flex items-center justify-center">
+        <div class="modal-content p-6 w-11/12 max-w-sm">
+            <h2 class="text-xl font-bold mb-4">Nạp tiền tiết kiệm</h2>
+            <form id="add-to-saving-form">
+                <div class="mb-3"><label class="block text-sm font-medium mb-1">Số tiền nạp</label><input type="number" id="add-saving-amount" class="form-input w-full p-2" required></div>
+                <div class="mb-4"><label class="block text-sm font-medium mb-1">Từ ví</label><select id="add-saving-wallet-select" class="form-select w-full p-2" required></select></div>
+                <div class="flex space-x-3"><button type="button" class="btn-cancel-modal btn btn-secondary w-1/2">Hủy</button><button type="submit" class="btn btn-primary w-1/2">Nạp</button></div>
+            </form>
+        </div>
+        <div id="toast" class="fixed top-5 right-5 bg-green-500 text-white px-5 py-3 rounded-lg shadow-lg opacity-0 transform translate-y-2 transition-all duration-300 z-[2000]">
+    <i class="fas fa-check-circle mr-2"></i>
+    <span id="toast-message"></span>
+</div>
+    </div>
     
     <script src="./script.js" defer></script>
 </body>
+
 </html>
