@@ -223,7 +223,16 @@ document.addEventListener('DOMContentLoaded', () => {
             backupListEl.innerHTML = querySnapshot.docs.map(doc => {
                 const backup = doc.data();
                 const date = backup.timestamp?.toDate().toLocaleString('vi-VN') || 'N/A';
-                return `<div class="p-3 border rounded-lg flex justify-between items-center" style="border-color: var(--border-color);"><div><p class="font-semibold">${backup.name}</p><p class="text-xs" style="color: var(--text-secondary);">${date}</p></div><button class="restore-btn btn btn-primary !py-1 !px-3" data-id="${doc.id}">Chọn</button></div>`;
+                return `<div class="p-3 border rounded-lg flex justify-between items-center" style="border-color: var(--border-color);">
+                            <div>
+                                <p class="font-semibold">${backup.name}</p>
+                                <p class="text-xs" style="color: var(--text-secondary);">${date}</p>
+                            </div>
+                            <div class="p-3 rounded-lg flex justify-between items-center">
+                                <button class="restore-btn btn btn-primary !py-1 !px-3 mr-2" data-id="${doc.id}">Chọn</button>
+                                <button class="delete-backup-btn btn btn-secondary !py-1 !px-3" data-id="${doc.id}" style="background-color: var(--expense-color); color: white;"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>`;
             }).join('');
         } catch (error) {
             console.error("Failed to fetch backups:", error);
@@ -239,7 +248,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const docRef = db.collection('users').doc(state.currentUser.uid).collection('backups').doc(backupId);
                     const docSnap = await docRef.get();
-                    if (docSnap.exists()) {
+                    // [SỬA LỖI] Thay đổi từ docSnap.exists() thành docSnap.exists
+                    if (docSnap.exists) { 
                         const backupData = docSnap.data().data;
                         localStorage.setItem('financeApp_v3.9', JSON.stringify(backupData));
                         showToast("Phục hồi thành công! Đang tải lại...");
@@ -249,13 +259,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
+    
+    // [MỚI] Thêm chức năng xóa bản sao lưu
+    const deleteBackupFromFirebase = async (backupId) => {
+        if (backupId === 'auto_backup') {
+            showToast("Không thể xóa bản sao lưu tự động.");
+            return;
+        }
+        showConfirmation({
+            title: 'Xác nhận Xóa',
+            message: 'Bạn có chắc chắn muốn xóa vĩnh viễn bản sao lưu này không? Hành động này không thể hoàn tác.',
+            okText: 'Xóa',
+            onConfirm: async () => {
+                try {
+                    await db.collection('users').doc(state.currentUser.uid).collection('backups').doc(backupId).delete();
+                    showToast("Đã xóa bản sao lưu thành công!");
+                    fetchAndShowBackups(); // Tải lại danh sách
+                } catch (error) {
+                    console.error("Delete backup failed:", error);
+                    showToast("Xóa bản sao lưu thất bại!");
+                }
+            }
+        });
+    };
 
     const updateLastBackupInfo = async () => {
         if (!state.currentUser || !lastBackupInfoEl) return;
         try {
             const docRef = db.collection('users').doc(state.currentUser.uid).collection('backups').doc('auto_backup');
             const docSnap = await docRef.get();
-            if (docSnap.exists()) {
+            if (docSnap.exists) {
                 const timestamp = docSnap.data().timestamp;
                 if (timestamp) { lastBackupInfoEl.textContent = `Sao lưu tự động lần cuối: ${timestamp.toDate().toLocaleString('vi-VN')}`; }
                 else { lastBackupInfoEl.textContent = 'Chưa có bản sao lưu tự động nào.'; }
@@ -389,7 +422,17 @@ document.addEventListener('DOMContentLoaded', () => {
     manualBackupBtn.addEventListener('click', manualBackupToFirebase);
     restoreBackupBtn.addEventListener('click', fetchAndShowBackups);
     autoBackupToggle.addEventListener('change', () => { state.settings.autoBackup = autoBackupToggle.checked; saveData(); });
-    backupListEl.addEventListener('click', e => { const target = e.target.closest('.restore-btn'); if (target) { restoreFromBackup(target.dataset.id); } });
+    // [CẬP NHẬT] Thêm listener cho nút xóa
+    backupListEl.addEventListener('click', e => { 
+        const restoreTarget = e.target.closest('.restore-btn'); 
+        if (restoreTarget) { 
+            restoreFromBackup(restoreTarget.dataset.id); 
+        }
+        const deleteTarget = e.target.closest('.delete-backup-btn');
+        if (deleteTarget) {
+            deleteBackupFromFirebase(deleteTarget.dataset.id);
+        }
+    });
     resetDataBtn.addEventListener('click', () => { showConfirmation({ title: 'Xóa Dữ Liệu Local?', message: 'Bạn có chắc chắn muốn xóa toàn bộ dữ liệu trên thiết bị này không? Hành động này không ảnh hưởng đến các bản sao lưu online.', okText: 'Xóa', onConfirm: () => { localStorage.removeItem('financeApp_v3.9'); state = getDefaultState(); applyUiState(); renderAll(); saveData(); showToast("Đã xóa dữ liệu local."); } }); });
     navItems.forEach(item => item.addEventListener('click', () => { if (item.dataset.screen) { switchScreen(item.dataset.screen);} }));
     toggleBalanceVisibilityBtn.addEventListener('click', () => { state.settings.balanceVisible = !state.settings.balanceVisible; toggleBalanceVisibilityBtn.querySelector('i').className = state.settings.balanceVisible ? 'fas fa-eye' : 'fas fa-eye-slash'; renderAll(); });
