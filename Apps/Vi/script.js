@@ -30,24 +30,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const getDefaultState = () => ({
         wallets: [{ id: Date.now(), name: 'Tiền mặt', balance: 0 }],
         transactions: [],
-        funds: [], // [CẬP NHẬT] Đổi tên từ savings -> funds
+        funds: [], 
         expenses: [],
-        debts: [], // [MỚI] Thêm sổ nợ
+        debts: [], 
         settings: {
-            theme: 'dark',
+            theme: 'luxury',
             currency: 'VND',
             balanceVisible: true,
             autoBackup: true,
+            totalMonthlyBudget: 0, 
             categories: {
                 expense: ['Ăn uống', 'Di chuyển', 'Hóa đơn', 'Mua sắm', 'Giải trí', 'Sức khỏe'],
                 income: ['Lương', 'Thưởng', 'Thu nhập phụ', 'Được tặng']
             },
-            budgetAllocation: { // [MỚI] Phân bổ ngân sách
+            budgetAllocation: { 
                 customize: false,
                 essential: 50,
                 wants: 30,
                 savings: 20,
-                categoryMap: {} // Map 'Category Name' -> 'essential' | 'wants'
+                categoryMap: {}
             }
         },
         uiState: {
@@ -59,8 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
         editingTransactionId: null,
         editingSavingGoalId: null,
         editingExpenseId: null,
-        editingDebtId: null, // [MỚI]
-        payingDebtId: null, // [MỚI]
+        editingDebtId: null, 
+        payingDebtId: null, 
         addingToSavingGoalId: null,
         withdrawingFromSavingGoalId: null,
     });
@@ -117,8 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const backupLoginPrompt = document.getElementById('backup-login-prompt');
     const backupListEl = document.getElementById('backup-list');
     const lastBackupInfoEl = document.getElementById('last-backup-info');
-
-    // [MỚI] DOM Elements
     const debtListEl = document.getElementById('debt-list');
     const debtModal = document.getElementById('debt-modal');
     const debtForm = document.getElementById('debt-form');
@@ -129,11 +128,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const manageCategoriesModal = document.getElementById('manage-categories-modal');
     const budgetComparisonContainer = document.getElementById('budget-comparison-container');
     const manageCategoriesBtn = document.getElementById('manage-categories-btn');
+    const offlineIndicator = document.getElementById('offline-indicator'); 
+    const totalBudgetInput = document.getElementById('total-budget-input'); 
 
     let transactionType = 'expense';
     let editTransactionType = 'expense';
     let confirmCallback = () => { };
     let expenseChartInstance = null;
+
+    const formatNumberInput = (value) => {
+        if (!value) return '';
+        const numberString = value.toString().replace(/\D/g, '');
+        if (numberString === '') return '';
+        const number = parseInt(numberString, 10);
+        return new Intl.NumberFormat('de-DE').format(number);
+    };
+
+    const deformatNumber = (formattedValue) => {
+        if (!formattedValue) return '0';
+        return formattedValue.toString().replace(/\./g, '');
+    };
 
     // 3. CORE FUNCTIONS
     const getPersistentState = () => {
@@ -142,15 +156,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const saveData = () => {
-        localStorage.setItem('financeApp_v3.9', JSON.stringify(getPersistentState())); // Nâng version
-        if (state.currentUser && state.settings.autoBackup) {
+        localStorage.setItem('financeApp_v3.9', JSON.stringify(getPersistentState()));
+        if (navigator.onLine && state.currentUser && state.settings.autoBackup) {
             clearTimeout(autoBackupTimeout);
             autoBackupTimeout = setTimeout(autoBackupToFirebase, 3000);
         }
     };
 
     const loadData = () => {
-        const localData = localStorage.getItem('financeApp_v3.9'); // Nâng version
+        const localData = localStorage.getItem('financeApp_v3.9');
         const defaultState = getDefaultState();
         if (localData) {
             const loadedState = JSON.parse(localData);
@@ -165,12 +179,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         ...(loadedState.settings.budgetAllocation || {})
                     }
                 },
-                funds: loadedState.funds || loadedState.savings || [], // Tương thích ngược
+                funds: loadedState.funds || loadedState.savings || [],
             };
         } else {
             state = defaultState;
         }
-        applyTheme(state.settings.theme || 'dark');
+        
+        const validThemes = ['cute', 'luxury'];
+        if (!validThemes.includes(state.settings.theme)) {
+            state.settings.theme = 'luxury';
+        }
+        applyTheme(state.settings.theme);
+
         document.getElementById('currency-select').value = state.settings.currency;
         if (autoBackupToggle) autoBackupToggle.checked = state.settings.autoBackup;
 
@@ -179,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const autoBackupToFirebase = async () => {
-        if (!state.currentUser) return;
+        if (!navigator.onLine || !state.currentUser) return;
         const backupStatusIcon = document.getElementById('auto-backup-status');
         console.log("Performing automatic backup...");
         const backupData = getPersistentState();
@@ -198,6 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const manualBackupToFirebase = async () => {
+        if (!navigator.onLine) {
+            showToast("Không thể sao lưu khi đang ngoại tuyến.");
+            return;
+        }
         const backupName = prompt("Đặt tên cho bản sao lưu của bạn:", `Sao lưu ngày ${new Date().toLocaleDateString('vi-VN')}`);
         if (!backupName) return;
         showToast("Đang sao lưu...");
@@ -214,6 +238,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const fetchAndShowBackups = async () => {
+        if (!navigator.onLine) {
+            showToast("Cần có kết nối mạng để xem danh sách sao lưu.");
+            return;
+        }
         if (!state.currentUser) return;
         backupListEl.innerHTML = `<p>Đang tải danh sách...</p>`;
         openModal(restoreModal);
@@ -272,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await db.collection('users').doc(state.currentUser.uid).collection('backups').doc(backupId).delete();
                     showToast("Đã xóa bản sao lưu thành công!");
-                    fetchAndShowBackups(); // Tải lại danh sách
+                    fetchAndShowBackups(); 
                 } catch (error) {
                     console.error("Delete backup failed:", error);
                     showToast("Xóa bản sao lưu thất bại!");
@@ -282,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateLastBackupInfo = async () => {
-        if (!state.currentUser || !lastBackupInfoEl) return;
+        if (!navigator.onLine || !state.currentUser || !lastBackupInfoEl) return;
         try {
             const docRef = db.collection('users').doc(state.currentUser.uid).collection('backups').doc('auto_backup');
             const docSnap = await docRef.get();
@@ -315,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const openModal = (modal) => modal.classList.add('visible');
     const closeModal = (modal) => modal.classList.remove('visible');
     const showToast = (message) => { const toast = document.getElementById('toast'); const toastMessage = document.getElementById('toast-message'); if (!toast || !toastMessage) return; toastMessage.textContent = message; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 2500); };
-    const showConfirmation = ({ title, message, okText = 'Đồng ý', onConfirm = () => { } }) => { document.getElementById('confirm-title').textContent = title; document.getElementById('confirm-message').textContent = message; confirmOkBtn.textContent = okText; confirmOkBtn.style.backgroundColor = okText.toLowerCase().includes('xóa') ? 'var(--expense-color)' : 'var(--primary-color)'; confirmOkBtn.style.color = okText.toLowerCase().includes('xóa') ? 'white' : (state.settings.theme === 'light' ? 'white' : 'var(--background-color)'); confirmCallback = onConfirm; openModal(confirmModal); };
+    const showConfirmation = ({ title, message, okText = 'Đồng ý', onConfirm = () => { } }) => { document.getElementById('confirm-title').textContent = title; document.getElementById('confirm-message').textContent = message; confirmOkBtn.textContent = okText; confirmOkBtn.style.backgroundColor = okText.toLowerCase().includes('xóa') ? 'var(--expense-color)' : 'var(--primary-color)'; confirmOkBtn.style.color = okText.toLowerCase().includes('xóa') ? 'white' : (state.settings.theme === 'cute' ? 'white' : 'var(--background-color)'); confirmCallback = onConfirm; openModal(confirmModal); };
     const formatCurrency = (num) => { if (typeof num !== 'number') return '******'; if (!state.settings.balanceVisible) return '******'; try { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: state.settings.currency, minimumFractionDigits: 0 }).format(num); } catch (e) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(num); } };
     const updateWalletOptions = (selectElement, excludeId = null) => { selectElement.innerHTML = state.wallets.filter(w => w.id !== excludeId).map(w => `<option value="${w.id}">${w.name}</option>`).join(''); };
     const updateWalletFilters = () => { const historyWalletFilter = document.getElementById('history-wallet-filter'); const currentVal = historyWalletFilter.value; historyWalletFilter.innerHTML = '<option value="all">Tất cả ví</option>' + state.wallets.map(w => `<option value="${w.id}">${w.name}</option>`).join(''); historyWalletFilter.value = currentVal; };
@@ -388,6 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const totalIncome = monthlyTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
         const budgetSettings = state.settings.budgetAllocation;
+        const totalBudgetSource = (state.settings.totalMonthlyBudget > 0) ? state.settings.totalMonthlyBudget : totalIncome;
+        
+        totalBudgetInput.value = state.settings.totalMonthlyBudget > 0 ? formatNumberInput(state.settings.totalMonthlyBudget) : '';
+
         const categoryMap = budgetSettings.categoryMap || {};
         const spending = { essential: 0, wants: 0, unassigned: 0, savings: monthlyTxs.filter(tx => tx.category === 'Nạp tiền tiết kiệm').reduce((sum, tx) => sum + tx.amount, 0), };
         monthlyExpenses.forEach(tx => {
@@ -396,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (budgetType === 'wants') { spending.wants += tx.amount; }
             else if (tx.category !== 'Trả nợ' && tx.category !== 'Nạp tiền tiết kiệm') { spending.unassigned += tx.amount; }
         });
-        const budget = { essential: totalIncome * (budgetSettings.essential / 100), wants: totalIncome * (budgetSettings.wants / 100), savings: totalIncome * (budgetSettings.savings / 100), };
+        const budget = { essential: totalBudgetSource * (budgetSettings.essential / 100), wants: totalBudgetSource * (budgetSettings.wants / 100), savings: totalBudgetSource * (budgetSettings.savings / 100), };
         const createBudgetBar = (type, title, spent, budgetAmount) => {
             const progress = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
             const isOver = spent > budgetAmount;
@@ -445,6 +477,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('add-recurring-expense-btn').addEventListener('click', () => openRecurringExpenseModal());
     document.getElementById('add-debt-btn').addEventListener('click', () => openDebtModal());
     manageCategoriesBtn.addEventListener('click', () => openManageCategoriesModal());
+    totalBudgetInput.addEventListener('input', (e) => {
+        const value = deformatNumber(e.target.value);
+        state.settings.totalMonthlyBudget = parseFloat(value) || 0;
+        saveData();
+        renderReportsScreen();
+    });
     allModals.forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); }); modal.querySelector('.btn-cancel-modal')?.addEventListener('click', () => closeModal(modal)); });
     confirmOkBtn.addEventListener('click', () => { confirmCallback(); closeModal(confirmModal); });
     confirmCancelBtn.addEventListener('click', () => closeModal(confirmModal));
@@ -454,13 +492,60 @@ document.addEventListener('DOMContentLoaded', () => {
         const tab = e.target.closest('.info-card-tab'); if (tab && tab.dataset.view) { if (state.uiState) state.uiState.activeInfoCardView = tab.dataset.view; renderInfoCard(); }
     });
     function openAddWalletModal() { walletForm.reset(); document.getElementById('initial-balance').value = 0; openModal(addWalletModal); }
-    walletForm.addEventListener('submit', (e) => { e.preventDefault(); state.wallets.push({ id: Date.now(), name: document.getElementById('wallet-name').value, balance: parseFloat(document.getElementById('initial-balance').value) || 0 }); closeModal(addWalletModal); saveData(); renderAll(); });
-    function openEditWalletModal(walletId) { state.editingWalletId = walletId; const wallet = state.wallets.find(w => w.id === walletId); if (wallet) { document.getElementById('edit-wallet-name').value = wallet.name; document.getElementById('edit-wallet-balance').value = wallet.balance; openModal(editWalletModal); } }
-    editWalletForm.addEventListener('submit', (e) => { e.preventDefault(); const wallet = state.wallets.find(w => w.id === state.editingWalletId); if (wallet) { const newName = document.getElementById('edit-wallet-name').value; const newBalance = parseFloat(document.getElementById('edit-wallet-balance').value); const oldBalance = wallet.balance; const adjustment = newBalance - oldBalance; if (adjustment !== 0) { const adjType = adjustment > 0 ? 'income' : 'expense'; state.transactions.push({ id: Date.now(), type: adjType, amount: Math.abs(adjustment), category: "Điều chỉnh số dư", walletId: wallet.id, description: `Thay đổi số dư`, date: new Date().toISOString() }); } wallet.name = newName; wallet.balance = newBalance; } closeModal(editWalletModal); saveData(); renderAll(); });
+    walletForm.addEventListener('submit', (e) => { e.preventDefault(); state.wallets.push({ id: Date.now(), name: document.getElementById('wallet-name').value, balance: parseFloat(deformatNumber(document.getElementById('initial-balance').value)) || 0 }); closeModal(addWalletModal); saveData(); renderAll(); });
+    function openEditWalletModal(walletId) { state.editingWalletId = walletId; const wallet = state.wallets.find(w => w.id === walletId); if (wallet) { document.getElementById('edit-wallet-name').value = wallet.name; document.getElementById('edit-wallet-balance').value = formatNumberInput(wallet.balance); openModal(editWalletModal); } }
+    editWalletForm.addEventListener('submit', (e) => { e.preventDefault(); const wallet = state.wallets.find(w => w.id === state.editingWalletId); if (wallet) { const newName = document.getElementById('edit-wallet-name').value; const newBalance = parseFloat(deformatNumber(document.getElementById('edit-wallet-balance').value)); const oldBalance = wallet.balance; const adjustment = newBalance - oldBalance; if (adjustment !== 0) { const adjType = adjustment > 0 ? 'income' : 'expense'; state.transactions.push({ id: Date.now(), type: adjType, amount: Math.abs(adjustment), category: "Điều chỉnh số dư", walletId: wallet.id, description: `Thay đổi số dư`, date: new Date().toISOString() }); } wallet.name = newName; wallet.balance = newBalance; } closeModal(editWalletModal); saveData(); renderAll(); });
     function setupTransactionModalUI(type, modal = addTransactionModal) { transactionType = type; const title = modal.querySelector('#transaction-modal-title'); const transactionFields = modal.querySelector('#transaction-fields'); const transferFields = modal.querySelector('#transfer-fields'); const budgetWrapper = modal.querySelector('[id*="budget-category-wrapper"]'); modal.querySelectorAll('.transaction-type-btn').forEach(btn => { btn.style.backgroundColor = 'var(--background-color)'; btn.style.color = 'var(--text-secondary)'; }); if (type === 'transfer') { title.textContent = "Chuyển Tiền"; transactionFields.classList.add('hidden'); transferFields.classList.remove('hidden'); modal.querySelector('[data-type="transfer"]').style.backgroundColor = 'var(--primary-color)'; if (budgetWrapper) budgetWrapper.classList.add('hidden'); } else { title.textContent = type === 'expense' ? "Thêm Khoản Chi" : "Thêm Khoản Thu"; transactionFields.classList.remove('hidden'); transferFields.classList.add('hidden'); const btn = modal.querySelector(`[data-type="${type}"]`); btn.style.backgroundColor = `var(--${type}-color)`; btn.style.color = 'white'; modal.querySelector('#wallet-select-label').textContent = type === 'income' ? 'Vào ví' : 'Từ ví'; if (budgetWrapper) { budgetWrapper.classList.toggle('hidden', type !== 'expense'); } } }
     function openTransactionModal(type) { if (state.wallets.length === 0 && type !== 'transfer') { showConfirmation({ title: 'Chưa có ví', message: 'Bạn cần tạo ví trước.', okText: 'OK' }); return; } if (state.wallets.length < 2 && type === 'transfer') { showConfirmation({ title: 'Yêu cầu 2 ví', message: 'Bạn cần ít nhất 2 ví để chuyển tiền.', okText: 'OK' }); return; } transactionForm.reset(); setupTransactionModalUI(type); if (type !== 'transfer') { document.getElementById('transaction-date').valueAsDate = new Date(); updateWalletOptions(document.getElementById('wallet-select')); renderCategoryChips(type, document.getElementById('category-chips-container'), document.getElementById('category')); } else { document.getElementById('transfer-date').valueAsDate = new Date(); updateWalletOptions(document.getElementById('from-wallet-select')); updateWalletOptions(document.getElementById('to-wallet-select')); if (document.getElementById('to-wallet-select').options.length > 1) { document.getElementById('to-wallet-select').selectedIndex = 1; } } openModal(addTransactionModal); }
     addTransactionModal.querySelectorAll('.transaction-type-btn').forEach(btn => btn.addEventListener('click', () => setupTransactionModalUI(btn.dataset.type)));
-    transactionForm.addEventListener('submit', (e) => { e.preventDefault(); if (transactionType === 'transfer') { const amount = parseFloat(document.getElementById('transfer-amount').value); const fromId = parseInt(document.getElementById('from-wallet-select').value); const toId = parseInt(document.getElementById('to-wallet-select').value); const date = document.getElementById('transfer-date').value; if (fromId === toId) { showConfirmation({ title: 'Lỗi', message: 'Ví nguồn và ví đích không được trùng nhau.', okText: 'OK' }); return; } const fromWallet = state.wallets.find(w => w.id === fromId); const toWallet = state.wallets.find(w => w.id === toId); if (!fromWallet || !toWallet || !amount || amount <= 0) return; if (fromWallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${fromWallet.name}" không đủ tiền.`, okText: 'OK' }); return; } const txDate = date ? new Date(date).toISOString() : new Date().toISOString(); const desc = document.getElementById('description').value || `Từ ${fromWallet.name} đến ${toWallet.name}`; state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Chuyển tiền đi', walletId: fromId, description: desc, date: txDate }); fromWallet.balance -= amount; state.transactions.push({ id: Date.now() + 1, type: 'income', amount, category: 'Nhận tiền', walletId: toId, description: desc, date: txDate }); toWallet.balance += amount; } else { const amount = parseFloat(document.getElementById('amount').value); const walletId = parseInt(document.getElementById('wallet-select').value); const category = document.getElementById('category').value; const date = document.getElementById('transaction-date').value; const budgetCategory = document.getElementById('budget-category').value; const wallet = state.wallets.find(w => w.id === walletId); if (!wallet || !amount || amount <= 0 || !category) { if (!category) showConfirmation({ title: 'Thiếu thông tin', message: 'Vui lòng chọn một hạng mục.', okText: 'OK' }); return; } const txDate = date ? new Date(date).toISOString() : new Date().toISOString(); state.transactions.push({ id: Date.now(), type: transactionType, amount, category, walletId, description: document.getElementById('description').value, date: txDate, budgetCategory: transactionType === 'expense' ? budgetCategory : undefined }); wallet.balance += (transactionType === 'income' ? amount : -amount); } closeModal(addTransactionModal); saveData(); renderAll(); });
+    transactionForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (transactionType === 'transfer') {
+            const amount = parseFloat(deformatNumber(document.getElementById('transfer-amount').value));
+            const fromId = parseInt(document.getElementById('from-wallet-select').value);
+            const toId = parseInt(document.getElementById('to-wallet-select').value);
+            const date = document.getElementById('transfer-date').value;
+            if (fromId === toId) { showConfirmation({ title: 'Lỗi', message: 'Ví nguồn và ví đích không được trùng nhau.', okText: 'OK' }); return; }
+            const fromWallet = state.wallets.find(w => w.id === fromId);
+            const toWallet = state.wallets.find(w => w.id === toId);
+            if (!fromWallet || !toWallet || !amount || amount <= 0) return;
+            if (fromWallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${fromWallet.name}" không đủ tiền.`, okText: 'OK' }); return; }
+            const txDate = date ? new Date(date).toISOString() : new Date().toISOString();
+            const desc = document.getElementById('description').value || `Từ ${fromWallet.name} đến ${toWallet.name}`;
+            state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Chuyển tiền đi', walletId: fromId, description: desc, date: txDate });
+            fromWallet.balance -= amount;
+            state.transactions.push({ id: Date.now() + 1, type: 'income', amount, category: 'Nhận tiền', walletId: toId, description: desc, date: txDate });
+            toWallet.balance += amount;
+        } else {
+            const amount = parseFloat(deformatNumber(document.getElementById('amount').value));
+            const walletId = parseInt(document.getElementById('wallet-select').value);
+            const category = document.getElementById('category').value;
+            const date = document.getElementById('transaction-date').value;
+            const budgetCategory = document.getElementById('budget-category').value;
+            const wallet = state.wallets.find(w => w.id === walletId);
+            if (!wallet || !amount || amount <= 0 || !category) { if (!category) showConfirmation({ title: 'Thiếu thông tin', message: 'Vui lòng chọn một hạng mục.', okText: 'OK' }); return; }
+            const txDate = date ? new Date(date).toISOString() : new Date().toISOString();
+            
+            const newTx = {
+                id: Date.now(),
+                type: transactionType,
+                amount,
+                category,
+                walletId,
+                description: document.getElementById('description').value,
+                date: txDate
+            };
+            if (transactionType === 'expense') {
+                newTx.budgetCategory = budgetCategory;
+            }
+            state.transactions.push(newTx);
+            
+            wallet.balance += (transactionType === 'income' ? amount : -amount);
+        }
+        closeModal(addTransactionModal);
+        saveData();
+        renderAll();
+    });
     function renderCategoryChips(type, container, hiddenInput, selectedCategory = null) { const categories = state.settings.categories[type] || []; container.innerHTML = categories.map(cat => `<button type="button" class="category-chip ${cat === selectedCategory ? 'active' : ''}" data-category="${cat}">${cat}</button>`).join('') + `<button type="button" class="category-chip add-category-btn">+</button>`; hiddenInput.value = selectedCategory || ''; const addCategoryForm = container.nextElementSibling; if (addCategoryForm) { addCategoryForm.classList.add('hidden'); addCategoryForm.querySelector('input').value = ''; } }
     function handleCategoryChipClick(event) { const target = event.target; const form = target.closest('form'); if (!form) return; if (target.classList.contains('category-chip')) { const container = target.parentElement; const hiddenInput = form.querySelector('input[type="hidden"][id*="category"]'); const addCategoryForm = container.nextElementSibling; if (target.classList.contains('add-category-btn')) { addCategoryForm.classList.toggle('hidden'); if (!addCategoryForm.classList.contains('hidden')) { addCategoryForm.querySelector('input').focus(); } } else { container.querySelectorAll('.category-chip').forEach(chip => chip.classList.remove('active')); target.classList.add('active'); hiddenInput.value = target.dataset.category; } } if (target.classList.contains('save-new-category-btn')) { const addCategoryForm = target.closest('.add-category-form'); const newCategoryInput = addCategoryForm.querySelector('input'); const newCategory = newCategoryInput.value.trim(); if (newCategory) { const currentType = form.id.includes('edit') ? editTransactionType : transactionType; if (!state.settings.categories[currentType].includes(newCategory)) { state.settings.categories[currentType].push(newCategory); saveData(); const container = addCategoryForm.previousElementSibling; const hiddenInput = form.querySelector('input[type="hidden"][id*="category"]'); renderCategoryChips(currentType, container, hiddenInput, newCategory); } } } }
     addTransactionModal.addEventListener('click', handleCategoryChipClick);
@@ -496,23 +581,64 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         for (const selector in delegatedActions) { const element = e.target.closest(selector); if (element) { delegatedActions[selector](element); break; } }
     });
-    function openEditTransactionModal(txId) { const tx = state.transactions.find(t => t.id === txId); if (!tx || ["Điều chỉnh số dư", "Chuyển tiền đi", "Nhận tiền", "Nạp tiền tiết kiệm", "Rút tiền tiết kiệm", "Trả nợ"].includes(tx.category)) { showConfirmation({ title: 'Thông Báo', message: 'Giao dịch tự động không thể chỉnh sửa.', okText: 'OK' }); return; } state.editingTransactionId = txId; updateWalletOptions(document.getElementById('edit-wallet-select'));['amount', 'wallet-select', 'description'].forEach(id => document.getElementById(`edit-${id}`).value = tx[id === 'wallet-select' ? 'walletId' : id]); const txDate = new Date(tx.date); document.getElementById('edit-transaction-date').value = txDate.toISOString().split('T')[0]; editTransactionType = tx.type; const editTypeExpenseBtn = document.getElementById('edit-type-expense'); const editTypeIncomeBtn = document.getElementById('edit-type-income'); setupTransactionModalUI(tx.type, editTransactionModal); if (tx.type === 'income') { editTypeIncomeBtn.style.backgroundColor = 'var(--income-color)'; editTypeIncomeBtn.style.color = 'white'; editTypeExpenseBtn.style.backgroundColor = 'var(--border-color)'; editTypeExpenseBtn.style.color = 'var(--text-secondary)'; } else { editTypeExpenseBtn.style.backgroundColor = 'var(--expense-color)'; editTypeExpenseBtn.style.color = 'white'; editTypeIncomeBtn.style.backgroundColor = 'var(--border-color)'; editTypeIncomeBtn.style.color = 'var(--text-secondary)'; } renderCategoryChips(tx.type, document.getElementById('edit-category-chips-container'), document.getElementById('edit-category'), tx.category); if (tx.type === 'expense') { document.getElementById('edit-budget-category').value = tx.budgetCategory || 'none'; } openModal(editTransactionModal); }
-    editTransactionForm.addEventListener('submit', (e) => { e.preventDefault(); const txIndex = state.transactions.findIndex(t => t.id === state.editingTransactionId); if (txIndex === -1) return; const originalTx = { ...state.transactions[txIndex] }; const originalWallet = state.wallets.find(w => w.id === originalTx.walletId); if (originalWallet) { originalWallet.balance += originalTx.type === 'expense' ? originalTx.amount : -originalTx.amount; } const newAmount = parseFloat(document.getElementById('edit-amount').value); const newWalletId = parseInt(document.getElementById('edit-wallet-select').value); const newWallet = state.wallets.find(w => w.id === newWalletId); const newDate = document.getElementById('edit-transaction-date').value; const newBudgetCategory = document.getElementById('edit-budget-category').value; if (newWallet) { newWallet.balance += editTransactionType === 'income' ? newAmount : -newAmount; } state.transactions[txIndex] = { ...originalTx, type: editTransactionType, amount: newAmount, category: document.getElementById('edit-category').value, walletId: newWalletId, description: document.getElementById('edit-description').value, date: new Date(newDate).toISOString(), budgetCategory: editTransactionType === 'expense' ? newBudgetCategory : undefined }; closeModal(editTransactionModal); saveData(); renderAll(); });
+    function openEditTransactionModal(txId) { const tx = state.transactions.find(t => t.id === txId); if (!tx || ["Điều chỉnh số dư", "Chuyển tiền đi", "Nhận tiền", "Nạp tiền tiết kiệm", "Rút tiền tiết kiệm", "Trả nợ"].includes(tx.category)) { showConfirmation({ title: 'Thông Báo', message: 'Giao dịch tự động không thể chỉnh sửa.', okText: 'OK' }); return; } state.editingTransactionId = txId; updateWalletOptions(document.getElementById('edit-wallet-select')); document.getElementById('edit-amount').value = formatNumberInput(tx.amount); document.getElementById('edit-wallet-select').value = tx.walletId; document.getElementById('edit-description').value = tx.description; const txDate = new Date(tx.date); document.getElementById('edit-transaction-date').value = txDate.toISOString().split('T')[0]; editTransactionType = tx.type; const editTypeExpenseBtn = document.getElementById('edit-type-expense'); const editTypeIncomeBtn = document.getElementById('edit-type-income'); setupTransactionModalUI(tx.type, editTransactionModal); if (tx.type === 'income') { editTypeIncomeBtn.style.backgroundColor = 'var(--income-color)'; editTypeIncomeBtn.style.color = 'white'; editTypeExpenseBtn.style.backgroundColor = 'var(--border-color)'; editTypeExpenseBtn.style.color = 'var(--text-secondary)'; } else { editTypeExpenseBtn.style.backgroundColor = 'var(--expense-color)'; editTypeExpenseBtn.style.color = 'white'; editTypeIncomeBtn.style.backgroundColor = 'var(--border-color)'; editTypeIncomeBtn.style.color = 'var(--text-secondary)'; } renderCategoryChips(tx.type, document.getElementById('edit-category-chips-container'), document.getElementById('edit-category'), tx.category); if (tx.type === 'expense') { document.getElementById('edit-budget-category').value = tx.budgetCategory || 'none'; } openModal(editTransactionModal); }
+    editTransactionForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const txIndex = state.transactions.findIndex(t => t.id === state.editingTransactionId);
+        if (txIndex === -1) return;
+        
+        const originalTx = { ...state.transactions[txIndex] };
+        const originalWallet = state.wallets.find(w => w.id === originalTx.walletId);
+        if (originalWallet) {
+            originalWallet.balance += originalTx.type === 'expense' ? originalTx.amount : -originalTx.amount;
+        }
+
+        const newAmount = parseFloat(deformatNumber(document.getElementById('edit-amount').value));
+        const newWalletId = parseInt(document.getElementById('edit-wallet-select').value);
+        const newWallet = state.wallets.find(w => w.id === newWalletId);
+        const newDate = document.getElementById('edit-transaction-date').value;
+        const newBudgetCategory = document.getElementById('edit-budget-category').value;
+        
+        if (newWallet) {
+            newWallet.balance += editTransactionType === 'income' ? newAmount : -newAmount;
+        }
+        
+        const updatedTx = {
+            ...originalTx,
+            type: editTransactionType,
+            amount: newAmount,
+            category: document.getElementById('edit-category').value,
+            walletId: newWalletId,
+            description: document.getElementById('edit-description').value,
+            date: new Date(newDate).toISOString()
+        };
+
+        if (editTransactionType === 'expense') {
+            updatedTx.budgetCategory = newBudgetCategory;
+        } else {
+            delete updatedTx.budgetCategory; // Xóa key nếu không phải là khoản chi
+        }
+
+        state.transactions[txIndex] = updatedTx;
+        
+        closeModal(editTransactionModal);
+        saveData();
+        renderAll();
+    });
     document.getElementById('delete-transaction-btn').addEventListener('click', () => { showConfirmation({ title: 'Xóa Giao Dịch?', message: 'Bạn chắc chắn muốn xóa vĩnh viễn giao dịch này?', okText: 'Xóa', onConfirm: () => { const txIndex = state.transactions.findIndex(t => t.id === state.editingTransactionId); if (txIndex === -1) return; const txToDelete = state.transactions[txIndex]; const wallet = state.wallets.find(w => w.id === txToDelete.walletId); if (wallet) { wallet.balance += txToDelete.type === 'expense' ? txToDelete.amount : -txToDelete.amount; } state.transactions.splice(txIndex, 1); closeModal(editTransactionModal); saveData(); renderAll(); } }); });
-    function openSavingGoalModal(goalId = null) { state.editingSavingGoalId = goalId; savingGoalForm.reset(); if (goalId) { const goal = state.funds.find(s => s.id === goalId); document.getElementById('saving-goal-modal-title').textContent = "Chỉnh Sửa Quỹ";['name', 'icon', 'target', 'deadline', 'note'].forEach(id => document.getElementById(`saving-${id}`).value = goal[id === 'target' ? 'targetAmount' : id] || ''); } else { document.getElementById('saving-goal-modal-title').textContent = "Thêm Quỹ Mới"; } openModal(savingGoalModal); }
-    function openRecurringExpenseModal(expenseId = null) { state.editingExpenseId = expenseId; recurringExpenseForm.reset(); const expenseTypeSelect = document.getElementById('expense-type'); const dateWrapper = document.getElementById('expense-date-wrapper'); const dateInput = document.getElementById('expense-date'); const toggleDateVisibility = () => { if (expenseTypeSelect.value === 'flexible') { dateWrapper.classList.add('hidden'); dateInput.required = false; } else { dateWrapper.classList.remove('hidden'); dateInput.required = true; } }; if (expenseId) { const expense = state.expenses.find(e => e.id === expenseId); document.getElementById('recurring-expense-modal-title').textContent = "Chỉnh Sửa Chi Phí";['name', 'icon', 'amount', 'type', 'note'].forEach(id => document.getElementById(`expense-${id}`).value = expense[id] || ''); if (expense.day) dateInput.value = expense.day; } else { document.getElementById('recurring-expense-modal-title').textContent = "Thêm Chi Phí Định Kỳ"; } expenseTypeSelect.removeEventListener('change', toggleDateVisibility); expenseTypeSelect.addEventListener('change', toggleDateVisibility); toggleDateVisibility(); openModal(recurringExpenseModal); }
+    function openSavingGoalModal(goalId = null) { state.editingSavingGoalId = goalId; savingGoalForm.reset(); if (goalId) { const goal = state.funds.find(s => s.id === goalId); document.getElementById('saving-goal-modal-title').textContent = "Chỉnh Sửa Quỹ"; document.getElementById('saving-name').value = goal.name; document.getElementById('saving-icon').value = goal.icon; document.getElementById('saving-target').value = formatNumberInput(goal.targetAmount); document.getElementById('saving-deadline').value = goal.deadline; document.getElementById('saving-note').value = goal.note; } else { document.getElementById('saving-goal-modal-title').textContent = "Thêm Quỹ Mới"; } openModal(savingGoalModal); }
+    function openRecurringExpenseModal(expenseId = null) { state.editingExpenseId = expenseId; recurringExpenseForm.reset(); const expenseTypeSelect = document.getElementById('expense-type'); const dateWrapper = document.getElementById('expense-date-wrapper'); const dateInput = document.getElementById('expense-date'); const toggleDateVisibility = () => { if (!dateWrapper) return; if (expenseTypeSelect.value === 'flexible') { dateWrapper.classList.add('hidden'); dateInput.required = false; } else { dateWrapper.classList.remove('hidden'); dateInput.required = true; } }; if (expenseId) { const expense = state.expenses.find(e => e.id === expenseId); document.getElementById('recurring-expense-modal-title').textContent = "Chỉnh Sửa Chi Phí"; document.getElementById('expense-name').value = expense.name; document.getElementById('expense-icon').value = expense.icon; document.getElementById('expense-amount').value = formatNumberInput(expense.amount); document.getElementById('expense-type').value = expense.type; document.getElementById('expense-note').value = expense.note; if (expense.day) dateInput.value = expense.day; } else { document.getElementById('recurring-expense-modal-title').textContent = "Thêm Chi Phí Định Kỳ"; } expenseTypeSelect.removeEventListener('change', toggleDateVisibility); expenseTypeSelect.addEventListener('change', toggleDateVisibility); toggleDateVisibility(); openModal(recurringExpenseModal); }
     const handleFrequencyChange = () => { document.getElementById('expense-custom-freq-wrapper').classList.toggle('hidden', document.getElementById('expense-frequency').value !== 'custom'); };
-    savingGoalForm.addEventListener('submit', e => { e.preventDefault(); const goalData = { name: document.getElementById('saving-name').value, icon: document.getElementById('saving-icon').value, targetAmount: parseFloat(document.getElementById('saving-target').value), deadline: document.getElementById('saving-deadline').value, note: document.getElementById('saving-note').value }; if (state.editingSavingGoalId) { const index = state.funds.findIndex(s => s.id === state.editingSavingGoalId); state.funds[index] = { ...state.funds[index], ...goalData }; } else { state.funds.push({ ...goalData, id: Date.now(), savedAmount: 0, history: [] }); } closeModal(savingGoalModal); saveData(); renderAll(); });
-    recurringExpenseForm.addEventListener('submit', e => { e.preventDefault(); const expenseType = document.getElementById('expense-type').value; const expenseData = { name: document.getElementById('expense-name').value, icon: document.getElementById('expense-icon').value, amount: parseFloat(document.getElementById('expense-amount').value), type: expenseType, day: expenseType === 'fixed' ? parseInt(document.getElementById('expense-date').value) : null, note: document.getElementById('expense-note').value }; if (state.editingExpenseId) { const index = state.expenses.findIndex(ex => ex.id === state.editingExpenseId); state.expenses[index] = { ...state.expenses[index], ...expenseData }; } else { state.expenses.push({ ...expenseData, id: Date.now() }); } closeModal(recurringExpenseModal); saveData(); renderAll(); });
-    addToSavingForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(document.getElementById('add-saving-amount').value); const walletId = parseInt(document.getElementById('add-saving-wallet-select').value); const goal = state.funds.find(s => s.id === state.addingToSavingGoalId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !goal || !wallet || amount <= 0) return; if (wallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${wallet.name}" không đủ tiền.`, okText: 'OK' }); return; } wallet.balance -= amount; goal.savedAmount += amount; state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Nạp tiền tiết kiệm', walletId, description: `Nạp vào "${goal.name}"`, date: new Date().toISOString() }); closeModal(addToSavingModal); saveData(); renderAll(); });
-    withdrawFromSavingForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(document.getElementById('withdraw-saving-amount').value); const walletId = parseInt(document.getElementById('withdraw-saving-wallet-select').value); const goal = state.funds.find(s => s.id === state.withdrawingFromSavingGoalId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !goal || !wallet || amount <= 0) return; if (amount > goal.savedAmount) { showConfirmation({ title: 'Không đủ tiền', message: `Bạn chỉ có thể rút tối đa ${formatCurrency(goal.savedAmount)}.`, okText: 'OK' }); return; } wallet.balance += amount; goal.savedAmount -= amount; state.transactions.push({ id: Date.now(), type: 'income', amount, category: 'Rút tiền tiết kiệm', walletId, description: `Rút từ quỹ "${goal.name}"`, date: new Date().toISOString() }); closeModal(withdrawFromSavingModal); saveData(); renderAll(); });
-    debtForm.addEventListener('submit', e => { e.preventDefault(); const debtData = { type: document.getElementById('debt-type').value, person: document.getElementById('debt-person').value, amount: parseFloat(document.getElementById('debt-amount').value), currency: document.getElementById('debt-currency').value, startDate: document.getElementById('debt-start-date').value, endDate: document.getElementById('debt-end-date').value, note: document.getElementById('debt-note').value, }; if (state.editingDebtId) { const index = state.debts.findIndex(d => d.id === state.editingDebtId); state.debts[index] = { ...state.debts[index], ...debtData }; } else { state.debts.push({ ...debtData, id: Date.now(), history: [] }); } closeModal(debtModal); saveData(); renderAll(); });
-    payDebtForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(document.getElementById('pay-debt-amount').value); const walletId = parseInt(document.getElementById('pay-debt-wallet-select').value); const date = document.getElementById('pay-debt-date').value; const note = document.getElementById('pay-debt-note').value; const debt = state.debts.find(d => d.id === state.payingDebtId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !debt || !wallet || amount <= 0) return; if (wallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${wallet.name}" không đủ tiền.`, okText: 'OK' }); return; } const amountRemaining = debt.amount - (debt.history || []).reduce((sum, item) => sum + item.amount, 0); if (amount > amountRemaining) { showConfirmation({ title: 'Số tiền không hợp lệ', message: `Số tiền trả vượt quá số tiền còn lại (${formatCurrency(amountRemaining)}).`, okText: 'OK' }); return; } wallet.balance -= amount; if (!debt.history) debt.history = []; debt.history.push({ id: Date.now(), amount, date, note, walletId }); const txDesc = debt.type === 'debt' ? `Trả nợ cho ${debt.person}` : `Ghi nhận ${debt.person} trả nợ`; state.transactions.push({ id: Date.now() + 1, type: 'expense', amount, category: 'Trả nợ', walletId, description: `${txDesc}${note ? ' - ' + note : ''}`, date: new Date(date).toISOString() }); closeModal(payDebtModal); saveData(); renderAll(); });
-    function openDebtModal(debtId = null) { state.editingDebtId = debtId; debtForm.reset(); document.getElementById('debt-start-date').valueAsDate = new Date(); if (debtId) { const debt = state.debts.find(d => d.id === debtId); document.getElementById('debt-modal-title').textContent = "Chỉnh Sửa Khoản Nợ";['type', 'person', 'amount', 'currency', 'startDate', 'endDate', 'note'].forEach(id => { document.getElementById(`debt-${id}`).value = debt[id] || ''; }); } else { document.getElementById('debt-modal-title').textContent = "Thêm Khoản Nợ Mới"; } openModal(debtModal); }
+    savingGoalForm.addEventListener('submit', e => { e.preventDefault(); const goalData = { name: document.getElementById('saving-name').value, icon: document.getElementById('saving-icon').value, targetAmount: parseFloat(deformatNumber(document.getElementById('saving-target').value)), deadline: document.getElementById('saving-deadline').value, note: document.getElementById('saving-note').value }; if (state.editingSavingGoalId) { const index = state.funds.findIndex(s => s.id === state.editingSavingGoalId); state.funds[index] = { ...state.funds[index], ...goalData }; } else { state.funds.push({ ...goalData, id: Date.now(), savedAmount: 0, history: [] }); } closeModal(savingGoalModal); saveData(); renderAll(); });
+    recurringExpenseForm.addEventListener('submit', e => { e.preventDefault(); const expenseType = document.getElementById('expense-type').value; const expenseData = { name: document.getElementById('expense-name').value, icon: document.getElementById('expense-icon').value, amount: parseFloat(deformatNumber(document.getElementById('expense-amount').value)), type: expenseType, day: expenseType === 'fixed' ? parseInt(document.getElementById('expense-date').value) : null, note: document.getElementById('expense-note').value }; if (state.editingExpenseId) { const index = state.expenses.findIndex(ex => ex.id === state.editingExpenseId); state.expenses[index] = { ...state.expenses[index], ...expenseData }; } else { state.expenses.push({ ...expenseData, id: Date.now() }); } closeModal(recurringExpenseModal); saveData(); renderAll(); });
+    addToSavingForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(deformatNumber(document.getElementById('add-saving-amount').value)); const walletId = parseInt(document.getElementById('add-saving-wallet-select').value); const goal = state.funds.find(s => s.id === state.addingToSavingGoalId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !goal || !wallet || amount <= 0) return; if (wallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${wallet.name}" không đủ tiền.`, okText: 'OK' }); return; } wallet.balance -= amount; goal.savedAmount += amount; state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Nạp tiền tiết kiệm', walletId, description: `Nạp vào "${goal.name}"`, date: new Date().toISOString() }); closeModal(addToSavingModal); saveData(); renderAll(); });
+    withdrawFromSavingForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(deformatNumber(document.getElementById('withdraw-saving-amount').value)); const walletId = parseInt(document.getElementById('withdraw-saving-wallet-select').value); const goal = state.funds.find(s => s.id === state.withdrawingFromSavingGoalId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !goal || !wallet || amount <= 0) return; if (amount > goal.savedAmount) { showConfirmation({ title: 'Không đủ tiền', message: `Bạn chỉ có thể rút tối đa ${formatCurrency(goal.savedAmount)}.`, okText: 'OK' }); return; } wallet.balance += amount; goal.savedAmount -= amount; state.transactions.push({ id: Date.now(), type: 'income', amount, category: 'Rút tiền tiết kiệm', walletId, description: `Rút từ quỹ "${goal.name}"`, date: new Date().toISOString() }); closeModal(withdrawFromSavingModal); saveData(); renderAll(); });
+    debtForm.addEventListener('submit', e => { e.preventDefault(); const debtData = { type: document.getElementById('debt-type').value, person: document.getElementById('debt-person').value, amount: parseFloat(deformatNumber(document.getElementById('debt-amount').value)), currency: document.getElementById('debt-currency').value, startDate: document.getElementById('debt-start-date').value, endDate: document.getElementById('debt-end-date').value, note: document.getElementById('debt-note').value, }; if (state.editingDebtId) { const index = state.debts.findIndex(d => d.id === state.editingDebtId); state.debts[index] = { ...state.debts[index], ...debtData }; } else { state.debts.push({ ...debtData, id: Date.now(), history: [] }); } closeModal(debtModal); saveData(); renderAll(); });
+    payDebtForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(deformatNumber(document.getElementById('pay-debt-amount').value)); const walletId = parseInt(document.getElementById('pay-debt-wallet-select').value); const date = document.getElementById('pay-debt-date').value; const note = document.getElementById('pay-debt-note').value; const debt = state.debts.find(d => d.id === state.payingDebtId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !debt || !wallet || amount <= 0) return; if (wallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${wallet.name}" không đủ tiền.`, okText: 'OK' }); return; } const amountRemaining = debt.amount - (debt.history || []).reduce((sum, item) => sum + item.amount, 0); if (amount > amountRemaining) { showConfirmation({ title: 'Số tiền không hợp lệ', message: `Số tiền trả vượt quá số tiền còn lại (${formatCurrency(amountRemaining)}).`, okText: 'OK' }); return; } wallet.balance -= amount; if (!debt.history) debt.history = []; debt.history.push({ id: Date.now(), amount, date, note, walletId }); const txDesc = debt.type === 'debt' ? `Trả nợ cho ${debt.person}` : `Ghi nhận ${debt.person} trả nợ`; state.transactions.push({ id: Date.now() + 1, type: 'expense', amount, category: 'Trả nợ', walletId, description: `${txDesc}${note ? ' - ' + note : ''}`, date: new Date(date).toISOString() }); closeModal(payDebtModal); saveData(); renderAll(); });
+    function openDebtModal(debtId = null) { state.editingDebtId = debtId; debtForm.reset(); document.getElementById('debt-start-date').valueAsDate = new Date(); if (debtId) { const debt = state.debts.find(d => d.id === debtId); document.getElementById('debt-modal-title').textContent = "Chỉnh Sửa Khoản Nợ"; document.getElementById('debt-type').value = debt.type; document.getElementById('debt-person').value = debt.person; document.getElementById('debt-amount').value = formatNumberInput(debt.amount); document.getElementById('debt-currency').value = debt.currency; document.getElementById('debt-startDate').value = debt.startDate; document.getElementById('debt-endDate').value = debt.endDate; document.getElementById('debt-note').value = debt.note; } else { document.getElementById('debt-modal-title').textContent = "Thêm Khoản Nợ Mới"; } openModal(debtModal); }
     function openPayDebtModal(debtId) { state.payingDebtId = debtId; payDebtForm.reset(); updateWalletOptions(document.getElementById('pay-debt-wallet-select')); document.getElementById('pay-debt-date').valueAsDate = new Date(); openModal(payDebtModal); }
     function openDebtHistoryModal(debtId) { const debt = state.debts.find(d => d.id === debtId); const historyListEl = document.getElementById('debt-history-list'); if (!debt || !debt.history || debt.history.length === 0) { historyListEl.innerHTML = `<p class="text-center" style="color: var(--text-secondary);">Chưa có lịch sử trả nợ.</p>`; } else { historyListEl.innerHTML = [...debt.history].reverse().map(item => { const wallet = state.wallets.find(w => w.id === item.walletId); return `<div class="p-2 rounded" style="background-color: var(--highlight-color);"><div class="flex justify-between font-semibold"><span>${formatCurrency(item.amount)}</span><span>${new Date(item.date).toLocaleDateString('vi-VN')}</span></div><p class="text-xs" style="color: var(--text-secondary);">Từ ví: ${wallet ? wallet.name : 'N/A'}</p><p class="text-xs italic" style="color: var(--text-secondary);">${item.note || 'Không có ghi chú'}</p></div>` }).join(''); } openModal(debtHistoryModal); }
     
-    // [CẬP NHẬT] Các biến và hàm cho chức năng kéo thả
     let draggedItem = null;
     let touchDraggedItem = null;
     let ghostEl = null;
@@ -522,123 +648,61 @@ document.addEventListener('DOMContentLoaded', () => {
     function openManageCategoriesModal() {
         const categoryMap = state.settings.budgetAllocation.categoryMap || {};
         const allCategories = state.settings.categories.expense;
-        const lists = {
-            unassigned: document.getElementById('unassigned-categories-list'),
-            essential: document.getElementById('essential-categories-list'),
-            wants: document.getElementById('wants-categories-list'),
-        };
+        const lists = { unassigned: document.getElementById('unassigned-categories-list'), essential: document.getElementById('essential-categories-list'), wants: document.getElementById('wants-categories-list'), };
         Object.values(lists).forEach(list => list.innerHTML = '');
-        allCategories.forEach(cat => {
-            const assignedGroup = categoryMap[cat] || 'unassigned';
-            const catEl = document.createElement('div');
-            catEl.textContent = cat;
-            catEl.className = 'p-2 rounded cursor-grab text-sm';
-            catEl.style.backgroundColor = 'var(--border-color)';
-            catEl.draggable = true;
-            catEl.dataset.category = cat;
-            lists[assignedGroup].appendChild(catEl);
-        });
-
-        document.querySelectorAll('[id$="-categories-container"]').forEach(container => {
-            container.addEventListener('dragover', e => e.preventDefault());
-            container.addEventListener('drop', handleDrop);
-        });
-
-        document.querySelectorAll('[id$="-categories-list"] [data-category]').forEach(item => {
-            item.addEventListener('dragstart', handleDragStart);
-            item.addEventListener('touchstart', handleTouchStart, { passive: false });
-        });
-        
+        allCategories.forEach(cat => { const assignedGroup = categoryMap[cat] || 'unassigned'; const catEl = document.createElement('div'); catEl.textContent = cat; catEl.className = 'p-2 rounded cursor-grab text-sm'; catEl.style.backgroundColor = 'var(--border-color)'; catEl.draggable = true; catEl.dataset.category = cat; lists[assignedGroup].appendChild(catEl); });
+        document.querySelectorAll('[id$="-categories-container"]').forEach(container => { container.addEventListener('dragover', e => e.preventDefault()); container.addEventListener('drop', handleDrop); });
+        document.querySelectorAll('[id$="-categories-list"] [data-category]').forEach(item => { item.addEventListener('dragstart', handleDragStart); item.addEventListener('touchstart', handleTouchStart, { passive: false }); });
         const modalContent = document.querySelector('#manage-categories-modal .modal-content');
         modalContent.addEventListener('touchmove', handleTouchMove, { passive: false });
         modalContent.addEventListener('touchend', handleTouchEnd);
-        
         openModal(manageCategoriesModal);
     }
 
-    function handleDragStart(e) {
-        draggedItem = e.target;
-        setTimeout(() => e.target.classList.add('opacity-50'), 0);
-    }
-
-    function handleDrop(e) {
-        e.preventDefault();
-        const container = e.target.closest('[id$="-categories-container"]');
-        if (container && draggedItem) {
-            const list = container.querySelector('[id$="-categories-list"]');
-            draggedItem.classList.remove('opacity-50');
-            list.appendChild(draggedItem);
-            updateCategoryMap(draggedItem, container);
+    function handleDragStart(e) { draggedItem = e.target; setTimeout(() => e.target.classList.add('opacity-50'), 0); }
+    function handleDrop(e) { e.preventDefault(); const container = e.target.closest('[id$="-categories-container"]'); if (container && draggedItem) { const list = container.querySelector('[id$="-categories-list"]'); draggedItem.classList.remove('opacity-50'); list.appendChild(draggedItem); updateCategoryMap(draggedItem, container); } draggedItem = null; }
+    function handleTouchStart(e) { e.preventDefault(); touchDraggedItem = e.target.closest('[data-category]'); if (!touchDraggedItem) return; const rect = touchDraggedItem.getBoundingClientRect(); ghostEl = touchDraggedItem.cloneNode(true); ghostEl.style.position = 'fixed'; ghostEl.style.zIndex = '1500'; ghostEl.style.width = `${rect.width}px`; ghostEl.style.height = `${rect.height}px`; ghostEl.style.pointerEvents = 'none'; ghostEl.style.opacity = '0.8'; ghostEl.style.backgroundColor = 'var(--primary-color)'; ghostEl.style.color = 'var(--background-color)'; document.body.appendChild(ghostEl); touchDraggedItem.classList.add('opacity-50'); const touch = e.touches[0]; startX = touch.clientX - rect.left; startY = touch.clientY - rect.top; moveGhost(touch.clientX, touch.clientY); }
+    function handleTouchMove(e) { if (!touchDraggedItem) return; e.preventDefault(); const touch = e.touches[0]; moveGhost(touch.clientX, touch.clientY); }
+    function moveGhost(x, y) { if (!ghostEl) return; ghostEl.style.left = `${x - startX}px`; ghostEl.style.top = `${y - startY}px`; }
+    function handleTouchEnd(e) { if (!touchDraggedItem) return; ghostEl.style.display = 'none'; const endElement = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY); ghostEl.style.display = ''; const container = endElement ? endElement.closest('[id$="-categories-container"]') : null; if (container) { const list = container.querySelector('[id$="-categories-list"]'); list.appendChild(touchDraggedItem); updateCategoryMap(touchDraggedItem, container); } document.body.removeChild(ghostEl); touchDraggedItem.classList.remove('opacity-50'); touchDraggedItem = null; ghostEl = null; }
+    function updateCategoryMap(item, container) { const newGroup = container.id.split('-')[0]; const categoryName = item.dataset.category; if (newGroup === 'unassigned') { delete state.settings.budgetAllocation.categoryMap[categoryName]; } else { state.settings.budgetAllocation.categoryMap[categoryName] = newGroup; } saveData(); renderReportsScreen(); }
+    
+    function handleConnectionChange() {
+        if (navigator.onLine) {
+            offlineIndicator.style.display = 'none';
+            showToast("Đã kết nối lại Internet.");
+            if (state.currentUser && state.settings.autoBackup) {
+                autoBackupToFirebase();
+            }
+        } else {
+            offlineIndicator.style.display = 'block';
+            showToast("Mất kết nối Internet.");
         }
-        draggedItem = null;
-    }
-
-    function handleTouchStart(e) {
-        e.preventDefault();
-        touchDraggedItem = e.target.closest('[data-category]');
-        if (!touchDraggedItem) return;
-
-        const rect = touchDraggedItem.getBoundingClientRect();
-        ghostEl = touchDraggedItem.cloneNode(true);
-        ghostEl.style.position = 'fixed';
-        ghostEl.style.zIndex = '1500';
-        ghostEl.style.width = `${rect.width}px`;
-        ghostEl.style.height = `${rect.height}px`;
-        ghostEl.style.pointerEvents = 'none';
-        ghostEl.style.opacity = '0.8';
-        ghostEl.style.backgroundColor = 'var(--primary-color)';
-        ghostEl.style.color = 'var(--background-color)';
-        document.body.appendChild(ghostEl);
-
-        touchDraggedItem.classList.add('opacity-50');
-        const touch = e.touches[0];
-        startX = touch.clientX - rect.left;
-        startY = touch.clientY - rect.top;
-        moveGhost(touch.clientX, touch.clientY);
-    }
-
-    function handleTouchMove(e) {
-        if (!touchDraggedItem) return;
-        e.preventDefault();
-        const touch = e.touches[0];
-        moveGhost(touch.clientX, touch.clientY);
-    }
-
-    function moveGhost(x, y) {
-        if (!ghostEl) return;
-        ghostEl.style.left = `${x - startX}px`;
-        ghostEl.style.top = `${y - startY}px`;
-    }
-
-    function handleTouchEnd(e) {
-        if (!touchDraggedItem) return;
-
-        ghostEl.style.display = 'none';
-        const endElement = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-        ghostEl.style.display = '';
-
-        const container = endElement ? endElement.closest('[id$="-categories-container"]') : null;
-        if (container) {
-            const list = container.querySelector('[id$="-categories-list"]');
-            list.appendChild(touchDraggedItem);
-            updateCategoryMap(touchDraggedItem, container);
-        }
-
-        document.body.removeChild(ghostEl);
-        touchDraggedItem.classList.remove('opacity-50');
-        touchDraggedItem = null;
-        ghostEl = null;
     }
     
-    function updateCategoryMap(item, container) {
-        const newGroup = container.id.split('-')[0];
-        const categoryName = item.dataset.category;
-        if (newGroup === 'unassigned') {
-            delete state.settings.budgetAllocation.categoryMap[categoryName];
-        } else {
-            state.settings.budgetAllocation.categoryMap[categoryName] = newGroup;
+    window.addEventListener('online', handleConnectionChange);
+    window.addEventListener('offline', handleConnectionChange);
+    if (!navigator.onLine) { handleConnectionChange(); }
+    
+    const inputIdsToFormat = ['amount', 'transfer-amount', 'edit-amount', 'initial-balance', 'edit-wallet-balance', 'saving-target', 'expense-amount', 'debt-amount', 'pay-debt-amount', 'add-saving-amount', 'withdraw-saving-amount', 'total-budget-input'];
+    inputIdsToFormat.forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', (e) => {
+                const originalValue = e.target.value;
+                const cursorPosition = e.target.selectionStart;
+                const originalLength = originalValue.length;
+
+                const formattedValue = formatNumberInput(originalValue);
+                e.target.value = formattedValue;
+                
+                const newLength = formattedValue.length;
+                const newCursorPosition = cursorPosition + (newLength - originalLength);
+                e.target.setSelectionRange(newCursorPosition, newCursorPosition);
+            });
+            input.setAttribute('type', 'text');
+            input.setAttribute('inputmode', 'numeric');
+            input.setAttribute('pattern', '[0-9.]*');
         }
-        saveData();
-        renderReportsScreen();
-    }
+    });
 });
