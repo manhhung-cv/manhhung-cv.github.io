@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <p class="font-semibold">${backup.name}</p>
                                 <p class="text-xs" style="color: var(--text-secondary);">${date}</p>
                             </div>
-                            <div class="p-3 rounded-lg flex justify-between items-center">
+                            <div>
                                 <button class="restore-btn btn btn-primary !py-1 !px-3 mr-2" data-id="${doc.id}">Chọn</button>
                                 <button class="delete-backup-btn btn btn-secondary !py-1 !px-3" data-id="${doc.id}" style="background-color: var(--expense-color); color: white;"><i class="fas fa-trash"></i></button>
                             </div>
@@ -248,7 +248,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const docRef = db.collection('users').doc(state.currentUser.uid).collection('backups').doc(backupId);
                     const docSnap = await docRef.get();
-                    // [SỬA LỖI] Thay đổi từ docSnap.exists() thành docSnap.exists
                     if (docSnap.exists) { 
                         const backupData = docSnap.data().data;
                         localStorage.setItem('financeApp_v3.9', JSON.stringify(backupData));
@@ -260,7 +259,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    // [MỚI] Thêm chức năng xóa bản sao lưu
     const deleteBackupFromFirebase = async (backupId) => {
         if (backupId === 'auto_backup') {
             showToast("Không thể xóa bản sao lưu tự động.");
@@ -368,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderReportsScreen = () => {
         const canvasEl = document.getElementById('expense-chart');
         if (!canvasEl) return;
-        const ctx = canvasEl.getContext('2d');
+        
         const monthStart = new Date(new Date().setDate(1)).setHours(0, 0, 0, 0);
         const monthlyTxs = state.transactions.filter(tx => new Date(tx.date) >= monthStart);
         const monthlyExpenses = monthlyTxs.filter(tx => tx.type === 'expense');
@@ -376,12 +374,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const sortedCategories = Object.entries(expenseByCategory).sort(([, a], [, b]) => b - a);
         const labels = sortedCategories.map(([category]) => category);
         const data = sortedCategories.map(([, amount]) => amount);
+        
         if (expenseChartInstance) { expenseChartInstance.destroy(); }
+        
+        const chartContainer = document.getElementById('expense-chart-container');
         if (labels.length > 0) {
-            expenseChartInstance = new Chart(ctx, { type: 'doughnut', data: { labels: labels, datasets: [{ label: 'Chi tiêu', data: data, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#7CFFB2'], borderColor: 'var(--card-background)', borderWidth: 2, }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: 'var(--text-primary)', font: { family: "'Be Vietnam Pro', sans-serif" } } }, tooltip: { callbacks: { label: (context) => `${context.label || ''}: ${formatCurrency(context.parsed)}` } } } } });
-        } else if (ctx) {
-            // Clear canvas if no data
-            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            chartContainer.innerHTML = '<canvas id="expense-chart"></canvas>';
+            const newCtx = document.getElementById('expense-chart').getContext('2d');
+            expenseChartInstance = new Chart(newCtx, { type: 'doughnut', data: { labels: labels, datasets: [{ label: 'Chi tiêu', data: data, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#7CFFB2'], borderColor: 'var(--card-background)', borderWidth: 2, }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: 'var(--text-primary)', font: { family: "'Be Vietnam Pro', sans-serif" } } }, tooltip: { callbacks: { label: (context) => `${context.label || ''}: ${formatCurrency(context.parsed)}` } } } } });
+        } else {
+            chartContainer.innerHTML = `<div class="text-center" style="color:var(--text-secondary)"><i class="fas fa-chart-pie text-4xl mb-3"></i><p>Chưa có dữ liệu chi tiêu trong tháng này để hiển thị biểu đồ.</p></div>`;
         }
 
         const totalIncome = monthlyTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
@@ -422,7 +424,6 @@ document.addEventListener('DOMContentLoaded', () => {
     manualBackupBtn.addEventListener('click', manualBackupToFirebase);
     restoreBackupBtn.addEventListener('click', fetchAndShowBackups);
     autoBackupToggle.addEventListener('change', () => { state.settings.autoBackup = autoBackupToggle.checked; saveData(); });
-    // [CẬP NHẬT] Thêm listener cho nút xóa
     backupListEl.addEventListener('click', e => { 
         const restoreTarget = e.target.closest('.restore-btn'); 
         if (restoreTarget) { 
@@ -510,8 +511,134 @@ document.addEventListener('DOMContentLoaded', () => {
     function openDebtModal(debtId = null) { state.editingDebtId = debtId; debtForm.reset(); document.getElementById('debt-start-date').valueAsDate = new Date(); if (debtId) { const debt = state.debts.find(d => d.id === debtId); document.getElementById('debt-modal-title').textContent = "Chỉnh Sửa Khoản Nợ";['type', 'person', 'amount', 'currency', 'startDate', 'endDate', 'note'].forEach(id => { document.getElementById(`debt-${id}`).value = debt[id] || ''; }); } else { document.getElementById('debt-modal-title').textContent = "Thêm Khoản Nợ Mới"; } openModal(debtModal); }
     function openPayDebtModal(debtId) { state.payingDebtId = debtId; payDebtForm.reset(); updateWalletOptions(document.getElementById('pay-debt-wallet-select')); document.getElementById('pay-debt-date').valueAsDate = new Date(); openModal(payDebtModal); }
     function openDebtHistoryModal(debtId) { const debt = state.debts.find(d => d.id === debtId); const historyListEl = document.getElementById('debt-history-list'); if (!debt || !debt.history || debt.history.length === 0) { historyListEl.innerHTML = `<p class="text-center" style="color: var(--text-secondary);">Chưa có lịch sử trả nợ.</p>`; } else { historyListEl.innerHTML = [...debt.history].reverse().map(item => { const wallet = state.wallets.find(w => w.id === item.walletId); return `<div class="p-2 rounded" style="background-color: var(--highlight-color);"><div class="flex justify-between font-semibold"><span>${formatCurrency(item.amount)}</span><span>${new Date(item.date).toLocaleDateString('vi-VN')}</span></div><p class="text-xs" style="color: var(--text-secondary);">Từ ví: ${wallet ? wallet.name : 'N/A'}</p><p class="text-xs italic" style="color: var(--text-secondary);">${item.note || 'Không có ghi chú'}</p></div>` }).join(''); } openModal(debtHistoryModal); }
+    
+    // [CẬP NHẬT] Các biến và hàm cho chức năng kéo thả
     let draggedItem = null;
-    function openManageCategoriesModal() { const categoryMap = state.settings.budgetAllocation.categoryMap || {}; const allCategories = state.settings.categories.expense; const lists = { unassigned: document.getElementById('unassigned-categories-list'), essential: document.getElementById('essential-categories-list'), wants: document.getElementById('wants-categories-list'), }; Object.values(lists).forEach(list => list.innerHTML = ''); allCategories.forEach(cat => { const assignedGroup = categoryMap[cat] || 'unassigned'; const catEl = document.createElement('div'); catEl.textContent = cat; catEl.className = 'p-2 rounded cursor-grab text-sm'; catEl.style.backgroundColor = 'var(--border-color)'; catEl.draggable = true; catEl.dataset.category = cat; lists[assignedGroup].appendChild(catEl); }); document.querySelectorAll('[id$="-categories-container"]').forEach(container => { container.addEventListener('dragover', e => e.preventDefault()); container.addEventListener('drop', handleDrop); }); document.querySelectorAll('[id$="-categories-list"] [data-category]').forEach(item => { item.addEventListener('dragstart', handleDragStart); }); openModal(manageCategoriesModal); }
-    function handleDragStart(e) { draggedItem = e.target; }
-    function handleDrop(e) { e.preventDefault(); const container = e.target.closest('[id$="-categories-container"]'); if (container && draggedItem) { const list = container.querySelector('[id$="-categories-list"]'); list.appendChild(draggedItem); const newGroup = container.id.split('-')[0]; const categoryName = draggedItem.dataset.category; if (newGroup === 'unassigned') { delete state.settings.budgetAllocation.categoryMap[categoryName]; } else { state.settings.budgetAllocation.categoryMap[categoryName] = newGroup; } saveData(); renderReportsScreen(); } draggedItem = null; }
+    let touchDraggedItem = null;
+    let ghostEl = null;
+    let startX = 0;
+    let startY = 0;
+
+    function openManageCategoriesModal() {
+        const categoryMap = state.settings.budgetAllocation.categoryMap || {};
+        const allCategories = state.settings.categories.expense;
+        const lists = {
+            unassigned: document.getElementById('unassigned-categories-list'),
+            essential: document.getElementById('essential-categories-list'),
+            wants: document.getElementById('wants-categories-list'),
+        };
+        Object.values(lists).forEach(list => list.innerHTML = '');
+        allCategories.forEach(cat => {
+            const assignedGroup = categoryMap[cat] || 'unassigned';
+            const catEl = document.createElement('div');
+            catEl.textContent = cat;
+            catEl.className = 'p-2 rounded cursor-grab text-sm';
+            catEl.style.backgroundColor = 'var(--border-color)';
+            catEl.draggable = true;
+            catEl.dataset.category = cat;
+            lists[assignedGroup].appendChild(catEl);
+        });
+
+        document.querySelectorAll('[id$="-categories-container"]').forEach(container => {
+            container.addEventListener('dragover', e => e.preventDefault());
+            container.addEventListener('drop', handleDrop);
+        });
+
+        document.querySelectorAll('[id$="-categories-list"] [data-category]').forEach(item => {
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('touchstart', handleTouchStart, { passive: false });
+        });
+        
+        const modalContent = document.querySelector('#manage-categories-modal .modal-content');
+        modalContent.addEventListener('touchmove', handleTouchMove, { passive: false });
+        modalContent.addEventListener('touchend', handleTouchEnd);
+        
+        openModal(manageCategoriesModal);
+    }
+
+    function handleDragStart(e) {
+        draggedItem = e.target;
+        setTimeout(() => e.target.classList.add('opacity-50'), 0);
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const container = e.target.closest('[id$="-categories-container"]');
+        if (container && draggedItem) {
+            const list = container.querySelector('[id$="-categories-list"]');
+            draggedItem.classList.remove('opacity-50');
+            list.appendChild(draggedItem);
+            updateCategoryMap(draggedItem, container);
+        }
+        draggedItem = null;
+    }
+
+    function handleTouchStart(e) {
+        e.preventDefault();
+        touchDraggedItem = e.target.closest('[data-category]');
+        if (!touchDraggedItem) return;
+
+        const rect = touchDraggedItem.getBoundingClientRect();
+        ghostEl = touchDraggedItem.cloneNode(true);
+        ghostEl.style.position = 'fixed';
+        ghostEl.style.zIndex = '1500';
+        ghostEl.style.width = `${rect.width}px`;
+        ghostEl.style.height = `${rect.height}px`;
+        ghostEl.style.pointerEvents = 'none';
+        ghostEl.style.opacity = '0.8';
+        ghostEl.style.backgroundColor = 'var(--primary-color)';
+        ghostEl.style.color = 'var(--background-color)';
+        document.body.appendChild(ghostEl);
+
+        touchDraggedItem.classList.add('opacity-50');
+        const touch = e.touches[0];
+        startX = touch.clientX - rect.left;
+        startY = touch.clientY - rect.top;
+        moveGhost(touch.clientX, touch.clientY);
+    }
+
+    function handleTouchMove(e) {
+        if (!touchDraggedItem) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        moveGhost(touch.clientX, touch.clientY);
+    }
+
+    function moveGhost(x, y) {
+        if (!ghostEl) return;
+        ghostEl.style.left = `${x - startX}px`;
+        ghostEl.style.top = `${y - startY}px`;
+    }
+
+    function handleTouchEnd(e) {
+        if (!touchDraggedItem) return;
+
+        ghostEl.style.display = 'none';
+        const endElement = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        ghostEl.style.display = '';
+
+        const container = endElement ? endElement.closest('[id$="-categories-container"]') : null;
+        if (container) {
+            const list = container.querySelector('[id$="-categories-list"]');
+            list.appendChild(touchDraggedItem);
+            updateCategoryMap(touchDraggedItem, container);
+        }
+
+        document.body.removeChild(ghostEl);
+        touchDraggedItem.classList.remove('opacity-50');
+        touchDraggedItem = null;
+        ghostEl = null;
+    }
+    
+    function updateCategoryMap(item, container) {
+        const newGroup = container.id.split('-')[0];
+        const categoryName = item.dataset.category;
+        if (newGroup === 'unassigned') {
+            delete state.settings.budgetAllocation.categoryMap[categoryName];
+        } else {
+            state.settings.budgetAllocation.categoryMap[categoryName] = newGroup;
+        }
+        saveData();
+        renderReportsScreen();
+    }
 });
