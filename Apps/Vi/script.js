@@ -30,20 +30,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const getDefaultState = () => ({
         wallets: [{ id: Date.now(), name: 'Tiền mặt', balance: 0 }],
         transactions: [],
-        funds: [], 
+        funds: [],
         expenses: [],
-        debts: [], 
+        debts: [],
         settings: {
             theme: 'luxury',
             currency: 'VND',
             balanceVisible: true,
             autoBackup: true,
-            totalMonthlyBudget: 0, 
+            totalMonthlyBudget: 0,
             categories: {
                 expense: ['Ăn uống', 'Di chuyển', 'Hóa đơn', 'Mua sắm', 'Giải trí', 'Sức khỏe'],
                 income: ['Lương', 'Thưởng', 'Thu nhập phụ', 'Được tặng']
             },
-            budgetAllocation: { 
+            budgetAllocation: {
                 customize: false,
                 essential: 50,
                 wants: 30,
@@ -60,8 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
         editingTransactionId: null,
         editingSavingGoalId: null,
         editingExpenseId: null,
-        editingDebtId: null, 
-        payingDebtId: null, 
+        editingDebtId: null,
+        payingDebtId: null,
         addingToSavingGoalId: null,
         withdrawingFromSavingGoalId: null,
     });
@@ -128,8 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const manageCategoriesModal = document.getElementById('manage-categories-modal');
     const budgetComparisonContainer = document.getElementById('budget-comparison-container');
     const manageCategoriesBtn = document.getElementById('manage-categories-btn');
-    const offlineIndicator = document.getElementById('offline-indicator'); 
-    const totalBudgetInput = document.getElementById('total-budget-input'); 
+    const offlineIndicator = document.getElementById('offline-indicator');
+    const totalBudgetInput = document.getElementById('total-budget-input');
 
     let transactionType = 'expense';
     let editTransactionType = 'expense';
@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             state = defaultState;
         }
-        
+
         const validThemes = ['cute', 'luxury'];
         if (!validThemes.includes(state.settings.theme)) {
             state.settings.theme = 'luxury';
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const docRef = db.collection('users').doc(state.currentUser.uid).collection('backups').doc(backupId);
                     const docSnap = await docRef.get();
-                    if (docSnap.exists) { 
+                    if (docSnap.exists) {
                         const backupData = docSnap.data().data;
                         localStorage.setItem('financeApp_v3.9', JSON.stringify(backupData));
                         showToast("Phục hồi thành công! Đang tải lại...");
@@ -286,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
-    
+
     const deleteBackupFromFirebase = async (backupId) => {
         if (backupId === 'auto_backup') {
             showToast("Không thể xóa bản sao lưu tự động.");
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     await db.collection('users').doc(state.currentUser.uid).collection('backups').doc(backupId).delete();
                     showToast("Đã xóa bản sao lưu thành công!");
-                    fetchAndShowBackups(); 
+                    fetchAndShowBackups();
                 } catch (error) {
                     console.error("Delete backup failed:", error);
                     showToast("Xóa bản sao lưu thất bại!");
@@ -353,7 +353,41 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderAll = () => { renderDashboard(); renderHistory(); renderFundsScreen(); renderExpensesScreen(); renderDebtScreen(); renderReportsScreen(); renderSettingsScreen(); updateWalletFilters(); };
     const renderDashboard = () => { renderInfoCard(); walletListContent.innerHTML = state.wallets.map(wallet => `<div class="list-item p-4 rounded-xl flex justify-between items-center" style="background-color: var(--card-background)"><div class="flex items-center"><div class="w-10 h-10 rounded-full flex items-center justify-center mr-4" style="background-color: var(--background-color);"><i class="fas fa-wallet" style="color:var(--primary-color);"></i></div><div><p class="font-semibold">${wallet.name}</p><p class="text-sm" style="color:var(--text-secondary)">Số dư</p></div></div><div class="flex items-center"><p class="font-bold text-lg mr-2">${formatCurrency(wallet.balance)}</p><button class="edit-wallet-btn p-2 text-sm" data-id="${wallet.id}" style="color:var(--text-secondary);"><i class="fas fa-edit"></i></button><button class="delete-wallet-btn p-2 text-sm" data-id="${wallet.id}" style="color:var(--text-secondary);"><i class="fas fa-trash-alt"></i></button></div></div>`).join('') || `<p class="text-center py-4" style="color:var(--text-secondary)">Chưa có ví nào.</p>`; const recentTxs = [...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5); recentTransactionsContent.innerHTML = recentTxs.map(createTransactionHTML).join('') || `<div class="text-center py-4" style="color:var(--text-secondary)"><i class="fas fa-receipt text-3xl mb-2"></i><p>Chưa có giao dịch nào.</p></div>`; };
     const renderInfoCard = () => { if (!state.uiState) state.uiState = getDefaultState().uiState; const totalBalance = state.wallets.reduce((sum, w) => sum + w.balance, 0); const monthStart = new Date(new Date().setDate(1)).setHours(0, 0, 0, 0); const monthlyTxs = state.transactions.filter(tx => new Date(tx.date) >= monthStart); const totalIncome = monthlyTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0); const totalExpense = monthlyTxs.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0); const totalSaved = state.funds.reduce((sum, s) => sum + s.savedAmount, 0); const totalSavingTarget = state.funds.reduce((sum, s) => sum + s.targetAmount, 0); const totalMonthlyExpenses = state.expenses.reduce((sum, e) => sum + e.amount, 0); document.getElementById('total-balance').textContent = formatCurrency(totalBalance); document.getElementById('total-income').textContent = formatCurrency(totalIncome); document.getElementById('total-expense').textContent = formatCurrency(totalExpense); document.getElementById('total-saved').textContent = formatCurrency(totalSaved); document.getElementById('total-saving-target').textContent = `/ ${formatCurrency(totalSavingTarget)}`; document.getElementById('total-monthly-expenses').textContent = formatCurrency(totalMonthlyExpenses); document.getElementById('total-expenses-count').textContent = `${state.expenses.length} chi phí định kỳ`; infoCardPanes.forEach(pane => pane.classList.toggle('active', pane.id === `${state.uiState.activeInfoCardView}-view`)); document.querySelectorAll('.info-card-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.view === state.uiState.activeInfoCardView)); };
-    const createTransactionHTML = (tx) => { const wallet = state.wallets.find(w => w.id === tx.walletId); const isIncome = tx.type === 'income'; const color = isIncome ? 'var(--income-color)' : 'var(--expense-color)'; const icon = ['Chuyển tiền đi', 'Nhận tiền', 'Nạp tiền tiết kiệm', 'Rút tiền tiết kiệm', 'Trả nợ'].includes(tx.category) ? 'fa-exchange-alt' : (isIncome ? 'fa-arrow-up' : 'fa-arrow-down'); const descriptionHTML = tx.description ? `<p class="text-xs italic mt-1" style="color:var(--text-secondary);">${tx.description}</p>` : ''; return ` <div class="transaction-item list-item flex items-center" data-id="${tx.id}"> <div class="w-9 h-9 rounded-full flex items-center justify-center mr-3 flex-shrink-0" style="background-color: color-mix(in srgb, ${color} 15%, transparent);"> <i class="fas ${icon} text-sm" style="color: ${color};"></i> </div> <div class="flex-grow cursor-pointer"> <p class="font-semibold leading-tight">${tx.category}</p> <p class="text-xs leading-tight" style="color:var(--text-secondary)"> <span>${wallet ? wallet.name : 'Ví đã xóa'}</span> </p> ${descriptionHTML} </div> <div class="text-right ml-2 flex-shrink-0"> <p class="font-bold" style="color: ${isIncome ? 'var(--income-color)' : 'var(--text-primary)'};"> ${isIncome ? '+' : '-'}${formatCurrency(tx.amount)} </p> <button class="copy-transaction-btn text-xs p-1 mt-1" style="color:var(--text-secondary);" data-id="${tx.id}"> <i class="far fa-copy"></i> Sao chép </button> </div> </div> `; };
+
+    const createTransactionHTML = (tx) => {
+        const wallet = state.wallets.find(w => w.id === tx.walletId);
+        const isIncome = tx.type === 'income';
+        const color = isIncome ? 'var(--income-color)' : 'var(--expense-color)';
+        const icon = ['Chuyển tiền đi', 'Nhận tiền', 'Nạp tiền tiết kiệm', 'Rút tiền tiết kiệm', 'Trả nợ'].includes(tx.category) ? 'fa-exchange-alt' : (isIncome ? 'fa-arrow-up' : 'fa-arrow-down');
+        const descriptionHTML = tx.description ? `<p class="text-xs italic mt-1" style="color:var(--text-secondary);">${tx.description}</p>` : '';
+        return `
+            <div class="transaction-item list-item flex items-center" data-id="${tx.id}">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center mr-3 flex-shrink-0" style="background-color: color-mix(in srgb, ${color} 15%, transparent);">
+                    <i class="fas ${icon} text-sm" style="color: ${color};"></i>
+                </div>
+                <div class="flex-grow">
+                    <p class="font-semibold leading-tight">${tx.category}</p>
+                    <p class="text-xs leading-tight" style="color:var(--text-secondary)">
+                        <span>${wallet ? wallet.name : 'Ví đã xóa'}</span>
+                    </p>
+                    ${descriptionHTML}
+                </div>
+                <div class="text-right ml-2 flex-shrink-0">
+                    <p class="font-bold" style="color: ${isIncome ? 'var(--income-color)' : 'var(--text-primary)'};">
+                        ${isIncome ? '+' : '-'}${formatCurrency(tx.amount)}
+                    </p>
+                    <div class="flex items-center justify-end mt-1 -mr-2">
+                        <button class="delete-transaction-btn p-2 text-xs" data-id="${tx.id}" style="color:var(--text-secondary);" title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                        <button class="edit-transaction-btn p-2 text-xs" data-id="${tx.id}" style="color:var(--text-secondary);" title="Sửa"><i class="fas fa-edit"></i></button>
+                        <button class="copy-transaction-btn p-2 text-xs" style="color:var(--text-secondary);" data-id="${tx.id}" title="Sao chép">
+                            <i class="far fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    };
+
     const renderHistory = () => { const searchTerm = document.getElementById('history-search-input').value.toLowerCase(); const typeFilter = document.getElementById('history-type-filter').value; const walletFilter = document.getElementById('history-wallet-filter').value; const startDate = document.getElementById('history-start-date').value; const endDate = document.getElementById('history-end-date').value; let filteredTxs = state.transactions.filter(tx => { const txDate = new Date(tx.date); const start = startDate ? new Date(startDate) : null; const end = endDate ? new Date(endDate) : null; if (start) start.setHours(0, 0, 0, 0); if (end) end.setHours(23, 59, 59, 999); const matchSearch = tx.category.toLowerCase().includes(searchTerm) || (tx.description && tx.description.toLowerCase().includes(searchTerm)); const matchType = typeFilter === 'all' || tx.type === typeFilter; const matchWallet = walletFilter === 'all' || tx.walletId == walletFilter; const matchDate = (!start || txDate >= start) && (!end || txDate <= end); return matchSearch && matchType && matchWallet && matchDate; }); const grouped = filteredTxs.sort((a, b) => new Date(b.date) - new Date(a.date)).reduce((acc, tx) => { const dateKey = new Date(tx.date).toLocaleDateString(); if (!acc[dateKey]) acc[dateKey] = []; acc[dateKey].push(tx); return acc; }, {}); if (Object.keys(grouped).length === 0) { fullTransactionListEl.innerHTML = `<div class="text-center py-12 mt-4" style="color:var(--text-secondary)"><i class="fas fa-search-dollar text-5xl mb-4" style="color:var(--primary-color);"></i><p class="text-lg font-semibold mb-2">Không tìm thấy giao dịch.</p><p class="text-sm">Hãy thử điều chỉnh bộ lọc hoặc tạo giao dịch mới.</p></div>`; return; } let html = ''; for (const dateKey in grouped) { html += `<div class="day-group-card"><div class="date-header">${formatDateHeader(grouped[dateKey][0].date)}</div>`; html += grouped[dateKey].map(createTransactionHTML).join(''); html += `</div>`; } fullTransactionListEl.innerHTML = html; };
     const renderFundsScreen = () => { savingGoalsListEl.innerHTML = state.funds.map(goal => { const progress = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0; let deadlineHTML = ''; let progressBarColor = 'var(--primary-color)'; if (goal.deadline) { const today = new Date().setHours(0, 0, 0, 0); const deadlineDate = new Date(goal.deadline).setHours(0, 0, 0, 0); const daysLeft = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24)); if (daysLeft > 0) { deadlineHTML = `<div class="flex items-center text-xs mt-1" style="color: var(--text-secondary);"><i class="far fa-clock mr-2"></i><span>Còn ${daysLeft} ngày</span></div>`; progressBarColor = 'var(--income-color)'; } else if (daysLeft === 0) { deadlineHTML = `<div class="flex items-center text-xs mt-1 font-bold" style="color: var(--primary-color);"><i class="fas fa-hourglass-end mr-2"></i><span>Hôm nay là hạn chót!</span></div>`; progressBarColor = 'var(--primary-color)'; } else { deadlineHTML = `<div class="flex items-center text-xs mt-1 font-bold" style="color: var(--expense-color);"><i class="fas fa-exclamation-circle mr-2"></i><span>Đã trễ hạn ${Math.abs(daysLeft)} ngày</span></div>`; progressBarColor = 'var(--expense-color)'; } } return ` <div class="list-item p-4 rounded-xl" style="background-color: var(--card-background);"> <div class="flex items-start justify-between"> <div class="flex items-center"> <span class="text-2xl mr-4">${goal.icon || '🎯'}</span> <div> <p class="font-bold">${goal.name}</p> <p class="text-xs" style="color: var(--text-secondary);">${goal.note || ''}</p> </div> </div> <div class="flex gap-2"> <button class="edit-saving-btn p-2" data-id="${goal.id}"><i class="fas fa-edit"></i></button> <button class="delete-saving-btn p-2" data-id="${goal.id}"><i class="fas fa-trash"></i></button> </div> </div> <div class="mt-4"> <div class="progress-bar rounded-full h-2"> <div class="progress-bar-inner rounded-full" style="width: ${Math.min(progress, 100)}%; background-color: ${progressBarColor};"></div> </div> <div class="flex justify-between items-center mt-2"> <div> <p class="text-sm font-semibold" style="color: ${progressBarColor};">${formatCurrency(goal.savedAmount)} / ${formatCurrency(goal.targetAmount)}</p> ${deadlineHTML} </div> <span class="text-sm font-bold">${progress.toFixed(0)}%</span> </div> </div> <div class="flex gap-3 mt-4"> <button class="withdraw-from-saving-btn w-full btn btn-secondary !py-2 text-sm" data-id="${goal.id}">Rút tiền</button> <button class="add-to-saving-btn w-full btn btn-primary !py-2 text-sm" data-id="${goal.id}">Nạp tiền</button> </div> </div>`; }).join('') || `<div class="text-center py-12" style="color:var(--text-secondary)"><i class="fas fa-piggy-bank text-5xl mb-4"></i><p>Chưa có quỹ nào.</p></div>`; };
     const renderExpensesScreen = () => { recurringExpensesTimelineEl.innerHTML = `<div class="relative">${state.expenses.length > 1 ? '<div class="absolute top-5 h-full ml-5 -translate-x-1/2 border-l-2" style="border-color: var(--border-color)"></div>' : ''}${[...state.expenses].sort((a, b) => (a.day || 99) - (b.day || 99)).map(expense => { let dateText = `Chi phí không cố định`; if (expense.type === 'fixed') { switch (expense.frequency) { case 'weekly': dateText = `Hàng tuần`; break; case 'yearly': dateText = `Hàng năm`; break; case 'quarterly': dateText = `Mỗi 3 tháng`; break; case 'half-yearly': dateText = `Mỗi 6 tháng`; break; case 'custom': dateText = `Mỗi ${expense.customFreq} tháng`; break; default: dateText = `Ngày ${expense.day} hàng tháng`; } } return `<div class="flex"><div class="timeline-icon flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl z-10">${expense.icon || '💰'}</div><div class="flex-grow pl-4 pb-6"><div class="list-item p-4 rounded-xl" style="background-color: var(--card-background);"><div class="flex justify-between items-start"><div><p class="font-bold">${expense.name}</p><p class="text-xs font-semibold px-2 py-0.5 rounded-full inline-block mt-1" style="background-color: ${expense.type === 'fixed' ? 'var(--border-color)' : `color-mix(in srgb, var(--primary-color) 30%, transparent)`};">${expense.type === 'fixed' ? 'Cố định' : 'Linh hoạt'}</p></div><div class="flex gap-2"><button class="edit-expense-btn p-2" data-id="${expense.id}"><i class="fas fa-edit"></i></button><button class="delete-expense-btn p-2" data-id="${expense.id}"><i class="fas fa-trash"></i></button></div></div><p class="text-2xl font-bold my-2" style="color: var(--expense-color);">${formatCurrency(expense.amount)}</p><p class="text-xs" style="color: var(--text-secondary);">${dateText}</p>${expense.note ? `<p class="text-xs mt-2 italic" style="color: var(--text-secondary);">${expense.note}</p>` : ''}</div></div></div>` }).join('') || `<div class="text-center py-12" style="color:var(--text-secondary)"><i class="fas fa-calendar-alt text-5xl mb-4"></i><p>Chưa có chi phí định kỳ nào.</p></div>`}</div>`; };
@@ -394,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderReportsScreen = () => {
         const canvasEl = document.getElementById('expense-chart');
         if (!canvasEl) return;
-        
+
         const monthStart = new Date(new Date().setDate(1)).setHours(0, 0, 0, 0);
         const monthlyTxs = state.transactions.filter(tx => new Date(tx.date) >= monthStart);
         const monthlyExpenses = monthlyTxs.filter(tx => tx.type === 'expense');
@@ -402,9 +436,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const sortedCategories = Object.entries(expenseByCategory).sort(([, a], [, b]) => b - a);
         const labels = sortedCategories.map(([category]) => category);
         const data = sortedCategories.map(([, amount]) => amount);
-        
+
         if (expenseChartInstance) { expenseChartInstance.destroy(); }
-        
+
         const chartContainer = document.getElementById('expense-chart-container');
         if (labels.length > 0) {
             chartContainer.innerHTML = '<canvas id="expense-chart"></canvas>';
@@ -417,7 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalIncome = monthlyTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
         const budgetSettings = state.settings.budgetAllocation;
         const totalBudgetSource = (state.settings.totalMonthlyBudget > 0) ? state.settings.totalMonthlyBudget : totalIncome;
-        
+
         totalBudgetInput.value = state.settings.totalMonthlyBudget > 0 ? formatNumberInput(state.settings.totalMonthlyBudget) : '';
 
         const categoryMap = budgetSettings.categoryMap || {};
@@ -456,10 +490,10 @@ document.addEventListener('DOMContentLoaded', () => {
     manualBackupBtn.addEventListener('click', manualBackupToFirebase);
     restoreBackupBtn.addEventListener('click', fetchAndShowBackups);
     autoBackupToggle.addEventListener('change', () => { state.settings.autoBackup = autoBackupToggle.checked; saveData(); });
-    backupListEl.addEventListener('click', e => { 
-        const restoreTarget = e.target.closest('.restore-btn'); 
-        if (restoreTarget) { 
-            restoreFromBackup(restoreTarget.dataset.id); 
+    backupListEl.addEventListener('click', e => {
+        const restoreTarget = e.target.closest('.restore-btn');
+        if (restoreTarget) {
+            restoreFromBackup(restoreTarget.dataset.id);
         }
         const deleteTarget = e.target.closest('.delete-backup-btn');
         if (deleteTarget) {
@@ -467,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     resetDataBtn.addEventListener('click', () => { showConfirmation({ title: 'Xóa Dữ Liệu Local?', message: 'Bạn có chắc chắn muốn xóa toàn bộ dữ liệu trên thiết bị này không? Hành động này không ảnh hưởng đến các bản sao lưu online.', okText: 'Xóa', onConfirm: () => { localStorage.removeItem('financeApp_v3.9'); state = getDefaultState(); applyUiState(); renderAll(); saveData(); showToast("Đã xóa dữ liệu local."); } }); });
-    navItems.forEach(item => item.addEventListener('click', () => { if (item.dataset.screen) { switchScreen(item.dataset.screen);} }));
+    navItems.forEach(item => item.addEventListener('click', () => { if (item.dataset.screen) { switchScreen(item.dataset.screen); } }));
     toggleBalanceVisibilityBtn.addEventListener('click', () => { state.settings.balanceVisible = !state.settings.balanceVisible; toggleBalanceVisibilityBtn.querySelector('i').className = state.settings.balanceVisible ? 'fas fa-eye' : 'fas fa-eye-slash'; renderAll(); });
     document.getElementById('quick-action-expense').addEventListener('click', () => openTransactionModal('expense'));
     document.getElementById('quick-action-income').addEventListener('click', () => openTransactionModal('income'));
@@ -495,7 +529,47 @@ document.addEventListener('DOMContentLoaded', () => {
     walletForm.addEventListener('submit', (e) => { e.preventDefault(); state.wallets.push({ id: Date.now(), name: document.getElementById('wallet-name').value, balance: parseFloat(deformatNumber(document.getElementById('initial-balance').value)) || 0 }); closeModal(addWalletModal); saveData(); renderAll(); });
     function openEditWalletModal(walletId) { state.editingWalletId = walletId; const wallet = state.wallets.find(w => w.id === walletId); if (wallet) { document.getElementById('edit-wallet-name').value = wallet.name; document.getElementById('edit-wallet-balance').value = formatNumberInput(wallet.balance); openModal(editWalletModal); } }
     editWalletForm.addEventListener('submit', (e) => { e.preventDefault(); const wallet = state.wallets.find(w => w.id === state.editingWalletId); if (wallet) { const newName = document.getElementById('edit-wallet-name').value; const newBalance = parseFloat(deformatNumber(document.getElementById('edit-wallet-balance').value)); const oldBalance = wallet.balance; const adjustment = newBalance - oldBalance; if (adjustment !== 0) { const adjType = adjustment > 0 ? 'income' : 'expense'; state.transactions.push({ id: Date.now(), type: adjType, amount: Math.abs(adjustment), category: "Điều chỉnh số dư", walletId: wallet.id, description: `Thay đổi số dư`, date: new Date().toISOString() }); } wallet.name = newName; wallet.balance = newBalance; } closeModal(editWalletModal); saveData(); renderAll(); });
-    function setupTransactionModalUI(type, modal = addTransactionModal) { transactionType = type; const title = modal.querySelector('#transaction-modal-title'); const transactionFields = modal.querySelector('#transaction-fields'); const transferFields = modal.querySelector('#transfer-fields'); const budgetWrapper = modal.querySelector('[id*="budget-category-wrapper"]'); modal.querySelectorAll('.transaction-type-btn').forEach(btn => { btn.style.backgroundColor = 'var(--background-color)'; btn.style.color = 'var(--text-secondary)'; }); if (type === 'transfer') { title.textContent = "Chuyển Tiền"; transactionFields.classList.add('hidden'); transferFields.classList.remove('hidden'); modal.querySelector('[data-type="transfer"]').style.backgroundColor = 'var(--primary-color)'; if (budgetWrapper) budgetWrapper.classList.add('hidden'); } else { title.textContent = type === 'expense' ? "Thêm Khoản Chi" : "Thêm Khoản Thu"; transactionFields.classList.remove('hidden'); transferFields.classList.add('hidden'); const btn = modal.querySelector(`[data-type="${type}"]`); btn.style.backgroundColor = `var(--${type}-color)`; btn.style.color = 'white'; modal.querySelector('#wallet-select-label').textContent = type === 'income' ? 'Vào ví' : 'Từ ví'; if (budgetWrapper) { budgetWrapper.classList.toggle('hidden', type !== 'expense'); } } }
+
+    // =================================================================
+    // ===== ✅ ĐÂY LÀ HÀM ĐÃ ĐƯỢC CẬP NHẬT ✅ =====
+    // =================================================================
+    function setupTransactionModalUI(type, modal = addTransactionModal) {
+        transactionType = type;
+        const title = modal.querySelector('#transaction-modal-title');
+        const transactionFields = modal.querySelector('#transaction-fields');
+        const transferFields = modal.querySelector('#transfer-fields');
+        const budgetWrapper = modal.querySelector('[id*="budget-category-wrapper"]');
+        modal.querySelectorAll('.transaction-type-btn').forEach(btn => {
+            btn.style.backgroundColor = 'var(--background-color)';
+            btn.style.color = 'var(--text-secondary)';
+        });
+
+        if (type === 'transfer') {
+            if (title) title.textContent = "Chuyển Tiền";
+            if (transactionFields) transactionFields.classList.add('hidden');
+            if (transferFields) transferFields.classList.remove('hidden');
+            const transferBtn = modal.querySelector('[data-type="transfer"]');
+            if (transferBtn) transferBtn.style.backgroundColor = 'var(--primary-color)';
+            if (budgetWrapper) budgetWrapper.classList.add('hidden');
+        } else {
+            if (title) title.textContent = type === 'expense' ? "Thêm Khoản Chi" : "Thêm Khoản Thu";
+            if (transactionFields) transactionFields.classList.remove('hidden');
+            if (transferFields) transferFields.classList.add('hidden');
+            const btn = modal.querySelector(`[data-type="${type}"]`);
+            if (btn) {
+                btn.style.backgroundColor = `var(--${type}-color)`;
+                btn.style.color = 'white';
+            }
+            const walletLabel = modal.querySelector('#wallet-select-label');
+            if (walletLabel) {
+                walletLabel.textContent = type === 'income' ? 'Vào ví' : 'Từ ví';
+            }
+            if (budgetWrapper) {
+                budgetWrapper.classList.toggle('hidden', type !== 'expense');
+            }
+        }
+    }
+
     function openTransactionModal(type) { if (state.wallets.length === 0 && type !== 'transfer') { showConfirmation({ title: 'Chưa có ví', message: 'Bạn cần tạo ví trước.', okText: 'OK' }); return; } if (state.wallets.length < 2 && type === 'transfer') { showConfirmation({ title: 'Yêu cầu 2 ví', message: 'Bạn cần ít nhất 2 ví để chuyển tiền.', okText: 'OK' }); return; } transactionForm.reset(); setupTransactionModalUI(type); if (type !== 'transfer') { document.getElementById('transaction-date').valueAsDate = new Date(); updateWalletOptions(document.getElementById('wallet-select')); renderCategoryChips(type, document.getElementById('category-chips-container'), document.getElementById('category')); } else { document.getElementById('transfer-date').valueAsDate = new Date(); updateWalletOptions(document.getElementById('from-wallet-select')); updateWalletOptions(document.getElementById('to-wallet-select')); if (document.getElementById('to-wallet-select').options.length > 1) { document.getElementById('to-wallet-select').selectedIndex = 1; } } openModal(addTransactionModal); }
     addTransactionModal.querySelectorAll('.transaction-type-btn').forEach(btn => btn.addEventListener('click', () => setupTransactionModalUI(btn.dataset.type)));
     transactionForm.addEventListener('submit', (e) => {
@@ -525,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const wallet = state.wallets.find(w => w.id === walletId);
             if (!wallet || !amount || amount <= 0 || !category) { if (!category) showConfirmation({ title: 'Thiếu thông tin', message: 'Vui lòng chọn một hạng mục.', okText: 'OK' }); return; }
             const txDate = date ? new Date(date).toISOString() : new Date().toISOString();
-            
+
             const newTx = {
                 id: Date.now(),
                 type: transactionType,
@@ -539,7 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 newTx.budgetCategory = budgetCategory;
             }
             state.transactions.push(newTx);
-            
+
             wallet.balance += (transactionType === 'income' ? amount : -amount);
         }
         closeModal(addTransactionModal);
@@ -555,16 +629,22 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('export-data-btn').addEventListener('click', () => { const dataStr = JSON.stringify(getPersistentState(), null, 2); const dataBlob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(dataBlob); const link = document.createElement('a'); link.href = url; link.download = `tro-ly-tai-chinh-data-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); });
     document.getElementById('import-data-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
     document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; showConfirmation({ title: 'Nhập Dữ Liệu', message: 'Thao tác này sẽ ghi đè lên toàn bộ dữ liệu hiện tại.', okText: 'Nhập', onConfirm: () => { const reader = new FileReader(); reader.onload = (e) => { try { const importedState = JSON.parse(e.target.result); if (importedState.wallets && importedState.transactions && importedState.settings) { const defaultState = getDefaultState(); state = { ...defaultState, ...importedState, settings: { ...defaultState.settings, ...importedState.settings }, currentUser: state.currentUser }; applyTheme(state.settings.theme || 'dark'); document.getElementById('currency-select').value = state.settings.currency; applyUiState(); renderAll(); saveData(); } else { showConfirmation({ title: 'Lỗi', message: 'Tệp dữ liệu không hợp lệ.', okText: 'OK' }); } } catch (error) { showConfirmation({ title: 'Lỗi', message: 'Không thể đọc tệp.', okText: 'OK' }); } }; reader.readAsText(file); } }); event.target.value = ''; });
-    document.addEventListener('click', (e) => {
-        const copyBtn = e.target.closest('.copy-transaction-btn');
-        if (copyBtn) {
-            const txId = parseInt(copyBtn.dataset.id);
-            const tx = state.transactions.find(t => t.id === txId);
-            if (tx) { const wallet = state.wallets.find(w => w.id === tx.walletId); const dateStr = new Date(tx.date).toLocaleString('vi-VN'); const amountStr = `${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}`; const textToCopy = [`Ngày: ${dateStr}`, `Số tiền: ${amountStr}`, `Hạng mục: ${tx.category}`, `Ví: ${wallet ? wallet.name : 'N/A'}`, tx.description ? `Ghi chú: ${tx.description}` : null].filter(line => line !== null).join('\n'); navigator.clipboard.writeText(textToCopy).then(() => { showToast('Đã sao chép vào bộ nhớ đệm!'); }).catch(err => { showToast('Sao chép thất bại!'); console.error('Copy error:', err); }); }
-            return;
+
+    function deleteTransaction(txId) {
+        const txIndex = state.transactions.findIndex(t => t.id === txId);
+        if (txIndex === -1) return;
+        const txToDelete = state.transactions[txIndex];
+        const wallet = state.wallets.find(w => w.id === txToDelete.walletId);
+        if (wallet) {
+            wallet.balance += txToDelete.type === 'expense' ? txToDelete.amount : -txToDelete.amount;
         }
-        const txItemBody = e.target.closest('.transaction-item .cursor-pointer');
-        if (txItemBody) { const parent = txItemBody.closest('.transaction-item'); if (parent) openEditTransactionModal(parseInt(parent.dataset.id)); return; }
+        state.transactions.splice(txIndex, 1);
+        saveData();
+        renderAll();
+        showToast("Đã xóa giao dịch.");
+    }
+
+    document.addEventListener('click', (e) => {
         const delegatedActions = {
             '.edit-wallet-btn': (el) => openEditWalletModal(parseInt(el.dataset.id)),
             '.delete-wallet-btn': (el) => { const id = parseInt(el.dataset.id); const wallet = state.wallets.find(w => w.id === id); const txCount = state.transactions.filter(tx => tx.walletId === id).length; showConfirmation({ title: `Xóa Ví "${wallet.name}"?`, message: `Thao tác này sẽ xóa ${txCount} giao dịch liên quan.`, okText: 'Xóa', onConfirm: () => { state.transactions = state.transactions.filter(tx => tx.walletId !== id); state.wallets = state.wallets.filter(w => w.id !== id); saveData(); renderAll(); } }); },
@@ -578,15 +658,91 @@ document.addEventListener('DOMContentLoaded', () => {
             '.delete-debt-btn': (el) => { const id = parseInt(el.dataset.id); showConfirmation({ title: 'Xóa Khoản Nợ?', message: 'Bạn có chắc muốn xóa vĩnh viễn mục này? Mọi lịch sử trả nợ cũng sẽ bị xóa.', okText: 'Xóa', onConfirm: () => { state.debts = state.debts.filter(d => d.id !== id); saveData(); renderAll(); } }); },
             '.pay-debt-btn': (el) => openPayDebtModal(parseInt(el.dataset.id)),
             '.debt-history-btn': (el) => openDebtHistoryModal(parseInt(el.dataset.id)),
+            '.edit-transaction-btn': (el) => openEditTransactionModal(parseInt(el.dataset.id)),
+            '.delete-transaction-btn': (el) => {
+                const txId = parseInt(el.dataset.id);
+                showConfirmation({
+                    title: 'Xóa Giao Dịch?',
+                    message: 'Bạn chắc chắn muốn xóa vĩnh viễn giao dịch này?',
+                    okText: 'Xóa',
+                    onConfirm: () => deleteTransaction(txId)
+                });
+            },
+            '.copy-transaction-btn': (el) => {
+                const txId = parseInt(el.dataset.id);
+                const tx = state.transactions.find(t => t.id === txId);
+                if (tx) {
+                    const wallet = state.wallets.find(w => w.id === tx.walletId);
+                    const dateStr = new Date(tx.date).toLocaleString('vi-VN');
+                    const amountStr = `${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}`;
+                    const textToCopy = [
+                        `Ngày: ${dateStr}`,
+                        `Số tiền: ${amountStr}`,
+                        `Hạng mục: ${tx.category}`,
+                        `Ví: ${wallet ? wallet.name : 'N/A'}`,
+                        tx.description ? `Ghi chú: ${tx.description}` : null
+                    ].filter(line => line !== null).join('\n');
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        showToast('Đã sao chép vào bộ nhớ đệm!');
+                    }).catch(err => {
+                        showToast('Sao chép thất bại!');
+                        console.error('Copy error:', err);
+                    });
+                }
+            }
         };
-        for (const selector in delegatedActions) { const element = e.target.closest(selector); if (element) { delegatedActions[selector](element); break; } }
+
+        for (const selector in delegatedActions) {
+            const element = e.target.closest(selector);
+            if (element) {
+                delegatedActions[selector](element);
+                return;
+            }
+        }
     });
-    function openEditTransactionModal(txId) { const tx = state.transactions.find(t => t.id === txId); if (!tx || ["Điều chỉnh số dư", "Chuyển tiền đi", "Nhận tiền", "Nạp tiền tiết kiệm", "Rút tiền tiết kiệm", "Trả nợ"].includes(tx.category)) { showConfirmation({ title: 'Thông Báo', message: 'Giao dịch tự động không thể chỉnh sửa.', okText: 'OK' }); return; } state.editingTransactionId = txId; updateWalletOptions(document.getElementById('edit-wallet-select')); document.getElementById('edit-amount').value = formatNumberInput(tx.amount); document.getElementById('edit-wallet-select').value = tx.walletId; document.getElementById('edit-description').value = tx.description; const txDate = new Date(tx.date); document.getElementById('edit-transaction-date').value = txDate.toISOString().split('T')[0]; editTransactionType = tx.type; const editTypeExpenseBtn = document.getElementById('edit-type-expense'); const editTypeIncomeBtn = document.getElementById('edit-type-income'); setupTransactionModalUI(tx.type, editTransactionModal); if (tx.type === 'income') { editTypeIncomeBtn.style.backgroundColor = 'var(--income-color)'; editTypeIncomeBtn.style.color = 'white'; editTypeExpenseBtn.style.backgroundColor = 'var(--border-color)'; editTypeExpenseBtn.style.color = 'var(--text-secondary)'; } else { editTypeExpenseBtn.style.backgroundColor = 'var(--expense-color)'; editTypeExpenseBtn.style.color = 'white'; editTypeIncomeBtn.style.backgroundColor = 'var(--border-color)'; editTypeIncomeBtn.style.color = 'var(--text-secondary)'; } renderCategoryChips(tx.type, document.getElementById('edit-category-chips-container'), document.getElementById('edit-category'), tx.category); if (tx.type === 'expense') { document.getElementById('edit-budget-category').value = tx.budgetCategory || 'none'; } openModal(editTransactionModal); }
+
+    function openEditTransactionModal(txId) {
+        const tx = state.transactions.find(t => t.id === txId);
+        if (!tx || ["Điều chỉnh số dư", "Chuyển tiền đi", "Nhận tiền", "Nạp tiền tiết kiệm", "Rút tiền tiết kiệm", "Trả nợ"].includes(tx.category)) {
+            showConfirmation({ title: 'Thông Báo', message: 'Giao dịch tự động không thể chỉnh sửa.', okText: 'OK' });
+            return;
+        }
+        state.editingTransactionId = txId;
+        updateWalletOptions(document.getElementById('edit-wallet-select'));
+        document.getElementById('edit-amount').value = formatNumberInput(tx.amount);
+        document.getElementById('edit-wallet-select').value = tx.walletId;
+        document.getElementById('edit-description').value = tx.description;
+        const txDate = new Date(tx.date);
+        document.getElementById('edit-transaction-date').value = txDate.toISOString().split('T')[0];
+        editTransactionType = tx.type;
+        const editTypeExpenseBtn = document.getElementById('edit-type-expense');
+        const editTypeIncomeBtn = document.getElementById('edit-type-income');
+
+        // Gọi hàm setup an toàn
+        setupTransactionModalUI(tx.type, editTransactionModal);
+
+        if (tx.type === 'income') {
+            editTypeIncomeBtn.style.backgroundColor = 'var(--income-color)';
+            editTypeIncomeBtn.style.color = 'white';
+            editTypeExpenseBtn.style.backgroundColor = 'var(--border-color)';
+            editTypeExpenseBtn.style.color = 'var(--text-secondary)';
+        } else {
+            editTypeExpenseBtn.style.backgroundColor = 'var(--expense-color)';
+            editTypeExpenseBtn.style.color = 'white';
+            editTypeIncomeBtn.style.backgroundColor = 'var(--border-color)';
+            editTypeIncomeBtn.style.color = 'var(--text-secondary)';
+        }
+        renderCategoryChips(tx.type, document.getElementById('edit-category-chips-container'), document.getElementById('edit-category'), tx.category);
+        if (tx.type === 'expense') {
+            document.getElementById('edit-budget-category').value = tx.budgetCategory || 'none';
+        }
+        openModal(editTransactionModal);
+    }
     editTransactionForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const txIndex = state.transactions.findIndex(t => t.id === state.editingTransactionId);
         if (txIndex === -1) return;
-        
+
         const originalTx = { ...state.transactions[txIndex] };
         const originalWallet = state.wallets.find(w => w.id === originalTx.walletId);
         if (originalWallet) {
@@ -598,11 +754,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const newWallet = state.wallets.find(w => w.id === newWalletId);
         const newDate = document.getElementById('edit-transaction-date').value;
         const newBudgetCategory = document.getElementById('edit-budget-category').value;
-        
+
         if (newWallet) {
             newWallet.balance += editTransactionType === 'income' ? newAmount : -newAmount;
         }
-        
+
         const updatedTx = {
             ...originalTx,
             type: editTransactionType,
@@ -616,16 +772,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (editTransactionType === 'expense') {
             updatedTx.budgetCategory = newBudgetCategory;
         } else {
-            delete updatedTx.budgetCategory; // Xóa key nếu không phải là khoản chi
+            delete updatedTx.budgetCategory;
         }
 
         state.transactions[txIndex] = updatedTx;
-        
+
         closeModal(editTransactionModal);
         saveData();
         renderAll();
     });
-    document.getElementById('delete-transaction-btn').addEventListener('click', () => { showConfirmation({ title: 'Xóa Giao Dịch?', message: 'Bạn chắc chắn muốn xóa vĩnh viễn giao dịch này?', okText: 'Xóa', onConfirm: () => { const txIndex = state.transactions.findIndex(t => t.id === state.editingTransactionId); if (txIndex === -1) return; const txToDelete = state.transactions[txIndex]; const wallet = state.wallets.find(w => w.id === txToDelete.walletId); if (wallet) { wallet.balance += txToDelete.type === 'expense' ? txToDelete.amount : -txToDelete.amount; } state.transactions.splice(txIndex, 1); closeModal(editTransactionModal); saveData(); renderAll(); } }); });
+    document.getElementById('delete-transaction-btn').addEventListener('click', () => {
+        showConfirmation({
+            title: 'Xóa Giao Dịch?',
+            message: 'Bạn chắc chắn muốn xóa vĩnh viễn giao dịch này?',
+            okText: 'Xóa',
+            onConfirm: () => {
+                deleteTransaction(state.editingTransactionId);
+                closeModal(editTransactionModal);
+            }
+        });
+    });
     function openSavingGoalModal(goalId = null) { state.editingSavingGoalId = goalId; savingGoalForm.reset(); if (goalId) { const goal = state.funds.find(s => s.id === goalId); document.getElementById('saving-goal-modal-title').textContent = "Chỉnh Sửa Quỹ"; document.getElementById('saving-name').value = goal.name; document.getElementById('saving-icon').value = goal.icon; document.getElementById('saving-target').value = formatNumberInput(goal.targetAmount); document.getElementById('saving-deadline').value = goal.deadline; document.getElementById('saving-note').value = goal.note; } else { document.getElementById('saving-goal-modal-title').textContent = "Thêm Quỹ Mới"; } openModal(savingGoalModal); }
     function openRecurringExpenseModal(expenseId = null) { state.editingExpenseId = expenseId; recurringExpenseForm.reset(); const expenseTypeSelect = document.getElementById('expense-type'); const dateWrapper = document.getElementById('expense-date-wrapper'); const dateInput = document.getElementById('expense-date'); const toggleDateVisibility = () => { if (!dateWrapper) return; if (expenseTypeSelect.value === 'flexible') { dateWrapper.classList.add('hidden'); dateInput.required = false; } else { dateWrapper.classList.remove('hidden'); dateInput.required = true; } }; if (expenseId) { const expense = state.expenses.find(e => e.id === expenseId); document.getElementById('recurring-expense-modal-title').textContent = "Chỉnh Sửa Chi Phí"; document.getElementById('expense-name').value = expense.name; document.getElementById('expense-icon').value = expense.icon; document.getElementById('expense-amount').value = formatNumberInput(expense.amount); document.getElementById('expense-type').value = expense.type; document.getElementById('expense-note').value = expense.note; if (expense.day) dateInput.value = expense.day; } else { document.getElementById('recurring-expense-modal-title').textContent = "Thêm Chi Phí Định Kỳ"; } expenseTypeSelect.removeEventListener('change', toggleDateVisibility); expenseTypeSelect.addEventListener('change', toggleDateVisibility); toggleDateVisibility(); openModal(recurringExpenseModal); }
     const handleFrequencyChange = () => { document.getElementById('expense-custom-freq-wrapper').classList.toggle('hidden', document.getElementById('expense-frequency').value !== 'custom'); };
@@ -638,7 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function openDebtModal(debtId = null) { state.editingDebtId = debtId; debtForm.reset(); document.getElementById('debt-start-date').valueAsDate = new Date(); if (debtId) { const debt = state.debts.find(d => d.id === debtId); document.getElementById('debt-modal-title').textContent = "Chỉnh Sửa Khoản Nợ"; document.getElementById('debt-type').value = debt.type; document.getElementById('debt-person').value = debt.person; document.getElementById('debt-amount').value = formatNumberInput(debt.amount); document.getElementById('debt-currency').value = debt.currency; document.getElementById('debt-startDate').value = debt.startDate; document.getElementById('debt-endDate').value = debt.endDate; document.getElementById('debt-note').value = debt.note; } else { document.getElementById('debt-modal-title').textContent = "Thêm Khoản Nợ Mới"; } openModal(debtModal); }
     function openPayDebtModal(debtId) { state.payingDebtId = debtId; payDebtForm.reset(); updateWalletOptions(document.getElementById('pay-debt-wallet-select')); document.getElementById('pay-debt-date').valueAsDate = new Date(); openModal(payDebtModal); }
     function openDebtHistoryModal(debtId) { const debt = state.debts.find(d => d.id === debtId); const historyListEl = document.getElementById('debt-history-list'); if (!debt || !debt.history || debt.history.length === 0) { historyListEl.innerHTML = `<p class="text-center" style="color: var(--text-secondary);">Chưa có lịch sử trả nợ.</p>`; } else { historyListEl.innerHTML = [...debt.history].reverse().map(item => { const wallet = state.wallets.find(w => w.id === item.walletId); return `<div class="p-2 rounded" style="background-color: var(--highlight-color);"><div class="flex justify-between font-semibold"><span>${formatCurrency(item.amount)}</span><span>${new Date(item.date).toLocaleDateString('vi-VN')}</span></div><p class="text-xs" style="color: var(--text-secondary);">Từ ví: ${wallet ? wallet.name : 'N/A'}</p><p class="text-xs italic" style="color: var(--text-secondary);">${item.note || 'Không có ghi chú'}</p></div>` }).join(''); } openModal(debtHistoryModal); }
-    
+
     let draggedItem = null;
     let touchDraggedItem = null;
     let ghostEl = null;
@@ -666,7 +832,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function moveGhost(x, y) { if (!ghostEl) return; ghostEl.style.left = `${x - startX}px`; ghostEl.style.top = `${y - startY}px`; }
     function handleTouchEnd(e) { if (!touchDraggedItem) return; ghostEl.style.display = 'none'; const endElement = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY); ghostEl.style.display = ''; const container = endElement ? endElement.closest('[id$="-categories-container"]') : null; if (container) { const list = container.querySelector('[id$="-categories-list"]'); list.appendChild(touchDraggedItem); updateCategoryMap(touchDraggedItem, container); } document.body.removeChild(ghostEl); touchDraggedItem.classList.remove('opacity-50'); touchDraggedItem = null; ghostEl = null; }
     function updateCategoryMap(item, container) { const newGroup = container.id.split('-')[0]; const categoryName = item.dataset.category; if (newGroup === 'unassigned') { delete state.settings.budgetAllocation.categoryMap[categoryName]; } else { state.settings.budgetAllocation.categoryMap[categoryName] = newGroup; } saveData(); renderReportsScreen(); }
-    
+
     function handleConnectionChange() {
         if (navigator.onLine) {
             offlineIndicator.style.display = 'none';
@@ -679,11 +845,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast("Mất kết nối Internet.");
         }
     }
-    
+
     window.addEventListener('online', handleConnectionChange);
     window.addEventListener('offline', handleConnectionChange);
     if (!navigator.onLine) { handleConnectionChange(); }
-    
+
     const inputIdsToFormat = ['amount', 'transfer-amount', 'edit-amount', 'initial-balance', 'edit-wallet-balance', 'saving-target', 'expense-amount', 'debt-amount', 'pay-debt-amount', 'add-saving-amount', 'withdraw-saving-amount', 'total-budget-input'];
     inputIdsToFormat.forEach(id => {
         const input = document.getElementById(id);
@@ -695,7 +861,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const formattedValue = formatNumberInput(originalValue);
                 e.target.value = formattedValue;
-                
+
                 const newLength = formattedValue.length;
                 const newCursorPosition = cursorPosition + (newLength - originalLength);
                 e.target.setSelectionRange(newCursorPosition, newCursorPosition);
@@ -704,5 +870,37 @@ document.addEventListener('DOMContentLoaded', () => {
             input.setAttribute('inputmode', 'numeric');
             input.setAttribute('pattern', '[0-9.]*');
         }
+    });
+
+    // Thêm đoạn mã này vào gần các trình xử lý sự kiện click khác
+    document.getElementById('update-app-btn').addEventListener('click', () => {
+        showConfirmation({
+            title: 'Cập nhật ứng dụng?',
+            message: 'Ứng dụng sẽ hủy đăng ký phiên bản hiện tại và tải lại để cập nhật phiên bản mới nhất. Bạn có muốn tiếp tục?',
+            okText: 'Cập nhật',
+            onConfirm: () => {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                        if (registrations.length === 0) {
+                            showToast("Không có phiên bản cũ nào cần gỡ.");
+                            setTimeout(() => location.reload(), 1500);
+                            return;
+                        }
+                        for (let registration of registrations) {
+                            registration.unregister();
+                        }
+                        showToast("Đã gỡ phiên bản cũ! Đang tải lại...");
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
+                    }).catch(function (err) {
+                        showToast("Cập nhật thất bại. Vui lòng thử lại.");
+                        console.error('Hủy đăng ký Service Worker thất bại: ', err);
+                    });
+                } else {
+                    showToast("Trình duyệt không hỗ trợ chức năng này.");
+                }
+            }
+        });
     });
 });
