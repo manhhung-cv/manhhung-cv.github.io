@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunq ShortLink - Rút Gọn Link Cao Cấp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #a2d2ff;
+            color: #000;
+        }
+        .pixel-box {
+            background-color: white;
+            border: 4px solid #000;
+            box-shadow: 8px 8px 0px rgba(0,0,0,0.9);
+        }
+        .pixel-button {
+            border: 3px solid #000;
+            box-shadow: 4px 4px 0px #000;
+            transition: all 0.05s ease-in-out;
+            text-transform: uppercase;
+        }
+        .pixel-button:hover {
+            box-shadow: 2px 2px 0px #000;
+            transform: translate(2px, 2px);
+        }
+        .pixel-button:active {
+            box-shadow: 0px 0px 0px #000;
+            transform: translate(4px, 4px);
+        }
+        .pixel-input {
+            border: 3px solid #000;
+            box-shadow: inset 2px 2px 0px rgba(0,0,0,0.1);
+        }
+        .pixel-input:focus {
+            outline: none;
+            background-color: #fffde7;
+            border-color: #3b82f6;
+        }
+        .toggle-ads:checked + .block {
+            background-color: #22c55e;
+        }
+        .toggle-ads:checked + .block .dot {
+            transform: translateX(1.5rem);
+        }
+    </style>
+</head>
+<body class="text-gray-800 text-xl">
+
+    <!-- Container chính -->
+    <div id="app-container" class="min-h-screen flex flex-col items-center p-4">
+
+        <!-- Header -->
+        <header class="w-full max-w-6xl mx-auto flex justify-between items-center py-4 px-2">
+            <h1 class="text-4xl font-bold text-black"><i class="fas fa-link mr-2"></i>Hunq ShortLink</h1>
+            <div id="auth-container">
+                <button id="login-btn" class="pixel-button bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-5 transition duration-300">
+                    <i class="fas fa-right-to-bracket mr-2"></i>Đăng nhập
+                </button>
+                <div id="user-info" class="hidden items-center gap-4">
+                    <img id="user-avatar" class="w-12 h-12 border-2 border-black" src="" alt="Avatar">
+                    <span id="user-name" class="font-semibold text-gray-700"></span>
+                    <button id="logout-btn" class="pixel-button bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-5 transition duration-300">
+                        <i class="fas fa-right-from-bracket mr-2"></i>Đăng xuất
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <div id="loading-view" class="w-full max-w-2xl text-center fade-in">
+             <div class="pixel-box p-8 flex flex-col items-center justify-center min-h-[200px]">
+                <i class="fas fa-spinner fa-spin text-5xl text-blue-600"></i>
+                <p class="mt-4 text-2xl">Đang tải dữ liệu...</p>
+            </div>
+        </div>
+
+        <!-- Main View -->
+        <main class="w-full flex-grow flex items-center justify-center">
+            
+            <!-- Trang Rút Gọn Link -->
+            <div id="shortener-view" class="w-full max-w-2xl text-center fade-in hidden">
+                <div class="pixel-box p-8">
+                    <h2 class="text-5xl font-bold text-gray-800 mb-2">Rút Gọn Link</h2>
+                    <p class="text-gray-600 mb-8 text-2xl">Tạo liên kết ngắn gọn và dễ nhớ.</p>
+                    
+                    <form id="shorten-form" class="space-y-4">
+                        <div>
+                            <input type="text" id="original-url" placeholder="dán link hoặc gõ abc.com" class="pixel-input w-full p-4 text-2xl transition" required>
+                        </div>
+                        
+                        <div id="logged-in-options" class="hidden space-y-4 text-left">
+                            <div>
+                                <label for="custom-alias" class="font-medium text-gray-700">Tùy chỉnh link (tùy chọn)</label>
+                                <div class="flex items-center mt-1">
+                                    <span class="inline-flex items-center px-3 border-t-3 border-b-3 border-l-3 border-black bg-gray-200 text-gray-600 text-xl h-[62px]">.../#</span>
+                                    <input type="text" id="custom-alias" placeholder="ten-cua-ban" class="pixel-input w-full p-4 text-2xl transition">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="pixel-button w-full bg-green-500 hover:bg-green-600 text-white font-bold text-2xl py-4 px-6 transition">
+                            <i class="fas fa-cut mr-2"></i>Rút Gọn Ngay
+                        </button>
+                    </form>
+                    
+                    <div id="result-view" class="hidden mt-8 p-4 bg-green-100 border-2 border-black">
+                        <p class="text-gray-700 mb-2">Link đã được tạo!</p>
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-2 bg-white p-2 border-2 border-gray-400">
+                            <a id="short-url" href="#" target="_blank" class="text-blue-600 font-semibold break-all"></a>
+                            <button id="copy-btn" class="pixel-button bg-blue-200 text-blue-800 hover:bg-blue-300 font-semibold py-2 px-4 transition text-sm">
+                                <i class="fas fa-copy mr-1"></i>Sao chép
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trang Chuyển Hướng & Quảng Cáo -->
+            <div id="redirect-view" class="hidden w-full max-w-2xl text-center fade-in">
+                 <div class="pixel-box p-8">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Bạn sắp được chuyển hướng...</h2>
+                    <div class="my-6 p-4 bg-gray-800 text-white min-h-[100px] flex items-center justify-center border-4 border-black">
+                        <p class="text-2xl">[ Khu vực quảng cáo ]</p>
+                    </div>
+
+                    <div id="countdown-wrapper">
+                         <p class="text-2xl text-gray-600 mb-4">Vui lòng chờ <span id="countdown" class="font-bold text-4xl text-blue-600">10</span> giây.</p>
+                    </div>
+
+                    <div id="vip-skip-wrapper" class="hidden mb-4 p-4 bg-yellow-100 border-2 border-yellow-400">
+                         <p class="text-2xl text-yellow-800"><i class="fas fa-star mr-2"></i>Tài khoản của bạn là VIP! Bạn có thể lấy link ngay.</p>
+                    </div>
+
+                    <button id="get-link-btn" class="pixel-button w-full bg-gray-400 text-white font-bold py-3 px-6 cursor-not-allowed" disabled>
+                        Lấy Link
+                    </button>
+                </div>
+            </div>
+
+            <!-- Link không tồn tại -->
+             <div id="not-found-view" class="hidden w-full max-w-2xl text-center fade-in">
+                 <div class="pixel-box p-8">
+                    <h2 class="text-6xl font-bold text-red-500 mb-4">404</h2>
+                    <p class="text-3xl text-gray-700">Link không tồn tại!</p>
+                </div>
+            </div>
+
+        </main>
+        
+        <!-- Dashboard người dùng -->
+        <section id="dashboard-view" class="hidden w-full max-w-6xl mx-auto pixel-box p-6 mt-8 fade-in">
+            <h3 class="text-3xl font-bold text-gray-800 mb-6"><i class="fas fa-table-list mr-2"></i>Liên kết của tôi</h3>
+            <div class="overflow-x-auto border-2 border-black">
+                <table class="min-w-full">
+                    <thead class="bg-gray-300 border-b-4 border-black">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Link Gốc</th>
+                            <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Link Rút Gọn</th>
+                            <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Lượt truy cập</th>
+                            <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Quảng cáo</th>
+                            <th scope="col" class="relative px-6 py-3">
+                                <span class="sr-only">Hành động</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="links-table-body" class="bg-white">
+                        <!-- Dữ liệu sẽ được chèn vào đây bởi JS -->
+                    </tbody>
+                </table>
+                 <div id="no-links-message" class="hidden text-center py-8 text-gray-500 bg-white">
+                    <p>Bạn chưa tạo liên kết nào.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ADMIN PANEL -->
+        <section id="admin-view" class="hidden w-full max-w-6xl mx-auto mt-8 fade-in space-y-8">
+            <!-- Bảng quản lý Link -->
+            <div class="pixel-box p-6">
+                 <h3 class="text-3xl font-bold text-red-600 mb-4"><i class="fas fa-user-shield mr-2"></i>Quản Lý Links</h3>
+                <div class="mb-4">
+                    <button id="delete-selected-btn" class="pixel-button bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4">
+                        <i class="fas fa-trash-alt mr-2"></i>Xóa mục đã chọn
+                    </button>
+                </div>
+                <div class="overflow-x-auto border-2 border-black">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-800 text-white border-b-4 border-black">
+                            <tr>
+                                <th scope="col" class="p-3"><input type="checkbox" id="select-all-checkbox"></th>
+                                <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Link Gốc</th>
+                                <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Link Rút Gọn</th>
+                                <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Owner ID</th>
+                                <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Lượt truy cập</th>
+                                <th scope="col" class="px-6 py-3 text-left font-medium uppercase tracking-wider">Quảng cáo</th>
+                                <th scope="col" class="relative px-6 py-3">Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="all-links-table-body" class="bg-white">
+                            <!-- Dữ liệu admin sẽ được chèn vào đây -->
+                        </tbody>
+                    </table>
+                     <div id="admin-no-links-message" class="hidden text-center py-8 text-gray-500 bg-white">
+                        <p>Không có liên kết nào trên hệ thống.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BLOCKLIST MANAGEMENT -->
+            <div id="admin-blocklist-view" class="pixel-box p-6">
+                <h3 class="text-3xl font-bold text-red-600 mb-4"><i class="fas fa-ban mr-2"></i>Quản Lý Danh Sách Chặn</h3>
+                <form id="add-blocklist-form" class="flex items-center gap-2 mb-4">
+                    <input type="text" id="new-blocked-domain" placeholder="nhập domain hoặc từ khóa..." class="pixel-input w-full p-3 text-xl">
+                    <button type="submit" class="pixel-button bg-blue-500 text-white font-bold p-3 whitespace-nowrap">Thêm vào DS Chặn</button>
+                </form>
+                <div class="border-2 border-black p-4 min-h-[100px] bg-gray-50">
+                    <h4 class="font-bold mb-2">Các trang đang bị chặn:</h4>
+                    <ul id="blocklist-items" class="space-y-1 list-disc list-inside">
+                        <!-- Items will be added here by JS -->
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Notification -->
+        <div id="notification" class="hidden fixed top-5 right-5 pixel-box text-white py-3 px-5 text-xl">
+            <p id="notification-message"></p>
+        </div>
+
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, signInAnonymously, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, onSnapshot, writeBatch, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CẤU HÌNH FIREBASE ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "AIzaSyB_MUrLjqwC8uSXFsvnFKULbTtyqg7Wo_s", authDomain: "shortlink-4c40e.firebaseapp.com", projectId: "shortlink-4c40e", storageBucket: "shortlink-4c40e.appspot.com", messagingSenderId: "943265709525", appId: "1:943265709525:web:bef219b25ea6d75ebe915c", measurementId: "G-MRM4NZRPK7" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-link-shortener-app';
+        
+        // --- ADMIN CONFIG ---
+        const ADMIN_UIDS = ["BHXy7X9TgAfLEY5cwPcz1cClfNP2"]; // Thay UID admin vào đây
+
+        // Khởi tạo Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+        let currentUser = null;
+        let blockedDomains = [];
+        let blocklistLoaded = false; // Flag to prevent multiple loads
+
+        // --- DOM Elements ---
+        const loadingView = document.getElementById('loading-view');
+        const shortenerView = document.getElementById('shortener-view');
+        const redirectView = document.getElementById('redirect-view');
+        const notFoundView = document.getElementById('not-found-view');
+        const dashboardView = document.getElementById('dashboard-view');
+        const adminView = document.getElementById('admin-view');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const userInfo = document.getElementById('user-info');
+        const userAvatar = document.getElementById('user-avatar');
+        const userName = document.getElementById('user-name');
+        const shortenForm = document.getElementById('shorten-form');
+        const originalUrlInput = document.getElementById('original-url');
+        const customAliasInput = document.getElementById('custom-alias');
+        const loggedInOptions = document.getElementById('logged-in-options');
+        const resultView = document.getElementById('result-view');
+        const shortUrlLink = document.getElementById('short-url');
+        const copyBtn = document.getElementById('copy-btn');
+        const addBlocklistForm = document.getElementById('add-blocklist-form');
+        const newBlockedDomainInput = document.getElementById('new-blocked-domain');
+        const blocklistItemsUl = document.getElementById('blocklist-items');
+
+        // --- Logic chính ---
+        
+        async function loadBlocklist() {
+            const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'blocklist');
+            onSnapshot(configDocRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().domains) {
+                    blockedDomains = docSnap.data().domains;
+                    if (currentUser) renderBlocklistAdminPanel();
+                } else {
+                    blockedDomains = [];
+                }
+            }, (error) => {
+                console.error("Error listening to blocklist:", error);
+            });
+        }
+
+        async function handleRouting() {
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                hideAllViews();
+                await handleRedirect(hash);
+            } else {
+                hideAllViews();
+                shortenerView.classList.remove('hidden');
+                if(currentUser && !currentUser.isAnonymous){
+                    dashboardView.classList.remove('hidden');
+                    handleAdminCheck(currentUser);
+                }
+            }
+        }
+
+        async function handleRedirect(alias) {
+            const linkDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'links', alias);
+            const linkDocSnap = await getDoc(linkDocRef);
+
+            if (linkDocSnap.exists()) {
+                redirectView.classList.remove('hidden');
+                const data = linkDocSnap.data();
+                
+                updateDoc(linkDocRef, { clickCount: (data.clickCount || 0) + 1 });
+
+                const getLinkBtn = document.getElementById('get-link-btn');
+                const countdownWrapper = document.getElementById('countdown-wrapper');
+                const vipSkipWrapper = document.getElementById('vip-skip-wrapper');
+                
+                let isCurrentUserVip = false;
+                if (currentUser && !currentUser.isAnonymous) {
+                    const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', currentUser.uid);
+                    const userDocSnap = await getDoc(userDocRef);
+                    if (userDocSnap.exists() && userDocSnap.data().isVip) {
+                        isCurrentUserVip = true;
+                    }
+                }
+
+                if (isCurrentUserVip || !data.adsEnabled) {
+                    if (!data.adsEnabled) {
+                        window.location.href = data.originalUrl;
+                        return;
+                    }
+                    countdownWrapper.classList.add('hidden');
+                    vipSkipWrapper.classList.remove('hidden');
+                    getLinkBtn.disabled = false;
+                    getLinkBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                    getLinkBtn.classList.add('pixel-button', 'bg-green-500', 'hover:bg-green-600');
+                    getLinkBtn.textContent = "Đi đến Link Gốc";
+                    getLinkBtn.onclick = () => { window.location.href = data.originalUrl; };
+                    return;
+                }
+
+                countdownWrapper.classList.remove('hidden');
+                vipSkipWrapper.classList.add('hidden');
+
+                let countdown = 10;
+                const countdownEl = document.getElementById('countdown');
+                countdownEl.textContent = countdown;
+
+                const interval = setInterval(() => {
+                    countdown--;
+                    countdownEl.textContent = countdown;
+                    if (countdown <= 0) {
+                        clearInterval(interval);
+                        getLinkBtn.disabled = false;
+                        getLinkBtn.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                        getLinkBtn.classList.add('pixel-button', 'bg-green-500', 'hover:bg-green-600');
+                        getLinkBtn.textContent = "Đi đến Link Gốc";
+                        getLinkBtn.onclick = () => { window.location.href = data.originalUrl; };
+                    }
+                }, 1000);
+
+            } else {
+                notFoundView.classList.remove('hidden');
+            }
+        }
+
+        shortenForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            let originalUrl = originalUrlInput.value.trim();
+            const customAlias = customAliasInput.value.trim();
+
+            if (!originalUrl) return;
+
+            if (!/^https?:\/\//i.test(originalUrl)) {
+                originalUrl = 'https://' + originalUrl;
+            }
+            
+            if (blockedDomains.some(domain => originalUrl.toLowerCase().includes(domain.toLowerCase()))) {
+                 showNotification('URL này bị chặn và không được phép rút gọn.', 'error');
+                return;
+            }
+
+            if (!isValidHttpUrl(originalUrl) || isMalicious(originalUrl)) {
+                showNotification('URL không hợp lệ hoặc chứa từ khóa bị cấm.', 'error');
+                return;
+            }
+
+            let alias = customAlias || generateRandomId(6);
+
+            const linkDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'links', alias);
+            if(customAlias){
+                const linkDocSnap = await getDoc(linkDocRef);
+                if(linkDocSnap.exists()){
+                    showNotification('Tên rút gọn này đã tồn tại.', 'error');
+                    return;
+                }
+            }
+            
+            const newLink = {
+                originalUrl,
+                ownerId: currentUser.uid,
+                createdAt: new Date(),
+                clickCount: 0,
+                adsEnabled: true,
+            };
+
+            try {
+                await setDoc(linkDocRef, newLink);
+                const fullShortUrl = `${window.location.origin}${window.location.pathname}#${alias}`;
+                shortUrlLink.href = fullShortUrl;
+                shortUrlLink.textContent = fullShortUrl.replace(/^https?:\/\//, '');
+                resultView.classList.remove('hidden');
+                showNotification('Tạo link thành công!', 'success');
+                shortenForm.reset();
+            } catch (error) {
+                console.error("Error creating link:", error);
+                showNotification('Đã có lỗi xảy ra.', 'error');
+            }
+        });
+
+        function loadUserLinks(uid) {
+            const linksCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'links');
+            const q = query(linksCollectionRef, where("ownerId", "==", uid));
+
+            onSnapshot(q, (querySnapshot) => {
+                const linksTableBody = document.getElementById('links-table-body');
+                const noLinksMessage = document.getElementById('no-links-message');
+                linksTableBody.innerHTML = '';
+                noLinksMessage.classList.toggle('hidden', !querySnapshot.empty);
+
+                querySnapshot.forEach((doc) => {
+                    const link = doc.data();
+                    const alias = doc.id;
+                    const shortUrl = `${window.location.origin}${window.location.pathname}#${alias}`;
+                    const row = `
+                        <tr class="border-b-2 border-black last:border-b-0">
+                            <td class="p-3 whitespace-nowrap"><div class="truncate max-w-xs" title="${link.originalUrl}">${link.originalUrl}</div></td>
+                            <td class="p-3 whitespace-nowrap"><a href="${shortUrl}" target="_blank" class="text-blue-600 hover:underline">${shortUrl.replace(/^https?:\/\//, '')}</a></td>
+                            <td class="p-3 whitespace-nowrap">${link.clickCount}</td>
+                            <td class="p-3 whitespace-nowrap">
+                                <label class="flex items-center cursor-pointer">
+                                  <div class="relative">
+                                    <input type="checkbox" class="sr-only toggle-ads" data-id="${alias}" ${link.adsEnabled ? 'checked' : ''}>
+                                    <div class="block bg-gray-600 w-12 h-6 border-2 border-black"><div class="dot absolute left-1 top-1 bg-white w-4 h-4 transition"></div></div>
+                                  </div>
+                                </label>
+                            </td>
+                            <td class="p-3 whitespace-nowrap text-right font-medium">
+                                <button class="delete-link-btn text-red-600 hover:text-red-900" data-id="${alias}"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    linksTableBody.innerHTML += row;
+                });
+                addDashboardEventListeners();
+            });
+        }
+        
+        function addDashboardEventListeners() {
+            document.querySelectorAll('.delete-link-btn').forEach(button => {
+                button.onclick = async (e) => {
+                    const alias = e.currentTarget.dataset.id;
+                    if (confirm(`Bạn có chắc muốn xóa link này không?`)) {
+                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'links', alias));
+                        showNotification('Đã xóa link.', 'success');
+                    }
+                };
+            });
+            document.querySelectorAll('.toggle-ads').forEach(toggle => {
+                toggle.onchange = async (e) => {
+                    const alias = e.target.dataset.id;
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'links', alias), { adsEnabled: e.target.checked });
+                    showNotification(`Đã ${e.target.checked ? 'bật' : 'tắt'} quảng cáo.`, 'success');
+                };
+            });
+        }
+        
+        function handleAdminCheck(user) {
+            if (user && ADMIN_UIDS.includes(user.uid)) {
+                adminView.classList.remove('hidden');
+                loadAllLinksForAdmin();
+                renderBlocklistAdminPanel();
+            } else {
+                adminView.classList.add('hidden');
+            }
+        }
+
+        function loadAllLinksForAdmin() {
+            const linksCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'links');
+            const q = query(linksCollectionRef);
+            
+            onSnapshot(q, (querySnapshot) => {
+                const allLinksTableBody = document.getElementById('all-links-table-body');
+                const adminNoLinksMessage = document.getElementById('admin-no-links-message');
+                allLinksTableBody.innerHTML = '';
+                adminNoLinksMessage.classList.toggle('hidden', !querySnapshot.empty);
+
+                querySnapshot.forEach((doc) => {
+                    const link = doc.data();
+                    const alias = doc.id;
+                    const shortUrl = `${window.location.origin}${window.location.pathname}#${alias}`;
+                    const row = `
+                        <tr class="border-b-2 border-gray-300 last:border-b-0">
+                            <td class="p-3 text-center"><input type="checkbox" class="admin-link-checkbox" data-id="${alias}"></td>
+                            <td class="p-3 whitespace-nowrap"><div class="truncate max-w-xs" title="${link.originalUrl}">${link.originalUrl}</div></td>
+                            <td class="p-3 whitespace-nowrap"><a href="${shortUrl}" target="_blank" class="text-blue-600 hover:underline">${shortUrl.replace(/^https?:\/\//, '')}</a></td>
+                            <td class="p-3 whitespace-nowrap"><div class="truncate max-w-[100px]" title="${link.ownerId}">${link.ownerId}</div></td>
+                            <td class="p-3 whitespace-nowrap">${link.clickCount}</td>
+                            <td class="p-3 whitespace-nowrap">${link.adsEnabled ? 'Bật' : 'Tắt'}</td>
+                            <td class="p-3 whitespace-nowrap text-center font-medium">
+                                <button class="admin-delete-link-btn text-red-600 hover:text-red-900" data-id="${alias}"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    allLinksTableBody.innerHTML += row;
+                });
+                addAdminDashboardEventListeners();
+            });
+        }
+
+        function addAdminDashboardEventListeners() {
+            document.querySelectorAll('.admin-delete-link-btn').forEach(button => {
+                button.onclick = async (e) => {
+                    const alias = e.currentTarget.dataset.id;
+                    if (confirm(`[ADMIN] Bạn có chắc muốn xóa link ${alias} không?`)) {
+                         await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'links', alias));
+                         showNotification('Đã xóa link (Admin).', 'success');
+                    }
+                };
+            });
+
+            document.getElementById('select-all-checkbox').onchange = (e) => {
+                document.querySelectorAll('.admin-link-checkbox').forEach(checkbox => checkbox.checked = e.target.checked);
+            };
+
+            document.getElementById('delete-selected-btn').onclick = async () => {
+                const selectedIds = Array.from(document.querySelectorAll('.admin-link-checkbox:checked')).map(cb => cb.dataset.id);
+
+                if (selectedIds.length === 0) {
+                    showNotification('Vui lòng chọn ít nhất một link để xóa.', 'error');
+                    return;
+                }
+
+                if (confirm(`[ADMIN] Bạn có chắc muốn xóa ${selectedIds.length} link đã chọn không?`)) {
+                    const batch = writeBatch(db);
+                    selectedIds.forEach(id => {
+                        batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'links', id));
+                    });
+                    await batch.commit();
+                    showNotification(`Đã xóa ${selectedIds.length} link.`, 'success');
+                }
+            };
+        }
+
+        function renderBlocklistAdminPanel() {
+            if (!currentUser || !ADMIN_UIDS.includes(currentUser.uid)) return;
+            blocklistItemsUl.innerHTML = '';
+            if (blockedDomains.length === 0) {
+                blocklistItemsUl.innerHTML = '<li class="text-gray-500">Danh sách chặn đang trống.</li>';
+                return;
+            }
+            blockedDomains.forEach(domain => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between';
+                li.innerHTML = `<span>${domain}</span><button class="delete-block-item text-red-500 hover:text-red-800 text-lg" data-domain="${domain}">&times;</button>`;
+                blocklistItemsUl.appendChild(li);
+            });
+            document.querySelectorAll('.delete-block-item').forEach(button => {
+                button.onclick = async (e) => {
+                    const domainToRemove = e.currentTarget.dataset.domain;
+                    const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'blocklist');
+                    await updateDoc(configDocRef, { domains: arrayRemove(domainToRemove) });
+                    showNotification(`Đã xóa "${domainToRemove}" khỏi danh sách.`, 'success');
+                };
+            });
+        }
+
+        addBlocklistForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newDomain = newBlockedDomainInput.value.trim().toLowerCase();
+            if (!newDomain) return;
+
+            const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'blocklist');
+            try {
+                await updateDoc(configDocRef, { domains: arrayUnion(newDomain) });
+            } catch (error) {
+                if (error.code === 'not-found') {
+                    await setDoc(configDocRef, { domains: [newDomain] });
+                }
+            }
+            showNotification(`Đã thêm "${newDomain}" vào danh sách.`, 'success');
+            newBlockedDomainInput.value = '';
+        });
+        
+        function updateUIForLoggedInUser(user) {
+            loginBtn.classList.add('hidden');
+            userInfo.classList.remove('hidden');
+            userInfo.classList.add('flex');
+            dashboardView.classList.remove('hidden');
+            loggedInOptions.classList.remove('hidden');
+            userAvatar.src = user.photoURL;
+            userName.textContent = user.displayName;
+        }
+
+        function updateUIForLoggedOutUser() {
+            loginBtn.classList.remove('hidden');
+            userInfo.classList.add('hidden');
+            dashboardView.classList.add('hidden');
+            adminView.classList.add('hidden');
+            loggedInOptions.classList.add('hidden');
+        }
+
+        function hideAllViews() {
+            [loadingView, shortenerView, redirectView, notFoundView, dashboardView, adminView].forEach(v => v.classList.add('hidden'));
+        }
+
+        function generateRandomId(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+            return result;
+        }
+        
+        function isValidHttpUrl(string) {
+            try { new URL(string); return true; } catch (_) { return false; }
+        }
+        
+        function isMalicious(url) {
+            return ['porn', 'sex', 'xxx', 'gambling', 'phishing', 'scam'].some(keyword => url.toLowerCase().includes(keyword));
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            const notificationMessage = document.getElementById('notification-message');
+            notificationMessage.textContent = message;
+            notification.classList.remove('bg-green-500', 'bg-red-500');
+            notification.classList.add(type === 'success' ? 'bg-green-500' : 'bg-red-500');
+            notification.classList.remove('hidden');
+            setTimeout(() => notification.classList.add('hidden'), 3000);
+        }
+        
+        loginBtn.addEventListener('click', async () => {
+            const result = await signInWithPopup(auth, provider);
+            const user = result.user;
+            const userDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'users', user.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (!userDocSnap.exists()) {
+                await setDoc(userDocRef, { displayName: user.displayName, email: user.email, createdAt: new Date(), isVip: false });
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => signOut(auth));
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(shortUrlLink.href).then(() => showNotification('Đã sao chép!', 'success'));
+        });
+
+        const initialAuth = () => {
+            setPersistence(auth, browserLocalPersistence)
+            .then(() => {
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        currentUser = user;
+
+                        if (!blocklistLoaded) {
+                            await loadBlocklist();
+                            blocklistLoaded = true;
+                        }
+                        
+                        if (user.isAnonymous) {
+                            updateUIForLoggedOutUser();
+                        } else {
+                            updateUIForLoggedInUser(user);
+                            loadUserLinks(user.uid);
+                            handleAdminCheck(user);
+                        }
+                    } else {
+                        signInAnonymously(auth).catch(console.error);
+                    }
+                    handleRouting();
+                });
+            })
+            .catch(console.error);
+        };
+        
+        initialAuth();
+
+    </script>
+</body>
+</html>
+
