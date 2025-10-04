@@ -151,7 +151,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
             transaction.set(usernameClaimRef, { uid: newUser.uid });
             transaction.set(accNumClaimRef, { uid: newUser.uid });
         });
-
+        
         showToast(getTranslatedString('registrationSuccess'));
 
     } catch (error) {
@@ -204,7 +204,7 @@ document.getElementById('balance-visibility-btn').addEventListener('click', () =
 
 pinInput.addEventListener('input', () => { const val = pinInput.value; pinDots.forEach((dot, i) => dot.classList.toggle('active', i < val.length)); if (val.length === 6) { if (pinPromiseResolver) pinPromiseResolver(val); pinPromiseResolver = null; document.getElementById('pin-modal').style.display = 'none'; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); } });
 function requestPin() { return new Promise((resolve) => { pinPromiseResolver = resolve; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); document.getElementById('pin-modal').style.display = 'flex'; setTimeout(() => pinInput.focus(), 100); }); }
-async function verifyPin() { const enteredPin = await requestPin(); if (!enteredPin) return false; const enteredPinHash = await hashPin(enteredPin); if (enteredPinHash !== currentUserData.pinHash) { showToast(getTranslatedString('pinIncorrect'), true); return false; } return true; }
+async function verifyPin() { const enteredPin = await requestPin(); if(!enteredPin) return false; const enteredPinHash = await hashPin(enteredPin); if (enteredPinHash !== currentUserData.pinHash) { showToast(getTranslatedString('pinIncorrect'), true); return false; } return true; }
 
 document.getElementById('confirm-transfer-btn').addEventListener('click', async () => {
     const recipientIdentifier = document.getElementById('transfer-recipient').value.trim();
@@ -234,7 +234,7 @@ document.getElementById('confirm-transfer-btn').addEventListener('click', async 
             if (!senderDoc.exists() || senderDoc.data().balance < amount) throw new Error(getTranslatedString('insufficientBalance'));
             transaction.update(senderDocRef, { balance: senderDoc.data().balance - amount });
             transaction.update(recipientDoc.ref, { balance: recipientData.balance + amount });
-            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), { type: 'transfer', fromUserId: currentUser.uid, fromUserName: currentUserData.displayName, toUserId: recipientData.id, toUserName: recipientData.displayName, amount, content, timestamp: serverTimestamp() });
+            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {type: 'transfer', fromUserId: currentUser.uid, fromUserName: currentUserData.displayName,toUserId: recipientData.id, toUserName: recipientData.displayName,amount, content, timestamp: serverTimestamp()});
         });
         showToast(getTranslatedString('transferSuccess', { amount: formatCurrency(amount), recipient: recipientData.displayName }));
         ['transfer-recipient', 'transfer-amount', 'transfer-content'].forEach(id => document.getElementById(id).value = '');
@@ -263,7 +263,7 @@ document.getElementById('confirm-deposit-btn').addEventListener('click', async (
                 redeemedByUsername: currentUserData.displayName,
                 redeemedAt: serverTimestamp()
             });
-            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), { type: 'deposit', userId: currentUser.uid, userName: currentUserData.displayName, amount, content: `Deposit with code ${codeId}`, timestamp: serverTimestamp() });
+            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {type: 'deposit', userId: currentUser.uid, userName: currentUserData.displayName, amount, content: `Deposit with code ${codeId}`, timestamp: serverTimestamp()});
         });
         const codeSnap = await getDoc(codeRef);
         showToast(getTranslatedString('depositSuccess', { amount: formatCurrency(codeSnap.data().amount) }));
@@ -280,7 +280,7 @@ document.getElementById('confirm-withdraw-btn').addEventListener('click', async 
     if (!await verifyPin()) return;
     showLoading();
     try {
-        await addDoc(collection(db, `artifacts/${appId}/withdrawalRequests`), { userId: currentUser.uid, userDisplayName: currentUserData.displayName, userAccountNumber: currentUserData.accountNumber, amount, reason, status: 'pending', createdAt: serverTimestamp() });
+        await addDoc(collection(db, `artifacts/${appId}/withdrawalRequests`), {userId: currentUser.uid, userDisplayName: currentUserData.displayName,userAccountNumber: currentUserData.accountNumber, amount, reason, status: 'pending',createdAt: serverTimestamp()});
         showToast(getTranslatedString('withdrawRequestSent'));
         document.getElementById('withdraw-amount').value = '';
         document.getElementById('withdraw-reason').value = '';
@@ -299,7 +299,7 @@ async function fetchAllTransactions(userId) {
         allTransactions.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
         renderTransactions(allTransactions.slice(0, 5), document.getElementById('recent-transaction-history'), userId, getTranslatedString('noRecentActivity'));
         renderTransactions(allTransactions, document.getElementById('history-content-transactions'), userId, getTranslatedString('noTransactions'));
-    } catch (e) { console.error("Error fetching transactions: ", e); }
+    } catch(e) { console.error("Error fetching transactions: ", e); }
 }
 
 function renderTransactions(transactions, container, userId, emptyMessage) {
@@ -308,7 +308,7 @@ function renderTransactions(transactions, container, userId, emptyMessage) {
         const time = tx.timestamp ? tx.timestamp.toDate().toLocaleDateString('vi-VN') : '...';
         let amountClass, amountSign, title, detail, icon;
         switch (tx.type) {
-            case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', { user: tx.toUserName }); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', { user: tx.fromUserName }); detail = tx.content; icon = 'fa-arrow-down'; } break;
+            case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', {user: tx.toUserName}); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', {user: tx.fromUserName}); detail = tx.content; icon = 'fa-arrow-down'; } break;
             case 'deposit': amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('depositTitle'); detail = tx.content; icon = 'fa-wallet'; break;
             case 'withdraw': amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('withdrawTitle'); detail = getTranslatedString('approvedByAdmin'); icon = 'fa-money-bill-wave'; break;
             default: amountClass = 'text-primary'; amountSign = ''; title = getTranslatedString('unknownTransaction'); detail = tx.content || ''; icon = 'fa-question-circle';
@@ -323,12 +323,13 @@ let unsubscribeDepositCodes = null;
 let unsubscribeAdminUsers = null;
 let unsubscribeAdminGifts = null;
 let unsubscribeAdminMissions = null;
+let unsubscribeAdminGiftRequests = null;
 
 function setupAdminDashboard() {
     if (unsubscribeAdmin) unsubscribeAdmin();
     const requestsContainer = document.getElementById('withdrawal-requests');
     const q = query(collection(db, `artifacts/${appId}/withdrawalRequests`), orderBy('createdAt', 'desc'));
-
+    
     unsubscribeAdmin = onSnapshot(q, (snapshot) => {
         const pendingRequests = snapshot.docs.filter(doc => doc.data().status === 'pending').length;
         document.getElementById('admin-pending-withdrawals').textContent = pendingRequests;
@@ -346,7 +347,7 @@ function setupAdminDashboard() {
             let adminNote = '';
             let actionButton = '';
 
-            switch (req.status) {
+            switch(req.status) {
                 case 'approved':
                     statusBadge = `<div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-success">Đã duyệt</div>`;
                     adminNote = `<p class="text-xs text-secondary mt-1">Số tiền duyệt: ${formatCurrency(req.approvedAmount)}</p>`;
@@ -385,6 +386,7 @@ function setupAdminDashboard() {
     setupAdminUserList();
     setupAdminGiftsList();
     setupAdminMissionsList();
+    setupAdminGiftRequests(); // Calling the function to listen for gift requests
 }
 
 function setupAdminDepositCodesList() {
@@ -394,7 +396,7 @@ function setupAdminDepositCodesList() {
 
     unsubscribeDepositCodes = onSnapshot(q, (snapshot) => {
         if (snapshot.empty) {
-            codesContainer.innerHTML = `<p class="text-center text-secondary">${getTranslatedString('noDepositCodes', { lng: currentLanguage })}</p>`; return;
+            codesContainer.innerHTML = `<p class="text-center text-secondary">${getTranslatedString('noDepositCodes', {lng: currentLanguage})}</p>`; return;
         }
         codesContainer.innerHTML = snapshot.docs.map(doc => {
             const code = doc.data();
@@ -404,7 +406,7 @@ function setupAdminDepositCodesList() {
             let redeemedInfo = '';
             if (isUsed && code.redeemedByUsername) {
                 const redeemedTime = code.redeemedAt ? code.redeemedAt.toDate().toLocaleDateString('vi-VN') : '';
-                redeemedInfo = `<p class="text-xs text-secondary mt-1">${getTranslatedString('usedBy', { user: code.redeemedByUsername })} @ ${redeemedTime}</p>`;
+                redeemedInfo = `<p class="text-xs text-secondary mt-1">${getTranslatedString('usedBy', {user: code.redeemedByUsername})} @ ${redeemedTime}</p>`;
             }
             return `<div class="bg-tertiary p-4 rounded-lg">
                         <div class="flex justify-between items-start">
@@ -425,15 +427,13 @@ function setupAdminDepositCodesList() {
     });
 }
 
-// NEW: Function to display and manage users for admin
 function setupAdminUserList() {
     if (unsubscribeAdminUsers) unsubscribeAdminUsers();
     const userListContainer = document.getElementById('admin-user-list');
     const q = query(collection(db, `artifacts/${appId}/users`), orderBy('createdAt', 'desc'));
 
     unsubscribeAdminUsers = onSnapshot(q, (snapshot) => {
-           document.getElementById('admin-total-users').textContent = snapshot.size;
-
+        document.getElementById('admin-total-users').textContent = snapshot.size;
         if (snapshot.empty) {
             userListContainer.innerHTML = `<p class="text-center text-secondary">Không có người dùng nào.</p>`;
             return;
@@ -456,6 +456,48 @@ function setupAdminUserList() {
         }).join('');
     });
 }
+
+// =========================================================================================
+// ===== START: SỬA LỖI TẠI ĐÂY =====
+// =========================================================================================
+function setupAdminGiftRequests() {
+    if (unsubscribeAdminGiftRequests) unsubscribeAdminGiftRequests();
+    const requestsContainer = document.getElementById('gift-requests-list');
+    
+    // **THE FIX:** Removing `orderBy('createdAt', 'desc')` to avoid needing a composite index.
+    // This will show the requests. For sorting, the index must be created in Firebase.
+    const q = query(collection(db, `artifacts/${appId}/giftRequests`), where('status', '==', 'pending'));
+
+    unsubscribeAdminGiftRequests = onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            requestsContainer.innerHTML = `<p class="text-center text-secondary">Không có yêu cầu đổi quà nào.</p>`;
+            return;
+        }
+        // To sort by date manually since we removed orderBy from the query
+        const docs = snapshot.docs.sort((a, b) => (b.data().createdAt?.toMillis() || 0) - (a.data().createdAt?.toMillis() || 0));
+
+        requestsContainer.innerHTML = docs.map(doc => {
+            const req = doc.data();
+            const reqId = doc.id;
+            const reqDataString = JSON.stringify({ id: reqId, ...req });
+
+            return `<div class="bg-tertiary p-4 rounded-lg app-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-bold text-primary">${req.userDisplayName}</p>
+                                <p class="text-sm text-secondary mt-1">Muốn đổi: <span class="font-bold">${req.giftName}</span></p>
+                            </div>
+                            <p class="text-lg font-bold text-accent">${formatCurrency(req.price)}</p>
+                        </div>
+                        <button data-request='${reqDataString}' class="admin-review-gift-btn w-full p-2 mt-3 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover">Xem & Duyệt</button>
+                    </div>`;
+        }).join('');
+    });
+}
+// =========================================================================================
+// ===== END: KẾT THÚC SỬA LỖI =====
+// =========================================================================================
+
 
 document.getElementById('withdrawal-requests').addEventListener('click', (e) => {
     const reviewButton = e.target.closest('.admin-review-btn');
@@ -486,7 +528,7 @@ document.getElementById('confirm-delete-request-btn').addEventListener('click', 
     const modal = document.getElementById('confirm-delete-request-modal');
     const requestId = modal.dataset.requestId;
     if (!requestId) return;
-
+    
     showLoading();
     try {
         const requestRef = doc(db, `artifacts/${appId}/withdrawalRequests`, requestId);
@@ -509,7 +551,7 @@ document.getElementById('confirm-approve-btn').addEventListener('click', async (
     const approvedAmount = parseInt(document.getElementById('review-approval-amount').value);
     const adminMessage = document.getElementById('review-admin-message').value.trim() || "Yêu cầu rút tiền đã được chấp thuận.";
     if (!approvedAmount || approvedAmount <= 0) return showToast("Số tiền duyệt không hợp lệ.", true);
-
+    
     showLoading();
     const requestRef = doc(db, `artifacts/${appId}/withdrawalRequests`, requestId);
     try {
@@ -520,18 +562,18 @@ document.getElementById('confirm-approve-btn').addEventListener('click', async (
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists() || userDoc.data().balance < approvedAmount) throw new Error("Số dư của người dùng không đủ.");
             transaction.update(userRef, { balance: userDoc.data().balance - approvedAmount });
-            transaction.update(requestRef, {
+            transaction.update(requestRef, { 
                 status: 'approved',
                 approvedAmount: approvedAmount,
                 adminMessage: adminMessage,
                 processedAt: serverTimestamp()
             });
             transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {
-                type: 'withdraw',
-                userId: userId,
-                userName: userName,
+                type: 'withdraw', 
+                userId: userId, 
+                userName: userName, 
                 amount: approvedAmount,
-                content: adminMessage,
+                content: adminMessage, 
                 timestamp: serverTimestamp()
             });
         });
@@ -602,7 +644,7 @@ document.getElementById('deposit-codes-list').addEventListener('click', (e) => {
     if (deleteBtn) {
         const codeId = deleteBtn.dataset.id;
         const modal = document.getElementById('confirm-delete-modal');
-        modal.querySelector('#delete-confirmation-message').textContent = getTranslatedString('confirmDeleteCode', { code: codeId });
+        modal.querySelector('#delete-confirmation-message').textContent = getTranslatedString('confirmDeleteCode', {code: codeId});
         modal.dataset.codeId = codeId;
         modal.style.display = 'flex';
     }
@@ -634,21 +676,20 @@ document.getElementById('confirm-delete-btn').addEventListener('click', async ()
     } catch (error) { showToast(error.message, true); } finally { hideLoading(); }
 });
 
-// NEW: Admin edit user logic
 document.getElementById('admin-user-list').addEventListener('click', (e) => {
     const editBtn = e.target.closest('.admin-edit-user-btn');
     if (!editBtn) return;
 
     const userData = JSON.parse(editBtn.dataset.user);
     const modal = document.getElementById('admin-edit-user-modal');
-
+    
     modal.querySelector('#admin-edit-user-id').value = userData.id;
     modal.querySelector('#admin-edit-display-name').value = userData.displayName;
     modal.querySelector('#admin-edit-username').value = userData.username;
     modal.querySelector('#admin-edit-account-number').value = userData.accountNumber;
     modal.querySelector('#admin-edit-balance').value = userData.balance;
     modal.querySelector('#admin-edit-email').value = userData.email;
-
+    
     modal.style.display = 'flex';
 });
 
@@ -663,21 +704,20 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
     if (!userId || !newDisplayName || !newUsername || !newAccountNumber || isNaN(newBalance)) {
         return showToast("Vui lòng điền đầy đủ và chính xác thông tin.", true);
     }
-
+    
     showLoading();
     try {
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, `artifacts/${appId}/users`, userId);
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists()) throw new Error("Người dùng không tồn tại.");
-
+            
             const oldData = userDoc.data();
             const updates = {
                 displayName: newDisplayName,
                 balance: newBalance,
             };
 
-            // Handle username change
             if (newUsername !== oldData.username) {
                 const newUsernameRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `username_${newUsername}`);
                 const newUsernameDoc = await transaction.get(newUsernameRef);
@@ -689,12 +729,11 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
                 updates.username = newUsername;
             }
 
-            // Handle account number change
             if (newAccountNumber !== oldData.accountNumber) {
                 const newAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${newAccountNumber}`);
                 const newAccNumDoc = await transaction.get(newAccNumRef);
                 if (newAccNumDoc.exists()) throw new Error("Số tài khoản mới đã tồn tại.");
-
+                
                 const oldAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${oldData.accountNumber}`);
                 transaction.delete(oldAccNumRef);
                 transaction.set(newAccNumRef, { uid: userId });
@@ -716,7 +755,7 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
 // --- SETTINGS FUNCTIONS ---
 document.querySelectorAll('.theme-switcher').forEach(button => { button.addEventListener('click', () => { const theme = button.dataset.theme; document.body.className = `${theme} app-font`; localStorage.setItem('bankingAppTheme', theme); }); });
 function applySavedTheme() { const savedTheme = localStorage.getItem('bankingAppTheme') || 'theme-binance'; document.body.className = `${savedTheme} app-font`; }
-document.getElementById('copy-acc-btn').addEventListener('click', () => { if (currentUserData?.accountNumber) { navigator.clipboard.writeText(currentUserData.accountNumber).then(() => showToast(getTranslatedString('accNumCopied'))).catch(() => showToast(getTranslatedString('copyFailed'), true)); } });
+document.getElementById('copy-acc-btn').addEventListener('click', () => { if(currentUserData?.accountNumber) { navigator.clipboard.writeText(currentUserData.accountNumber).then(() => showToast(getTranslatedString('accNumCopied'))).catch(() => showToast(getTranslatedString('copyFailed'), true)); } });
 
 document.getElementById('update-name-btn').addEventListener('click', async () => {
     const newName = document.getElementById('update-name-input').value.trim();
@@ -730,7 +769,6 @@ document.getElementById('update-name-btn').addEventListener('click', async () =>
     } catch (error) { showToast(error.message, true); } finally { hideLoading(); }
 });
 
-// NEW: User update their own username/STK
 document.getElementById('update-account-info-btn').addEventListener('click', async () => {
     const newUsername = document.getElementById('update-username-input').value.trim().toLowerCase();
     const newAccountNumber = document.getElementById('update-account-number-input').value.trim();
@@ -750,7 +788,6 @@ document.getElementById('update-account-info-btn').addEventListener('click', asy
             const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
             const updates = {};
 
-            // Handle username change
             if (newUsername !== currentUserData.username) {
                 const newUsernameRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `username_${newUsername}`);
                 const newUsernameDoc = await transaction.get(newUsernameRef);
@@ -762,18 +799,17 @@ document.getElementById('update-account-info-btn').addEventListener('click', asy
                 updates.username = newUsername;
             }
 
-            // Handle account number change
             if (newAccountNumber !== currentUserData.accountNumber) {
                 const newAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${newAccountNumber}`);
                 const newAccNumDoc = await transaction.get(newAccNumRef);
                 if (newAccNumDoc.exists()) throw new Error(getTranslatedString('accountNumberExists'));
-
+                
                 const oldAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${currentUserData.accountNumber}`);
                 transaction.delete(oldAccNumRef);
                 transaction.set(newAccNumRef, { uid: currentUser.uid });
                 updates.accountNumber = newAccountNumber;
             }
-
+            
             if (Object.keys(updates).length > 0) {
                 transaction.update(userRef, updates);
             }
@@ -805,7 +841,7 @@ document.getElementById('confirm-pin-change-btn').addEventListener('click', asyn
         document.getElementById('change-pin-modal').style.display = 'none';
         ['current-pin', 'new-pin', 'confirm-new-pin'].forEach(id => document.getElementById(id).value = '');
         showToast(getTranslatedString('pinChanged'));
-    } catch (error) { showToast(error.message, true); } finally { hideLoading(); }
+    } catch(error) { showToast(error.message, true); } finally { hideLoading(); }
 });
 
 // --- GIFT FUNCTIONS ---
@@ -836,42 +872,48 @@ function setupGiftsTab() {
 
 document.getElementById('gifts-list').addEventListener('click', async (e) => {
     const redeemBtn = e.target.closest('.redeem-gift-btn');
-    if (redeemBtn) {
-        const giftId = redeemBtn.dataset.id;
-        const giftName = redeemBtn.dataset.name;
-        const price = parseInt(redeemBtn.dataset.price);
-        if (currentUserData.balance < price) {
-            return showToast("Số dư không đủ để đổi quà này.", true);
-        }
-        if (!await verifyPin()) return;
-        showLoading();
-        try {
-            await runTransaction(db, async (transaction) => {
-                const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
-                const giftRef = doc(db, `artifacts/${appId}/gifts`, giftId);
-                const userDoc = await transaction.get(userRef);
-                const giftDoc = await transaction.get(giftRef);
-                if (!userDoc.exists() || !giftDoc.exists()) throw new Error("Có lỗi xảy ra.");
-                const newBalance = userDoc.data().balance - price;
-                const newQuantity = giftDoc.data().quantity - 1;
-                if (newBalance < 0 || newQuantity < 0) throw new Error("Không đủ số dư hoặc quà đã hết.");
+    if (!redeemBtn) return;
 
-                transaction.update(userRef, { balance: newBalance });
-                transaction.update(giftRef, { quantity: newQuantity });
+    const giftId = redeemBtn.dataset.id;
+    const price = parseInt(redeemBtn.dataset.price);
 
-                const historyRef = doc(collection(db, `artifacts/${appId}/users/${currentUser.uid}/giftHistory`));
-                transaction.set(historyRef, {
-                    giftName,
-                    price,
-                    redeemedAt: serverTimestamp()
-                });
-            });
-            showToast("Đổi quà thành công!");
-        } catch (error) {
-            showToast(error.message, true);
-        } finally {
-            hideLoading();
+    if (currentUserData.balance < price) {
+        return showToast("Số dư không đủ để đổi quà này.", true);
+    }
+    if (!await verifyPin()) return;
+
+    showLoading();
+    try {
+        const giftRequestsRef = collection(db, `artifacts/${appId}/giftRequests`);
+        const q = query(giftRequestsRef, where('userId', '==', currentUser.uid), where('giftId', '==', giftId), where('status', '==', 'pending'));
+        const existingRequest = await getDocs(q);
+        if (!existingRequest.empty) {
+            throw new Error("Bạn đã gửi yêu cầu cho quà này rồi.");
         }
+
+        const giftDoc = await getDoc(doc(db, `artifacts/${appId}/gifts`, giftId));
+        if (!giftDoc.exists() || giftDoc.data().quantity <= 0) {
+             throw new Error("Quà đã hết hoặc không tồn tại.");
+        }
+
+        await addDoc(giftRequestsRef, {
+            userId: currentUser.uid,
+            userDisplayName: currentUserData.displayName,
+            giftId: giftId,
+            giftName: giftDoc.data().name,
+            price: giftDoc.data().price,
+            status: 'pending',
+            createdAt: serverTimestamp()
+        });
+
+        showToast("Yêu cầu đổi quà đã được gửi đi, vui lòng chờ Admin duyệt.");
+        redeemBtn.textContent = "Đang chờ duyệt";
+        redeemBtn.disabled = true;
+
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        hideLoading();
     }
 });
 
@@ -958,7 +1000,7 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
         const missionId = missionItem.dataset.id;
         const missionDoc = await getDoc(doc(db, `artifacts/${appId}/missions`, missionId));
         const mission = missionDoc.data();
-
+        
         const modal = document.getElementById('mission-details-modal');
         modal.dataset.id = missionId;
         document.getElementById('mission-details-name').textContent = mission.name;
@@ -969,7 +1011,7 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
 
         const acceptBtn = document.getElementById('accept-mission-btn');
         const submitBtn = document.getElementById('submit-mission-btn');
-
+        
         const userParticipant = mission.participants.find(p => p.uid === currentUser.uid);
 
         acceptBtn.classList.add('hidden');
@@ -984,7 +1026,7 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
                 acceptBtn.classList.remove('hidden');
             }
         }
-
+        
         modal.style.display = 'flex';
     }
 });
@@ -1005,7 +1047,7 @@ document.getElementById('accept-mission-btn').addEventListener('click', async (e
         });
         showToast("Nhận nhiệm vụ thành công!");
         document.getElementById('mission-details-modal').style.display = 'none';
-    } catch (error) {
+    } catch(error) {
         showToast(error.message, true);
     } finally {
         hideLoading();
@@ -1028,7 +1070,7 @@ document.getElementById('submit-mission-btn').addEventListener('click', async (e
         });
         showToast("Nộp nhiệm vụ thành công, vui lòng chờ admin duyệt.");
         document.getElementById('mission-details-modal').style.display = 'none';
-    } catch (error) {
+    } catch(error) {
         showToast(error.message, true);
     } finally {
         hideLoading();
@@ -1058,14 +1100,14 @@ function setupAdminMissionsList() {
 document.getElementById('admin-missions-list').addEventListener('click', async (e) => {
     const reviewBtn = e.target.closest('.admin-review-mission-btn');
     const deleteBtn = e.target.closest('.admin-delete-mission-btn');
-
+    
     if (reviewBtn) {
         const missionId = reviewBtn.dataset.id;
         const missionDoc = await getDoc(doc(db, `artifacts/${appId}/missions`, missionId));
         const mission = missionDoc.data();
         const submissionsList = document.getElementById('mission-submissions-list');
         const completedParticipants = mission.participants.filter(p => p.status === 'completed');
-
+        
         if (completedParticipants.length === 0) {
             submissionsList.innerHTML = `<p class="text-center text-secondary">Chưa có ai nộp nhiệm vụ.</p>`;
         } else {
@@ -1089,20 +1131,20 @@ document.getElementById('admin-missions-list').addEventListener('click', async (
 
 document.getElementById('mission-submissions-list').addEventListener('click', async (e) => {
     const actionBtn = e.target.closest('.approve-mission-btn');
-    if (actionBtn) {
+    if(actionBtn) {
         const missionId = actionBtn.dataset.missionId;
         const userId = actionBtn.dataset.userId;
         const action = actionBtn.dataset.action;
         const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
         showLoading();
         try {
-            await runTransaction(db, async (transaction) => {
+            await runTransaction(db, async(transaction) => {
                 const missionDoc = await transaction.get(missionRef);
                 const missionData = missionDoc.data();
-
+                
                 let participants = missionData.participants;
                 const userIndex = participants.findIndex(p => p.uid === userId);
-
+                
                 if (action === 'approve') {
                     const userRef = doc(db, `artifacts/${appId}/users`, userId);
                     const userDoc = await transaction.get(userRef);
@@ -1120,13 +1162,13 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                     });
 
                 } else { // reject
-                    participants[userIndex].status = 'rejected';
-                    transaction.update(missionRef, { participants });
+                     participants[userIndex].status = 'rejected';
+                     transaction.update(missionRef, { participants });
                 }
             });
             showToast(`Đã ${action === 'approve' ? 'duyệt' : 'từ chối'} nhiệm vụ.`);
             actionBtn.closest('.flex').innerHTML = `<p class="text-secondary text-sm">Đã ${action === 'approve' ? 'duyệt' : 'từ chối'}</p>`;
-        } catch (error) {
+        } catch(error) {
             showToast(error.message, true);
         } finally {
             hideLoading();
@@ -1168,15 +1210,33 @@ async function fetchGiftHistory(userId) {
         historyContainer.innerHTML = snapshot.docs.map(doc => {
             const history = doc.data();
             const time = history.redeemedAt ? history.redeemedAt.toDate().toLocaleDateString('vi-VN') : '...';
+            
+            let statusBadge = '';
+            let amountClass = 'text-danger';
+            let amountSign = '-';
+            
+            switch(history.status) {
+                case 'approved':
+                    statusBadge = `<span class="text-xs text-success">(Thành công)</span>`;
+                    break;
+                case 'rejected':
+                    statusBadge = `<span class="text-xs text-danger">(Bị từ chối)</span>`;
+                    amountClass = 'text-secondary';
+                    amountSign = ''; 
+                    break;
+                default: 
+                     statusBadge = `<span class="text-xs text-success">(Thành công)</span>`;
+            }
+
             return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full text-accent"><i class="fas fa-gift"></i></div>
                             <div>
-                                <p class="font-semibold text-sm text-primary">Đổi quà: ${history.giftName}</p>
+                                <p class="font-semibold text-sm text-primary">Đổi quà: ${history.giftName} ${statusBadge}</p>
                                 <p class="text-xs text-secondary">${time}</p>
                             </div>
                         </div>
-                        <p class="font-bold text-sm text-danger">-${formatCurrency(history.price)}</p>
+                        <p class="font-bold text-sm ${amountClass}">${amountSign}${formatCurrency(history.price)}</p>
                     </div>`;
         }).join('');
     });
@@ -1207,24 +1267,111 @@ async function fetchMissionHistory(userId) {
     });
 }
 
-// ADMIN ACCORDION
-// THÊM ĐOẠN CODE MỚI NÀY VÀO CUỐI FILE main.js
-
 // --- ADMIN TAB SWITCHING LOGIC ---
 document.querySelectorAll('.admin-tab-btn').forEach(button => {
     button.addEventListener('click', () => {
         const tabId = button.dataset.adminTab;
-
-        // Bỏ active tất cả các button và ẩn tất cả các pane
         document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelectorAll('.admin-tab-pane').forEach(pane => pane.classList.add('hidden'));
-
-        // Active button và pane được chọn
         button.classList.add('active');
         document.getElementById(`admin-tab-${tabId}`).classList.remove('hidden');
     });
 });
 
+document.getElementById('admin-tab-content').addEventListener('click', (e) => {
+    const reviewButton = e.target.closest('.admin-review-gift-btn');
+    if (reviewButton) {
+        const requestData = JSON.parse(reviewButton.dataset.request);
+        const modal = document.getElementById('review-gift-modal');
+        
+        modal.dataset.requestId = requestData.id;
+        modal.dataset.giftId = requestData.giftId;
+        modal.dataset.userId = requestData.userId;
+        modal.dataset.price = requestData.price;
+        
+        document.getElementById('review-gift-user-name').textContent = requestData.userDisplayName;
+        document.getElementById('review-gift-name').textContent = requestData.giftName;
+        document.getElementById('review-gift-price').textContent = formatCurrency(requestData.price);
+        document.getElementById('review-gift-admin-message').value = '';
+
+        modal.style.display = 'flex';
+    }
+});
+
+document.getElementById('confirm-approve-gift-btn').addEventListener('click', async (e) => {
+    const modal = e.target.closest('#review-gift-modal');
+    const requestId = modal.dataset.requestId;
+    const giftId = modal.dataset.giftId;
+    const userId = modal.dataset.userId;
+    const price = parseInt(modal.dataset.price);
+
+    showLoading();
+    try {
+        await runTransaction(db, async (transaction) => {
+            const requestRef = doc(db, `artifacts/${appId}/giftRequests`, requestId);
+            const userRef = doc(db, `artifacts/${appId}/users`, userId);
+            const giftRef = doc(db, `artifacts/${appId}/gifts`, giftId);
+
+            const [requestDoc, userDoc, giftDoc] = await Promise.all([
+                transaction.get(requestRef),
+                transaction.get(userRef),
+                transaction.get(giftRef)
+            ]);
+
+            if (!requestDoc.exists() || requestDoc.data().status !== 'pending') throw new Error("Yêu cầu không hợp lệ hoặc đã được xử lý.");
+            if (!userDoc.exists() || userDoc.data().balance < price) throw new Error("Số dư người dùng không đủ.");
+            if (!giftDoc.exists() || giftDoc.data().quantity < 1) throw new Error("Quà đã hết.");
+
+            transaction.update(userRef, { balance: userDoc.data().balance - price });
+            transaction.update(giftRef, { quantity: giftDoc.data().quantity - 1 });
+            transaction.update(requestRef, { status: 'approved', processedAt: serverTimestamp() });
+            
+            const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/giftHistory`));
+            transaction.set(historyRef, {
+                giftName: giftDoc.data().name,
+                price: price,
+                redeemedAt: serverTimestamp(),
+                status: 'approved'
+            });
+        });
+        showToast("Đã duyệt yêu cầu đổi quà.");
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        modal.style.display = 'none';
+        hideLoading();
+    }
+});
+
+document.getElementById('confirm-reject-gift-btn').addEventListener('click', async (e) => {
+    const modal = e.target.closest('#review-gift-modal');
+    const requestId = modal.dataset.requestId;
+    const userId = modal.dataset.userId;
+    const reason = document.getElementById('review-gift-admin-message').value.trim() || "Không có lý do.";
+
+    showLoading();
+    try {
+        const requestRef = doc(db, `artifacts/${appId}/giftRequests`, requestId);
+        await updateDoc(requestRef, { status: 'rejected', adminMessage: reason, processedAt: serverTimestamp() });
+        
+        const giftDoc = await getDoc(doc(db, `artifacts/${appId}/gifts`, modal.dataset.giftId));
+        const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/giftHistory`));
+        await setDoc(historyRef, {
+                giftName: giftDoc.data().name,
+                price: parseInt(modal.dataset.price),
+                redeemedAt: serverTimestamp(),
+                status: 'rejected',
+                reason: reason
+            });
+
+        showToast("Đã từ chối yêu cầu.");
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        modal.style.display = 'none';
+        hideLoading();
+    }
+});
 
 // --- APP INITIALIZATION ---
 function initializeAppLogic() {
@@ -1232,7 +1379,6 @@ function initializeAppLogic() {
     const savedLang = localStorage.getItem('famiBankLanguage') || 'vi';
     applyLanguage(savedLang);
     applySavedTheme();
-    // Activate default history tab
     document.querySelector('.history-sub-tab-btn[data-history-type="transactions"]').classList.add('active');
 }
 
