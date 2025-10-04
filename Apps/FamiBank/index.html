@@ -6,7 +6,6 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="FamiBank">
 
-<!-- Ngăn zoom khi pinch / double-tap -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FamiBank</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,6 +25,8 @@
         .spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-left-color: #fff; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .lang-switcher button.active { background-color: var(--bg-accent); color: var(--text-on-accent); }
+        .history-sub-tab-btn.active { border-color: var(--bg-accent); color: var(--bg-accent); }
+        .admin-accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
     </style>
 </head>
 <body class="bg-primary app-font theme-binance">
@@ -119,8 +120,25 @@
                 </div>
 
                 <div id="history-tab" class="app-tab">
-                    <h1 class="text-2xl font-bold text-primary mb-4" data-translate-key="transactionHistory">Transaction History</h1>
-                    <div id="full-transaction-history" class="space-y-3"></div>
+                    <h1 class="text-2xl font-bold text-primary mb-4">Lịch sử hoạt động</h1>
+                    <div class="flex border-b border-color mb-4">
+                        <button data-history-type="transactions" class="history-sub-tab-btn flex-1 text-center font-bold p-3 border-b-2">Giao dịch</button>
+                        <button data-history-type="gifts" class="history-sub-tab-btn flex-1 text-center font-bold p-3 border-b-2">Quà</button>
+                        <button data-history-type="missions" class="history-sub-tab-btn flex-1 text-center font-bold p-3 border-b-2">Nhiệm vụ</button>
+                    </div>
+                    <div id="history-content-transactions" class="history-content space-y-3"></div>
+                    <div id="history-content-gifts" class="history-content hidden space-y-3"></div>
+                    <div id="history-content-missions" class="history-content hidden space-y-3"></div>
+                </div>
+                
+                <div id="missions-tab" class="app-tab">
+                    <h1 class="text-2xl font-bold text-primary mb-4">Nhiệm vụ</h1>
+                    <div id="missions-list" class="space-y-4"></div>
+                </div>
+                
+                <div id="gifts-tab" class="app-tab">
+                    <h1 class="text-2xl font-bold text-primary mb-4">Cửa hàng quà tặng</h1>
+                    <div id="gifts-list" class="grid grid-cols-2 gap-4"></div>
                 </div>
 
                 <div id="settings-tab" class="app-tab">
@@ -168,35 +186,85 @@
                     </div>
                 </div>
 
-                 <div id="admin-tab" class="app-tab">
-                    <h1 class="text-2xl font-bold text-primary mb-4" data-translate-key="adminPanel">Admin Panel</h1>
-                    
-                    <div class="mt-8">
-                        <h2 class="text-lg font-bold mb-4 text-primary">Quản lý người dùng</h2>
-                        <div id="admin-user-list" class="space-y-4"></div>
-                    </div>
+                <div id="admin-tab" class="app-tab">
+    <h1 class="text-2xl font-bold text-primary mb-4" data-translate-key="adminPanel">Admin Panel</h1>
 
-                    <div class="bg-secondary p-4 rounded-lg app-shadow my-6">
-                        <h2 class="text-lg font-bold mb-3 text-primary" data-translate-key="createDepositCode">Create Deposit Code</h2>
-                        <div class="space-y-3">
-                            <input id="admin-deposit-code" type="text" data-translate-key-placeholder="depositCodePlaceholder" placeholder="Code (e.g., NAP100)" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
-                            <input id="admin-deposit-amount" type="number" data-translate-key-placeholder="amountPlaceholder" placeholder="Amount" class="w-full p-3 rounded-lg bg-tertiary border border-color focus:outline-none focus:ring-2 ring-accent">
-                        </div>
-                        <button id="create-deposit-code-btn" class="w-full mt-4 p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="createCode">Create Code</button>
-                    </div>
-                    <div class="mt-8">
-                        <h2 class="text-lg font-bold mb-4 text-primary" data-translate-key="depositCodeManagement">Deposit Code Management</h2>
-                        <div id="deposit-codes-list" class="space-y-4"></div>
-                    </div>
-                    <div class="mt-8">
-                        <h2 class="text-lg font-bold mb-4 text-primary" data-translate-key="pendingWithdrawals">Pending Withdrawal Requests</h2>
-                        <div id="withdrawal-requests" class="space-y-4"></div>
-                    </div>
+    <div class="grid grid-cols-2 gap-4 mb-6">
+        <div class="bg-secondary p-4 rounded-lg app-shadow">
+            <p class="text-sm text-secondary">Yêu cầu rút tiền</p>
+            <p id="admin-pending-withdrawals" class="text-2xl font-bold text-accent">0</p>
+        </div>
+        <div class="bg-secondary p-4 rounded-lg app-shadow">
+            <p class="text-sm text-secondary">Tổng người dùng</p>
+            <p id="admin-total-users" class="text-2xl font-bold text-primary">0</p>
+        </div>
+    </div>
+
+    <div class="flex border-b border-color mb-4 overflow-x-auto">
+        <button data-admin-tab="users" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2 active">Người dùng</button>
+        <button data-admin-tab="withdrawals" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2">Rút tiền</button>
+        <button data-admin-tab="codes" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2">Mã nạp</button>
+        <button data-admin-tab="gifts" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2">Quà</button>
+        <button data-admin-tab="missions" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2">Nhiệm vụ</button>
+    </div>
+
+    <div id="admin-tab-content">
+        <div id="admin-tab-users" class="admin-tab-pane">
+            <div id="admin-user-list" class="space-y-4"></div>
+        </div>
+
+        <div id="admin-tab-withdrawals" class="admin-tab-pane hidden">
+            <div id="withdrawal-requests" class="space-y-4"></div>
+        </div>
+
+        <div id="admin-tab-codes" class="admin-tab-pane hidden">
+            <div class="bg-tertiary p-4 rounded-lg app-shadow mb-4">
+                <h3 class="text-md font-bold mb-3 text-primary">Tạo mã nạp mới</h3>
+                <div class="space-y-3">
+                    <input id="admin-deposit-code" type="text" placeholder="Mã (VD: NAP100)" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                    <input id="admin-deposit-amount" type="number" placeholder="Số tiền" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
                 </div>
+                <button id="create-deposit-code-btn" class="w-full mt-4 p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover">Tạo Mã</button>
+            </div>
+            <div id="deposit-codes-list" class="space-y-4"></div>
+        </div>
+
+        <div id="admin-tab-gifts" class="admin-tab-pane hidden">
+             <div class="bg-tertiary p-4 rounded-lg app-shadow mb-4">
+                <h3 class="text-md font-bold mb-3 text-primary">Tạo quà mới</h3>
+                <div class="space-y-3">
+                    <input id="admin-gift-name" type="text" placeholder="Tên quà" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                    <input id="admin-gift-price" type="number" placeholder="Giá" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                    <input id="admin-gift-image" type="text" placeholder="URL hình ảnh" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                    <input id="admin-gift-quantity" type="number" placeholder="Số lượng" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                </div>
+                <button id="create-gift-btn" class="w-full mt-4 p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover">Tạo quà</button>
+            </div>
+            <div id="admin-gifts-list" class="space-y-4"></div>
+        </div>
+
+        <div id="admin-tab-missions" class="admin-tab-pane hidden">
+            <div class="bg-tertiary p-4 rounded-lg app-shadow mb-4">
+                <h3 class="text-md font-bold mb-3 text-primary">Tạo nhiệm vụ mới</h3>
+                <div class="space-y-3">
+                    <input id="admin-mission-name" type="text" placeholder="Tên nhiệm vụ" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                    <input id="admin-mission-reward" type="number" placeholder="Phần thưởng" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                    <input id="admin-mission-deadline" type="date" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                    <textarea id="admin-mission-description" placeholder="Mô tả" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent"></textarea>
+                    <input id="admin-mission-limit" type="number" placeholder="Giới hạn người nhận" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                </div>
+                <button id="create-mission-btn" class="w-full mt-4 p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover">Tạo nhiệm vụ</button>
+            </div>
+            <div id="admin-missions-list" class="space-y-4"></div>
+        </div>
+    </div>
+</div>
             </main>
             
-            <footer id="bottom-nav" class="bg-secondary w-full grid grid-cols-3 text-center py-3 app-shadow sticky bottom-0">
+            <footer id="bottom-nav" class="bg-secondary w-full grid grid-cols-5 text-center py-3 app-shadow sticky bottom-0">
                 <button data-tab="home-tab" class="nav-btn flex flex-col items-center text-secondary active"><i class="fas fa-home text-xl"></i><span class="text-xs" data-translate-key="home">Home</span></button>
+                <button data-tab="missions-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-tasks text-xl"></i><span class="text-xs">Nhiệm vụ</span></button>
+                <button data-tab="gifts-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-gift text-xl"></i><span class="text-xs">Quà</span></button>
                 <button data-tab="history-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-history text-xl"></i><span class="text-xs" data-translate-key="history">History</span></button>
                 <button data-tab="settings-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-cog text-xl"></i><span class="text-xs" data-translate-key="settings">Settings</span></button>
                 <button data-tab="admin-tab" id="nav-admin-btn" class="nav-btn flex-col items-center text-secondary hidden"><i class="fas fa-user-shield text-xl"></i><span class="text-xs" data-translate-key="admin">Admin</span></button>
@@ -293,6 +361,27 @@
                 <button class="modal-close-btn w-full p-2 bg-tertiary text-primary rounded-md" data-translate-key="cancel">Hủy</button>
                 <button id="admin-confirm-edit-user-btn" class="w-full p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover" data-translate-key="saveChanges">Lưu</button>
             </div>
+        </div>
+    </div>
+    
+    <div id="mission-details-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
+        <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow">
+            <h3 id="mission-details-name" class="font-bold text-lg mb-2 text-primary"></h3>
+            <p class="text-sm text-secondary mb-4">Phần thưởng: <span id="mission-details-reward" class="font-bold text-accent"></span></p>
+            <p id="mission-details-description" class="text-sm text-primary mb-4"></p>
+            <div id="mission-details-participants" class="text-xs text-secondary mb-4"></div>
+            <div id="mission-details-deadline" class="text-xs text-secondary mb-4"></div>
+            <button id="accept-mission-btn" class="w-full p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover">Nhận nhiệm vụ</button>
+            <button id="submit-mission-btn" class="w-full p-2 bg-success text-white font-bold rounded-md hover:bg-green-500 mt-2 hidden">Hoàn thành</button>
+            <button class="modal-close-btn w-full mt-4 text-center text-secondary text-sm">Đóng</button>
+        </div>
+    </div>
+    
+    <div id="review-mission-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
+        <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow">
+            <h3 class="font-bold text-lg mb-4 text-primary">Duyệt nhiệm vụ</h3>
+            <div id="mission-submissions-list" class="space-y-3"></div>
+            <button class="modal-close-btn w-full mt-4 text-center text-secondary text-sm">Đóng</button>
         </div>
     </div>
 

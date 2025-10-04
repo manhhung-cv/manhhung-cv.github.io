@@ -3,7 +3,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, si
 import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection, query, where, runTransaction, addDoc, orderBy, updateDoc, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // --- CONFIG & INITIALIZATION ---
-const firebaseConfig = { apiKey: "AIzaSyCqUaI__8udllforW6CSCvd6f8_UCLY3CE", authDomain: "famibank-c7bfb.firebaseapp.com", projectId: "famibank-c7bfb", storageBucket: "famibank-c7bfb.firebasestorage.app", messagingSenderId: "243910717721", appId: "1:243910717721:web:e3f52cb495c1bdf35dd588" };
+const firebaseConfig = { apiKey: "AIzaSyCqUaI__8udllforW6CSCvd6f8_UCLY3CE", authDomain: "famibank-c7bfb.firebaseapp.com", projectId: "famibank-c7bfb", storageBucket: "famibank-c7bfb.appspot.com", messagingSenderId: "243910717721", appId: "1:243910717721:web:e3f52cb495c1bdf35dd588" };
 const appId = firebaseConfig.projectId;
 const ADMIN_EMAIL = 'mienphi1230@gmail.com';
 const app = initializeApp(firebaseConfig);
@@ -93,17 +93,21 @@ onAuthStateChanged(auth, (user) => {
                 currentUserData = { id: docSnap.id, ...docSnap.data() };
                 updateUI();
                 fetchAllTransactions(user.uid);
+                fetchGiftHistory(user.uid);
+                fetchMissionHistory(user.uid);
+                setupMissionsTab();
+                setupGiftsTab();
             } else { handleLogout(); }
         });
         showView('app-view');
         showTab('home-tab');
         if (user.email === ADMIN_EMAIL) {
             navAdminBtn.style.display = 'flex';
-            bottomNav.classList.replace('grid-cols-3', 'grid-cols-4');
+            bottomNav.classList.replace('grid-cols-5', 'grid-cols-6');
             setupAdminDashboard();
         } else {
             navAdminBtn.style.display = 'none';
-            bottomNav.classList.replace('grid-cols-4', 'grid-cols-3');
+            bottomNav.classList.replace('grid-cols-6', 'grid-cols-5');
         }
     } else {
         currentUser = null; currentUserData = null; if (unsubscribeUser) unsubscribeUser();
@@ -147,7 +151,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
             transaction.set(usernameClaimRef, { uid: newUser.uid });
             transaction.set(accNumClaimRef, { uid: newUser.uid });
         });
-        
+
         showToast(getTranslatedString('registrationSuccess'));
 
     } catch (error) {
@@ -200,7 +204,7 @@ document.getElementById('balance-visibility-btn').addEventListener('click', () =
 
 pinInput.addEventListener('input', () => { const val = pinInput.value; pinDots.forEach((dot, i) => dot.classList.toggle('active', i < val.length)); if (val.length === 6) { if (pinPromiseResolver) pinPromiseResolver(val); pinPromiseResolver = null; document.getElementById('pin-modal').style.display = 'none'; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); } });
 function requestPin() { return new Promise((resolve) => { pinPromiseResolver = resolve; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); document.getElementById('pin-modal').style.display = 'flex'; setTimeout(() => pinInput.focus(), 100); }); }
-async function verifyPin() { const enteredPin = await requestPin(); if(!enteredPin) return false; const enteredPinHash = await hashPin(enteredPin); if (enteredPinHash !== currentUserData.pinHash) { showToast(getTranslatedString('pinIncorrect'), true); return false; } return true; }
+async function verifyPin() { const enteredPin = await requestPin(); if (!enteredPin) return false; const enteredPinHash = await hashPin(enteredPin); if (enteredPinHash !== currentUserData.pinHash) { showToast(getTranslatedString('pinIncorrect'), true); return false; } return true; }
 
 document.getElementById('confirm-transfer-btn').addEventListener('click', async () => {
     const recipientIdentifier = document.getElementById('transfer-recipient').value.trim();
@@ -230,7 +234,7 @@ document.getElementById('confirm-transfer-btn').addEventListener('click', async 
             if (!senderDoc.exists() || senderDoc.data().balance < amount) throw new Error(getTranslatedString('insufficientBalance'));
             transaction.update(senderDocRef, { balance: senderDoc.data().balance - amount });
             transaction.update(recipientDoc.ref, { balance: recipientData.balance + amount });
-            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {type: 'transfer', fromUserId: currentUser.uid, fromUserName: currentUserData.displayName,toUserId: recipientData.id, toUserName: recipientData.displayName,amount, content, timestamp: serverTimestamp()});
+            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), { type: 'transfer', fromUserId: currentUser.uid, fromUserName: currentUserData.displayName, toUserId: recipientData.id, toUserName: recipientData.displayName, amount, content, timestamp: serverTimestamp() });
         });
         showToast(getTranslatedString('transferSuccess', { amount: formatCurrency(amount), recipient: recipientData.displayName }));
         ['transfer-recipient', 'transfer-amount', 'transfer-content'].forEach(id => document.getElementById(id).value = '');
@@ -259,7 +263,7 @@ document.getElementById('confirm-deposit-btn').addEventListener('click', async (
                 redeemedByUsername: currentUserData.displayName,
                 redeemedAt: serverTimestamp()
             });
-            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {type: 'deposit', userId: currentUser.uid, userName: currentUserData.displayName, amount, content: `Deposit with code ${codeId}`, timestamp: serverTimestamp()});
+            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), { type: 'deposit', userId: currentUser.uid, userName: currentUserData.displayName, amount, content: `Deposit with code ${codeId}`, timestamp: serverTimestamp() });
         });
         const codeSnap = await getDoc(codeRef);
         showToast(getTranslatedString('depositSuccess', { amount: formatCurrency(codeSnap.data().amount) }));
@@ -276,7 +280,7 @@ document.getElementById('confirm-withdraw-btn').addEventListener('click', async 
     if (!await verifyPin()) return;
     showLoading();
     try {
-        await addDoc(collection(db, `artifacts/${appId}/withdrawalRequests`), {userId: currentUser.uid, userDisplayName: currentUserData.displayName,userAccountNumber: currentUserData.accountNumber, amount, reason, status: 'pending',createdAt: serverTimestamp()});
+        await addDoc(collection(db, `artifacts/${appId}/withdrawalRequests`), { userId: currentUser.uid, userDisplayName: currentUserData.displayName, userAccountNumber: currentUserData.accountNumber, amount, reason, status: 'pending', createdAt: serverTimestamp() });
         showToast(getTranslatedString('withdrawRequestSent'));
         document.getElementById('withdraw-amount').value = '';
         document.getElementById('withdraw-reason').value = '';
@@ -294,8 +298,8 @@ async function fetchAllTransactions(userId) {
         [...sentSnap.docs, ...receivedSnap.docs, ...othersSnap.docs].forEach(doc => allTransactions.push(doc.data()));
         allTransactions.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
         renderTransactions(allTransactions.slice(0, 5), document.getElementById('recent-transaction-history'), userId, getTranslatedString('noRecentActivity'));
-        renderTransactions(allTransactions, document.getElementById('full-transaction-history'), userId, getTranslatedString('noTransactions'));
-    } catch(e) { console.error("Error fetching transactions: ", e); }
+        renderTransactions(allTransactions, document.getElementById('history-content-transactions'), userId, getTranslatedString('noTransactions'));
+    } catch (e) { console.error("Error fetching transactions: ", e); }
 }
 
 function renderTransactions(transactions, container, userId, emptyMessage) {
@@ -304,7 +308,7 @@ function renderTransactions(transactions, container, userId, emptyMessage) {
         const time = tx.timestamp ? tx.timestamp.toDate().toLocaleDateString('vi-VN') : '...';
         let amountClass, amountSign, title, detail, icon;
         switch (tx.type) {
-            case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', {user: tx.toUserName}); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', {user: tx.fromUserName}); detail = tx.content; icon = 'fa-arrow-down'; } break;
+            case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', { user: tx.toUserName }); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', { user: tx.fromUserName }); detail = tx.content; icon = 'fa-arrow-down'; } break;
             case 'deposit': amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('depositTitle'); detail = tx.content; icon = 'fa-wallet'; break;
             case 'withdraw': amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('withdrawTitle'); detail = getTranslatedString('approvedByAdmin'); icon = 'fa-money-bill-wave'; break;
             default: amountClass = 'text-primary'; amountSign = ''; title = getTranslatedString('unknownTransaction'); detail = tx.content || ''; icon = 'fa-question-circle';
@@ -317,13 +321,18 @@ function renderTransactions(transactions, container, userId, emptyMessage) {
 let unsubscribeAdmin = null;
 let unsubscribeDepositCodes = null;
 let unsubscribeAdminUsers = null;
+let unsubscribeAdminGifts = null;
+let unsubscribeAdminMissions = null;
 
 function setupAdminDashboard() {
     if (unsubscribeAdmin) unsubscribeAdmin();
     const requestsContainer = document.getElementById('withdrawal-requests');
     const q = query(collection(db, `artifacts/${appId}/withdrawalRequests`), orderBy('createdAt', 'desc'));
-    
+
     unsubscribeAdmin = onSnapshot(q, (snapshot) => {
+        const pendingRequests = snapshot.docs.filter(doc => doc.data().status === 'pending').length;
+        document.getElementById('admin-pending-withdrawals').textContent = pendingRequests;
+
         if (snapshot.empty) {
             requestsContainer.innerHTML = `<p class="text-center text-secondary">Không có yêu cầu rút tiền nào.</p>`;
             return;
@@ -337,7 +346,7 @@ function setupAdminDashboard() {
             let adminNote = '';
             let actionButton = '';
 
-            switch(req.status) {
+            switch (req.status) {
                 case 'approved':
                     statusBadge = `<div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-success">Đã duyệt</div>`;
                     adminNote = `<p class="text-xs text-secondary mt-1">Số tiền duyệt: ${formatCurrency(req.approvedAmount)}</p>`;
@@ -373,7 +382,9 @@ function setupAdminDashboard() {
         }).join('');
     });
     setupAdminDepositCodesList();
-    setupAdminUserList(); // NEW: Call function to setup user list
+    setupAdminUserList();
+    setupAdminGiftsList();
+    setupAdminMissionsList();
 }
 
 function setupAdminDepositCodesList() {
@@ -383,7 +394,7 @@ function setupAdminDepositCodesList() {
 
     unsubscribeDepositCodes = onSnapshot(q, (snapshot) => {
         if (snapshot.empty) {
-            codesContainer.innerHTML = `<p class="text-center text-secondary">${getTranslatedString('noDepositCodes', {lng: currentLanguage})}</p>`; return;
+            codesContainer.innerHTML = `<p class="text-center text-secondary">${getTranslatedString('noDepositCodes', { lng: currentLanguage })}</p>`; return;
         }
         codesContainer.innerHTML = snapshot.docs.map(doc => {
             const code = doc.data();
@@ -393,7 +404,7 @@ function setupAdminDepositCodesList() {
             let redeemedInfo = '';
             if (isUsed && code.redeemedByUsername) {
                 const redeemedTime = code.redeemedAt ? code.redeemedAt.toDate().toLocaleDateString('vi-VN') : '';
-                redeemedInfo = `<p class="text-xs text-secondary mt-1">${getTranslatedString('usedBy', {user: code.redeemedByUsername})} @ ${redeemedTime}</p>`;
+                redeemedInfo = `<p class="text-xs text-secondary mt-1">${getTranslatedString('usedBy', { user: code.redeemedByUsername })} @ ${redeemedTime}</p>`;
             }
             return `<div class="bg-tertiary p-4 rounded-lg">
                         <div class="flex justify-between items-start">
@@ -421,6 +432,8 @@ function setupAdminUserList() {
     const q = query(collection(db, `artifacts/${appId}/users`), orderBy('createdAt', 'desc'));
 
     unsubscribeAdminUsers = onSnapshot(q, (snapshot) => {
+           document.getElementById('admin-total-users').textContent = snapshot.size;
+
         if (snapshot.empty) {
             userListContainer.innerHTML = `<p class="text-center text-secondary">Không có người dùng nào.</p>`;
             return;
@@ -473,7 +486,7 @@ document.getElementById('confirm-delete-request-btn').addEventListener('click', 
     const modal = document.getElementById('confirm-delete-request-modal');
     const requestId = modal.dataset.requestId;
     if (!requestId) return;
-    
+
     showLoading();
     try {
         const requestRef = doc(db, `artifacts/${appId}/withdrawalRequests`, requestId);
@@ -496,7 +509,7 @@ document.getElementById('confirm-approve-btn').addEventListener('click', async (
     const approvedAmount = parseInt(document.getElementById('review-approval-amount').value);
     const adminMessage = document.getElementById('review-admin-message').value.trim() || "Yêu cầu rút tiền đã được chấp thuận.";
     if (!approvedAmount || approvedAmount <= 0) return showToast("Số tiền duyệt không hợp lệ.", true);
-    
+
     showLoading();
     const requestRef = doc(db, `artifacts/${appId}/withdrawalRequests`, requestId);
     try {
@@ -507,18 +520,18 @@ document.getElementById('confirm-approve-btn').addEventListener('click', async (
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists() || userDoc.data().balance < approvedAmount) throw new Error("Số dư của người dùng không đủ.");
             transaction.update(userRef, { balance: userDoc.data().balance - approvedAmount });
-            transaction.update(requestRef, { 
+            transaction.update(requestRef, {
                 status: 'approved',
                 approvedAmount: approvedAmount,
                 adminMessage: adminMessage,
                 processedAt: serverTimestamp()
             });
             transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {
-                type: 'withdraw', 
-                userId: userId, 
-                userName: userName, 
+                type: 'withdraw',
+                userId: userId,
+                userName: userName,
                 amount: approvedAmount,
-                content: adminMessage, 
+                content: adminMessage,
                 timestamp: serverTimestamp()
             });
         });
@@ -589,7 +602,7 @@ document.getElementById('deposit-codes-list').addEventListener('click', (e) => {
     if (deleteBtn) {
         const codeId = deleteBtn.dataset.id;
         const modal = document.getElementById('confirm-delete-modal');
-        modal.querySelector('#delete-confirmation-message').textContent = getTranslatedString('confirmDeleteCode', {code: codeId});
+        modal.querySelector('#delete-confirmation-message').textContent = getTranslatedString('confirmDeleteCode', { code: codeId });
         modal.dataset.codeId = codeId;
         modal.style.display = 'flex';
     }
@@ -628,14 +641,14 @@ document.getElementById('admin-user-list').addEventListener('click', (e) => {
 
     const userData = JSON.parse(editBtn.dataset.user);
     const modal = document.getElementById('admin-edit-user-modal');
-    
+
     modal.querySelector('#admin-edit-user-id').value = userData.id;
     modal.querySelector('#admin-edit-display-name').value = userData.displayName;
     modal.querySelector('#admin-edit-username').value = userData.username;
     modal.querySelector('#admin-edit-account-number').value = userData.accountNumber;
     modal.querySelector('#admin-edit-balance').value = userData.balance;
     modal.querySelector('#admin-edit-email').value = userData.email;
-    
+
     modal.style.display = 'flex';
 });
 
@@ -650,14 +663,14 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
     if (!userId || !newDisplayName || !newUsername || !newAccountNumber || isNaN(newBalance)) {
         return showToast("Vui lòng điền đầy đủ và chính xác thông tin.", true);
     }
-    
+
     showLoading();
     try {
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, `artifacts/${appId}/users`, userId);
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists()) throw new Error("Người dùng không tồn tại.");
-            
+
             const oldData = userDoc.data();
             const updates = {
                 displayName: newDisplayName,
@@ -681,7 +694,7 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
                 const newAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${newAccountNumber}`);
                 const newAccNumDoc = await transaction.get(newAccNumRef);
                 if (newAccNumDoc.exists()) throw new Error("Số tài khoản mới đã tồn tại.");
-                
+
                 const oldAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${oldData.accountNumber}`);
                 transaction.delete(oldAccNumRef);
                 transaction.set(newAccNumRef, { uid: userId });
@@ -703,7 +716,7 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
 // --- SETTINGS FUNCTIONS ---
 document.querySelectorAll('.theme-switcher').forEach(button => { button.addEventListener('click', () => { const theme = button.dataset.theme; document.body.className = `${theme} app-font`; localStorage.setItem('bankingAppTheme', theme); }); });
 function applySavedTheme() { const savedTheme = localStorage.getItem('bankingAppTheme') || 'theme-binance'; document.body.className = `${savedTheme} app-font`; }
-document.getElementById('copy-acc-btn').addEventListener('click', () => { if(currentUserData?.accountNumber) { navigator.clipboard.writeText(currentUserData.accountNumber).then(() => showToast(getTranslatedString('accNumCopied'))).catch(() => showToast(getTranslatedString('copyFailed'), true)); } });
+document.getElementById('copy-acc-btn').addEventListener('click', () => { if (currentUserData?.accountNumber) { navigator.clipboard.writeText(currentUserData.accountNumber).then(() => showToast(getTranslatedString('accNumCopied'))).catch(() => showToast(getTranslatedString('copyFailed'), true)); } });
 
 document.getElementById('update-name-btn').addEventListener('click', async () => {
     const newName = document.getElementById('update-name-input').value.trim();
@@ -754,13 +767,13 @@ document.getElementById('update-account-info-btn').addEventListener('click', asy
                 const newAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${newAccountNumber}`);
                 const newAccNumDoc = await transaction.get(newAccNumRef);
                 if (newAccNumDoc.exists()) throw new Error(getTranslatedString('accountNumberExists'));
-                
+
                 const oldAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${currentUserData.accountNumber}`);
                 transaction.delete(oldAccNumRef);
                 transaction.set(newAccNumRef, { uid: currentUser.uid });
                 updates.accountNumber = newAccountNumber;
             }
-            
+
             if (Object.keys(updates).length > 0) {
                 transaction.update(userRef, updates);
             }
@@ -792,8 +805,426 @@ document.getElementById('confirm-pin-change-btn').addEventListener('click', asyn
         document.getElementById('change-pin-modal').style.display = 'none';
         ['current-pin', 'new-pin', 'confirm-new-pin'].forEach(id => document.getElementById(id).value = '');
         showToast(getTranslatedString('pinChanged'));
-    } catch(error) { showToast(error.message, true); } finally { hideLoading(); }
+    } catch (error) { showToast(error.message, true); } finally { hideLoading(); }
 });
+
+// --- GIFT FUNCTIONS ---
+function setupGiftsTab() {
+    const giftsList = document.getElementById('gifts-list');
+    const q = query(collection(db, `artifacts/${appId}/gifts`));
+    onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            giftsList.innerHTML = `<p class="text-center text-secondary col-span-2">Hiện chưa có quà nào.</p>`;
+            return;
+        }
+        giftsList.innerHTML = snapshot.docs.map(doc => {
+            const gift = doc.data();
+            const soldOut = gift.quantity <= 0;
+            return `<div class="bg-secondary rounded-lg p-3 flex flex-col app-shadow">
+                        <img src="${gift.imageUrl}" alt="${gift.name}" class="w-full h-28 object-cover rounded-md mb-3">
+                        <p class="font-bold text-primary text-sm flex-grow">${gift.name}</p>
+                        <p class="text-xs text-secondary mt-1">Còn lại: ${gift.quantity}</p>
+                        <button data-id="${doc.id}" data-name="${gift.name}" data-price="${gift.price}" ${soldOut ? 'disabled' : ''} 
+                                class="redeem-gift-btn mt-3 w-full p-2 text-sm bg-accent text-on-accent font-bold rounded-md transition-opacity 
+                                ${soldOut ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent-hover'}">
+                            ${soldOut ? 'Hết quà' : `Đổi ${formatCurrency(gift.price)}`}
+                        </button>
+                    </div>`;
+        }).join('');
+    });
+}
+
+document.getElementById('gifts-list').addEventListener('click', async (e) => {
+    const redeemBtn = e.target.closest('.redeem-gift-btn');
+    if (redeemBtn) {
+        const giftId = redeemBtn.dataset.id;
+        const giftName = redeemBtn.dataset.name;
+        const price = parseInt(redeemBtn.dataset.price);
+        if (currentUserData.balance < price) {
+            return showToast("Số dư không đủ để đổi quà này.", true);
+        }
+        if (!await verifyPin()) return;
+        showLoading();
+        try {
+            await runTransaction(db, async (transaction) => {
+                const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
+                const giftRef = doc(db, `artifacts/${appId}/gifts`, giftId);
+                const userDoc = await transaction.get(userRef);
+                const giftDoc = await transaction.get(giftRef);
+                if (!userDoc.exists() || !giftDoc.exists()) throw new Error("Có lỗi xảy ra.");
+                const newBalance = userDoc.data().balance - price;
+                const newQuantity = giftDoc.data().quantity - 1;
+                if (newBalance < 0 || newQuantity < 0) throw new Error("Không đủ số dư hoặc quà đã hết.");
+
+                transaction.update(userRef, { balance: newBalance });
+                transaction.update(giftRef, { quantity: newQuantity });
+
+                const historyRef = doc(collection(db, `artifacts/${appId}/users/${currentUser.uid}/giftHistory`));
+                transaction.set(historyRef, {
+                    giftName,
+                    price,
+                    redeemedAt: serverTimestamp()
+                });
+            });
+            showToast("Đổi quà thành công!");
+        } catch (error) {
+            showToast(error.message, true);
+        } finally {
+            hideLoading();
+        }
+    }
+});
+
+function setupAdminGiftsList() {
+    if (unsubscribeAdminGifts) unsubscribeAdminGifts();
+    const giftsContainer = document.getElementById('admin-gifts-list');
+    const q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('name'));
+    unsubscribeAdminGifts = onSnapshot(q, (snapshot) => {
+        giftsContainer.innerHTML = snapshot.docs.map(doc => {
+            const gift = doc.data();
+            return `<div class="bg-tertiary p-3 rounded-lg flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-primary">${gift.name}</p>
+                            <p class="text-xs text-secondary">${formatCurrency(gift.price)} - Còn lại: ${gift.quantity}</p>
+                        </div>
+                        <button data-id="${doc.id}" class="admin-delete-gift-btn p-2 text-danger"><i class="fas fa-trash"></i></button>
+                    </div>`;
+        }).join('');
+    });
+}
+
+document.getElementById('create-gift-btn').addEventListener('click', async () => {
+    const name = document.getElementById('admin-gift-name').value;
+    const price = parseInt(document.getElementById('admin-gift-price').value);
+    const imageUrl = document.getElementById('admin-gift-image').value;
+    const quantity = parseInt(document.getElementById('admin-gift-quantity').value);
+    if (!name || !price || !imageUrl || !quantity) return showToast("Vui lòng điền đầy đủ thông tin quà.", true);
+    await addDoc(collection(db, `artifacts/${appId}/gifts`), { name, price, imageUrl, quantity });
+    showToast("Tạo quà thành công.");
+    ['admin-gift-name', 'admin-gift-price', 'admin-gift-image', 'admin-gift-quantity'].forEach(id => document.getElementById(id).value = '');
+});
+
+document.getElementById('admin-gifts-list').addEventListener('click', async (e) => {
+    const deleteBtn = e.target.closest('.admin-delete-gift-btn');
+    if (deleteBtn) {
+        const giftId = deleteBtn.dataset.id;
+        await deleteDoc(doc(db, `artifacts/${appId}/gifts`, giftId));
+        showToast("Xóa quà thành công.");
+    }
+});
+
+// --- MISSION FUNCTIONS ---
+function setupMissionsTab() {
+    const missionsList = document.getElementById('missions-list');
+    const q = query(collection(db, `artifacts/${appId}/missions`));
+    onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            missionsList.innerHTML = `<p class="text-center text-secondary">Hiện chưa có nhiệm vụ nào.</p>`;
+            return;
+        }
+        missionsList.innerHTML = snapshot.docs.map(doc => {
+            const mission = doc.data();
+            const isExpired = new Date(mission.deadline) < new Date();
+            const userStatus = mission.participants.find(p => p.uid === currentUser.uid)?.status;
+            let statusBadge = '';
+            if (userStatus === 'approved') {
+                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-success">Đã hoàn thành</div>`;
+            } else if (userStatus === 'completed') {
+                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-on-accent px-2 py-1 rounded-full bg-accent">Chờ duyệt</div>`;
+            } else if (userStatus === 'pending') {
+                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-blue-500">Đã nhận</div>`;
+            } else if (isExpired) {
+                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-danger">Hết hạn</div>`;
+            }
+
+            return `<div data-id="${doc.id}" class="mission-item bg-secondary p-4 rounded-lg app-shadow relative cursor-pointer hover:bg-tertiary">
+                        ${statusBadge}
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 flex items-center justify-center bg-tertiary rounded-full text-accent text-xl"><i class="fas fa-tasks"></i></div>
+                            <div>
+                                <p class="font-bold text-primary">${mission.name}</p>
+                                <p class="text-sm text-accent font-bold">${formatCurrency(mission.reward)}</p>
+                                <p class="text-xs text-secondary mt-1">Người nhận: ${mission.participants.length}/${mission.limit}</p>
+                            </div>
+                        </div>
+                    </div>`;
+        }).join('');
+    });
+}
+
+document.getElementById('missions-list').addEventListener('click', async (e) => {
+    const missionItem = e.target.closest('.mission-item');
+    if (missionItem) {
+        const missionId = missionItem.dataset.id;
+        const missionDoc = await getDoc(doc(db, `artifacts/${appId}/missions`, missionId));
+        const mission = missionDoc.data();
+
+        const modal = document.getElementById('mission-details-modal');
+        modal.dataset.id = missionId;
+        document.getElementById('mission-details-name').textContent = mission.name;
+        document.getElementById('mission-details-reward').textContent = formatCurrency(mission.reward);
+        document.getElementById('mission-details-description').textContent = mission.description;
+        document.getElementById('mission-details-participants').textContent = `Số người đã nhận: ${mission.participants.length}/${mission.limit}`;
+        document.getElementById('mission-details-deadline').textContent = `Hết hạn: ${new Date(mission.deadline).toLocaleDateString('vi-VN')}`;
+
+        const acceptBtn = document.getElementById('accept-mission-btn');
+        const submitBtn = document.getElementById('submit-mission-btn');
+
+        const userParticipant = mission.participants.find(p => p.uid === currentUser.uid);
+
+        acceptBtn.classList.add('hidden');
+        submitBtn.classList.add('hidden');
+
+        if (userParticipant) { // User has accepted
+            if (userParticipant.status === 'pending') {
+                submitBtn.classList.remove('hidden');
+            }
+        } else { // User has not accepted
+            if (new Date(mission.deadline) >= new Date() && mission.participants.length < mission.limit) {
+                acceptBtn.classList.remove('hidden');
+            }
+        }
+
+        modal.style.display = 'flex';
+    }
+});
+
+document.getElementById('accept-mission-btn').addEventListener('click', async (e) => {
+    const missionId = e.target.closest('.modal-overlay').dataset.id;
+    const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
+    showLoading();
+    try {
+        await runTransaction(db, async (transaction) => {
+            const missionDoc = await transaction.get(missionRef);
+            if (!missionDoc.exists()) throw new Error("Nhiệm vụ không tồn tại.");
+            let participants = missionDoc.data().participants || [];
+            if (participants.length >= missionDoc.data().limit) throw new Error("Nhiệm vụ đã đủ người nhận.");
+            if (participants.find(p => p.uid === currentUser.uid)) throw new Error("Bạn đã nhận nhiệm vụ này rồi.");
+            participants.push({ uid: currentUser.uid, name: currentUserData.displayName, status: 'pending' });
+            transaction.update(missionRef, { participants: participants });
+        });
+        showToast("Nhận nhiệm vụ thành công!");
+        document.getElementById('mission-details-modal').style.display = 'none';
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        hideLoading();
+    }
+});
+
+document.getElementById('submit-mission-btn').addEventListener('click', async (e) => {
+    const missionId = e.target.closest('.modal-overlay').dataset.id;
+    const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
+    showLoading();
+    try {
+        await runTransaction(db, async (transaction) => {
+            const missionDoc = await transaction.get(missionRef);
+            if (!missionDoc.exists()) throw new Error("Nhiệm vụ không tồn tại.");
+            let participants = missionDoc.data().participants || [];
+            const userIndex = participants.findIndex(p => p.uid === currentUser.uid);
+            if (userIndex === -1) throw new Error("Bạn chưa nhận nhiệm vụ này.");
+            participants[userIndex].status = 'completed';
+            transaction.update(missionRef, { participants: participants });
+        });
+        showToast("Nộp nhiệm vụ thành công, vui lòng chờ admin duyệt.");
+        document.getElementById('mission-details-modal').style.display = 'none';
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        hideLoading();
+    }
+});
+
+function setupAdminMissionsList() {
+    if (unsubscribeAdminMissions) unsubscribeAdminMissions();
+    const missionsContainer = document.getElementById('admin-missions-list');
+    const q = query(collection(db, `artifacts/${appId}/missions`), orderBy('deadline', 'desc'));
+    unsubscribeAdminMissions = onSnapshot(q, (snapshot) => {
+        missionsContainer.innerHTML = snapshot.docs.map(doc => {
+            const mission = doc.data();
+            const submissions = mission.participants.filter(p => p.status === 'completed').length;
+            return `<div class="bg-tertiary p-3 rounded-lg">
+                        <p class="font-bold text-primary">${mission.name}</p>
+                        <p class="text-xs text-secondary">Hết hạn: ${new Date(mission.deadline).toLocaleDateString('vi-VN')}</p>
+                        <div class="flex justify-between items-center mt-2">
+                           <button data-id="${doc.id}" class="admin-review-mission-btn p-2 text-accent">Duyệt (${submissions})</button>
+                           <button data-id="${doc.id}" class="admin-delete-mission-btn p-2 text-danger"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>`;
+        }).join('');
+    });
+}
+
+document.getElementById('admin-missions-list').addEventListener('click', async (e) => {
+    const reviewBtn = e.target.closest('.admin-review-mission-btn');
+    const deleteBtn = e.target.closest('.admin-delete-mission-btn');
+
+    if (reviewBtn) {
+        const missionId = reviewBtn.dataset.id;
+        const missionDoc = await getDoc(doc(db, `artifacts/${appId}/missions`, missionId));
+        const mission = missionDoc.data();
+        const submissionsList = document.getElementById('mission-submissions-list');
+        const completedParticipants = mission.participants.filter(p => p.status === 'completed');
+
+        if (completedParticipants.length === 0) {
+            submissionsList.innerHTML = `<p class="text-center text-secondary">Chưa có ai nộp nhiệm vụ.</p>`;
+        } else {
+            submissionsList.innerHTML = completedParticipants.map(p => `<div class="flex justify-between items-center bg-tertiary p-2 rounded">
+                            <p>${p.name}</p>
+                            <div class="flex gap-2">
+                                <button data-mission-id="${missionId}" data-user-id="${p.uid}" data-action="approve" class="approve-mission-btn p-2 text-success"><i class="fas fa-check"></i></button>
+                                <button data-mission-id="${missionId}" data-user-id="${p.uid}" data-action="reject" class="approve-mission-btn p-2 text-danger"><i class="fas fa-times"></i></button>
+                            </div>
+                       </div>`).join('');
+        }
+        document.getElementById('review-mission-modal').style.display = 'flex';
+    }
+
+    if (deleteBtn) {
+        const missionId = deleteBtn.dataset.id;
+        await deleteDoc(doc(db, `artifacts/${appId}/missions`, missionId));
+        showToast("Xóa nhiệm vụ thành công.");
+    }
+});
+
+document.getElementById('mission-submissions-list').addEventListener('click', async (e) => {
+    const actionBtn = e.target.closest('.approve-mission-btn');
+    if (actionBtn) {
+        const missionId = actionBtn.dataset.missionId;
+        const userId = actionBtn.dataset.userId;
+        const action = actionBtn.dataset.action;
+        const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
+        showLoading();
+        try {
+            await runTransaction(db, async (transaction) => {
+                const missionDoc = await transaction.get(missionRef);
+                const missionData = missionDoc.data();
+
+                let participants = missionData.participants;
+                const userIndex = participants.findIndex(p => p.uid === userId);
+
+                if (action === 'approve') {
+                    const userRef = doc(db, `artifacts/${appId}/users`, userId);
+                    const userDoc = await transaction.get(userRef);
+
+                    participants[userIndex].status = 'approved';
+                    transaction.update(missionRef, { participants });
+                    transaction.update(userRef, { balance: userDoc.data().balance + missionData.reward });
+
+                    const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/missionHistory`));
+                    transaction.set(historyRef, {
+                        missionName: missionData.name,
+                        reward: missionData.reward,
+                        completedAt: serverTimestamp(),
+                        status: 'approved'
+                    });
+
+                } else { // reject
+                    participants[userIndex].status = 'rejected';
+                    transaction.update(missionRef, { participants });
+                }
+            });
+            showToast(`Đã ${action === 'approve' ? 'duyệt' : 'từ chối'} nhiệm vụ.`);
+            actionBtn.closest('.flex').innerHTML = `<p class="text-secondary text-sm">Đã ${action === 'approve' ? 'duyệt' : 'từ chối'}</p>`;
+        } catch (error) {
+            showToast(error.message, true);
+        } finally {
+            hideLoading();
+        }
+    }
+});
+
+document.getElementById('create-mission-btn').addEventListener('click', async () => {
+    const name = document.getElementById('admin-mission-name').value;
+    const reward = parseInt(document.getElementById('admin-mission-reward').value);
+    const deadline = document.getElementById('admin-mission-deadline').value;
+    const description = document.getElementById('admin-mission-description').value;
+    const limit = parseInt(document.getElementById('admin-mission-limit').value);
+    if (!name || !reward || !deadline || !description || !limit) return showToast("Vui lòng điền đầy đủ thông tin nhiệm vụ.", true);
+    await addDoc(collection(db, `artifacts/${appId}/missions`), { name, reward, deadline, description, limit, participants: [] });
+    showToast("Tạo nhiệm vụ thành công.");
+    ['admin-mission-name', 'admin-mission-reward', 'admin-mission-deadline', 'admin-mission-description', 'admin-mission-limit'].forEach(id => document.getElementById(id).value = '');
+});
+
+// --- HISTORY FUNCTIONS ---
+document.querySelectorAll('.history-sub-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const type = btn.dataset.historyType;
+        document.querySelectorAll('.history-sub-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.history-content').forEach(c => c.classList.add('hidden'));
+        document.getElementById(`history-content-${type}`).classList.remove('hidden');
+    });
+});
+
+async function fetchGiftHistory(userId) {
+    const historyContainer = document.getElementById('history-content-gifts');
+    const q = query(collection(db, `artifacts/${appId}/users/${userId}/giftHistory`), orderBy('redeemedAt', 'desc'));
+    onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            historyContainer.innerHTML = `<p class="text-center text-secondary py-4">Chưa có lịch sử đổi quà.</p>`;
+            return;
+        }
+        historyContainer.innerHTML = snapshot.docs.map(doc => {
+            const history = doc.data();
+            const time = history.redeemedAt ? history.redeemedAt.toDate().toLocaleDateString('vi-VN') : '...';
+            return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full text-accent"><i class="fas fa-gift"></i></div>
+                            <div>
+                                <p class="font-semibold text-sm text-primary">Đổi quà: ${history.giftName}</p>
+                                <p class="text-xs text-secondary">${time}</p>
+                            </div>
+                        </div>
+                        <p class="font-bold text-sm text-danger">-${formatCurrency(history.price)}</p>
+                    </div>`;
+        }).join('');
+    });
+}
+
+async function fetchMissionHistory(userId) {
+    const historyContainer = document.getElementById('history-content-missions');
+    const q = query(collection(db, `artifacts/${appId}/users/${userId}/missionHistory`), orderBy('completedAt', 'desc'));
+    onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            historyContainer.innerHTML = `<p class="text-center text-secondary py-4">Chưa có lịch sử làm nhiệm vụ.</p>`;
+            return;
+        }
+        historyContainer.innerHTML = snapshot.docs.map(doc => {
+            const history = doc.data();
+            const time = history.completedAt ? history.completedAt.toDate().toLocaleDateString('vi-VN') : '...';
+            return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full text-success"><i class="fas fa-tasks"></i></div>
+                            <div>
+                                <p class="font-semibold text-sm text-primary">Hoàn thành: ${history.missionName}</p>
+                                <p class="text-xs text-secondary">${time}</p>
+                            </div>
+                        </div>
+                        <p class="font-bold text-sm text-success">+${formatCurrency(history.reward)}</p>
+                    </div>`;
+        }).join('');
+    });
+}
+
+// ADMIN ACCORDION
+// THÊM ĐOẠN CODE MỚI NÀY VÀO CUỐI FILE main.js
+
+// --- ADMIN TAB SWITCHING LOGIC ---
+document.querySelectorAll('.admin-tab-btn').forEach(button => {
+    button.addEventListener('click', () => {
+        const tabId = button.dataset.adminTab;
+
+        // Bỏ active tất cả các button và ẩn tất cả các pane
+        document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.admin-tab-pane').forEach(pane => pane.classList.add('hidden'));
+
+        // Active button và pane được chọn
+        button.classList.add('active');
+        document.getElementById(`admin-tab-${tabId}`).classList.remove('hidden');
+    });
+});
+
 
 // --- APP INITIALIZATION ---
 function initializeAppLogic() {
@@ -801,6 +1232,8 @@ function initializeAppLogic() {
     const savedLang = localStorage.getItem('famiBankLanguage') || 'vi';
     applyLanguage(savedLang);
     applySavedTheme();
+    // Activate default history tab
+    document.querySelector('.history-sub-tab-btn[data-history-type="transactions"]').classList.add('active');
 }
 
 initializeAppLogic();
