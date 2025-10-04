@@ -917,6 +917,7 @@ document.getElementById('gifts-list').addEventListener('click', async (e) => {
     }
 });
 
+// THAY THẾ HÀM CŨ BẰNG HÀM NÀY
 function setupAdminGiftsList() {
     if (unsubscribeAdminGifts) unsubscribeAdminGifts();
     const giftsContainer = document.getElementById('admin-gifts-list');
@@ -924,12 +925,18 @@ function setupAdminGiftsList() {
     unsubscribeAdminGifts = onSnapshot(q, (snapshot) => {
         giftsContainer.innerHTML = snapshot.docs.map(doc => {
             const gift = doc.data();
+            // Chuẩn bị data-attributes cho nút sửa
+            const giftData = `data-id="${doc.id}" data-name="${gift.name}" data-price="${gift.price}" data-image-url="${gift.imageUrl}" data-quantity="${gift.quantity}"`;
+
             return `<div class="bg-tertiary p-3 rounded-lg flex justify-between items-center">
                         <div>
                             <p class="font-bold text-primary">${gift.name}</p>
                             <p class="text-xs text-secondary">${formatCurrency(gift.price)} - Còn lại: ${gift.quantity}</p>
                         </div>
-                        <button data-id="${doc.id}" class="admin-delete-gift-btn p-2 text-danger"><i class="fas fa-trash"></i></button>
+                        <div class="flex gap-2">
+                            <button ${giftData} class="admin-edit-gift-btn p-2 h-8 w-8 text-sm bg-secondary rounded-md text-accent"><i class="fas fa-pen"></i></button>
+                            <button data-id="${doc.id}" class="admin-delete-gift-btn p-2 h-8 w-8 text-sm bg-secondary rounded-md text-danger"><i class="fas fa-trash"></i></button>
+                        </div>
                     </div>`;
         }).join('');
     });
@@ -946,12 +953,27 @@ document.getElementById('create-gift-btn').addEventListener('click', async () =>
     ['admin-gift-name', 'admin-gift-price', 'admin-gift-image', 'admin-gift-quantity'].forEach(id => document.getElementById(id).value = '');
 });
 
+// THAY THẾ LISTENER CŨ BẰNG LISTENER NÀY
 document.getElementById('admin-gifts-list').addEventListener('click', async (e) => {
     const deleteBtn = e.target.closest('.admin-delete-gift-btn');
     if (deleteBtn) {
         const giftId = deleteBtn.dataset.id;
-        await deleteDoc(doc(db, `artifacts/${appId}/gifts`, giftId));
-        showToast("Xóa quà thành công.");
+        // Optional: Add a confirmation modal before deleting
+        if (confirm(`Bạn có chắc muốn xóa quà này không?`)) {
+            await deleteDoc(doc(db, `artifacts/${appId}/gifts`, giftId));
+            showToast("Xóa quà thành công.");
+        }
+    }
+
+    const editBtn = e.target.closest('.admin-edit-gift-btn');
+    if (editBtn) {
+        const modal = document.getElementById('edit-gift-modal');
+        document.getElementById('edit-gift-id').value = editBtn.dataset.id;
+        document.getElementById('edit-gift-name').value = editBtn.dataset.name;
+        document.getElementById('edit-gift-price').value = editBtn.dataset.price;
+        document.getElementById('edit-gift-image').value = editBtn.dataset.imageUrl;
+        document.getElementById('edit-gift-quantity').value = editBtn.dataset.quantity;
+        modal.style.display = 'flex';
     }
 });
 
@@ -1077,6 +1099,7 @@ document.getElementById('submit-mission-btn').addEventListener('click', async (e
     }
 });
 
+// THAY THẾ HÀM CŨ BẰNG HÀM NÀY
 function setupAdminMissionsList() {
     if (unsubscribeAdminMissions) unsubscribeAdminMissions();
     const missionsContainer = document.getElementById('admin-missions-list');
@@ -1085,23 +1108,31 @@ function setupAdminMissionsList() {
         missionsContainer.innerHTML = snapshot.docs.map(doc => {
             const mission = doc.data();
             const submissions = mission.participants.filter(p => p.status === 'completed').length;
+            const missionDataString = JSON.stringify({ id: doc.id, ...mission });
+
             return `<div class="bg-tertiary p-3 rounded-lg">
                         <p class="font-bold text-primary">${mission.name}</p>
                         <p class="text-xs text-secondary">Hết hạn: ${new Date(mission.deadline).toLocaleDateString('vi-VN')}</p>
                         <div class="flex justify-between items-center mt-2">
                            <button data-id="${doc.id}" class="admin-review-mission-btn p-2 text-accent">Duyệt (${submissions})</button>
-                           <button data-id="${doc.id}" class="admin-delete-mission-btn p-2 text-danger"><i class="fas fa-trash"></i></button>
+                           <div class="flex gap-2">
+                               <button data-mission='${missionDataString}' class="admin-edit-mission-btn p-2 text-accent"><i class="fas fa-pen"></i></button>
+                               <button data-id="${doc.id}" class="admin-delete-mission-btn p-2 text-danger"><i class="fas fa-trash"></i></button>
+                           </div>
                         </div>
                     </div>`;
         }).join('');
     });
 }
 
+// THAY THẾ LISTENER CŨ BẰNG LISTENER NÀY
 document.getElementById('admin-missions-list').addEventListener('click', async (e) => {
     const reviewBtn = e.target.closest('.admin-review-mission-btn');
     const deleteBtn = e.target.closest('.admin-delete-mission-btn');
+    const editBtn = e.target.closest('.admin-edit-mission-btn');
     
     if (reviewBtn) {
+        // ... logic duyệt nhiệm vụ giữ nguyên ...
         const missionId = reviewBtn.dataset.id;
         const missionDoc = await getDoc(doc(db, `artifacts/${appId}/missions`, missionId));
         const mission = missionDoc.data();
@@ -1124,8 +1155,22 @@ document.getElementById('admin-missions-list').addEventListener('click', async (
 
     if (deleteBtn) {
         const missionId = deleteBtn.dataset.id;
-        await deleteDoc(doc(db, `artifacts/${appId}/missions`, missionId));
-        showToast("Xóa nhiệm vụ thành công.");
+        if (confirm(`Bạn có chắc muốn xóa nhiệm vụ này không?`)) {
+            await deleteDoc(doc(db, `artifacts/${appId}/missions`, missionId));
+            showToast("Xóa nhiệm vụ thành công.");
+        }
+    }
+
+    if (editBtn) {
+        const missionData = JSON.parse(editBtn.dataset.mission);
+        const modal = document.getElementById('edit-mission-modal');
+        document.getElementById('edit-mission-id').value = missionData.id;
+        document.getElementById('edit-mission-name').value = missionData.name;
+        document.getElementById('edit-mission-reward').value = missionData.reward;
+        document.getElementById('edit-mission-deadline').value = missionData.deadline;
+        document.getElementById('edit-mission-description').value = missionData.description;
+        document.getElementById('edit-mission-limit').value = missionData.limit;
+        modal.style.display = 'flex';
     }
 });
 
@@ -1367,6 +1412,67 @@ document.getElementById('confirm-reject-gift-btn').addEventListener('click', asy
         showToast("Đã từ chối yêu cầu.");
     } catch (error) {
         showToast(error.message, true);
+    } finally {
+        modal.style.display = 'none';
+        hideLoading();
+    }
+});
+
+// THÊM 2 ĐOẠN CODE NÀY VÀO CUỐI FILE main.js
+
+// Listener cho nút lưu thay đổi quà
+document.getElementById('confirm-edit-gift-btn').addEventListener('click', async () => {
+    const modal = document.getElementById('edit-gift-modal');
+    const giftId = document.getElementById('edit-gift-id').value;
+    
+    const updatedData = {
+        name: document.getElementById('edit-gift-name').value,
+        price: parseInt(document.getElementById('edit-gift-price').value),
+        imageUrl: document.getElementById('edit-gift-image').value,
+        quantity: parseInt(document.getElementById('edit-gift-quantity').value)
+    };
+
+    if (!updatedData.name || !updatedData.price || !updatedData.imageUrl || isNaN(updatedData.quantity)) {
+        return showToast("Vui lòng điền đầy đủ thông tin.", true);
+    }
+
+    showLoading();
+    try {
+        const giftRef = doc(db, `artifacts/${appId}/gifts`, giftId);
+        await updateDoc(giftRef, updatedData);
+        showToast("Cập nhật quà thành công!");
+    } catch (error) {
+        showToast("Lỗi khi cập nhật: " + error.message, true);
+    } finally {
+        modal.style.display = 'none';
+        hideLoading();
+    }
+});
+
+// Listener cho nút lưu thay đổi nhiệm vụ
+document.getElementById('confirm-edit-mission-btn').addEventListener('click', async () => {
+    const modal = document.getElementById('edit-mission-modal');
+    const missionId = document.getElementById('edit-mission-id').value;
+
+    const updatedData = {
+        name: document.getElementById('edit-mission-name').value,
+        reward: parseInt(document.getElementById('edit-mission-reward').value),
+        deadline: document.getElementById('edit-mission-deadline').value,
+        description: document.getElementById('edit-mission-description').value,
+        limit: parseInt(document.getElementById('edit-mission-limit').value)
+    };
+    
+    if (!updatedData.name || !updatedData.reward || !updatedData.deadline || !updatedData.description || !updatedData.limit) {
+        return showToast("Vui lòng điền đầy đủ thông tin.", true);
+    }
+
+    showLoading();
+    try {
+        const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
+        await updateDoc(missionRef, updatedData);
+        showToast("Cập nhật nhiệm vụ thành công!");
+    } catch (error) {
+        showToast("Lỗi khi cập nhật: " + error.message, true);
     } finally {
         modal.style.display = 'none';
         hideLoading();
