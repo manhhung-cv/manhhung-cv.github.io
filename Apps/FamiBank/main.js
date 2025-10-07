@@ -24,6 +24,7 @@ let currentLanguage = 'vi';
 // --- STATE & DOM ---
 let currentUser = null, currentUserData = null, unsubscribeUser = null, pinPromiseResolver = null;
 let isBalanceVisible = true;
+let currentGiftSortOrder = 'newest'; // 'newest', 'price_asc', 'price_desc'
 const loadingOverlay = document.getElementById('loading-overlay');
 const allViews = document.querySelectorAll('#login-view, #register-view, #app-view');
 const allTabs = document.querySelectorAll('.app-tab');
@@ -52,6 +53,29 @@ const showToast = (message, isError = false) => {
     toast.style.color = 'white';
     setTimeout(() => toast.classList.add('opacity-0'), 3000);
 };
+
+const isSameDay = (d1, d2) => {
+    const date1 = d1 instanceof Date ? d1 : d1.toDate();
+    const date2 = d2 instanceof Date ? d2 : d2.toDate();
+    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
+};
+const getWeek = (date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+};
+const isSameWeek = (d1, d2) => {
+    const date1 = d1 instanceof Date ? d1 : d1.toDate();
+    const date2 = d2 instanceof Date ? d2 : d2.toDate();
+    return date1.getFullYear() === date2.getFullYear() && getWeek(date1) === getWeek(date2);
+};
+const isSameMonth = (d1, d2) => {
+    const date1 = d1 instanceof Date ? d1 : d1.toDate();
+    const date2 = d2 instanceof Date ? d2 : d2.toDate();
+    return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth();
+};
+
 
 function getTranslatedString(key, options = {}) {
     let str = translations[currentLanguage][key] || key;
@@ -457,15 +481,9 @@ function setupAdminUserList() {
     });
 }
 
-// =========================================================================================
-// ===== START: SỬA LỖI TẠI ĐÂY =====
-// =========================================================================================
 function setupAdminGiftRequests() {
     if (unsubscribeAdminGiftRequests) unsubscribeAdminGiftRequests();
     const requestsContainer = document.getElementById('gift-requests-list');
-    
-    // **THE FIX:** Removing `orderBy('createdAt', 'desc')` to avoid needing a composite index.
-    // This will show the requests. For sorting, the index must be created in Firebase.
     const q = query(collection(db, `artifacts/${appId}/giftRequests`), where('status', '==', 'pending'));
 
     unsubscribeAdminGiftRequests = onSnapshot(q, (snapshot) => {
@@ -473,7 +491,6 @@ function setupAdminGiftRequests() {
             requestsContainer.innerHTML = `<p class="text-center text-secondary">Không có yêu cầu đổi quà nào.</p>`;
             return;
         }
-        // To sort by date manually since we removed orderBy from the query
         const docs = snapshot.docs.sort((a, b) => (b.data().createdAt?.toMillis() || 0) - (a.data().createdAt?.toMillis() || 0));
 
         requestsContainer.innerHTML = docs.map(doc => {
@@ -494,10 +511,6 @@ function setupAdminGiftRequests() {
         }).join('');
     });
 }
-// =========================================================================================
-// ===== END: KẾT THÚC SỬA LỖI =====
-// =========================================================================================
-
 
 document.getElementById('withdrawal-requests').addEventListener('click', (e) => {
     const reviewButton = e.target.closest('.admin-review-btn');
@@ -845,10 +858,25 @@ document.getElementById('confirm-pin-change-btn').addEventListener('click', asyn
 });
 
 // --- GIFT FUNCTIONS ---
+let unsubscribeGifts = null;
 function setupGiftsTab() {
+    if (unsubscribeGifts) unsubscribeGifts();
     const giftsList = document.getElementById('gifts-list');
-    const q = query(collection(db, `artifacts/${appId}/gifts`));
-    onSnapshot(q, (snapshot) => {
+    let q;
+    switch (currentGiftSortOrder) {
+        case 'price_asc':
+            q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('price', 'asc'));
+            break;
+        case 'price_desc':
+            q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('price', 'desc'));
+            break;
+        case 'newest':
+        default:
+            q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('createdAt', 'desc'));
+            break;
+    }
+
+    unsubscribeGifts = onSnapshot(q, (snapshot) => {
         if (snapshot.empty) {
             giftsList.innerHTML = `<p class="text-center text-secondary col-span-2">Hiện chưa có quà nào.</p>`;
             return;
@@ -869,6 +897,19 @@ function setupGiftsTab() {
         }).join('');
     });
 }
+
+document.getElementById('gift-filters').addEventListener('click', (e) => {
+    const filterBtn = e.target.closest('.gift-filter-btn');
+    if (!filterBtn) return;
+    
+    currentGiftSortOrder = filterBtn.dataset.sort;
+    
+    document.querySelectorAll('.gift-filter-btn').forEach(btn => btn.classList.remove('active'));
+    filterBtn.classList.add('active');
+
+    setupGiftsTab();
+});
+
 
 document.getElementById('gifts-list').addEventListener('click', async (e) => {
     const redeemBtn = e.target.closest('.redeem-gift-btn');
@@ -917,15 +958,13 @@ document.getElementById('gifts-list').addEventListener('click', async (e) => {
     }
 });
 
-// THAY THẾ HÀM CŨ BẰNG HÀM NÀY
 function setupAdminGiftsList() {
     if (unsubscribeAdminGifts) unsubscribeAdminGifts();
     const giftsContainer = document.getElementById('admin-gifts-list');
-    const q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('name'));
+    const q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('createdAt', 'desc'));
     unsubscribeAdminGifts = onSnapshot(q, (snapshot) => {
         giftsContainer.innerHTML = snapshot.docs.map(doc => {
             const gift = doc.data();
-            // Chuẩn bị data-attributes cho nút sửa
             const giftData = `data-id="${doc.id}" data-name="${gift.name}" data-price="${gift.price}" data-image-url="${gift.imageUrl}" data-quantity="${gift.quantity}"`;
 
             return `<div class="bg-tertiary p-3 rounded-lg flex justify-between items-center">
@@ -948,17 +987,21 @@ document.getElementById('create-gift-btn').addEventListener('click', async () =>
     const imageUrl = document.getElementById('admin-gift-image').value;
     const quantity = parseInt(document.getElementById('admin-gift-quantity').value);
     if (!name || !price || !imageUrl || !quantity) return showToast("Vui lòng điền đầy đủ thông tin quà.", true);
-    await addDoc(collection(db, `artifacts/${appId}/gifts`), { name, price, imageUrl, quantity });
+    await addDoc(collection(db, `artifacts/${appId}/gifts`), { 
+        name, 
+        price, 
+        imageUrl, 
+        quantity, 
+        createdAt: serverTimestamp() 
+    });
     showToast("Tạo quà thành công.");
     ['admin-gift-name', 'admin-gift-price', 'admin-gift-image', 'admin-gift-quantity'].forEach(id => document.getElementById(id).value = '');
 });
 
-// THAY THẾ LISTENER CŨ BẰNG LISTENER NÀY
 document.getElementById('admin-gifts-list').addEventListener('click', async (e) => {
     const deleteBtn = e.target.closest('.admin-delete-gift-btn');
     if (deleteBtn) {
         const giftId = deleteBtn.dataset.id;
-        // Optional: Add a confirmation modal before deleting
         if (confirm(`Bạn có chắc muốn xóa quà này không?`)) {
             await deleteDoc(doc(db, `artifacts/${appId}/gifts`, giftId));
             showToast("Xóa quà thành công.");
@@ -988,19 +1031,37 @@ function setupMissionsTab() {
         }
         missionsList.innerHTML = snapshot.docs.map(doc => {
             const mission = doc.data();
-            const isExpired = new Date(mission.deadline) < new Date();
-            const userStatus = mission.participants.find(p => p.uid === currentUser.uid)?.status;
+            const now = new Date();
+            const isExpired = mission.deadline && new Date(mission.deadline) < now;
+            const userParticipant = mission.participants.find(p => p.uid === currentUser.uid);
+            
             let statusBadge = '';
-            if (userStatus === 'approved') {
-                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-success">Đã hoàn thành</div>`;
-            } else if (userStatus === 'completed') {
-                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-on-accent px-2 py-1 rounded-full bg-accent">Chờ duyệt</div>`;
-            } else if (userStatus === 'pending') {
-                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-blue-500">Đã nhận</div>`;
-            } else if (isExpired) {
-                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-danger">Hết hạn</div>`;
-            }
 
+            if (isExpired) {
+                statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-danger">Hết hạn</div>`;
+            } else if (userParticipant) {
+                const participantStatus = userParticipant.status;
+                if (participantStatus === 'pending') {
+                    statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-blue-500">Đã nhận</div>`;
+                } else if (participantStatus === 'completed') {
+                    statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-on-accent px-2 py-1 rounded-full bg-accent">Chờ duyệt</div>`;
+                } else if (participantStatus === 'approved' || participantStatus === 'rejected') {
+                    if (mission.repeat === 'none' && participantStatus === 'approved') {
+                        statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-success">Đã hoàn thành</div>`;
+                    } else if (userParticipant.lastCompleted) {
+                        const lastCompletedDate = userParticipant.lastCompleted.toDate();
+                        let canRedo = false;
+                        if (mission.repeat === 'daily' && !isSameDay(lastCompletedDate, now)) canRedo = true;
+                        if (mission.repeat === 'weekly' && !isSameWeek(lastCompletedDate, now)) canRedo = true;
+                        if (mission.repeat === 'monthly' && !isSameMonth(lastCompletedDate, now)) canRedo = true;
+
+                        if (!canRedo) {
+                             statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-success">Đã hoàn thành</div>`;
+                        }
+                    }
+                }
+            }
+            
             return `<div data-id="${doc.id}" class="mission-item bg-secondary p-4 rounded-lg app-shadow relative cursor-pointer hover:bg-tertiary">
                         ${statusBadge}
                         <div class="flex items-center gap-4">
@@ -1029,29 +1090,49 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
         document.getElementById('mission-details-reward').textContent = formatCurrency(mission.reward);
         document.getElementById('mission-details-description').textContent = mission.description;
         document.getElementById('mission-details-participants').textContent = `Số người đã nhận: ${mission.participants.length}/${mission.limit}`;
-        document.getElementById('mission-details-deadline').textContent = `Hết hạn: ${new Date(mission.deadline).toLocaleDateString('vi-VN')}`;
+        
+        if (mission.deadline) {
+            document.getElementById('mission-details-deadline').textContent = `Hết hạn: ${new Date(mission.deadline).toLocaleDateString('vi-VN')}`;
+        } else {
+            document.getElementById('mission-details-deadline').textContent = `Hết hạn: Vô thời hạn`;
+        }
 
         const acceptBtn = document.getElementById('accept-mission-btn');
         const submitBtn = document.getElementById('submit-mission-btn');
         
-        const userParticipant = mission.participants.find(p => p.uid === currentUser.uid);
-
         acceptBtn.classList.add('hidden');
         submitBtn.classList.add('hidden');
 
-        if (userParticipant) { // User has accepted
-            if (userParticipant.status === 'pending') {
-                submitBtn.classList.remove('hidden');
+        const userParticipant = mission.participants.find(p => p.uid === currentUser.uid);
+        const now = new Date();
+        const isExpired = mission.deadline && new Date(mission.deadline) < now;
+
+        let isEligible = false;
+        if (!isExpired) {
+            if (!userParticipant) {
+                isEligible = true;
+            } else {
+                if (userParticipant.status === 'pending') {
+                    submitBtn.classList.remove('hidden');
+                } else if (userParticipant.status === 'approved' || userParticipant.status === 'rejected') {
+                    if (userParticipant.lastCompleted) {
+                        const lastCompletedDate = userParticipant.lastCompleted.toDate();
+                        if (mission.repeat === 'daily' && !isSameDay(lastCompletedDate, now)) isEligible = true;
+                        if (mission.repeat === 'weekly' && !isSameWeek(lastCompletedDate, now)) isEligible = true;
+                        if (mission.repeat === 'monthly' && !isSameMonth(lastCompletedDate, now)) isEligible = true;
+                    }
+                }
             }
-        } else { // User has not accepted
-            if (new Date(mission.deadline) >= new Date() && mission.participants.length < mission.limit) {
-                acceptBtn.classList.remove('hidden');
-            }
+        }
+        
+        if (isEligible && mission.participants.filter(p => p.status !== 'approved' && p.status !== 'rejected').length < mission.limit) {
+            acceptBtn.classList.remove('hidden');
         }
         
         modal.style.display = 'flex';
     }
 });
+
 
 document.getElementById('accept-mission-btn').addEventListener('click', async (e) => {
     const missionId = e.target.closest('.modal-overlay').dataset.id;
@@ -1061,10 +1142,21 @@ document.getElementById('accept-mission-btn').addEventListener('click', async (e
         await runTransaction(db, async (transaction) => {
             const missionDoc = await transaction.get(missionRef);
             if (!missionDoc.exists()) throw new Error("Nhiệm vụ không tồn tại.");
-            let participants = missionDoc.data().participants || [];
-            if (participants.length >= missionDoc.data().limit) throw new Error("Nhiệm vụ đã đủ người nhận.");
-            if (participants.find(p => p.uid === currentUser.uid)) throw new Error("Bạn đã nhận nhiệm vụ này rồi.");
-            participants.push({ uid: currentUser.uid, name: currentUserData.displayName, status: 'pending' });
+            
+            const missionData = missionDoc.data();
+            let participants = missionData.participants || [];
+            const userIndex = participants.findIndex(p => p.uid === currentUser.uid);
+            
+            if (userIndex !== -1) { // User exists, update for new cycle
+                participants[userIndex].status = 'pending';
+                participants[userIndex].lastCompleted = null; // Reset completion time
+            } else { // New user for this mission
+                if (participants.filter(p => p.status !== 'approved' && p.status !== 'rejected').length >= missionData.limit) {
+                    throw new Error("Nhiệm vụ đã đủ người nhận.");
+                }
+                participants.push({ uid: currentUser.uid, name: currentUserData.displayName, status: 'pending' });
+            }
+
             transaction.update(missionRef, { participants: participants });
         });
         showToast("Nhận nhiệm vụ thành công!");
@@ -1075,6 +1167,7 @@ document.getElementById('accept-mission-btn').addEventListener('click', async (e
         hideLoading();
     }
 });
+
 
 document.getElementById('submit-mission-btn').addEventListener('click', async (e) => {
     const missionId = e.target.closest('.modal-overlay').dataset.id;
@@ -1099,7 +1192,6 @@ document.getElementById('submit-mission-btn').addEventListener('click', async (e
     }
 });
 
-// THAY THẾ HÀM CŨ BẰNG HÀM NÀY
 function setupAdminMissionsList() {
     if (unsubscribeAdminMissions) unsubscribeAdminMissions();
     const missionsContainer = document.getElementById('admin-missions-list');
@@ -1112,7 +1204,7 @@ function setupAdminMissionsList() {
 
             return `<div class="bg-tertiary p-3 rounded-lg">
                         <p class="font-bold text-primary">${mission.name}</p>
-                        <p class="text-xs text-secondary">Hết hạn: ${new Date(mission.deadline).toLocaleDateString('vi-VN')}</p>
+                        <p class="text-xs text-secondary">Hết hạn: ${mission.deadline ? new Date(mission.deadline).toLocaleDateString('vi-VN') : 'Vô hạn'}</p>
                         <div class="flex justify-between items-center mt-2">
                            <button data-id="${doc.id}" class="admin-review-mission-btn p-2 text-accent">Duyệt (${submissions})</button>
                            <div class="flex gap-2">
@@ -1125,14 +1217,12 @@ function setupAdminMissionsList() {
     });
 }
 
-// THAY THẾ LISTENER CŨ BẰNG LISTENER NÀY
 document.getElementById('admin-missions-list').addEventListener('click', async (e) => {
     const reviewBtn = e.target.closest('.admin-review-mission-btn');
     const deleteBtn = e.target.closest('.admin-delete-mission-btn');
     const editBtn = e.target.closest('.admin-edit-mission-btn');
     
     if (reviewBtn) {
-        // ... logic duyệt nhiệm vụ giữ nguyên ...
         const missionId = reviewBtn.dataset.id;
         const missionDoc = await getDoc(doc(db, `artifacts/${appId}/missions`, missionId));
         const mission = missionDoc.data();
@@ -1167,7 +1257,8 @@ document.getElementById('admin-missions-list').addEventListener('click', async (
         document.getElementById('edit-mission-id').value = missionData.id;
         document.getElementById('edit-mission-name').value = missionData.name;
         document.getElementById('edit-mission-reward').value = missionData.reward;
-        document.getElementById('edit-mission-deadline').value = missionData.deadline;
+        document.getElementById('edit-mission-repeat').value = missionData.repeat || 'none';
+        document.getElementById('edit-mission-deadline').value = missionData.deadline || '';
         document.getElementById('edit-mission-description').value = missionData.description;
         document.getElementById('edit-mission-limit').value = missionData.limit;
         modal.style.display = 'flex';
@@ -1190,6 +1281,10 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                 let participants = missionData.participants;
                 const userIndex = participants.findIndex(p => p.uid === userId);
                 
+                if (userIndex === -1) return;
+
+                participants[userIndex].lastCompleted = serverTimestamp();
+
                 if (action === 'approve') {
                     const userRef = doc(db, `artifacts/${appId}/users`, userId);
                     const userDoc = await transaction.get(userRef);
@@ -1224,13 +1319,26 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
 document.getElementById('create-mission-btn').addEventListener('click', async () => {
     const name = document.getElementById('admin-mission-name').value;
     const reward = parseInt(document.getElementById('admin-mission-reward').value);
+    const repeat = document.getElementById('admin-mission-repeat').value;
     const deadline = document.getElementById('admin-mission-deadline').value;
     const description = document.getElementById('admin-mission-description').value;
     const limit = parseInt(document.getElementById('admin-mission-limit').value);
-    if (!name || !reward || !deadline || !description || !limit) return showToast("Vui lòng điền đầy đủ thông tin nhiệm vụ.", true);
-    await addDoc(collection(db, `artifacts/${appId}/missions`), { name, reward, deadline, description, limit, participants: [] });
+    
+    if (!name || !reward || !description || !limit) return showToast("Vui lòng điền đầy đủ thông tin nhiệm vụ.", true);
+
+    await addDoc(collection(db, `artifacts/${appId}/missions`), { 
+        name, 
+        reward, 
+        deadline: deadline || null,
+        repeat,
+        description, 
+        limit, 
+        participants: [] 
+    });
+
     showToast("Tạo nhiệm vụ thành công.");
     ['admin-mission-name', 'admin-mission-reward', 'admin-mission-deadline', 'admin-mission-description', 'admin-mission-limit'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('admin-mission-repeat').value = 'none';
 });
 
 // --- HISTORY FUNCTIONS ---
@@ -1418,9 +1526,6 @@ document.getElementById('confirm-reject-gift-btn').addEventListener('click', asy
     }
 });
 
-// THÊM 2 ĐOẠN CODE NÀY VÀO CUỐI FILE main.js
-
-// Listener cho nút lưu thay đổi quà
 document.getElementById('confirm-edit-gift-btn').addEventListener('click', async () => {
     const modal = document.getElementById('edit-gift-modal');
     const giftId = document.getElementById('edit-gift-id').value;
@@ -1449,7 +1554,6 @@ document.getElementById('confirm-edit-gift-btn').addEventListener('click', async
     }
 });
 
-// Listener cho nút lưu thay đổi nhiệm vụ
 document.getElementById('confirm-edit-mission-btn').addEventListener('click', async () => {
     const modal = document.getElementById('edit-mission-modal');
     const missionId = document.getElementById('edit-mission-id').value;
@@ -1457,12 +1561,13 @@ document.getElementById('confirm-edit-mission-btn').addEventListener('click', as
     const updatedData = {
         name: document.getElementById('edit-mission-name').value,
         reward: parseInt(document.getElementById('edit-mission-reward').value),
-        deadline: document.getElementById('edit-mission-deadline').value,
+        repeat: document.getElementById('edit-mission-repeat').value,
+        deadline: document.getElementById('edit-mission-deadline').value || null,
         description: document.getElementById('edit-mission-description').value,
         limit: parseInt(document.getElementById('edit-mission-limit').value)
     };
     
-    if (!updatedData.name || !updatedData.reward || !updatedData.deadline || !updatedData.description || !updatedData.limit) {
+    if (!updatedData.name || !updatedData.reward || !updatedData.description || !updatedData.limit) {
         return showToast("Vui lòng điền đầy đủ thông tin.", true);
     }
 
