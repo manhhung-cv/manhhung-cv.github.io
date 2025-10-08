@@ -2,14 +2,14 @@
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
 
-// Cấu hình Firebase
+// Cấu hình Firebase (ĐÃ SỬA LỖI)
 const firebaseConfig = {
     apiKey: "AIzaSyCqUaI__8udllforW6CSCvd6f8_UCLY3CE",
     authDomain: "famibank-c7bfb.firebaseapp.com",
     projectId: "famibank-c7bfb",
     storageBucket: "famibank-c7bfb.appspot.com",
-    messagingSenderId: "2439107217721",
-    appId: "1:2439107217721:web:e3f52cb495c1bdf35dd588"
+    messagingSenderId: "243910717721",
+    appId: "1:243910717721:web:e3f52cb495c1bdf35dd588"
 };
 
 // Khởi tạo Firebase

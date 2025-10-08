@@ -1698,8 +1698,7 @@ document.getElementById('confirm-edit-mission-btn').addEventListener('click', as
 async function requestNotificationPermission(userId) {
     console.log('Requesting notification permission...');
     try {
-        // ĐĂNG KÝ SERVICE WORKER VỚI ĐƯỜNG DẪN TUYỆT ĐỐI
-        // Thay đổi '/Apps/FamiBank/firebase-messaging-sw.js' nếu bạn đổi cấu trúc thư mục
+        // DÒNG NÀY RẤT QUAN TRỌNG - Đảm bảo nó đúng với cấu trúc thư mục của bạn
         const registration = await navigator.serviceWorker.register('/Apps/FamiBank/firebase-messaging-sw.js');
         console.log('Service Worker registered successfully:', registration);
 
@@ -1717,9 +1716,9 @@ async function requestNotificationPermission(userId) {
                 const userDocRef = doc(db, `artifacts/${appId}/users`, userId);
                 await updateDoc(userDocRef, { fcmToken: currentToken });
                 console.log('FCM Token saved to Firestore.');
-                displayFcmToken(); // Cập nhật hiển thị token
+                displayFcmToken(); 
             } else {
-                console.log('No registration token available. Request permission to generate one.');
+                console.log('No registration token available.');
             }
         } else {
             console.log('Unable to get permission to notify.');
