@@ -1134,39 +1134,59 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
 });
 
 
-document.getElementById('accept-mission-btn').addEventListener('click', async (e) => {
-    const missionId = e.target.closest('.modal-overlay').dataset.id;
-    const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
-    showLoading();
-    try {
-        await runTransaction(db, async (transaction) => {
-            const missionDoc = await transaction.get(missionRef);
-            if (!missionDoc.exists()) throw new Error("Nhiệm vụ không tồn tại.");
-            
-            const missionData = missionDoc.data();
-            let participants = missionData.participants || [];
-            const userIndex = participants.findIndex(p => p.uid === currentUser.uid);
-            
-            if (userIndex !== -1) { // User exists, update for new cycle
-                participants[userIndex].status = 'pending';
-                participants[userIndex].lastCompleted = null; // Reset completion time
-            } else { // New user for this mission
-                if (participants.filter(p => p.status !== 'approved' && p.status !== 'rejected').length >= missionData.limit) {
-                    throw new Error("Nhiệm vụ đã đủ người nhận.");
-                }
-                participants.push({ uid: currentUser.uid, name: currentUserData.displayName, status: 'pending' });
-            }
+document.getElementById('mission-submissions-list').addEventListener('click', async (e) => {
+    const actionBtn = e.target.closest('.approve-mission-btn');
+    if(actionBtn) {
+        const missionId = actionBtn.dataset.missionId;
+        const userId = actionBtn.dataset.userId;
+        const action = actionBtn.dataset.action;
+        const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
+        showLoading();
+        try {
+            await runTransaction(db, async(transaction) => {
+                const missionDoc = await transaction.get(missionRef);
+                const missionData = missionDoc.data();
+                
+                let participants = missionData.participants;
+                const userIndex = participants.findIndex(p => p.uid === userId);
+                
+                if (userIndex === -1) return;
 
-            transaction.update(missionRef, { participants: participants });
-        });
-        showToast("Nhận nhiệm vụ thành công!");
-        document.getElementById('mission-details-modal').style.display = 'none';
-    } catch(error) {
-        showToast(error.message, true);
-    } finally {
-        hideLoading();
+                // FIX: Use new Date() instead of serverTimestamp() for array updates.
+                participants[userIndex].lastCompleted = new Date();
+
+                if (action === 'approve') {
+                    const userRef = doc(db, `artifacts/${appId}/users`, userId);
+                    const userDoc = await transaction.get(userRef);
+
+                    participants[userIndex].status = 'approved';
+                    transaction.update(missionRef, { participants });
+                    transaction.update(userRef, { balance: userDoc.data().balance + missionData.reward });
+
+                    const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/missionHistory`));
+                    // serverTimestamp() is fine here because it's not inside an array.
+                    transaction.set(historyRef, {
+                        missionName: missionData.name,
+                        reward: missionData.reward,
+                        completedAt: serverTimestamp(),
+                        status: 'approved'
+                    });
+
+                } else { // reject
+                     participants[userIndex].status = 'rejected';
+                     transaction.update(missionRef, { participants });
+                }
+            });
+            showToast(`Đã ${action === 'approve' ? 'duyệt' : 'từ chối'} nhiệm vụ.`);
+            actionBtn.closest('.flex').innerHTML = `<p class="text-secondary text-sm">Đã ${action === 'approve' ? 'duyệt' : 'từ chối'}</p>`;
+        } catch(error) {
+            showToast(error.message, true);
+        } finally {
+            hideLoading();
+        }
     }
 });
+
 
 
 document.getElementById('submit-mission-btn').addEventListener('click', async (e) => {
@@ -1283,7 +1303,8 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                 
                 if (userIndex === -1) return;
 
-                participants[userIndex].lastCompleted = serverTimestamp();
+                // SỬA LỖI: Sử dụng new Date() thay vì serverTimestamp() khi cập nhật một đối tượng trong mảng.
+                participants[userIndex].lastCompleted = new Date();
 
                 if (action === 'approve') {
                     const userRef = doc(db, `artifacts/${appId}/users`, userId);
@@ -1297,7 +1318,7 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                     transaction.set(historyRef, {
                         missionName: missionData.name,
                         reward: missionData.reward,
-                        completedAt: serverTimestamp(),
+                        completedAt: serverTimestamp(), // serverTimestamp() vẫn ổn ở đây vì nó không nằm trong mảng
                         status: 'approved'
                     });
 
