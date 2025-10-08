@@ -32,7 +32,6 @@ const allViews = document.querySelectorAll('#login-view, #register-view, #app-vi
 const allTabs = document.querySelectorAll('.app-tab');
 const navButtons = document.querySelectorAll('.nav-btn');
 const bottomNav = document.getElementById('bottom-nav');
-const navAdminBtn = document.getElementById('nav-admin-btn');
 const pinInput = document.getElementById('pin-input');
 const pinDots = document.querySelectorAll('.pin-dot');
 const toastMessage = document.getElementById('toast-message');
@@ -44,7 +43,24 @@ const notificationDot = document.querySelector('.notification-dot');
 const showLoading = () => loadingOverlay.style.display = 'flex';
 const hideLoading = () => loadingOverlay.style.display = 'none';
 const showView = (viewId) => { allViews.forEach(v => v.style.display = 'none'); document.getElementById(viewId).style.display = 'flex'; };
-const showTab = (tabId) => { allTabs.forEach(t => t.style.display = 'none'); document.getElementById(tabId).style.display = 'block'; navButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId)); };
+
+const showTab = (tabId) => {
+    allTabs.forEach(t => t.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    
+    const mainNavButton = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+    navButtons.forEach(b => b.classList.remove('active'));
+
+    if (mainNavButton) {
+        mainNavButton.classList.add('active');
+    } else {
+        const moreMenuTabs = ['missions-tab', 'gifts-tab', 'settings-tab', 'admin-tab'];
+        if (moreMenuTabs.includes(tabId)) {
+            document.getElementById('more-nav-btn').classList.add('active');
+        }
+    }
+};
+
 const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '';
 async function hashPin(pin) { const data = new TextEncoder().encode(pin); const hashBuffer = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join(''); }
@@ -104,11 +120,32 @@ function applyLanguage(lang) {
 document.getElementById('show-register-btn').addEventListener('click', () => showView('register-view'));
 document.getElementById('show-login-btn-bottom').addEventListener('click', () => showView('login-view'));
 document.getElementById('back-to-login-btn').addEventListener('click', () => showView('login-view'));
-navButtons.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+navButtons.forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.tab !== 'more-menu') {
+        showTab(btn.dataset.tab);
+    }
+}));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; }));
 document.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => { btn.closest('.modal-overlay').style.display = 'none'; }));
 document.querySelectorAll('.action-btn').forEach(btn => btn.addEventListener('click', () => document.getElementById(`${btn.dataset.action}-modal`).style.display = 'flex'));
 document.querySelectorAll('.lang-switcher button').forEach(button => button.addEventListener('click', () => applyLanguage(button.dataset.lang)));
+
+// --- More Menu Logic ---
+const moreNavBtn = document.getElementById('more-nav-btn');
+const moreMenuModal = document.getElementById('more-menu-modal');
+
+moreNavBtn.addEventListener('click', () => {
+    moreMenuModal.style.display = 'flex';
+});
+
+document.querySelectorAll('.more-menu-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tabId = btn.dataset.tab;
+        showTab(tabId);
+        moreMenuModal.style.display = 'none';
+    });
+});
+
 
 // --- AUTHENTICATION ---
 onAuthStateChanged(auth, (user) => {
@@ -129,19 +166,21 @@ onAuthStateChanged(auth, (user) => {
                 fetchGiftApprovalHistory(user.uid);
                 setupMissionsTab();
                 setupGiftsTab();
+                setupLuckyWheel();
                 fetchNotifications(user.uid);
             } else { handleLogout(); }
         });
         showView('app-view');
         showTab('home-tab');
+        
+        // Handle Admin Button in "More" menu
         if (user.email === ADMIN_EMAIL) {
-            navAdminBtn.style.display = 'flex';
-            bottomNav.classList.replace('grid-cols-5', 'grid-cols-6');
+            document.getElementById('more-menu-admin-btn').style.display = 'flex';
             setupAdminDashboard();
         } else {
-            navAdminBtn.style.display = 'none';
-            bottomNav.classList.replace('grid-cols-6', 'grid-cols-5');
+            document.getElementById('more-menu-admin-btn').style.display = 'none';
         }
+
     } else {
         currentUser = null; currentUserData = null; if (unsubscribeUser) unsubscribeUser();
         showView('login-view');
@@ -180,7 +219,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
             if (accNumClaimDoc.exists()) throw new Error(getTranslatedString('accountNumberExists'));
 
             const pinHash = await hashPin(pin);
-            transaction.set(userDocRef, { displayName: name, username, accountNumber: accNum, email, pinHash, balance: 0, createdAt: serverTimestamp(), fcmToken: null });
+            transaction.set(userDocRef, { displayName: name, username, accountNumber: accNum, email, pinHash, balance: 0, createdAt: serverTimestamp(), fcmToken: null, lastSpin: null });
             transaction.set(usernameClaimRef, { uid: newUser.uid });
             transaction.set(accNumClaimRef, { uid: newUser.uid });
         });
@@ -346,6 +385,7 @@ function renderTransactions(transactions, container, userId, emptyMessage) {
             case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', {user: tx.toUserName}); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', {user: tx.fromUserName}); detail = tx.content; icon = 'fa-arrow-down'; } break;
             case 'deposit': amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('depositTitle'); detail = tx.content; icon = 'fa-wallet'; break;
             case 'withdraw': amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('withdrawTitle'); detail = getTranslatedString('approvedByAdmin'); icon = 'fa-money-bill-wave'; break;
+            case 'lucky_spin_win': amountClass = 'text-success'; amountSign = '+'; title = "Thưởng Vòng Quay"; detail = `Trúng thưởng ${tx.prizeName}`; icon = 'fa-compact-disc'; break;
             default: amountClass = 'text-primary'; amountSign = ''; title = getTranslatedString('unknownTransaction'); detail = tx.content || ''; icon = 'fa-question-circle';
         }
         return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg"><div class="flex items-center gap-4"><div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full ${amountClass}"><i class="fas ${icon}"></i></div><div><p class="font-semibold text-sm text-primary">${title}</p><p class="text-xs text-secondary">${detail}</p><p class="text-xs text-secondary">${time}</p></div></div><p class="font-bold text-sm ${amountClass}">${amountSign}${formatCurrency(tx.amount)}</p></div>`;
@@ -359,6 +399,7 @@ let unsubscribeAdminUsers = null;
 let unsubscribeAdminGifts = null;
 let unsubscribeAdminMissions = null;
 let unsubscribeAdminGiftRequests = null;
+let unsubscribeAdminLuckyWheel = null;
 
 function setupAdminDashboard() {
     if (unsubscribeAdmin) unsubscribeAdmin();
@@ -422,6 +463,7 @@ function setupAdminDashboard() {
     setupAdminGiftsList();
     setupAdminMissionsList();
     setupAdminGiftRequests(); // Calling the function to listen for gift requests
+    setupAdminLuckyWheel();
 }
 
 function setupAdminDepositCodesList() {
@@ -1687,6 +1729,242 @@ document.getElementById('confirm-edit-mission-btn').addEventListener('click', as
         hideLoading();
     }
 });
+
+
+// --- LUCKY WHEEL FUNCTIONS ---
+async function setupLuckyWheel() {
+    const grid = document.getElementById('lucky-wheel-grid');
+    const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+    const configSnap = await getDoc(configRef);
+
+    let prizes = [];
+    if (configSnap.exists()) {
+        prizes = configSnap.data().prizes;
+    } else {
+        // Default placeholder prizes if not configured
+        for (let i = 0; i < 9; i++) {
+            prizes.push({ name: `Vật phẩm ${i+1}`, imageUrl: 'https://via.placeholder.com/50' });
+        }
+    }
+
+    grid.innerHTML = '';
+    for (let i = 0; i < 9; i++) {
+        if (i === 4) { // Center button
+            const canSpin = !currentUserData.lastSpin || !isSameDay(currentUserData.lastSpin.toDate(), new Date());
+            grid.innerHTML += `<button id="spin-btn" class="lucky-wheel-item" ${!canSpin ? 'disabled' : ''}>
+                                 <i class="fas fa-play text-4xl"></i>
+                                 <span>${canSpin ? 'QUAY' : 'ĐÃ QUAY'}</span>
+                               </button>`;
+        } else {
+            const prizeIndex = i < 4 ? i : i - 1;
+            const prize = prizes[prizeIndex] || { name: '...', imageUrl: 'https://via.placeholder.com/50' };
+            grid.innerHTML += `<div class="lucky-wheel-item" data-index="${prizeIndex}">
+                                 <img src="${prize.imageUrl}" alt="${prize.name}">
+                                 <span>${prize.name}</span>
+                               </div>`;
+        }
+    }
+
+    const spinBtn = document.getElementById('spin-btn');
+    if (spinBtn) {
+        spinBtn.addEventListener('click', handleSpin);
+    }
+}
+
+
+async function handleSpin() {
+    const spinBtn = document.getElementById('spin-btn');
+    spinBtn.disabled = true;
+    showLoading();
+
+    try {
+        const canSpin = !currentUserData.lastSpin || !isSameDay(currentUserData.lastSpin.toDate(), new Date());
+        if (!canSpin) {
+            throw new Error("Bạn đã hết lượt quay hôm nay.");
+        }
+        
+        // IMPORTANT: This logic should be on a server/cloud function to be secure.
+        // A malicious user could exploit this client-side logic.
+        const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+        const configDoc = await getDoc(configRef);
+        if (!configDoc.exists()) throw new Error("Vòng quay chưa được cấu hình.");
+
+        let prizes = configDoc.data().prizes.map((p, index) => ({...p, originalIndex: index}));
+        
+        // Filter out prizes with 0 quantity
+        prizes = prizes.filter(p => p.quantity > 0);
+
+        const totalRate = prizes.reduce((sum, p) => sum + p.winRate, 0);
+        let random = Math.random() * totalRate;
+        let wonPrize = null;
+
+        for (const prize of prizes) {
+            random -= prize.winRate;
+            if (random <= 0) {
+                wonPrize = prize;
+                break;
+            }
+        }
+        
+        if (!wonPrize) throw new Error("Không thể xác định phần thưởng. Vui lòng thử lại.");
+        
+        // Animate the spin
+        await animateSpin(wonPrize.originalIndex);
+
+        // Process the prize
+        await processPrize(wonPrize);
+
+        // Show result modal
+        document.getElementById('prize-won-image').src = wonPrize.imageUrl;
+        document.getElementById('prize-won-name').textContent = wonPrize.rewardType === 'money'
+            ? formatCurrency(wonPrize.rewardValue)
+            : wonPrize.name;
+        document.getElementById('prize-won-modal').style.display = 'flex';
+
+    } catch (error) {
+        showToast(error.message, true);
+        spinBtn.disabled = false;
+    } finally {
+        hideLoading();
+    }
+}
+
+function animateSpin(winningIndex) {
+    return new Promise(resolve => {
+        const gridItems = document.querySelectorAll('.lucky-wheel-item:not(#spin-btn)');
+        let currentIndex = 0;
+        let rounds = 3;
+        const totalItems = 8;
+        let delay = 100;
+        
+        const spinInterval = setInterval(() => {
+            gridItems.forEach(item => item.classList.remove('highlight'));
+            gridItems[currentIndex % totalItems].classList.add('highlight');
+            
+            currentIndex++;
+
+            // Slow down towards the end
+            if (rounds === 1 && (totalItems - currentIndex % totalItems) < 4) {
+                delay += 50;
+            }
+            
+            if (currentIndex > rounds * totalItems + winningIndex) {
+                clearInterval(spinInterval);
+                setTimeout(() => resolve(), 500); // Wait half a second on the winning prize
+            }
+        }, delay);
+    });
+}
+
+async function processPrize(prize) {
+     const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+     const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
+
+    await runTransaction(db, async (transaction) => {
+        const configDoc = await transaction.get(configRef);
+        const prizes = configDoc.data().prizes;
+        const prizeInDb = prizes[prize.originalIndex];
+        
+        if (prizeInDb.quantity < 1) throw new Error("Phần thưởng này đã hết!");
+
+        // Decrement quantity
+        prizes[prize.originalIndex].quantity -= 1;
+        transaction.update(configRef, { prizes: prizes });
+
+        // Update user's last spin time
+        transaction.update(userRef, { lastSpin: serverTimestamp() });
+
+        if (prize.rewardType === 'money') {
+            transaction.update(userRef, { balance: currentUserData.balance + prize.rewardValue });
+            const transactionRef = doc(collection(db, `artifacts/${appId}/transactions`));
+            transaction.set(transactionRef, {
+                type: 'lucky_spin_win',
+                userId: currentUser.uid,
+                userName: currentUserData.displayName,
+                amount: prize.rewardValue,
+                prizeName: prize.name,
+                content: `Trúng thưởng vòng quay`,
+                timestamp: serverTimestamp()
+            });
+        } else { // 'item'
+            const requestRef = doc(collection(db, `artifacts/${appId}/itemPrizeRequests`));
+            transaction.set(requestRef, {
+                userId: currentUser.uid,
+                userDisplayName: currentUserData.displayName,
+                prizeName: prize.name,
+                prizeImageUrl: prize.imageUrl,
+                createdAt: serverTimestamp(),
+                status: 'pending'
+            });
+        }
+    });
+}
+
+function setupAdminLuckyWheel() {
+    if (unsubscribeAdminLuckyWheel) unsubscribeAdminLuckyWheel();
+    const container = document.getElementById('admin-lucky-wheel-config');
+    const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+    
+    unsubscribeAdminLuckyWheel = onSnapshot(configRef, (docSnap) => {
+        let prizes = [];
+        if (docSnap.exists()) {
+            prizes = docSnap.data().prizes;
+        }
+
+        container.innerHTML = '';
+        for (let i = 0; i < 9; i++) {
+            const prize = prizes[i] || {};
+            container.innerHTML += `
+                <div class="bg-tertiary p-4 rounded-lg" data-index="${i}">
+                    <h4 class="font-bold text-primary mb-2">Vật phẩm ${i + 1}</h4>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" placeholder="Tên" class="admin-lw-name w-full p-2 rounded bg-secondary border border-color" value="${prize.name || ''}">
+                        <input type="text" placeholder="URL Ảnh" class="admin-lw-image w-full p-2 rounded bg-secondary border border-color" value="${prize.imageUrl || ''}">
+                        <input type="number" placeholder="Tỉ lệ (số)" class="admin-lw-rate w-full p-2 rounded bg-secondary border border-color" value="${prize.winRate || 0}">
+                        <input type="number" placeholder="Số lượng" class="admin-lw-quantity w-full p-2 rounded bg-secondary border border-color" value="${prize.quantity || 0}">
+                        <select class="admin-lw-type w-full p-2 rounded bg-secondary border border-color text-primary">
+                            <option value="money" ${prize.rewardType === 'money' ? 'selected' : ''}>Tiền</option>
+                            <option value="item" ${prize.rewardType === 'item' ? 'selected' : ''}>Vật phẩm</option>
+                        </select>
+                        <input type="number" placeholder="Giá trị (nếu là tiền)" class="admin-lw-value w-full p-2 rounded bg-secondary border border-color" value="${prize.rewardValue || 0}">
+                    </div>
+                </div>
+            `;
+        }
+    });
+}
+
+document.getElementById('save-lucky-wheel-btn').addEventListener('click', async () => {
+    const prizeElements = document.querySelectorAll('#admin-lucky-wheel-config > div');
+    const newPrizes = [];
+    let isValid = true;
+    prizeElements.forEach(el => {
+        const name = el.querySelector('.admin-lw-name').value;
+        const imageUrl = el.querySelector('.admin-lw-image').value;
+        const winRate = parseInt(el.querySelector('.admin-lw-rate').value);
+        const quantity = parseInt(el.querySelector('.admin-lw-quantity').value);
+        const rewardType = el.querySelector('.admin-lw-type').value;
+        const rewardValue = parseInt(el.querySelector('.admin-lw-value').value);
+
+        if(!name || !imageUrl) isValid = false;
+        
+        newPrizes.push({ name, imageUrl, winRate, quantity, rewardType, rewardValue });
+    });
+
+    if(!isValid) return showToast("Tên và URL ảnh không được để trống.", true);
+    
+    showLoading();
+    try {
+        const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+        await setDoc(configRef, { prizes: newPrizes });
+        showToast("Đã lưu cấu hình vòng quay!");
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        hideLoading();
+    }
+});
+
 
 // --- NOTIFICATION FUNCTIONS ---
 
