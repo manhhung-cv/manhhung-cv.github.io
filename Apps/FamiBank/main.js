@@ -1,6 +1,9 @@
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection, query, where, runTransaction, addDoc, orderBy, updateDoc, serverTimestamp, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// Ở đầu tệp main.js, cùng với các import khác
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 // --- CONFIG & INITIALIZATION ---
 const firebaseConfig = { apiKey: "AIzaSyCqUaI__8udllforW6CSCvd6f8_UCLY3CE", authDomain: "famibank-c7bfb.firebaseapp.com", projectId: "famibank-c7bfb", storageBucket: "famibank-c7bfb.appspot.com", messagingSenderId: "243910717721", appId: "1:243910717721:web:e3f52cb495c1bdf35dd588" };
@@ -9,6 +12,50 @@ const ADMIN_EMAIL = 'mienphi1230@gmail.com';
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+// Thêm đoạn mã này vào gần phần --- CONFIG & INITIALIZATION ---
+const messaging = getMessaging(app);
+
+// CẬP NHẬT HÀM NÀY
+async function requestNotificationPermission(userId) {
+    console.log('Requesting notification permission...');
+    try {
+        // Đăng ký service worker với đường dẫn tuyệt đối chính xác
+        const registration = await navigator.serviceWorker.register('/Apps/FamiBank/firebase-messaging-sw.js');
+        console.log('Service Worker registered successfully from /Apps/FamiBank/');
+
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            console.log('Notification permission granted.');
+            
+            // Cung cấp registration cho Firebase để nó biết dùng service worker nào
+            const currentToken = await getToken(messaging, {
+                vapidKey: 'BJ51Oxb2nQB80aDI3Ay94cB2rn1HTmEcZmEAk0bSP22TMog1TaShilyJhY2vVCAQm8uUolXGib4p7XX-5m6oMRE',
+                serviceWorkerRegistration: registration // Rất quan trọng!
+            });
+
+            if (currentToken) {
+                console.log('FCM Token:', currentToken);
+                const userDocRef = doc(db, `artifacts/${appId}/users`, userId);
+                await updateDoc(userDocRef, { fcmToken: currentToken });
+                console.log('FCM Token saved to Firestore.');
+            } else {
+                console.log('No registration token available.');
+            }
+        } else {
+            console.log('Unable to get permission to notify.');
+        }
+    } catch (err) {
+        console.error('An error occurred while retrieving token. ', err);
+    }
+}
+
+// Xử lý thông báo khi người dùng đang mở ứng dụng
+onMessage(messaging, (payload) => {
+    console.log('Message received. ', payload);
+    // Hiển thị thông báo bằng Toast
+    showToast(payload.notification.title + ": " + payload.notification.body);
+});
 
 // --- TRANSLATION DATA ---
 const translations = {
@@ -35,6 +82,8 @@ const pinInput = document.getElementById('pin-input');
 const pinDots = document.querySelectorAll('.pin-dot');
 const toastMessage = document.getElementById('toast-message');
 const toast = document.getElementById('toast-notification');
+const notificationBtn = document.getElementById('notification-btn');
+const notificationDot = document.querySelector('.notification-dot');
 
 // --- CORE FUNCTIONS ---
 const showLoading = () => loadingOverlay.style.display = 'flex';
@@ -119,8 +168,10 @@ onAuthStateChanged(auth, (user) => {
                 fetchAllTransactions(user.uid);
                 fetchGiftHistory(user.uid);
                 fetchMissionHistory(user.uid);
+                fetchGiftApprovalHistory(user.uid);
                 setupMissionsTab();
                 setupGiftsTab();
+                fetchNotifications(user.uid);
             } else { handleLogout(); }
         });
         showView('app-view');
@@ -133,6 +184,8 @@ onAuthStateChanged(auth, (user) => {
             navAdminBtn.style.display = 'none';
             bottomNav.classList.replace('grid-cols-6', 'grid-cols-5');
         }
+         // YÊU CẦU QUYỀN VÀ LƯU TOKEN
+        requestNotificationPermission(user.uid);
     } else {
         currentUser = null; currentUserData = null; if (unsubscribeUser) unsubscribeUser();
         showView('login-view');
@@ -175,7 +228,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
             transaction.set(usernameClaimRef, { uid: newUser.uid });
             transaction.set(accNumClaimRef, { uid: newUser.uid });
         });
-        
+
         showToast(getTranslatedString('registrationSuccess'));
 
     } catch (error) {
@@ -228,7 +281,7 @@ document.getElementById('balance-visibility-btn').addEventListener('click', () =
 
 pinInput.addEventListener('input', () => { const val = pinInput.value; pinDots.forEach((dot, i) => dot.classList.toggle('active', i < val.length)); if (val.length === 6) { if (pinPromiseResolver) pinPromiseResolver(val); pinPromiseResolver = null; document.getElementById('pin-modal').style.display = 'none'; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); } });
 function requestPin() { return new Promise((resolve) => { pinPromiseResolver = resolve; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); document.getElementById('pin-modal').style.display = 'flex'; setTimeout(() => pinInput.focus(), 100); }); }
-async function verifyPin() { const enteredPin = await requestPin(); if(!enteredPin) return false; const enteredPinHash = await hashPin(enteredPin); if (enteredPinHash !== currentUserData.pinHash) { showToast(getTranslatedString('pinIncorrect'), true); return false; } return true; }
+async function verifyPin() { const enteredPin = await requestPin(); if (!enteredPin) return false; const enteredPinHash = await hashPin(enteredPin); if (enteredPinHash !== currentUserData.pinHash) { showToast(getTranslatedString('pinIncorrect'), true); return false; } return true; }
 
 document.getElementById('confirm-transfer-btn').addEventListener('click', async () => {
     const recipientIdentifier = document.getElementById('transfer-recipient').value.trim();
@@ -258,10 +311,12 @@ document.getElementById('confirm-transfer-btn').addEventListener('click', async 
             if (!senderDoc.exists() || senderDoc.data().balance < amount) throw new Error(getTranslatedString('insufficientBalance'));
             transaction.update(senderDocRef, { balance: senderDoc.data().balance - amount });
             transaction.update(recipientDoc.ref, { balance: recipientData.balance + amount });
-            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {type: 'transfer', fromUserId: currentUser.uid, fromUserName: currentUserData.displayName,toUserId: recipientData.id, toUserName: recipientData.displayName,amount, content, timestamp: serverTimestamp()});
+            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), { type: 'transfer', fromUserId: currentUser.uid, fromUserName: currentUserData.displayName, toUserId: recipientData.id, toUserName: recipientData.displayName, amount, content, timestamp: serverTimestamp() });
         });
         showToast(getTranslatedString('transferSuccess', { amount: formatCurrency(amount), recipient: recipientData.displayName }));
         ['transfer-recipient', 'transfer-amount', 'transfer-content'].forEach(id => document.getElementById(id).value = '');
+        createNotification(recipientData.id, `Bạn đã nhận được ${formatCurrency(amount)} từ ${currentUserData.displayName}.`, 'transfer');
+
     } catch (error) { showToast(error.message, true); } finally { hideLoading(); }
 });
 
@@ -287,7 +342,7 @@ document.getElementById('confirm-deposit-btn').addEventListener('click', async (
                 redeemedByUsername: currentUserData.displayName,
                 redeemedAt: serverTimestamp()
             });
-            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {type: 'deposit', userId: currentUser.uid, userName: currentUserData.displayName, amount, content: `Deposit with code ${codeId}`, timestamp: serverTimestamp()});
+            transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), { type: 'deposit', userId: currentUser.uid, userName: currentUserData.displayName, amount, content: `Deposit with code ${codeId}`, timestamp: serverTimestamp() });
         });
         const codeSnap = await getDoc(codeRef);
         showToast(getTranslatedString('depositSuccess', { amount: formatCurrency(codeSnap.data().amount) }));
@@ -304,7 +359,7 @@ document.getElementById('confirm-withdraw-btn').addEventListener('click', async 
     if (!await verifyPin()) return;
     showLoading();
     try {
-        await addDoc(collection(db, `artifacts/${appId}/withdrawalRequests`), {userId: currentUser.uid, userDisplayName: currentUserData.displayName,userAccountNumber: currentUserData.accountNumber, amount, reason, status: 'pending',createdAt: serverTimestamp()});
+        await addDoc(collection(db, `artifacts/${appId}/withdrawalRequests`), { userId: currentUser.uid, userDisplayName: currentUserData.displayName, userAccountNumber: currentUserData.accountNumber, amount, reason, status: 'pending', createdAt: serverTimestamp() });
         showToast(getTranslatedString('withdrawRequestSent'));
         document.getElementById('withdraw-amount').value = '';
         document.getElementById('withdraw-reason').value = '';
@@ -323,7 +378,7 @@ async function fetchAllTransactions(userId) {
         allTransactions.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
         renderTransactions(allTransactions.slice(0, 5), document.getElementById('recent-transaction-history'), userId, getTranslatedString('noRecentActivity'));
         renderTransactions(allTransactions, document.getElementById('history-content-transactions'), userId, getTranslatedString('noTransactions'));
-    } catch(e) { console.error("Error fetching transactions: ", e); }
+    } catch (e) { console.error("Error fetching transactions: ", e); }
 }
 
 function renderTransactions(transactions, container, userId, emptyMessage) {
@@ -332,12 +387,12 @@ function renderTransactions(transactions, container, userId, emptyMessage) {
         const time = tx.timestamp ? tx.timestamp.toDate().toLocaleDateString('vi-VN') : '...';
         let amountClass, amountSign, title, detail, icon;
         switch (tx.type) {
-            case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', {user: tx.toUserName}); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', {user: tx.fromUserName}); detail = tx.content; icon = 'fa-arrow-down'; } break;
+            case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', { user: tx.toUserName }); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', { user: tx.fromUserName }); detail = tx.content; icon = 'fa-arrow-down'; } break;
             case 'deposit': amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('depositTitle'); detail = tx.content; icon = 'fa-wallet'; break;
             case 'withdraw': amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('withdrawTitle'); detail = getTranslatedString('approvedByAdmin'); icon = 'fa-money-bill-wave'; break;
             default: amountClass = 'text-primary'; amountSign = ''; title = getTranslatedString('unknownTransaction'); detail = tx.content || ''; icon = 'fa-question-circle';
         }
-        return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg"><div class="flex items-center gap-4"><div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full ${amountClass}"><i class="fas ${icon}"></i></div><div><p class="font-semibold text-sm text-primary">${title}</p><p class="text-xs text-secondary">${time}</p></div></div><p class="font-bold text-sm ${amountClass}">${amountSign}${formatCurrency(tx.amount)}</p></div>`;
+        return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg"><div class="flex items-center gap-4"><div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full ${amountClass}"><i class="fas ${icon}"></i></div><div><p class="font-semibold text-sm text-primary">${title}</p><p class="text-xs text-secondary">${detail}</p><p class="text-xs text-secondary">${time}</p></div></div><p class="font-bold text-sm ${amountClass}">${amountSign}${formatCurrency(tx.amount)}</p></div>`;
     }).join('');
 }
 
@@ -353,7 +408,7 @@ function setupAdminDashboard() {
     if (unsubscribeAdmin) unsubscribeAdmin();
     const requestsContainer = document.getElementById('withdrawal-requests');
     const q = query(collection(db, `artifacts/${appId}/withdrawalRequests`), orderBy('createdAt', 'desc'));
-    
+
     unsubscribeAdmin = onSnapshot(q, (snapshot) => {
         const pendingRequests = snapshot.docs.filter(doc => doc.data().status === 'pending').length;
         document.getElementById('admin-pending-withdrawals').textContent = pendingRequests;
@@ -371,7 +426,7 @@ function setupAdminDashboard() {
             let adminNote = '';
             let actionButton = '';
 
-            switch(req.status) {
+            switch (req.status) {
                 case 'approved':
                     statusBadge = `<div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-success">Đã duyệt</div>`;
                     adminNote = `<p class="text-xs text-secondary mt-1">Số tiền duyệt: ${formatCurrency(req.approvedAmount)}</p>`;
@@ -416,38 +471,53 @@ function setupAdminDashboard() {
 function setupAdminDepositCodesList() {
     if (unsubscribeDepositCodes) unsubscribeDepositCodes();
     const codesContainer = document.getElementById('deposit-codes-list');
+    const usedCodesContainer = document.getElementById('used-deposit-codes-list');
     const q = query(collection(db, `artifacts/${appId}/depositCodes`), orderBy('createdAt', 'desc'));
 
     unsubscribeDepositCodes = onSnapshot(q, (snapshot) => {
+        let availableCodesHTML = '';
+        let usedCodesHTML = '';
+
         if (snapshot.empty) {
-            codesContainer.innerHTML = `<p class="text-center text-secondary">${getTranslatedString('noDepositCodes', {lng: currentLanguage})}</p>`; return;
+            codesContainer.innerHTML = `<p class="text-center text-secondary">${getTranslatedString('noDepositCodes', { lng: currentLanguage })}</p>`;
+            usedCodesContainer.innerHTML = `<p class="text-center text-secondary">${getTranslatedString('noUsedDepositCodes', { lng: currentLanguage })}</p>`;
+            return;
         }
-        codesContainer.innerHTML = snapshot.docs.map(doc => {
+
+        snapshot.docs.forEach(doc => {
             const code = doc.data();
-            const isUsed = code.status === 'used';
-            const statusClass = isUsed ? 'bg-danger' : 'bg-success';
-            const statusText = isUsed ? getTranslatedString('used') : getTranslatedString('available');
-            let redeemedInfo = '';
-            if (isUsed && code.redeemedByUsername) {
-                const redeemedTime = code.redeemedAt ? code.redeemedAt.toDate().toLocaleDateString('vi-VN') : '';
-                redeemedInfo = `<p class="text-xs text-secondary mt-1">${getTranslatedString('usedBy', {user: code.redeemedByUsername})} @ ${redeemedTime}</p>`;
-            }
-            return `<div class="bg-tertiary p-4 rounded-lg">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="font-bold text-primary text-lg font-mono">${doc.id}</p>
-                                <p class="font-bold my-1 text-accent">${formatCurrency(code.amount)}</p>
-                                <div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block ${statusClass}">${statusText}</div>
-                                ${redeemedInfo}
-                            </div>
-                            ${!isUsed ? `
-                            <div class="flex gap-2">
-                                <button data-id="${doc.id}" data-amount="${code.amount}" class="admin-edit-code-btn p-2 h-8 w-8 text-sm bg-secondary rounded-md"><i class="fas fa-pen"></i></button>
-                                <button data-id="${doc.id}" class="admin-delete-code-btn p-2 h-8 w-8 text-sm bg-secondary rounded-md text-danger"><i class="fas fa-trash"></i></button>
-                            </div>` : ''}
+            if (code.status === 'available') {
+                availableCodesHTML += `<div class="bg-tertiary p-4 rounded-lg">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-primary text-lg font-mono">${doc.id}</p>
+                            <p class="font-bold my-1 text-accent">${formatCurrency(code.amount)}</p>
+                            <div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-success">${getTranslatedString('available')}</div>
                         </div>
-                    </div>`;
-        }).join('');
+                        <div class="flex gap-2">
+                            <button data-id="${doc.id}" data-amount="${code.amount}" class="admin-edit-code-btn p-2 h-8 w-8 text-sm bg-secondary rounded-md"><i class="fas fa-pen"></i></button>
+                            <button data-id="${doc.id}" class="admin-delete-code-btn p-2 h-8 w-8 text-sm bg-secondary rounded-md text-danger"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            } else {
+                const redeemedTime = code.redeemedAt ? code.redeemedAt.toDate().toLocaleDateString('vi-VN') : '';
+                usedCodesHTML += `<div class="bg-tertiary p-4 rounded-lg">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-primary text-lg font-mono">${doc.id}</p>
+                            <p class="font-bold my-1 text-accent">${formatCurrency(code.amount)}</p>
+                            <div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-danger">${getTranslatedString('used')}</div>
+                            <p class="text-xs text-secondary mt-1">${getTranslatedString('usedBy', { user: code.redeemedByUsername })} @ ${redeemedTime}</p>
+                        </div>
+                        <button data-id="${doc.id}" class="admin-delete-code-btn p-2 h-8 w-8 text-sm bg-secondary rounded-md text-danger"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`;
+            }
+        });
+
+        codesContainer.innerHTML = availableCodesHTML || `<p class="text-center text-secondary">Không có mã nào.</p>`;
+        usedCodesContainer.innerHTML = usedCodesHTML || `<p class="text-center text-secondary">Không có mã nào đã sử dụng.</p>`;
     });
 }
 
@@ -473,6 +543,7 @@ function setupAdminUserList() {
                                 <p class="font-bold text-primary">${user.displayName}</p>
                                 <p class="text-xs text-secondary">${user.email}</p>
                                 <p class="text-sm font-mono text-accent mt-1">STK: ${user.accountNumber}</p>
+                                <p class="text-sm font-bold text-primary mt-1">Số dư: ${formatCurrency(user.balance)}</p>
                             </div>
                             <button data-user='${userDataString}' class="admin-edit-user-btn p-2 h-10 w-10 text-sm bg-secondary rounded-md"><i class="fas fa-pen"></i></button>
                         </div>
@@ -487,6 +558,7 @@ function setupAdminGiftRequests() {
     const q = query(collection(db, `artifacts/${appId}/giftRequests`), where('status', '==', 'pending'));
 
     unsubscribeAdminGiftRequests = onSnapshot(q, (snapshot) => {
+        document.getElementById('admin-pending-gifts').textContent = snapshot.size;
         if (snapshot.empty) {
             requestsContainer.innerHTML = `<p class="text-center text-secondary">Không có yêu cầu đổi quà nào.</p>`;
             return;
@@ -541,7 +613,7 @@ document.getElementById('confirm-delete-request-btn').addEventListener('click', 
     const modal = document.getElementById('confirm-delete-request-modal');
     const requestId = modal.dataset.requestId;
     if (!requestId) return;
-    
+
     showLoading();
     try {
         const requestRef = doc(db, `artifacts/${appId}/withdrawalRequests`, requestId);
@@ -564,7 +636,7 @@ document.getElementById('confirm-approve-btn').addEventListener('click', async (
     const approvedAmount = parseInt(document.getElementById('review-approval-amount').value);
     const adminMessage = document.getElementById('review-admin-message').value.trim() || "Yêu cầu rút tiền đã được chấp thuận.";
     if (!approvedAmount || approvedAmount <= 0) return showToast("Số tiền duyệt không hợp lệ.", true);
-    
+
     showLoading();
     const requestRef = doc(db, `artifacts/${appId}/withdrawalRequests`, requestId);
     try {
@@ -575,22 +647,23 @@ document.getElementById('confirm-approve-btn').addEventListener('click', async (
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists() || userDoc.data().balance < approvedAmount) throw new Error("Số dư của người dùng không đủ.");
             transaction.update(userRef, { balance: userDoc.data().balance - approvedAmount });
-            transaction.update(requestRef, { 
+            transaction.update(requestRef, {
                 status: 'approved',
                 approvedAmount: approvedAmount,
                 adminMessage: adminMessage,
                 processedAt: serverTimestamp()
             });
             transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {
-                type: 'withdraw', 
-                userId: userId, 
-                userName: userName, 
+                type: 'withdraw',
+                userId: userId,
+                userName: userName,
                 amount: approvedAmount,
-                content: adminMessage, 
+                content: adminMessage,
                 timestamp: serverTimestamp()
             });
         });
         showToast(getTranslatedString('requestApproved'));
+        createNotification(userId, `Yêu cầu rút tiền ${formatCurrency(approvedAmount)} của bạn đã được duyệt.`, 'withdraw_approved');
     } catch (error) {
         showToast(error.message, true);
     } finally {
@@ -613,6 +686,7 @@ document.getElementById('confirm-reject-btn').addEventListener('click', async ()
             processedAt: serverTimestamp()
         });
         showToast(getTranslatedString('requestRejected'));
+        createNotification(modal.dataset.userId, `Yêu cầu rút tiền của bạn đã bị từ chối. Lý do: ${reason}`, 'withdraw_rejected');
     } catch (error) {
         showToast(error.message, true);
     } finally {
@@ -657,7 +731,18 @@ document.getElementById('deposit-codes-list').addEventListener('click', (e) => {
     if (deleteBtn) {
         const codeId = deleteBtn.dataset.id;
         const modal = document.getElementById('confirm-delete-modal');
-        modal.querySelector('#delete-confirmation-message').textContent = getTranslatedString('confirmDeleteCode', {code: codeId});
+        modal.querySelector('#delete-confirmation-message').textContent = getTranslatedString('confirmDeleteCode', { code: codeId });
+        modal.dataset.codeId = codeId;
+        modal.style.display = 'flex';
+    }
+});
+
+document.getElementById('used-deposit-codes-list').addEventListener('click', (e) => {
+    const deleteBtn = e.target.closest('.admin-delete-code-btn');
+    if (deleteBtn) {
+        const codeId = deleteBtn.dataset.id;
+        const modal = document.getElementById('confirm-delete-modal');
+        modal.querySelector('#delete-confirmation-message').textContent = getTranslatedString('confirmDeleteCode', { code: codeId });
         modal.dataset.codeId = codeId;
         modal.style.display = 'flex';
     }
@@ -695,14 +780,14 @@ document.getElementById('admin-user-list').addEventListener('click', (e) => {
 
     const userData = JSON.parse(editBtn.dataset.user);
     const modal = document.getElementById('admin-edit-user-modal');
-    
+
     modal.querySelector('#admin-edit-user-id').value = userData.id;
     modal.querySelector('#admin-edit-display-name').value = userData.displayName;
     modal.querySelector('#admin-edit-username').value = userData.username;
     modal.querySelector('#admin-edit-account-number').value = userData.accountNumber;
     modal.querySelector('#admin-edit-balance').value = userData.balance;
     modal.querySelector('#admin-edit-email').value = userData.email;
-    
+
     modal.style.display = 'flex';
 });
 
@@ -717,14 +802,14 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
     if (!userId || !newDisplayName || !newUsername || !newAccountNumber || isNaN(newBalance)) {
         return showToast("Vui lòng điền đầy đủ và chính xác thông tin.", true);
     }
-    
+
     showLoading();
     try {
         await runTransaction(db, async (transaction) => {
             const userRef = doc(db, `artifacts/${appId}/users`, userId);
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists()) throw new Error("Người dùng không tồn tại.");
-            
+
             const oldData = userDoc.data();
             const updates = {
                 displayName: newDisplayName,
@@ -746,7 +831,7 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
                 const newAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${newAccountNumber}`);
                 const newAccNumDoc = await transaction.get(newAccNumRef);
                 if (newAccNumDoc.exists()) throw new Error("Số tài khoản mới đã tồn tại.");
-                
+
                 const oldAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${oldData.accountNumber}`);
                 transaction.delete(oldAccNumRef);
                 transaction.set(newAccNumRef, { uid: userId });
@@ -768,7 +853,7 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
 // --- SETTINGS FUNCTIONS ---
 document.querySelectorAll('.theme-switcher').forEach(button => { button.addEventListener('click', () => { const theme = button.dataset.theme; document.body.className = `${theme} app-font`; localStorage.setItem('bankingAppTheme', theme); }); });
 function applySavedTheme() { const savedTheme = localStorage.getItem('bankingAppTheme') || 'theme-binance'; document.body.className = `${savedTheme} app-font`; }
-document.getElementById('copy-acc-btn').addEventListener('click', () => { if(currentUserData?.accountNumber) { navigator.clipboard.writeText(currentUserData.accountNumber).then(() => showToast(getTranslatedString('accNumCopied'))).catch(() => showToast(getTranslatedString('copyFailed'), true)); } });
+document.getElementById('copy-acc-btn').addEventListener('click', () => { if (currentUserData?.accountNumber) { navigator.clipboard.writeText(currentUserData.accountNumber).then(() => showToast(getTranslatedString('accNumCopied'))).catch(() => showToast(getTranslatedString('copyFailed'), true)); } });
 
 document.getElementById('update-name-btn').addEventListener('click', async () => {
     const newName = document.getElementById('update-name-input').value.trim();
@@ -816,13 +901,13 @@ document.getElementById('update-account-info-btn').addEventListener('click', asy
                 const newAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${newAccountNumber}`);
                 const newAccNumDoc = await transaction.get(newAccNumRef);
                 if (newAccNumDoc.exists()) throw new Error(getTranslatedString('accountNumberExists'));
-                
+
                 const oldAccNumRef = doc(db, `artifacts/${appId}/uniqueIdentifiers`, `accNum_${currentUserData.accountNumber}`);
                 transaction.delete(oldAccNumRef);
                 transaction.set(newAccNumRef, { uid: currentUser.uid });
                 updates.accountNumber = newAccountNumber;
             }
-            
+
             if (Object.keys(updates).length > 0) {
                 transaction.update(userRef, updates);
             }
@@ -854,7 +939,7 @@ document.getElementById('confirm-pin-change-btn').addEventListener('click', asyn
         document.getElementById('change-pin-modal').style.display = 'none';
         ['current-pin', 'new-pin', 'confirm-new-pin'].forEach(id => document.getElementById(id).value = '');
         showToast(getTranslatedString('pinChanged'));
-    } catch(error) { showToast(error.message, true); } finally { hideLoading(); }
+    } catch (error) { showToast(error.message, true); } finally { hideLoading(); }
 });
 
 // --- GIFT FUNCTIONS ---
@@ -901,9 +986,9 @@ function setupGiftsTab() {
 document.getElementById('gift-filters').addEventListener('click', (e) => {
     const filterBtn = e.target.closest('.gift-filter-btn');
     if (!filterBtn) return;
-    
+
     currentGiftSortOrder = filterBtn.dataset.sort;
-    
+
     document.querySelectorAll('.gift-filter-btn').forEach(btn => btn.classList.remove('active'));
     filterBtn.classList.add('active');
 
@@ -934,7 +1019,7 @@ document.getElementById('gifts-list').addEventListener('click', async (e) => {
 
         const giftDoc = await getDoc(doc(db, `artifacts/${appId}/gifts`, giftId));
         if (!giftDoc.exists() || giftDoc.data().quantity <= 0) {
-             throw new Error("Quà đã hết hoặc không tồn tại.");
+            throw new Error("Quà đã hết hoặc không tồn tại.");
         }
 
         await addDoc(giftRequestsRef, {
@@ -987,12 +1072,12 @@ document.getElementById('create-gift-btn').addEventListener('click', async () =>
     const imageUrl = document.getElementById('admin-gift-image').value;
     const quantity = parseInt(document.getElementById('admin-gift-quantity').value);
     if (!name || !price || !imageUrl || !quantity) return showToast("Vui lòng điền đầy đủ thông tin quà.", true);
-    await addDoc(collection(db, `artifacts/${appId}/gifts`), { 
-        name, 
-        price, 
-        imageUrl, 
-        quantity, 
-        createdAt: serverTimestamp() 
+    await addDoc(collection(db, `artifacts/${appId}/gifts`), {
+        name,
+        price,
+        imageUrl,
+        quantity,
+        createdAt: serverTimestamp()
     });
     showToast("Tạo quà thành công.");
     ['admin-gift-name', 'admin-gift-price', 'admin-gift-image', 'admin-gift-quantity'].forEach(id => document.getElementById(id).value = '');
@@ -1034,7 +1119,7 @@ function setupMissionsTab() {
             const now = new Date();
             const isExpired = mission.deadline && new Date(mission.deadline) < now;
             const userParticipant = mission.participants.find(p => p.uid === currentUser.uid);
-            
+
             let statusBadge = '';
 
             if (isExpired) {
@@ -1056,12 +1141,12 @@ function setupMissionsTab() {
                         if (mission.repeat === 'monthly' && !isSameMonth(lastCompletedDate, now)) canRedo = true;
 
                         if (!canRedo) {
-                             statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-success">Đã hoàn thành</div>`;
+                            statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-success">Đã hoàn thành</div>`;
                         }
                     }
                 }
             }
-            
+
             return `<div data-id="${doc.id}" class="mission-item bg-secondary p-4 rounded-lg app-shadow relative cursor-pointer hover:bg-tertiary">
                         ${statusBadge}
                         <div class="flex items-center gap-4">
@@ -1083,14 +1168,14 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
         const missionId = missionItem.dataset.id;
         const missionDoc = await getDoc(doc(db, `artifacts/${appId}/missions`, missionId));
         const mission = missionDoc.data();
-        
+
         const modal = document.getElementById('mission-details-modal');
         modal.dataset.id = missionId;
         document.getElementById('mission-details-name').textContent = mission.name;
         document.getElementById('mission-details-reward').textContent = formatCurrency(mission.reward);
         document.getElementById('mission-details-description').textContent = mission.description;
         document.getElementById('mission-details-participants').textContent = `Số người đã nhận: ${mission.participants.length}/${mission.limit}`;
-        
+
         if (mission.deadline) {
             document.getElementById('mission-details-deadline').textContent = `Hết hạn: ${new Date(mission.deadline).toLocaleDateString('vi-VN')}`;
         } else {
@@ -1099,7 +1184,7 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
 
         const acceptBtn = document.getElementById('accept-mission-btn');
         const submitBtn = document.getElementById('submit-mission-btn');
-        
+
         acceptBtn.classList.add('hidden');
         submitBtn.classList.add('hidden');
 
@@ -1124,11 +1209,11 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
                 }
             }
         }
-        
+
         if (isEligible && mission.participants.filter(p => p.status !== 'approved' && p.status !== 'rejected').length < mission.limit) {
             acceptBtn.classList.remove('hidden');
         }
-        
+
         modal.style.display = 'flex';
     }
 });
@@ -1136,20 +1221,20 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
 
 document.getElementById('mission-submissions-list').addEventListener('click', async (e) => {
     const actionBtn = e.target.closest('.approve-mission-btn');
-    if(actionBtn) {
+    if (actionBtn) {
         const missionId = actionBtn.dataset.missionId;
         const userId = actionBtn.dataset.userId;
         const action = actionBtn.dataset.action;
         const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
         showLoading();
         try {
-            await runTransaction(db, async(transaction) => {
+            await runTransaction(db, async (transaction) => {
                 const missionDoc = await transaction.get(missionRef);
                 const missionData = missionDoc.data();
-                
+
                 let participants = missionData.participants;
                 const userIndex = participants.findIndex(p => p.uid === userId);
-                
+
                 if (userIndex === -1) return;
 
                 // FIX: Use new Date() instead of serverTimestamp() for array updates.
@@ -1173,13 +1258,13 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                     });
 
                 } else { // reject
-                     participants[userIndex].status = 'rejected';
-                     transaction.update(missionRef, { participants });
+                    participants[userIndex].status = 'rejected';
+                    transaction.update(missionRef, { participants });
                 }
             });
             showToast(`Đã ${action === 'approve' ? 'duyệt' : 'từ chối'} nhiệm vụ.`);
             actionBtn.closest('.flex').innerHTML = `<p class="text-secondary text-sm">Đã ${action === 'approve' ? 'duyệt' : 'từ chối'}</p>`;
-        } catch(error) {
+        } catch (error) {
             showToast(error.message, true);
         } finally {
             hideLoading();
@@ -1205,7 +1290,7 @@ document.getElementById('submit-mission-btn').addEventListener('click', async (e
         });
         showToast("Nộp nhiệm vụ thành công, vui lòng chờ admin duyệt.");
         document.getElementById('mission-details-modal').style.display = 'none';
-    } catch(error) {
+    } catch (error) {
         showToast(error.message, true);
     } finally {
         hideLoading();
@@ -1217,6 +1302,14 @@ function setupAdminMissionsList() {
     const missionsContainer = document.getElementById('admin-missions-list');
     const q = query(collection(db, `artifacts/${appId}/missions`), orderBy('deadline', 'desc'));
     unsubscribeAdminMissions = onSnapshot(q, (snapshot) => {
+        let pendingMissions = 0;
+        snapshot.docs.forEach(doc => {
+            const mission = doc.data();
+            const submissions = mission.participants.filter(p => p.status === 'completed').length;
+            pendingMissions += submissions;
+        });
+        document.getElementById('admin-pending-missions').textContent = pendingMissions;
+
         missionsContainer.innerHTML = snapshot.docs.map(doc => {
             const mission = doc.data();
             const submissions = mission.participants.filter(p => p.status === 'completed').length;
@@ -1241,14 +1334,14 @@ document.getElementById('admin-missions-list').addEventListener('click', async (
     const reviewBtn = e.target.closest('.admin-review-mission-btn');
     const deleteBtn = e.target.closest('.admin-delete-mission-btn');
     const editBtn = e.target.closest('.admin-edit-mission-btn');
-    
+
     if (reviewBtn) {
         const missionId = reviewBtn.dataset.id;
         const missionDoc = await getDoc(doc(db, `artifacts/${appId}/missions`, missionId));
         const mission = missionDoc.data();
         const submissionsList = document.getElementById('mission-submissions-list');
         const completedParticipants = mission.participants.filter(p => p.status === 'completed');
-        
+
         if (completedParticipants.length === 0) {
             submissionsList.innerHTML = `<p class="text-center text-secondary">Chưa có ai nộp nhiệm vụ.</p>`;
         } else {
@@ -1287,20 +1380,20 @@ document.getElementById('admin-missions-list').addEventListener('click', async (
 
 document.getElementById('mission-submissions-list').addEventListener('click', async (e) => {
     const actionBtn = e.target.closest('.approve-mission-btn');
-    if(actionBtn) {
+    if (actionBtn) {
         const missionId = actionBtn.dataset.missionId;
         const userId = actionBtn.dataset.userId;
         const action = actionBtn.dataset.action;
         const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
         showLoading();
         try {
-            await runTransaction(db, async(transaction) => {
+            await runTransaction(db, async (transaction) => {
                 const missionDoc = await transaction.get(missionRef);
                 const missionData = missionDoc.data();
-                
+
                 let participants = missionData.participants;
                 const userIndex = participants.findIndex(p => p.uid === userId);
-                
+
                 if (userIndex === -1) return;
 
                 // SỬA LỖI: Sử dụng new Date() thay vì serverTimestamp() khi cập nhật một đối tượng trong mảng.
@@ -1323,13 +1416,13 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                     });
 
                 } else { // reject
-                     participants[userIndex].status = 'rejected';
-                     transaction.update(missionRef, { participants });
+                    participants[userIndex].status = 'rejected';
+                    transaction.update(missionRef, { participants });
                 }
             });
             showToast(`Đã ${action === 'approve' ? 'duyệt' : 'từ chối'} nhiệm vụ.`);
             actionBtn.closest('.flex').innerHTML = `<p class="text-secondary text-sm">Đã ${action === 'approve' ? 'duyệt' : 'từ chối'}</p>`;
-        } catch(error) {
+        } catch (error) {
             showToast(error.message, true);
         } finally {
             hideLoading();
@@ -1344,17 +1437,17 @@ document.getElementById('create-mission-btn').addEventListener('click', async ()
     const deadline = document.getElementById('admin-mission-deadline').value;
     const description = document.getElementById('admin-mission-description').value;
     const limit = parseInt(document.getElementById('admin-mission-limit').value);
-    
+
     if (!name || !reward || !description || !limit) return showToast("Vui lòng điền đầy đủ thông tin nhiệm vụ.", true);
 
-    await addDoc(collection(db, `artifacts/${appId}/missions`), { 
-        name, 
-        reward, 
+    await addDoc(collection(db, `artifacts/${appId}/missions`), {
+        name,
+        reward,
         deadline: deadline || null,
         repeat,
-        description, 
-        limit, 
-        participants: [] 
+        description,
+        limit,
+        participants: []
     });
 
     showToast("Tạo nhiệm vụ thành công.");
@@ -1384,22 +1477,22 @@ async function fetchGiftHistory(userId) {
         historyContainer.innerHTML = snapshot.docs.map(doc => {
             const history = doc.data();
             const time = history.redeemedAt ? history.redeemedAt.toDate().toLocaleDateString('vi-VN') : '...';
-            
+
             let statusBadge = '';
             let amountClass = 'text-danger';
             let amountSign = '-';
-            
-            switch(history.status) {
+
+            switch (history.status) {
                 case 'approved':
                     statusBadge = `<span class="text-xs text-success">(Thành công)</span>`;
                     break;
                 case 'rejected':
                     statusBadge = `<span class="text-xs text-danger">(Bị từ chối)</span>`;
                     amountClass = 'text-secondary';
-                    amountSign = ''; 
+                    amountSign = '';
                     break;
-                default: 
-                     statusBadge = `<span class="text-xs text-success">(Thành công)</span>`;
+                default:
+                    statusBadge = `<span class="text-xs text-success">(Thành công)</span>`;
             }
 
             return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg">
@@ -1441,6 +1534,38 @@ async function fetchMissionHistory(userId) {
     });
 }
 
+async function fetchGiftApprovalHistory(userId) {
+    const historyContainer = document.getElementById('history-content-gift-approvals');
+    const q = query(collection(db, `artifacts/${appId}/giftRequests`), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+    onSnapshot(q, (snapshot) => {
+        if (snapshot.empty) {
+            historyContainer.innerHTML = `<p class="text-center text-secondary py-4">Chưa có lịch sử duyệt quà.</p>`;
+            return;
+        }
+        historyContainer.innerHTML = snapshot.docs.map(doc => {
+            const history = doc.data();
+            const time = history.createdAt ? history.createdAt.toDate().toLocaleDateString('vi-VN') : '...';
+            let statusBadge = '';
+            switch (history.status) {
+                case 'approved': statusBadge = `<div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-success">Đã duyệt</div>`; break;
+                case 'rejected': statusBadge = `<div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-danger">Đã từ chối</div>`; break;
+                default: statusBadge = `<div class="text-xs font-bold text-on-accent px-2 py-0.5 rounded-full inline-block bg-accent">Đang chờ</div>`;
+            }
+            return `<div class="bg-tertiary p-4 rounded-lg">
+                        <div class="flex justify-between items-start">
+                             <div>
+                                <p class="font-bold text-primary">${history.giftName}</p>
+                                <p class="text-sm text-secondary mt-1">${formatCurrency(history.price)}</p>
+                                <p class="text-xs text-secondary mt-1">${time}</p>
+                             </div>
+                            ${statusBadge}
+                        </div>
+                    </div>`;
+        }).join('');
+    });
+}
+
+
 // --- ADMIN TAB SWITCHING LOGIC ---
 document.querySelectorAll('.admin-tab-btn').forEach(button => {
     button.addEventListener('click', () => {
@@ -1457,12 +1582,12 @@ document.getElementById('admin-tab-content').addEventListener('click', (e) => {
     if (reviewButton) {
         const requestData = JSON.parse(reviewButton.dataset.request);
         const modal = document.getElementById('review-gift-modal');
-        
+
         modal.dataset.requestId = requestData.id;
         modal.dataset.giftId = requestData.giftId;
         modal.dataset.userId = requestData.userId;
         modal.dataset.price = requestData.price;
-        
+
         document.getElementById('review-gift-user-name').textContent = requestData.userDisplayName;
         document.getElementById('review-gift-name').textContent = requestData.giftName;
         document.getElementById('review-gift-price').textContent = formatCurrency(requestData.price);
@@ -1499,7 +1624,7 @@ document.getElementById('confirm-approve-gift-btn').addEventListener('click', as
             transaction.update(userRef, { balance: userDoc.data().balance - price });
             transaction.update(giftRef, { quantity: giftDoc.data().quantity - 1 });
             transaction.update(requestRef, { status: 'approved', processedAt: serverTimestamp() });
-            
+
             const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/giftHistory`));
             transaction.set(historyRef, {
                 giftName: giftDoc.data().name,
@@ -1509,6 +1634,7 @@ document.getElementById('confirm-approve-gift-btn').addEventListener('click', as
             });
         });
         showToast("Đã duyệt yêu cầu đổi quà.");
+        createNotification(userId, `Yêu cầu đổi quà "${document.getElementById('review-gift-name').textContent}" của bạn đã được duyệt.`, 'gift_approved');
     } catch (error) {
         showToast(error.message, true);
     } finally {
@@ -1527,18 +1653,19 @@ document.getElementById('confirm-reject-gift-btn').addEventListener('click', asy
     try {
         const requestRef = doc(db, `artifacts/${appId}/giftRequests`, requestId);
         await updateDoc(requestRef, { status: 'rejected', adminMessage: reason, processedAt: serverTimestamp() });
-        
+
         const giftDoc = await getDoc(doc(db, `artifacts/${appId}/gifts`, modal.dataset.giftId));
         const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/giftHistory`));
         await setDoc(historyRef, {
-                giftName: giftDoc.data().name,
-                price: parseInt(modal.dataset.price),
-                redeemedAt: serverTimestamp(),
-                status: 'rejected',
-                reason: reason
-            });
+            giftName: giftDoc.data().name,
+            price: parseInt(modal.dataset.price),
+            redeemedAt: serverTimestamp(),
+            status: 'rejected',
+            reason: reason
+        });
 
         showToast("Đã từ chối yêu cầu.");
+        createNotification(userId, `Yêu cầu đổi quà của bạn đã bị từ chối. Lý do: ${reason}`, 'gift_rejected');
     } catch (error) {
         showToast(error.message, true);
     } finally {
@@ -1550,7 +1677,7 @@ document.getElementById('confirm-reject-gift-btn').addEventListener('click', asy
 document.getElementById('confirm-edit-gift-btn').addEventListener('click', async () => {
     const modal = document.getElementById('edit-gift-modal');
     const giftId = document.getElementById('edit-gift-id').value;
-    
+
     const updatedData = {
         name: document.getElementById('edit-gift-name').value,
         price: parseInt(document.getElementById('edit-gift-price').value),
@@ -1587,7 +1714,7 @@ document.getElementById('confirm-edit-mission-btn').addEventListener('click', as
         description: document.getElementById('edit-mission-description').value,
         limit: parseInt(document.getElementById('edit-mission-limit').value)
     };
-    
+
     if (!updatedData.name || !updatedData.reward || !updatedData.description || !updatedData.limit) {
         return showToast("Vui lòng điền đầy đủ thông tin.", true);
     }
@@ -1604,6 +1731,58 @@ document.getElementById('confirm-edit-mission-btn').addEventListener('click', as
         hideLoading();
     }
 });
+
+// --- NOTIFICATION FUNCTIONS ---
+async function createNotification(userId, message, type) {
+    if (!userId) return;
+    try {
+        await addDoc(collection(db, `artifacts/${appId}/users/${userId}/notifications`), {
+            message,
+            type,
+            isRead: false,
+            createdAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error creating notification: ", error);
+    }
+}
+
+function fetchNotifications(userId) {
+    const q = query(collection(db, `artifacts/${appId}/users/${userId}/notifications`), orderBy('createdAt', 'desc'));
+    onSnapshot(q, (snapshot) => {
+        const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderNotifications(notifications);
+        const hasUnread = notifications.some(n => !n.isRead);
+        notificationDot.classList.toggle('active', hasUnread);
+    });
+}
+
+function renderNotifications(notifications) {
+    const container = document.getElementById('notification-list');
+    if (notifications.length === 0) {
+        container.innerHTML = `<p class="text-center text-secondary">Không có thông báo nào.</p>`;
+        return;
+    }
+    container.innerHTML = notifications.map(n => {
+        const time = n.createdAt ? n.createdAt.toDate().toLocaleString('vi-VN') : '...';
+        return `<div data-id="${n.id}" class="notification-item p-3 rounded-lg ${n.isRead ? 'bg-tertiary' : 'bg-secondary font-bold'}">
+                    <p class="text-sm text-primary">${n.message}</p>
+                    <p class="text-xs text-secondary mt-1">${time}</p>
+                </div>`;
+    }).join('');
+}
+
+notificationBtn.addEventListener('click', () => {
+    document.getElementById('notification-modal').style.display = 'flex';
+    // Mark all as read
+    const q = query(collection(db, `artifacts/${appId}/users/${currentUser.uid}/notifications`), where('isRead', '==', false));
+    getDocs(q).then(snapshot => {
+        snapshot.forEach(doc => {
+            updateDoc(doc.ref, { isRead: true });
+        });
+    });
+});
+
 
 // --- APP INITIALIZATION ---
 function initializeAppLogic() {
