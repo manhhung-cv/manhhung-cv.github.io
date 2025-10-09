@@ -32,7 +32,6 @@ const allViews = document.querySelectorAll('#login-view, #register-view, #app-vi
 const allTabs = document.querySelectorAll('.app-tab');
 const navButtons = document.querySelectorAll('.nav-btn');
 const bottomNav = document.getElementById('bottom-nav');
-const navAdminBtn = document.getElementById('nav-admin-btn');
 const pinInput = document.getElementById('pin-input');
 const pinDots = document.querySelectorAll('.pin-dot');
 const toastMessage = document.getElementById('toast-message');
@@ -44,7 +43,24 @@ const notificationDot = document.querySelector('.notification-dot');
 const showLoading = () => loadingOverlay.style.display = 'flex';
 const hideLoading = () => loadingOverlay.style.display = 'none';
 const showView = (viewId) => { allViews.forEach(v => v.style.display = 'none'); document.getElementById(viewId).style.display = 'flex'; };
-const showTab = (tabId) => { allTabs.forEach(t => t.style.display = 'none'); document.getElementById(tabId).style.display = 'block'; navButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId)); };
+
+const showTab = (tabId) => {
+    allTabs.forEach(t => t.style.display = 'none');
+    document.getElementById(tabId).style.display = 'block';
+    
+    const mainNavButton = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+    navButtons.forEach(b => b.classList.remove('active'));
+
+    if (mainNavButton) {
+        mainNavButton.classList.add('active');
+    } else {
+        const moreMenuTabs = ['missions-tab', 'gifts-tab', 'settings-tab', 'admin-tab'];
+        if (moreMenuTabs.includes(tabId)) {
+            document.getElementById('more-nav-btn').classList.add('active');
+        }
+    }
+};
+
 const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 const getInitials = (name) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '';
 async function hashPin(pin) { const data = new TextEncoder().encode(pin); const hashBuffer = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join(''); }
@@ -59,6 +75,7 @@ const showToast = (message, isError = false) => {
 };
 
 const isSameDay = (d1, d2) => {
+    if (!d1 || !d2) return false;
     const date1 = d1 instanceof Date ? d1 : d1.toDate();
     const date2 = d2 instanceof Date ? d2 : d2.toDate();
     return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth() && date1.getDate() === date2.getDate();
@@ -104,11 +121,32 @@ function applyLanguage(lang) {
 document.getElementById('show-register-btn').addEventListener('click', () => showView('register-view'));
 document.getElementById('show-login-btn-bottom').addEventListener('click', () => showView('login-view'));
 document.getElementById('back-to-login-btn').addEventListener('click', () => showView('login-view'));
-navButtons.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+navButtons.forEach(btn => btn.addEventListener('click', () => {
+    if (btn.dataset.tab !== 'more-menu') {
+        showTab(btn.dataset.tab);
+    }
+}));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; }));
 document.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => { btn.closest('.modal-overlay').style.display = 'none'; }));
 document.querySelectorAll('.action-btn').forEach(btn => btn.addEventListener('click', () => document.getElementById(`${btn.dataset.action}-modal`).style.display = 'flex'));
 document.querySelectorAll('.lang-switcher button').forEach(button => button.addEventListener('click', () => applyLanguage(button.dataset.lang)));
+
+// --- More Menu Logic ---
+const moreNavBtn = document.getElementById('more-nav-btn');
+const moreMenuModal = document.getElementById('more-menu-modal');
+
+moreNavBtn.addEventListener('click', () => {
+    moreMenuModal.style.display = 'flex';
+});
+
+document.querySelectorAll('.more-menu-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tabId = btn.dataset.tab;
+        showTab(tabId);
+        moreMenuModal.style.display = 'none';
+    });
+});
+
 
 // --- AUTHENTICATION ---
 onAuthStateChanged(auth, (user) => {
@@ -129,19 +167,20 @@ onAuthStateChanged(auth, (user) => {
                 fetchGiftApprovalHistory(user.uid);
                 setupMissionsTab();
                 setupGiftsTab();
+                setupLuckyWheel();
                 fetchNotifications(user.uid);
             } else { handleLogout(); }
         });
         showView('app-view');
         showTab('home-tab');
+        
         if (user.email === ADMIN_EMAIL) {
-            navAdminBtn.style.display = 'flex';
-            bottomNav.classList.replace('grid-cols-5', 'grid-cols-6');
+            document.getElementById('more-menu-admin-btn').style.display = 'flex';
             setupAdminDashboard();
         } else {
-            navAdminBtn.style.display = 'none';
-            bottomNav.classList.replace('grid-cols-6', 'grid-cols-5');
+            document.getElementById('more-menu-admin-btn').style.display = 'none';
         }
+
     } else {
         currentUser = null; currentUserData = null; if (unsubscribeUser) unsubscribeUser();
         showView('login-view');
@@ -180,7 +219,18 @@ document.getElementById('register-btn').addEventListener('click', async () => {
             if (accNumClaimDoc.exists()) throw new Error(getTranslatedString('accountNumberExists'));
 
             const pinHash = await hashPin(pin);
-            transaction.set(userDocRef, { displayName: name, username, accountNumber: accNum, email, pinHash, balance: 0, createdAt: serverTimestamp(), fcmToken: null });
+            transaction.set(userDocRef, { 
+                displayName: name, 
+                username, 
+                accountNumber: accNum, 
+                email, 
+                pinHash, 
+                balance: 0, 
+                createdAt: serverTimestamp(), 
+                fcmToken: null, 
+                lastFreeSpin: null,
+                spinTurns: 1 // Initial free spin
+            });
             transaction.set(usernameClaimRef, { uid: newUser.uid });
             transaction.set(accNumClaimRef, { uid: newUser.uid });
         });
@@ -346,6 +396,8 @@ function renderTransactions(transactions, container, userId, emptyMessage) {
             case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', {user: tx.toUserName}); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', {user: tx.fromUserName}); detail = tx.content; icon = 'fa-arrow-down'; } break;
             case 'deposit': amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('depositTitle'); detail = tx.content; icon = 'fa-wallet'; break;
             case 'withdraw': amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('withdrawTitle'); detail = getTranslatedString('approvedByAdmin'); icon = 'fa-money-bill-wave'; break;
+            case 'lucky_spin_win': amountClass = 'text-success'; amountSign = '+'; title = "Thưởng Vòng Quay"; detail = `Trúng thưởng ${tx.prizeName}`; icon = 'fa-compact-disc'; break;
+            case 'lucky_spin_cost': amountClass = 'text-danger'; amountSign = '-'; title = "Phí Vòng Quay"; detail = `Trả phí để quay`; icon = 'fa-compact-disc'; break;
             default: amountClass = 'text-primary'; amountSign = ''; title = getTranslatedString('unknownTransaction'); detail = tx.content || ''; icon = 'fa-question-circle';
         }
         return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg"><div class="flex items-center gap-4"><div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full ${amountClass}"><i class="fas ${icon}"></i></div><div><p class="font-semibold text-sm text-primary">${title}</p><p class="text-xs text-secondary">${detail}</p><p class="text-xs text-secondary">${time}</p></div></div><p class="font-bold text-sm ${amountClass}">${amountSign}${formatCurrency(tx.amount)}</p></div>`;
@@ -359,6 +411,7 @@ let unsubscribeAdminUsers = null;
 let unsubscribeAdminGifts = null;
 let unsubscribeAdminMissions = null;
 let unsubscribeAdminGiftRequests = null;
+let unsubscribeAdminLuckyWheel = null;
 
 function setupAdminDashboard() {
     if (unsubscribeAdmin) unsubscribeAdmin();
@@ -421,7 +474,8 @@ function setupAdminDashboard() {
     setupAdminUserList();
     setupAdminGiftsList();
     setupAdminMissionsList();
-    setupAdminGiftRequests(); // Calling the function to listen for gift requests
+    setupAdminGiftRequests();
+    setupAdminLuckyWheel();
 }
 
 function setupAdminDepositCodesList() {
@@ -510,35 +564,79 @@ function setupAdminUserList() {
 
 function setupAdminGiftRequests() {
     if (unsubscribeAdminGiftRequests) unsubscribeAdminGiftRequests();
-    const requestsContainer = document.getElementById('gift-requests-list');
-    const q = query(collection(db, `artifacts/${appId}/giftRequests`), where('status', '==', 'pending'));
+    const pendingContainer = document.getElementById('gift-requests-list');
+    const processedContainer = document.getElementById('processed-gift-requests-list');
+    const q = query(collection(db, `artifacts/${appId}/giftRequests`), orderBy('createdAt', 'desc'));
 
     unsubscribeAdminGiftRequests = onSnapshot(q, (snapshot) => {
-        document.getElementById('admin-pending-gifts').textContent = snapshot.size;
-        if (snapshot.empty) {
-            requestsContainer.innerHTML = `<p class="text-center text-secondary">Không có yêu cầu đổi quà nào.</p>`;
-            return;
-        }
-        const docs = snapshot.docs.sort((a, b) => (b.data().createdAt?.toMillis() || 0) - (a.data().createdAt?.toMillis() || 0));
+        let pendingHtml = '';
+        let processedHtml = '';
+        let pendingCount = 0;
 
-        requestsContainer.innerHTML = docs.map(doc => {
-            const req = doc.data();
-            const reqId = doc.id;
-            const reqDataString = JSON.stringify({ id: reqId, ...req });
+        const docs = snapshot.docs;
+        
+        // Separate pending from processed
+        const pendingDocs = docs.filter(doc => doc.data().status === 'pending');
+        const processedDocs = docs.filter(doc => doc.data().status !== 'pending')
+                                  .sort((a, b) => (b.data().processedAt?.toMillis() || 0) - (a.data().processedAt?.toMillis() || 0));
 
-            return `<div class="bg-tertiary p-4 rounded-lg app-shadow">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="font-bold text-primary">${req.userDisplayName}</p>
-                                <p class="text-sm text-secondary mt-1">Muốn đổi: <span class="font-bold">${req.giftName}</span></p>
+        pendingCount = pendingDocs.length;
+        document.getElementById('admin-pending-gifts').textContent = pendingCount;
+        
+        if (pendingDocs.length === 0) {
+            pendingContainer.innerHTML = `<p class="text-center text-secondary">Không có yêu cầu nào đang chờ duyệt.</p>`;
+        } else {
+            pendingHtml = pendingDocs.map(doc => {
+                const req = doc.data();
+                const reqId = doc.id;
+                const reqDataString = JSON.stringify({ id: reqId, ...req });
+                return `<div class="bg-tertiary p-4 rounded-lg app-shadow">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-bold text-primary">${req.userDisplayName}</p>
+                                    <p class="text-sm text-secondary mt-1">Muốn đổi: <span class="font-bold">${req.giftName}</span></p>
+                                </div>
+                                <p class="text-lg font-bold text-accent">${formatCurrency(req.price)}</p>
                             </div>
-                            <p class="text-lg font-bold text-accent">${formatCurrency(req.price)}</p>
-                        </div>
-                        <button data-request='${reqDataString}' class="admin-review-gift-btn w-full p-2 mt-3 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover">Xem & Duyệt</button>
-                    </div>`;
-        }).join('');
+                            <button data-request='${reqDataString}' class="admin-review-gift-btn w-full p-2 mt-3 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover">Xem & Duyệt</button>
+                        </div>`;
+            }).join('');
+            pendingContainer.innerHTML = pendingHtml;
+        }
+
+        if (processedDocs.length === 0) {
+            processedContainer.innerHTML = `<p class="text-center text-secondary">Chưa có lịch sử duyệt quà.</p>`;
+        } else {
+            processedHtml = processedDocs.map(doc => {
+                const req = doc.data();
+                const time = req.processedAt ? req.processedAt.toDate().toLocaleString('vi-VN') : '...';
+                const isApproved = req.status === 'approved';
+                
+                const statusBadge = isApproved 
+                    ? `<div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-success">Đã duyệt</div>`
+                    : `<div class="text-xs font-bold text-white px-2 py-0.5 rounded-full inline-block bg-danger">Đã từ chối</div>`;
+
+                const adminNote = !isApproved && req.adminMessage
+                    ? `<p class="text-xs text-secondary mt-1 italic">Lý do: "${req.adminMessage}"</p>`
+                    : '';
+
+                return `<div class="bg-tertiary p-4 rounded-lg opacity-80">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <p class="font-bold text-primary">${req.giftName}</p>
+                                    <p class="text-sm text-secondary">Người dùng: ${req.userDisplayName}</p>
+                                    <p class="text-xs text-secondary mt-1">${time}</p>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            ${adminNote}
+                        </div>`;
+            }).join('');
+            processedContainer.innerHTML = processedHtml;
+        }
     });
 }
+
 
 document.getElementById('withdrawal-requests').addEventListener('click', (e) => {
     const reviewButton = e.target.closest('.admin-review-btn');
@@ -1174,60 +1272,36 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
     }
 });
 
-
-document.getElementById('mission-submissions-list').addEventListener('click', async (e) => {
-    const actionBtn = e.target.closest('.approve-mission-btn');
-    if(actionBtn) {
-        const missionId = actionBtn.dataset.missionId;
-        const userId = actionBtn.dataset.userId;
-        const action = actionBtn.dataset.action;
-        const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
-        showLoading();
-        try {
-            await runTransaction(db, async(transaction) => {
-                const missionDoc = await transaction.get(missionRef);
-                const missionData = missionDoc.data();
-                
-                let participants = missionData.participants;
-                const userIndex = participants.findIndex(p => p.uid === userId);
-                
-                if (userIndex === -1) return;
-
-                // FIX: Use new Date() instead of serverTimestamp() for array updates.
-                participants[userIndex].lastCompleted = new Date();
-
-                if (action === 'approve') {
-                    const userRef = doc(db, `artifacts/${appId}/users`, userId);
-                    const userDoc = await transaction.get(userRef);
-
-                    participants[userIndex].status = 'approved';
-                    transaction.update(missionRef, { participants });
-                    transaction.update(userRef, { balance: userDoc.data().balance + missionData.reward });
-
-                    const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/missionHistory`));
-                    // serverTimestamp() is fine here because it's not inside an array.
-                    transaction.set(historyRef, {
-                        missionName: missionData.name,
-                        reward: missionData.reward,
-                        completedAt: serverTimestamp(),
-                        status: 'approved'
-                    });
-
-                } else { // reject
-                     participants[userIndex].status = 'rejected';
-                     transaction.update(missionRef, { participants });
-                }
+document.getElementById('accept-mission-btn').addEventListener('click', async (e) => {
+    const missionId = e.target.closest('.modal-overlay').dataset.id;
+    const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
+    showLoading();
+    try {
+        await runTransaction(db, async (transaction) => {
+            const missionDoc = await transaction.get(missionRef);
+            if (!missionDoc.exists()) throw new Error("Nhiệm vụ không tồn tại.");
+            let participants = missionDoc.data().participants || [];
+            if (participants.some(p => p.uid === currentUser.uid)) {
+                 throw new Error("Bạn đã nhận nhiệm vụ này rồi.");
+            }
+            if (participants.length >= missionDoc.data().limit) {
+                throw new Error("Nhiệm vụ đã đủ số người nhận.");
+            }
+            participants.push({
+                uid: currentUser.uid,
+                name: currentUserData.displayName,
+                status: 'pending' // Initial status
             });
-            showToast(`Đã ${action === 'approve' ? 'duyệt' : 'từ chối'} nhiệm vụ.`);
-            actionBtn.closest('.flex').innerHTML = `<p class="text-secondary text-sm">Đã ${action === 'approve' ? 'duyệt' : 'từ chối'}</p>`;
-        } catch(error) {
-            showToast(error.message, true);
-        } finally {
-            hideLoading();
-        }
+            transaction.update(missionRef, { participants: participants });
+        });
+        showToast("Nhận nhiệm vụ thành công!");
+        document.getElementById('mission-details-modal').style.display = 'none';
+    } catch(error) {
+        showToast(error.message, true);
+    } finally {
+        hideLoading();
     }
 });
-
 
 
 document.getElementById('submit-mission-btn').addEventListener('click', async (e) => {
@@ -1352,7 +1426,6 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                 
                 if (userIndex === -1) return;
 
-                // SỬA LỖI: Sử dụng new Date() thay vì serverTimestamp() khi cập nhật một đối tượng trong mảng.
                 participants[userIndex].lastCompleted = new Date();
 
                 if (action === 'approve') {
@@ -1367,7 +1440,7 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                     transaction.set(historyRef, {
                         missionName: missionData.name,
                         reward: missionData.reward,
-                        completedAt: serverTimestamp(), // serverTimestamp() vẫn ổn ở đây vì nó không nằm trong mảng
+                        completedAt: serverTimestamp(),
                         status: 'approved'
                     });
 
@@ -1688,18 +1761,324 @@ document.getElementById('confirm-edit-mission-btn').addEventListener('click', as
     }
 });
 
-// --- NOTIFICATION FUNCTIONS ---
+// --- LUCKY WHEEL FUNCTIONS (NEW & IMPROVED) ---
 
-/**
- * ====================================================================
- * PHIÊN BẢN SỬA LỖI: HÀM YÊU CẦU QUYỀN VÀ LẤY TOKEN
- * ====================================================================
- */
+async function setupLuckyWheel() {
+    const grid = document.getElementById('lucky-wheel-grid');
+    const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+    const configSnap = await getDoc(configRef);
+
+    let prizes = [];
+    let spinCost = 0;
+    if (configSnap.exists()) {
+        prizes = configSnap.data().prizes || [];
+        spinCost = configSnap.data().spinCost || 0;
+    }
+    
+    document.getElementById('spin-cost-display').textContent = formatCurrency(spinCost);
+    document.getElementById('spin-turns-display').textContent = currentUserData.spinTurns || 0;
+
+    grid.innerHTML = '';
+    for (let i = 0; i < 9; i++) {
+        if (i === 4) { // Center button
+            const hasFreeSpins = (currentUserData.spinTurns || 0) > 0;
+            const buttonText = hasFreeSpins ? 'QUAY (Miễn phí)' : `QUAY (${formatCurrency(spinCost)})`;
+            grid.innerHTML += `<button id="spin-btn" class="lucky-wheel-item">
+                                 <i class="fas fa-play text-4xl"></i>
+                                 <span style="font-size: 10px;">${buttonText}</span>
+                               </button>`;
+        } else {
+            const prizeIndex = i < 4 ? i : i - 1;
+            const prize = prizes[prizeIndex] || { name: '...', imageUrl: 'https://via.placeholder.com/50' };
+            grid.innerHTML += `<div class="lucky-wheel-item" data-index="${prizeIndex}">
+                                 <img src="${prize.imageUrl}" alt="${prize.name}">
+                                 <span>${prize.name}</span>
+                               </div>`;
+        }
+    }
+
+    const spinBtn = document.getElementById('spin-btn');
+    if (spinBtn) {
+        spinBtn.addEventListener('click', handleSpin);
+    }
+}
+
+async function handleSpin() {
+    const spinBtn = document.getElementById('spin-btn');
+    spinBtn.disabled = true;
+    let wonPrize; 
+
+    try {
+        const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+        const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
+
+        await runTransaction(db, async (transaction) => {
+            // --- READS FIRST ---
+            const configDoc = await transaction.get(configRef);
+            const userDoc = await transaction.get(userRef);
+
+            if (!configDoc.exists()) throw new Error("Vòng quay chưa được cấu hình.");
+            if (!userDoc.exists()) throw new Error("Không tìm thấy người dùng.");
+
+            // --- LOGIC & CHECKS (NO WRITES YET) ---
+            const spinCost = configDoc.data().spinCost || 0;
+            const userData = userDoc.data();
+            const currentTurns = userData.spinTurns || 0;
+            const currentBalance = userData.balance;
+
+            const hasFreeSpins = currentTurns > 0;
+            if (!hasFreeSpins && currentBalance < spinCost) {
+                throw new Error("Số dư không đủ để quay.");
+            }
+
+            let prizes = (configDoc.data().prizes || []).map((p, index) => ({...p, originalIndex: index}));
+            prizes = prizes.filter(p => p.quantity > 0);
+            if (prizes.length === 0) throw new Error("Tất cả phần thưởng đã hết.");
+
+            const totalRate = prizes.reduce((sum, p) => sum + p.winRate, 0);
+            if (totalRate <= 0) throw new Error("Vòng quay chưa được cấu hình tỉ lệ trúng.");
+
+            let random = Math.random() * totalRate;
+            for (const prize of prizes) {
+                random -= prize.winRate;
+                if (random <= 0) {
+                    wonPrize = prize;
+                    break;
+                }
+            }
+            if (!wonPrize) wonPrize = prizes[prizes.length - 1];
+
+            // --- WRITES LAST ---
+            if (hasFreeSpins) {
+                transaction.update(userRef, { spinTurns: currentTurns - 1 });
+            } else {
+                transaction.update(userRef, { balance: currentBalance - spinCost });
+                const costTransactionRef = doc(collection(db, `artifacts/${appId}/transactions`));
+                transaction.set(costTransactionRef, {
+                    type: 'lucky_spin_cost',
+                    userId: currentUser.uid,
+                    userName: userData.displayName,
+                    amount: spinCost,
+                    content: `Trả phí vòng quay`,
+                    timestamp: serverTimestamp()
+                });
+            }
+
+            const prizesArray = configDoc.data().prizes;
+            if (prizesArray[wonPrize.originalIndex].quantity > 0) {
+                prizesArray[wonPrize.originalIndex].quantity -= 1;
+            }
+            transaction.update(configRef, { prizes: prizesArray });
+
+            if (wonPrize.rewardType === 'money') {
+                transaction.update(userRef, { balance: userDoc.data().balance + wonPrize.rewardValue });
+                 const prizeTransactionRef = doc(collection(db, `artifacts/${appId}/transactions`));
+                transaction.set(prizeTransactionRef, {
+                    type: 'lucky_spin_win',
+                    userId: currentUser.uid,
+                    userName: userData.displayName,
+                    amount: wonPrize.rewardValue,
+                    prizeName: wonPrize.name,
+                    content: `Trúng thưởng vòng quay`,
+                    timestamp: serverTimestamp()
+                });
+            } else if (wonPrize.rewardType === 'spin_turn') {
+                transaction.update(userRef, { spinTurns: (userDoc.data().spinTurns || 0) + wonPrize.rewardValue });
+            } else { 
+                const requestRef = doc(collection(db, `artifacts/${appId}/itemPrizeRequests`));
+                transaction.set(requestRef, {
+                    userId: currentUser.uid,
+                    userDisplayName: userData.displayName,
+                    prizeName: wonPrize.name,
+                    prizeImageUrl: wonPrize.imageUrl,
+                    createdAt: serverTimestamp(),
+                    status: 'pending'
+                });
+            }
+        });
+        
+        await animateSpin(wonPrize.originalIndex);
+
+        document.getElementById('prize-won-image').src = wonPrize.imageUrl;
+        let prizeText = wonPrize.name;
+        if (wonPrize.rewardType === 'money') {
+            prizeText = formatCurrency(wonPrize.rewardValue);
+        } else if (wonPrize.rewardType === 'spin_turn') {
+            prizeText = `${wonPrize.rewardValue} Lượt Quay`;
+        }
+        document.getElementById('prize-won-name').textContent = prizeText;
+        document.getElementById('prize-won-modal').style.display = 'flex';
+
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        spinBtn.disabled = false;
+    }
+}
+
+function animateSpin(winningIndex) {
+    return new Promise(resolve => {
+        const clockwiseOrder = [0, 1, 2, 4, 7, 6, 5, 3]; 
+        const gridItems = document.querySelectorAll('.lucky-wheel-item:not(#spin-btn)');
+        
+        const sortedItems = Array.from(gridItems).sort((a, b) => {
+            const indexA = clockwiseOrder.indexOf(parseInt(a.dataset.index));
+            const indexB = clockwiseOrder.indexOf(parseInt(b.dataset.index));
+            return indexA - indexB;
+        });
+
+        const winningPosition = clockwiseOrder.indexOf(winningIndex);
+        if (winningPosition === -1) {
+            console.error("Winning index not found in clockwise order.");
+            resolve();
+            return;
+        }
+
+        const rounds = 3;
+        const totalSteps = (rounds * sortedItems.length) + winningPosition;
+        let currentStep = 0;
+        let delay = 80;
+
+        function spin() {
+            sortedItems.forEach(item => item.classList.remove('highlight'));
+            
+            const currentItem = sortedItems[currentStep % sortedItems.length];
+            currentItem.classList.add('highlight');
+
+            if (currentStep > totalSteps - 6) {
+                delay += 50;
+            }
+
+            currentStep++;
+
+            if (currentStep > totalSteps) {
+                setTimeout(resolve, 500);
+            } else {
+                setTimeout(spin, delay);
+            }
+        }
+        spin();
+    });
+}
+
+function renderPrizeConfigItem(prize = {}, index) {
+    const prizeData = prize || {};
+    return `
+        <div class="bg-tertiary p-4 rounded-lg prize-config-item" data-index="${index}">
+            <div class="flex justify-between items-center mb-3">
+                <h4 class="font-bold text-primary">Vật phẩm ${index + 1}</h4>
+                <button class="remove-prize-btn p-2 text-danger hover:bg-secondary rounded-md"><i class="fas fa-trash"></i></button>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <input type="text" placeholder="Tên vật phẩm" class="admin-lw-name w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.name || ''}">
+                <input type="text" placeholder="URL Hình ảnh" class="admin-lw-image w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.imageUrl || ''}">
+                <input type="number" placeholder="Tỉ lệ trúng (VD: 10)" class="admin-lw-rate w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.winRate || 0}">
+                <input type="number" placeholder="Số lượng" class="admin-lw-quantity w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.quantity || 0}">
+                <select class="admin-lw-type w-full p-2 rounded bg-secondary border border-color text-primary focus:ring-2 ring-accent">
+                    <option value="money" ${prizeData.rewardType === 'money' ? 'selected' : ''}>Phần thưởng là Tiền</option>
+                    <option value="item" ${prizeData.rewardType === 'item' ? 'selected' : ''}>Phần thưởng là Vật phẩm</option>
+                    <option value="spin_turn" ${prizeData.rewardType === 'spin_turn' ? 'selected' : ''}>Phần thưởng là Lượt quay</option>
+                </select>
+                <input type="number" placeholder="Giá trị (tiền/lượt quay)" class="admin-lw-value w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.rewardValue || 0}">
+            </div>
+        </div>
+    `;
+}
+
+function updateAddPrizeButtonState() {
+    const prizesCount = document.querySelectorAll('.prize-config-item').length;
+    const addBtn = document.getElementById('admin-add-prize-btn');
+    addBtn.disabled = prizesCount >= 8;
+    addBtn.classList.toggle('opacity-50', addBtn.disabled);
+    addBtn.classList.toggle('cursor-not-allowed', addBtn.disabled);
+}
+
+function setupAdminLuckyWheel() {
+    if (unsubscribeAdminLuckyWheel) unsubscribeAdminLuckyWheel();
+    const container = document.getElementById('admin-lucky-wheel-prizes-list');
+    const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+    
+    unsubscribeAdminLuckyWheel = onSnapshot(configRef, (docSnap) => {
+        let prizes = [];
+        let spinCost = 0;
+        if (docSnap.exists()) {
+            prizes = docSnap.data().prizes || [];
+            spinCost = docSnap.data().spinCost || 0;
+        }
+        
+        document.getElementById('admin-spin-cost').value = spinCost;
+        container.innerHTML = '';
+        prizes.forEach((prize, index) => {
+            container.insertAdjacentHTML('beforeend', renderPrizeConfigItem(prize, index));
+        });
+        updateAddPrizeButtonState();
+    });
+}
+
+document.getElementById('admin-add-prize-btn').addEventListener('click', () => {
+    const container = document.getElementById('admin-lucky-wheel-prizes-list');
+    const newIndex = container.children.length;
+    if (newIndex < 8) {
+        container.insertAdjacentHTML('beforeend', renderPrizeConfigItem({}, newIndex));
+        updateAddPrizeButtonState();
+    }
+});
+
+document.getElementById('admin-lucky-wheel-prizes-list').addEventListener('click', (e) => {
+    const removeBtn = e.target.closest('.remove-prize-btn');
+    if (removeBtn) {
+        removeBtn.closest('.prize-config-item').remove();
+        document.querySelectorAll('.prize-config-item').forEach((item, index) => {
+            item.dataset.index = index;
+            item.querySelector('h4').textContent = `Vật phẩm ${index + 1}`;
+        });
+        updateAddPrizeButtonState();
+    }
+});
+
+document.getElementById('save-lucky-wheel-btn').addEventListener('click', async () => {
+    const prizeElements = document.querySelectorAll('#admin-lucky-wheel-prizes-list .prize-config-item');
+    const newPrizes = [];
+    let isValid = true;
+    
+    prizeElements.forEach(el => {
+        const name = el.querySelector('.admin-lw-name').value;
+        const imageUrl = el.querySelector('.admin-lw-image').value;
+        const winRate = parseInt(el.querySelector('.admin-lw-rate').value) || 0;
+        const quantity = parseInt(el.querySelector('.admin-lw-quantity').value) || 0;
+        const rewardType = el.querySelector('.admin-lw-type').value;
+        const rewardValue = parseInt(el.querySelector('.admin-lw-value').value) || 0;
+
+        if(!name || !imageUrl) {
+            isValid = false;
+        }
+        
+        newPrizes.push({ name, imageUrl, winRate, quantity, rewardType, rewardValue });
+    });
+
+    if(!isValid) return showToast("Tên và URL ảnh của mỗi vật phẩm không được để trống.", true);
+    if (newPrizes.length > 8) return showToast("Chỉ có thể cấu hình tối đa 8 vật phẩm.", true);
+
+    const spinCost = parseInt(document.getElementById('admin-spin-cost').value) || 0;
+
+    showLoading();
+    try {
+        const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
+        await setDoc(configRef, { prizes: newPrizes, spinCost: spinCost }, { merge: true }); 
+        showToast("Đã lưu cấu hình vòng quay!");
+    } catch (error) {
+        showToast(error.message, true);
+    } finally {
+        hideLoading();
+    }
+});
+
+
+// --- NOTIFICATION FUNCTIONS ---
 async function requestNotificationPermission(userId) {
     console.log('Requesting notification permission...');
     try {
-        // DÒNG NÀY RẤT QUAN TRỌNG - Đảm bảo nó đúng với cấu trúc thư mục của bạn
-        const registration = await navigator.serviceWorker.register('/Apps/FamiBank/firebase-messaging-sw.js');
+        const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
         console.log('Service Worker registered successfully:', registration);
 
         const permission = await Notification.requestPermission();
@@ -1708,7 +2087,7 @@ async function requestNotificationPermission(userId) {
             
             const currentToken = await getToken(messaging, {
                 vapidKey: 'BJ51Oxb2nQB80aDI3Ay94cB2rn1HTmEcZmEAk0bSP22TMog1TaShilyJhY2vVCAQm8uUolXGib4p7XX-5m6oMRE',
-                serviceWorkerRegistration: registration // Cung cấp registration cho Firebase
+                serviceWorkerRegistration: registration
             });
 
             if (currentToken) {
@@ -1728,7 +2107,6 @@ async function requestNotificationPermission(userId) {
     }
 }
 
-// Xử lý thông báo khi người dùng đang mở ứng dụng
 onMessage(messaging, (payload) => {
     console.log('Message received. ', payload);
     showToast(payload.notification.title + ": " + payload.notification.body);
@@ -1783,7 +2161,6 @@ function renderNotifications(notifications) {
 async function displayFcmToken() {
     const tokenInput = document.getElementById('fcm-token-display');
     try {
-        // Sử dụng lại hàm cũ nhưng không cần đăng ký lại SW
         const currentToken = await getToken(messaging, { vapidKey: 'BJ51Oxb2nQB80aDI3Ay94cB2rn1HTmEcZmEAk0bSP22TMog1TaShilyJhY2vVCAQm8uUolXGib4p7XX-5m6oMRE' });
         if (currentToken) {
             tokenInput.value = currentToken;
@@ -1837,7 +2214,7 @@ async function unsubscribeFromNotifications() {
         const deleted = await deleteToken(messaging);
         if (deleted) {
             const userDocRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
-            await updateDoc(userDocRef, { fcmToken: null }); // Xóa token khỏi Firestore
+            await updateDoc(userDocRef, { fcmToken: null });
             document.getElementById('fcm-token-display').value = 'Đã hủy đăng ký.';
             showToast("Đã hủy nhận thông báo thành công.");
         } else {

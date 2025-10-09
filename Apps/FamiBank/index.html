@@ -30,6 +30,13 @@
         .admin-tab-btn.active { border-color: var(--bg-accent); color: var(--bg-accent); }
         .gift-filter-btn.active { background-color: var(--bg-accent); color: var(--text-on-accent); }
         .notification-dot { display: none; } .notification-dot.active { display: block; }
+        .lucky-wheel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; aspect-ratio: 1 / 1; }
+        .lucky-wheel-item { background-color: var(--bg-tertiary); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 5px; text-align: center; border: 2px solid transparent; transition: all 0.2s; }
+        .lucky-wheel-item img { width: 40px; height: 40px; object-fit: cover; margin-bottom: 5px; }
+        .lucky-wheel-item span { font-size: 10px; font-weight: bold; }
+        .lucky-wheel-item.highlight { border-color: var(--bg-accent); box-shadow: 0 0 15px var(--bg-accent); transform: scale(1.05); }
+        #spin-btn { background-color: var(--bg-accent); color: var(--text-on-accent); cursor: pointer; }
+        #spin-btn:disabled { background-color: var(--text-secondary); cursor: not-allowed; }
     </style>
 </head>
 <body class="bg-primary app-font theme-binance">
@@ -123,6 +130,15 @@
                     <div class="mt-8">
                         <h3 class="text-lg font-bold text-primary" data-translate-key="recentTransactions">Recent Transactions</h3>
                         <div id="recent-transaction-history" class="mt-4 space-y-3"></div>
+                    </div>
+                </div>
+
+                <div id="lucky-wheel-tab" class="app-tab">
+                    <h1 class="text-2xl font-bold text-primary mb-4">Vòng Quay May Mắn</h1>
+                    <div id="lucky-wheel-grid" class="lucky-wheel-grid mb-4"></div>
+                    <div class="text-center text-secondary text-sm mb-4">
+                        <p>Mỗi lượt quay tốn: <strong id="spin-cost-display" class="text-accent">...</strong></p>
+                        <p>Bạn có <strong id="spin-turns-display" class="text-primary">...</strong> lượt quay miễn phí.</p>
                     </div>
                 </div>
 
@@ -229,6 +245,7 @@
                         <button data-admin-tab="gifts" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2">Quà</button>
                         <button data-admin-tab="missions" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2">Nhiệm vụ</button>
                         <button data-admin-tab="giftRequests" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2">Duyệt Quà</button>
+                        <button data-admin-tab="luckyWheel" class="admin-tab-btn flex-shrink-0 text-center font-bold p-3 border-b-2">Vòng Quay</button>
                     </div>
 
                     <div id="admin-tab-content">
@@ -291,22 +308,63 @@
                         </div>
 
                         <div id="admin-tab-giftRequests" class="admin-tab-pane hidden">
+                            <h3 class="text-md font-bold mb-3 text-primary">Yêu Cầu Đang Chờ Duyệt</h3>
                             <div id="gift-requests-list" class="space-y-4"></div>
+                            <div class="border-t border-color my-6"></div>
+                            <h3 class="text-md font-bold mb-3 text-primary">Lịch Sử Duyệt Gần Đây</h3>
+                            <div id="processed-gift-requests-list" class="space-y-4"></div>
+                        </div>
+                        
+                        <div id="admin-tab-luckyWheel" class="admin-tab-pane hidden">
+                            <div class="bg-tertiary p-4 rounded-lg app-shadow mb-4">
+                                <label for="admin-spin-cost" class="block text-sm font-bold text-primary mb-2">Chi phí mỗi lượt quay</label>
+                                <input id="admin-spin-cost" type="number" placeholder="Nhập số tiền" class="w-full p-3 rounded-lg bg-secondary border border-color focus:outline-none focus:ring-2 ring-accent">
+                            </div>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-md font-bold text-primary">Cấu hình Vật phẩm Quay (Tối đa 8)</h3>
+                                <button id="admin-add-prize-btn" class="p-2 bg-success text-white font-bold rounded-md hover:bg-green-600 text-sm flex items-center gap-2">
+                                    <i class="fas fa-plus"></i> Thêm vật phẩm
+                                </button>
+                            </div>
+                            <div id="admin-lucky-wheel-prizes-list" class="space-y-4"></div>
+                            <button id="save-lucky-wheel-btn" class="w-full mt-6 p-2 bg-accent text-on-accent font-bold rounded-md hover:bg-accent-hover">Lưu Cấu Hình</button>
                         </div>
                     </div>
                 </div>
             </main>
             
-            <footer id="bottom-nav" class="bg-secondary w-full grid grid-cols-5 text-center py-3 app-shadow sticky bottom-0">
+            <footer id="bottom-nav" class="bg-secondary w-full grid grid-cols-4 text-center py-3 app-shadow sticky bottom-0">
                 <button data-tab="home-tab" class="nav-btn flex flex-col items-center text-secondary active"><i class="fas fa-home text-xl"></i><span class="text-xs" data-translate-key="home">Home</span></button>
-                <button data-tab="missions-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-tasks text-xl"></i><span class="text-xs">Nhiệm vụ</span></button>
-                <button data-tab="gifts-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-gift text-xl"></i><span class="text-xs">Quà</span></button>
                 <button data-tab="history-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-history text-xl"></i><span class="text-xs" data-translate-key="history">History</span></button>
-                <button data-tab="settings-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-cog text-xl"></i><span class="text-xs" data-translate-key="settings">Settings</span></button>
-                <button data-tab="admin-tab" id="nav-admin-btn" class="nav-btn flex-col items-center text-secondary hidden"><i class="fas fa-user-shield text-xl"></i><span class="text-xs" data-translate-key="admin">Admin</span></button>
+                <button data-tab="lucky-wheel-tab" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-compact-disc text-xl"></i><span class="text-xs">Vòng Quay</span></button>
+                <button id="more-nav-btn" data-tab="more-menu" class="nav-btn flex flex-col items-center text-secondary"><i class="fas fa-bars text-xl"></i><span class="text-xs">Thêm</span></button>
             </footer>
         </div>
     </div>
+    
+    <div id="more-menu-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-end justify-center p-4">
+        <div class="bg-secondary p-5 rounded-t-lg w-full max-w-md app-shadow flex flex-col space-y-2 animate-slide-up">
+            <h3 class="font-bold text-lg text-primary mb-2 text-center">Menu</h3>
+            <button data-tab="missions-tab" class="more-menu-btn flex items-center gap-4 w-full text-left p-3 rounded-lg text-primary font-semibold transition-colors hover:bg-tertiary">
+                <i class="fas fa-tasks text-xl w-6 text-center text-accent"></i>
+                <span>Nhiệm vụ</span>
+            </button>
+            <button data-tab="gifts-tab" class="more-menu-btn flex items-center gap-4 w-full text-left p-3 rounded-lg text-primary font-semibold transition-colors hover:bg-tertiary">
+                <i class="fas fa-gift text-xl w-6 text-center text-accent"></i>
+                <span>Cửa hàng quà tặng</span>
+            </button>
+            <button data-tab="settings-tab" class="more-menu-btn flex items-center gap-4 w-full text-left p-3 rounded-lg text-primary font-semibold transition-colors hover:bg-tertiary">
+                <i class="fas fa-cog text-xl w-6 text-center text-accent"></i>
+                <span data-translate-key="settings">Settings</span>
+            </button>
+            <button data-tab="admin-tab" id="more-menu-admin-btn" class="more-menu-btn hidden items-center gap-4 w-full text-left p-3 rounded-lg text-primary font-semibold transition-colors hover:bg-tertiary">
+                <i class="fas fa-user-shield text-xl w-6 text-center text-accent"></i>
+                <span data-translate-key="admin">Admin</span>
+            </button>
+            <button class="modal-close-btn w-full mt-4 p-2 bg-tertiary text-primary rounded-md">Đóng</button>
+        </div>
+    </div>
+
 
    <div id="notification-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
     <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow flex flex-col">
@@ -334,6 +392,16 @@
     </div>
 </div>
 
+    <div id="prize-won-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
+        <div class="bg-secondary p-6 rounded-lg w-full max-w-xs app-shadow text-center">
+            <h3 class="font-bold text-lg mb-4 text-primary">Chúc Mừng!</h3>
+            <img id="prize-won-image" src="" alt="Phần thưởng" class="w-24 h-24 mx-auto object-cover rounded-lg mb-4">
+            <p class="text-secondary mb-1">Bạn đã trúng</p>
+            <p id="prize-won-name" class="font-bold text-accent text-xl mb-4"></p>
+            <button class="modal-close-btn w-full p-2 bg-accent text-on-accent font-bold rounded-md">Tuyệt vời!</button>
+        </div>
+    </div>
+    
     <div id="edit-deposit-code-modal" class="modal-overlay hidden fixed inset-0 bg-black bg-opacity-70 z-40 items-center justify-center p-4">
         <div class="bg-secondary p-5 rounded-lg w-full max-w-sm app-shadow">
             <h3 class="font-bold text-lg mb-4 text-primary" data-translate-key="editDepositCode">Edit Deposit Code</h3>
