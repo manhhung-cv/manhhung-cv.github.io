@@ -26,12 +26,11 @@ let currentLanguage = 'vi';
 // --- STATE & DOM ---
 let currentUser = null, currentUserData = null, unsubscribeUser = null, pinPromiseResolver = null;
 let isBalanceVisible = true;
-let currentGiftSortOrder = 'newest'; // 'newest', 'price_asc', 'price_desc'
+let currentGiftSortOrder = 'newest';
 const loadingOverlay = document.getElementById('loading-overlay');
 const allViews = document.querySelectorAll('#login-view, #register-view, #app-view');
 const allTabs = document.querySelectorAll('.app-tab');
 const navButtons = document.querySelectorAll('.nav-btn');
-const bottomNav = document.getElementById('bottom-nav');
 const pinInput = document.getElementById('pin-input');
 const pinDots = document.querySelectorAll('.pin-dot');
 const toastMessage = document.getElementById('toast-message');
@@ -48,17 +47,9 @@ const showTab = (tabId) => {
     allTabs.forEach(t => t.style.display = 'none');
     document.getElementById(tabId).style.display = 'block';
     
-    const mainNavButton = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
-    navButtons.forEach(b => b.classList.remove('active'));
-
-    if (mainNavButton) {
-        mainNavButton.classList.add('active');
-    } else {
-        const moreMenuTabs = ['missions-tab', 'gifts-tab', 'settings-tab', 'admin-tab'];
-        if (moreMenuTabs.includes(tabId)) {
-            document.getElementById('more-nav-btn').classList.add('active');
-        }
-    }
+    navButtons.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
 };
 
 const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
@@ -97,7 +88,6 @@ const isSameMonth = (d1, d2) => {
     return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth();
 };
 
-
 function getTranslatedString(key, options = {}) {
     let str = translations[currentLanguage][key] || key;
     for (const placeholder in options) { str = str.replace(`{${placeholder}}`, options[placeholder]); }
@@ -121,35 +111,15 @@ function applyLanguage(lang) {
 document.getElementById('show-register-btn').addEventListener('click', () => showView('register-view'));
 document.getElementById('show-login-btn-bottom').addEventListener('click', () => showView('login-view'));
 document.getElementById('back-to-login-btn').addEventListener('click', () => showView('login-view'));
-navButtons.forEach(btn => btn.addEventListener('click', () => {
-    if (btn.dataset.tab !== 'more-menu') {
-        showTab(btn.dataset.tab);
-    }
-}));
+navButtons.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; }));
 document.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => { btn.closest('.modal-overlay').style.display = 'none'; }));
 document.querySelectorAll('.action-btn').forEach(btn => btn.addEventListener('click', () => document.getElementById(`${btn.dataset.action}-modal`).style.display = 'flex'));
 document.querySelectorAll('.lang-switcher button').forEach(button => button.addEventListener('click', () => applyLanguage(button.dataset.lang)));
 
-// --- More Menu Logic ---
-const moreNavBtn = document.getElementById('more-nav-btn');
-const moreMenuModal = document.getElementById('more-menu-modal');
-
-moreNavBtn.addEventListener('click', () => {
-    moreMenuModal.style.display = 'flex';
-});
-
-document.querySelectorAll('.more-menu-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const tabId = btn.dataset.tab;
-        showTab(tabId);
-        moreMenuModal.style.display = 'none';
-    });
-});
-
-
 // --- AUTHENTICATION ---
 onAuthStateChanged(auth, (user) => {
+    const adminNavBtn = document.getElementById('admin-nav-btn');
     if (user) {
         currentUser = user;
         if (unsubscribeUser) unsubscribeUser();
@@ -167,7 +137,6 @@ onAuthStateChanged(auth, (user) => {
                 fetchGiftApprovalHistory(user.uid);
                 setupMissionsTab();
                 setupGiftsTab();
-                setupLuckyWheel();
                 fetchNotifications(user.uid);
             } else { handleLogout(); }
         });
@@ -175,14 +144,15 @@ onAuthStateChanged(auth, (user) => {
         showTab('home-tab');
         
         if (user.email === ADMIN_EMAIL) {
-            document.getElementById('more-menu-admin-btn').style.display = 'flex';
+            adminNavBtn.classList.remove('hidden');
             setupAdminDashboard();
         } else {
-            document.getElementById('more-menu-admin-btn').style.display = 'none';
+            adminNavBtn.classList.add('hidden');
         }
 
     } else {
         currentUser = null; currentUserData = null; if (unsubscribeUser) unsubscribeUser();
+        adminNavBtn.classList.add('hidden');
         showView('login-view');
     }
     hideLoading();
@@ -229,7 +199,7 @@ document.getElementById('register-btn').addEventListener('click', async () => {
                 createdAt: serverTimestamp(), 
                 fcmToken: null, 
                 lastFreeSpin: null,
-                spinTurns: 1 // Initial free spin
+                spinTurns: 1
             });
             transaction.set(usernameClaimRef, { uid: newUser.uid });
             transaction.set(accNumClaimRef, { uid: newUser.uid });
@@ -277,10 +247,10 @@ function updateBalanceVisibility() {
     const visibilityBtnIcon = document.querySelector('#balance-visibility-btn i');
     if (isBalanceVisible) {
         balanceEl.textContent = formatCurrency(currentUserData.balance);
-        visibilityBtnIcon.className = 'fas fa-eye text-secondary';
+        visibilityBtnIcon.className = 'fas fa-eye opacity-80';
     } else {
         balanceEl.textContent = '•••••••• ₫';
-        visibilityBtnIcon.className = 'fas fa-eye-slash text-secondary';
+        visibilityBtnIcon.className = 'fas fa-eye-slash opacity-80';
     }
 }
 document.getElementById('balance-visibility-btn').addEventListener('click', () => { isBalanceVisible = !isBalanceVisible; updateBalanceVisibility(); });
@@ -396,8 +366,6 @@ function renderTransactions(transactions, container, userId, emptyMessage) {
             case 'transfer': if (tx.fromUserId === userId) { amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('toUser', {user: tx.toUserName}); detail = tx.content; icon = 'fa-paper-plane'; } else { amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('fromUser', {user: tx.fromUserName}); detail = tx.content; icon = 'fa-arrow-down'; } break;
             case 'deposit': amountClass = 'text-success'; amountSign = '+'; title = getTranslatedString('depositTitle'); detail = tx.content; icon = 'fa-wallet'; break;
             case 'withdraw': amountClass = 'text-danger'; amountSign = '-'; title = getTranslatedString('withdrawTitle'); detail = getTranslatedString('approvedByAdmin'); icon = 'fa-money-bill-wave'; break;
-            case 'lucky_spin_win': amountClass = 'text-success'; amountSign = '+'; title = "Thưởng Vòng Quay"; detail = `Trúng thưởng ${tx.prizeName}`; icon = 'fa-compact-disc'; break;
-            case 'lucky_spin_cost': amountClass = 'text-danger'; amountSign = '-'; title = "Phí Vòng Quay"; detail = `Trả phí để quay`; icon = 'fa-compact-disc'; break;
             default: amountClass = 'text-primary'; amountSign = ''; title = getTranslatedString('unknownTransaction'); detail = tx.content || ''; icon = 'fa-question-circle';
         }
         return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg"><div class="flex items-center gap-4"><div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full ${amountClass}"><i class="fas ${icon}"></i></div><div><p class="font-semibold text-sm text-primary">${title}</p><p class="text-xs text-secondary">${detail}</p><p class="text-xs text-secondary">${time}</p></div></div><p class="font-bold text-sm ${amountClass}">${amountSign}${formatCurrency(tx.amount)}</p></div>`;
@@ -411,7 +379,6 @@ let unsubscribeAdminUsers = null;
 let unsubscribeAdminGifts = null;
 let unsubscribeAdminMissions = null;
 let unsubscribeAdminGiftRequests = null;
-let unsubscribeAdminLuckyWheel = null;
 
 function setupAdminDashboard() {
     if (unsubscribeAdmin) unsubscribeAdmin();
@@ -475,7 +442,6 @@ function setupAdminDashboard() {
     setupAdminGiftsList();
     setupAdminMissionsList();
     setupAdminGiftRequests();
-    setupAdminLuckyWheel();
 }
 
 function setupAdminDepositCodesList() {
@@ -575,7 +541,6 @@ function setupAdminGiftRequests() {
 
         const docs = snapshot.docs;
         
-        // Separate pending from processed
         const pendingDocs = docs.filter(doc => doc.data().status === 'pending');
         const processedDocs = docs.filter(doc => doc.data().status !== 'pending')
                                   .sort((a, b) => (b.data().processedAt?.toMillis() || 0) - (a.data().processedAt?.toMillis() || 0));
@@ -637,7 +602,6 @@ function setupAdminGiftRequests() {
     });
 }
 
-
 document.getElementById('withdrawal-requests').addEventListener('click', (e) => {
     const reviewButton = e.target.closest('.admin-review-btn');
     if (reviewButton) {
@@ -680,7 +644,6 @@ document.getElementById('confirm-delete-request-btn').addEventListener('click', 
         hideLoading();
     }
 });
-
 
 document.getElementById('confirm-approve-btn').addEventListener('click', async () => {
     const modal = document.getElementById('review-withdrawal-modal');
@@ -749,6 +712,17 @@ document.getElementById('confirm-reject-btn').addEventListener('click', async ()
     }
 });
 
+// Event listeners for showing "Create" modals in Admin Panel
+document.getElementById('show-create-code-modal-btn').addEventListener('click', () => {
+    document.getElementById('create-code-modal').style.display = 'flex';
+});
+document.getElementById('show-create-gift-modal-btn').addEventListener('click', () => {
+    document.getElementById('create-gift-modal').style.display = 'flex';
+});
+document.getElementById('show-create-mission-modal-btn').addEventListener('click', () => {
+    document.getElementById('create-mission-modal').style.display = 'flex';
+});
+
 document.getElementById('create-deposit-code-btn').addEventListener('click', async () => {
     const codeInput = document.getElementById('admin-deposit-code');
     const amountInput = document.getElementById('admin-deposit-amount');
@@ -768,6 +742,7 @@ document.getElementById('create-deposit-code-btn').addEventListener('click', asy
         });
         showToast(getTranslatedString('codeCreated', { code, amount: formatCurrency(amount) }));
         codeInput.value = ''; amountInput.value = '';
+        document.getElementById('create-code-modal').style.display = 'none';
     } catch (error) { showToast(error.message, true); } finally { hideLoading(); }
 });
 
@@ -903,10 +878,20 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
     }
 });
 
-
 // --- SETTINGS FUNCTIONS ---
-document.querySelectorAll('.theme-switcher').forEach(button => { button.addEventListener('click', () => { const theme = button.dataset.theme; document.body.className = `${theme} app-font`; localStorage.setItem('bankingAppTheme', theme); }); });
-function applySavedTheme() { const savedTheme = localStorage.getItem('bankingAppTheme') || 'theme-binance'; document.body.className = `${savedTheme} app-font`; }
+document.querySelectorAll('.theme-switcher').forEach(button => {
+    button.addEventListener('click', () => {
+        const theme = button.dataset.theme;
+        document.body.classList.remove('light', 'dark');
+        document.body.classList.add(theme);
+        localStorage.setItem('diamondBankTheme', theme);
+    });
+});
+function applySavedTheme() {
+    const savedTheme = localStorage.getItem('diamondBankTheme') || 'dark';
+    document.body.classList.remove('light', 'dark');
+    document.body.classList.add(savedTheme);
+}
 document.getElementById('copy-acc-btn').addEventListener('click', () => { if(currentUserData?.accountNumber) { navigator.clipboard.writeText(currentUserData.accountNumber).then(() => showToast(getTranslatedString('accNumCopied'))).catch(() => showToast(getTranslatedString('copyFailed'), true)); } });
 
 document.getElementById('update-name-btn').addEventListener('click', async () => {
@@ -974,7 +959,6 @@ document.getElementById('update-account-info-btn').addEventListener('click', asy
     }
 });
 
-
 document.getElementById('show-change-pin-modal-btn').addEventListener('click', () => { document.getElementById('change-pin-modal').style.display = 'flex'; });
 document.getElementById('confirm-pin-change-btn').addEventListener('click', async () => {
     const currentPin = document.getElementById('current-pin').value;
@@ -1003,16 +987,9 @@ function setupGiftsTab() {
     const giftsList = document.getElementById('gifts-list');
     let q;
     switch (currentGiftSortOrder) {
-        case 'price_asc':
-            q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('price', 'asc'));
-            break;
-        case 'price_desc':
-            q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('price', 'desc'));
-            break;
-        case 'newest':
-        default:
-            q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('createdAt', 'desc'));
-            break;
+        case 'price_asc': q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('price', 'asc')); break;
+        case 'price_desc': q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('price', 'desc')); break;
+        default: q = query(collection(db, `artifacts/${appId}/gifts`), orderBy('createdAt', 'desc')); break;
     }
 
     unsubscribeGifts = onSnapshot(q, (snapshot) => {
@@ -1040,15 +1017,11 @@ function setupGiftsTab() {
 document.getElementById('gift-filters').addEventListener('click', (e) => {
     const filterBtn = e.target.closest('.gift-filter-btn');
     if (!filterBtn) return;
-    
     currentGiftSortOrder = filterBtn.dataset.sort;
-    
     document.querySelectorAll('.gift-filter-btn').forEach(btn => btn.classList.remove('active'));
     filterBtn.classList.add('active');
-
     setupGiftsTab();
 });
-
 
 document.getElementById('gifts-list').addEventListener('click', async (e) => {
     const redeemBtn = e.target.closest('.redeem-gift-btn');
@@ -1057,9 +1030,7 @@ document.getElementById('gifts-list').addEventListener('click', async (e) => {
     const giftId = redeemBtn.dataset.id;
     const price = parseInt(redeemBtn.dataset.price);
 
-    if (currentUserData.balance < price) {
-        return showToast("Số dư không đủ để đổi quà này.", true);
-    }
+    if (currentUserData.balance < price) { return showToast("Số dư không đủ để đổi quà này.", true); }
     if (!await verifyPin()) return;
 
     showLoading();
@@ -1067,34 +1038,19 @@ document.getElementById('gifts-list').addEventListener('click', async (e) => {
         const giftRequestsRef = collection(db, `artifacts/${appId}/giftRequests`);
         const q = query(giftRequestsRef, where('userId', '==', currentUser.uid), where('giftId', '==', giftId), where('status', '==', 'pending'));
         const existingRequest = await getDocs(q);
-        if (!existingRequest.empty) {
-            throw new Error("Bạn đã gửi yêu cầu cho quà này rồi.");
-        }
+        if (!existingRequest.empty) { throw new Error("Bạn đã gửi yêu cầu cho quà này rồi."); }
 
         const giftDoc = await getDoc(doc(db, `artifacts/${appId}/gifts`, giftId));
-        if (!giftDoc.exists() || giftDoc.data().quantity <= 0) {
-             throw new Error("Quà đã hết hoặc không tồn tại.");
-        }
+        if (!giftDoc.exists() || giftDoc.data().quantity <= 0) { throw new Error("Quà đã hết hoặc không tồn tại."); }
 
         await addDoc(giftRequestsRef, {
-            userId: currentUser.uid,
-            userDisplayName: currentUserData.displayName,
-            giftId: giftId,
-            giftName: giftDoc.data().name,
-            price: giftDoc.data().price,
-            status: 'pending',
-            createdAt: serverTimestamp()
+            userId: currentUser.uid, userDisplayName: currentUserData.displayName, giftId: giftId,
+            giftName: giftDoc.data().name, price: giftDoc.data().price, status: 'pending', createdAt: serverTimestamp()
         });
-
         showToast("Yêu cầu đổi quà đã được gửi đi, vui lòng chờ Admin duyệt.");
         redeemBtn.textContent = "Đang chờ duyệt";
         redeemBtn.disabled = true;
-
-    } catch (error) {
-        showToast(error.message, true);
-    } finally {
-        hideLoading();
-    }
+    } catch (error) { showToast(error.message, true); } finally { hideLoading(); }
 });
 
 function setupAdminGiftsList() {
@@ -1125,16 +1081,13 @@ document.getElementById('create-gift-btn').addEventListener('click', async () =>
     const price = parseInt(document.getElementById('admin-gift-price').value);
     const imageUrl = document.getElementById('admin-gift-image').value;
     const quantity = parseInt(document.getElementById('admin-gift-quantity').value);
-    if (!name || !price || !imageUrl || !quantity) return showToast("Vui lòng điền đầy đủ thông tin quà.", true);
+    if (!name || !price || !imageUrl || isNaN(quantity)) return showToast("Vui lòng điền đầy đủ thông tin quà.", true);
     await addDoc(collection(db, `artifacts/${appId}/gifts`), { 
-        name, 
-        price, 
-        imageUrl, 
-        quantity, 
-        createdAt: serverTimestamp() 
+        name, price, imageUrl, quantity, createdAt: serverTimestamp() 
     });
     showToast("Tạo quà thành công.");
     ['admin-gift-name', 'admin-gift-price', 'admin-gift-image', 'admin-gift-quantity'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('create-gift-modal').style.display = 'none';
 });
 
 document.getElementById('admin-gifts-list').addEventListener('click', async (e) => {
@@ -1146,7 +1099,6 @@ document.getElementById('admin-gifts-list').addEventListener('click', async (e) 
             showToast("Xóa quà thành công.");
         }
     }
-
     const editBtn = e.target.closest('.admin-edit-gift-btn');
     if (editBtn) {
         const modal = document.getElementById('edit-gift-modal');
@@ -1175,7 +1127,6 @@ function setupMissionsTab() {
             const userParticipant = mission.participants.find(p => p.uid === currentUser.uid);
             
             let statusBadge = '';
-
             if (isExpired) {
                 statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-danger">Hết hạn</div>`;
             } else if (userParticipant) {
@@ -1193,14 +1144,12 @@ function setupMissionsTab() {
                         if (mission.repeat === 'daily' && !isSameDay(lastCompletedDate, now)) canRedo = true;
                         if (mission.repeat === 'weekly' && !isSameWeek(lastCompletedDate, now)) canRedo = true;
                         if (mission.repeat === 'monthly' && !isSameMonth(lastCompletedDate, now)) canRedo = true;
-
                         if (!canRedo) {
                              statusBadge = `<div class="absolute top-2 right-2 text-xs font-bold text-white px-2 py-1 rounded-full bg-success">Đã hoàn thành</div>`;
                         }
                     }
                 }
             }
-            
             return `<div data-id="${doc.id}" class="mission-item bg-secondary p-4 rounded-lg app-shadow relative cursor-pointer hover:bg-tertiary">
                         ${statusBadge}
                         <div class="flex items-center gap-4">
@@ -1238,22 +1187,18 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
 
         const acceptBtn = document.getElementById('accept-mission-btn');
         const submitBtn = document.getElementById('submit-mission-btn');
-        
         acceptBtn.classList.add('hidden');
         submitBtn.classList.add('hidden');
 
         const userParticipant = mission.participants.find(p => p.uid === currentUser.uid);
         const now = new Date();
         const isExpired = mission.deadline && new Date(mission.deadline) < now;
-
         let isEligible = false;
         if (!isExpired) {
-            if (!userParticipant) {
-                isEligible = true;
-            } else {
-                if (userParticipant.status === 'pending') {
-                    submitBtn.classList.remove('hidden');
-                } else if (userParticipant.status === 'approved' || userParticipant.status === 'rejected') {
+            if (!userParticipant) { isEligible = true; } 
+            else {
+                if (userParticipant.status === 'pending') { submitBtn.classList.remove('hidden'); } 
+                else if (userParticipant.status === 'approved' || userParticipant.status === 'rejected') {
                     if (userParticipant.lastCompleted) {
                         const lastCompletedDate = userParticipant.lastCompleted.toDate();
                         if (mission.repeat === 'daily' && !isSameDay(lastCompletedDate, now)) isEligible = true;
@@ -1263,11 +1208,9 @@ document.getElementById('missions-list').addEventListener('click', async (e) => 
                 }
             }
         }
-        
         if (isEligible && mission.participants.filter(p => p.status !== 'approved' && p.status !== 'rejected').length < mission.limit) {
             acceptBtn.classList.remove('hidden');
         }
-        
         modal.style.display = 'flex';
     }
 });
@@ -1281,28 +1224,15 @@ document.getElementById('accept-mission-btn').addEventListener('click', async (e
             const missionDoc = await transaction.get(missionRef);
             if (!missionDoc.exists()) throw new Error("Nhiệm vụ không tồn tại.");
             let participants = missionDoc.data().participants || [];
-            if (participants.some(p => p.uid === currentUser.uid)) {
-                 throw new Error("Bạn đã nhận nhiệm vụ này rồi.");
-            }
-            if (participants.length >= missionDoc.data().limit) {
-                throw new Error("Nhiệm vụ đã đủ số người nhận.");
-            }
-            participants.push({
-                uid: currentUser.uid,
-                name: currentUserData.displayName,
-                status: 'pending' // Initial status
-            });
+            if (participants.some(p => p.uid === currentUser.uid)) { throw new Error("Bạn đã nhận nhiệm vụ này rồi."); }
+            if (participants.length >= missionDoc.data().limit) { throw new Error("Nhiệm vụ đã đủ số người nhận."); }
+            participants.push({ uid: currentUser.uid, name: currentUserData.displayName, status: 'pending' });
             transaction.update(missionRef, { participants: participants });
         });
         showToast("Nhận nhiệm vụ thành công!");
         document.getElementById('mission-details-modal').style.display = 'none';
-    } catch(error) {
-        showToast(error.message, true);
-    } finally {
-        hideLoading();
-    }
+    } catch(error) { showToast(error.message, true); } finally { hideLoading(); }
 });
-
 
 document.getElementById('submit-mission-btn').addEventListener('click', async (e) => {
     const missionId = e.target.closest('.modal-overlay').dataset.id;
@@ -1320,11 +1250,7 @@ document.getElementById('submit-mission-btn').addEventListener('click', async (e
         });
         showToast("Nộp nhiệm vụ thành công, vui lòng chờ admin duyệt.");
         document.getElementById('mission-details-modal').style.display = 'none';
-    } catch(error) {
-        showToast(error.message, true);
-    } finally {
-        hideLoading();
-    }
+    } catch(error) { showToast(error.message, true); } finally { hideLoading(); }
 });
 
 function setupAdminMissionsList() {
@@ -1423,39 +1349,28 @@ document.getElementById('mission-submissions-list').addEventListener('click', as
                 
                 let participants = missionData.participants;
                 const userIndex = participants.findIndex(p => p.uid === userId);
-                
                 if (userIndex === -1) return;
-
                 participants[userIndex].lastCompleted = new Date();
 
                 if (action === 'approve') {
                     const userRef = doc(db, `artifacts/${appId}/users`, userId);
                     const userDoc = await transaction.get(userRef);
-
                     participants[userIndex].status = 'approved';
                     transaction.update(missionRef, { participants });
                     transaction.update(userRef, { balance: userDoc.data().balance + missionData.reward });
-
                     const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/missionHistory`));
                     transaction.set(historyRef, {
-                        missionName: missionData.name,
-                        reward: missionData.reward,
-                        completedAt: serverTimestamp(),
-                        status: 'approved'
+                        missionName: missionData.name, reward: missionData.reward,
+                        completedAt: serverTimestamp(), status: 'approved'
                     });
-
-                } else { // reject
+                } else {
                      participants[userIndex].status = 'rejected';
                      transaction.update(missionRef, { participants });
                 }
             });
             showToast(`Đã ${action === 'approve' ? 'duyệt' : 'từ chối'} nhiệm vụ.`);
             actionBtn.closest('.flex').innerHTML = `<p class="text-secondary text-sm">Đã ${action === 'approve' ? 'duyệt' : 'từ chối'}</p>`;
-        } catch(error) {
-            showToast(error.message, true);
-        } finally {
-            hideLoading();
-        }
+        } catch(error) { showToast(error.message, true); } finally { hideLoading(); }
     }
 });
 
@@ -1470,18 +1385,14 @@ document.getElementById('create-mission-btn').addEventListener('click', async ()
     if (!name || !reward || !description || !limit) return showToast("Vui lòng điền đầy đủ thông tin nhiệm vụ.", true);
 
     await addDoc(collection(db, `artifacts/${appId}/missions`), { 
-        name, 
-        reward, 
-        deadline: deadline || null,
-        repeat,
-        description, 
-        limit, 
-        participants: [] 
+        name, reward, deadline: deadline || null,
+        repeat, description, limit, participants: [] 
     });
 
     showToast("Tạo nhiệm vụ thành công.");
     ['admin-mission-name', 'admin-mission-reward', 'admin-mission-deadline', 'admin-mission-description', 'admin-mission-limit'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('admin-mission-repeat').value = 'none';
+    document.getElementById('create-mission-modal').style.display = 'none';
 });
 
 // --- HISTORY FUNCTIONS ---
@@ -1506,24 +1417,12 @@ async function fetchGiftHistory(userId) {
         historyContainer.innerHTML = snapshot.docs.map(doc => {
             const history = doc.data();
             const time = history.redeemedAt ? history.redeemedAt.toDate().toLocaleDateString('vi-VN') : '...';
-            
-            let statusBadge = '';
-            let amountClass = 'text-danger';
-            let amountSign = '-';
-            
+            let statusBadge = ''; let amountClass = 'text-danger'; let amountSign = '-';
             switch(history.status) {
-                case 'approved':
-                    statusBadge = `<span class="text-xs text-success">(Thành công)</span>`;
-                    break;
-                case 'rejected':
-                    statusBadge = `<span class="text-xs text-danger">(Bị từ chối)</span>`;
-                    amountClass = 'text-secondary';
-                    amountSign = ''; 
-                    break;
-                default: 
-                     statusBadge = `<span class="text-xs text-success">(Thành công)</span>`;
+                case 'approved': statusBadge = `<span class="text-xs text-success">(Thành công)</span>`; break;
+                case 'rejected': statusBadge = `<span class="text-xs text-danger">(Bị từ chối)</span>`; amountClass = 'text-secondary'; amountSign = ''; break;
+                default: statusBadge = `<span class="text-xs text-success">(Thành công)</span>`;
             }
-
             return `<div class="flex items-center justify-between p-3 bg-secondary rounded-lg">
                         <div class="flex items-center gap-4">
                             <div class="w-10 h-10 flex items-center justify-center bg-tertiary rounded-full text-accent"><i class="fas fa-gift"></i></div>
@@ -1594,7 +1493,6 @@ async function fetchGiftApprovalHistory(userId) {
     });
 }
 
-
 // --- ADMIN TAB SWITCHING LOGIC ---
 document.querySelectorAll('.admin-tab-btn').forEach(button => {
     button.addEventListener('click', () => {
@@ -1611,17 +1509,14 @@ document.getElementById('admin-tab-content').addEventListener('click', (e) => {
     if (reviewButton) {
         const requestData = JSON.parse(reviewButton.dataset.request);
         const modal = document.getElementById('review-gift-modal');
-        
         modal.dataset.requestId = requestData.id;
         modal.dataset.giftId = requestData.giftId;
         modal.dataset.userId = requestData.userId;
         modal.dataset.price = requestData.price;
-        
         document.getElementById('review-gift-user-name').textContent = requestData.userDisplayName;
         document.getElementById('review-gift-name').textContent = requestData.giftName;
         document.getElementById('review-gift-price').textContent = formatCurrency(requestData.price);
         document.getElementById('review-gift-admin-message').value = '';
-
         modal.style.display = 'flex';
     }
 });
@@ -1639,12 +1534,7 @@ document.getElementById('confirm-approve-gift-btn').addEventListener('click', as
             const requestRef = doc(db, `artifacts/${appId}/giftRequests`, requestId);
             const userRef = doc(db, `artifacts/${appId}/users`, userId);
             const giftRef = doc(db, `artifacts/${appId}/gifts`, giftId);
-
-            const [requestDoc, userDoc, giftDoc] = await Promise.all([
-                transaction.get(requestRef),
-                transaction.get(userRef),
-                transaction.get(giftRef)
-            ]);
+            const [requestDoc, userDoc, giftDoc] = await Promise.all([transaction.get(requestRef), transaction.get(userRef), transaction.get(giftRef)]);
 
             if (!requestDoc.exists() || requestDoc.data().status !== 'pending') throw new Error("Yêu cầu không hợp lệ hoặc đã được xử lý.");
             if (!userDoc.exists() || userDoc.data().balance < price) throw new Error("Số dư người dùng không đủ.");
@@ -1656,20 +1546,13 @@ document.getElementById('confirm-approve-gift-btn').addEventListener('click', as
             
             const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/giftHistory`));
             transaction.set(historyRef, {
-                giftName: giftDoc.data().name,
-                price: price,
-                redeemedAt: serverTimestamp(),
-                status: 'approved'
+                giftName: giftDoc.data().name, price: price,
+                redeemedAt: serverTimestamp(), status: 'approved'
             });
         });
         showToast("Đã duyệt yêu cầu đổi quà.");
         createNotification(userId, `Yêu cầu đổi quà "${document.getElementById('review-gift-name').textContent}" của bạn đã được duyệt.`, 'gift_approved');
-    } catch (error) {
-        showToast(error.message, true);
-    } finally {
-        modal.style.display = 'none';
-        hideLoading();
-    }
+    } catch (error) { showToast(error.message, true); } finally { modal.style.display = 'none'; hideLoading(); }
 });
 
 document.getElementById('confirm-reject-gift-btn').addEventListener('click', async (e) => {
@@ -1682,59 +1565,38 @@ document.getElementById('confirm-reject-gift-btn').addEventListener('click', asy
     try {
         const requestRef = doc(db, `artifacts/${appId}/giftRequests`, requestId);
         await updateDoc(requestRef, { status: 'rejected', adminMessage: reason, processedAt: serverTimestamp() });
-        
         const giftDoc = await getDoc(doc(db, `artifacts/${appId}/gifts`, modal.dataset.giftId));
         const historyRef = doc(collection(db, `artifacts/${appId}/users/${userId}/giftHistory`));
         await setDoc(historyRef, {
-                giftName: giftDoc.data().name,
-                price: parseInt(modal.dataset.price),
-                redeemedAt: serverTimestamp(),
-                status: 'rejected',
-                reason: reason
-            });
-
+            giftName: giftDoc.data().name, price: parseInt(modal.dataset.price),
+            redeemedAt: serverTimestamp(), status: 'rejected', reason: reason
+        });
         showToast("Đã từ chối yêu cầu.");
         createNotification(userId, `Yêu cầu đổi quà của bạn đã bị từ chối. Lý do: ${reason}`, 'gift_rejected');
-    } catch (error) {
-        showToast(error.message, true);
-    } finally {
-        modal.style.display = 'none';
-        hideLoading();
-    }
+    } catch (error) { showToast(error.message, true); } finally { modal.style.display = 'none'; hideLoading(); }
 });
 
 document.getElementById('confirm-edit-gift-btn').addEventListener('click', async () => {
     const modal = document.getElementById('edit-gift-modal');
     const giftId = document.getElementById('edit-gift-id').value;
-    
     const updatedData = {
         name: document.getElementById('edit-gift-name').value,
         price: parseInt(document.getElementById('edit-gift-price').value),
         imageUrl: document.getElementById('edit-gift-image').value,
         quantity: parseInt(document.getElementById('edit-gift-quantity').value)
     };
-
-    if (!updatedData.name || !updatedData.price || !updatedData.imageUrl || isNaN(updatedData.quantity)) {
-        return showToast("Vui lòng điền đầy đủ thông tin.", true);
-    }
-
+    if (!updatedData.name || !updatedData.price || !updatedData.imageUrl || isNaN(updatedData.quantity)) { return showToast("Vui lòng điền đầy đủ thông tin.", true); }
     showLoading();
     try {
         const giftRef = doc(db, `artifacts/${appId}/gifts`, giftId);
         await updateDoc(giftRef, updatedData);
         showToast("Cập nhật quà thành công!");
-    } catch (error) {
-        showToast("Lỗi khi cập nhật: " + error.message, true);
-    } finally {
-        modal.style.display = 'none';
-        hideLoading();
-    }
+    } catch (error) { showToast("Lỗi khi cập nhật: " + error.message, true); } finally { modal.style.display = 'none'; hideLoading(); }
 });
 
 document.getElementById('confirm-edit-mission-btn').addEventListener('click', async () => {
     const modal = document.getElementById('edit-mission-modal');
     const missionId = document.getElementById('edit-mission-id').value;
-
     const updatedData = {
         name: document.getElementById('edit-mission-name').value,
         reward: parseInt(document.getElementById('edit-mission-reward').value),
@@ -1743,391 +1605,47 @@ document.getElementById('confirm-edit-mission-btn').addEventListener('click', as
         description: document.getElementById('edit-mission-description').value,
         limit: parseInt(document.getElementById('edit-mission-limit').value)
     };
-    
-    if (!updatedData.name || !updatedData.reward || !updatedData.description || !updatedData.limit) {
-        return showToast("Vui lòng điền đầy đủ thông tin.", true);
-    }
-
+    if (!updatedData.name || !updatedData.reward || !updatedData.description || !updatedData.limit) { return showToast("Vui lòng điền đầy đủ thông tin.", true); }
     showLoading();
     try {
         const missionRef = doc(db, `artifacts/${appId}/missions`, missionId);
         await updateDoc(missionRef, updatedData);
         showToast("Cập nhật nhiệm vụ thành công!");
-    } catch (error) {
-        showToast("Lỗi khi cập nhật: " + error.message, true);
-    } finally {
-        modal.style.display = 'none';
-        hideLoading();
-    }
+    } catch (error) { showToast("Lỗi khi cập nhật: " + error.message, true); } finally { modal.style.display = 'none'; hideLoading(); }
 });
-
-// --- LUCKY WHEEL FUNCTIONS (NEW & IMPROVED) ---
-
-async function setupLuckyWheel() {
-    const grid = document.getElementById('lucky-wheel-grid');
-    const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
-    const configSnap = await getDoc(configRef);
-
-    let prizes = [];
-    let spinCost = 0;
-    if (configSnap.exists()) {
-        prizes = configSnap.data().prizes || [];
-        spinCost = configSnap.data().spinCost || 0;
-    }
-    
-    document.getElementById('spin-cost-display').textContent = formatCurrency(spinCost);
-    document.getElementById('spin-turns-display').textContent = currentUserData.spinTurns || 0;
-
-    grid.innerHTML = '';
-    for (let i = 0; i < 9; i++) {
-        if (i === 4) { // Center button
-            const hasFreeSpins = (currentUserData.spinTurns || 0) > 0;
-            const buttonText = hasFreeSpins ? 'QUAY (Miễn phí)' : `QUAY (${formatCurrency(spinCost)})`;
-            grid.innerHTML += `<button id="spin-btn" class="lucky-wheel-item">
-                                 <i class="fas fa-play text-4xl"></i>
-                                 <span style="font-size: 10px;">${buttonText}</span>
-                               </button>`;
-        } else {
-            const prizeIndex = i < 4 ? i : i - 1;
-            const prize = prizes[prizeIndex] || { name: '...', imageUrl: 'https://via.placeholder.com/50' };
-            grid.innerHTML += `<div class="lucky-wheel-item" data-index="${prizeIndex}">
-                                 <img src="${prize.imageUrl}" alt="${prize.name}">
-                                 <span>${prize.name}</span>
-                               </div>`;
-        }
-    }
-
-    const spinBtn = document.getElementById('spin-btn');
-    if (spinBtn) {
-        spinBtn.addEventListener('click', handleSpin);
-    }
-}
-
-async function handleSpin() {
-    const spinBtn = document.getElementById('spin-btn');
-    spinBtn.disabled = true;
-    let wonPrize; 
-
-    try {
-        const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
-        const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
-
-        await runTransaction(db, async (transaction) => {
-            // --- READS FIRST ---
-            const configDoc = await transaction.get(configRef);
-            const userDoc = await transaction.get(userRef);
-
-            if (!configDoc.exists()) throw new Error("Vòng quay chưa được cấu hình.");
-            if (!userDoc.exists()) throw new Error("Không tìm thấy người dùng.");
-
-            // --- LOGIC & CHECKS (NO WRITES YET) ---
-            const spinCost = configDoc.data().spinCost || 0;
-            const userData = userDoc.data();
-            const currentTurns = userData.spinTurns || 0;
-            const currentBalance = userData.balance;
-
-            const hasFreeSpins = currentTurns > 0;
-            if (!hasFreeSpins && currentBalance < spinCost) {
-                throw new Error("Số dư không đủ để quay.");
-            }
-
-            let prizes = (configDoc.data().prizes || []).map((p, index) => ({...p, originalIndex: index}));
-            prizes = prizes.filter(p => p.quantity > 0);
-            if (prizes.length === 0) throw new Error("Tất cả phần thưởng đã hết.");
-
-            const totalRate = prizes.reduce((sum, p) => sum + p.winRate, 0);
-            if (totalRate <= 0) throw new Error("Vòng quay chưa được cấu hình tỉ lệ trúng.");
-
-            let random = Math.random() * totalRate;
-            for (const prize of prizes) {
-                random -= prize.winRate;
-                if (random <= 0) {
-                    wonPrize = prize;
-                    break;
-                }
-            }
-            if (!wonPrize) wonPrize = prizes[prizes.length - 1];
-
-            // --- WRITES LAST ---
-            if (hasFreeSpins) {
-                transaction.update(userRef, { spinTurns: currentTurns - 1 });
-            } else {
-                transaction.update(userRef, { balance: currentBalance - spinCost });
-                const costTransactionRef = doc(collection(db, `artifacts/${appId}/transactions`));
-                transaction.set(costTransactionRef, {
-                    type: 'lucky_spin_cost',
-                    userId: currentUser.uid,
-                    userName: userData.displayName,
-                    amount: spinCost,
-                    content: `Trả phí vòng quay`,
-                    timestamp: serverTimestamp()
-                });
-            }
-
-            const prizesArray = configDoc.data().prizes;
-            if (prizesArray[wonPrize.originalIndex].quantity > 0) {
-                prizesArray[wonPrize.originalIndex].quantity -= 1;
-            }
-            transaction.update(configRef, { prizes: prizesArray });
-
-            if (wonPrize.rewardType === 'money') {
-                transaction.update(userRef, { balance: userDoc.data().balance + wonPrize.rewardValue });
-                 const prizeTransactionRef = doc(collection(db, `artifacts/${appId}/transactions`));
-                transaction.set(prizeTransactionRef, {
-                    type: 'lucky_spin_win',
-                    userId: currentUser.uid,
-                    userName: userData.displayName,
-                    amount: wonPrize.rewardValue,
-                    prizeName: wonPrize.name,
-                    content: `Trúng thưởng vòng quay`,
-                    timestamp: serverTimestamp()
-                });
-            } else if (wonPrize.rewardType === 'spin_turn') {
-                transaction.update(userRef, { spinTurns: (userDoc.data().spinTurns || 0) + wonPrize.rewardValue });
-            } else { 
-                const requestRef = doc(collection(db, `artifacts/${appId}/itemPrizeRequests`));
-                transaction.set(requestRef, {
-                    userId: currentUser.uid,
-                    userDisplayName: userData.displayName,
-                    prizeName: wonPrize.name,
-                    prizeImageUrl: wonPrize.imageUrl,
-                    createdAt: serverTimestamp(),
-                    status: 'pending'
-                });
-            }
-        });
-        
-        await animateSpin(wonPrize.originalIndex);
-
-        document.getElementById('prize-won-image').src = wonPrize.imageUrl;
-        let prizeText = wonPrize.name;
-        if (wonPrize.rewardType === 'money') {
-            prizeText = formatCurrency(wonPrize.rewardValue);
-        } else if (wonPrize.rewardType === 'spin_turn') {
-            prizeText = `${wonPrize.rewardValue} Lượt Quay`;
-        }
-        document.getElementById('prize-won-name').textContent = prizeText;
-        document.getElementById('prize-won-modal').style.display = 'flex';
-
-    } catch (error) {
-        showToast(error.message, true);
-    } finally {
-        spinBtn.disabled = false;
-    }
-}
-
-function animateSpin(winningIndex) {
-    return new Promise(resolve => {
-        const clockwiseOrder = [0, 1, 2, 4, 7, 6, 5, 3]; 
-        const gridItems = document.querySelectorAll('.lucky-wheel-item:not(#spin-btn)');
-        
-        const sortedItems = Array.from(gridItems).sort((a, b) => {
-            const indexA = clockwiseOrder.indexOf(parseInt(a.dataset.index));
-            const indexB = clockwiseOrder.indexOf(parseInt(b.dataset.index));
-            return indexA - indexB;
-        });
-
-        const winningPosition = clockwiseOrder.indexOf(winningIndex);
-        if (winningPosition === -1) {
-            console.error("Winning index not found in clockwise order.");
-            resolve();
-            return;
-        }
-
-        const rounds = 3;
-        const totalSteps = (rounds * sortedItems.length) + winningPosition;
-        let currentStep = 0;
-        let delay = 80;
-
-        function spin() {
-            sortedItems.forEach(item => item.classList.remove('highlight'));
-            
-            const currentItem = sortedItems[currentStep % sortedItems.length];
-            currentItem.classList.add('highlight');
-
-            if (currentStep > totalSteps - 6) {
-                delay += 50;
-            }
-
-            currentStep++;
-
-            if (currentStep > totalSteps) {
-                setTimeout(resolve, 500);
-            } else {
-                setTimeout(spin, delay);
-            }
-        }
-        spin();
-    });
-}
-
-function renderPrizeConfigItem(prize = {}, index) {
-    const prizeData = prize || {};
-    return `
-        <div class="bg-tertiary p-4 rounded-lg prize-config-item" data-index="${index}">
-            <div class="flex justify-between items-center mb-3">
-                <h4 class="font-bold text-primary">Vật phẩm ${index + 1}</h4>
-                <button class="remove-prize-btn p-2 text-danger hover:bg-secondary rounded-md"><i class="fas fa-trash"></i></button>
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <input type="text" placeholder="Tên vật phẩm" class="admin-lw-name w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.name || ''}">
-                <input type="text" placeholder="URL Hình ảnh" class="admin-lw-image w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.imageUrl || ''}">
-                <input type="number" placeholder="Tỉ lệ trúng (VD: 10)" class="admin-lw-rate w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.winRate || 0}">
-                <input type="number" placeholder="Số lượng" class="admin-lw-quantity w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.quantity || 0}">
-                <select class="admin-lw-type w-full p-2 rounded bg-secondary border border-color text-primary focus:ring-2 ring-accent">
-                    <option value="money" ${prizeData.rewardType === 'money' ? 'selected' : ''}>Phần thưởng là Tiền</option>
-                    <option value="item" ${prizeData.rewardType === 'item' ? 'selected' : ''}>Phần thưởng là Vật phẩm</option>
-                    <option value="spin_turn" ${prizeData.rewardType === 'spin_turn' ? 'selected' : ''}>Phần thưởng là Lượt quay</option>
-                </select>
-                <input type="number" placeholder="Giá trị (tiền/lượt quay)" class="admin-lw-value w-full p-2 rounded bg-secondary border border-color focus:ring-2 ring-accent" value="${prizeData.rewardValue || 0}">
-            </div>
-        </div>
-    `;
-}
-
-function updateAddPrizeButtonState() {
-    const prizesCount = document.querySelectorAll('.prize-config-item').length;
-    const addBtn = document.getElementById('admin-add-prize-btn');
-    addBtn.disabled = prizesCount >= 8;
-    addBtn.classList.toggle('opacity-50', addBtn.disabled);
-    addBtn.classList.toggle('cursor-not-allowed', addBtn.disabled);
-}
-
-function setupAdminLuckyWheel() {
-    if (unsubscribeAdminLuckyWheel) unsubscribeAdminLuckyWheel();
-    const container = document.getElementById('admin-lucky-wheel-prizes-list');
-    const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
-    
-    unsubscribeAdminLuckyWheel = onSnapshot(configRef, (docSnap) => {
-        let prizes = [];
-        let spinCost = 0;
-        if (docSnap.exists()) {
-            prizes = docSnap.data().prizes || [];
-            spinCost = docSnap.data().spinCost || 0;
-        }
-        
-        document.getElementById('admin-spin-cost').value = spinCost;
-        container.innerHTML = '';
-        prizes.forEach((prize, index) => {
-            container.insertAdjacentHTML('beforeend', renderPrizeConfigItem(prize, index));
-        });
-        updateAddPrizeButtonState();
-    });
-}
-
-document.getElementById('admin-add-prize-btn').addEventListener('click', () => {
-    const container = document.getElementById('admin-lucky-wheel-prizes-list');
-    const newIndex = container.children.length;
-    if (newIndex < 8) {
-        container.insertAdjacentHTML('beforeend', renderPrizeConfigItem({}, newIndex));
-        updateAddPrizeButtonState();
-    }
-});
-
-document.getElementById('admin-lucky-wheel-prizes-list').addEventListener('click', (e) => {
-    const removeBtn = e.target.closest('.remove-prize-btn');
-    if (removeBtn) {
-        removeBtn.closest('.prize-config-item').remove();
-        document.querySelectorAll('.prize-config-item').forEach((item, index) => {
-            item.dataset.index = index;
-            item.querySelector('h4').textContent = `Vật phẩm ${index + 1}`;
-        });
-        updateAddPrizeButtonState();
-    }
-});
-
-document.getElementById('save-lucky-wheel-btn').addEventListener('click', async () => {
-    const prizeElements = document.querySelectorAll('#admin-lucky-wheel-prizes-list .prize-config-item');
-    const newPrizes = [];
-    let isValid = true;
-    
-    prizeElements.forEach(el => {
-        const name = el.querySelector('.admin-lw-name').value;
-        const imageUrl = el.querySelector('.admin-lw-image').value;
-        const winRate = parseInt(el.querySelector('.admin-lw-rate').value) || 0;
-        const quantity = parseInt(el.querySelector('.admin-lw-quantity').value) || 0;
-        const rewardType = el.querySelector('.admin-lw-type').value;
-        const rewardValue = parseInt(el.querySelector('.admin-lw-value').value) || 0;
-
-        if(!name || !imageUrl) {
-            isValid = false;
-        }
-        
-        newPrizes.push({ name, imageUrl, winRate, quantity, rewardType, rewardValue });
-    });
-
-    if(!isValid) return showToast("Tên và URL ảnh của mỗi vật phẩm không được để trống.", true);
-    if (newPrizes.length > 8) return showToast("Chỉ có thể cấu hình tối đa 8 vật phẩm.", true);
-
-    const spinCost = parseInt(document.getElementById('admin-spin-cost').value) || 0;
-
-    showLoading();
-    try {
-        const configRef = doc(db, `artifacts/${appId}/luckyWheel`, 'config');
-        await setDoc(configRef, { prizes: newPrizes, spinCost: spinCost }, { merge: true }); 
-        showToast("Đã lưu cấu hình vòng quay!");
-    } catch (error) {
-        showToast(error.message, true);
-    } finally {
-        hideLoading();
-    }
-});
-
 
 // --- NOTIFICATION FUNCTIONS ---
 async function requestNotificationPermission(userId) {
-    console.log('Requesting notification permission...');
     try {
         const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-        console.log('Service Worker registered successfully:', registration);
-
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
-            console.log('Notification permission granted.');
-            
             const currentToken = await getToken(messaging, {
                 vapidKey: 'BJ51Oxb2nQB80aDI3Ay94cB2rn1HTmEcZmEAk0bSP22TMog1TaShilyJhY2vVCAQm8uUolXGib4p7XX-5m6oMRE',
                 serviceWorkerRegistration: registration
             });
-
             if (currentToken) {
-                console.log('FCM Token:', currentToken);
-                const userDocRef = doc(db, `artifacts/${appId}/users`, userId);
-                await updateDoc(userDocRef, { fcmToken: currentToken });
-                console.log('FCM Token saved to Firestore.');
+                await updateDoc(doc(db, `artifacts/${appId}/users`, userId), { fcmToken: currentToken });
                 displayFcmToken(); 
-            } else {
-                console.log('No registration token available.');
             }
-        } else {
-            console.log('Unable to get permission to notify.');
         }
-    } catch (err) {
-        console.error('An error occurred while retrieving token. ', err);
-    }
+    } catch (err) { console.error('An error occurred while retrieving token. ', err); }
 }
 
 onMessage(messaging, (payload) => {
-    console.log('Message received. ', payload);
     showToast(payload.notification.title + ": " + payload.notification.body);
     if(currentUser) {
         createNotification(currentUser.uid, payload.notification.body, payload.data.type || 'general');
     }
 });
 
-
 async function createNotification(userId, message, type) {
     if (!userId) return;
     try {
         await addDoc(collection(db, `artifacts/${appId}/users/${userId}/notifications`), {
-            message,
-            type,
-            isRead: false,
-            createdAt: serverTimestamp()
+            message, type, isRead: false, createdAt: serverTimestamp()
         });
-    } catch (error) {
-        console.error("Error creating notification: ", error);
-    }
+    } catch (error) { console.error("Error creating notification: ", error); }
 }
 
 function fetchNotifications(userId) {
@@ -2135,8 +1653,7 @@ function fetchNotifications(userId) {
     onSnapshot(q, (snapshot) => {
         const notifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderNotifications(notifications);
-        const hasUnread = notifications.some(n => !n.isRead);
-        notificationDot.classList.toggle('active', hasUnread);
+        notificationDot.classList.toggle('active', notifications.some(n => !n.isRead));
     });
 }
 
@@ -2162,13 +1679,8 @@ async function displayFcmToken() {
     const tokenInput = document.getElementById('fcm-token-display');
     try {
         const currentToken = await getToken(messaging, { vapidKey: 'BJ51Oxb2nQB80aDI3Ay94cB2rn1HTmEcZmEAk0bSP22TMog1TaShilyJhY2vVCAQm8uUolXGib4p7XX-5m6oMRE' });
-        if (currentToken) {
-            tokenInput.value = currentToken;
-        } else {
-            tokenInput.value = 'Chưa đăng ký nhận thông báo.';
-        }
+        tokenInput.value = currentToken ? currentToken : 'Chưa đăng ký nhận thông báo.';
     } catch (err) {
-        console.log('Could not get token to display.', err);
         tokenInput.value = 'Không thể lấy token.';
     }
 }
@@ -2176,13 +1688,8 @@ async function displayFcmToken() {
 async function deleteNotification(notificationId) {
     if (!currentUser || !notificationId) return;
     try {
-        const notifRef = doc(db, `artifacts/${appId}/users/${currentUser.uid}/notifications`, notificationId);
-        await deleteDoc(notifRef);
-        console.log('Notification deleted:', notificationId);
-    } catch (error) {
-        console.error("Error deleting notification: ", error);
-        showToast("Lỗi khi xóa thông báo.", true);
-    }
+        await deleteDoc(doc(db, `artifacts/${appId}/users/${currentUser.uid}/notifications`, notificationId));
+    } catch (error) { showToast("Lỗi khi xóa thông báo.", true); }
 }
 
 async function deleteAllNotifications() {
@@ -2190,42 +1697,27 @@ async function deleteAllNotifications() {
     showLoading();
     try {
         const notificationsRef = collection(db, `artifacts/${appId}/users/${currentUser.uid}/notifications`);
-        const q = query(notificationsRef);
-        const snapshot = await getDocs(q);
-        
+        const snapshot = await getDocs(query(notificationsRef));
         const batch = writeBatch(db);
-        snapshot.docs.forEach(doc => {
-            batch.delete(doc.ref);
-        });
+        snapshot.docs.forEach(d => batch.delete(d.ref));
         await batch.commit();
-        
         showToast("Đã xóa tất cả thông báo.");
-    } catch (error) {
-        console.error("Error deleting all notifications: ", error);
-        showToast("Lỗi khi xóa tất cả thông báo.", true);
-    } finally {
-        hideLoading();
-    }
+    } catch (error) { showToast("Lỗi khi xóa tất cả thông báo.", true); } 
+    finally { hideLoading(); }
 }
 
 async function unsubscribeFromNotifications() {
     if(!currentUser) return;
     try {
-        const deleted = await deleteToken(messaging);
-        if (deleted) {
-            const userDocRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
-            await updateDoc(userDocRef, { fcmToken: null });
+        if (await deleteToken(messaging)) {
+            await updateDoc(doc(db, `artifacts/${appId}/users`, currentUser.uid), { fcmToken: null });
             document.getElementById('fcm-token-display').value = 'Đã hủy đăng ký.';
             showToast("Đã hủy nhận thông báo thành công.");
         } else {
             showToast("Không tìm thấy token để hủy.", true);
         }
-    } catch(err) {
-        console.error('Error while unsubscribing: ', err);
-        showToast("Lỗi khi hủy đăng ký.", true);
-    }
+    } catch(err) { showToast("Lỗi khi hủy đăng ký.", true); }
 }
-
 
 // --- APP INITIALIZATION ---
 function initializeAppLogic() {
@@ -2234,55 +1726,39 @@ function initializeAppLogic() {
     applyLanguage(savedLang);
     applySavedTheme();
     document.querySelector('.history-sub-tab-btn[data-history-type="transactions"]').classList.add('active');
+    document.querySelector('.admin-tab-btn[data-admin-tab="overview"]').classList.add('active');
 }
 
 // --- EVENT LISTENERS FOR NOTIFICATION MODAL ---
 document.getElementById('notification-list').addEventListener('click', (e) => {
-    const deleteBtn = e.target.closest('.delete-notification-btn');
-    if (deleteBtn) {
-        const notifId = deleteBtn.dataset.id;
-        deleteNotification(notifId);
+    if (e.target.closest('.delete-notification-btn')) {
+        deleteNotification(e.target.closest('.delete-notification-btn').dataset.id);
     }
 });
-
 document.getElementById('delete-all-notifications-btn').addEventListener('click', deleteAllNotifications);
-
 document.getElementById('subscribe-notifications-btn').addEventListener('click', () => {
-    if(currentUser) {
-        requestNotificationPermission(currentUser.uid);
-        showToast("Đang yêu cầu quyền...");
-    }
+    if(currentUser) { requestNotificationPermission(currentUser.uid); showToast("Đang yêu cầu quyền..."); }
 });
-
 document.getElementById('unsubscribe-notifications-btn').addEventListener('click', unsubscribeFromNotifications);
-
 document.getElementById('copy-fcm-token-btn').addEventListener('click', () => {
     const tokenInput = document.getElementById('fcm-token-display');
     if (tokenInput.value && !tokenInput.value.includes('Chưa đăng ký')) {
-        navigator.clipboard.writeText(tokenInput.value).then(() => {
-            showToast("Đã sao chép token!");
-        }).catch(err => {
-            showToast("Sao chép thất bại.", true);
-        });
+        navigator.clipboard.writeText(tokenInput.value).then(() => showToast("Đã sao chép token!")).catch(() => showToast("Sao chép thất bại.", true));
     }
 });
 
 notificationBtn.addEventListener('click', () => {
     document.getElementById('notification-modal').style.display = 'flex';
     displayFcmToken();
-    
     if(currentUser) {
         const q = query(collection(db, `artifacts/${appId}/users/${currentUser.uid}/notifications`), where('isRead', '==', false));
         getDocs(q).then(snapshot => {
             if (snapshot.empty) return;
             const batch = writeBatch(db);
-            snapshot.forEach(doc => {
-                batch.update(doc.ref, { isRead: true });
-            });
+            snapshot.forEach(d => batch.update(d.ref, { isRead: true }));
             batch.commit();
         });
     }
 });
-
 
 initializeAppLogic();
