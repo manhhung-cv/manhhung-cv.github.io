@@ -24,6 +24,7 @@ const translations = {
 let currentLanguage = 'vi';
 
 // --- STATE & DOM ---
+let currentPin = ''; // Biến lưu trữ PIN nhập từ bàn phím ảo
 let currentUser = null, currentUserData = null, unsubscribeUser = null, pinPromiseResolver = null;
 let isBalanceVisible = true;
 let currentGiftSortOrder = 'newest';
@@ -31,7 +32,7 @@ const loadingOverlay = document.getElementById('loading-overlay');
 const allViews = document.querySelectorAll('#login-view, #register-view, #app-view');
 const allTabs = document.querySelectorAll('.app-tab');
 const navButtons = document.querySelectorAll('.nav-btn');
-const pinInput = document.getElementById('pin-input');
+const pinInput = document.getElementById('pin-input'); // Vẫn giữ để tham chiếu, dù không tương tác
 const pinDots = document.querySelectorAll('.pin-dot');
 const toastMessage = document.getElementById('toast-message');
 const toast = document.getElementById('toast-notification');
@@ -46,7 +47,6 @@ const showView = (viewId) => { allViews.forEach(v => v.style.display = 'none'); 
 const showTab = (tabId) => {
     allTabs.forEach(t => t.style.display = 'none');
     document.getElementById(tabId).style.display = 'block';
-    
     navButtons.forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabId);
     });
@@ -107,6 +107,59 @@ function applyLanguage(lang) {
     if (currentUserData) { fetchAllTransactions(currentUser.uid); }
 }
 
+
+// --- START: LOGIC CHO BÀN PHÍM SỐ ẢO ---
+function updatePinDotsDisplay() {
+    pinDots.forEach((dot, i) => {
+        dot.classList.toggle('active', i < currentPin.length);
+    });
+}
+
+document.getElementById('pin-keypad').addEventListener('click', (e) => {
+    const keyButton = e.target.closest('button.pin-key');
+    if (!keyButton) return;
+    const key = keyButton.dataset.key;
+
+    if (key === 'backspace') {
+        currentPin = currentPin.slice(0, -1);
+    } else if (currentPin.length < 6) {
+        currentPin += key;
+    }
+    updatePinDotsDisplay();
+
+    if (currentPin.length === 6) {
+        setTimeout(() => {
+            if (pinPromiseResolver) {
+                pinPromiseResolver(currentPin);
+                pinPromiseResolver = null;
+            }
+            document.getElementById('pin-modal').style.display = 'none';
+            currentPin = '';
+            updatePinDotsDisplay();
+        }, 200);
+    }
+});
+
+function requestPin() {
+    return new Promise((resolve) => {
+        pinPromiseResolver = resolve;
+        currentPin = '';
+        updatePinDotsDisplay();
+        document.getElementById('pin-modal').style.display = 'flex';
+    });
+}
+async function verifyPin() {
+    const enteredPin = await requestPin();
+    if(!enteredPin) return false;
+    const enteredPinHash = await hashPin(enteredPin);
+    if (enteredPinHash !== currentUserData.pinHash) {
+        showToast(getTranslatedString('pinIncorrect'), true);
+        return false;
+    }
+    return true;
+}
+// --- END: LOGIC CHO BÀN PHÍM SỐ ẢO ---
+
 // --- EVENT LISTENERS ---
 document.getElementById('show-register-btn').addEventListener('click', () => showView('register-view'));
 document.getElementById('show-login-btn-bottom').addEventListener('click', () => showView('login-view'));
@@ -115,20 +168,15 @@ navButtons.forEach(btn => btn.addEventListener('click', () => showTab(btn.datase
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; }));
 document.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => { btn.closest('.modal-overlay').style.display = 'none'; }));
 
-// START: CẬP NHẬT ĐỂ TỰ ĐỘNG FOCUS KHI MỞ MODAL CHUYỂN TIỀN
 document.querySelectorAll('.action-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         const action = btn.dataset.action;
         document.getElementById(`${action}-modal`).style.display = 'flex';
-        // Thêm logic focus cho modal chuyển tiền, hoạt động tốt hơn trên iOS
         if (action === 'transfer') {
-            setTimeout(() => {
-                document.getElementById('transfer-amount').focus();
-            }, 100); // Một khoảng trễ nhỏ để đảm bảo modal hiển thị trước khi focus
+            setTimeout(() => { document.getElementById('transfer-amount').focus(); }, 100);
         }
     });
 });
-// END: CẬP NHẬT
 
 document.querySelectorAll('.lang-switcher button').forEach(button => button.addEventListener('click', () => applyLanguage(button.dataset.lang)));
 
@@ -270,11 +318,7 @@ function updateBalanceVisibility() {
 }
 document.getElementById('balance-visibility-btn').addEventListener('click', () => { isBalanceVisible = !isBalanceVisible; updateBalanceVisibility(); });
 
-pinInput.addEventListener('input', () => { const val = pinInput.value; pinDots.forEach((dot, i) => dot.classList.toggle('active', i < val.length)); if (val.length === 6) { if (pinPromiseResolver) pinPromiseResolver(val); pinPromiseResolver = null; document.getElementById('pin-modal').style.display = 'none'; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); } });
-function requestPin() { return new Promise((resolve) => { pinPromiseResolver = resolve; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); document.getElementById('pin-modal').style.display = 'flex'; setTimeout(() => pinInput.focus(), 100); }); }
-async function verifyPin() { const enteredPin = await requestPin(); if(!enteredPin) return false; const enteredPinHash = await hashPin(enteredPin); if (enteredPinHash !== currentUserData.pinHash) { showToast(getTranslatedString('pinIncorrect'), true); return false; } return true; }
-
-// START: CÁC HÀM XỬ LÝ BILL GIAO DỊCH
+// --- START: HÀM XỬ LÝ BILL GIAO DỊCH
 function showTransactionBill(data) {
     const modal = document.getElementById('bill-modal');
     document.getElementById('bill-amount').textContent = formatCurrency(data.amount);
@@ -287,7 +331,6 @@ function showTransactionBill(data) {
     modal.style.display = 'flex';
 }
 
-// Event listeners cho các nút trên bill
 document.getElementById('save-bill-btn').addEventListener('click', () => {
     const billContent = document.getElementById('bill-content');
     html2canvas(billContent).then(canvas => {
@@ -318,8 +361,7 @@ document.getElementById('copy-bill-btn').addEventListener('click', () => {
         });
     });
 });
-// END: CÁC HÀM XỬ LÝ BILL GIAO DỊCH
-
+// --- END: HÀM XỬ LÝ BILL GIAO DỊCH
 
 document.getElementById('confirm-transfer-btn').addEventListener('click', async () => {
     const recipientIdentifier = document.getElementById('transfer-recipient').value.trim();
@@ -352,7 +394,6 @@ document.getElementById('confirm-transfer-btn').addEventListener('click', async 
             transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {type: 'transfer', fromUserId: currentUser.uid, fromUserName: currentUserData.displayName,toUserId: recipientData.id, toUserName: recipientData.displayName,amount, content, timestamp: serverTimestamp()});
         });
         
-        // CẬP NHẬT: Gọi hàm hiển thị bill sau khi thành công
         showTransactionBill({
             amount: amount,
             senderName: currentUserData.displayName,
@@ -954,14 +995,14 @@ document.getElementById('admin-confirm-edit-user-btn').addEventListener('click',
 document.querySelectorAll('.theme-switcher').forEach(button => {
     button.addEventListener('click', () => {
         const theme = button.dataset.theme;
-        document.body.classList.remove('light', 'dark');
+        document.body.classList.remove('light', 'dark', 'luxury');
         document.body.classList.add(theme);
-        localStorage.setItem('diamondBankTheme', theme);
+        localStorage.setItem('famiBankTheme', theme);
     });
 });
 function applySavedTheme() {
-    const savedTheme = localStorage.getItem('diamondBankTheme') || 'dark';
-    document.body.classList.remove('light', 'dark');
+    const savedTheme = localStorage.getItem('famiBankTheme') || 'dark';
+    document.body.classList.remove('light', 'dark', 'luxury');
     document.body.classList.add(savedTheme);
 }
 document.getElementById('copy-acc-btn').addEventListener('click', () => { if(currentUserData?.accountNumber) { navigator.clipboard.writeText(currentUserData.accountNumber).then(() => showToast(getTranslatedString('accNumCopied'))).catch(() => showToast(getTranslatedString('copyFailed'), true)); } });
