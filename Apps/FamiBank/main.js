@@ -114,7 +114,22 @@ document.getElementById('back-to-login-btn').addEventListener('click', () => sho
 navButtons.forEach(btn => btn.addEventListener('click', () => showTab(btn.dataset.tab)));
 document.querySelectorAll('.modal-overlay').forEach(modal => modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; }));
 document.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => { btn.closest('.modal-overlay').style.display = 'none'; }));
-document.querySelectorAll('.action-btn').forEach(btn => btn.addEventListener('click', () => document.getElementById(`${btn.dataset.action}-modal`).style.display = 'flex'));
+
+// START: CẬP NHẬT ĐỂ TỰ ĐỘNG FOCUS KHI MỞ MODAL CHUYỂN TIỀN
+document.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        document.getElementById(`${action}-modal`).style.display = 'flex';
+        // Thêm logic focus cho modal chuyển tiền, hoạt động tốt hơn trên iOS
+        if (action === 'transfer') {
+            setTimeout(() => {
+                document.getElementById('transfer-amount').focus();
+            }, 100); // Một khoảng trễ nhỏ để đảm bảo modal hiển thị trước khi focus
+        }
+    });
+});
+// END: CẬP NHẬT
+
 document.querySelectorAll('.lang-switcher button').forEach(button => button.addEventListener('click', () => applyLanguage(button.dataset.lang)));
 
 // --- AUTHENTICATION ---
@@ -259,6 +274,53 @@ pinInput.addEventListener('input', () => { const val = pinInput.value; pinDots.f
 function requestPin() { return new Promise((resolve) => { pinPromiseResolver = resolve; pinInput.value = ''; pinDots.forEach(dot => dot.classList.remove('active')); document.getElementById('pin-modal').style.display = 'flex'; setTimeout(() => pinInput.focus(), 100); }); }
 async function verifyPin() { const enteredPin = await requestPin(); if(!enteredPin) return false; const enteredPinHash = await hashPin(enteredPin); if (enteredPinHash !== currentUserData.pinHash) { showToast(getTranslatedString('pinIncorrect'), true); return false; } return true; }
 
+// START: CÁC HÀM XỬ LÝ BILL GIAO DỊCH
+function showTransactionBill(data) {
+    const modal = document.getElementById('bill-modal');
+    document.getElementById('bill-amount').textContent = formatCurrency(data.amount);
+    document.getElementById('bill-sender-name').textContent = data.senderName;
+    document.getElementById('bill-sender-acc').textContent = data.senderAcc;
+    document.getElementById('bill-recipient-name').textContent = data.recipientName;
+    document.getElementById('bill-recipient-acc').textContent = data.recipientAcc;
+    document.getElementById('bill-content-text').textContent = data.content;
+    document.getElementById('bill-timestamp').textContent = new Date().toLocaleString('vi-VN');
+    modal.style.display = 'flex';
+}
+
+// Event listeners cho các nút trên bill
+document.getElementById('save-bill-btn').addEventListener('click', () => {
+    const billContent = document.getElementById('bill-content');
+    html2canvas(billContent).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `FamiBank_Bill_${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showToast("Đã lưu ảnh vào thư mục tải về.");
+    });
+});
+
+document.getElementById('copy-bill-btn').addEventListener('click', () => {
+    const billContent = document.getElementById('bill-content');
+    html2canvas(billContent).then(canvas => {
+        canvas.toBlob(blob => {
+            if (navigator.clipboard && navigator.clipboard.write) {
+                navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]).then(() => {
+                    showToast("Đã sao chép ảnh vào clipboard!");
+                }).catch(err => {
+                    console.error("Lỗi sao chép: ", err);
+                    showToast("Sao chép thất bại, trình duyệt không hỗ trợ.", true);
+                });
+            } else {
+                showToast("Tính năng sao chép ảnh không được trình duyệt hỗ trợ.", true);
+            }
+        });
+    });
+});
+// END: CÁC HÀM XỬ LÝ BILL GIAO DỊCH
+
+
 document.getElementById('confirm-transfer-btn').addEventListener('click', async () => {
     const recipientIdentifier = document.getElementById('transfer-recipient').value.trim();
     const amount = parseInt(document.getElementById('transfer-amount').value);
@@ -289,7 +351,17 @@ document.getElementById('confirm-transfer-btn').addEventListener('click', async 
             transaction.update(recipientDoc.ref, { balance: recipientData.balance + amount });
             transaction.set(doc(collection(db, `artifacts/${appId}/transactions`)), {type: 'transfer', fromUserId: currentUser.uid, fromUserName: currentUserData.displayName,toUserId: recipientData.id, toUserName: recipientData.displayName,amount, content, timestamp: serverTimestamp()});
         });
-        showToast(getTranslatedString('transferSuccess', { amount: formatCurrency(amount), recipient: recipientData.displayName }));
+        
+        // CẬP NHẬT: Gọi hàm hiển thị bill sau khi thành công
+        showTransactionBill({
+            amount: amount,
+            senderName: currentUserData.displayName,
+            senderAcc: currentUserData.accountNumber,
+            recipientName: recipientData.displayName,
+            recipientAcc: recipientData.accountNumber,
+            content: content
+        });
+        
         ['transfer-recipient', 'transfer-amount', 'transfer-content'].forEach(id => document.getElementById(id).value = '');
         createNotification(recipientData.id, `Bạn đã nhận được ${formatCurrency(amount)} từ ${currentUserData.displayName}.`, 'transfer');
 
