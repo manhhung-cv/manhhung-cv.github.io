@@ -1,6 +1,6 @@
 // Chạy toàn bộ mã sau khi cây DOM đã được tải hoàn toàn
 document.addEventListener('DOMContentLoaded', function() {
-    
+
     // Hàm này sử dụng Clipboard API hiện đại để sao chép văn bản.
     // Nó trả về một Promise, hữu ích cho việc xử lý thành công hoặc thất bại.
     function copyToClipboard(text) {
@@ -127,9 +127,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const codeToCopy = elements.generatedCodeEl.textContent.trim();
 
             if (!codeToCopy) {
-                // Đã xóa showToast() vì nó không được định nghĩa.
-                // Bạn có thể thêm một thư viện thông báo toast và gọi nó ở đây nếu muốn.
-                console.log('Không có mã để sao chép!');
+                showToast('info', 'Thông báo', 'Không có mã để sao chép!');
                 return;
             };
 
@@ -138,10 +136,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             copyToClipboard(codeToCopy); // Gọi hàm đã định nghĩa ở trên
 
-            button.innerHTML = '<i class="fas fa-check mr-1"></i> Đã chép!';
+            button.innerHTML = '<i class="fa-solid fa-check"></i> Đã chép!';
             button.disabled = true;
-            setTimeout(() => { 
-                button.innerHTML = originalText; 
+            setTimeout(() => {
+                button.innerHTML = originalText;
                 button.disabled = false;
             }, 2000);
         });
@@ -151,13 +149,13 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.urlToCheckInput.value = url;
             if (!url) {
                 elements.statusMessage.textContent = 'Vui lòng nhập một URL.';
-                elements.statusMessage.style.color = '#dc2626'; // text-red-600
+                elements.statusMessage.style.color = 'var(--danger-text)';
                 return;
             }
             elements.checkUrlButton.disabled = true;
-            elements.checkUrlButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang kiểm tra...';
+            elements.checkUrlButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang kiểm tra...';
             elements.statusMessage.textContent = 'Đang tìm nạp và phân tích cú pháp URL...';
-            elements.statusMessage.style.color = '#2563eb'; // text-blue-600
+            elements.statusMessage.style.color = 'var(--info-text)';
             const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
             try {
                 const response = await fetch(proxyUrl);
@@ -205,18 +203,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 if (foundTags) {
                     elements.statusMessage.textContent = 'Đã tìm thấy và điền các thẻ meta!';
-                    elements.statusMessage.style.color = '#16a34a'; // text-green-600
+                    elements.statusMessage.style.color = 'var(--success-text)';
                 } else {
                     elements.statusMessage.textContent = 'Không tìm thấy thẻ Open Graph nào.';
-                    elements.statusMessage.style.color = '#ca8a04'; // text-yellow-600
+                    elements.statusMessage.style.color = 'var(--warning-text)';
                 }
                 updateAll();
             } catch (error) {
                 elements.statusMessage.textContent = `Lỗi: ${error.message}.`;
-                elements.statusMessage.style.color = '#dc2626'; // text-red-600
+                elements.statusMessage.style.color = 'var(--danger-text)';
             } finally {
                 elements.checkUrlButton.disabled = false;
-                elements.checkUrlButton.innerHTML = '<i class="fas fa-search"></i> Kiểm tra';
+                elements.checkUrlButton.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Kiểm tra';
             }
         });
 

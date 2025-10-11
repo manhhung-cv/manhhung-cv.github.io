@@ -2297,85 +2297,57 @@ var qrcode = function() {
 }));
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Get DOM elements
-    const tabs = document.querySelectorAll('.tab');
-    const panels = document.querySelectorAll('.panel');
-    const generateBtn = document.getElementById('generate-btn');
-    const qrCodeResult = document.getElementById('qrcode-result');
-    const qrCodeContainer = document.getElementById('qrcode-container');
-    const downloadBtn = document.getElementById('download-btn');
-    const errorMessage = document.getElementById('error-message');
-    
-    // --- CẬP NHẬT LOGO ---
-    const logoInput = document.getElementById('logo-input');
-    const logoOptions = document.querySelectorAll('.logo-option');
-    const uploadLabel = document.querySelector('.upload-label');
-    let selectedLogoSrc = null; // Lưu trữ URL của logo được chọn từ thư viện
-    // --- KẾT THÚC CẬP NHẬT LOGO ---
+    const qrCodeTool = document.getElementById('qr-code');
+    if (!qrCodeTool) return;
 
-    const bankSearchInput = document.getElementById('bank-search-input');
-    const bankSuggestions = document.getElementById('bank-suggestions');
+    // --- DOM Elements ---
+    const generateBtn = qrCodeTool.querySelector('#generate-btn');
+    const qrCodeResult = qrCodeTool.querySelector('#qrcode-result');
+    const qrCodeContainer = qrCodeTool.querySelector('#qrcode-container');
+    const downloadBtn = qrCodeTool.querySelector('#download-btn');
+    const errorMessage = qrCodeTool.querySelector('#error-message');
+    const logoInput = qrCodeTool.querySelector('#logo-input');
+    const logoOptions = qrCodeTool.querySelectorAll('.logo-option');
+    const bankSelect = qrCodeTool.querySelector('#bank-select');
+    // Elements mới cho chức năng nhập BIN tùy chỉnh
+    const customBinGroup = qrCodeTool.querySelector('#custom-bin-group');
+    const customBinInput = qrCodeTool.querySelector('#custom-bin-input');
 
-    let activeTab = 'transfer';
-    let bankListData = [];
-    let selectedBankBin = null;
 
-    // --- VietQR Data and Functions (Không thay đổi) ---
-    async function fetchBanks() {
-        try {
-            const response = await fetch('https://api.vietqr.io/v2/banks');
-            const data = await response.json();
-            if (data.code === '00' && data.data) {
-                bankListData = data.data;
-            }
-        } catch (error) {
-            console.error('Failed to fetch banks:', error);
-        }
-    }
+    // --- State ---
+    let selectedLogoSrc = null;
 
-    bankSearchInput.addEventListener('input', () => {
-        const query = bankSearchInput.value.toLowerCase();
-        if (!query) {
-            bankSuggestions.classList.add('hidden');
-            return;
-        }
-        const filteredBanks = bankListData.filter(bank =>
-            bank.shortName.toLowerCase().includes(query) ||
-            bank.name.toLowerCase().includes(query)
-        );
-        displayBankSuggestions(filteredBanks);
-    });
+    // --- Static Bank List ---
+    const popularBanks = [
+        { "bin": "970436", "shortName": "Vietcombank", "name": "Ngân hàng TMCP Ngoại thương Việt Nam" },
+        { "bin": "970407", "shortName": "Techcombank", "name": "Ngân hàng TMCP Kỹ thương Việt Nam" },
+        { "bin": "970415", "shortName": "VietinBank", "name": "Ngân hàng TMCP Công Thương Việt Nam" },
+        { "bin": "970418", "shortName": "BIDV", "name": "Ngân hàng TMCP Đầu tư và Phát triển Việt Nam" },
+        { "bin": "970422", "shortName": "MB Bank", "name": "Ngân hàng TMCP Quân đội" },
+        { "bin": "970405", "shortName": "Agribank", "name": "Ngân hàng Nông nghiệp và Phát triển Nông thôn Việt Nam" },
+        { "bin": "970416", "shortName": "ACB", "name": "Ngân hàng TMCP Á Châu" },
+        { "bin": "970432", "shortName": "VPBank", "name": "Ngân hàng TMCP Việt Nam Thịnh Vượng" },
+        { "bin": "970423", "shortName": "TPBank", "name": "Ngân hàng TMCP Tiên Phong" },
+        { "bin": "970406", "shortName": "Sacombank", "name": "Ngân hàng TMCP Sài Gòn Thương Tín" },
+        { "bin": "970429", "shortName": "HDBank", "name": "Ngân hàng TMCP Phát triển Thành phố Hồ Chí Minh" },
+        { "bin": "970403", "shortName": "VIB", "name": "Ngân hàng TMCP Quốc tế Việt Nam" }
+    ];
 
-    bankSearchInput.addEventListener('focus', () => {
-        if (bankSearchInput.value) {
-            bankSuggestions.classList.remove('hidden');
-        }
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!bankSearchInput.contains(e.target) && !bankSuggestions.contains(e.target)) {
-            bankSuggestions.classList.add('hidden');
-        }
-    });
-
-    function displayBankSuggestions(banks) {
-        bankSuggestions.innerHTML = '';
-        if (banks.length === 0) {
-            bankSuggestions.classList.add('hidden');
-            return;
-        }
-        banks.forEach(bank => {
-            const item = document.createElement('div');
-            item.className = 'suggestion-item';
-            item.innerHTML = `<img src="${bank.logo}" alt="${bank.shortName}" onerror="this.style.display='none'"><span>${bank.shortName} - ${bank.name}</span>`;
-            item.addEventListener('click', () => {
-                bankSearchInput.value = `${bank.shortName} - ${bank.name}`;
-                selectedBankBin = bank.bin;
-                bankSuggestions.classList.add('hidden');
-            });
-            bankSuggestions.appendChild(item);
+    // --- Functions ---
+    function populateBankSelect() {
+        if (!bankSelect) return;
+        bankSelect.innerHTML = '<option value="">-- Chọn ngân hàng --</option>';
+        popularBanks.forEach(bank => {
+            const option = document.createElement('option');
+            option.value = bank.bin;
+            option.textContent = `${bank.shortName} - ${bank.name}`;
+            bankSelect.appendChild(option);
         });
-        bankSuggestions.classList.remove('hidden');
+        // Thêm tùy chọn "Khác"
+        const otherOption = document.createElement('option');
+        otherOption.value = "other";
+        otherOption.textContent = "Khác (Nhập BIN thủ công)";
+        bankSelect.appendChild(otherOption);
     }
 
     const f = (id, value) => {
@@ -2404,98 +2376,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return payload + crc16(payload);
     };
 
-    // Tab switching logic (Không thay đổi)
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            activeTab = tab.getAttribute('data-tab');
-            panels.forEach(panel => {
-                panel.classList.toggle('hidden', panel.id !== `panel-${activeTab}`);
-            });
-            downloadBtn.download = `qrcode_${activeTab}.png`;
-        });
-    });
-
-    // --- LOGIC MỚI: XỬ LÝ CHỌN LOGO ---
-    logoOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            // Nếu click vào nút upload thì không làm gì cả, để label tự xử lý
-            if (option.classList.contains('upload-label')) return;
-
-            // Bỏ chọn tất cả
-            logoOptions.forEach(opt => opt.classList.remove('selected'));
-            
-            // Chọn cái hiện tại
-            option.classList.add('selected');
-            selectedLogoSrc = option.src; // Lưu URL của ảnh đã chọn
-            logoInput.value = ''; // Reset input file để ưu tiên logo đã chọn
-        });
-    });
-    
-    logoInput.addEventListener('change', () => {
-        if (logoInput.files.length > 0) {
-            // Nếu người dùng tải file lên, bỏ chọn tất cả các icon trong thư viện
-            logoOptions.forEach(opt => opt.classList.remove('selected'));
-            uploadLabel.classList.add('selected'); // Đánh dấu là đang dùng file upload
-            selectedLogoSrc = null;
-        }
-    });
-    // --- KẾT THÚC LOGIC CHỌN LOGO ---
-
-    // Generate QR code logic (Cập nhật)
-    generateBtn.addEventListener('click', () => {
-        let qrData = '';
-        let inputValid = true;
-        errorMessage.textContent = ''; 
-
-        switch (activeTab) {
-            case 'transfer':
-                const accountNumber = document.getElementById('account-number-input').value;
-                const amount = document.getElementById('amount-input').value;
-                const info = document.getElementById('info-input').value;
-                if (!selectedBankBin || !accountNumber) {
-                    inputValid = false;
-                    errorMessage.textContent = 'Vui lòng chọn ngân hàng và nhập số tài khoản.';
-                } else {
-                    qrData = buildVietQR(selectedBankBin, accountNumber, amount, info);
-                }
-                break;
-            case 'text':
-                qrData = document.getElementById('text-input').value;
-                if (!qrData) { inputValid = false; errorMessage.textContent = 'Vui lòng nhập nội dung văn bản.'; }
-                break;
-            case 'url':
-                qrData = document.getElementById('url-input').value;
-                if (!qrData) { inputValid = false; errorMessage.textContent = 'Vui lòng nhập đường dẫn URL.'; }
-                break;
-            case 'phone':
-                const phone = document.getElementById('phone-input').value;
-                if (!phone) { inputValid = false; errorMessage.textContent = 'Vui lòng nhập số điện thoại.'; }
-                else { qrData = `tel:${phone}`; }
-                break;
-            case 'wifi':
-                const ssid = document.getElementById('wifi-ssid').value;
-                const password = document.getElementById('wifi-password').value;
-                const encryption = document.getElementById('wifi-encryption').value;
-                if (!ssid) { inputValid = false; errorMessage.textContent = 'Vui lòng nhập tên mạng (SSID).'; }
-                else { qrData = `WIFI:T:${encryption};S:${ssid};P:${password};;`; }
-                break;
-        }
-
-        if (inputValid) {
-            const shape = document.getElementById('shape-select').value;
-            // -- CẬP NHẬT LOGIC LẤY LOGO --
-            const logoFile = logoInput.files[0];
-            const logoSource = logoFile || selectedLogoSrc; // Ưu tiên file tải lên, sau đó đến icon đã chọn
-            
-            drawCustomQr(qrData, shape, logoSource);
-        } else {
-            qrCodeResult.classList.add('hidden');
-        }
-    });
-    
-    // --- HÀM drawCustomQr ĐÃ ĐƯỢC NÂNG CẤP TOÀN DIỆN ---
     function drawCustomQr(data, shape, logoSource) {
         try {
             qrCodeContainer.innerHTML = '';
@@ -2557,11 +2437,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 updateDownloadLink(canvas);
             };
             
-            // --- CẬP NHẬT: XỬ LÝ CẢ FILE VÀ URL ---
             if (logoSource) {
                 const logoImage = new Image();
                 logoImage.onload = () => finalizeDrawing(logoImage);
-                logoImage.onerror = () => { // Xử lý lỗi nếu URL ảnh không hợp lệ
+                logoImage.onerror = () => {
                     console.error("Không thể tải logo từ nguồn:", logoSource);
                     finalizeDrawing(null); 
                 }
@@ -2569,7 +2448,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (logoSource instanceof File) {
                     logoImage.src = URL.createObjectURL(logoSource);
                 } else if (typeof logoSource === 'string') {
-                    logoImage.crossOrigin = "Anonymous"; // Cần thiết để tải ảnh từ domain khác
+                    logoImage.crossOrigin = "Anonymous";
                     logoImage.src = logoSource;
                 }
             } else {
@@ -2589,14 +2468,125 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-
     function updateDownloadLink(canvas) {
-        downloadBtn.href = canvas.toDataURL('image/png');
+        if(downloadBtn) {
+            downloadBtn.href = canvas.toDataURL('image/png');
+        }
     }
 
-    async function init() {
-        await fetchBanks();
-        document.querySelector('.tab[data-tab="transfer"]').click();
+    // --- Event Listeners ---
+    if (bankSelect) {
+        bankSelect.addEventListener('change', () => {
+            if (bankSelect.value === 'other') {
+                if (customBinGroup) customBinGroup.style.display = 'block';
+            } else {
+                if (customBinGroup) customBinGroup.style.display = 'none';
+            }
+        });
+    }
+    
+    if (logoOptions) {
+        logoOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                const uploadLabel = qrCodeTool.querySelector('.upload-label');
+                if (option.isSameNode(uploadLabel)) return;
+
+                logoOptions.forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+                selectedLogoSrc = option.src;
+                if (logoInput) logoInput.value = '';
+            });
+        });
+    }
+    
+    if (logoInput) {
+        logoInput.addEventListener('change', () => {
+            if (logoInput.files.length > 0) {
+                logoOptions.forEach(opt => opt.classList.remove('selected'));
+                const uploadLabel = qrCodeTool.querySelector('.upload-label');
+                if (uploadLabel) uploadLabel.classList.add('selected');
+                selectedLogoSrc = null;
+            }
+        });
+    }
+
+    if (generateBtn) {
+        generateBtn.addEventListener('click', () => {
+            let qrData = '';
+            let inputValid = true;
+            if(errorMessage) errorMessage.textContent = ''; 
+
+            const activeTabEl = qrCodeTool.querySelector('.tab-link.active');
+            const activeTab = activeTabEl ? activeTabEl.getAttribute('data-tab') : 'panel-transfer';
+
+            switch (activeTab) {
+                case 'panel-transfer':
+                    const bankChoice = bankSelect ? bankSelect.value : null;
+                    const accountNumber = qrCodeTool.querySelector('#account-number-input').value;
+                    const amount = qrCodeTool.querySelector('#amount-input').value;
+                    const info = qrCodeTool.querySelector('#info-input').value;
+                    let finalBin = null;
+
+                    if (bankChoice === 'other') {
+                        finalBin = customBinInput ? customBinInput.value.trim() : null;
+                        if (!finalBin) {
+                            inputValid = false;
+                            if(errorMessage) errorMessage.textContent = 'Vui lòng nhập BIN cho ngân hàng của bạn.';
+                        }
+                    } else {
+                        finalBin = bankChoice;
+                    }
+
+                    if (inputValid && (!finalBin || !accountNumber)) {
+                        inputValid = false;
+                        if(errorMessage) errorMessage.textContent = 'Vui lòng chọn ngân hàng và nhập số tài khoản.';
+                    }
+                    
+                    if (inputValid) {
+                        qrData = buildVietQR(finalBin, accountNumber, amount, info);
+                    }
+                    break;
+                case 'panel-text':
+                    qrData = qrCodeTool.querySelector('#text-input').value;
+                    if (!qrData) { inputValid = false; if(errorMessage) errorMessage.textContent = 'Vui lòng nhập nội dung văn bản.'; }
+                    break;
+                case 'panel-url':
+                    qrData = qrCodeTool.querySelector('#url-input').value;
+                    if (!qrData) { inputValid = false; if(errorMessage) errorMessage.textContent = 'Vui lòng nhập đường dẫn URL.'; }
+                    break;
+                case 'panel-phone':
+                    const phone = qrCodeTool.querySelector('#phone-input').value;
+                    if (!phone) { inputValid = false; if(errorMessage) errorMessage.textContent = 'Vui lòng nhập số điện thoại.'; }
+                    else { qrData = `tel:${phone}`; }
+                    break;
+                case 'panel-wifi':
+                    const ssid = qrCodeTool.querySelector('#wifi-ssid').value;
+                    const password = qrCodeTool.querySelector('#wifi-password').value;
+                    const encryption = qrCodeTool.querySelector('#wifi-encryption').value;
+                    if (!ssid) { inputValid = false; if(errorMessage) errorMessage.textContent = 'Vui lòng nhập tên mạng (SSID).'; }
+                    else { qrData = `WIFI:T:${encryption};S:${ssid};P:${password};;`; }
+                    break;
+            }
+
+            if (inputValid) {
+                const shape = qrCodeTool.querySelector('#shape-select').value;
+                const logoFile = logoInput ? logoInput.files[0] : null;
+                const logoSource = logoFile || selectedLogoSrc;
+                
+                drawCustomQr(qrData, shape, logoSource);
+            } else {
+                if(qrCodeResult) qrCodeResult.classList.add('hidden');
+            }
+        });
+    }
+    
+    // --- Initial Load ---
+    function init() {
+        populateBankSelect();
+        const transferTab = qrCodeTool.querySelector('.tab-link[data-tab="panel-transfer"]');
+        if (transferTab) {
+            transferTab.click();
+        }
     }
 
     init();

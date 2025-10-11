@@ -1,325 +1,169 @@
-document.addEventListener('DOMContentLoaded', function () {
-
-    // --- Elements ---
-
-    const allNavButtons = document.querySelectorAll('.desktop-nav .nav-button');
-
-    const toolContainers = document.querySelectorAll('.tool-container');
-
-    const headerTitle = document.querySelector('.header-title');
-
-    const paletteOverlay = document.querySelector('.command-palette-overlay');
-
-    const paletteInput = document.getElementById('command-palette-input');
-
-    const paletteResults = document.querySelector('.command-palette-results');
-
-    const paletteTriggers = document.querySelectorAll('.command-palette-trigger');
-
-    const themeOptionButtons = document.querySelectorAll('.theme-options button');
-
-    const htmlElement = document.documentElement;
-
-    function detectPlatform() {
-        const isMac = /Mac|iPhone|iPad/i.test(navigator.platform) || /Mac OS/i.test(navigator.userAgent);
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        const isWindows = /Win/i.test(navigator.platform);
-
-        const keyCombo = document.getElementById('keyCombo');
-        const deviceIcon = document.getElementById('deviceIcon');
-
-        // Xử lý cho keyCombo
-        if (isMac) {
-            keyCombo.innerHTML = '⌘ K';
-        } else {
-            keyCombo.innerHTML = 'Ctrl K';
-        }
-
-        // Xử lý cho deviceIcon
-        if (isMac || isIOS) {
-            deviceIcon.innerHTML = '<i class="fab fa-apple"></i>';
-        } else if (isAndroid) {
-            deviceIcon.innerHTML = '<i class="fab fa-android"></i>';
-        } else if (isWindows) {
-            deviceIcon.innerHTML = '<i class="fab fa-windows"></i>';
-        } else {
-            deviceIcon.textContent = 'Unknown';
-        }
-    }
-
-    detectPlatform();
-
-
-    // =================================================================
-
-    // THEME MANAGEMENT
-
-    // =================================================================
-
-    const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-
-
-
-    function applyTheme(theme) {
-
-        let effectiveTheme = theme;
-
-        if (theme === 'system') {
-
-            effectiveTheme = systemThemeQuery.matches ? 'dark' : 'light';
-
-        }
-
-        htmlElement.setAttribute('data-theme', effectiveTheme);
-
-        localStorage.setItem('theme', theme);
-
-
-
-        // Cập nhật trạng thái active cho nút theme
-
-        themeOptionButtons.forEach(btn => {
-
-            if (btn.dataset.themeValue === theme) {
-
-                btn.classList.add('active');
-
-            } else {
-
-                btn.classList.remove('active');
-
-            }
-
-        });
-
-    }
-
-
-
-    // Listener cho thay đổi theme hệ thống
-
-    systemThemeQuery.addEventListener('change', (e) => {
-
-        const savedTheme = localStorage.getItem('theme') || 'system';
-
-        if (savedTheme === 'system') {
-
-            applyTheme('system');
-
-        }
-
-    });
-
-
-
-    // Gán sự kiện cho các nút chọn theme
-
-    themeOptionButtons.forEach(button => {
-
-        button.addEventListener('click', () => {
-
-            const theme = button.dataset.themeValue;
-
-            applyTheme(theme);
-
-        });
-
-    });
-
-
-
-    // Khởi tạo theme khi tải trang
-
-    const initialTheme = localStorage.getItem('theme') || 'system';
-
-    applyTheme(initialTheme);
-
-
-
-    // =================================================================
-
-    // TOOL & COMMAND PALETTE MANAGEMENT
-
-    // =================================================================
-
-    function switchTool(toolId) {
-
-        toolContainers.forEach(c => c.classList.remove('visible'));
-
-        const activeTool = document.getElementById(toolId);
-
-        if (activeTool) activeTool.classList.add('visible');
-        let toolName = 'Công cụ';
-
-        allNavButtons.forEach(btn => {
-
-            if (btn.dataset.tool === toolId) {
-
-                btn.classList.add('active');
-
-                toolName = btn.querySelector('span')?.textContent || toolName;
-
-            } else {
-
-                btn.classList.remove('active');
-
-            }
-
-        });
-
-        if (headerTitle) headerTitle.innerHTML = '<div class="logo">Hunq</div>' + toolName;
-
-    }
-
-
-
-    function openPalette() {
-
-        paletteOverlay.classList.add('visible');
-
-        paletteInput.focus();
-
-        paletteInput.value = '';
-
-        filterPalette();
-
-    }
-
-
-
-    function closePalette() {
-
-        paletteOverlay.classList.remove('visible');
-
-    }
-
-
-
-    function filterPalette() {
-
-        const query = paletteInput.value.toLowerCase().trim();
-
-        paletteResults.querySelectorAll('.result-item').forEach(item => {
-
-            const text = item.textContent.toLowerCase();
-
-            item.classList.toggle('hidden', !text.includes(query));
-
-        });
-
-    }
-
-
-
-    function populatePalette() {
-
-        paletteResults.innerHTML = '';
-
-        allNavButtons.forEach(button => {
-
-            const toolId = button.dataset.tool;
-
-            const iconHTML = button.querySelector('.nav-icon').outerHTML;
-
-            const text = button.querySelector('span').textContent;
-
-            const li = document.createElement('li');
-
-            li.className = 'result-item';
-
-            li.dataset.tool = toolId;
-
-            li.innerHTML = `${iconHTML}<span>${text}</span>`;
-
-            li.addEventListener('click', () => {
-
-                switchTool(toolId);
-
-                closePalette();
-
-            });
-
-            paletteResults.appendChild(li);
-
-        });
-
-    }
-
-
-
-    // --- Event Listeners ---
-
-    allNavButtons.forEach(button => button.addEventListener('click', () => switchTool(button.dataset.tool)));
-
-    paletteTriggers.forEach(trigger => trigger.addEventListener('click', openPalette));
-
-    paletteOverlay.addEventListener('click', (e) => { if (e.target === paletteOverlay) closePalette(); });
-
-    paletteInput.addEventListener('input', filterPalette);
-
-    window.addEventListener('keydown', (e) => {
-
-        if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openPalette(); }
-
-        if (e.key === 'Escape' && paletteOverlay.classList.contains('visible')) { closePalette(); }
-
-    });
-
-
-
-    // --- Initialization ---
-
-    switchTool('gmail-trick');
-
-    populatePalette();
-
-});
-
-
-function Alert(text, type = 'n' , time = 3000) {
-    const types = {
-        s: { icon: 'fa-circle-check', class: 'alert-success' },
-        e: { icon: 'fa-circle-xmark', class: 'alert-error' },
-        w: { icon: 'fa-triangle-exclamation', class: 'alert-warning' },
-        i: { icon: 'fa-circle-info', class: 'alert-info' },
-        n: { icon: 'fa-bell', class: 'alert-notification' }
+// Global function for toast notifications, accessible by other scripts
+function showToast(type = 'info', title, body) {
+    const toast = document.getElementById('toast-notification');
+    if (!toast) return;
+    
+    // Clear any existing timer
+    if (toast.toastTimeout) clearTimeout(toast.toastTimeout);
+
+    const toastIcon = toast.querySelector('.toast-icon');
+    const toastTitle = toast.querySelector('.toast-title');
+    const toastBody = toast.querySelector('.toast-body');
+    const toastDetails = {
+        success: { icon: 'fa-check-circle', title: 'Thành công' },
+        danger: { icon: 'fa-times-circle', title: 'Lỗi' },
+        warning: { icon: 'fa-exclamation-triangle', title: 'Cảnh báo' },
+        info: { icon: 'fa-info-circle', title: 'Thông tin' }
     };
 
-    const alertType = types[type] || types.n;
+    const details = toastDetails[type];
+    toast.className = `toast show ${type}`;
+    toastIcon.className = `toast-icon fa-solid ${details.icon}`;
+    toastTitle.textContent = title || details.title;
+    toastBody.textContent = body;
 
-    const alert = document.createElement('div');
-    alert.className = `alert ${alertType.class}`;
-    alert.innerHTML = `
-    <i class="fas ${alertType.icon}"></i>
-    <span style="flex: 1;">${text}</span>
-    <button class="close-btn" title="Đóng">&times;</button>
-    `;
-
-    const container = document.getElementById('alertContainer');
-
-    // Giới hạn tối đa 3 thông báo
-    while (container.children.length >= 3) {
-        container.removeChild(container.firstChild);
-    }
-
-    container.appendChild(alert);
-
-    // Đóng tự động
-    const timeout = setTimeout(() => closeAlert(), time);
-
-    // Đóng khi click nút
-    const closeBtn = alert.querySelector('.close-btn');
-    function closeAlert() {
-        alert.classList.add('fade-out');
-        setTimeout(() => {
-            if (alert.parentNode) alert.parentNode.removeChild(alert);
-        }, 300);
-    }
-
-    closeBtn.addEventListener('click', () => {
-        clearTimeout(timeout);
-        closeAlert();
-    });
+    toast.toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 5000);
 }
-Alert("Chào bạn!", 3000);
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    // --- Elements ---
+    const navLinks = document.querySelectorAll('.nav-link');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const sidebar = document.getElementById('sidebar');
+    const menuToggle = document.getElementById('menu-toggle');
+    const overlay = document.getElementById('overlay');
+    const searchInput = document.getElementById('sidebar-search');
+    const menuItems = document.querySelectorAll('#menu-list li');
+    const themeButtons = document.querySelectorAll('.theme-btn');
+    const modalContainer = document.getElementById('modal-container');
+    const openModalBtn = document.getElementById('open-modal-btn');
+    const closeModalBtns = document.querySelectorAll('#modal-close-btn-x, #modal-close-btn-secondary');
+    const toastCloseBtn = document.getElementById('toast-close-btn');
+
+    // --- Tab Switching ---
+    function switchTab(targetId) {
+        navLinks.forEach(link => link.classList.remove('active'));
+        tabContents.forEach(tab => tab.classList.remove('active'));
+
+        const activeLink = document.querySelector(`.nav-link[href="#${targetId}"]`);
+        const activeTab = document.getElementById(targetId);
+
+        if (activeLink) activeLink.classList.add('active');
+        if (activeTab) activeTab.classList.add('active');
+
+        if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+            toggleMenu();
+        }
+    }
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = e.currentTarget.getAttribute('href').substring(1);
+            window.location.hash = targetId; // Update URL hash
+            switchTab(targetId);
+        });
+    });
+
+    // Handle initial tab based on URL hash or default to first
+    const initialHash = window.location.hash.substring(1);
+    if (initialHash && document.getElementById(initialHash)) {
+        switchTab(initialHash);
+    } else if (navLinks.length > 0) {
+        switchTab(navLinks[0].getAttribute('href').substring(1));
+    }
+    
+    // --- Mobile Menu ---
+    function toggleMenu() {
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('show');
+    }
+    if (menuToggle) menuToggle.addEventListener('click', toggleMenu);
+    if (overlay) overlay.addEventListener('click', toggleMenu);
+
+    // --- Sidebar Search ---
+    searchInput.addEventListener('input', function() {
+        const filter = searchInput.value.toLowerCase();
+        menuItems.forEach(item => {
+            const text = item.querySelector('a').textContent.toLowerCase();
+            item.style.display = text.includes(filter) ? '' : 'none';
+        });
+    });
+
+    // --- Theme Management ---
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+    function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+        const activeMode = localStorage.getItem('theme-mode') || 'system';
+        themeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.themeValue === activeMode));
+    }
+    function handleThemeSelection(value) {
+        localStorage.setItem('theme-mode', value);
+        if (value === 'system') {
+            applyTheme(systemTheme.matches ? 'dark' : 'light');
+        } else {
+            applyTheme(value);
+        }
+    }
+    themeButtons.forEach(button => button.addEventListener('click', () => handleThemeSelection(button.dataset.themeValue)));
+    systemTheme.addEventListener('change', e => {
+        if ((localStorage.getItem('theme-mode') || 'system') === 'system') {
+            applyTheme(e.matches ? 'dark' : 'light');
+        }
+    });
+    // Initial theme load
+    handleThemeSelection(localStorage.getItem('theme-mode') || 'system');
+
+    // --- Generic Modal ---
+    if (openModalBtn) openModalBtn.addEventListener('click', () => modalContainer.classList.add('show'));
+    closeModalBtns.forEach(btn => btn.addEventListener('click', () => modalContainer.classList.remove('show')));
+    if (modalContainer) modalContainer.addEventListener('click', function(e) {
+        if (e.target === this) modalContainer.classList.remove('show');
+    });
+
+    // --- Toast Close Button ---
+    if (toastCloseBtn) {
+        toastCloseBtn.addEventListener('click', () => {
+            const toast = document.getElementById('toast-notification');
+            toast.classList.remove('show');
+            if (toast.toastTimeout) clearTimeout(toast.toastTimeout);
+        });
+    }
+
+    // --- Demo UI Buttons ---
+    document.getElementById('toast-success-btn')?.addEventListener('click', () => showToast('success', 'Thành công!', 'Hành động của bạn đã được ghi nhận.'));
+    document.getElementById('toast-danger-btn')?.addEventListener('click', () => showToast('danger', 'Đã xảy ra lỗi!', 'Vui lòng thử lại sau.'));
+
+    // --- Generic Tab Component Logic ---
+    function initializeTabs(container) {
+        const tabLinks = container.querySelectorAll('.tab-link');
+        const tabPanels = container.querySelectorAll('.tab-panel');
+
+        tabLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                const targetId = link.getAttribute('data-tab');
+
+                tabLinks.forEach(t => t.classList.remove('active'));
+                link.classList.add('active');
+
+                tabPanels.forEach(panel => {
+                    panel.classList.toggle('active', panel.id === targetId);
+                });
+            });
+        });
+    }
+
+    // Initialize all tab components on the page
+    const qrCodeTool = document.getElementById('qr-code');
+    const uiTabsExample = document.getElementById('ui-tabs-example');
+
+    if (qrCodeTool) {
+        initializeTabs(qrCodeTool);
+    }
+    if (uiTabsExample) {
+        initializeTabs(uiTabsExample);
+    }
+});
