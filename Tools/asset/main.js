@@ -2,7 +2,7 @@
 function showToast(type = 'info', title, body) {
     const toast = document.getElementById('toast-notification');
     if (!toast) return;
-    
+
     // Clear any existing timer
     if (toast.toastTimeout) clearTimeout(toast.toastTimeout);
 
@@ -28,7 +28,7 @@ function showToast(type = 'info', title, body) {
 }
 
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // --- Elements ---
     const navLinks = document.querySelectorAll('.nav-link');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -75,17 +75,49 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (navLinks.length > 0) {
         switchTab(navLinks[0].getAttribute('href').substring(1));
     }
-    
+
     // --- Mobile Menu ---
+    // --- Menu Modal Logic ---
     function toggleMenu() {
-        sidebar.classList.toggle('open');
+        const isOpen = sidebar.classList.toggle('open');
         overlay.classList.toggle('show');
+
+        // Nếu menu đang được mở, focus vào ô tìm kiếm
+        if (isOpen) {
+            setTimeout(() => {
+                searchInput.focus();
+            }, 100); // Thêm một độ trễ nhỏ để đảm bảo menu đã hiển thị
+        }
     }
+
+    // Gán sự kiện cho các nút bấm
     if (menuToggle) menuToggle.addEventListener('click', toggleMenu);
     if (overlay) overlay.addEventListener('click', toggleMenu);
 
+    // Gán sự kiện cho từng link trong menu để đóng menu khi chọn
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (sidebar.classList.contains('open')) {
+                toggleMenu();
+            }
+        });
+    });
+
+    // --- Keyboard Shortcut for Menu ---
+    document.addEventListener('keydown', (e) => {
+        // Check for Ctrl+K on Windows/Linux or Cmd+K on macOS
+        if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault(); // Ngăn hành động mặc định của trình duyệt
+            toggleMenu();
+        }
+        // Thêm: Nhấn ESC để đóng menu
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+            toggleMenu();
+        }
+    });
+    
     // --- Sidebar Search ---
-    searchInput.addEventListener('input', function() {
+    searchInput.addEventListener('input', function () {
         const filter = searchInput.value.toLowerCase();
         menuItems.forEach(item => {
             const text = item.querySelector('a').textContent.toLowerCase();
@@ -120,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Generic Modal ---
     if (openModalBtn) openModalBtn.addEventListener('click', () => modalContainer.classList.add('show'));
     closeModalBtns.forEach(btn => btn.addEventListener('click', () => modalContainer.classList.remove('show')));
-    if (modalContainer) modalContainer.addEventListener('click', function(e) {
+    if (modalContainer) modalContainer.addEventListener('click', function (e) {
         if (e.target === this) modalContainer.classList.remove('show');
     });
 
