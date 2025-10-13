@@ -3,7 +3,6 @@ function showToast(type = 'info', title, body) {
     const toast = document.getElementById('toast-notification');
     if (!toast) return;
 
-    // Clear any existing timer
     if (toast.toastTimeout) clearTimeout(toast.toastTimeout);
 
     const toastIcon = toast.querySelector('.toast-icon');
@@ -27,8 +26,55 @@ function showToast(type = 'info', title, body) {
     }, 5000);
 }
 
+// --- REUSABLE CONFIRMATION MODAL FUNCTION (FIXED) ---
+// Moved to global scope to be accessible by all scripts
+function showConfirmationModal(title, message, onConfirm) {
+    const modalContainer = document.getElementById('modal-container');
+    if (!modalContainer) return;
 
-document.addEventListener('DOMContentLoaded', function () {
+    const modalTitle = modalContainer.querySelector('.modal-title');
+    const modalBody = modalContainer.querySelector('.modal-body');
+    const confirmBtn = modalContainer.querySelector('.modal-footer .btn-primary');
+    
+    if (!modalTitle || !modalBody || !confirmBtn) {
+        console.error('Modal structure is incorrect. Cannot find title, body, or primary button.');
+        return;
+    }
+
+    // Update modal content
+    modalTitle.textContent = title;
+    modalBody.innerHTML = `<p>${message}</p>`;
+
+    // Style the confirm button for a "danger" action
+    confirmBtn.textContent = 'Xác nhận';
+    confirmBtn.style.backgroundColor = 'var(--danger-bg)';
+    confirmBtn.style.borderColor = 'var(--danger-bg)';
+    confirmBtn.style.color = 'var(--danger-text)';
+
+    // Clone the button to remove any previous event listeners, preventing multiple triggers
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    // Add a single-use event listener for the confirmation action
+    newConfirmBtn.addEventListener('click', function handleConfirm() {
+        onConfirm(); // Execute the callback action
+        modalContainer.classList.remove('show');
+        
+        // Reset button style after a short delay to its original state
+        setTimeout(() => {
+            newConfirmBtn.textContent = 'Lưu'; // Original text
+            newConfirmBtn.style.backgroundColor = '';
+            newConfirmBtn.style.borderColor = '';
+            newConfirmBtn.style.color = '';
+        }, 300);
+    }, { once: true });
+
+    // Show the modal
+    modalContainer.classList.add('show');
+}
+
+
+document.addEventListener('DOMContentLoaded', function() {
     // --- Elements ---
     const navLinks = document.querySelectorAll('.nav-link');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -54,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (activeLink) activeLink.classList.add('active');
         if (activeTab) activeTab.classList.add('active');
 
+        // Close menu on mobile after switching tab
         if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
             toggleMenu();
         }
@@ -63,38 +110,33 @@ document.addEventListener('DOMContentLoaded', function () {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const targetId = e.currentTarget.getAttribute('href').substring(1);
-            window.location.hash = targetId; // Update URL hash
+            window.location.hash = targetId;
             switchTab(targetId);
         });
     });
 
-    // Handle initial tab based on URL hash or default to first
     const initialHash = window.location.hash.substring(1);
     if (initialHash && document.getElementById(initialHash)) {
         switchTab(initialHash);
     } else if (navLinks.length > 0) {
         switchTab(navLinks[0].getAttribute('href').substring(1));
     }
-
-    // --- Mobile Menu ---
+    
     // --- Menu Modal Logic ---
     function toggleMenu() {
         const isOpen = sidebar.classList.toggle('open');
         overlay.classList.toggle('show');
 
-        // Nếu menu đang được mở, focus vào ô tìm kiếm
         if (isOpen) {
             setTimeout(() => {
                 searchInput.focus();
-            }, 100); // Thêm một độ trễ nhỏ để đảm bảo menu đã hiển thị
+            }, 100);
         }
     }
 
-    // Gán sự kiện cho các nút bấm
     if (menuToggle) menuToggle.addEventListener('click', toggleMenu);
     if (overlay) overlay.addEventListener('click', toggleMenu);
 
-    // Gán sự kiện cho từng link trong menu để đóng menu khi chọn
     navLinks.forEach(link => {
         link.addEventListener('click', () => {
             if (sidebar.classList.contains('open')) {
@@ -103,21 +145,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // --- Keyboard Shortcut for Menu ---
-    document.addEventListener('keydown', (e) => {
-        // Check for Ctrl+K on Windows/Linux or Cmd+K on macOS
-        if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
-            e.preventDefault(); // Ngăn hành động mặc định của trình duyệt
-            toggleMenu();
-        }
-        // Thêm: Nhấn ESC để đóng menu
-        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
-            toggleMenu();
-        }
-    });
-    
     // --- Sidebar Search ---
-    searchInput.addEventListener('input', function () {
+    searchInput.addEventListener('input', function() {
         const filter = searchInput.value.toLowerCase();
         menuItems.forEach(item => {
             const text = item.querySelector('a').textContent.toLowerCase();
@@ -130,8 +159,15 @@ document.addEventListener('DOMContentLoaded', function () {
     function applyTheme(theme) {
         document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
         const activeMode = localStorage.getItem('theme-mode') || 'system';
-        themeButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.themeValue === activeMode));
+        
+        // Apply to all theme switchers (desktop and mobile)
+        document.querySelectorAll('.theme-switcher').forEach(switcher => {
+            switcher.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.themeValue === activeMode)
+            });
+        });
     }
+
     function handleThemeSelection(value) {
         localStorage.setItem('theme-mode', value);
         if (value === 'system') {
@@ -140,19 +176,21 @@ document.addEventListener('DOMContentLoaded', function () {
             applyTheme(value);
         }
     }
+
     themeButtons.forEach(button => button.addEventListener('click', () => handleThemeSelection(button.dataset.themeValue)));
+    
     systemTheme.addEventListener('change', e => {
         if ((localStorage.getItem('theme-mode') || 'system') === 'system') {
             applyTheme(e.matches ? 'dark' : 'light');
         }
     });
-    // Initial theme load
+    
     handleThemeSelection(localStorage.getItem('theme-mode') || 'system');
 
     // --- Generic Modal ---
     if (openModalBtn) openModalBtn.addEventListener('click', () => modalContainer.classList.add('show'));
     closeModalBtns.forEach(btn => btn.addEventListener('click', () => modalContainer.classList.remove('show')));
-    if (modalContainer) modalContainer.addEventListener('click', function (e) {
+    if (modalContainer) modalContainer.addEventListener('click', function(e) {
         if (e.target === this) modalContainer.classList.remove('show');
     });
 
@@ -173,14 +211,11 @@ document.addEventListener('DOMContentLoaded', function () {
     function initializeTabs(container) {
         const tabLinks = container.querySelectorAll('.tab-link');
         const tabPanels = container.querySelectorAll('.tab-panel');
-
         tabLinks.forEach(link => {
             link.addEventListener('click', () => {
                 const targetId = link.getAttribute('data-tab');
-
                 tabLinks.forEach(t => t.classList.remove('active'));
                 link.classList.add('active');
-
                 tabPanels.forEach(panel => {
                     panel.classList.toggle('active', panel.id === targetId);
                 });
@@ -188,14 +223,21 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Initialize all tab components on the page
-    const qrCodeTool = document.getElementById('qr-code');
-    const uiTabsExample = document.getElementById('ui-tabs-example');
+    document.querySelectorAll('#qr-code, #ui-tabs-example, #random').forEach(container => {
+        if(container) initializeTabs(container);
+    });
 
-    if (qrCodeTool) {
-        initializeTabs(qrCodeTool);
-    }
-    if (uiTabsExample) {
-        initializeTabs(uiTabsExample);
-    }
+    // --- Keyboard Shortcuts ---
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            toggleMenu();
+        }
+        if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+            toggleMenu();
+        }
+        if (e.key === 'Escape' && modalContainer.classList.contains('show')) {
+            modalContainer.classList.remove('show');
+        }
+    });
 });
