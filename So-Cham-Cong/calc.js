@@ -1,6 +1,6 @@
 // calc.js
 
-// Lấy các phần tử HTML từ tabMayTinh
+// === Lấy các phần tử HTML (ĐÃ CẬP NHẬT) ===
 const luongGioInput = document.getElementById('luongGio');
 const luongTangCaGioInput = document.getElementById('luongTangCaGio');
 const troCapCoDinhInput = document.getElementById('troCapCoDinh');
@@ -8,40 +8,60 @@ const troCapLinhHoatInput = document.getElementById('troCapLinhHoat');
 const phiKhacInput = document.getElementById('phiKhac');
 const luuDuLieuBtn = document.getElementById('luuDuLieuBtn');
 
+// Các trường % mới
+const bhytPercentInput = document.getElementById('bhytPercent');
+const bhxhPercentInput = document.getElementById('bhxhPercent');
+const thuePercentInput = document.getElementById('thuePercent');
+const khacPercentInput = document.getElementById('khacPercent');
+
+// Span hiển thị lương thực tế
 const luongCoBanSpan = document.getElementById('luongCoBan');
 const luongTangCaSpan = document.getElementById('luongTangCa');
-const tongLuongSpan = document.getElementById('tongLuong');
+const tongTroCapSpan = document.getElementById('tongTroCap');
+const tongThuNhapSpan = document.getElementById('tongThuNhap'); // Đổi từ tongLuong
+const tongTruSpan = document.getElementById('tongTru');
+const luongThucNhanSpan = document.getElementById('luongThucNhan');
 
+// Span hiển thị lương dự kiến
 const gioTangCaGiaDinhInput = document.getElementById('gioTangCaGiaDinh');
-const soGioLamCoBanGiaDinhSpan = document.getElementById('soGioLamCoBanGiaDinh');
-const soGioLamTangCaGiaDinhSpan = document.getElementById('soGioLamTangCaGiaDinh');
+// const soGioLamCoBanGiaDinhSpan = document.getElementById('soGioLamCoBanGiaDinh'); // Bỏ nếu không cần hiển thị
+// const soGioLamTangCaGiaDinhSpan = document.getElementById('soGioLamTangCaGiaDinh'); // Bỏ nếu không cần hiển thị
 const duDoanLuongCoBanSpan = document.getElementById('duDoanLuongCoBan');
 const duDoanLuongTangCaSpan = document.getElementById('duDoanLuongTangCa');
-const tongLuongDuDoanSpan = document.getElementById('tongLuongDuDoan');
+const duDoanTongTroCapSpan = document.getElementById('duDoanTongTroCap');
+const duDoanTongThuNhapSpan = document.getElementById('duDoanTongThuNhap'); // Đổi từ tongLuongDuDoan
+const duDoanTongTruSpan = document.getElementById('duDoanTongTru');
+const duDoanLuongThucNhanSpan = document.getElementById('duDoanLuongThucNhan');
 
-// Các phần tử điều khiển tháng cho dashboard lương
+// Các phần tử điều khiển tháng
 const prevMonthCalcBtn = document.getElementById('prevMonthCalcBtn');
 const nextMonthCalcBtn = document.getElementById('nextMonthCalcBtn');
 const currentMonthCalcYearElement = document.getElementById('currentMonthCalcYear');
 
 // Khóa LocalStorage cho dữ liệu lương
-const LUONG_DATA_KEY = 'ts_luongData_v1';
+const LUONG_DATA_KEY = 'ts_luongData_v2'; // Thay đổi v1 thành v2
 
-// Lưu trữ dữ liệu lương (sẽ lưu vào localStorage)
-let luongData = {
+// === Dữ liệu lương (ĐÃ CẬP NHẬT - thành global) ===
+window.luongData = { // Gắn vào window
     luongGio: 0,
     luongTangCaGio: 0,
     troCapCoDinh: 0,
     troCapLinhHoat: 0,
     phiKhac: 0,
     gioTangCaGiaDinh: 0,
+    bhytPercent: 0,
+    bhxhPercent: 0,
+    thuePercent: 0,
+    khacPercent: 0,
     currency: 'VND'
 };
 
 // Biến để theo dõi tháng/năm hiện tại cho dashboard lương
 let currentCalcDate = new Date();
 
-// Hàm tính toán lương
+// === HÀM TÍNH TOÁN (ĐÃ CẬP NHẬT) ===
+
+// Tính lương
 function tinhLuongCoBan(soGioLam, luongGio) {
     return soGioLam * luongGio;
 }
@@ -50,44 +70,50 @@ function tinhLuongTangCa(soGioTangCa, luongTangCaGio) {
     return soGioTangCa * luongTangCaGio;
 }
 
-function tinhTongLuong(luongCoBan, luongTangCa, troCapCoDinh, troCapLinhHoat, phiKhac) {
-    return luongCoBan + luongTangCa + troCapCoDinh + troCapLinhHoat + phiKhac;
+// Tính tổng thu nhập (Lương + Trợ cấp)
+function tinhTongThuNhap(luongCoBan, luongTangCa, troCapCoDinh, troCapLinhHoat) {
+    return luongCoBan + luongTangCa + troCapCoDinh + troCapLinhHoat;
 }
 
-// Lấy số giờ làm từ dữ liệu chấm công (timesheetEntries) và lịch (scheduleData)
-// Nhận tham số dateRef để tính toán cho tháng cụ thể trên dashboard
+// Tính các khoản khấu trừ và lương thực nhận
+function tinhKhauTruVaThucNhan(tongThuNhap) {
+    const bhyt = tongThuNhap * (window.luongData.bhytPercent / 100); // Sử dụng window.luongData
+    const bhxh = tongThuNhap * (window.luongData.bhxhPercent / 100); // Sử dụng window.luongData
+    const thue = tongThuNhap * (window.luongData.thuePercent / 100); // Sử dụng window.luongData
+    const khac = tongThuNhap * (window.luongData.khacPercent / 100); // Sử dụng window.luongData
+
+    // Phí khác là số tiền cố định, không phải %
+    const tongTru = bhyt + bhxh + thue + khac + window.luongData.phiKhac; // Sử dụng window.luongData
+    const luongThucNhan = tongThuNhap - tongTru;
+
+    return { tongTru, luongThucNhan };
+}
+
+// Lấy số giờ làm từ dữ liệu chấm công (timesheetEntries)
 function getSoGioLamActual(dateRef) {
     let tongSoGioLamActual = 0;
     let tongSoGioTangCaActual = 0;
 
-    // Tính toán chu kỳ công dựa trên dateRef (tháng hiện tại của dashboard lương)
-    const year = dateRef.getFullYear();
-    const month = dateRef.getMonth();
-
-    let workPeriodStartMonthRef = month;
-    let workPeriodStartYearRef = year;
-
-    // startWorkDay được định nghĩa trong script.js và là global (window.startWorkDay)
-    if (dateRef.getDate() < window.startWorkDay) {
-        workPeriodStartMonthRef = (workPeriodStartMonthRef === 0) ? 11 : workPeriodStartMonthRef - 1;
-        workPeriodStartYearRef = (month === 0) ? workPeriodStartYearRef - 1 : workPeriodStartYearRef;
+    // === MODIFIED: Use global calculation period function ===
+    if (typeof window.getCalculationPeriod !== 'function') {
+        console.error("Lỗi: Không tìm thấy hàm getCalculationPeriod.");
+        return { tongSoGioLamActual: 0, tongSoGioTangCaActual: 0 };
     }
-
-    const startStatsDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, window.startWorkDay);
-    startStatsDate.setHours(0, 0, 0, 0);
-
-    const endStatsDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, window.startWorkDay - 1);
-    endStatsDate.setHours(23, 59, 59, 999);
+    const { startDate: startStatsDate, endDate: endStatsDate } = window.getCalculationPeriod(dateRef);
+    // === END MODIFIED ===
 
     for (let d = new Date(startStatsDate); d <= endStatsDate; d.setDate(d.getDate() + 1)) {
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        // timesheetEntries được định nghĩa trong script.js và là global (window.timesheetEntries)
         const entry = window.timesheetEntries[dateStr];
 
-        if (entry && (entry.type === 'work' || entry.type === 'work_ot')) {
-            // baseWorkHours được định nghĩa trong script.js và là global (window.baseWorkHours)
-            tongSoGioLamActual += window.baseWorkHours;
-            tongSoGioTangCaActual += (entry.overtimeHours || 0) + (entry.overtimeMinutes || 0) / 60;
+        if (entry) {
+            if (entry.type === 'work' || entry.type === 'work_ot') {
+                tongSoGioLamActual += window.baseWorkHours;
+                tongSoGioTangCaActual += (entry.overtimeHours || 0) + (entry.overtimeMinutes || 0) / 60;
+            } else if (entry.type === 'holiday_work') {
+                // Làm ngày lễ chỉ tính tăng ca, không tính giờ làm cơ bản
+                tongSoGioTangCaActual += (entry.overtimeHours || 0) + (entry.overtimeMinutes || 0) / 60;
+            }
         }
     }
     return { tongSoGioLamActual, tongSoGioTangCaActual };
@@ -95,32 +121,20 @@ function getSoGioLamActual(dateRef) {
 
 
 // Lấy số ngày làm việc theo lịch trong tháng (dùng cho giả định)
-// Nhận tham số dateRef để tính toán cho tháng cụ thể trên dashboard
 function getSoNgayLamViecTrongThang(dateRef) {
     let soNgayLamViecTheoLich = 0;
 
-    // Lấy chu kỳ công dựa trên dateRef (tháng hiện tại của dashboard lương)
-    const year = dateRef.getFullYear();
-    const month = dateRef.getMonth();
-
-    let workPeriodStartMonthRef = month;
-    let workPeriodStartYearRef = year;
-
-    // startWorkDay được định nghĩa trong script.js và là global (window.startWorkDay)
-    if (dateRef.getDate() < window.startWorkDay) {
-        workPeriodStartMonthRef = (workPeriodStartMonthRef === 0) ? 11 : workPeriodStartMonthRef - 1;
-        workPeriodStartYearRef = (month === 0) ? workPeriodStartYearRef - 1 : workPeriodStartYearRef;
+    // === MODIFIED: Use global calculation period function ===
+    if (typeof window.getCalculationPeriod !== 'function') {
+        console.error("Lỗi: Không tìm thấy hàm getCalculationPeriod.");
+        return 0;
     }
+    const { startDate: startPeriodDate, endDate: endPeriodDate } = window.getCalculationPeriod(dateRef);
+    // === END MODIFIED ===
 
-    const startPeriodDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, window.startWorkDay);
-    startPeriodDate.setHours(0,0,0,0);
-
-    const endPeriodDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, window.startWorkDay - 1);
-    endPeriodDate.setHours(23,59,59,999);
 
     for (let d = new Date(startPeriodDate); d <= endPeriodDate; d.setDate(d.getDate() + 1)) {
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        // scheduleData được định nghĩa trong script.js và là global (window.scheduleData)
         if (window.scheduleData[dateStr] === 'ca-ngay' || window.scheduleData[dateStr] === 'ca-dem') {
             soNgayLamViecTheoLich++;
         }
@@ -129,140 +143,224 @@ function getSoNgayLamViecTrongThang(dateRef) {
 }
 
 
-// Cập nhật giao diện với dữ liệu lương thực tế
+// === Cập nhật giao diện (ĐÃ CẬP NHẬT) ===
 function updateLuongUI() {
-    // Sử dụng currentCalcDate để tính toán thống kê
+    // 1. Lấy giờ làm thực tế
     const { tongSoGioLamActual, tongSoGioTangCaActual } = getSoGioLamActual(currentCalcDate);
-    const luongCoBan = tinhLuongCoBan(tongSoGioLamActual, luongData.luongGio);
-    const luongTangCa = tinhLuongTangCa(tongSoGioTangCaActual, luongData.luongTangCaGio);
-    const tongLuong = tinhTongLuong(luongCoBan, luongTangCa, luongData.troCapCoDinh, luongData.troCapLinhHoat, luongData.phiKhac);
 
-    luongCoBanSpan.textContent = formatCurrency(luongCoBan, luongData.currency);
-    luongTangCaSpan.textContent = formatCurrency(luongTangCa, luongData.currency);
-    tongLuongSpan.textContent = formatCurrency(tongLuong, luongData.currency);
+    // 2. Tính các khoản thu nhập
+    const luongCoBan = tinhLuongCoBan(tongSoGioLamActual, window.luongData.luongGio);
+    const luongTangCa = tinhLuongTangCa(tongSoGioTangCaActual, window.luongData.luongTangCaGio);
+    const tongTroCap = window.luongData.troCapCoDinh + window.luongData.troCapLinhHoat;
+    const tongThuNhap = tinhTongThuNhap(luongCoBan, luongTangCa, window.luongData.troCapCoDinh, window.luongData.troCapLinhHoat);
+
+    // 3. Tính khấu trừ
+    const { tongTru, luongThucNhan } = tinhKhauTruVaThucNhan(tongThuNhap);
+
+    // 4. Cập nhật UI
+    luongCoBanSpan.textContent = formatCurrency(luongCoBan, window.luongData.currency);
+    luongTangCaSpan.textContent = formatCurrency(luongTangCa, window.luongData.currency);
+    tongTroCapSpan.textContent = formatCurrency(tongTroCap, window.luongData.currency);
+    tongThuNhapSpan.textContent = formatCurrency(tongThuNhap, window.luongData.currency);
+    tongTruSpan.textContent = formatCurrency(tongTru, window.luongData.currency);
+    luongThucNhanSpan.textContent = formatCurrency(luongThucNhan, window.luongData.currency);
 }
 
-// Cập nhật giao diện với dữ liệu lương dự kiến
+// === Cập nhật giao diện dự kiến (ĐÃ CẬP NHẬT) ===
 function updateLuongDuKienUI() {
-    // Sử dụng currentCalcDate để tính toán thống kê
+    // 1. Lấy giờ làm dự kiến
     const soNgayLamViecTrongThang = getSoNgayLamViecTrongThang(currentCalcDate);
-    // baseWorkHours được định nghĩa trong script.js và là global (window.baseWorkHours)
     const soGioLamCoBanGiaDinh = soNgayLamViecTrongThang * window.baseWorkHours;
     const soGioLamTangCaGiaDinh = parseFloat(gioTangCaGiaDinhInput.value) || 0;
 
-    const duDoanLuongCoBan = tinhLuongCoBan(soGioLamCoBanGiaDinh, luongData.luongGio);
-    const duDoanLuongTangCa = tinhLuongTangCa(soGioLamTangCaGiaDinh, luongData.luongTangCaGio);
-    const tongLuongDuDoan = tinhTongLuong(duDoanLuongCoBan, duDoanLuongTangCa, luongData.troCapCoDinh, luongData.troCapLinhHoat, luongData.phiKhac);
+    // 2. Tính thu nhập dự kiến
+    const duDoanLuongCoBan = tinhLuongCoBan(soGioLamCoBanGiaDinh, window.luongData.luongGio);
+    const duDoanLuongTangCa = tinhLuongTangCa(soGioLamTangCaGiaDinh, window.luongData.luongTangCaGio);
+    const duDoanTongTroCap = window.luongData.troCapCoDinh + window.luongData.troCapLinhHoat;
+    const duDoanTongThuNhap = tinhTongThuNhap(duDoanLuongCoBan, duDoanLuongTangCa, window.luongData.troCapCoDinh, window.luongData.troCapLinhHoat);
 
-    soGioLamCoBanGiaDinhSpan.textContent = `${soGioLamCoBanGiaDinh.toFixed(1)} giờ`;
-    soGioLamTangCaGiaDinhSpan.textContent = `${soGioLamTangCaGiaDinh.toFixed(1)} giờ`;
-    duDoanLuongCoBanSpan.textContent = formatCurrency(duDoanLuongCoBan, luongData.currency);
-    duDoanLuongTangCaSpan.textContent = formatCurrency(duDoanLuongTangCa, luongData.currency);
-    tongLuongDuDoanSpan.textContent = formatCurrency(tongLuongDuDoan, luongData.currency);
+    // 3. Tính khấu trừ dự kiến
+    const { tongTru: duDoanTongTru, luongThucNhan: duDoanLuongThucNhan } = tinhKhauTruVaThucNhan(duDoanTongThuNhap);
+
+    // 4. Cập nhật UI (Bỏ hiển thị giờ làm dự kiến nếu không cần)
+    // soGioLamCoBanGiaDinhSpan.textContent = `${soGioLamCoBanGiaDinh.toFixed(1)} giờ`;
+    // soGioLamTangCaGiaDinhSpan.textContent = `${soGioLamTangCaGiaDinh.toFixed(1)} giờ`;
+    duDoanLuongCoBanSpan.textContent = formatCurrency(duDoanLuongCoBan, window.luongData.currency);
+    duDoanLuongTangCaSpan.textContent = formatCurrency(duDoanLuongTangCa, window.luongData.currency);
+    duDoanTongTroCapSpan.textContent = formatCurrency(duDoanTongTroCap, window.luongData.currency);
+    duDoanTongThuNhapSpan.textContent = formatCurrency(duDoanTongThuNhap, window.luongData.currency);
+    duDoanTongTruSpan.textContent = formatCurrency(duDoanTongTru, window.luongData.currency);
+    duDoanLuongThucNhanSpan.textContent = formatCurrency(duDoanLuongThucNhan, window.luongData.currency);
 }
 
-// Hàm định dạng tiền tệ (sử dụng loại tiền được chọn)
-// currentCurrency được định nghĩa trong script.js và là global (window.currentCurrency)
+
+// Hàm định dạng tiền tệ
 function formatCurrency(amount, currencyCode = 'VND') {
     try {
-        // Fallback locale if 'vi-VN' is not suitable for all currencies, or pass it from global
-        const locale = window.currentCurrencyLocale || 'vi-VN'; // Bạn có thể thêm biến này vào script.js nếu muốn locale tùy chỉnh
+        const locale = window.currentCurrencyLocale || 'vi-VN';
         return amount.toLocaleString(locale, { style: 'currency', currency: currencyCode });
     } catch (e) {
         console.warn(`Không thể định dạng tiền tệ cho ${currencyCode}. Sử dụng định dạng mặc định.`, e);
-        // Fallback display if toLocaleString fails for some reason
         const symbolMap = { 'VND': 'đ', 'JPY': '¥', 'USD': '$', 'EUR': '€' };
         return `${amount.toFixed(2)} ${symbolMap[currencyCode] || currencyCode}`;
     }
 }
 
-// Hàm tải dữ liệu lương từ LocalStorage
+// === Tải dữ liệu (ĐÃ CẬP NHẬT - dùng global) ===
 function loadLuongData() {
     const savedData = localStorage.getItem(LUONG_DATA_KEY);
     if (savedData) {
-        luongData = JSON.parse(savedData);
-        // Gán lại giá trị vào input fields
-        luongGioInput.value = luongData.luongGio;
-        luongTangCaGioInput.value = luongData.luongTangCaGio;
-        troCapCoDinhInput.value = luongData.troCapCoDinh;
-        troCapLinhHoatInput.value = luongData.troCapLinhHoat;
-        phiKhacInput.value = luongData.phiKhac;
-        gioTangCaGiaDinhInput.value = luongData.gioTangCaGiaDinh;
-        // Lấy currency từ script.js (window.currentCurrency)
-        luongData.currency = window.currentCurrency || 'VND';
+        // Hợp nhất dữ liệu đã lưu với dữ liệu mặc định vào window.luongData
+        Object.assign(window.luongData, JSON.parse(savedData));
     } else {
-        luongData.currency = window.currentCurrency || 'VND'; // Mặc định nếu chưa có dữ liệu lưu
+         // Nếu không có dữ liệu lưu, đảm bảo window.luongData là object trống để tránh lỗi
+         window.luongData = window.luongData || {}; // Hoặc gán lại giá trị mặc định nếu cần
     }
+
+    // Gán lại giá trị vào input fields từ window.luongData
+    luongGioInput.value = window.luongData.luongGio || 0;
+    luongTangCaGioInput.value = window.luongData.luongTangCaGio || 0;
+    troCapCoDinhInput.value = window.luongData.troCapCoDinh || 0;
+    troCapLinhHoatInput.value = window.luongData.troCapLinhHoat || 0;
+    phiKhacInput.value = window.luongData.phiKhac || 0;
+    gioTangCaGiaDinhInput.value = window.luongData.gioTangCaGiaDinh || 0;
+
+    // Gán các trường % mới
+    bhytPercentInput.value = window.luongData.bhytPercent || 0;
+    bhxhPercentInput.value = window.luongData.bhxhPercent || 0;
+    thuePercentInput.value = window.luongData.thuePercent || 0;
+    khacPercentInput.value = window.luongData.khacPercent || 0;
+
+    // Lấy currency từ script.js (đã global)
+    window.luongData.currency = window.currentCurrency || 'VND';
 }
 
-// Hàm lưu dữ liệu lương vào LocalStorage
+// === Lưu dữ liệu (ĐÃ CẬP NHẬT - dùng global) ===
 function saveLuongData() {
-    luongData.luongGio = parseFloat(luongGioInput.value) || 0;
-    luongData.luongTangCaGio = parseFloat(luongTangCaGioInput.value) || 0;
-    luongData.troCapCoDinh = parseFloat(troCapCoDinhInput.value) || 0;
-    luongData.troCapLinhHoat = parseFloat(troCapLinhHoatInput.value) || 0;
-    luongData.phiKhac = parseFloat(phiKhacInput.value) || 0;
-    luongData.gioTangCaGiaDinh = parseFloat(gioTangCaGiaDinhInput.value) || 0;
-    // luongData.currency đã được cập nhật từ window.currentCurrency ở hàm loadLuongData hoặc currencyChanged event
-    localStorage.setItem(LUONG_DATA_KEY, JSON.stringify(luongData));
-    window.showToast('Đã lưu dữ liệu lương!'); // showToast là hàm từ script.js
+    window.luongData.luongGio = parseFloat(luongGioInput.value) || 0;
+    window.luongData.luongTangCaGio = parseFloat(luongTangCaGioInput.value) || 0;
+    window.luongData.troCapCoDinh = parseFloat(troCapCoDinhInput.value) || 0;
+    window.luongData.troCapLinhHoat = parseFloat(troCapLinhHoatInput.value) || 0;
+    window.luongData.phiKhac = parseFloat(phiKhacInput.value) || 0;
+    window.luongData.gioTangCaGiaDinh = parseFloat(gioTangCaGiaDinhInput.value) || 0;
+
+    // Lưu các trường % mới
+    window.luongData.bhytPercent = parseFloat(bhytPercentInput.value) || 0;
+    window.luongData.bhxhPercent = parseFloat(bhxhPercentInput.value) || 0;
+    window.luongData.thuePercent = parseFloat(thuePercentInput.value) || 0;
+    window.luongData.khacPercent = parseFloat(khacPercentInput.value) || 0;
+
+    // Lưu currency hiện tại vào luongData trước khi lưu localStorage
+    window.luongData.currency = window.currentCurrency || 'VND';
+
+    localStorage.setItem(LUONG_DATA_KEY, JSON.stringify(window.luongData));
+    window.showToast('Đã lưu dữ liệu lương!');
 }
 
 // Hàm cập nhật tiêu đề tháng/năm của dashboard lương
 function updateMonthCalcHeader() {
-    const month = currentCalcDate.getMonth();
-    const year = currentCalcDate.getFullYear();
-    currentMonthCalcYearElement.textContent = `Tháng ${month + 1}, ${year}`;
+    // === MODIFIED: Hiển thị tiêu đề theo chế độ ===
+    if (typeof window.getCalculationPeriod !== 'function') return; // Cần hàm global
+    
+    if (window.displayMode === 'workPeriod') {
+        const { startDate, endDate } = window.getCalculationPeriod(currentCalcDate);
+        currentMonthCalcYearElement.textContent = `CK: ${startDate.getDate()}/${startDate.getMonth() + 1} - ${endDate.getDate()}/${endDate.getMonth() + 1}`;
+    } else {
+        const month = currentCalcDate.getMonth();
+        const year = currentCalcDate.getFullYear();
+        currentMonthCalcYearElement.textContent = `Tháng ${month + 1}, ${year}`;
+    }
+    // === END MODIFIED ===
 }
 
 
 // Xử lý sự kiện click nút Lưu Dữ Liệu
 luuDuLieuBtn.addEventListener('click', () => {
-    saveLuongData();
+    saveLuongData(); // Hàm save đã dùng window.luongData
     updateLuongUI();
     updateLuongDuKienUI();
 });
 
-// Theo dõi thay đổi trong input dự kiến
-gioTangCaGiaDinhInput.addEventListener('input', updateLuongDuKienUI);
+// === Lắng nghe sự kiện input trên TẤT CẢ các trường nhập liệu ===
+const allCalcInputs = [
+    luongGioInput, luongTangCaGioInput, troCapCoDinhInput,
+    troCapLinhHoatInput, phiKhacInput, gioTangCaGiaDinhInput,
+    bhytPercentInput, bhxhPercentInput, thuePercentInput, khacPercentInput
+];
+
+allCalcInputs.forEach(input => {
+    if (input) {
+        input.addEventListener('input', () => {
+            // Cập nhật dữ liệu tạm thời vào window.luongData (chưa lưu localStorage)
+            window.luongData.luongGio = parseFloat(luongGioInput.value) || 0;
+            window.luongData.luongTangCaGio = parseFloat(luongTangCaGioInput.value) || 0;
+            window.luongData.troCapCoDinh = parseFloat(troCapCoDinhInput.value) || 0;
+            window.luongData.troCapLinhHoat = parseFloat(troCapLinhHoatInput.value) || 0;
+            window.luongData.phiKhac = parseFloat(phiKhacInput.value) || 0;
+            window.luongData.gioTangCaGiaDinh = parseFloat(gioTangCaGiaDinhInput.value) || 0;
+            window.luongData.bhytPercent = parseFloat(bhytPercentInput.value) || 0;
+            window.luongData.bhxhPercent = parseFloat(bhxhPercentInput.value) || 0;
+            window.luongData.thuePercent = parseFloat(thuePercentInput.value) || 0;
+            window.luongData.khacPercent = parseFloat(khacPercentInput.value) || 0;
+
+            // Cập nhật cả hai bảng
+            updateLuongUI();
+            updateLuongDuKienUI();
+        });
+    }
+});
 
 // Event listeners cho nút chuyển tháng của dashboard lương
 prevMonthCalcBtn.addEventListener('click', () => {
-    currentCalcDate.setMonth(currentCalcDate.getMonth() - 1);
+    // === MODIFIED: Navigate based on displayMode ===
+     if (typeof window.getCalculationPeriod !== 'function') return; // Cần hàm global
+     
+    if (window.displayMode === 'workPeriod') {
+        const { startDate } = window.getCalculationPeriod(currentCalcDate);
+        startDate.setDate(startDate.getDate() - 1); // Lùi 1 ngày để vào kỳ trước
+        currentCalcDate = startDate;
+    } else {
+        currentCalcDate.setMonth(currentCalcDate.getMonth() - 1);
+    }
+    // === END MODIFIED ===
     updateMonthCalcHeader();
     updateLuongUI();
     updateLuongDuKienUI();
 });
 
 nextMonthCalcBtn.addEventListener('click', () => {
-    currentCalcDate.setMonth(currentCalcDate.getMonth() + 1);
+    // === MODIFIED: Navigate based on displayMode ===
+    if (typeof window.getCalculationPeriod !== 'function') return; // Cần hàm global
+    
+    if (window.displayMode === 'workPeriod') {
+        const { endDate } = window.getCalculationPeriod(currentCalcDate);
+        endDate.setDate(endDate.getDate() + 1); // Tiến 1 ngày để vào kỳ sau
+        currentCalcDate = endDate;
+    } else {
+        currentCalcDate.setMonth(currentCalcDate.getMonth() + 1);
+    }
+    // === END MODIFIED ===
     updateMonthCalcHeader();
     updateLuongUI();
     updateLuongDuKienUI();
 });
 
-// Hàm khởi tạo cho tab Máy Tính, sẽ được gọi từ script.js khi tab này được kích hoạt
-// Gắn hàm này vào `window` để `script.js` có thể truy cập và gọi nó.
+// Hàm khởi tạo cho tab Máy Tính
 window.initCalcTab = () => {
-    loadLuongData(); // Tải dữ liệu lương khi tab được mở
-    currentCalcDate = new Date(); // Reset về tháng hiện tại khi mở tab
-    updateMonthCalcHeader(); // Cập nhật header tháng/năm
+    loadLuongData(); // Tải dữ liệu lương khi tab được mở (đã dùng global)
+    currentCalcDate = new Date(); // Reset về kỳ hiện tại khi mở tab
+    updateMonthCalcHeader(); // Cập nhật header
     updateLuongUI();
     updateLuongDuKienUI();
 };
 
-// Theo dõi thay đổi của tiền tệ từ script.js (nếu có)
-// Sự kiện này được kích hoạt từ script.js khi người dùng thay đổi loại tiền tệ.
+// Theo dõi thay đổi của tiền tệ từ script.js
 window.addEventListener('currencyChanged', (event) => {
-    luongData.currency = event.detail.currencyCode;
-    // Không cần gọi saveLuongData ở đây vì thay đổi này chỉ ảnh hưởng đến định dạng
-    // và sẽ được lưu khi người dùng nhấn nút lưu dữ liệu lương trong tab này.
-    updateLuongUI();
-    updateLuongDuKienUI();
+    if (!window.luongData) loadLuongData(); // Đảm bảo luongData đã được tải
+    window.luongData.currency = event.detail.currencyCode;
+
+    if (document.getElementById('tabMayTinh').classList.contains('active')) {
+        updateLuongUI();
+        updateLuongDuKienUI();
+    }
 });
-
-
-
-
-
-

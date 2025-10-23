@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const baseHoursInput = document.getElementById('baseHoursInput');
     const startWorkDayInput = document.getElementById('startWorkDayInput');
     const displayModeSelect = document.getElementById('displayModeSelect');
-    const currencySelector = document.getElementById('currencySelector'); // NEW: currencySelector
+    const currencySelector = document.getElementById('currencySelector');
 
     // Modals & Forms
     const timesheetModal = document.getElementById('timesheetModal');
@@ -57,6 +57,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const statsOvertimeHours = document.getElementById('statsOvertimeHours');
     const exportLogCsvBtn = document.getElementById('exportLogCsvBtn');
 
+    // === NEW: Stats/Log Month Navigator ===
+    const prevMonthStatsBtn = document.getElementById('prevMonthStatsBtn');
+    const nextMonthStatsBtn = document.getElementById('nextMonthStatsBtn');
+    const currentMonthStatsYearElement = document.getElementById('currentMonthStatsYear');
+    // === END NEW ===
+
     // Data Management
     const exportDataBtn = document.getElementById('exportDataBtn');
     const exportDataTypeSelect = document.getElementById('exportDataType');
@@ -74,17 +80,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const quickEditControls = document.getElementById('quickEditControls');
 
 
-    // --- State & Constants (Các biến này giờ được gắn vào window để calc.js có thể truy cập) ---
+    // --- State & Constants (Gắn vào window để các tệp khác truy cập) ---
     let currentDate = new Date();
     let isEditMode = false;
     window.scheduleData = {};
     window.timesheetEntries = {};
-    let firstDayIsMonday = false;
+    window.firstDayIsMonday = false; // SỬA
     window.baseWorkHours = 8;
     window.startWorkDay = 1;
-    let displayMode = 'fullMonth';
-    let currentCurrency = 'VND'; // NEW: currentCurrency
-    window.currentCurrency = currentCurrency; // Gắn vào window để calc.js truy cập
+    window.displayMode = 'fullMonth';
+    let currentCurrency = 'VND';
+    window.currentCurrency = currentCurrency;
+    window.currentStatsDate = new Date(); // SỬA
+    // --- Hết phần gán window ---
 
     const SHIFT_CYCLE = ["", "ca-ngay", "ca-dem", "nghi", "ngay-le"];
     const SHIFT_ICONS = { "ca-ngay": '<i class="fas fa-sun"></i>', "ca-dem": '<i class="fas fa-moon"></i>', "nghi": '<i class="fas fa-home"></i>', "ngay-le": '<i class="fas fa-star"></i>', "": "" };
@@ -92,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
         schedule: 'ts_schedule_v16', timesheet: 'ts_entries_v16', firstDay: 'ts_firstday_v16',
         theme: 'ts_theme_v16', baseHours: 'ts_basehours_v16', startWorkDay: 'ts_startworkday_v16',
         displayMode: 'ts_displaymode_v16',
-        currency: 'ts_currency_v1' // NEW: Khóa cho tiền tệ
+        currency: 'ts_currency_v1'
     };
 
     // Drag selection for quick edit
@@ -146,6 +154,49 @@ document.addEventListener('DOMContentLoaded', function () {
         return dayOfWeek === 0 || dayOfWeek === 6;
     };
 
+    // === NEW: Global function to get calculation period based on displayMode ===
+    /**
+     * Lấy ngày bắt đầu và kết thúc của kỳ tính toán dựa trên cài đặt
+     * @param {Date} dateRef - Ngày tham chiếu (thường là ngày 1 của tháng đang xem)
+     * @returns {{startDate: Date, endDate: Date}}
+     */
+    window.getCalculationPeriod = (dateRef) => {
+        const year = dateRef.getFullYear();
+        const month = dateRef.getMonth();
+        let startDate, endDate;
+
+        // Quan trọng: Sử dụng window.displayMode và window.startWorkDay
+        if (window.displayMode === 'workPeriod') {
+            // --- Logic tính theo chu kỳ công ---
+            let workPeriodStartMonthRef = month;
+            let workPeriodStartYearRef = year;
+
+            // Nếu ngày hiện tại < ngày bắt đầu công (vd: xem ngày 2/10, startWorkDay là 26)
+            // thì chu kỳ công này bắt đầu từ tháng trước (tháng 9)
+            if (dateRef.getDate() < window.startWorkDay) {
+                workPeriodStartMonthRef = (workPeriodStartMonthRef === 0) ? 11 : workPeriodStartMonthRef - 1;
+                workPeriodStartYearRef = (month === 0) ? workPeriodStartYearRef - 1 : workPeriodStartYearRef;
+            }
+
+            startDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, window.startWorkDay);
+            startDate.setHours(0, 0, 0, 0);
+
+            endDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, window.startWorkDay - 1);
+            endDate.setHours(23, 59, 59, 999);
+
+        } else {
+            // --- Logic tính theo tháng dương lịch ---
+            startDate = new Date(year, month, 1);
+            startDate.setHours(0, 0, 0, 0);
+
+            endDate = new Date(year, month + 1, 0); // Ngày 0 của tháng sau = ngày cuối của tháng hiện tại
+            endDate.setHours(23, 59, 59, 999);
+        }
+
+        return { startDate, endDate };
+    };
+    // === END NEW ===
+
     // --- Core Functions ---
     const applyTheme = (themeName) => {
         body.className = body.className.replace(/theme-\w+/g, '').trim();
@@ -158,26 +209,29 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             window.scheduleData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.schedule)) || {};
             window.timesheetEntries = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEYS.timesheet)) || {};
-            firstDayIsMonday = localStorage.getItem(LOCAL_STORAGE_KEYS.firstDay) === 'true';
+            window.firstDayIsMonday = localStorage.getItem(LOCAL_STORAGE_KEYS.firstDay) === 'true'; // SỬA
             const savedTheme = localStorage.getItem(LOCAL_STORAGE_KEYS.theme) || 'default';
             const savedHours = localStorage.getItem(LOCAL_STORAGE_KEYS.baseHours);
             window.baseWorkHours = savedHours ? parseFloat(savedHours) : 8;
             const savedStartWorkDay = localStorage.getItem(LOCAL_STORAGE_KEYS.startWorkDay);
             window.startWorkDay = savedStartWorkDay ? parseInt(savedStartWorkDay) : 1;
-            displayMode = localStorage.getItem(LOCAL_STORAGE_KEYS.displayMode) || 'fullMonth';
-            // NEW: Load currentCurrency
+            // === MODIFIED: Load to global var ===
+            window.displayMode = localStorage.getItem(LOCAL_STORAGE_KEYS.displayMode) || 'fullMonth';
+            // === END MODIFIED ===
             currentCurrency = localStorage.getItem(LOCAL_STORAGE_KEYS.currency) || 'VND';
-            window.currentCurrency = currentCurrency; // Cập nhật biến global
+            window.currentCurrency = currentCurrency;
 
 
             applyTheme(savedTheme);
             if (firstDayLabel) {
-                firstDayLabel.textContent = firstDayIsMonday ? 'T2' : 'CN';
+                firstDayLabel.textContent = window.firstDayIsMonday ? 'T2' : 'CN'; // SỬA
             }
             if (baseHoursInput) baseHoursInput.value = window.baseWorkHours;
             if (startWorkDayInput) startWorkDayInput.value = window.startWorkDay;
-            if (displayModeSelect) displayModeSelect.value = displayMode;
-            if (currencySelector) currencySelector.value = currentCurrency; // NEW: Cập nhật selector tiền tệ
+            // === MODIFIED: Load from global var ===
+            if (displayModeSelect) displayModeSelect.value = window.displayMode;
+            // === END MODIFIED ===
+            if (currencySelector) currencySelector.value = currentCurrency;
         } catch (e) { window.showToast("Lỗi tải dữ liệu."); }
     };
 
@@ -185,13 +239,33 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             localStorage.setItem(LOCAL_STORAGE_KEYS.schedule, JSON.stringify(window.scheduleData));
             localStorage.setItem(LOCAL_STORAGE_KEYS.timesheet, JSON.stringify(window.timesheetEntries));
-            localStorage.setItem(LOCAL_STORAGE_KEYS.firstDay, firstDayIsMonday);
+            localStorage.setItem(LOCAL_STORAGE_KEYS.firstDay, window.firstDayIsMonday); // SỬA
             localStorage.setItem(LOCAL_STORAGE_KEYS.baseHours, window.baseWorkHours);
             localStorage.setItem(LOCAL_STORAGE_KEYS.startWorkDay, window.startWorkDay);
-            localStorage.setItem(LOCAL_STORAGE_KEYS.displayMode, displayMode);
-            localStorage.setItem(LOCAL_STORAGE_KEYS.currency, currentCurrency); // NEW: Persist currentCurrency
+            // === MODIFIED: Persist from global var ===
+            localStorage.setItem(LOCAL_STORAGE_KEYS.displayMode, window.displayMode);
+            // === END MODIFIED ===
+            localStorage.setItem(LOCAL_STORAGE_KEYS.currency, currentCurrency);
         } catch (e) { window.showToast("Lỗi không thể lưu dữ liệu!"); }
     };
+    window.persistAllData = persistAllData; // SỬA: Gắn vào window
+
+    // === NEW: Function to update stats month header ===
+    const updateMonthStatsHeader = () => {
+        if (!currentMonthStatsYearElement) return;
+        const month = window.currentStatsDate.getMonth(); // SỬA
+        const year = window.currentStatsDate.getFullYear(); // SỬA
+
+        // === MODIFIED: Hiển thị tiêu đề theo chế độ ===
+        if (window.displayMode === 'workPeriod') {
+            const { startDate, endDate } = window.getCalculationPeriod(window.currentStatsDate); // SỬA
+            currentMonthStatsYearElement.textContent = `${startDate.getDate()}/${startDate.getMonth() + 1} - ${endDate.getDate()}/${endDate.getMonth() + 1}`;
+        } else {
+            currentMonthStatsYearElement.textContent = `Tháng ${month + 1}, ${year}`;
+        }
+        // === END MODIFIED ===
+    };
+    // === END NEW ===
 
     const updateTitle = (title) => { mainAppTitle.textContent = title; headerTitle.textContent = title; };
 
@@ -205,23 +279,25 @@ document.addEventListener('DOMContentLoaded', function () {
         if (tabId === 'tabLichLamViec') {
             document.body.style.overflow = 'hidden';
         } else {
-           document.body.style.overflow = 'auto';
+            document.body.style.overflow = 'auto';
         }
 
         if (tabId === 'tabMayTinh' && window.initCalcTab) {
             window.initCalcTab();
         } else if (tabId === 'tabSoChamCong') {
-            updateStatistics();
+            // === MODIFIED: Update stats UI based on its own date ===
+            window.currentStatsDate = new Date(); // SỬA: Reset to current month
+            updateMonthStatsHeader();
+            updateStatistics(window.currentStatsDate); // SỬA: Pass date
             renderTimesheetLog();
+            // === END MODIFIED ===
         }
-
-
     };
 
     const renderCalendar = () => {
         if (!calendarDaysElement) return;
 
-        const headers = firstDayIsMonday ? ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] : ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+        const headers = window.firstDayIsMonday ? ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] : ["CN", "T2", "T3", "T4", "T5", "T6", "T7"]; // SỬA
         calendarHeaderRowElement.innerHTML = headers.map(h => `<th>${h}</th>`).join('');
 
         let daysToDisplay = [];
@@ -229,20 +305,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const todayObj = new Date();
         todayObj.setHours(0, 0, 0, 0);
 
-        let workPeriodStartMonthRef = currentDate.getMonth();
-        let workPeriodStartYearRef = currentDate.getFullYear();
-        if (currentDate.getDate() < window.startWorkDay) {
-            workPeriodStartMonthRef = (workPeriodStartMonthRef === 0) ? 11 : workPeriodStartMonthRef - 1;
-            workPeriodStartYearRef = (currentDate.getMonth() === 0) ? workPeriodStartYearRef - 1 : workPeriodStartYearRef;
-        }
-        const workPeriodStartDateActual = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, window.startWorkDay);
-        workPeriodStartDateActual.setHours(0, 0, 0, 0);
+        // === MODIFIED: Logic for title and day range now respects displayMode ===
+        const { startDate: workPeriodStartDateActual, endDate: workPeriodEndDateActual } = window.getCalculationPeriod(currentDate);
 
-        const workPeriodEndDateActual = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, window.startWorkDay - 1);
-        workPeriodEndDateActual.setHours(23, 59, 59, 999);
-
-
-        if (displayMode === 'fullMonth') {
+        if (window.displayMode === 'fullMonth') {
+            // === END MODIFIED ===
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
             const firstDayOfMonth = new Date(year, month, 1);
@@ -250,7 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             calendarTitle = `Tháng ${month + 1}, ${year}`;
 
-            let startDayOffset = firstDayIsMonday ? (firstDayOfMonth.getDay() === 0 ? 6 : firstDayOfMonth.getDay() - 1) : firstDayOfMonth.getDay();
+            let startDayOffset = window.firstDayIsMonday ? (firstDayOfMonth.getDay() === 0 ? 6 : firstDayOfMonth.getDay() - 1) : firstDayOfMonth.getDay(); // SỬA
 
             for (let i = 0; i < startDayOffset; i++) {
                 daysToDisplay.push({ type: 'empty' });
@@ -265,10 +332,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
         } else { // displayMode === 'workPeriod'
-            calendarTitle = `Tháng ${workPeriodStartDateActual.getMonth() + 1}, ${workPeriodStartDateActual.getFullYear()}`;
+            // === MODIFIED: Title for work period ===
+            calendarTitle = `${workPeriodStartDateActual.getDate()}/${workPeriodStartDateActual.getMonth() + 1} - ${workPeriodEndDateActual.getDate()}/${workPeriodEndDateActual.getMonth() + 1}`;
+            // === END MODIFIED ===
 
             let firstDayOfWeekOfWorkPeriodStart = workPeriodStartDateActual.getDay();
-            if (firstDayIsMonday) {
+            if (window.firstDayIsMonday) { // SỬA
                 firstDayOfWeekOfWorkPeriodStart = (firstDayOfWeekOfWorkPeriodStart === 0) ? 6 : firstDayOfWeekOfWorkPeriodStart - 1;
             }
             for (let i = 0; i < firstDayOfWeekOfWorkPeriodStart; i++) {
@@ -302,7 +371,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 const currentDateForCell = dayInfo.date;
                 const isToday = currentDateForCell.getTime() === todayObj.getTime();
                 const shiftType = window.scheduleData[dateStr] || "";
-                const hasTimesheet = !!window.timesheetEntries[dateStr];
+
+                const entry = window.timesheetEntries[dateStr];
+                const hasTimesheet = !!entry; // Check if entry exists
+
+                // Calculate Overtime display
+                let otMins = 0;
+                if (entry && (entry.overtimeHours || entry.overtimeMinutes)) {
+                    otMins = (entry.overtimeHours || 0) * 60 + (entry.overtimeMinutes || 0);
+                }
+                const otDisplay = otMins > 0 ? `${(otMins / 60).toFixed(1)}h` : '';
+                // END OF OT CALC
 
                 let cellClasses = '';
                 if (isToday) {
@@ -310,21 +389,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
 
                 const isStartWorkDayCell = (currentDateForCell.getTime() === workPeriodStartDateActual.getTime());
-                if (isStartWorkDayCell) {
+                if (isStartWorkDayCell && window.displayMode === 'workPeriod') { // Only show in work period
                     cellClasses += ' start-work-day-cell ';
                 }
 
                 if (isEditMode) {
                     cellClasses += 'editable';
                 } else {
-                    if (displayMode === 'fullMonth' || (displayMode === 'workPeriod' && currentDateForCell >= workPeriodStartDateActual && currentDateForCell <= workPeriodEndDateActual)) {
+                    // === MODIFIED: Click logic respects period ===
+                    if (window.displayMode === 'fullMonth' || (window.displayMode === 'workPeriod' && currentDateForCell >= workPeriodStartDateActual && currentDateForCell <= workPeriodEndDateActual)) {
                         cellClasses += 'timesheet-entry-allowed';
                     } else {
                         cellClasses += 'disabled-day-visual';
                     }
+                    // === END MODIFIED ===
                 }
 
-                cellsInRow.push(`<td class="${cellClasses}" data-date="${dateStr}"><div class="day-cell-content"><span class="day-number">${dayInfo.date.getDate()}</span><span class="shift-info ${!shiftType ? 'empty' : ''}">${SHIFT_ICONS[shiftType] || ''}</span><div class="timesheet-indicator ${hasTimesheet ? 'visible' : ''}"></div></div></td>`);
+                // Add shift class to TD
+                if (shiftType) {
+                    cellClasses += ` shift-${shiftType} `;
+                }
+
+                // MODIFIED HTML PUSH: Using otDisplay instead of SHIFT_ICONS
+                cellsInRow.push(`<td class="${cellClasses}" data-date="${dateStr}"><div class="day-cell-content"><span class="day-number">${dayInfo.date.getDate()}</span><span class="shift-info">${otDisplay}</span><div class="timesheet-indicator ${hasTimesheet ? 'visible' : ''}"></div></div></td>`);
             }
 
             if (cellsInRow.length === 7) {
@@ -342,32 +429,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
         calendarDaysElement.innerHTML = rowsHtml;
     };
+    window.renderCalendar = renderCalendar; // SỬA: Gắn vào window
 
-    const updateStatistics = () => {
-        const today = new Date();
-        const year = today.getFullYear();
-        const month = today.getMonth();
+    // === MODIFIED: updateStatistics now accepts a date reference ===
+    const updateStatistics = (dateRef) => {
 
-        let workPeriodStartMonthRef = month;
-        let workPeriodStartYearRef = year;
+        // === MODIFIED: Get period based on global displayMode ===
+        const { startDate: startStatsDate, endDate: endStatsDate } = window.getCalculationPeriod(dateRef);
+        // === END MODIFIED ===
 
-        if (today.getDate() < window.startWorkDay) {
-            workPeriodStartMonthRef = (workPeriodStartMonthRef === 0) ? 11 : workPeriodStartMonthRef - 1;
-            workPeriodStartYearRef = (month === 0) ? workPeriodStartYearRef - 1 : workPeriodStartYearRef;
-        }
-
-        const startStatsDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef, window.startWorkDay);
-        startStatsDate.setHours(0, 0, 0, 0);
-
-        const endStatsDate = new Date(workPeriodStartYearRef, workPeriodStartMonthRef + 1, window.startWorkDay - 1);
-        endStatsDate.setHours(23, 59, 59, 999);
-
-        console.log('--- Update Statistics ---');
-        console.log('System Current Date:', today.toLocaleDateString('vi-VN'));
-        console.log('Start Work Day Setting:', window.startWorkDay);
-        console.log('Calculated Stats Period: From', startStatsDate.toLocaleDateString('vi-VN'), 'To', endStatsDate.toLocaleDateString('vi-VN'));
-        console.log('Timesheet Entries Sample (first 5):', Object.entries(window.timesheetEntries).slice(0, 5));
-        console.log('Schedule Data Sample (first 5):', Object.entries(window.scheduleData).slice(0, 5));
+        // console.log('--- Update Statistics ---');
+        // console.log('Stats Date Reference:', dateRef.toLocaleDateString('vi-VN'));
+        // console.log('Display Mode:', window.displayMode);
+        // console.log('Calculated Stats Period: From', startStatsDate.toLocaleDateString('vi-VN'), 'To', endStatsDate.toLocaleDateString('vi-VN'));
 
 
         let stats = {
@@ -414,22 +488,56 @@ document.addEventListener('DOMContentLoaded', function () {
         statsTotalHours.textContent = `${((stats.actualDay + stats.actualNight) * window.baseWorkHours).toFixed(1)} giờ`;
         statsOvertimeHours.textContent = `${(stats.otMins / 60).toFixed(1)} giờ`;
     };
+    window.updateStatistics = updateStatistics; // SỬA: Gắn vào window
 
+    // === MODIFIED: getFilteredLogEntries now uses currentStatsDate & displayMode ===
     const getFilteredLogEntries = () => {
-        let filtered = Object.entries(window.timesheetEntries);
         const filterType = logFilterTypeSelect.value;
-        const logStartDate = document.getElementById('logStartDate').value;
-        const logEndDate = document.getElementById('logEndDate').value;
-        const logMonth = document.getElementById('logMonth').value;
-        if (filterType === 'range' && logStartDate && logEndDate) {
-            const start = new Date(logStartDate);
-            const end = new Date(logEndDate);
-            filtered = filtered.filter(([d, e]) => { const date = new Date(d); return date >= start && date <= end; });
-        } else if (filterType === 'month' && logMonth) {
-            filtered = filtered.filter(([d, e]) => d.startsWith(logMonth));
+
+        if (filterType === 'all_time') {
+            // Return all entries ever
+            return Object.entries(window.timesheetEntries);
         }
-        return filtered;
+
+        // --- Get entries for the selected month/work period ---
+        // === MODIFIED: Use global function ===
+        const { startDate: startStatsDate, endDate: endStatsDate } = window.getCalculationPeriod(window.currentStatsDate); // SỬA
+        // === END MODIFIED ===
+
+        let monthEntries = Object.entries(window.timesheetEntries).filter(([d, e]) => {
+            const date = new Date(d);
+            date.setHours(0, 0, 0, 0);
+            return date >= startStatsDate && date <= endStatsDate;
+        });
+        // --- End get entries for month ---
+
+        if (filterType === 'all') { // This is "Tất cả (trong tháng/chu kỳ)"
+            return monthEntries;
+        }
+
+        if (filterType === 'range') {
+            const logStartDate = document.getElementById('logStartDate').value;
+            const logEndDate = document.getElementById('logEndDate').value;
+            if (logStartDate && logEndDate) {
+                const start = new Date(logStartDate);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date(logEndDate);
+                end.setHours(23, 59, 59, 999);
+
+                // Filter all entries by this range
+                return Object.entries(window.timesheetEntries).filter(([d, e]) => {
+                    const date = new Date(d);
+                    date.setHours(0, 0, 0, 0);
+                    return date >= start && date <= end;
+                });
+            }
+            return monthEntries; // No range specified, return all for month/period
+        }
+
+        // Fallback
+        return monthEntries;
     };
+    // === END MODIFIED ===
 
     const renderTimesheetLog = () => {
         const sorted = getFilteredLogEntries().sort((a, b) => new Date(b[0]) - new Date(a[0]));
@@ -450,6 +558,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return `<tr><td>${formatDateStr(dateStr)}</td><td>${SHIFT_ICONS[shiftType] || ''}</td><td>${workHours}</td><td>${entryTypeLabel}</td></tr>`;
         }).join('');
     };
+    window.renderTimesheetLog = renderTimesheetLog; // SỬA: Gắn vào window
 
     const exportData = () => {
         const dataType = exportDataTypeSelect.value;
@@ -461,10 +570,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 schedule: window.scheduleData,
                 timesheet: window.timesheetEntries,
                 settings: {
-                    firstDayIsMonday,
+                    firstDayIsMonday: window.firstDayIsMonday, // SỬA
                     baseWorkHours: window.baseWorkHours,
                     startWorkDay: window.startWorkDay,
-                    displayMode,
+                    displayMode: window.displayMode, // Use global var
                     theme: localStorage.getItem(LOCAL_STORAGE_KEYS.theme)
                 }
             };
@@ -506,19 +615,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (confirm('Dữ liệu nhập vào sẽ GHI ĐÈ toàn bộ lịch làm việc, chấm công và cài đặt. Bạn có chắc chắn muốn tiếp tục?')) {
                         window.scheduleData = imported.schedule;
                         window.timesheetEntries = imported.timesheet;
-                        firstDayIsMonday = imported.settings.firstDayIsMonday;
+                        window.firstDayIsMonday = imported.settings.firstDayIsMonday; // SỬA
                         window.baseWorkHours = imported.settings.baseWorkHours;
                         window.startWorkDay = imported.settings.startWorkDay;
-                        displayMode = imported.settings.displayMode;
+                        window.displayMode = imported.settings.displayMode; // Use global var
                         applyTheme(imported.settings.theme);
 
                         // Update UI settings
                         if (firstDayLabel) {
-                            firstDayLabel.textContent = firstDayIsMonday ? 'T2' : 'CN';
+                            firstDayLabel.textContent = window.firstDayIsMonday ? 'T2' : 'CN'; // SỬA
                         }
                         if (baseHoursInput) baseHoursInput.value = window.baseWorkHours;
                         if (startWorkDayInput) startWorkDayInput.value = window.startWorkDay;
-                        if (displayModeSelect) displayModeSelect.value = displayMode;
+                        if (displayModeSelect) displayModeSelect.value = window.displayMode; // Use global var
 
                         window.showToast('Đã nhập toàn bộ dữ liệu!');
                     } else {
@@ -578,7 +687,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 persistAllData();
                 renderCalendar();
-                updateStatistics();
+                // === MODIFIED: Update stats based on its own date ===
+                updateStatistics(window.currentStatsDate); // SỬA
                 renderTimesheetLog();
             } catch (error) {
                 console.error('Error importing data:', error);
@@ -643,13 +753,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const cellDate = new Date(dateStr);
         cellDate.setHours(0, 0, 0, 0);
 
-        let workPeriodStartDateForCurrentView = new Date(currentDate.getFullYear(), currentDate.getMonth(), window.startWorkDay);
-        if (currentDate.getDate() < window.startWorkDay) {
-            workPeriodStartDateForCurrentView.setMonth(workPeriodStartDateForCurrentView.getMonth() - 1);
-        }
-        workPeriodStartDateForCurrentView.setHours(0, 0, 0, 0);
-        let workPeriodEndDateForCurrentView = new Date(workPeriodStartDateForCurrentView.getFullYear(), workPeriodStartDateForCurrentView.getMonth() + 1, window.startWorkDay - 1);
-        workPeriodEndDateForCurrentView.setHours(23, 59, 59, 999);
+        // === MODIFIED: Use global function ===
+        const { startDate: workPeriodStartDateForCurrentView, endDate: workPeriodEndDateForCurrentView } = window.getCalculationPeriod(currentDate);
+        // === END MODIFIED ===
 
         const isInWorkPeriod = cellDate >= workPeriodStartDateForCurrentView && cellDate <= workPeriodEndDateForCurrentView;
 
@@ -669,7 +775,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             renderCalendar();
         } else {
-            if (displayMode === 'fullMonth') {
+            // === MODIFIED: Logic respects displayMode ===
+            if (window.displayMode === 'fullMonth') {
                 window.timesheetEntries[dateStr] ? openActionConfirmModal(dateStr) : openTimesheetModal(dateStr);
             } else { // 'workPeriod' mode
                 if (isInWorkPeriod) {
@@ -678,6 +785,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     window.showToast("Bạn chỉ có thể chấm công cho các ngày trong chu kỳ làm việc hiện tại.");
                 }
             }
+            // === END MODIFIED ===
         }
     };
 
@@ -699,7 +807,7 @@ document.addEventListener('DOMContentLoaded', function () {
         timesheetModal.style.display = 'none';
         renderCalendar();
         if (document.getElementById('tabSoChamCong').classList.contains('active')) {
-            updateStatistics();
+            updateStatistics(window.currentStatsDate); // SỬA: Pass date
             renderTimesheetLog();
         }
         // NEW: Cập nhật UI của tab Máy Tính sau khi chấm công được lưu
@@ -738,7 +846,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Navigation buttons logic depends on displayMode now
     prevMonthBtn.addEventListener('click', () => {
-        if (displayMode === 'fullMonth') {
+        if (window.displayMode === 'fullMonth') {
             currentDate.setMonth(currentDate.getMonth() - 1);
         } else { // 'workPeriod' mode
             let newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), window.startWorkDay);
@@ -749,11 +857,11 @@ document.addEventListener('DOMContentLoaded', function () {
             currentDate = newDate;
         }
         renderCalendar();
-        if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics();
+        if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(window.currentStatsDate); // SỬA
     });
 
     nextMonthBtn.addEventListener('click', () => {
-        if (displayMode === 'fullMonth') {
+        if (window.displayMode === 'fullMonth') {
             currentDate.setMonth(currentDate.getMonth() + 1);
         } else { // 'workPeriod' mode
             let newDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), window.startWorkDay);
@@ -764,7 +872,7 @@ document.addEventListener('DOMContentLoaded', function () {
             currentDate = newDate;
         }
         renderCalendar();
-        if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics();
+        if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(window.currentStatsDate); // SỬA
     });
 
     // Explicit save for schedule editing
@@ -792,18 +900,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // NEW: Event listener cho nút chuyển đổi ngày đầu tuần
     if (toggleFirstDayBtn) {
         toggleFirstDayBtn.addEventListener('click', () => {
-            firstDayIsMonday = !firstDayIsMonday;
+            window.firstDayIsMonday = !window.firstDayIsMonday; // SỬA
             persistAllData();
             renderCalendar();
-            firstDayLabel.textContent = firstDayIsMonday ? 'T2' : 'CN';
-            window.showToast(`Ngày bắt đầu tuần đã chuyển sang: ${firstDayIsMonday ? 'Thứ Hai' : 'Chủ Nhật'}`);
+            firstDayLabel.textContent = window.firstDayIsMonday ? 'T2' : 'CN'; // SỬA
+            window.showToast(`Ngày bắt đầu tuần đã chuyển sang: ${window.firstDayIsMonday ? 'Thứ Hai' : 'Chủ Nhật'}`); // SỬA
         });
     }
 
     themeSelector.addEventListener('change', (e) => applyTheme(e.target.value));
     baseHoursInput.addEventListener('change', (e) => {
         const hours = parseFloat(e.target.value);
-        if (hours > 0 && hours <= 24) { window.baseWorkHours = hours; persistAllData(); window.showToast(`Đã cập nhật giờ làm cơ bản.`); if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(); }
+        if (hours > 0 && hours <= 24) { window.baseWorkHours = hours; persistAllData(); window.showToast(`Đã cập nhật giờ làm cơ bản.`); if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(window.currentStatsDate); } // SỬA
         else { window.showToast('Số giờ không hợp lệ.'); e.target.value = window.baseWorkHours; }
     });
 
@@ -820,7 +928,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // When startWorkDay changes, re-align currentDate to the *new* current work period for consistency
         let today = new Date();
         let newCurrentDateRef;
-        if (displayMode === 'fullMonth') {
+        if (window.displayMode === 'fullMonth') {
             newCurrentDateRef = new Date(today.getFullYear(), today.getMonth(), 1);
         } else { // In workPeriod, reset to start of *current* work period
             let workPeriodStartMonth = today.getMonth();
@@ -833,18 +941,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         currentDate = newCurrentDateRef;
         renderCalendar();
-        if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics();
+        if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(window.currentStatsDate); // SỬA
+        if (document.getElementById('tabMayTinh').classList.contains('active') && window.initCalcTab) {
+            window.initCalcTab(); // Update calc tab as well
+        }
     });
 
     // Event listener for displayModeSelect
     displayModeSelect.addEventListener('change', (e) => {
-        displayMode = e.target.value;
+        // === MODIFIED: Use global var and update all tabs ===
+        window.displayMode = e.target.value;
         persistAllData();
-        // When display mode changes, reset currentDate to today's current work period or calendar month
+
         let today = new Date();
-        if (displayMode === 'fullMonth') {
+        if (window.displayMode === 'fullMonth') {
             currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        } else { // 'workPeriod' mode
+        } else {
             let workPeriodStartMonth = today.getMonth();
             let workPeriodStartYear = today.getFullYear();
             if (today.getDate() < window.startWorkDay) {
@@ -853,8 +965,19 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             currentDate = new Date(workPeriodStartYear, workPeriodStartMonth, window.startWorkDay);
         }
+
+        // Update all relevant UIs
         renderCalendar();
-        if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics();
+
+        if (document.getElementById('tabSoChamCong').classList.contains('active')) {
+            updateMonthStatsHeader();
+            updateStatistics(window.currentStatsDate); // SỬA
+            renderTimesheetLog();
+        }
+        if (document.getElementById('tabMayTinh').classList.contains('active') && window.initCalcTab) {
+            window.initCalcTab(); // Update calc tab as well
+        }
+        // === END MODIFIED ===
     });
 
     // NEW: Event listener cho currencySelector
@@ -879,16 +1002,30 @@ document.addEventListener('DOMContentLoaded', function () {
     entryTypeSelect.addEventListener('change', () => { overtimeFields.style.display = ['work', 'work_ot', 'holiday_work'].includes(entryTypeSelect.value) ? 'block' : 'none'; });
     timesheetModal.querySelector('.btn-confirm').addEventListener('click', handleConfirmTimesheet);
     actionConfirmModal.querySelector('.btn-edit-timesheet').addEventListener('click', () => { openTimesheetModal(actionConfirmDateInput.value, window.timesheetEntries[actionConfirmDateInput.value]); actionConfirmModal.style.display = 'none'; });
-    actionConfirmModal.querySelector('.btn-delete-timesheet').addEventListener('click', () => { delete window.timesheetEntries[actionConfirmDateInput.value]; persistAllData(); window.showToast(`Đã xoá chấm công.`); actionConfirmModal.style.display = 'none'; renderCalendar(); if (document.getElementById('tabSoChamCong').classList.contains('active')) { updateStatistics(); renderTimesheetLog(); } });
+    actionConfirmModal.querySelector('.btn-delete-timesheet').addEventListener('click', () => { delete window.timesheetEntries[actionConfirmDateInput.value]; persistAllData(); window.showToast(`Đã xoá chấm công.`); actionConfirmModal.style.display = 'none'; renderCalendar(); if (document.getElementById('tabSoChamCong').classList.contains('active')) { updateStatistics(window.currentStatsDate); renderTimesheetLog(); } }); // SỬA
     [timesheetModal, actionConfirmModal].forEach(modal => {
         modal.addEventListener('click', e => { if (e.target === modal) e.target.style.display = 'none'; });
         modal.querySelector('.btn-cancel')?.addEventListener('click', () => modal.style.display = 'none');
     });
+
+    // === MODIFIED: logFilterTypeSelect listener ===
     logFilterTypeSelect.addEventListener('change', () => {
-        document.getElementById('logDateRangePicker').style.display = logFilterTypeSelect.value === 'range' ? 'block' : 'none';
-        document.getElementById('logMonthPicker').style.display = logFilterTypeSelect.value === 'month' ? 'block' : 'none';
+        const filterType = logFilterTypeSelect.value;
+        document.getElementById('logDateRangePicker').style.display = filterType === 'range' ? 'block' : 'none';
+
+        // Thay đổi label của nút "Áp dụng"
+        if (filterType === 'range') {
+            applyLogFilterBtn.innerHTML = '<i class="fas fa-filter"></i> Lọc theo khoảng ngày';
+        } else if (filterType === 'all') {
+            applyLogFilterBtn.innerHTML = '<i class="fas fa-sync"></i> Tải lại tháng';
+        } else {
+            applyLogFilterBtn.innerHTML = '<i class="fas fa-history"></i> Tải tất cả';
+        }
+
         renderTimesheetLog();
     });
+    // === END MODIFIED ===
+
     applyLogFilterBtn.addEventListener('click', renderTimesheetLog);
 
     // Data export/import listeners
@@ -1090,10 +1227,22 @@ document.addEventListener('DOMContentLoaded', function () {
             pressTimeout = setTimeout(() => {
                 isLongPress = true;
                 const today = new Date();
-                currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                // === MODIFIED: Reset date based on displayMode ===
+                if (window.displayMode === 'fullMonth') {
+                    currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                } else {
+                    let workPeriodStartMonth = today.getMonth();
+                    let workPeriodStartYear = today.getFullYear();
+                    if (today.getDate() < window.startWorkDay) {
+                        workPeriodStartMonth = (workPeriodStartMonth === 0) ? 11 : workPeriodStartMonth - 1;
+                        workPeriodStartYear = (today.getMonth() === 0) ? workPeriodStartYear - 1 : workPeriodStartYear;
+                    }
+                    currentDate = new Date(workPeriodStartYear, workPeriodStartMonth, window.startWorkDay);
+                }
+                // === END MODIFIED ===
                 renderCalendar();
-                window.showToast(`Đã chuyển đến tháng hiện tại: ${today.getMonth() + 1}/${today.getFullYear()}`);
-                if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics();
+                window.showToast(`Đã chuyển đến kỳ hiện tại.`);
+                if (document.getElementById('tabSoChamCong').classList.contains('active')) updateStatistics(window.currentStatsDate); // SỬA
             }, LONG_PRESS_THRESHOLD);
         };
 
@@ -1152,14 +1301,18 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedMonth = parseInt(selectMonth.value);
             const selectedYear = parseInt(selectYear.value);
 
-            currentDate.setFullYear(selectedYear);
-            currentDate.setMonth(selectedMonth);
-            currentDate.setDate(1);
+            // === MODIFIED: Set date based on displayMode ===
+            if (window.displayMode === 'fullMonth') {
+                currentDate = new Date(selectedYear, selectedMonth, 1);
+            } else {
+                currentDate = new Date(selectedYear, selectedMonth, window.startWorkDay);
+            }
+            // === END MODIFIED ===
 
             renderCalendar();
             monthYearPickerModal.style.display = 'none';
             if (document.getElementById('tabSoChamCong').classList.contains('active')) {
-                updateStatistics();
+                updateStatistics(window.currentStatsDate); // SỬA
                 renderTimesheetLog();
             }
             window.showToast(`Đã chuyển đến ${selectMonth.options[selectMonth.selectedIndex].text}, ${selectedYear}`);
@@ -1181,12 +1334,115 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // === NEW: Stats/Log Month Nav Listeners ===
+    if (prevMonthStatsBtn) {
+        prevMonthStatsBtn.addEventListener('click', () => {
+            // === MODIFIED: Navigate based on displayMode ===
+            if (window.displayMode === 'workPeriod') {
+                // Lấy ngày bắt đầu của kỳ hiện tại và trừ đi 1 ngày để sang kỳ trước
+                const { startDate } = window.getCalculationPeriod(window.currentStatsDate); // SỬA
+                startDate.setDate(startDate.getDate() - 1);
+                window.currentStatsDate = startDate; // SỬA
+            } else {
+                window.currentStatsDate.setMonth(window.currentStatsDate.getMonth() - 1); // SỬA
+            }
+            // === END MODIFIED ===
+            updateMonthStatsHeader();
+            updateStatistics(window.currentStatsDate); // SỬA
+            renderTimesheetLog();
+        });
+    }
+
+    if (nextMonthStatsBtn) {
+        nextMonthStatsBtn.addEventListener('click', () => {
+            // === MODIFIED: Navigate based on displayMode ===
+            if (window.displayMode === 'workPeriod') {
+                // Lấy ngày kết thúc của kỳ hiện tại và cộng thêm 1 ngày để sang kỳ sau
+                const { endDate } = window.getCalculationPeriod(window.currentStatsDate); // SỬA
+                endDate.setDate(endDate.getDate() + 1);
+                window.currentStatsDate = endDate; // SỬA
+            } else {
+                window.currentStatsDate.setMonth(window.currentStatsDate.getMonth() + 1); // SỬA
+            }
+            // === END MODIFIED ===
+            updateMonthStatsHeader();
+            updateStatistics(window.currentStatsDate); // SỬA
+            renderTimesheetLog();
+        });
+    }
+    // === END NEW ===
+
+
+    // --- Thêm code xử lý nút xóa Cache và tắt Offline ---
+
+    // Lấy nút mới
+    const clearOfflineCacheBtn = document.getElementById('clearOfflineCacheBtn');
+    const unregisterSwBtn = document.getElementById('unregisterSwBtn');
+
+    // Tên cache phải khớp với tên trong sw.js
+    const CACHE_NAME_FOR_SCRIPT = 'so-cham-cong-cache-v1';
+
+    // Xử lý nút xóa cache
+    if (clearOfflineCacheBtn) {
+        clearOfflineCacheBtn.addEventListener('click', () => {
+            if (confirm('Bạn có chắc muốn xóa tất cả dữ liệu ứng dụng đã lưu offline (cache)? Thao tác này không ảnh hưởng dữ liệu chấm công của bạn.')) {
+                caches.delete(CACHE_NAME_FOR_SCRIPT)
+                    .then(deleted => {
+                        if (deleted) {
+                            window.showToast('Đã xóa cache offline thành công!');
+                            console.log('Cache offline đã được xóa:', CACHE_NAME_FOR_SCRIPT);
+                        } else {
+                            window.showToast('Không tìm thấy cache offline để xóa.');
+                            console.log('Không tìm thấy cache:', CACHE_NAME_FOR_SCRIPT);
+                        }
+                    })
+                    .catch(error => {
+                        window.showToast('Lỗi khi xóa cache offline.');
+                        console.error('Lỗi xóa cache:', error);
+                    });
+            }
+        });
+    }
+
+    // Xử lý nút tắt chế độ offline (unregister service worker)
+    if (unregisterSwBtn) {
+        unregisterSwBtn.addEventListener('click', () => {
+            if (confirm('Bạn có chắc muốn tắt hoàn toàn chế độ offline? Ứng dụng sẽ cần mạng để chạy và có thể yêu cầu tải lại trang.')) {
+                navigator.serviceWorker.getRegistrations()
+                    .then(registrations => {
+                        if (registrations.length === 0) {
+                             window.showToast('Chế độ offline hiện không hoạt động.');
+                             return;
+                        }
+                        let unregisterPromises = registrations.map(registration => registration.unregister());
+                        return Promise.all(unregisterPromises);
+                    })
+                    .then(unregisteredArray => {
+                         // Kiểm tra xem có unregister thành công không
+                        if (unregisteredArray && unregisteredArray.some(result => result === true)) {
+                            window.showToast('Đã tắt chế độ offline. Vui lòng tải lại trang.');
+                            console.log('Service Worker đã được gỡ đăng ký.');
+                             // Tùy chọn: Tự động tải lại trang sau một khoảng thời gian ngắn
+                             // setTimeout(() => { window.location.reload(); }, 2000);
+                        } else {
+                             window.showToast('Không tìm thấy Service Worker để tắt.');
+                        }
+                    })
+                    .catch(error => {
+                        window.showToast('Lỗi khi tắt chế độ offline.');
+                        console.error('Lỗi gỡ đăng ký Service Worker:', error);
+                    });
+            }
+        });
+    }
+
 
     // --- Init ---
     const init = () => {
         loadAllData();
         let today = new Date();
-        if (displayMode === 'fullMonth') {
+        // === MODIFIED: Init currentDate based on loaded displayMode ===
+        if (window.displayMode === 'fullMonth') {
             currentDate = new Date(today.getFullYear(), today.getMonth(), 1);
         } else {
             let workPeriodStartMonth = today.getMonth();
@@ -1197,11 +1453,23 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             currentDate = new Date(workPeriodStartYear, workPeriodStartMonth, window.startWorkDay);
         }
+        // === END MODIFIED ===
+
+        // === MODIFIED: Init stats date and UI ===
+        window.currentStatsDate = new Date(); // SỬA: Init to today
 
         renderCalendar();
-        updateStatistics();
+
+        updateMonthStatsHeader();
+        updateStatistics(window.currentStatsDate); // SỬA
         renderTimesheetLog();
+        // === END MODIFIED ===
+
         updateTitle(document.querySelector('.nav-button.active').dataset.title);
     };
     init();
+    // === SỬA LỖI RACE CONDITION ===
+    console.log("script.js đã chạy xong, gán hàm vào window và gửi sự kiện 'scriptJsReady'.");
+    window.dispatchEvent(new Event('scriptJsReady'));
+    // === KẾT THÚC SỬA ===
 });
