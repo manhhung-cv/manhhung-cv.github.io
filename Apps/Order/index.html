@@ -570,6 +570,13 @@
                         </div>
                         <label class="block text-sm font-bold text-[var(--text-primary)] mb-1">Bước 2: Quét mã
                             QR</label>
+                        <select id="focusModeSelect" class="qr-focus-mode">
+                            <option value="full">Quét toàn màn hình</option>
+                            <option value="center">Chỉ quét trung tâm</option>
+                            <option value="tap">Chạm để lấy nét</option>
+                            <option value="auto-refocus">Tự động refocus mạnh</option>
+                        </select>
+
                         <div id="qr-reader"
                             class="w-full md:w-96 mx-auto border-2 border-dashed border-slate-300 rounded-2xl overflow-hidden bg-[var(--bg-primary)]">
                         </div>
@@ -704,7 +711,8 @@
         let isAutoPasteEnabled = false, isGuestMode = false, isGroupedView = false, isSelectionModeActive = false;
         let allOrders = [], selectedOrders = new Set(), availableCameras = [];
         let html5QrCode = null;
-        let editingTallyOrderCode = null; // MỚI: Theo dõi mã đơn hàng đang được sửa
+        const focusModeSelect = document.getElementById('focusModeSelect');
+        const qrEl = document.getElementById('qr-reader'); let editingTallyOrderCode = null; // MỚI: Theo dõi mã đơn hàng đang được sửa
 
         // UI Elements
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -1336,165 +1344,141 @@
         });
         manualConfirmCancelBtn.addEventListener('click', () => manualCheckConfirmModal.classList.add('hidden'));
         function startQrScanner() {
-            // Dừng quá trình quét trước đó nếu đang chạy
+            // Dừng quét cũ nếu đang chạy
             if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().catch(err => {
-                    console.error("Lỗi khi dừng QR scanner cũ:", err);
-                });
-                html5QrCode = null; // Reset để khởi tạo lại
+                html5QrCode.stop().catch(() => { });
+                html5QrCode = null;
             }
 
-            scanResultEl.innerHTML = ''; // Xóa kết quả quét cũ
+            scanResultEl.innerHTML = '';
 
-            const localQrReaderElement = document.getElementById('qr-reader');
-            if (!localQrReaderElement) {
-                console.error("Không tìm thấy element #qr-reader.");
-                showToast("Lỗi: Không tìm thấy vùng quét QR.", "error");
-                return; // Dừng nếu không tìm thấy element
+            if (!qrEl) {
+                showToast("Không tìm thấy vùng quét QR.", "error");
+                return;
             }
 
-            // Khởi tạo đối tượng Html5Qrcode nếu chưa có
             if (!html5QrCode) {
                 try {
                     html5QrCode = new Html5Qrcode("qr-reader");
-                } catch (initError) {
-                    console.error("Lỗi khởi tạo Html5Qrcode:", initError);
-                    showToast("Lỗi khởi tạo thư viện quét QR.", "error");
-                    localQrReaderElement.innerHTML = `<p style="color: red;">Lỗi khởi tạo thư viện quét.</p>`;
+                } catch (e) {
+                    console.error(e);
+                    showToast("Lỗi khởi tạo QR library", "error");
+                    qrEl.innerHTML = `<p style="color:red;">Không thể khởi tạo</p>`;
                     return;
                 }
             }
 
-            const tryStartScanning = () => {
-                // Cấu hình quét cơ bản
-                const config = {
-                    fps: 10,
-                    qrbox: (viewfinderWidth, viewfinderHeight) => {
-                        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                        const qrboxSize = Math.floor(minEdge * 1);
-                        return { width: qrboxSize, height: qrboxSize };
-                    },
-                    // Đưa constraints vào configuration
-                    videoConstraints: {
-                        facingMode: "environment", // Mặc định camera sau
-                        width: { ideal: 1280 },    // Yêu cầu độ phân giải
-                        height: { ideal: 720 },
-                        advanced: [{ focusMode: "continuous" }] // Thử bật focus
-                    }
-                    // , rememberLastUsedCamera: true
-                };
+            const focusMode = focusModeSelect ? focusModeSelect.value : "full";
 
-                // Xác định camera ID hoặc facingMode cho tham số đầu tiên của start()
-                let cameraIdOrConfig;
-                if (availableCameras.length > 0 && cameraSelect.value) {
-                    cameraIdOrConfig = { deviceId: { exact: cameraSelect.value } };
-                    // Khi dùng deviceId, không cần facingMode trong config nữa
-                    // Tuy nhiên, vẫn giữ nó trong videoConstraints để thư viện thử áp dụng
-                    config.videoConstraints.deviceId = { exact: cameraSelect.value };
-                    delete config.videoConstraints.facingMode; // Xóa khỏi config chính để tránh lỗi
-
-                } else {
-                    cameraIdOrConfig = { facingMode: "environment" }; // Chỉ định camera sau nếu không chọn cụ thể
-                    // Giữ facingMode trong config.videoConstraints
+            const baseConfig = {
+                fps: 10,
+                videoConstraints: {
+                    facingMode: { ideal: "environment" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    advanced: [{ focusMode: "continuous" }, { zoom: 1.1 }]
                 }
-
-
-                // Hàm xử lý lỗi camera chung
-                const handleCameraError = (err) => {
-                    console.error("Lỗi khởi động camera:", err);
-                    showToast(`Không thể khởi động camera: ${err}. Đang thử cấu hình đơn giản hơn...`, 'warning');
-
-                    // --- Thử lại với constraints đơn giản hơn ---
-                    const simplerConfig = { // Config mới chỉ chứa fps và qrbox
-                        fps: 10,
-                        qrbox: config.qrbox // Giữ lại qrbox config
-                    };
-                    let simplerCameraIdOrConfig; // Chỉ định lại cameraID hoặc facingMode
-
-                    if (availableCameras.length > 0 && cameraSelect.value) {
-                        simplerCameraIdOrConfig = { deviceId: { exact: cameraSelect.value } };
-                    } else {
-                        simplerCameraIdOrConfig = { facingMode: "environment" };
-                    }
-
-                    if (!html5QrCode) {
-                        try { html5QrCode = new Html5Qrcode("qr-reader"); } catch { /* Ignore */ }
-                    }
-                    if (!html5QrCode) {
-                        showToast(`Không thể khởi tạo lại QR Scanner`, 'error');
-                        return;
-                    }
-
-
-                    html5QrCode.start(
-                        simplerCameraIdOrConfig, // Chỉ ID hoặc facingMode
-                        simplerConfig,           // Config đơn giản
-                        processCheckedOrder,
-                        (errorMessage) => { /* console.warn(`QR scanning error: ${errorMessage}`); */ }
-                    ).catch(finalErr => {
-                        console.error("Lỗi khởi động camera với constraints đơn giản:", finalErr);
-                        showToast(`Không thể khởi động camera: ${finalErr}`, 'error');
-                        if (localQrReaderElement) {
-                            localQrReaderElement.innerHTML = `<p style="color: red; padding: 10px;">Không thể khởi động camera. Vui lòng cấp quyền truy cập camera cho trang web này trong cài đặt trình duyệt và thử lại.</p>`;
-                        }
-                        html5QrCode = null; // Reset nếu lỗi
-                    });
-                    // --- Kết thúc thử lại ---
-                };
-
-                // Đảm bảo html5QrCode không null trước khi gọi start
-                if (!html5QrCode) {
-                    try { html5QrCode = new Html5Qrcode("qr-reader"); } catch { /* Ignore */ }
-                }
-                if (!html5QrCode) {
-                    showToast(`Không thể khởi tạo lại QR Scanner`, 'error');
-                    return;
-                }
-
-                // Bắt đầu quét
-                html5QrCode.start(
-                    cameraIdOrConfig,       // Chỉ ID hoặc facingMode
-                    config,                 // config chứa fps, qrbox, videoConstraints
-                    processCheckedOrder,    // Success callback
-                    (errorMessage) => {     // Error callback (trong quá trình quét)
-                        /* console.warn(`QR scanning error: ${errorMessage}`); */
-                    }
-                ).catch(handleCameraError); // Xử lý lỗi khởi động
             };
 
-            // Lấy danh sách camera nếu chưa có
-            if (!availableCameras.length) {
-                Html5Qrcode.getCameras().then(cameras => {
-                    if (cameras && cameras.length) {
-                        availableCameras = cameras;
-                        if (cameras.length > 1) {
-                            cameraSelect.innerHTML = cameras.map(cam =>
-                                `<option value="${cam.id}">${cam.label || `Camera ${cam.id}`}</option>`
-                            ).join('');
-                            cameraSelectionContainer.classList.remove('hidden');
-                            cameraSelect.removeEventListener('change', startQrScanner); // Xóa listener cũ
-                            cameraSelect.addEventListener('change', startQrScanner); // Gắn listener mới
-                        } else {
-                            cameraSelectionContainer.classList.add('hidden');
+            if (focusMode === "center") {
+                baseConfig.qrbox = (vw, vh) => {
+                    const edge = Math.min(vw, vh) * 0.6;
+                    return { width: edge, height: edge };
+                };
+            }
+
+            const applyRefocusMode = () => {
+                // Xoá callback cũ
+                qrEl.onclick = null;
+                if (window._refocusTimer) clearInterval(window._refocusTimer);
+
+                if (focusMode === "tap") {
+                    qrEl.onclick = () => {
+                        if (html5QrCode?.isScanning) {
+                            html5QrCode.pause(true);
+                            setTimeout(() => html5QrCode.resume(), 150);
                         }
-                    } else {
-                        showToast("Không tìm thấy camera nào.", "error");
+                    };
+                }
+
+                if (focusMode === "auto-refocus") {
+                    window._refocusTimer = setInterval(() => {
+                        if (html5QrCode?.isScanning) {
+                            html5QrCode.pause(true);
+                            setTimeout(() => html5QrCode.resume(), 100);
+                        }
+                    }, 2500);
+                }
+
+                const originalStop = html5QrCode.stop.bind(html5QrCode);
+                html5QrCode.stop = () => {
+                    clearInterval(window._refocusTimer);
+                    return originalStop();
+                };
+            };
+
+            const startScan = (config, camConfig) => {
+                html5QrCode.start(camConfig, config, processCheckedOrder, () => { })
+                    .then(applyRefocusMode)
+                    .catch(err => {
+                        console.error("Không thể khởi động camera:", err);
+                        showToast("Đang thử fallback config...", "warning");
+
+                        const simpleConfig = { fps: 10 };
+                        const simpleCamConfig = camConfig;
+
+                        html5QrCode.start(simpleCamConfig, simpleConfig, processCheckedOrder, () => { })
+                            .then(applyRefocusMode)
+                            .catch(finalErr => {
+                                console.error(finalErr);
+                                showToast("Không thể truy cập camera.", "error");
+                                qrEl.innerHTML = `<p style="color:red;padding:10px;">Vui lòng cấp quyền camera</p>`;
+                                html5QrCode = null;
+                            });
+                    });
+            };
+
+            const initCameraListAndStart = () => {
+                Html5Qrcode.getCameras().then(cameras => {
+                    if (!cameras.length) {
+                        showToast("Không tìm thấy camera nào", "error");
+                        return;
+                    }
+                    availableCameras = cameras;
+
+                    if (cameras.length > 1 && cameraSelect) {
+                        cameraSelectionContainer.classList.remove('hidden');
+                        cameraSelect.innerHTML = cameras.map(cam =>
+                            `<option value="${cam.id}">${cam.label || cam.id}</option>`
+                        ).join('');
+                        cameraSelect.onchange = startQrScanner;
+                    } else if (cameraSelectionContainer) {
                         cameraSelectionContainer.classList.add('hidden');
                     }
-                    tryStartScanning(); // Bắt đầu quét sau khi lấy xong camera
+
+                    const camConfig = cameraSelect && cameraSelect.value
+                        ? { deviceId: { exact: cameraSelect.value } }
+                        : { facingMode: "environment" };
+
+                    startScan(baseConfig, camConfig);
                 }).catch(err => {
-                    showToast(`Không thể truy cập camera: ${err}`, 'error');
-                    console.error("Lỗi lấy danh sách camera:", err);
-                    cameraSelectionContainer.classList.add('hidden');
-                    if (localQrReaderElement) {
-                        localQrReaderElement.innerHTML = `<p style="color: red; padding: 10px;">Không thể truy cập camera. Vui lòng cấp quyền.</p>`;
-                    }
+                    console.error(err);
+                    showToast("Không thể truy cập camera", "error");
+                    qrEl.innerHTML = `<p style="color:red;">Không có quyền camera</p>`;
                 });
-            } else {
-                // Nếu đã có danh sách camera, bắt đầu quét ngay
-                tryStartScanning();
+            };
+            if (focusModeSelect) focusModeSelect.onchange = startQrScanner;
+
+
+            if (!availableCameras.length) initCameraListAndStart();
+            else {
+                const camConfig = cameraSelect && cameraSelect.value
+                    ? { deviceId: { exact: cameraSelect.value } }
+                    : { facingMode: "environment" };
+                startScan(baseConfig, camConfig);
             }
         }
+
         const getTallyData = () => JSON.parse(localStorage.getItem(`tally_${currentGroupId}`) || '[]');
         const saveTallyData = (data) => localStorage.setItem(`tally_${currentGroupId}`, JSON.stringify(data));
         const addOrderToLocalTally = (order, tallyOwner, weight, note) => {
