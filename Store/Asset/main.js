@@ -2163,22 +2163,50 @@ document.getElementById('confirm-order-btn').addEventListener('click', () => {
 
 document.getElementById('hunq-paygate-link').addEventListener('click', async (e) => {
     e.preventDefault();
+
+    // 1. Mở một tab mới (trống) NGAY LẬP TỨC.
+    // Safari sẽ cho phép điều này vì nó xảy ra đồng bộ với cú click.
+    const newTab = window.open('', '_blank');
+    if (!newTab) {
+        // Trường hợp trình duyệt vẫn chặn (ví dụ: cài đặt quá nghiêm ngặt)
+        console.error("Không thể mở tab mới. Vui lòng kiểm tra cài đặt chặn pop-up.");
+        // Bạn có thể hiển thị thông báo cho người dùng ở đây
+        // alert("Không thể mở tab mới. Vui lòng cho phép pop-up cho trang này.");
+        return;
+    }
+
+    // (Tùy chọn) Hiển thị thông báo đang tải trên tab mới
+    // để người dùng không nhìn thấy một trang trắng
+    newTab.document.write('Đang chuyển đến cổng thanh toán, vui lòng đợi...');
+
     try {
-        // placeOrder creates the order and returns its details
+        // 2. Bây giờ mới thực hiện tác vụ bất đồng bộ (await)
         const orderDetails = await placeOrder('bank');
+        
         if (orderDetails) {
             const { displayOrderId, finalTotal } = orderDetails;
             const ref = `Donate ${displayOrderId}`;
             const amount = finalTotal;
             const paymentUrl = `https://hunq.online/PayGate/?Ref=${encodeURIComponent(ref)}&Amout=${amount}`;
 
-            window.open(paymentUrl, '_blank');
+            // 3. Điều hướng tab đã mở ở bước 1 đến URL thanh toán
+            newTab.location.href = paymentUrl;
+
             paymentModal.classList.add('hidden');
-            // Navigation to #orders is handled inside placeOrder
+            // Navigation đến #orders được xử lý bên trong placeOrder
+        } else {
+            // Nếu có lỗi (ví dụ: placeOrder không trả về gì), hãy đóng tab mới
+            console.error("Không nhận được chi tiết đơn hàng.");
+            newTab.document.write('Xảy ra lỗi, bạn có thể đóng tab này.');
+            // newTab.close(); // Tùy chọn: tự động đóng
         }
     } catch (error) {
-        // Errors are already shown in placeOrder, just log it here.
-        console.error("Payment initiation failed.");
+        // 4. Nếu có lỗi nghiêm trọng, hiển thị lỗi trên tab mới
+        console.error("Payment initiation failed:", error);
+        if (newTab) {
+            newTab.document.write('Quá trình thanh toán thất bại. Bạn có thể đóng tab này.');
+            // newTab.close(); // Tùy chọn: tự động đóng
+        }
     }
 });
 
