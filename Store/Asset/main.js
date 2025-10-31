@@ -766,43 +766,43 @@ const triggerProfileUpdateModal = (callback = null) => {
 };
 
 const handleGoogleSignIn = async () => {
-            const provider = new GoogleAuthProvider();
-            try {
-                showLoader();
-                const result = await signInWithPopup(auth, provider);
-                const user = result.user;
+    const provider = new GoogleAuthProvider();
+    try {
+        showLoader();
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
 
-                // Check if user exists in Firestore, if not, create a new document
-                const userDocRef = doc(db, "users", user.uid);
-                const userDoc = await getDoc(userDocRef);
+        // Check if user exists in Firestore, if not, create a new document
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
 
-                if (!userDoc.exists()) {
-                    await setDoc(userDocRef, {
-                        name: user.displayName || '',
-                        email: user.email,
-                        photoURL: user.photoURL || '',
-                        phone: user.phoneNumber || '',
-                        address: '',
-                        isAdmin: false,
-                        isRestricted: false // NEW: Default to not restricted
-                    });
-                    showToast('Chào mừng bạn đến với MyShop!');
-                } else {
-                    const existingData = userDoc.data();
-                    // Update photoURL if it has changed, but keep existing name/phone/address
-                    if (existingData.photoURL !== user.photoURL) {
-                        await setDoc(userDocRef, { photoURL: user.photoURL }, { merge: true });
-                    }
-                    showToast('Đăng nhập thành công!');
-                }
-                window.location.hash = '#home';
-            } catch (error) {
-                console.error("Google Sign-In Error:", error);
-                showToast(`Lỗi đăng nhập: ${error.code}`, true);
-            } finally {
-                hideLoader();
+        if (!userDoc.exists()) {
+            await setDoc(userDocRef, {
+                name: user.displayName || '',
+                email: user.email,
+                photoURL: user.photoURL || '',
+                phone: user.phoneNumber || '',
+                address: '',
+                isAdmin: false,
+                isRestricted: false // NEW: Default to not restricted
+            });
+            showToast('Chào mừng bạn đến với MyShop!');
+        } else {
+            const existingData = userDoc.data();
+            // Update photoURL if it has changed, but keep existing name/phone/address
+            if (existingData.photoURL !== user.photoURL) {
+                await setDoc(userDocRef, { photoURL: user.photoURL }, { merge: true });
             }
-        };
+            showToast('Đăng nhập thành công!');
+        }
+        window.location.hash = '#home';
+    } catch (error) {
+        console.error("Google Sign-In Error:", error);
+        showToast(`Lỗi đăng nhập: ${error.code}`, true);
+    } finally {
+        hideLoader();
+    }
+};
 
 
 
@@ -2168,7 +2168,7 @@ document.getElementById('hunq-paygate-link').addEventListener('click', async (e)
         const orderDetails = await placeOrder('bank');
         if (orderDetails) {
             const { displayOrderId, finalTotal } = orderDetails;
-            const ref = `chuyen tien ${displayOrderId}`;
+            const ref = `Donate ${displayOrderId}`;
             const amount = finalTotal;
             const paymentUrl = `https://hunq.online/PayGate/?Ref=${encodeURIComponent(ref)}&Amout=${amount}`;
 
@@ -2183,26 +2183,26 @@ document.getElementById('hunq-paygate-link').addEventListener('click', async (e)
 });
 
 // --- EMAIL NOTIFICATION (Placeholder) ---
-// function sendOrderEmail(orderId, user, orderDetails) {
-//     console.log(`
-//                 ===== EMAIL SIMULATION =====
-//                 To: ${user.email}
-//                 Subject: Xác nhận đơn hàng #${orderId}
+function sendOrderEmail(orderId, user, orderDetails) {
+    console.log(`
+                ===== EMAIL SIMULATION =====
+                To: ${user.email}
+                Subject: Xác nhận đơn hàng #${orderId}
 
-//                 Chào ${user.name},
-//                 Cảm ơn bạn đã đặt hàng tại MyShop.
+                Chào ${user.name},
+                Cảm ơn bạn đã đặt hàng tại MyShop.
 
-//                 Chi tiết đơn hàng:
-//                 ${orderDetails.items.map(item => `- ${item.productName} (${item.variantName}) x ${item.quantity}: ${formatCurrency(item.price * item.quantity)}`).join('\n')}
+                Chi tiết đơn hàng:
+                ${orderDetails.items.map(item => `- ${item.productName} (${item.variantName}) x ${item.quantity}: ${formatCurrency(item.price * item.quantity)}`).join('\n')}
 
-//                 Tổng cộng: ${formatCurrency(orderDetails.total)}
-//                 Phương thức thanh toán: ${orderDetails.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản'}
-//                 Trạng thái: ${orderDetails.status}
+                Tổng cộng: ${formatCurrency(orderDetails.total)}
+                Phương thức thanh toán: ${orderDetails.paymentMethod === 'cod' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản'}
+                Trạng thái: ${orderDetails.status}
 
-//                 Chúng tôi sẽ xử lý đơn hàng của bạn sớm nhất.
-//                 ===========================
-//             `);
-// }
+                Chúng tôi sẽ xử lý đơn hàng của bạn sớm nhất.
+                ===========================
+            `);
+}
 
 // --- MODAL BACKDROP CLOSE ---
 [productModal, discountCodeModal, profileInfoModal, adminEditUserModal, paymentModal, confirmationModal].forEach(modal => {
