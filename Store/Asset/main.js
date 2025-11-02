@@ -1371,6 +1371,7 @@ const removeFromCart = async (itemId) => {
 };
 
 // --- CHECKOUT AND ORDERS ---
+// --- CHECKOUT AND ORDERS ---
 const placeOrder = async (paymentMethod) => {
     if (!currentUser) return null;
     showLoader();
@@ -1450,7 +1451,7 @@ const placeOrder = async (paymentMethod) => {
 
         batch.set(newOrderRef, {
             displayOrderId,
-            userId: currentUser.uid,
+            userId: currentUser.uid, // <--- DÒNG ĐÃ ĐƯỢC THÊM VÀO
             userName: currentUser.name,
             userAddress: currentUser.address,
             userPhone: currentUser.phone,
@@ -1482,6 +1483,7 @@ const placeOrder = async (paymentMethod) => {
         hideLoader();
     }
 };
+
 
 const statusClasses = {
     'Chờ xác nhận': 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
@@ -2187,7 +2189,7 @@ document.getElementById('hunq-paygate-link').addEventListener('click', async (e)
             const { displayOrderId, finalTotal } = orderDetails;
             const ref = `Donate ${displayOrderId}`;
             const amount = finalTotal;
-            const paymentUrl = `https://mhung.site/PayGate/?Ref=${encodeURIComponent(ref)}&Amout=${amount}`;
+            const paymentUrl = `https://mhunh.site/PayGate/?Ref=${encodeURIComponent(ref)}&Amout=${amount}`;
 
             // 3. Điều hướng tab đã mở ở bước 1 đến URL thanh toán
             newTab.location.href = paymentUrl;
