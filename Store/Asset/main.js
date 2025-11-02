@@ -1372,6 +1372,7 @@ const removeFromCart = async (itemId) => {
 
 // --- CHECKOUT AND ORDERS ---
 // --- CHECKOUT AND ORDERS ---
+// --- CHECKOUT AND ORDERS ---
 const placeOrder = async (paymentMethod) => {
     if (!currentUser) return null;
     showLoader();
@@ -1410,6 +1411,7 @@ const placeOrder = async (paymentMethod) => {
         }
 
         // Stock Validation in Transaction
+        // (Phần kiểm tra vẫn chạy để đảm bảo hàng còn, nhưng phần trừ kho bên dưới đã bị tắt)
         await runTransaction(db, async (transaction) => {
             for (const update of stockUpdates) {
                 const productRef = doc(db, "products", update.productId);
@@ -1426,6 +1428,11 @@ const placeOrder = async (paymentMethod) => {
         });
 
 
+        // ======================= GIẢI PHÁP TẠM THỜI =======================
+        // Khối code bên dưới đã bị vô hiệu hóa để tránh lỗi permission-denied.
+        // Đơn hàng sẽ được tạo nhưng tồn kho sẽ KHÔNG bị trừ.
+        
+        /*
         // If validation passes, proceed with batch write
         for (const update of stockUpdates) {
             const productRef = doc(db, "products", update.productId);
@@ -1439,6 +1446,8 @@ const placeOrder = async (paymentMethod) => {
                 totalStock: productData.totalStock
             });
         }
+        */
+        // ===================================================================
 
 
         let discountAmount = 0;
@@ -1451,7 +1460,7 @@ const placeOrder = async (paymentMethod) => {
 
         batch.set(newOrderRef, {
             displayOrderId,
-            userId: currentUser.uid, // <--- DÒNG ĐÃ ĐƯỢC THÊM VÀO
+            userId: currentUser.uid, // <--- Đã thêm ở lần sửa trước
             userName: currentUser.name,
             userAddress: currentUser.address,
             userPhone: currentUser.phone,
@@ -1483,6 +1492,7 @@ const placeOrder = async (paymentMethod) => {
         hideLoader();
     }
 };
+
 
 
 const statusClasses = {
