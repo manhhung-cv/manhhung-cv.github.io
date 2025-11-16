@@ -4,7 +4,16 @@ import { getFirestore, doc, setDoc, getDoc, getDocs, onSnapshot, collection, que
 import { getMessaging, getToken, onMessage, deleteToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 // --- CONFIG & INITIALIZATION ---
-const firebaseConfig = { apiKey: "AIzaSyCqUaI__8udllforW6CSCvd6f8_UCLY3CE", authDomain: "famibank-c7bfb.firebaseapp.com", projectId: "famibank-c7bfb", storageBucket: "famibank-c7bfb.appspot.com", messagingSenderId: "243910717721", appId: "1:243910717721:web:e3f52cb495c1bdf35dd588" };
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBevgQ-MEoSg1tnLyvOFY8ndcKN7HvaahU",
+  authDomain: "fami-wallet.firebaseapp.com",
+  projectId: "fami-wallet",
+  storageBucket: "fami-wallet.firebasestorage.app",
+  messagingSenderId: "851225524722",
+  appId: "1:851225524722:web:023d64b5b0d7205045d36b",
+  measurementId: "G-4DNH0PN1CS"
+};
 const appId = firebaseConfig.projectId;
 const ADMIN_EMAIL = 'mienphi1230@gmail.com';
 const app = initializeApp(firebaseConfig);
@@ -1114,7 +1123,7 @@ function setupGiftsTab() {
             const gift = doc.data();
             const soldOut = gift.quantity <= 0;
             return `<div class="bg-secondary rounded-lg p-3 flex flex-col app-shadow">
-                        <img src="${gift.imageUrl}" alt="${gift.name}" class="w-full h-28 object-cover rounded-md mb-3">
+                        <img src="${gift.imageUrl}" alt="${gift.name}" class="bg-white w-full h-28 object-contain rounded-md mb-3">
                         <p class="font-bold text-primary text-sm flex-grow">${gift.name}</p>
                         <p class="text-xs text-secondary mt-1">Còn lại: ${gift.quantity}</p>
                         <button data-id="${doc.id}" data-name="${gift.name}" data-price="${gift.price}" ${soldOut ? 'disabled' : ''} 
