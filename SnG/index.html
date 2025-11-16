@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share&Go</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- BỔ SUNG: Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- BỔ SUNG: Google Fonts (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+    <!-- BỔ SUNG: Script chống FOUC (Flash of Unstyled Content) cho Dark Mode -->
+    <script>
+        // Thêm sự kiện này để đảm bảo HTML đã tải xong
+        document.addEventListener('DOMContentLoaded', function () {
+
+            // Đặt toàn bộ mã của bạn vào bên trong
+            (function () {
+                const themeToggle = document.getElementById('theme-toggle');
+
+                // Kiểm tra nếu nút bấm không tồn tại thì thoát
+                if (!themeToggle) {
+                    console.error('Không tìm thấy nút #theme-toggle. Hãy kiểm tra lại ID trong HTML.');
+                    return;
+                }
+
+                const toggleIcon = themeToggle.querySelector('i');
+
+                // Định nghĩa các chế độ
+                const themes = [
+                    { name: 'system', icon: 'fa-desktop', title: 'Chế độ Hệ thống' },
+                    { name: 'light', icon: 'fa-sun', title: 'Chế độ Sáng' },
+                    { name: 'dark', icon: 'fa-moon', title: 'Chế độ Tối' }
+                ];
+
+                // Hàm cập nhật icon và title
+                function updateButton(themeName) {
+                    const theme = themes.find(t => t.name === themeName) || themes[0];
+                    if (toggleIcon) {
+                        toggleIcon.className = `fa-solid ${theme.icon}`;
+                    }
+                    themeToggle.title = theme.title;
+                }
+
+                // Hàm chính để đặt theme
+                function setTheme(themeName) {
+                    let effectiveTheme = themeName;
+
+                    if (themeName === 'system') {
+                        effectiveTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                    }
+
+                    document.documentElement.setAttribute('data-theme', effectiveTheme);
+                    localStorage.setItem('theme', themeName);
+                    updateButton(themeName);
+                }
+
+                // Lấy theme đã lưu
+                let currentThemeName = localStorage.getItem('theme') || 'system';
+
+                // Áp dụng theme khi tải trang
+                setTheme(currentThemeName);
+
+                // Xử lý sự kiện click
+                themeToggle.addEventListener('click', () => {
+                    const currentIndex = themes.findIndex(t => t.name === currentThemeName);
+                    const nextIndex = (currentIndex + 1) % themes.length;
+                    const nextTheme = themes[nextIndex];
+
+                    currentThemeName = nextTheme.name;
+                    setTheme(currentThemeName);
+                });
+
+                // Lắng nghe thay đổi theme của hệ thống
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                    if (localStorage.getItem('theme') === 'system') {
+                        const newSystemTheme = event.matches ? 'dark' : 'light';
+                        document.documentElement.setAttribute('data-theme', newSystemTheme);
+                    }
+                });
+
+            })(); // Kết thúc (function() { ... })
+
+        }); // Kết thúc DOMContentLoaded
+        // Sử dụng window.onload để đảm bảo mọi thứ (CSS, JS, ảnh) đã tải xong
+
+        document.addEventListener('DOMContentLoaded', () => {
+    
+    // Tìm nhóm sao và input ẩn
+    const starWrapper = document.querySelector('.star-rating');
+    
+    // Kiểm tra xem starWrapper có tồn tại không trước khi chạy
+    if (starWrapper) {
+        const stars = starWrapper.querySelectorAll('i');
+        const hiddenInput = document.getElementById('location-rating');
+
+        // Hàm để cập nhật hiển thị sao dựa trên giá trị (value)
+        function setRatingVisual(value) {
+            stars.forEach((star, index) => {
+                // index là 0-4, value là 1-5
+                if (index < value) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+
+        // --- CÁC SỰ KIỆN ---
+
+        // 1. Đặt trạng thái ban đầu khi tải trang
+        // (lấy giá trị từ input ẩn, đang là "5")
+        setRatingVisual(hiddenInput.value);
+
+        // 2. Thêm sự kiện 'click' cho từng ngôi sao
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                const value = star.dataset.value;
+                hiddenInput.value = value; // CẬP NHẬT GIÁ TRỊ CỦA INPUT ẨN
+                setRatingVisual(value);    // Cập nhật hiển thị sao
+            });
+
+            // 3. Thêm sự kiện 'mouseover' (khi di chuột vào)
+            star.addEventListener('mouseover', () => {
+                setRatingVisual(star.dataset.value); // Hiển thị tạm thời
+            });
+        });
+
+        // 4. Thêm sự kiện 'mouseout' (khi di chuột ra khỏi)
+        // Ta gán sự kiện này cho cả nhóm sao
+        starWrapper.addEventListener('mouseout', () => {
+            // Quay lại hiển thị giá trị ĐÃ CHỌN (lưu trong input)
+            setRatingVisual(hiddenInput.value);
+        });
+    }
+});
+    </script>
+
+
+
+    <script type="module" src="./app.js"></script>
+
+    <!-- Các script thư viện bên ngoài -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+</head>
+
+<body>
+
+    <div id="loading">
+        <span>Đang tải...</span>
+        <div class="spinner"></div>
+    </div>
+    <!-- SỬA ĐỔI: Auth Container -->
+    <div id="auth-container">
+        <!-- Các form giữ nguyên nhưng sẽ được style bằng CSS mới -->
+        <div id="login-form">
+            <h2>Đăng nhập Share&Go</h2>
+            <form>
+                <div class="form-group">
+                    <label for="login-email">Email:</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Mật khẩu:</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit">Đăng nhập</button>
+            </form>
+            <p style="margin-top: 16px; text-align: center;">
+                <a href="#" id="show-register-link">Chưa có tài khoản? Đăng ký</a>
+                <br>
+                <a href="#" id="show-forgot-pass-link">Quên mật khẩu?</a>
+            </p>
+        </div>
+
+        <div id="register-form" style="display: none;">
+            <h2>Đăng ký tài khoản</h2>
+            <form>
+                <div class="form-group">
+                    <label for="register-name">Tên hiển thị:</label>
+                    <input type="text" id="register-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-facebook">ID Facebook (tùy chọn, để hiển thị avatar):</label>
+                    <input type="text" id="register-facebook">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email:</label>
+                    <input type="email" id="register-email" placeholder="chỉ nhận @gmail, @icloud, @mhung.site"
+                        required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Mật khẩu:</label>
+                    <input type="password" id="register-password" required>
+                </div>
+                <div class="form-group form-group-inline">
+                    <input type="password" id="register-confirm-password" placeholder="Xác nhận mật khẩu" required
+                        style="margin-bottom: 0;">
+                    <button type="button" id="register-toggle-pass" class="secondary"
+                        style="width: 50px; padding: 12px 0;">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+                <button type="submit">Đăng ký</button>
+            </form>
+            <a href="#" id="show-login-link" style="display: block; text-align: center; margin-top: 16px;">Đã có tài
+                khoản? Đăng nhập</a>
+        </div>
+
+        <div id="forgot-password-form" style="display: none;">
+            <h2>Quên mật khẩu</h2>
+            <form>
+                <div class="form-group">
+                    <label for="forgot-email">Nhập email của bạn:</label>
+                    <input type="email" id="forgot-email" required>
+                </div>
+                <button type="submit">Gửi email khôi phục</button>
+            </form>
+            <a href="#" id="back-to-login-link" style="display: block; text-align: center; margin-top: 16px;">Quay lại
+                Đăng nhập</a>
+        </div>
+    </div>
+
+    <!-- SỬA ĐỔI: App Container -->
+    <div id="app-container" style="display: none;">
+        <header>
+            <h1>Share&Go</h1>
+
+
+            <div class="user">
+                <div id="user-display"></div>
+                <div class="theme-switcher">
+                    <button id="theme-toggle" class="icon-btn" title="Chế độ Hệ thống">
+                        <i class="fa-solid fa-desktop"></i>
+                    </button>
+                </div>
+
+            </div>
+
+        </header>
+
+        <!-- SỬA ĐỔI: Các view chính sẽ là .main-content -->
+        <div id="trips-view" class="main-content">
+            <div class="card">
+                <h2>Tạo chuyến đi mới</h2>
+                <form id="create-trip-form">
+                    <div class="form-group">
+                        <label for="trip-name">Tên chuyến đi:</label>
+                        <input type="text" id="trip-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="trip-description">Mô tả:</label>
+                        <input type="text" id="trip-description">
+                    </div>
+                    <div class="form-group">
+                        <label for="trip-max-people">Số người tham gia:</label>
+                        <input type="number" id="trip-max-people" min="1" required>
+                    </div>
+                    <button type="submit"><i class="fa-solid fa-plus"></i> Tạo chuyến đi</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Tham gia chuyến đi</h2>
+                <form id="join-trip-form" class="form-group-inline">
+                    <input type="text" id="join-code" placeholder="Nhập Mã mời (VD: ABC123)" style="margin: 0;">
+                    <button type="submit" style="width: auto; flex-shrink: 0;"><i
+                            class="fa-solid fa-arrow-right-to-bracket"></i> Tham gia</button>
+                </form>
+            </div>
+
+            <h2>Các chuyến đi của bạn</h2>
+            <div id="trips-list">
+                <!-- Danh sách sẽ được render vào đây -->
+            </div>
+        </div>
+
+        <div id="single-trip-view" class="main-content" style="display: none;">
+
+            <button id="back-to-trips" class="secondary" style="margin-bottom: 16px;"><i
+                    class="fa-solid fa-arrow-left"></i> Quay lại</button>
+            <h2 id="trip-name-display"></h2>
+
+            <div id="trip-controls" class="card" style="padding: 12px;">
+                <!-- Nút điều khiển (Sửa, Xóa...) render vào đây -->
+            </div>
+
+            <!-- Các tab content -->
+            <div id="input-tab" class="tab-content">
+                <h3>Thêm địa điểm mới</h3>
+                <form id="add-location-form" class="card">
+                    <div class="form-group">
+                        <label for="location-name">Tên địa điểm:</label>
+                        <input type="text" id="location-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="location-address">Địa chỉ (tự động tìm kiếm):</label>
+                        <input type="text" id="location-address" placeholder="VD: Quận 1, TPHCM" autocomplete="off">
+                        <input type="hidden" id="location-position">
+                    </div>
+
+                    <div id="map-search-results"></div>
+
+                    <div class="form-group">
+                        <label>Bản đồ (OpenStreetMap):</label>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                            <button type="button" id="get-location-button" class="secondary small"><i
+                                    class="fa-solid fa-location-crosshairs"></i> Vị trí của tôi</button>
+                            <button type="button" id="map-mode-default" class="secondary small">Mặc định</button>
+                            <button type="button" id="map-mode-satellite" class="secondary small">Vệ tinh</button>
+                            <button type="button" id="map-mode-dark" class="secondary small">Tối</button>
+                        </div>
+                        <div id="map-container"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location-people">Số người:</label>
+                        <div class="form-group-inline">
+                            <button type="button" id="people-decrease" class="secondary">-</button>
+                            <input type="number" id="location-people" value="1" min="1" style="text-align: center;">
+                            <button type="button" id="people-increase" class="secondary">+</button>
+                            <button type="button" id="people-max" class="secondary"
+                                style="width: auto; padding: 12px 8px; font-size: 0.9rem;">Max</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location-cost">Tổng tiền (VNĐ):</label>
+                        <input type="text" id="location-cost" placeholder="100000" inputmode="numeric">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location-time">Thời gian & Ngày:</label>
+                        <div class="form-group-inline">
+                            <button type="button" id="get-current-time-button" class="secondary"><i
+                                    class="fa-solid fa-clock"></i></button>
+                            <input type="text" id="location-time" placeholder="HHMM (19:30)" inputmode="numeric">
+                            <input type="text" id="location-date" placeholder="DDMM (25/12)" inputmode="numeric">
+
+                        </div>
+
+                    </div>
+
+                    <div class="form-group">
+                        <label>Đánh giá:</label>
+
+                        <div class="star-rating">
+                            <i class="fa-solid fa-star" data-value="1"></i>
+                            <i class="fa-solid fa-star" data-value="2"></i>
+                            <i class="fa-solid fa-star" data-value="3"></i>
+                            <i class="fa-solid fa-star" data-value="4"></i>
+                            <i class="fa-solid fa-star" data-value="5"></i>
+                        </div>
+
+                        <input type="hidden" id="location-rating" name="location-rating" value="5">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location-notes">Ghi chú:</label>
+                        <textarea id="location-notes" rows="3"></textarea>
+                    </div>
+
+                    <button type="submit" class="w-full"><i class="fa-solid fa-check"></i> Xác nhận Thêm</button>
+                </form>
+            </div>
+
+            <div id="history-tab" class="tab-content" style="display: none;">
+                <h3>Lịch sử chuyến đi</h3>
+                <div class="card filters">
+                    <input type="text" id="search-history" placeholder="&#xf002; Tìm theo tên/địa chỉ..."
+                        style="font-family: 'Inter', FontAwesome;">
+                    <select id="sort-history">
+                        <option value="time">Sắp xếp theo thời gian (mới nhất)</option>
+                        <option value="name">Sắp xếp theo tên (A-Z)</option>
+                        <option value="cost">Sắp xếp theo tổng tiền (cao-thấp)</option>
+                    </select>
+                    <div class="export-buttons">
+                        <button id="export-txt" class="secondary"><i class="fa-solid fa-file-lines"></i> TXT</button>
+                        <button id="export-json" class="secondary"><i class="fa-solid fa-file-code"></i> JSON</button>
+                        <button id="export-xlsx" class="secondary"><i class="fa-solid fa-file-excel"></i> XLSX</button>
+                        <button id="copy-history" class="secondary"><i class="fa-solid fa-clipboard"></i> Copy</button>
+                    </div>
+                </div>
+                <div id="history-list">
+                </div>
+            </div>
+
+            <div id="chat-tab" class="tab-content" style="display: none;">
+                <!-- <h3>Trò chuyện nhóm</h3> (Bỏ tiêu đề, cho full height) -->
+                <div id="chat-messages">
+                    <!-- Tin nhắn render vào đây -->
+                </div>
+                <form id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Nhập tin nhắn..." autocomplete="off">
+                    <button type="submit"><i class="fa-solid fa-paper-plane"></i></button>
+                </form>
+            </div>
+
+            <div id="stats-tab" class="tab-content" style="display: none;">
+                <div id="stats-content" class="card">
+                    <!-- Thống kê render vào đây -->
+                </div>
+            </div>
+
+            <!-- SỬA ĐỔI: Nav bar -->
+            <nav>
+                <button class="tab-button" data-tab="input-tab">
+                    <i class="fa-solid fa-map-location-dot"></i>
+
+                </button>
+                <button class="tab-button" data-tab="history-tab">
+                    <i class="fa-solid fa-list-ul"></i>
+
+                </button>
+                <button class="tab-button" data-tab="chat-tab">
+                    <i class="fa-solid fa-comments"></i>
+
+                </button>
+                <button class="tab-button" data-tab="stats-tab">
+                    <i class="fa-solid fa-chart-pie"></i>
+
+                </button>
+            </nav>
+
+        </div>
+
+
+    </div>
+
+    <!-- SỬA ĐỔI: Modals -->
+    <div id="edit-trip-modal" class="modal">
+        <div class="modal-content">
+            <h3>Sửa thông tin chuyến đi</h3>
+            <form id="edit-trip-form">
+                <div class="form-group">
+                    <label for="edit-trip-name">Tên chuyến đi:</label>
+                    <input type="text" id="edit-trip-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-trip-description">Mô tả:</label>
+                    <input type="text" id="edit-trip-description">
+                </div>
+                <div class="form-group">
+                    <label for="edit-trip-max-people">Số người:</label>
+                    <input type="number" id="edit-trip-max-people" min="1" required>
+                </div>
+                <button type="submit">Lưu thay đổi</button>
+                <button type="button" id="close-edit-trip-modal" class="secondary">Đóng</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-location-modal" class="modal">
+        <div class="modal-content">
+            <h3>Sửa địa điểm</h3>
+            <form id="edit-location-form">
+                <div class="form-group">
+                    <label for="edit-location-name">Tên địa điểm:</label>
+                    <input type="text" id="edit-location-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-location-position">Địa chỉ:</label>
+                    <input type="text" id="edit-location-position">
+                </div>
+                <div class="form-group">
+                    <label for="edit-location-people">Số người:</label>
+                    <input type="number" id="edit-location-people" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="edit-location-cost">Tổng tiền (VNĐ):</label>
+                    <input type="text" id="edit-location-cost" inputmode="numeric">
+                </div>
+                <div class="form-group">
+                    <label for="edit-location-time">Thời gian (HH:MM):</label>
+                    <input type="text" id="edit-location-time" placeholder="HH:MM">
+                </div>
+                <div class="form-group">
+                    <label for="edit-location-date">Ngày (DD/MM/YYYY):</label>
+                    <input type="text" id="edit-location-date" placeholder="DD/MM/YYYY">
+                </div>
+                <div class="form-group">
+                    <label for="edit-location-rating">Đánh giá:</label>
+                    <select id="edit-location-rating">
+                        <option value="1">1 sao</option>
+                        <option value="2">2 sao</option>
+                        <option value="3">3 sao</option>
+                        <option value="4">4 sao</option>
+                        <option value="5">5 sao</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-location-notes">Ghi chú:</label>
+                    <textarea id="edit-location-notes" rows="3"></textarea>
+                </div>
+                <button type="submit">Lưu thay đổi</button>
+                <button type="button" id="close-edit-location-modal" class="secondary">Đóng</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="account-modal" class="modal">
+        <div class="modal-content">
+            <h3>Quản lý Tài khoản</h3>
+
+            <form id="update-profile-form">
+                <h4>Cập nhật thông tin</h4>
+                <div class="form-group">
+                    <label for="account-name">Tên hiển thị:</label>
+                    <input type="text" id="account-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="account-facebook">ID Facebook (cho avatar):</label>
+                    <input type="text" id="account-facebook">
+                </div>
+                <button type="submit">Lưu thông tin</button>
+            </form>
+
+            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 16px 0;">
+
+            <form id="update-password-form">
+                <h4>Đổi mật khẩu</h4>
+                <div class="form-group">
+                    <label for="account-current-pass">Mật khẩu hiện tại:</label>
+                    <input type="password" id="account-current-pass" required>
+                </div>
+                <div class="form-group">
+                    <label for="account-new-pass">Mật khẩu mới:</label>
+                    <input type="password" id="account-new-pass" required>
+                </div>
+                <div class="form-group">
+                    <label for="account-confirm-pass">Xác nhận mật khẩu mới:</label>
+                    <input type="password" id="account-confirm-pass" required>
+                </div>
+                <button type="submit">Đổi mật khẩu</button>
+            </form>
+
+            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 16px 0;">
+            <button type="button" id="close-account-modal" class="secondary">Đóng</button>
+            <button class="red" id="logout-button" title="Đăng xuất"> <i class="fa-solid fa-right-from-bracket"></i>
+                Đăng xuất</button>
+        </div>
+    </div>
+
+</body>
+
+</html>

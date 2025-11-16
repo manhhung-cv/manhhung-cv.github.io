@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soạn Hành lý</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- BIẾN CSS VÀ CÀI ĐẶT CƠ BẢN --- */
+        :root {
+            --bg-color: #f0f2f5;
+            --text-color: #1a1a1a;
+            --text-color-light: #555;
+            --primary-color: #007aff;
+            --primary-color-light: #e6f2ff;
+            --red-color: #ff3b30;
+            --green-color: #34c759;
+            --gray-color: #8e8e93;
+            --border-color: #e0e0e0;
+            --card-bg-solid: #ffffff;
+
+            /* Liquid Glass */
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --blur-value: 12px;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --card-radius: 20px;
+            --item-radius: 16px;
+        }
+
+        body.dark-mode {
+            --bg-color: #000000;
+            --text-color: #ffffff;
+            --text-color-light: #a0a0a0;
+            --primary-color: #0a84ff;
+            --primary-color-light: #1c2b4a;
+            --border-color: #3a3a3c;
+            --card-bg-solid: #1c1c1e;
+
+            /* Liquid Glass (Dark) */
+            --glass-bg: rgba(29, 29, 31, 0.7);
+            --glass-border: rgba(50, 50, 52, 0.4);
+            --shadow-color: rgba(0, 0, 0, 0.2);
+        }
+
+        /* --- PHONG CÁCH TODO LIST --- */
+        body.list-style-google #todo-list li {
+            background: var(--card-bg-solid);
+            backdrop-filter: none;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px var(--shadow-color);
+        }
+        body.list-style-google .checkmark {
+            border-color: var(--primary-color);
+        }
+        body.list-style-google input:checked ~ .checkmark {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        body.list-style-minimal #todo-list li {
+            background: transparent;
+            backdrop-filter: none;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            border-bottom: 1px solid var(--border-color);
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.4s ease, color 0.4s ease;
+            line-height: 1.5;
+            overflow-x: hidden; /* Thêm dòng này để chống tràn */
+        }
+
+        /* --- ICON SVG --- */
+        .icon {
+            width: 24px;
+            height: 24px;
+            stroke-width: 2;
+            fill: none;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .icon-settings { width: 28px; height: 28px; }
+        .icon-back { width: 28px; height: 28px; }
+        .icon-sm { width: 20px; height: 20px; }
+        .icon-xs { width: 16px; height: 16px; }
+
+        /* --- CSS CHO TOGGLE SWITCH (MỚI) --- */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            transition: .4s;
+            border-radius: 28px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
+
+
+        /* --- NỀN "LIQUID GLASS" --- */
+        .liquid-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+        }
+        /* (MỚI) Div cho ảnh nền tùy chỉnh */
+        .custom-background-image {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: all 0.4s ease;
+            z-index: 1; /* Dưới blobs */
+            background-image: none;
+        }
+        .custom-background-image.blurred {
+            filter: blur(8px);
+        }
+        
+        .liquid-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            z-index: 2; /* (SỬA) Trên ảnh nền */
+        }
+        .liquid-blob-1 {
+            width: 400px;
+            height: 400px;
+            background: #007aff;
+            top: -100px;
+            left: -150px;
+            animation: move 20s infinite alternate;
+        }
+        .liquid-blob-2 {
+            width: 300px;
+            height: 300px;
+            background: #34c759;
+            bottom: -100px;
+            right: -100px;
+            animation: move 18s infinite alternate-reverse;
+        }
+        body.dark-mode .liquid-blob { opacity: 0.2; }
+
+        @keyframes move {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(100px, 50px) scale(1.2); }
+            100% { transform: translate(-50px, -50px) scale(1); }
+        }
+
+        /* --- BỐ CỤC CHÍNH --- */
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .view {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .view.active {
+            display: flex;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- TIÊU ĐỀ --- */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+        .header-controls { /* (MỚI) Wrapper cho các nút header */
+            display: flex;
+            gap: 10px;
+        }
+        .header-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            color: var(--text-color);
+            box-shadow: 0 4px 15px var(--shadow-color);
+            transition: all 0.2s ease;
+        }
+        #toggle-completed-btn .icon-hide { /* (MỚI) */
+            display: none;
+        }
+        .header-btn:hover {
+            background: rgba(200, 200, 200, 0.5);
+        }
+        body.dark-mode .header-btn:hover {
+             background: rgba(80, 80, 80, 0.5);
+        }
+
+        /* --- VIEW: WIZARD --- */
+        #wizard-view h2 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .wizard-step {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+            justify-content: center;
+        }
+        .wizard-step.active { display: flex; }
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .option-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            box-shadow: 0 4px 15px var(--shadow-color);
+            transition: all 0.2s ease;
+            /* (MỚI) Thêm flex để chứa icon */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        /* (MỚI) Kiểu cho Emoji trong Wizard */
+        .option-card .wizard-emoji {
+            font-size: 2.5rem;
+            line-height: 1;
+        }
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px var(--shadow-color);
+        }
+        .option-card.selected {
+            background: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        body.dark-mode .option-card.selected {
+             box-shadow: 0 0 20px rgba(10, 132, 255, 0.3);
+        }
+        .family-inputs {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .wizard-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 20px;
+        }
+
+        /* --- VIEW: DANH SÁCH TODO --- */
+        #todo-list-container {
+            flex-grow: 1;
+            /* (SỬA) Bỏ padding cứng, JS sẽ xử lý */
+            /* padding-bottom: 260px; */ 
+        }
+        #todo-list {
+            list-style-type: none;
+            margin-bottom: 20px;
+        }
+        #todo-list li {
+            display: flex;
+            flex-wrap: wrap; 
+            /* (SỬA) Căn chỉnh tốt hơn khi có ghi chú */
+            align-items: flex-start; 
+            padding-top: 12px;
+            padding-bottom: 12px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--item-radius);
+            padding: 15px;
+            margin-bottom: 12px;
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            box-shadow: 0 4px 15px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+        
+        /* Checkbox kiểu iOS */
+        .checkbox-container {
+            display: inline-block;
+            position: relative;
+            cursor: pointer;
+            font-size: 22px;
+            user-select: none;
+            width: 28px;
+            height: 28px;
+            margin-right: 15px;
+            flex-shrink: 0;
+            margin-top: 3px; /* (MỚI) Căn chỉnh với text */
+        }
+        .checkbox-container input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 28px;
+            width: 28px;
+            background-color: transparent;
+            border: 2px solid var(--gray-color);
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: var(--green-color);
+            border-color: var(--green-color);
+        }
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+            left: 9px;
+            top: 5px;
+            width: 6px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+        
+        /* (MỚI) Wrapper cho Tên và Ghi chú */
+        .item-content {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+
+        .item-label {
+            /* (SỬA) không cần flex-grow */
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            padding-right: 10px;
+            display: block; /* (MỚI) Để ghi chú xuống dòng */
+            word-break: break-word; /* (MỚI) */
+        }
+        .item-label.completed {
+            text-decoration: line-through;
+            color: var(--text-color-light);
+            opacity: 0.7;
+        }
+        
+        .item-quantity {
+            width: 50px;
+            font-size: 0.9rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 4px;
+            margin-right: 10px;
+            background: var(--bg-color);
+            color: var(--text-color);
+            flex-shrink: 0;
+        }
+        body.dark-mode .item-quantity {
+             background: var(--card-bg-solid);
+             color: var(--text-color);
+             border-color: var(--glass-border);
+        }
+        
+        .item-actions {
+            display: flex;
+            flex-shrink: 0;
+            margin-left: auto; /* (MỚI) Đẩy sang phải */
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-color-light);
+            cursor: pointer;
+            padding: 5px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        .icon-btn:hover { opacity: 1; }
+        .delete-btn { color: var(--red-color); }
+        .toggle-notes-btn { color: var(--primary-color); }
+
+        .item-notes {
+            /* (BỎ) Không dùng textarea ẩn nữa */
+            display: none; 
+        }
+
+        /* (MỚI) Kiểu cho Ghi chú (hiển thị) */
+        .item-notes-display {
+            font-size: 0.85rem;
+            color: var(--text-color-light);
+            margin-top: 4px;
+            border-radius: 6px;
+            padding: 2px 4px;
+            transition: background-color 0.2s ease;
+            width: 100%;
+            word-break: break-word;
+        }
+        .item-notes-display:empty:before {
+            content: attr(data-placeholder);
+            color: var(--gray-color);
+            font-style: italic;
+            opacity: 0.7;
+        }
+        .item-notes-display:focus {
+            outline: 1px solid var(--primary-color);
+            background: var(--card-bg-solid);
+            box-shadow: 0 0 5px var(--primary-color-light);
+        }
+
+
+        /* --- FORM THÊM MỚI (ĐÃ CHUYỂN VÀO FOOTER) --- */
+        #add-item-form {
+            display: flex;
+            flex-direction: column; /* (MỚI) Xếp chồng */
+            gap: 10px;
+            margin-bottom: 15px; /* (MỚI) Khoảng cách với nút */
+        }
+        /* (MỚI) Hàng đầu tiên: Tên + SL */
+        .add-item-main {
+            display: flex;
+            gap: 10px;
+        }
+        #item-input {
+            flex-grow: 1;
+        }
+        /* (SỬA) Wrapper cho các trường phụ (Hàng 2) */
+        .add-item-details {
+            display: flex;
+            gap: 10px;
+        }
+        #add-quantity-input {
+            width: 60px;
+            flex-shrink: 0;
+            text-align: center;
+        }
+        #add-notes-input {
+            flex-grow: 1;
+        }
+        #add-item-form .btn {
+            flex-shrink: 0;
+            padding: 10px; /* Làm nút nhỏ hơn */
+        }
+        #add-item-form .btn .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+
+        .glass-input {
+            flex-grow: 1;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            border-radius: var(--item-radius);
+            padding: 15px;
+            font-size: 1rem;
+            color: var(--text-color);
+            box-shadow: 0 2px 8px var(--shadow-color);
+            transition: all 0.2s ease;
+        }
+        .glass-input::placeholder { color: var(--text-color-light); }
+        .glass-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px var(--primary-color-light);
+        }
+        
+        .btn {
+            border: none;
+            border-radius: var(--item-radius);
+            padding: 15px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 122, 255, 0.2);
+        }
+        .btn-primary:hover {
+            background-color: #006ae0;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 122, 255, 0.3);
+        }
+        body.dark-mode .btn-primary {
+             box-shadow: 0 4px 15px rgba(10, 132, 255, 0.2);
+        }
+        
+        .btn-secondary {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: var(--text-color);
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
+        .btn-secondary:hover {
+             transform: translateY(-2px);
+             box-shadow: 0 6px 20px var(--shadow-color);
+        }
+        
+        .btn-success {
+            background-color: var(--green-color);
+            color: white;
+            box-shadow: 0 4px 15px rgba(52, 199, 89, 0.2);
+        }
+        .btn-success:hover {
+             transform: translateY(-2px);
+             box-shadow: 0 6px 20px rgba(52, 199, 89, 0.3);
+        }
+        
+        .action-buttons {
+            display: grid;
+            /* (SỬA) 3 cột cho 3 icon */
+            grid-template-columns: 1fr 1fr 1fr; 
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        /* (MỚI) CSS cho các nút icon */
+        .action-buttons .btn {
+            padding: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .action-buttons .btn .icon {
+            margin-right: 0;
+        }
+
+
+        /* --- CÀI ĐẶT --- */
+        .setting-section {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
+        .setting-section h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .setting-select {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 8px 12px;
+            color: var(--text-color);
+            font-size: 0.9rem;
+        }
+        
+        /* --- QUẢN LÝ (Chung) --- */
+        .manage-list { list-style-type: none; }
+        .manage-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--item-radius);
+            padding: 15px;
+            margin-bottom: 12px;
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            box-shadow: 0 2px 8px var(--shadow-color);
+        }
+        .manage-item .btn {
+            padding: 5px 10px;
+            font-size: 0.9rem;
+            margin-left: 5px;
+        }
+        .btn-danger {
+            background-color: var(--red-color);
+            color: white;
+        }
+        #add-category-item-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        /* --- VIEW: HÀNH LÝ CŨ --- */
+        #history-list details {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--item-radius);
+            margin-bottom: 12px;
+            backdrop-filter: blur(var(--blur-value));
+        }
+        #history-list summary {
+            padding: 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        #history-list ul {
+            list-style-type: none;
+            padding: 0 15px 15px 40px;
+        }
+        #history-list li {
+            padding: 5px 0;
+            color: var(--text-color-light);
+        }
+        #history-list li.completed {
+            text-decoration: line-through;
+        }
+
+
+        /* --- MODAL (Chung) --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--card-radius);
+            padding: 25px;
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 400px;
+        }
+        .modal-content h3 { margin-bottom: 15px; }
+        .modal-content p { margin-bottom: 20px; }
+        .modal-content input {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* --- MODAL CHỌN MẪU (MỚI) --- */
+        #template-chooser-modal .modal-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        #template-chooser-modal .modal-templates h4 {
+            font-size: 1rem;
+            color: var(--text-color-light);
+            margin-top: 15px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        #modal-templates-list {
+            list-style-type: none;
+            max-height: 150px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .template-load-btn {
+            display: block;
+            width: 100%;
+        }
+
+
+        /* --- THÔNG BÁO (Toast) --- */
+        #toast-notification {
+            position: fixed;
+            bottom: -100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #222;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 0.9rem;
+            z-index: 2000;
+            transition: bottom 0.5s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        #toast-notification.show { bottom: 30px; }
+        
+        #clipboard-helper {
+            position: absolute;
+            left: -9999px;
+        }
+
+        /* --- (MỚI) FOOTER CỐ ĐỊNH --- */
+        .fixed-bottom-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+
+            /* Áp dụng max-width để căn giữa */
+            max-width: 600px; 
+            margin: 0 auto;
+
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            
+            padding: 15px 20px; /* 20px padding ngang giống app-container */
+            /* (MỚI) Tăng padding top để có chỗ cho nút đóng */
+            padding-top: 30px;
+            border-top: 1px solid var(--glass-border);
+            box-shadow: 0 -5px 20px var(--shadow-color);
+            transition: transform 0.3s ease-out; /* (MỚI) Cho hiệu ứng ẩn/hiện */
+        }
+        /* Ẩn/hiện footer cùng với view */
+        .fixed-bottom-container:not(.active) {
+            display: none;
+        }
+        /* (MỚI) Trạng thái ẩn footer */
+        body.footer-collapsed .fixed-bottom-container {
+            transform: translateY(100%);
+        }
+
+        /* (MỚI) Nút Ẩn/Hiện Footer */
+        .footer-toggle-btn {
+            position: absolute;
+            top: 0;
+            right: 15px;
+            transform: translateY(-50%); /* Kéo lên 1 nửa */
+            
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            backdrop-filter: blur(var(--blur-value));
+            -webkit-backdrop-filter: blur(var(--blur-value));
+            color: var(--text-color);
+            box-shadow: 0 4px 15px var(--shadow-color);
+            transition: all 0.2s ease;
+        }
+        .footer-toggle-btn .icon {
+            transition: transform 0.3s ease;
+        }
+        body.footer-collapsed .footer-toggle-btn .icon {
+            transform: rotate(180deg);
+        }
+
+
+    </style>
+</head>
+<body>
+
+    <!-- Nền hiệu ứng -->
+    <div class="liquid-background">
+        <div class="custom-background-image"></div> <!-- (MỚI) -->
+        <div class="liquid-blob liquid-blob-1"></div>
+        <div class="liquid-blob liquid-blob-2"></div>
+    </div>
+
+    <!-- Container chính của ứng dụng -->
+    <div class="app-container">
+
+        <!-- ===== VIEW: WIZARD (HƯỚNG DẪN TẠO MẪU) ===== -->
+        <div id="wizard-view" class="view">
+            <!-- Step 1: Giới tính -->
+            <div id="wizard-step-1" class="wizard-step active">
+                <h2>Bạn là?</h2>
+                <div class="options-grid">
+                    <div class="option-card" data-step="1" data-field="gender" data-value="male">
+                        <span class="wizard-emoji">👨</span>
+                        <span>Nam</span>
+                    </div>
+                    <div class="option-card" data-step="1" data-field="gender" data-value="female">
+                        <span class="wizard-emoji">👩</span>
+                        <span>Nữ</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Địa điểm -->
+            <div id="wizard-step-2" class="wizard-step">
+                <h2>Bạn đi đâu?</h2>
+                <div class="options-grid">
+                    <div class="option-card" data-step="2" data-field="location" data-value="domestic">
+                        <span class="wizard-emoji">🇻🇳</span>
+                        <span>Trong nước</span>
+                    </div>
+                    <div class="option-card" data-step="2" data-field="location" data-value="international">
+                        <span class="wizard-emoji">🌎</span>
+                        <span>Ngoài nước</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 3: Nơi ở -->
+            <div id="wizard-step-3" class="wizard-step">
+                <h2>Bạn ở đâu?</h2>
+                <div class="options-grid">
+                    <div class="option-card" data-step="3" data-field="accommodation" data-value="hotel">
+                        <span class="wizard-emoji">🏨</span>
+                        <span>Khách sạn</span>
+                    </div>
+                    <div class="option-card" data-step="3" data-field="accommodation" data-value="second-home">
+                        <span class="wizard-emoji">🏡</span>
+                        <span>Nhà riêng</span>
+                    </div>
+                    <div class="option-card" data-step="3" data-field="accommodation" data-value="camping">
+                        <span class="wizard-emoji">⛺</span>
+                        <span>Cắm trại</span>
+                    </div>
+                    <div class="option-card" data-step="3" data-field="accommodation" data-value="cruise">
+                        <span class="wizard-emoji">🛳️</span>
+                        <span>Du thuyền</span>
+                    </div>
+                </div>
+            </div>
+            
+             <!-- Step 4: Phương tiện -->
+            <div id="wizard-step-4" class="wizard-step">
+                <h2>Bạn đi bằng gì?</h2>
+                <div class="options-grid">
+                    <div class="option-card" data-step="4" data-field="transport" data-value="plane">
+                        <span class="wizard-emoji">✈️</span>
+                        <span>Máy bay</span>
+                    </div>
+                    <div class="option-card" data-step="4" data-field="transport" data-value="car">
+                        <span class="wizard-emoji">🚗</span>
+                        <span>Xe hơi</span>
+                    </div>
+                    <div class="option-card" data-step="4" data-field="transport" data-value="motorbike">
+                        <span class="wizard-emoji">🏍️</span>
+                        <span>Xe máy</span>
+                    </div>
+                    <div class="option-card" data-step="4" data-field="transport" data-value="train">
+                        <span class="wizard-emoji">🚆</span>
+                        <span>Tàu hỏa / Xe bus</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 5: Nhóm -->
+            <div id="wizard-step-5" class="wizard-step">
+                <h2>Bạn đi với ai?</h2>
+                <div class="options-grid">
+                    <div class="option-card" data-step="5" data-field="group" data-value="solo">
+                        <span class="wizard-emoji">🚶</span>
+                        <span>Một mình</span>
+                    </div>
+                    <div class="option-card" data-step="5" data-field="group" data-value="couple">
+                        <span class="wizard-emoji">👩‍❤️‍👨</span>
+                        <span>Cặp đôi</span>
+                    </div>
+                    <div class="option-card" data-step="5" data-field="group" data-value="friends">
+                        <span class="wizard-emoji">🧑‍🤝‍🧑</span>
+                        <span>Bạn bè</span>
+                    </div>
+                    <div class="option-card" data-step="5" data-field="group" data-value="family">
+                        <span class="wizard-emoji">👨‍👩‍👧‍👦</span>
+                        <span>Gia đình</span>
+                    </div>
+                </div>
+                <div id="family-inputs-container" class="family-inputs" style="display: none;">
+                    <input type="number" id="kids-count" class="glass-input" placeholder="Số trẻ em" min="0" inputmode="numeric" pattern="\d*">
+                    <input type="number" id="infants-count" class="glass-input" placeholder="Số trẻ sơ sinh" min="0" inputmode="numeric" pattern="\d*">
+                </div>
+            </div>
+
+            <!-- (MỚI) Step 5b: Tùy chọn Cặp đôi -->
+            <div id="wizard-step-couple" class="wizard-step">
+                <h2>Chuyến đi của cặp đôi</h2>
+                <div class="options-grid">
+                    <div class="option-card" data-step="couple" data-field="coupleType" data-value="normal">
+                        <span class="wizard-emoji">😘</span>
+                        <span>Bình thường</span>
+                    </div>
+                    <div class="option-card" data-step="couple" data-field="coupleType" data-value="period">
+                        <span class="wizard-emoji">🍓</span>
+                        <span>Dâu ghé thăm</span>
+                    </div>
+                    <div class="option-card" data-step="couple" data-field="coupleType" data-value="heatup">
+                        <span class="wizard-emoji">🔥</span>
+                        <span>Hâm nóng</span>
+                    </div>
+                    <div class="option-card" data-step="couple" data-field="coupleType" data-value="cosplay">
+                        <span class="wizard-emoji">🙈</span>
+                        <span>Hâm nóng Cosplay</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Điều hướng Wizard -->
+            <div class="wizard-nav">
+                <button id="wizard-back-btn" class="btn btn-secondary">Quay lại</button>
+                <button id="wizard-next-btn" class="btn btn-primary" style="display: none;">Tiếp theo</button>
+                <button id="wizard-finish-btn" class="btn btn-primary" style="display: none;">Hoàn tất</button>
+            </div>
+        </div>
+
+        <!-- ===== VIEW: DANH SÁCH CHÍNH (MẶC ĐỊNH) ===== -->
+        <div id="list-view" class="view active">
+            <header class="header">
+                <h1>Soạn đồ</h1>
+                <div class="header-controls"> <!-- (MỚI) Wrapper -->
+                    <button id="toggle-completed-btn" class="header-btn" aria-label="Ẩn/Hiện đã hoàn thành">
+                        <!-- (MỚI) Icon Mắt -->
+                        <svg class="icon" id="toggle-completed-icon-show" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <!-- (MỚI) Icon Mắt-tắt -->
+                        <svg class="icon" id="toggle-completed-icon-hide" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="display: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
+                    <button id="settings-btn" class="header-btn" aria-label="Mở cài đặt">
+                        <svg class="icon icon-settings" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33A1.65 1.65 0 0 0 9 4.6V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </button>
+                </div>
+            </header>
+            
+            <div id="todo-list-container">
+                <ul id="todo-list">
+                    <!-- Các mục todo sẽ được chèn vào đây bởi JS -->
+                </ul>
+            </div>
+            
+        </div>
+        
+        <!-- ===== VIEW: CÀI ĐẶT ===== -->
+        <div id="settings-view" class="view">
+            <header class="header">
+                 <button id="settings-back-btn" class="header-btn" aria-label="Quay lại">
+                    <svg class="icon icon-back" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                 </button>
+                <h1>Cài đặt</h1>
+                <div style="width: 44px;"></div> <!-- Spacer -->
+            </header>
+            
+            <div class="setting-section">
+                <h3>Giao diện</h3>
+                <div class="setting-item">
+                    <label for="theme-select">Chế độ Sáng/Tối</label>
+                    <select id="theme-select" class="setting-select">
+                        <option value="system">Hệ thống</option>
+                        <option value="light">Sáng</option>
+                        <option value="dark">Tối</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label for="list-style-select">Phong cách danh sách</label>
+                    <select id="list-style-select" class="setting-select">
+                        <option value="iphone">iPhone (Kính)</option>
+                        <option value="google">Google Task</option>
+                        <option value="minimal">Tối giản</option>
+                    </select>
+                </div>
+                <!-- (MỚI) Cài đặt Emoji -->
+                <div class="setting-item">
+                    <label for="emoji-toggle">Hiển thị Emoji</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="emoji-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                
+                <!-- (MỚI) Tùy chỉnh Nền -->
+                <div class="setting-item" style="margin-top: 20px;">
+                    <label for="bg-color-input">Màu nền tùy chỉnh</label>
+                    <input type="color" id="bg-color-input" value="#f0f2f5" style="width: 40px; height: 28px; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer;">
+                </div>
+                <div class="setting-item" style="flex-direction: column; align-items: flex-start; gap: 5px;">
+                    <label for="bg-image-input" style="margin-bottom: 5px;">Link ảnh nền</label>
+                    <input type="url" id="bg-image-input" class="glass-input" placeholder="https://..." style="width: 100%;">
+                </div>
+                <div class="setting-item" style="margin-top: 10px;">
+                    <label for="bg-image-blur-toggle">Làm mờ ảnh nền</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="bg-image-blur-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <button id="reset-bg-btn" class="btn btn-secondary" style="width: 100%; margin-top: 15px; font-size: 0.9rem; padding: 10px;">
+                    Reset nền về mặc định
+                </button>
+            </div>
+            
+            <div class="setting-section">
+                <h3>Quản lý</h3>
+                <!-- (SỬA) ĐÃ XÓA ĐOẠN MÃ HTML BỊ LẶP Ở ĐÂY -->
+                 <div class="setting-item">
+                    <label>Quản lý Phân loại</label>
+                    <button id="manage-categories-btn" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9rem;">Chỉnh sửa</button>
+                </div>
+                 <div class="setting-item">
+                    <label>Quản lý Mẫu cá nhân</label>
+                    <button id="manage-templates-btn" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9rem;">Chỉnh sửa</button>
+                </div>
+                <div class="setting-item">
+                    <label>Xem hành lý cũ</label>
+                    <button id="manage-history-btn" class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.9rem;">Xem</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ===== VIEW: QUẢN LÝ PHÂN LOẠI ===== -->
+        <div id="manage-categories-view" class="view">
+            <header class="header">
+                 <button id="categories-back-btn" class="header-btn" aria-label="Quay lại cài đặt">
+                    <svg class="icon icon-back" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                 </button>
+                <h1>Phân loại</h1>
+                <div style="width: 44px;"></div> <!-- Spacer -->
+            </header>
+            
+            <div class="setting-section">
+                <h3>Chọn phân loại để sửa</h3>
+                <select id="category-edit-select" class="setting-select" style="width: 100%;"></select>
+            </div>
+            
+            <form id="add-category-item-form">
+                <input type="text" id="category-item-input" class="glass-input" placeholder="Thêm vật dụng cho phân loại này...">
+                <button type="submit" class="btn btn-primary" aria-label="Thêm vật dụng">Thêm</button>
+            </form>
+            
+            <ul id="category-items-list" class="manage-list" style="margin-top: 20px;"></ul>
+        </div>
+        
+        <!-- ===== VIEW: QUẢN LÝ MẪU CÁ NHÂN ===== -->
+        <div id="manage-templates-view" class="view">
+            <header class="header">
+                 <button id="templates-back-btn" class="header-btn" aria-label="Quay lại cài đặt">
+                    <svg class="icon icon-back" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                 </button>
+                <h1>Mẫu cá nhân</h1>
+                <div style="width: 44px;"></div> <!-- Spacer -->
+            </header>
+            <ul id="saved-templates-list" class="manage-list"></ul>
+        </div>
+
+        <!-- ===== VIEW: HÀNH LÝ CŨ ===== -->
+        <div id="manage-history-view" class="view">
+            <header class="header">
+                 <button id="history-back-btn" class="header-btn" aria-label="Quay lại cài đặt">
+                    <svg class="icon icon-back" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                 </button>
+                <h1>Hành lý cũ</h1>
+                <div style="width: 44px;"></div> <!-- Spacer -->
+            </header>
+            <div id="history-list">
+                <!-- Lịch sử các chuyến đi -->
+            </div>
+        </div>
+
+    </div>
+    
+    <!-- ===== (MỚI) FOOTER CỐ ĐỊNH ===== -->
+    <div class="fixed-bottom-container" id="main-footer-controls">
+        <!-- (MỚI) Nút Ẩn/Hiện Footer -->
+        <button id="toggle-footer-btn" class="footer-toggle-btn" aria-label="Ẩn/Hiện thanh công cụ">
+            <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+
+        <form id="add-item-form">
+            <!-- (MỚI) Hàng 1 -->
+            <div class="add-item-main">
+                <input type="text" id="item-input" class="glass-input" placeholder="Tên vật dụng..." autocomplete="off">
+                <input type="number" id="add-quantity-input" class="glass-input" placeholder="SL" value="1" min="1" inputmode="numeric" pattern="\d*">
+            </div>
+            <!-- (SỬA) Hàng 2 -->
+            <div class="add-item-details">
+                <input type="text" id="add-notes-input" class="glass-input" placeholder="Ghi chú..." autocomplete="off">
+                <button type="submit" class="btn btn-primary" aria-label="Thêm vật dụng">
+                    <svg class="icon icon-sm" style="stroke: white;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+            </div>
+        </form>
+        
+        <div class="action-buttons">
+             <!-- (SỬA) Nút icon Tải/Tạo -->
+            <button id="choose-template-btn" class="btn btn-secondary" aria-label="Tải/Tạo mẫu">
+                <!-- (SỬA) Icon mới -->
+                <svg class="icon icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+            </button>
+            <!-- (SỬA) Nút icon Sao chép -->
+            <button id="copy-list-btn" class="btn btn-secondary" aria-label="Sao chép">
+                <svg class="icon icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            </button>
+            <!-- (SỬA) Nút icon Lưu mẫu -->
+            <button id="save-template-btn" class="btn btn-secondary" aria-label="Lưu mẫu">
+                <svg class="icon icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            </button>
+        </div>
+
+        <!-- (MỚI) Nút Hoàn thành (tách riêng) -->
+        <button id="complete-trip-btn" class="btn btn-success" style="width: 100%; margin-top: 10px;">
+            <svg class="icon icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="stroke: white; margin-right: 8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Hoàn thành chuyến đi
+        </button>
+    </div>
+    
+    <!-- ===== MODAL: LƯU MẪU ===== -->
+    <div id="save-template-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Đặt tên cho mẫu</h3>
+            <input type="text" id="template-name-input" class="glass-input" placeholder="Ví dụ: Đi biển Vũng Tàu...">
+            <div class="modal-actions">
+                <button id="cancel-save-template-btn" class="btn btn-secondary">Hủy</button>
+                <button id="confirm-save-template-btn" class="btn btn-primary">Lưu</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ===== MODAL: CHỌN MẪU (MỚI) ===== -->
+    <div id="template-chooser-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3>Tải hoặc Tạo mẫu mới</h3>
+            <p>Chọn một cách để bắt đầu danh sách của bạn. (Lưu ý: Thao tác này sẽ thay thế danh sách hiện tại của bạn nếu có).</p>
+            <div class="modal-options">
+                <button id="modal-wizard-btn" class="btn btn-primary">
+                    <svg class="icon icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="stroke: white; margin-right: 8px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    Tạo bằng gợi ý
+                </button>
+                <button id="modal-empty-btn" class="btn btn-secondary">
+                    <svg class="icon icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="margin-right: 8px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    Danh sách trống
+                </button>
+            </div>
+            
+            <div class="modal-templates">
+                <h4>Hoặc tải mẫu đã lưu</h4>
+                <ul id="modal-templates-list">
+                    <!-- Các mẫu đã lưu sẽ được chèn vào đây -->
+                </ul>
+            </div>
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button id="modal-chooser-cancel-btn" class="btn btn-secondary">Hủy</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ===== MODAL: XÁC NHẬN ===== -->
+    <div id="confirm-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="confirm-title">Xác nhận</h3>
+            <p id="confirm-message">Bạn có chắc chắn muốn thực hiện hành động này?</p>
+            <div class="modal-actions">
+                <button id="confirm-no-btn" class="btn btn-secondary">Không</button>
+                <button id="confirm-yes-btn" class="btn btn-danger">Có</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ===== THÔNG BÁO (TOAST) ===== -->
+    <div id="toast-notification">Đã sao chép vào clipboard!</div>
+    
+    <!-- (MỚI) Textarea ẩn để sao chép -->
+    <textarea id="clipboard-helper" style="position: absolute; left: -9999px;"></textarea>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            'use strict';
+
+            let todoItems = [];
+            let settings = { 
+                theme: 'system', 
+                listStyle: 'iphone', 
+                showEmoji: false,
+                bgColor: null,          // (MỚI)
+                bgImageUrl: null,     // (MỚI)
+                bgImageBlur: false      // (MỚI)
+            }; 
+            let savedTemplates = [];
+            let tripHistory = [];
+            let categoryDefaults = {
+                common: [{ text: 'Quần áo', q: 1, n: '' }, { text: 'Đồ lót', q: 1, n: '' }, { text: 'CMND / CCCD', q: 1, n: '' }, { text: 'Sạc điện thoại', q: 1, n: '' }],
+                male: [{ text: 'Dao cạo râu', q: 1, n: '' }],
+                female: [{ text: 'Đồ trang điểm', q: 1, n: '' }, { text: 'Sản phẩm vệ sinh', q: 1, n: '' }],
+                international: [{ text: 'Hộ chiếu / Visa', q: 1, n: '' }, { text: 'Adapter sạc quốc tế', q: 1, n: '' }],
+                domestic: [{ text: 'Bằng lái xe', q: 1, n: '' }],
+                camping: [{ text: 'Lều', q: 1, n: '' }, { text: 'Thuốc chống côn trùng', q: 1, n: '' }],
+                hotel: [],
+                plane: [{ text: 'Vé máy bay', q: 1, n: '' }, { text: 'Gối cổ', q: 1, n: '' }, { text: 'Bịt tai', q: 1, n: '' }],
+                train: [{ text: 'Thuốc say xe', q: 1, n: '' }, { text: 'Bịt mắt', q: 1, n: '' }],
+                motorbike: [{ text: 'Áo mưa', q: 1, n: '' }, { text: 'Găng tay', q: 1, n: '' }],
+                couple: [], // (SỬA) Để trống, dùng sub-category
+                friends: [],
+                family: [{ text: 'Đồ chơi cho bé', q: 1, n: '' }],
+                infants: [{ text: 'Tã/bỉm', q: 1, n: '' }, { text: 'Sữa bột', q: 1, n: '' }],
+                kids: [{ text: 'Snack cho bé', q: 1, n: '' }],
+                // (MỚI) Thêm phân loại cặp đôi
+                couple_normal: [{ text: 'Bao cao su', q: 1, n: '' }], 
+                couple_period: [{ text: 'Di dịch vệ sinh', q: 1, n: '' }, { text: 'Túi chườm nóng', q: 1, n: '' }],
+                couple_heatup: [{ text: 'Bao cao su', q: 1, n: '' }, { text: 'Gel bôi trơn', q: 1, n: '' }],
+                couple_cosplay: [{ text: 'Bao cao su', q: 1, n: '' }, { text: 'Gel bôi trơn', q: 1, n: '' }, { text: 'Đồ Cosplay', q: 1, n: '' }]
+
+            };
+            
+            let wizardData = { group: [] };
+            let currentWizardStep = 1;
+            let confirmCallback = null; // Callback cho modal xác nhận
+            let showCompleted = true; // (MỚI) Trạng thái ẩn/hiện
+            let emojiMap = { // (SỬA) Cập nhật toàn bộ emoji map
+                // Quần áo
+                'áo': '👕', 'quần': '👖', 'jean': '👖', 'sơ mi': '👔', 'váy': '👗', 'đầm': '👗', 'lót': '🩲', 'tất': '🧦', 'vớ': '🧦',
+                'bikini': '👙', 'đồ bơi': '👙', 'áo khoác': '🧥', 'len': '🧣', 'short': '🩳', 'ngắn': '🩳', 'dài': '👖', 'hoodie': '🧥','đồ cosplay': '🙈',
+                // Giày dép
+                'giày': '👟', 'dép': '🩴', 'sandal': '👡', 'boot': '👢', 'cao gót': '👠', 'thể thao': '👟',
+                // Giấy tờ
+                'cmnd': '🆔', 'cccd': '🆔', 'hộ chiếu': '🛂', 'passport': '🛂', 'visa': '🛂', 'vé': '🎟️', 'bằng lái': '🪪',
+                // Tiền
+                'tiền': '💵', 'thẻ': '💳', 'ví': '👛',
+                // Điện tử
+                'điện thoại': '📱', 'sạc': '🔋', 'pin': '🔋', 'laptop': '💻', 'máy tính': '💻', 'tai nghe': '🎧', 'máy ảnh': '📷', 'adapter': '🔌', 'dự phòng': '🔋', 'loa': '🔊', 'airpod': '🎧',
+                // Vệ sinh
+                'kem': '🧴', 'răng': '🦷', 'bàn chải': '🦷', 'sữa rửa mặt': '🧼', 'dầu gội': '🧴', 'sữa tắm': '🧼', 'khăn': '🧖',
+                'lăn khử mùi': '🧴', 'xịt': '🌬️', 'vệ sinh': '🧼', 'bvs': '🩸', 'băng': '🩸', 'tampon': '🩸', 'cốc nguyệt san': '🩸',
+                // Mỹ phẩm
+                'trang điểm': '💄', 'son': '💄', 'nước hoa': '🌸', 'phấn': '💅', 'chống nắng': '☀️', 'kẻ mắt': '👁️', 'mascara': '👁️',
+                // Y tế
+                'thuốc': '💊', 'cá nhân': '🩹', 'y tế': '🩹', 'côn trùng': '🦟', 'urgo': '🩹',
+                // Dụng cụ
+                'dao': '🪒', 'cạo': '🪒', 'kéo': '✂️', 'bcs': '🍆', 'bao cao su': '🍆', 'gel': '💧', 'nến': '🕯️',
+                // Khác
+                'sách': '📖', 'bút': '✏️', 'kính': '👓', 'mũ': '🧢', 'nón': '🧢', 'ô': '☂️', 'dù': '☂️', 'gối': '🛌',
+                // Du lịch
+                'lều': '⛺', 'túi ngủ': '🛌', 'đèn pin': '🔦', 'bản đồ': '🗺️',
+                // Em bé
+                'bỉm': '👶', 'sữa': '🍼', 'tã': '👶', 'xe đẩy': '🛴', // (SỬA) Đã sửa lỗi
+                // Đồ ăn
+                'đồ chơi': '🧸', 'snack': '🥨', 'sô cô la': '🍫', 'chocolate': '🍫', 'nước': '💧',
+                // Phương tiện
+                'máy bay': '✈️', 'xe': '🚗', 'tàu': '🚆', 'bus': '🚌'
+            };
+
+            // --- LẤY CÁC PHẦN TỬ DOM ---
+            const $ = (selector) => document.querySelector(selector);
+            const $$ = (selector) => document.querySelectorAll(selector);
+
+            const views = $$('.view');
+            const wizardView = $('#wizard-view');
+            const listView = $('#list-view');
+            const settingsView = $('#settings-view');
+            const manageCategoriesView = $('#manage-categories-view');
+            const manageTemplatesView = $('#manage-templates-view');
+            const manageHistoryView = $('#manage-history-view');
+            
+            const todoList = $('#todo-list');
+            const addItemForm = $('#add-item-form');
+            const itemInput = $('#item-input');
+            const addQuantityInput = $('#add-quantity-input'); // (MỚI)
+            const addNotesInput = $('#add-notes-input'); // (MỚI)
+            const mainFooterControls = $('#main-footer-controls'); // (MỚI)
+            
+            // Nút điều hướng
+            const settingsBtn = $('#settings-btn');
+            const settingsBackBtn = $('#settings-back-btn');
+            const categoriesBackBtn = $('#categories-back-btn');
+            const templatesBackBtn = $('#templates-back-btn');
+            const historyBackBtn = $('#history-back-btn');
+            const wizardBackBtn = $('#wizard-back-btn');
+            
+            // Cài đặt
+            const themeSelect = $('#theme-select');
+            const listStyleSelect = $('#list-style-select');
+            const emojiToggle = $('#emoji-toggle'); // (MỚI)
+            // (MỚI) DOM Nền
+            const bgColorInput = $('#bg-color-input');
+            const bgImageInput = $('#bg-image-input');
+            const bgImageBlurToggle = $('#bg-image-blur-toggle');
+            const resetBgBtn = $('#reset-bg-btn');
+            const customBackgroundImage = $('.custom-background-image');
+            
+            // Nút hành động (đã ở footer)
+            const chooseTemplateBtn = $('#choose-template-btn'); 
+            const copyListBtn = $('#copy-list-btn');
+            const saveTemplateBtn = $('#save-template-btn');
+            const completeTripBtn = $('#complete-trip-btn');
+            
+            // Modals
+            const saveModal = $('#save-template-modal');
+            const templateNameInput = $('#template-name-input');
+            const cancelSaveBtn = $('#cancel-save-template-btn');
+            const confirmSaveBtn = $('#confirm-save-template-btn');
+
+            const templateChooserModal = $('#template-chooser-modal'); // MỚI
+            const modalWizardBtn = $('#modal-wizard-btn');
+            const modalEmptyBtn = $('#modal-empty-btn');
+            const modalTemplatesList = $('#modal-templates-list');
+            const modalChooserCancelBtn = $('#modal-chooser-cancel-btn');
+            
+            const confirmModal = $('#confirm-modal');
+            const confirmTitle = $('#confirm-title');
+            const confirmMessage = $('#confirm-message');
+            const confirmYesBtn = $('#confirm-yes-btn');
+            const confirmNoBtn = $('#confirm-no-btn');
+            
+            const toast = $('#toast-notification');
+            const clipboardHelper = $('#clipboard-helper');
+
+            // (MỚI) Nút ẩn/hiện
+            const toggleCompletedBtn = $('#toggle-completed-btn');
+            const toggleCompletedIconShow = $('#toggle-completed-icon-show');
+            const toggleCompletedIconHide = $('#toggle-completed-icon-hide');
+            const toggleFooterBtn = $('#toggle-footer-btn'); // (SỬA) Selector vẫn đúng
+
+            // Wizard
+            const wizardSteps = $$('.wizard-step');
+            const optionCards = $$('.option-card');
+            const wizardNextBtn = $('#wizard-next-btn');
+            const wizardFinishBtn = $('#wizard-finish-btn');
+            const familyInputsContainer = $('#family-inputs-container');
+            const kidsCountInput = $('#kids-count');
+            const infantsCountInput = $('#infants-count');
+            
+            // Quản lý
+            const manageCategoriesBtn = $('#manage-categories-btn');
+            const manageTemplatesBtn = $('#manage-templates-btn');
+            const manageHistoryBtn = $('#manage-history-btn');
+            const categoryEditSelect = $('#category-edit-select');
+            const addCategoryItemForm = $('#add-category-item-form');
+            const categoryItemInput = $('#category-item-input');
+            const categoryItemsList = $('#category-items-list');
+            const savedTemplatesList = $('#saved-templates-list');
+            const historyList = $('#history-list');
+
+            // --- FUNCTIONS ---
+
+            function showView(viewId) {
+                views.forEach(view => view.classList.remove('active'));
+                $(`#${viewId}`).classList.add('active');
+
+                // (MỚI) Hiển thị footer chỉ khi ở list-view
+                if (viewId === 'list-view') {
+                    mainFooterControls.classList.add('active');
+                } else {
+                    mainFooterControls.classList.remove('active');
+                }
+                // (MỚI) Cập nhật padding khi chuyển view
+                updateListPadding();
+            }
+            
+            function showModal(modalId) {
+                 $(`#${modalId}`).classList.add('active');
+            }
+            function hideModal(modalId) {
+                $(`#${modalId}`).classList.remove('active');
+            }
+
+            function applyTheme(theme) {
+                if (theme === 'system') {
+                    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    document.body.classList.toggle('dark-mode', systemPrefersDark);
+                } else {
+                    document.body.classList.toggle('dark-mode', theme === 'dark');
+                }
+                settings.theme = theme;
+                themeSelect.value = theme;
+                applyCustomBackgrounds(); // (MỚI) Cập nhật picker color
+            }
+
+            // --- (SỬA) Lấy Emoji ---
+            function getEmojiForText(text) {
+                if (!settings.showEmoji) return '';
+                const lowerText = text.toLowerCase();
+                for (const key in emojiMap) {
+                    if (lowerText.includes(key)) {
+                        return emojiMap[key];
+                    }
+                }
+                return '🧳'; // (SỬA) Emoji mặc định
+            }
+
+            // --- (MỚI) Cập nhật Icon Ẩn/Hiện ---
+            function updateToggleCompletedIcon() {
+                if (showCompleted) {
+                    toggleCompletedIconShow.style.display = 'block';
+                    toggleCompletedIconHide.style.display = 'none';
+                } else {
+                    toggleCompletedIconShow.style.display = 'none';
+                    toggleCompletedIconHide.style.display = 'block';
+                }
+            }
+
+            function applyListStyle(style) {
+                document.body.classList.remove('list-style-iphone', 'list-style-google', 'list-style-minimal');
+                document.body.classList.add(`list-style-${style}`);
+                settings.listStyle = style;
+                listStyleSelect.value = style;
+                // saveSettings(); // (BỎ)
+            }
+            
+            // (MỚI) Cập nhật padding cho footer
+            function updateListPadding() {
+                const footerHeight = mainFooterControls.offsetHeight;
+                if (document.body.classList.contains('footer-collapsed') || !mainFooterControls.classList.contains('active')) {
+                    listView.querySelector('#todo-list-container').style.paddingBottom = '20px';
+                } else {
+                    // Thêm 20px buffer
+                    listView.querySelector('#todo-list-container').style.paddingBottom = (footerHeight + 20) + 'px';
+                }
+            }
+            
+            // (MỚI) Cập nhật màu cho picker khi đổi theme
+            function updateColorPicker() {
+                if (!settings.bgColor) {
+                    bgColorInput.value = document.body.classList.contains('dark-mode') ? '#000000' : '#f0f2f5';
+                }
+            }
+            
+            // (MỚI) Áp dụng Nền Tùy chỉnh
+            function applyCustomBackgrounds() {
+                // 1. Áp dụng Màu
+                if (settings.bgColor) {
+                    document.body.style.backgroundColor = settings.bgColor;
+                    bgColorInput.value = settings.bgColor;
+                } else {
+                    document.body.style.backgroundColor = ''; // Reset về CSS
+                    // Cập nhật giá trị picker về mặc định của theme
+                    bgColorInput.value = document.body.classList.contains('dark-mode') ? '#000000' : '#f0f2f5';
+                }
+
+                // 2. Áp dụng Ảnh
+                if (settings.bgImageUrl && settings.bgImageUrl.length > 5) { // Check cơ bản
+                    customBackgroundImage.style.backgroundImage = `url(${settings.bgImageUrl})`;
+                    bgImageInput.value = settings.bgImageUrl;
+                } else {
+                    customBackgroundImage.style.backgroundImage = 'none';
+                    bgImageInput.value = '';
+                }
+
+                // 3. Áp dụng Blur
+                customBackgroundImage.classList.toggle('blurred', settings.bgImageBlur);
+                bgImageBlurToggle.checked = settings.bgImageBlur;
+            }
+
+            // --- Quản lý Todo ---
+            function renderList() {
+                todoList.innerHTML = '';
+                
+                // (MỚI) Lọc danh sách dựa trên trạng thái showCompleted
+                const itemsToRender = todoItems.filter(item => showCompleted || !item.completed);
+                
+                if (itemsToRender.length === 0) {
+                    if (todoItems.length > 0 && !showCompleted) {
+                        todoList.innerHTML = '<li style="color: var(--text-color-light); background: transparent; backdrop-filter: none; border: none; box-shadow: none; text-align: center;">Tất cả mục đã hoàn thành đang bị ẩn.</li>';
+                    } else {
+                        todoList.innerHTML = '<li style="color: var(--text-color-light); background: transparent; backdrop-filter: none; border: none; box-shadow: none; text-align: center;">Danh sách trống. Thêm vật dụng hoặc Tải/Tạo mẫu.</li>';
+                    }
+                    return;
+                }
+                
+                itemsToRender.forEach(item => {
+                    const li = document.createElement('li');
+                    li.dataset.id = item.id;
+                    const isCompleted = item.completed;
+                    const emoji = getEmojiForText(item.text); // (MỚI)
+                    
+                    li.innerHTML = `
+                        <label class="checkbox-container">
+                            <input type="checkbox" ${isCompleted ? 'checked' : ''} data-action="toggle">
+                            <span class="checkmark"></span>
+                        </label>
+                        <div class="item-content">
+                            <label class="item-label ${isCompleted ? 'completed' : ''}">${emoji} ${item.text}</label>
+                            <p class="item-notes-display" data-placeholder="Thêm ghi chú..." contenteditable="true">${item.notes || ''}</p>
+                        </div>
+                        <input type="number" class="item-quantity" value="${item.quantity || 1}" min="1" inputmode="numeric" pattern="\d*">
+                        <div class="item-actions">
+                            <button class="icon-btn delete-btn" data-action="delete" aria-label="Xóa">
+                                <svg class="icon icon-sm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    `;
+                    
+                    todoList.appendChild(li);
+                });
+                
+                saveData();
+            }
+
+            function addItem(text) {
+                if (!text.trim()) return;
+                
+                const quantity = parseInt(addQuantityInput.value) || 1; // (MỚI)
+                const notes = addNotesInput.value.trim(); // (MỚI)
+
+                todoItems.push({ 
+                    id: crypto.randomUUID(),
+                    text: text.trim(), 
+                    completed: false,
+                    quantity: quantity, // (MỚI)
+                    notes: notes // (MỚI)
+                });
+                itemInput.value = '';
+                addQuantityInput.value = '1'; // (MỚI) Reset
+                addNotesInput.value = ''; // (MỚI) Reset
+                renderList();
+            }
+
+            function updateItemField(id, field, value) {
+                const item = todoItems.find(i => i.id === id);
+                if (item) {
+                    item[field] = value;
+                    saveData();
+                    if(field === 'completed') {
+                        const li = todoList.querySelector(`li[data-id="${id}"]`);
+                        if (li) {
+                            li.querySelector('.item-label').classList.toggle('completed', value);
+                        }
+                    }
+                }
+            }
+
+            function deleteItem(id) {
+                todoItems = todoItems.filter(item => item.id !== id);
+                renderList();
+            }
+            
+            function handleListClick(e) {
+                const li = e.target.closest('li');
+                if (!li) return;
+                const id = li.dataset.id;
+                const action = e.target.closest('[data-action]')?.dataset.action;
+
+                if (action === 'toggle') {
+                    updateItemField(id, 'completed', e.target.checked);
+                }
+                if (action === 'delete') {
+                    deleteItem(id);
+                }
+            }
+            
+            function handleListInput(e) {
+                const li = e.target.closest('li');
+                if (!li) return;
+                const id = li.dataset.id;
+                
+                if (e.target.matches('.item-quantity')) {
+                    updateItemField(id, 'quantity', parseInt(e.target.value) || 1);
+                }
+                // (MỚI) Xử lý ghi chú contenteditable
+                if (e.target.matches('.item-notes-display')) {
+                    // Dùng textContent vì là contenteditable
+                    updateItemField(id, 'notes', e.target.textContent);
+                }
+            }
+
+            // --- Lưu & Tải dữ liệu ---
+            function saveData() { localStorage.setItem('packingList_items', JSON.stringify(todoItems)); }
+            function loadData() {
+                const items = localStorage.getItem('packingList_items');
+                if (items) todoItems = JSON.parse(items);
+            }
+            function saveSettings() { localStorage.setItem('packingList_settings', JSON.stringify(settings)); }
+            function loadSettings() {
+                const storedSettings = localStorage.getItem('packingList_settings');
+                if (storedSettings) settings = JSON.parse(storedSettings);
+                // (MỚI) Đảm bảo các cài đặt mới có giá trị mặc định
+                settings.showEmoji = settings.showEmoji || false; 
+                settings.bgColor = settings.bgColor || null;
+                settings.bgImageUrl = settings.bgImageUrl || null;
+                settings.bgImageBlur = settings.bgImageBlur || false;
+            }
+            function saveTemplates() { localStorage.setItem('packingList_templates', JSON.stringify(savedTemplates)); }
+            function loadTemplates() {
+                const storedTemplates = localStorage.getItem('packingList_templates');
+                if (storedTemplates) savedTemplates = JSON.parse(storedTemplates);
+            }
+            function saveCategories() { localStorage.setItem('packingList_categories', JSON.stringify(categoryDefaults)); }
+            function loadCategories() {
+                const storedCategories = localStorage.getItem('packingList_categories');
+                if (storedCategories) categoryDefaults = JSON.parse(storedCategories);
+            }
+            function saveHistory() { localStorage.setItem('packingList_history', JSON.stringify(tripHistory)); }
+            function loadHistory() {
+                const storedHistory = localStorage.getItem('packingList_history');
+                if (storedHistory) tripHistory = JSON.parse(storedHistory);
+            }
+            
+            // --- Chức năng Nút ---
+            function copyListToText() {
+                if (todoItems.length === 0) {
+                    showToast('Danh sách trống!');
+                    return;
+                }
+                const text = todoItems
+                    .map(item => {
+                        let line = `${item.completed ? '[x]' : '[ ]'} ${item.text} (SL: ${item.quantity || 1})`;
+                        if (item.notes) line += `\n    - Ghi chú: ${item.notes}`;
+                        return line;
+                    })
+                    .join('\n');
+                    
+                clipboardHelper.value = text;
+                clipboardHelper.select();
+                document.execCommand('copy');
+                showToast('Đã sao chép vào clipboard!');
+                clipboardHelper.value = '';
+            }
+
+            function showToast(message) {
+                toast.textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => { toast.classList.remove('show'); }, 3000);
+            }
+
+            function showSaveTemplateModal() {
+                if (todoItems.length === 0) {
+                    showToast('Không thể lưu danh sách trống!');
+                    return;
+                }
+                showModal('save-template-modal');
+                templateNameInput.focus();
+            }
+            function saveCurrentTemplate() {
+                const name = templateNameInput.value.trim();
+                if (!name) { alert('Vui lòng nhập tên mẫu!'); return; }
+                savedTemplates.push({ name: name, items: JSON.parse(JSON.stringify(todoItems)) });
+                saveTemplates();
+                showToast(`Đã lưu mẫu "${name}"`);
+                hideModal('save-template-modal');
+                templateNameInput.value = '';
+            }
+
+            // --- Modal Xác nhận & Tải (MỚI) ---
+            function showConfirmModal(title, message, onConfirm) {
+                confirmTitle.textContent = title;
+                confirmMessage.textContent = message;
+                confirmCallback = onConfirm;
+                showModal('confirm-modal');
+            }
+            confirmYesBtn.addEventListener('click', () => {
+                if (confirmCallback) confirmCallback();
+                hideModal('confirm-modal');
+                confirmCallback = null;
+            });
+            confirmNoBtn.addEventListener('click', () => {
+                hideModal('confirm-modal');
+                confirmCallback = null;
+            });
+            
+            // Hàm trợ giúp mới: Kiểm tra danh sách trước khi tải
+            function confirmAndLoad(loadFunction) {
+                hideModal('template-chooser-modal');
+                if (todoItems.length === 0) {
+                    loadFunction(); // Nếu danh sách trống, cứ tải
+                } else {
+                    showConfirmModal(
+                        'Xóa danh sách hiện tại?',
+                        'Bạn có chắc muốn xóa danh sách hiện tại và tải một danh sách mới?',
+                        loadFunction // Chỉ tải nếu người dùng đồng ý
+                    );
+                }
+            }
+
+            // --- Hoàn thành chuyến đi ---
+            function completeTrip() {
+                if (todoItems.length === 0) {
+                    showToast('Danh sách trống, không có gì để lưu.');
+                    return;
+                }
+                showConfirmModal(
+                    'Hoàn thành chuyến đi?',
+                    'Việc này sẽ lưu danh sách hiện tại vào "Hành lý cũ" và bắt đầu một danh sách mới.',
+                    () => {
+                        tripHistory.push({ date: new Date().toLocaleString('vi-VN'), items: todoItems });
+                        saveHistory();
+                        todoItems = [];
+                        saveData();
+                        renderList(); // Render lại danh sách trống
+                        showToast('Chuyến đi đã được lưu!');
+                        showView('list-view'); // Vẫn ở list-view
+                    }
+                );
+            }
+            
+            // --- Modal Chọn Mẫu (MỚI) ---
+            function populateModalTemplates() {
+                modalTemplatesList.innerHTML = '';
+                if (savedTemplates.length === 0) {
+                    modalTemplatesList.innerHTML = '<li style="color: var(--text-color-light); text-align: center;">Chưa có mẫu nào.</li>';
+                    return;
+                }
+                savedTemplates.forEach((template, index) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<button class="btn btn-secondary template-load-btn" data-index="${index}">${template.name}</button>`;
+                    modalTemplatesList.appendChild(li);
+                });
+            }
+            
+            chooseTemplateBtn.addEventListener('click', () => {
+                populateModalTemplates();
+                showModal('template-chooser-modal');
+            });
+            
+            modalChooserCancelBtn.addEventListener('click', () => hideModal('template-chooser-modal'));
+            
+            modalWizardBtn.addEventListener('click', () => {
+                confirmAndLoad(() => {
+                    wizardData = { group: [] }; // Reset wizard
+                    goToWizardStep(1);
+                    showView('wizard-view');
+                });
+            });
+            
+            modalEmptyBtn.addEventListener('click', () => {
+                confirmAndLoad(() => {
+                    todoItems = [];
+                    renderList();
+                    // Không cần làm gì thêm, đã ở list-view
+                });
+            });
+            
+            modalTemplatesList.addEventListener('click', (e) => {
+                if (e.target.matches('.template-load-btn')) {
+                    const index = e.target.dataset.index;
+                    confirmAndLoad(() => {
+                        todoItems = JSON.parse(JSON.stringify(savedTemplates[index].items));
+                        saveData();
+                        renderList();
+                        showView('list-view');
+                        showToast(`Đã tải mẫu "${savedTemplates[index].name}"`);
+                    });
+                }
+            });
+
+            // --- Logic Wizard ---
+            function handleWizardOptionClick(e) {
+                const card = e.target.closest('.option-card');
+                if (!card) return;
+                const { step, field, value } = card.dataset;
+                
+                if (step == 5) { // --- Step 5: Nhóm ---
+                    if (value === 'solo') {
+                        const isNowSelected = !card.classList.contains('selected');
+                        $$('.option-card[data-step="5"]').forEach(c => c.classList.remove('selected'));
+                        if (isNowSelected) {
+                            card.classList.add('selected');
+                            wizardData.group = ['solo'];
+                        } else {
+                            wizardData.group = [];
+                        }
+                    } else {
+                        $('.option-card[data-step="5"][data-value="solo"]').classList.remove('selected');
+                        card.classList.toggle('selected');
+                        wizardData.group = Array.from($$('.option-card[data-step="5"].selected')).map(c => c.dataset.value);
+                    }
+                    familyInputsContainer.style.display = wizardData.group.includes('family') ? 'flex' : 'none';
+                    
+                    // (SỬA) Logic hiển thị nút
+                    if (wizardData.group.includes('couple')) {
+                        wizardNextBtn.style.display = 'block';
+                        wizardFinishBtn.style.display = 'none';
+                    } else if (wizardData.group.length > 0) {
+                        wizardNextBtn.style.display = 'none';
+                        wizardFinishBtn.style.display = 'block';
+                    } else {
+                        wizardNextBtn.style.display = 'none';
+                        wizardFinishBtn.style.display = 'none';
+                    }
+                } else if (step === 'couple') { // --- (MỚI) Step 5b: Cặp đôi ---
+                    $$(`.option-card[data-step="couple"]`).forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    wizardData[field] = value;
+                    wizardNextBtn.style.display = 'none';
+                    wizardFinishBtn.style.display = 'block';
+
+                } else { // --- Các step khác (1-4) ---
+                    $$(`.option-card[data-step="${step}"]`).forEach(c => c.classList.remove('selected'));
+                    card.classList.add('selected');
+                    wizardData[field] = value;
+                    wizardNextBtn.style.display = 'block';
+                    wizardFinishBtn.style.display = 'none';
+                }
+            }
+            
+            function goToWizardStep(step) {
+                wizardSteps.forEach(s => s.classList.remove('active'));
+                $(`#wizard-step-${step}`).classList.add('active');
+                currentWizardStep = step;
+                wizardNextBtn.style.display = 'none';
+                wizardFinishBtn.style.display = 'none';
+
+                if (step < 5) {
+                    const field = $(`#wizard-step-${step} .option-card`).dataset.field;
+                    if (wizardData[field]) wizardNextBtn.style.display = 'block';
+                } else if (step === 5) {
+                    // (SỬA) Logic hiển thị nút cho step 5 (khi quay lại)
+                    if (wizardData.group.includes('couple')) {
+                        wizardNextBtn.style.display = 'block';
+                    } else if (wizardData.group.length > 0) {
+                        wizardFinishBtn.style.display = 'block';
+                    }
+                } else if (step === 'couple') {
+                    // (SỬA) Logic hiển thị nút cho step 'couple' (khi quay lại)
+                    if (wizardData.coupleType) {
+                        wizardFinishBtn.style.display = 'block';
+                    }
+                }
+            }
+
+            function generateListFromWizard() {
+                let generatedList = [];
+                const addUniqueItems = (items) => {
+                    items.forEach(item => {
+                        if (!generatedList.some(i => i.text === item.text)) {
+                            generatedList.push(JSON.parse(JSON.stringify(item)));
+                        }
+                    });
+                };
+                
+                addUniqueItems(categoryDefaults.common || []);
+                if (wizardData.gender) addUniqueItems(categoryDefaults[wizardData.gender] || []);
+                if (wizardData.location) addUniqueItems(categoryDefaults[wizardData.location] || []);
+                if (wizardData.accommodation) addUniqueItems(categoryDefaults[wizardData.accommodation] || []);
+                if (wizardData.transport) addUniqueItems(categoryDefaults[wizardData.transport] || []);
+                wizardData.group.forEach(groupKey => addUniqueItems(categoryDefaults[groupKey] || []));
+                
+                // (MỚI) Thêm logic cho Cặp đôi
+                if (wizardData.group.includes('couple') && wizardData.coupleType) {
+                    addUniqueItems(categoryDefaults[`couple_${wizardData.coupleType}`] || []);
+                }
+
+                if (wizardData.group.includes('family')) {
+                    const kids = parseInt(kidsCountInput.value) || 0;
+                    const infants = parseInt(infantsCountInput.value) || 0;
+                    if (kids > 0) addUniqueItems(categoryDefaults.kids || []);
+                    if (infants > 0) addUniqueItems(categoryDefaults.infants || []);
+                }
+                todoItems = generatedList.map(item => ({ ...item, id: crypto.randomUUID(), completed: false }));
+                renderList();
+                showView('list-view');
+            }
+
+            // --- Logic Quản lý ---
+            const categoryNames = {
+                common: 'Chung', male: 'Nam', female: 'Nữ',
+                international: 'Ngoài nước', domestic: 'Trong nước',
+                camping: 'Cắm trại', hotel: 'Khách sạn (mặc định)',
+                plane: 'Máy bay', motorbike: 'Xe máy',
+                couple: 'Cặp đôi (Chung)', // (SỬA)
+                friends: 'Bạn bè', family: 'Gia đình (chung)',
+                infants: 'Trẻ sơ sinh', kids: 'Trẻ em',
+                // (MỚI)
+                couple_normal: 'Cặp đôi (Bình thường)',
+                couple_period: 'Cặp đôi (Dâu ghé)',
+                couple_heatup: 'Cặp đôi (Hâm nóng)',
+            };
+
+            function populateCategorySelect() {
+                categoryEditSelect.innerHTML = '';
+                for (const key in categoryNames) {
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = categoryNames[key];
+                    categoryEditSelect.appendChild(option);
+                }
+            }
+
+            function renderCategoryItems(categoryKey) {
+                categoryItemsList.innerHTML = '';
+                const items = categoryDefaults[categoryKey] || [];
+                items.forEach((item, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'manage-item';
+                    li.innerHTML = `
+                        <span>${item.text} (SL: ${item.q || 1})</span>
+                        <button class="btn btn-danger btn-sm" data-category="${categoryKey}" data-index="${index}">Xóa</button>
+                    `;
+                    categoryItemsList.appendChild(li);
+                });
+            }
+            
+            function handleCategoryManagementClick(e) {
+                if (e.target.matches('.btn-danger')) {
+                    const { category, index } = e.target.dataset;
+                    categoryDefaults[category].splice(index, 1);
+                    saveCategories();
+                    renderCategoryItems(category);
+                }
+            }
+
+            function renderTemplateManagement() {
+                savedTemplatesList.innerHTML = '';
+                savedTemplates.forEach((template, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'manage-item';
+                    li.innerHTML = `
+                        <span>${template.name}</span>
+                        <div>
+                            <button class="btn btn-secondary btn-sm" data-action="load" data-index="${index}">Tải</button>
+                            <button class="btn btn-danger btn-sm" data-action="delete" data-index="${index}">Xóa</button>
+                        </div>
+                    `;
+                    savedTemplatesList.appendChild(li);
+                });
+            }
+            
+            function handleTemplateManagementClick(e) {
+                const btn = e.target.closest('button');
+                if (!btn) return;
+                const { action, index } = btn.dataset;
+                
+                if (action === 'delete') {
+                    showConfirmModal('Xóa mẫu?', `Bạn có chắc muốn xóa mẫu "${savedTemplates[index].name}"?`, () => {
+                        savedTemplates.splice(index, 1);
+                        saveTemplates();
+                        renderTemplateManagement();
+                    });
+                }
+                
+                if (action === 'load') {
+                    confirmAndLoad(() => {
+                        todoItems = JSON.parse(JSON.stringify(savedTemplates[index].items));
+                        saveData();
+                        renderList();
+                        showView('list-view');
+                        showToast(`Đã tải mẫu "${savedTemplates[index].name}"`);
+                    });
+                }
+            }
+
+            function renderHistory() {
+                historyList.innerHTML = '';
+                if (tripHistory.length === 0) {
+                    historyList.innerHTML = '<p style="color: var(--text-color-light); text-align: center;">Chưa có chuyến đi nào hoàn thành.</p>';
+                    return;
+                }
+                
+                [...tripHistory].reverse().forEach(entry => {
+                    const details = document.createElement('details');
+                    let itemsHtml = entry.items.map(item => 
+                        `<li class="${item.completed ? 'completed' : ''}">
+                            ${item.text} (SL: ${item.quantity || 1})
+                            ${item.notes ? `<br><small style="color: var(--gray-color);"><em> - ${item.notes}</em></small>` : ''}
+                        </li>`
+                    ).join('');
+                    details.innerHTML = `<summary>${entry.date}</summary><ul>${itemsHtml}</ul>`;
+                    historyList.appendChild(details);
+                });
+            }
+
+            // --- GẮN SỰ KIỆN ---
+            
+            // Cài đặt
+            settingsBtn.addEventListener('click', () => showView('settings-view'));
+            settingsBackBtn.addEventListener('click', () => showView('list-view'));
+            themeSelect.addEventListener('change', (e) => {
+                applyTheme(e.target.value);
+                saveSettings(); // (MỚI) Lưu ở đây
+            });
+            listStyleSelect.addEventListener('change', (e) => {
+                applyListStyle(e.target.value);
+                saveSettings(); // (MỚI) Lưu ở đây
+            });
+            // (MỚI) Emoji Toggle
+            emojiToggle.addEventListener('change', () => {
+                settings.showEmoji = emojiToggle.checked;
+                saveSettings();
+                renderList(); // Render lại danh sách để hiển thị/ẩn emoji
+            });
+            // (MỚI) Sự kiện cho Nền
+            bgColorInput.addEventListener('input', (e) => {
+                settings.bgColor = e.target.value;
+                applyCustomBackgrounds(); // Áp dụng live
+            });
+            bgColorInput.addEventListener('change', () => saveSettings()); // Lưu khi chốt màu
+
+            bgImageInput.addEventListener('change', (e) => {
+                settings.bgImageUrl = e.target.value.trim();
+                applyCustomBackgrounds();
+                saveSettings();
+            });
+
+            bgImageBlurToggle.addEventListener('change', () => {
+                settings.bgImageBlur = bgImageBlurToggle.checked;
+                applyCustomBackgrounds();
+                saveSettings();
+            });
+
+            resetBgBtn.addEventListener('click', () => {
+                settings.bgColor = null;
+                settings.bgImageUrl = null;
+                settings.bgImageBlur = false;
+                applyCustomBackgrounds(); // Reset về mặc định
+                saveSettings();
+            });
+            
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                if (settings.theme === 'system') {
+                    document.body.classList.toggle('dark-mode', e.matches);
+                    updateColorPicker(); // (MỚI)
+                }
+            });
+
+            // List
+            addItemForm.addEventListener('submit', (e) => { e.preventDefault(); addItem(itemInput.value); });
+            todoList.addEventListener('click', handleListClick);
+            todoList.addEventListener('input', handleListInput); // (SỬA) Dùng 'input' cho cả quantity và contenteditable
+
+            // Nút hành động
+            copyListBtn.addEventListener('click', copyListToText);
+            saveTemplateBtn.addEventListener('click', showSaveTemplateModal);
+            completeTripBtn.addEventListener('click', completeTrip);
+            
+            // Modal
+            cancelSaveBtn.addEventListener('click', () => hideModal('save-template-modal'));
+            confirmSaveBtn.addEventListener('click', saveCurrentTemplate);
+            saveModal.addEventListener('click', (e) => { if (e.target === saveModal) hideModal('save-template-modal'); });
+            confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) hideModal('confirm-modal'); });
+            templateChooserModal.addEventListener('click', (e) => { if (e.target === templateChooserModal) hideModal('template-chooser-modal'); });
+
+            // (MỚI) Nút Ẩn/Hiện
+            toggleCompletedBtn.addEventListener('click', () => {
+                showCompleted = !showCompleted;
+                updateToggleCompletedIcon();
+                renderList();
+            });
+
+            // (MỚI) Nút Ẩn/Hiện Footer
+            toggleFooterBtn.addEventListener('click', () => {
+                document.body.classList.toggle('footer-collapsed');
+                // Cập nhật lại padding
+                updateListPadding();
+            });
+
+            // Wizard
+            optionCards.forEach(card => card.addEventListener('click', handleWizardOptionClick));
+            wizardBackBtn.addEventListener('click', () => {
+                // (SỬA) Logic quay lại
+                if (currentWizardStep === 'couple') goToWizardStep(5);
+                else if (currentWizardStep === 1) showView('list-view');
+                else goToWizardStep(currentWizardStep - 1);
+            });
+            wizardNextBtn.addEventListener('click', () => {
+                // (SỬA) Logic đi tới
+                if (currentWizardStep === 5 && wizardData.group.includes('couple')) {
+                    goToWizardStep('couple');
+                } else {
+                    goToWizardStep(currentWizardStep + 1);
+                }
+            });
+            wizardFinishBtn.addEventListener('click', generateListFromWizard);
+
+            // Quản lý
+            manageCategoriesBtn.addEventListener('click', () => {
+                populateCategorySelect();
+                renderCategoryItems(categoryEditSelect.value);
+                showView('manage-categories-view');
+            });
+            categoriesBackBtn.addEventListener('click', () => showView('settings-view'));
+            categoryEditSelect.addEventListener('change', (e) => renderCategoryItems(e.target.value));
+            addCategoryItemForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = categoryItemInput.value.trim();
+                if (text) {
+                    categoryDefaults[categoryEditSelect.value].push({ text, q: 1, n: '' });
+                    saveCategories();
+                    renderCategoryItems(categoryEditSelect.value);
+                    categoryItemInput.value = '';
+                }
+            });
+            categoryItemsList.addEventListener('click', handleCategoryManagementClick);
+            
+            manageTemplatesBtn.addEventListener('click', () => {
+                renderTemplateManagement();
+                showView('manage-templates-view');
+            });
+            templatesBackBtn.addEventListener('click', () => showView('settings-view'));
+            savedTemplatesList.addEventListener('click', handleTemplateManagementClick);
+
+            manageHistoryBtn.addEventListener('click', () => {
+                renderHistory();
+                showView('manage-history-view');
+            });
+            historyBackBtn.addEventListener('click', () => showView('settings-view'));
+            
+            // --- KHỞI TẠO ---
+            function init() {
+                loadSettings();
+                loadData();
+                loadTemplates();
+                loadCategories();
+                loadHistory();
+                
+                applyTheme(settings.theme); // Đã bao gồm applyCustomBackgrounds
+                applyListStyle(settings.listStyle);
+                
+                emojiToggle.checked = settings.showEmoji; 
+                updateToggleCompletedIcon(); 
+                
+                // Mặc định luôn hiển thị list-view
+                showView('list-view');
+                renderList();
+                // (MỚI) Gọi lần đầu để set padding
+                updateListPadding(); 
+                window.addEventListener('resize', updateListPadding); // (MỚI) Cập nhật khi resize
+            }
+
+            init();
+        });
+    </script>
+
+</body>
+</html>
+
+

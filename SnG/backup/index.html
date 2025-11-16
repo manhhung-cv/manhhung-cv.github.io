@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Share&Go</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <style>
+        /* ĐỂ TRỐNG THEO YÊU CẦU */
+
+        /* Một chút style cơ bản cho modal và avatar */
+        .modal {
+            display: none;
+            background: rgba(0, 0, 0, 0.5);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 20px;
+            width: 50%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .chat-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+    </style>
+
+    <script type="module">
+        // Nhập các hàm cần thiết từ Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import {
+            getAuth,
+            onAuthStateChanged,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            sendPasswordResetEmail,
+            signOut,
+            updateProfile,
+            // BỔ SUNG: Imports cho việc đổi mật khẩu
+            EmailAuthProvider,
+            reauthenticateWithCredential,
+            updatePassword
+        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import {
+            getFirestore,
+            doc,
+            setDoc,
+            getDoc,
+            addDoc,
+            collection,
+            query,
+            where,
+            onSnapshot,
+            orderBy,
+            serverTimestamp,
+            updateDoc,
+            deleteDoc,
+            arrayUnion,
+            arrayRemove,
+            // BỔ SUNG: getDocs để tìm kiếm (ví dụ: tìm mã mời)
+            getDocs
+        } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Cấu hình Firebase của bạn
+        const firebaseConfig = {
+            apiKey: "AIzaSyBQOcwUdtv1quQ1UWV8oaGY6kIUwITlSos",
+            authDomain: "sharengo-hunq.firebaseapp.com",
+            projectId: "sharengo-hunq",
+            storageBucket: "sharengo-hunq.firebasestorage.app",
+            messagingSenderId: "20454542571",
+            appId: "1:20454542571:web:8021a519b26f9be30882ae",
+            measurementId: "G-T0XNLVWXYV"
+        };
+
+        // Khởi tạo Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Biến toàn cục
+        let currentUser = null; // Sẽ chứa cả thông tin từ Auth và Firestore
+        let currentTrip = {
+            id: null,
+            name: "",
+            ownerId: null,
+            maxPeople: 0,
+            inviteCode: "" // BỔ SUNG: Mã mời
+        };
+        let map = null; // Biến giữ đối tượng bản đồ Leaflet
+        let locationMarker = null; // Biến giữ marker vị trí
+        let userIcon = null; // BỔ SUNG: Biểu tượng marker tùy chỉnh cho người dùng
+        let historyUnsubscribe = null; // Để ngắt listener khi đổi chuyến đi
+        let chatUnsubscribe = null; // Để ngắt listener khi đổi chuyến đi
+        let localHistoryCache = []; // Lưu cache lịch sử để lọc/xuất
+
+        // DOM Elements
+        const authContainer = document.getElementById("auth-container");
+        const appContainer = document.getElementById("app-container");
+        const loginForm = document.getElementById("login-form");
+        const registerForm = document.getElementById("register-form");
+        const forgotPasswordForm = document.getElementById("forgot-password-form");
+        const tripsView = document.getElementById("trips-view");
+        const singleTripView = document.getElementById("single-trip-view");
+        const loadingDiv = document.getElementById("loading");
+
+        // Auth elements
+        const userDisplay = document.getElementById("user-display");
+        const logoutButton = document.getElementById("logout-button");
+        const accountButton = document.getElementById("account-button"); // BỔ SUNG
+        const showRegisterLink = document.getElementById("show-register-link");
+        const showLoginLink = document.getElementById("show-login-link");
+        const showForgotPassLink = document.getElementById("show-forgot-pass-link");
+        const backToLoginLink = document.getElementById("back-to-login-link");
+        const registerPass = document.getElementById("register-password");
+        const registerConfirmPass = document.getElementById("register-confirm-password");
+        const registerTogglePass = document.getElementById("register-toggle-pass");
+
+        // Trip elements
+        const createTripForm = document.getElementById("create-trip-form");
+        const joinTripForm = document.getElementById("join-trip-form"); // BỔ SUNG
+        const tripsList = document.getElementById("trips-list");
+        const tripNameDisplay = document.getElementById("trip-name-display");
+        const tripControls = document.getElementById("trip-controls");
+        const backToTripsButton = document.getElementById("back-to-trips");
+
+        // Trip Tabs
+        const tabButtons = document.querySelectorAll(".tab-button");
+        const tabContents = document.querySelectorAll(".tab-content");
+
+        // Input Tab elements
+        const addLocationForm = document.getElementById("add-location-form");
+        // SỬA ĐỔI: Tách riêng Địa chỉ (để search) và Vị trí (để lưu lat,lng)
+        const locationAddressInput = document.getElementById("location-address"); // Input text cho địa chỉ
+        const locationPositionInput = document.getElementById("location-position"); // Input hidden cho tọa độ
+        const locationPeopleInput = document.getElementById("location-people");
+        const locationCostInput = document.getElementById("location-cost");
+        const locationTimeInput = document.getElementById("location-time");
+        const locationDateInput = document.getElementById("location-date");
+        const getLocationButton = document.getElementById("get-location-button");
+        const getCurrentTimeButton = document.getElementById("get-current-time-button");
+        const mapContainer = document.getElementById("map-container");
+        const mapSearchResults = document.getElementById("map-search-results"); // BỔ SUNG
+        const mapModeDefault = document.getElementById("map-mode-default");
+        const mapModeSatellite = document.getElementById("map-mode-satellite");
+        const mapModeDark = document.getElementById("map-mode-dark");
+
+        // History Tab elements
+        const historyList = document.getElementById("history-list");
+        const searchHistoryInput = document.getElementById("search-history");
+        const sortHistorySelect = document.getElementById("sort-history");
+        const exportTxtButton = document.getElementById("export-txt");
+        const exportJsonButton = document.getElementById("export-json");
+        const exportXlsxButton = document.getElementById("export-xlsx");
+        const copyHistoryButton = document.getElementById("copy-history");
+
+        // Chat Tab elements
+        const chatMessages = document.getElementById("chat-messages");
+        const chatForm = document.getElementById("chat-form");
+        const chatInput = document.getElementById("chat-input");
+
+        // Stats Tab elements
+        const statsContent = document.getElementById("stats-content");
+
+        // Edit Trip Modal
+        const editTripModal = document.getElementById("edit-trip-modal");
+        const editTripForm = document.getElementById("edit-trip-form");
+        const closeEditTripModal = document.getElementById("close-edit-trip-modal");
+
+        // Edit Location Modal
+        const editLocationModal = document.getElementById("edit-location-modal");
+        const editLocationForm = document.getElementById("edit-location-form");
+        const closeEditLocationModal = document.getElementById("close-edit-location-modal");
+        let editingLocationId = null;
+
+        // BỔ SUNG: Account Modal
+        const accountModal = document.getElementById("account-modal");
+        const closeAccountModal = document.getElementById("close-account-modal");
+        const updateProfileForm = document.getElementById("update-profile-form");
+        const updatePasswordForm = document.getElementById("update-password-form");
+
+        // Tile layers cho bản đồ
+        let tileLayers = {};
+        let currentTileLayer = null;
+
+        // =================================================================
+        // KHỞI TẠO VÀ QUẢN LÝ TRẠNG THÁI
+        // =================================================================
+
+        // Lắng nghe thay đổi trạng thái đăng nhập
+        // Lắng nghe thay đổi trạng thái đăng nhập
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // SỬA ĐỔI: Lấy thêm thông tin từ Firestore
+                const userDocRef = doc(db, "users", user.uid);
+                const userDoc = await getDoc(userDocRef);
+
+                if (userDoc.exists()) {
+                    // Gộp thông tin Auth và Firestore
+                    currentUser = { ...user, ...userDoc.data() };
+                } else {
+                    currentUser = user; // Fallback
+                }
+
+                // SỬA ĐỔI: Ưu tiên 'name' từ firestore và thêm avatar
+                const fbId = currentUser.facebookId;
+                const avatarUrl = fbId
+                    ? `https://graph.facebook.com/${fbId}/picture?width=9999&access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662`
+                    : 'https://via.placeholder.com/30'; // Ảnh dự phòng
+
+                userDisplay.innerHTML = `
+                    <img src="${avatarUrl}" class="chat-avatar">
+                    Chào mừng, ${currentUser.name || currentUser.displayName || currentUser.email}!
+                `;
+                // BỔ SUNG: Tạo userIcon tùy chỉnh
+                userIcon = L.icon({
+                    iconUrl: avatarUrl,
+                    iconSize: [40, 40], // Kích thước ảnh đại diện
+                    iconAnchor: [20, 40], // Điểm neo của icon (giữa dưới cùng)
+                    popupAnchor: [0, -40] // Điểm neo của popup (ở trên icon)
+                });
+
+                authContainer.style.display = "none";
+                appContainer.style.display = "block";
+
+                // BỔ SUNG: Khôi phục trạng thái chuyến đi
+                const savedTripId = localStorage.getItem('currentTripId');
+
+                if (savedTripId) {
+                    showLoading("Đang tải lại chuyến đi...");
+                    try {
+                        const tripDocRef = doc(db, "trips", savedTripId);
+                        const tripDoc = await getDoc(tripDocRef);
+
+                        if (tripDoc.exists()) {
+                            // Mở chuyến đi này
+                            openTrip(tripDoc.id, tripDoc.data());
+                            // hideLoading() sẽ được gọi bên trong openTrip
+                        } else {
+                            // ID không còn tồn tại
+                            localStorage.removeItem('currentTripId');
+                            showView('trips');
+                            loadTrips();
+                        }
+                    } catch (error) {
+                        console.error("Lỗi khôi phục chuyến đi:", error);
+                        localStorage.removeItem('currentTripId');
+                        showView('trips');
+                        loadTrips();
+                    }
+                } else {
+                    // Không có chuyến đi nào được lưu -> Mặc định
+                    showView('trips');
+                    loadTrips();
+                }
+
+                // BỔ SUNG: Xử lý link mời khi tải trang
+                await handleJoinLinkOnLoad();
+
+            } else {
+                currentUser = null;
+                authContainer.style.display = "block";
+                appContainer.style.display = "none";
+                loadingDiv.style.display = "none";
+            }
+        });
+
+        // Hiển thị loading
+        function showLoading(message = "Đang tải...") {
+            loadingDiv.textContent = message;
+            loadingDiv.style.display = "block";
+        }
+
+        // Ẩn loading
+        function hideLoading() {
+            loadingDiv.style.display = "none";
+        }
+
+        // Chuyển đổi qua lại giữa các View chính
+        function showView(viewName) {
+            tripsView.style.display = "none";
+            singleTripView.style.display = "none";
+            if (viewName === 'trips') {
+                tripsView.style.display = "block";
+                currentTrip.id = null; // Reset chuyến đi hiện tại
+                // Hủy đăng ký listener cũ
+                if (historyUnsubscribe) historyUnsubscribe();
+                if (chatUnsubscribe) chatUnsubscribe();
+            } else if (viewName === 'singleTrip') {
+                singleTripView.style.display = "block";
+            }
+        }
+
+        // Chuyển đổi qua lại giữa các Tab trong 1 chuyến đi
+        function showTripTab(tabName) {
+            tabContents.forEach(content => content.style.display = 'none');
+            const activeTab = document.getElementById(tabName);
+            if (activeTab) {
+                activeTab.style.display = 'block';
+            }
+
+            // Khởi tạo bản đồ nếu chuyển đến tab Nhập liệu
+            if (tabName === 'input-tab' && !map) {
+                initMap();
+            }
+        }
+
+        // =================================================================
+        // CHỨC NĂNG XÁC THỰC (AUTH)
+        // =================================================================
+
+        // 1. Đăng ký
+        registerForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("register-name").value;
+            const facebookId = document.getElementById("register-facebook").value;
+            const email = document.getElementById("register-email").value;
+            const password = registerPass.value;
+            const confirmPassword = registerConfirmPass.value;
+
+            // Validate email domain
+            const allowedDomains = ["@icloud.com", "@gmail.com", "@mhung.site"];
+            if (!allowedDomains.some(domain => email.endsWith(domain))) {
+                alert("Email phải có đuôi là @icloud.com, @gmail.com, hoặc @mhung.site");
+                return;
+            }
+
+            // Validate password match
+            if (password !== confirmPassword) {
+                alert("Mật khẩu không khớp!");
+                return;
+            }
+
+            showLoading("Đang đăng ký...");
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // Cập nhật profile (tên)
+                await updateProfile(user, { displayName: name });
+
+                // SỬA ĐỔI: Lưu thông tin (bao gồm cả facebookId) vào Firestore
+                await setDoc(doc(db, "users", user.uid), {
+                    uid: user.uid,
+                    name: name, // SỬA ĐỔI: Dùng 'name' cho nhất quán
+                    email: email,
+                    facebookId: facebookId,
+                    createdAt: serverTimestamp()
+                });
+
+                hideLoading();
+                alert("Đăng ký thành công!");
+                // onAuthStateChanged sẽ tự động xử lý việc chuyển view
+            } catch (error) {
+                hideLoading();
+                alert("Lỗi đăng ký: " + error.message);
+                console.error("Register error:", error);
+            }
+        });
+
+        // 2. Đăng nhập
+        loginForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("login-email").value;
+            const password = document.getElementById("login-password").value;
+
+            showLoading("Đang đăng nhập...");
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                hideLoading();
+                // onAuthStateChanged xử lý
+            } catch (error) {
+                hideLoading();
+                alert("Lỗi đăng nhập: " + error.message);
+                console.error("Login error:", error);
+            }
+        });
+
+        // 3. Đăng xuất
+        logoutButton.addEventListener("click", async () => {
+            try {
+                // BỔ SUNG: Xóa trạng thái
+                localStorage.removeItem('currentTripId');
+                await signOut(auth);
+                // onAuthStateChanged xử lý
+            } catch (error) {
+                alert("Lỗi đăng xuất: " + error.message);
+            }
+        });
+
+        // 4. Quên mật khẩu
+        forgotPasswordForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("forgot-email").value;
+            showLoading("Đang gửi email...");
+            try {
+                await sendPasswordResetEmail(auth, email);
+                hideLoading();
+                alert("Email đặt lại mật khẩu đã được gửi!");
+            } catch (error) {
+                hideLoading();
+                alert("Lỗi: " + error.message);
+            }
+        });
+
+        // 5. Chuyển đổi hiển thị Mật khẩu
+        function togglePasswordVisibility(inputElement) {
+            if (inputElement.type === "password") {
+                inputElement.type = "text";
+            } else {
+                inputElement.type = "password";
+            }
+        }
+        registerTogglePass.addEventListener("click", () => {
+            togglePasswordVisibility(registerPass);
+            togglePasswordVisibility(registerConfirmPass);
+        });
+
+        // 6. Chuyển đổi qua lại các form Auth
+        showRegisterLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            loginForm.style.display = "none";
+            forgotPasswordForm.style.display = "none";
+            registerForm.style.display = "block";
+        });
+        showLoginLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            registerForm.style.display = "none";
+            loginForm.style.display = "block";
+        });
+        showForgotPassLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            loginForm.style.display = "none";
+            forgotPasswordForm.style.display = "block";
+        });
+        backToLoginLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            forgotPasswordForm.style.display = "none";
+            loginForm.style.display = "block";
+        });
+
+        // =================================================================
+        // BỔ SUNG: QUẢN LÝ TÀI KHOẢN
+        // =================================================================
+
+        // Mở Modal
+        accountButton.addEventListener("click", () => {
+            if (!currentUser) return;
+            // Điền thông tin
+            document.getElementById("account-name").value = currentUser.name || currentUser.displayName || '';
+            document.getElementById("account-facebook").value = currentUser.facebookId || '';
+
+            // Reset form pass
+            updatePasswordForm.reset();
+
+            accountModal.style.display = "block";
+        });
+
+        // Đóng Modal
+        closeAccountModal.onclick = () => { accountModal.style.display = "none"; }
+
+        // Xử lý Cập nhật Profile
+        updateProfileForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            // Biến chính xác là 'newFbId'
+            const newName = document.getElementById("account-name").value;
+            const newFbId = document.getElementById("account-facebook").value;
+
+            if (!newName) {
+                alert("Tên không được để trống.");
+                return;
+            }
+
+            showLoading("Đang cập nhật...");
+            try {
+                // 1. Cập nhật Firebase Auth
+                await updateProfile(auth.currentUser, { displayName: newName });
+
+                // 2. Cập nhật Firestore
+                const userDocRef = doc(db, "users", currentUser.uid);
+                await updateDoc(userDocRef, {
+                    name: newName,
+                    facebookId: newFbId
+                });
+
+                // 3. Cập nhật local
+                currentUser.displayName = newName;
+                currentUser.name = newName;
+                currentUser.facebookId = newFbId;
+
+                // 4. Cập nhật UI
+                // SỬA LỖI: Đảm bảo sử dụng 'newFbId' ở đây
+                const newAvatarUrl = newFbId
+                    ? `https://graph.facebook.com/${newFbId}/picture?width=9999&access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662`
+                    : 'https://via.placeholder.com/30';
+
+                userDisplay.innerHTML = `
+                    <img src="${newAvatarUrl}" class="chat-avatar">
+                    Chào mừng, ${newName}!
+                `;
+
+                // BỔ SUNG: Cập nhật userIcon
+                userIcon = L.icon({
+                    iconUrl: newAvatarUrl,
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40],
+                    popupAnchor: [0, -40]
+                });
+
+                // Nếu đang có marker trên bản đồ, cập nhật icon của nó
+                if (locationMarker) {
+                    locationMarker.setIcon(userIcon);
+                }
+
+                hideLoading();
+                alert("Cập nhật thông tin thành công!");
+                accountModal.style.display = "none";
+
+            } catch (error) {
+                hideLoading();
+                console.error("Update profile error:", error);
+                alert("Lỗi khi cập nhật: " + error.message);
+            }
+        });
+
+        // Xử lý Cập nhật Mật khẩu
+        updatePasswordForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const currentPass = document.getElementById("account-current-pass").value;
+            const newPass = document.getElementById("account-new-pass").value;
+            const confirmPass = document.getElementById("account-confirm-pass").value;
+
+            if (newPass !== confirmPass) {
+                alert("Mật khẩu mới không khớp!");
+                return;
+            }
+            if (!currentPass || !newPass) {
+                alert("Vui lòng nhập đủ thông tin.");
+                return;
+            }
+
+            showLoading("Đang đổi mật khẩu...");
+            try {
+                // 1. Yêu cầu xác thực lại
+                const user = auth.currentUser;
+                const credential = EmailAuthProvider.credential(user.email, currentPass);
+                await reauthenticateWithCredential(user, credential);
+
+                // 2. Nếu thành công, đổi mật khẩu
+                await updatePassword(user, newPass);
+
+                hideLoading();
+                alert("Đổi mật khẩu thành công!");
+                accountModal.style.display = "none";
+
+            } catch (error) {
+                hideLoading();
+                console.error("Update password error:", error);
+                alert("Lỗi đổi mật khẩu: " + error.message);
+            }
+        });
+
+        // =================================================================
+        // TAB SHARE&GO (QUẢN LÝ CHUYẾN ĐI)
+        // =================================================================
+
+        // 1. Tải danh sách chuyến đi
+        // 1. Tải danh sách chuyến đi
+        function loadTrips() {
+            if (!currentUser) return;
+            showLoading("Đang tải chuyến đi...");
+
+            // Chỉ tải các chuyến đi mà người dùng là thành viên (bao gồm cả chủ sở hữu)
+            const q = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid));
+
+            onSnapshot(q, (snapshot) => {
+                tripsList.innerHTML = ""; // Xóa danh sách cũ
+                if (snapshot.empty) {
+                    tripsList.innerHTML = "<p>Bạn chưa tham gia chuyến đi nào.</p>";
+                }
+                snapshot.forEach((doc) => {
+                    const trip = doc.data();
+                    const tripElement = document.createElement("div");
+                    tripElement.style.border = "1px solid #ccc";
+                    tripElement.style.padding = "10px";
+                    tripElement.style.margin = "5px";
+
+                    // SỬA ĐỔI: Hiển thị tên (ownerName) thay vì email
+                    tripElement.innerHTML = `
+                        <h3>${trip.name}</h3>
+                        <p>${trip.description}</p>
+                        <p>Số người: ${trip.maxPeople}</p>
+                        <p>Chủ nhóm: ${trip.ownerName || 'Không rõ'}</p>
+                    `;
+                    const openButton = document.createElement("button");
+                    openButton.textContent = "Mở";
+                    openButton.onclick = () => openTrip(doc.id, trip);
+
+                    tripElement.appendChild(openButton);
+
+                    // BỔ SUNG: Thêm nút Sửa/Xóa cho chủ nhóm
+                    if (currentUser.uid === trip.ownerId) {
+                        const editButton = document.createElement("button");
+                        editButton.textContent = "Sửa";
+                        editButton.style.marginLeft = "5px";
+                        editButton.onclick = (e) => {
+                            // Cần gán currentTrip.id/ownerId để modal Sửa hoạt động
+                            currentTrip.id = doc.id;
+                            currentTrip.ownerId = trip.ownerId;
+                            showEditTripModal(trip);
+                        };
+
+                        const deleteButton = document.createElement("button");
+                        deleteButton.textContent = "Xóa";
+                        deleteButton.style.marginLeft = "5px";
+                        deleteButton.onclick = (e) => {
+                            // Gọi hàm deleteTrip đã sửa đổi
+                            deleteTrip(doc.id, trip.name, trip.ownerId);
+                        };
+
+                        tripElement.appendChild(editButton);
+                        tripElement.appendChild(deleteButton);
+                    }
+
+                    tripsList.appendChild(tripElement);
+                });
+                hideLoading();
+            }, (error) => {
+                hideLoading();
+                console.error("Error loading trips: ", error);
+                alert("Không thể tải danh sách chuyến đi.");
+            });
+        }
+
+        // 2. Tạo chuyến đi mới
+        createTripForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const name = document.getElementById("trip-name").value;
+            const description = document.getElementById("trip-description").value;
+            const maxPeople = parseInt(document.getElementById("trip-max-people").value, 10);
+
+            if (!name || isNaN(maxPeople) || maxPeople <= 0) {
+                alert("Vui lòng nhập tên và số người hợp lệ.");
+                return;
+            }
+
+            // BỔ SUNG: Tạo mã mời ngẫu nhiên
+            const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+            showLoading("Đang tạo chuyến đi...");
+            try {
+                await addDoc(collection(db, "trips"), {
+                    name: name,
+                    description: description,
+                    maxPeople: maxPeople,
+                    ownerId: currentUser.uid,
+                    ownerName: currentUser.name || currentUser.displayName || currentUser.email,
+                    members: [currentUser.uid], // Tự động thêm chủ nhóm vào thành viên
+                    createdAt: serverTimestamp(),
+                    inviteCode: inviteCode // BỔ SUNG
+                });
+                hideLoading();
+                createTripForm.reset();
+                // onSnapshot sẽ tự động cập nhật danh sách
+            } catch (error) {
+                hideLoading();
+                console.error("Error creating trip: ", error);
+                alert("Lỗi khi tạo chuyến đi.");
+            }
+        });
+
+        // 3. Mở một chuyến đi
+        // 3. Mở một chuyến đi
+        function openTrip(tripId, tripData) {
+            // BỔ SUNG: Lưu trạng thái
+            localStorage.setItem('currentTripId', tripId);
+
+            currentTrip.id = tripId;
+            currentTrip.name = tripData.name;
+            currentTrip.ownerId = tripData.ownerId;
+            currentTrip.maxPeople = tripData.maxPeople;
+            currentTrip.inviteCode = tripData.inviteCode; // BỔ SUNG
+
+            tripNameDisplay.textContent = `Chuyến đi: ${tripData.name}`;
+
+            // Kiểm tra quyền (chủ nhóm)
+            tripControls.innerHTML = ""; // Xóa các nút cũ
+            if (currentUser.uid === tripData.ownerId) {
+                const editButton = document.createElement("button");
+                editButton.textContent = "Sửa chuyến đi";
+                editButton.onclick = () => showEditTripModal(tripData);
+
+                const deleteButton = document.createElement("button");
+                deleteButton.textContent = "Xóa chuyến đi";
+                deleteButton.onclick = () => deleteTrip(tripId, tripData.name, tripData.ownerId);
+
+                const addMemberButton = document.createElement("button");
+                addMemberButton.textContent = "Thêm thành viên";
+                addMemberButton.onclick = () => addMemberToTrip(tripId);
+
+                tripControls.appendChild(editButton);
+                tripControls.appendChild(deleteButton);
+                tripControls.appendChild(addMemberButton);
+
+                // BỔ SUNG: Hiển thị mã mời và link cho chủ nhóm
+                const inviteDiv = document.createElement("div");
+                const inviteLink = `${window.location.origin}${window.location.pathname}#join=${tripData.inviteCode}`;
+                inviteDiv.innerHTML = `
+                    <p>
+                        <strong>Mã mời:</strong> ${tripData.inviteCode} 
+                        (<strong>Link:</strong> <a href="${inviteLink}" target="_blank">${inviteLink}</a>)
+                    </p>
+                `;
+                const changeCodeBtn = document.createElement("button");
+                changeCodeBtn.textContent = "Đổi mã mời";
+                changeCodeBtn.onclick = () => changeInviteCode(tripId, tripData.inviteCode);
+                inviteDiv.appendChild(changeCodeBtn);
+                tripControls.appendChild(inviteDiv);
+            }
+
+            // Chuyển view
+            showView('singleTrip');
+            showTripTab('input-tab'); // Hiển thị tab nhập liệu làm mặc định
+
+            // Hủy listener cũ và tải dữ liệu mới
+            if (historyUnsubscribe) historyUnsubscribe();
+            if (chatUnsubscribe) chatUnsubscribe();
+
+            loadHistory(tripId);
+            loadChat(tripId);
+            // loadStats sẽ được gọi bên trong loadHistory
+        }
+
+        // 4. Quay lại danh sách chuyến đi
+        backToTripsButton.addEventListener("click", () => {
+            // BỔ SUNG: Xóa trạng thái
+            localStorage.removeItem('currentTripId');
+            showView('trips');
+        });
+
+        // 5. Thêm thành viên (chủ nhóm)
+        async function addMemberToTrip(tripId) {
+            const email = prompt("Nhập email của thành viên muốn thêm:");
+            if (!email) return;
+
+            showLoading("Đang tìm và thêm thành viên...");
+            try {
+                // 1. Tìm user bằng email
+                const userQuery = query(collection(db, "users"), where("email", "==", email));
+                const userSnapshot = await getDocs(userQuery); // BỔ SUNG: dùng getDocs
+
+                if (userSnapshot.empty) {
+                    hideLoading();
+                    alert("Không tìm thấy người dùng với email này.");
+                    return;
+                }
+
+                const userToAdd = userSnapshot.docs[0].data();
+
+                // 2. Thêm UID của họ vào mảng 'members' của chuyến đi
+                const tripRef = doc(db, "trips", tripId);
+                await updateDoc(tripRef, {
+                    members: arrayUnion(userToAdd.uid)
+                });
+
+                hideLoading();
+                alert(`Đã thêm ${userToAdd.name || userToAdd.email} vào chuyến đi!`);
+
+            } catch (error) {
+                hideLoading();
+                console.error("Error adding member: ", error);
+                alert("Lỗi khi thêm thành viên.");
+            }
+        }
+
+        // 6. Hiển thị modal sửa chuyến đi
+        function showEditTripModal(tripData) {
+            document.getElementById("edit-trip-name").value = tripData.name;
+            document.getElementById("edit-trip-description").value = tripData.description;
+            document.getElementById("edit-trip-max-people").value = tripData.maxPeople;
+            editTripModal.style.display = "block";
+        }
+
+        closeEditTripModal.onclick = () => { editTripModal.style.display = "none"; }
+
+        // 7. Xử lý sửa chuyến đi
+        editTripForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (currentUser.uid !== currentTrip.ownerId) return;
+
+            const name = document.getElementById("edit-trip-name").value;
+            const description = document.getElementById("edit-trip-description").value;
+            const maxPeople = parseInt(document.getElementById("edit-trip-max-people").value, 10);
+
+            if (!name || isNaN(maxPeople) || maxPeople <= 0) {
+                alert("Vui lòng nhập thông tin hợp lệ.");
+                return;
+            }
+
+            showLoading("Đang cập nhật...");
+            try {
+                const tripRef = doc(db, "trips", currentTrip.id);
+                await updateDoc(tripRef, {
+                    name: name,
+                    description: description,
+                    maxPeople: maxPeople
+                });
+
+                // Cập nhật UI
+                tripNameDisplay.textContent = `Chuyến đi: ${name}`;
+                currentTrip.name = name;
+                currentTrip.maxPeople = maxPeople;
+
+                hideLoading();
+                editTripModal.style.display = "none";
+                // loadTrips() sẽ tự cập nhật khi quay lại
+            } catch (error) {
+                hideLoading();
+                console.error("Error updating trip: ", error);
+                alert("Lỗi khi cập nhật.");
+            }
+        });
+
+        // 8. Xóa chuyến đi (SỬA ĐỔI: chấp nhận tham số để dùng ở ngoài)
+        // 8. Xóa chuyến đi (SỬA ĐỔI: chấp nhận tham số để dùng ở ngoài)
+        async function deleteTrip(tripId, tripName, ownerId) {
+            // Kiểm tra quyền
+            if (currentUser.uid !== ownerId) {
+                alert("Bạn không có quyền xóa chuyến đi này.");
+                return;
+            }
+
+            // Xác nhận
+            if (!confirm(`Bạn có chắc muốn xóa chuyến đi "${tripName}"? Hành động này không thể hoàn tác.`)) {
+                return;
+            }
+
+            showLoading("Đang xóa...");
+            try {
+                // (Trong thực tế cần 1 Cloud Function để xóa đệ quy sub-collections)
+                await deleteDoc(doc(db, "trips", tripId));
+
+                // BỔ SUNG: Kiểm tra xem chuyến đi bị xóa có phải là chuyến đang mở/lưu không
+                if (currentTrip.id === tripId || localStorage.getItem('currentTripId') === tripId) {
+                    localStorage.removeItem('currentTripId');
+                    showView('trips');
+                }
+
+                hideLoading();
+                // onSnapshot (loadTrips) sẽ tự động cập nhật danh sách
+            } catch (error) {
+                hideLoading();
+                console.error("Error deleting trip: ", error);
+                alert("Lỗi khi xóa chuyến đi.");
+            }
+        }
+
+        // BỔ SUNG: 9. Đổi mã mời (Chủ nhóm)
+        async function changeInviteCode(tripId, oldCode) {
+            const newCode = prompt("Nhập mã mời mới (để trống để tạo ngẫu nhiên):", oldCode);
+            if (newCode === null) return; // Hủy
+
+            let finalCode = newCode.trim().toUpperCase();
+            if (finalCode === "") {
+                finalCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            }
+
+            showLoading("Đang đổi mã...");
+            try {
+                // (Cần kiểm tra trùng lặp nếu làm kỹ)
+                await updateDoc(doc(db, "trips", tripId), { inviteCode: finalCode });
+                hideLoading();
+                alert("Đã đổi mã mời thành: " + finalCode);
+                openTrip(currentTrip.id, { ...currentTrip, inviteCode: finalCode }); // Tải lại control
+            } catch (error) {
+                hideLoading();
+                alert("Lỗi khi đổi mã.");
+            }
+        }
+
+        // BỔ SUNG: 10. Tham gia chuyến đi (bằng Form)
+        joinTripForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const codeInput = document.getElementById("join-code").value;
+            joinTripByCode(codeInput);
+        });
+
+        // BỔ SUNG: 11. Xử lý tham gia bằng Link (khi tải trang)
+        async function handleJoinLinkOnLoad() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith("#join=")) {
+                const code = hash.substring(6); // Lấy phần sau #join=
+                if (code && currentUser) {
+                    await joinTripByCode(code);
+                    // Xóa hash
+                    window.location.hash = "";
+                }
+            }
+        }
+
+
+        // BỔ SUNG: 12. Hàm lõi để tham gia (dùng cho cả form và link)
+        async function joinTripByCode(codeInput) {
+            if (!currentUser) {
+                alert("Bạn cần đăng nhập để tham gia.");
+                return;
+            }
+
+            let code = codeInput.trim();
+            // Xử lý nếu dán cả link
+            if (code.includes("#join=")) {
+                code = code.split("#join=")[1].trim();
+            }
+
+            if (!code) {
+                alert("Vui lòng nhập mã mời.");
+                return;
+            }
+
+            showLoading("Đang tìm và tham gia...");
+            try {
+                const q = query(collection(db, "trips"), where("inviteCode", "==", code));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) {
+                    hideLoading();
+                    alert("Không tìm thấy chuyến đi với mã này.");
+                    return;
+                }
+
+                const tripDoc = snapshot.docs[0];
+                const tripRef = doc(db, "trips", tripDoc.id);
+                const tripData = tripDoc.data(); // Lấy dữ liệu chuyến đi
+
+                // SỬA ĐỔI: Kiểm tra xem đã là thành viên chưa
+                if (tripData.members && tripData.members.includes(currentUser.uid)) {
+                    hideLoading();
+                    alert(`Bạn đã tham gia chuyến đi "${tripData.name}" rồi!`);
+                    document.getElementById("join-code").value = ""; // Xóa form
+                    return; // Dừng lại
+                }
+
+                // Thêm user vào mảng members (nếu chưa tham gia)
+                await updateDoc(tripRef, {
+                    members: arrayUnion(currentUser.uid)
+                });
+
+                hideLoading();
+                document.getElementById("join-code").value = ""; // Xóa form
+                alert(`Đã tham gia chuyến đi "${tripData.name}"!`);
+                // onSnapshot (loadTrips) sẽ tự động cập nhật danh sách
+
+            } catch (error) {
+                hideLoading();
+                console.error("Join trip error:", error);
+                alert("Lỗi khi tham gia.");
+            }
+        }
+
+        // =================================================================
+        // TAB 1: NHẬP LIỆU (ĐỊA ĐIỂM)
+        // =================================================================
+
+        // Tiện ích Debounce (Ngăn gọi API liên tục)
+        function debounce(func, delay) {
+            let timeout;
+            return function (...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), delay);
+            };
+        }
+        // 1. Khởi tạo bản đồ (chỉ gọi khi tab được kích hoạt)
+        function initMap() {
+            // Ngăn khởi tạo lại
+            if (map) return;
+
+            mapContainer.style.height = '300px'; // Cần set chiều cao
+            map = L.map('map-container').setView([21.028511, 105.804817], 13); // Mặc định Hà Nội
+
+            // Định nghĩa các lớp bản đồ
+            tileLayers.default = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            });
+            tileLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri'
+            });
+            tileLayers.dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+            });
+
+            // Thêm lớp mặc định
+            currentTileLayer = tileLayers.default;
+            currentTileLayer.addTo(map);
+            // BỔ SUNG: Đảm bảo userIcon có giá trị mặc định nếu chưa được set từ onAuthStateChanged
+            if (!userIcon) {
+                userIcon = L.icon({
+                    iconUrl: 'https://via.placeholder.com/30', // Icon dự phòng
+                    iconSize: [40, 40],
+                    iconAnchor: [20, 40],
+                    popupAnchor: [0, -40]
+                });
+            }
+
+            // Bắt sự kiện click trên bản đồ
+            map.on('click', (e) => {
+                const { lat, lng } = e.latlng;
+
+                // SỬA ĐỔI: Cập nhật tọa độ vào input hidden
+                locationPositionInput.value = `${lat}, ${lng}`;
+                // Thử tìm địa chỉ từ tọa độ (reverse geocoding)
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        locationAddressInput.value = data.display_name || `Tọa độ: ${lat}, ${lng}`;
+                    });
+
+                // Cập nhật marker
+                if (locationMarker) {
+                    locationMarker.setLatLng(e.latlng);
+                    locationMarker.setIcon(userIcon); // BỔ SUNG: Đảm bảo icon đúng
+                } else {
+                    locationMarker = L.marker(e.latlng, { icon: userIcon }).addTo(map); // SỬA ĐỔI: Dùng userIcon
+                }
+                locationMarker.bindPopup("Vị trí đã chọn").openPopup();
+            });
+        }
+
+        // 2. Chuyển đổi lớp bản đồ
+        mapModeDefault.onclick = () => {
+            if (map && currentTileLayer !== tileLayers.default) {
+                map.removeLayer(currentTileLayer);
+                currentTileLayer = tileLayers.default;
+                currentTileLayer.addTo(map);
+            }
+        };
+        mapModeSatellite.onclick = () => {
+            if (map && currentTileLayer !== tileLayers.satellite) {
+                map.removeLayer(currentTileLayer);
+                currentTileLayer = tileLayers.satellite;
+                currentTileLayer.addTo(map);
+            }
+        };
+        mapModeDark.onclick = () => {
+            if (map && currentTileLayer !== tileLayers.dark) {
+                map.removeLayer(currentTileLayer);
+                currentTileLayer = tileLayers.dark;
+                currentTileLayer.addTo(map);
+            }
+        };
+
+        // 3. Định vị
+        getLocationButton.addEventListener("click", () => {
+            if (!navigator.geolocation) {
+                alert("Trình duyệt không hỗ trợ định vị.");
+                return;
+            }
+            if (!map) initMap(); // Đảm bảo bản đồ đã được khởi tạo
+
+            showLoading("Đang định vị...");
+            navigator.geolocation.getCurrentPosition((position) => {
+                hideLoading();
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const latLng = [lat, lng];
+
+                // SỬA ĐỔI: Cập nhật cả 2 input
+                locationPositionInput.value = `${lat}, ${lng}`;
+                // Thử tìm địa chỉ
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        locationAddressInput.value = data.display_name || `Tọa độ: ${lat}, ${lng}`;
+                    });
+
+                map.setView(latLng, 16); // Zoom vào vị trí
+
+                if (locationMarker) {
+                    locationMarker.setLatLng(latLng);
+                    locationMarker.setIcon(userIcon); // BỔ SUNG: Đảm bảo icon đúng
+                } else {
+                    locationMarker = L.marker(latLng, { icon: userIcon }).addTo(map); // SỬA ĐỔI: Dùng userIcon
+                }
+                locationMarker.bindPopup("Vị trí của bạn").openPopup();
+
+            }, (error) => {
+                hideLoading();
+                alert("Không thể lấy vị trí: " + error.message);
+            });
+        });
+
+        // SỬA ĐỔI: 4. Tìm kiếm địa điểm (Hiển thị gợi ý)
+        // SỬA ĐỔI: 4. Tìm kiếm địa điểm (Tự động gợi ý)
+        const debouncedSearch = debounce(async (query) => {
+            if (!query || !map) {
+                mapSearchResults.innerHTML = ""; // Xóa nếu query rỗng
+                return;
+            }
+
+            mapSearchResults.innerHTML = "<p>Đang tìm...</p>"; // Thông báo
+            try {
+                // Sử dụng Nominatim
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                mapSearchResults.innerHTML = ""; // Xóa "Đang tìm..."
+
+                if (data && data.length > 0) {
+
+                    // Hiển thị 5 kết quả
+                    data.slice(0, 5).forEach(result => {
+                        const resultBtn = document.createElement("button");
+                        resultBtn.textContent = result.display_name;
+                        resultBtn.style.display = "block";
+                        resultBtn.style.margin = "2px";
+
+                        // Khi click vào 1 gợi ý
+                        resultBtn.onclick = () => {
+                            const lat = parseFloat(result.lat);
+                            const lng = parseFloat(result.lon);
+
+                            // Cập nhật 2 input
+                            locationAddressInput.value = result.display_name;
+                            locationPositionInput.value = `${lat}, ${lng}`;
+
+                            const latLng = [lat, lng];
+                            map.setView(latLng, 16);
+
+                            if (locationMarker) {
+                                locationMarker.setLatLng(latLng);
+                                locationMarker.setIcon(userIcon); // BỔ SUNG: Đảm bảo icon đúng
+                            } else {
+                                locationMarker = L.marker(latLng, { icon: userIcon }).addTo(map); // SỬA ĐỔI: Dùng userIcon
+                            }
+                            locationMarker.bindPopup(result.display_name).openPopup();
+
+                            mapSearchResults.innerHTML = ""; // Ẩn gợi ý
+                        };
+                        mapSearchResults.appendChild(resultBtn);
+                    });
+
+                } else {
+                    mapSearchResults.innerHTML = "<p>Không tìm thấy địa điểm.</p>";
+                }
+            } catch (error) {
+                mapSearchResults.innerHTML = "<p>Lỗi khi tìm kiếm.</p>";
+                console.error("Map search error:", error);
+            }
+        }, 500); // Chờ 500ms sau khi người dùng ngừng gõ
+
+        // Gắn listener vào ô địa chỉ
+        locationAddressInput.addEventListener("input", (e) => {
+            debouncedSearch(e.target.value);
+        });
+
+        // 5. Xử lý input (Số người, Tiền, Thời gian)
+
+        // Số người
+        document.getElementById("people-decrease").onclick = (e) => {
+            e.preventDefault();
+            let val = parseInt(locationPeopleInput.value, 10) || 1;
+            if (val > 1) locationPeopleInput.value = val - 1;
+        };
+        document.getElementById("people-increase").onclick = (e) => {
+            e.preventDefault();
+            let val = parseInt(locationPeopleInput.value, 10) || 0;
+            // SỬA ĐỔI: Bỏ giới hạn max
+            // if (val < currentTrip.maxPeople) 
+            locationPeopleInput.value = val + 1;
+        };
+        document.getElementById("people-max").onclick = (e) => {
+            e.preventDefault();
+            locationPeopleInput.value = currentTrip.maxPeople;
+        };
+        locationPeopleInput.oninput = () => {
+            let val = parseInt(locationPeopleInput.value, 10);
+            if (isNaN(val) || val < 1) locationPeopleInput.value = 1;
+            // SỬA ĐỔI: Bỏ giới hạn max
+            // if (val > currentTrip.maxPeople) locationPeopleInput.value = currentTrip.maxPeople;
+        };
+
+        // Format tiền
+        const formatter = new Intl.NumberFormat('vi-VN');
+        locationCostInput.addEventListener("input", (e) => {
+            let value = e.target.value.replace(/\./g, ''); // Bỏ dấu chấm
+            if (isNaN(value) || value === '') {
+                e.target.dataset.raw = '';
+                e.target.value = '';
+            } else {
+                let num = parseInt(value, 10);
+                e.target.dataset.raw = num; // Lưu giá trị số
+                e.target.value = formatter.format(num); // Hiển thị
+            }
+        });
+
+        // Format thời gian (HHMM -> HH:MM)
+        locationTimeInput.addEventListener("input", (e) => {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+            if (value.length > 4) value = value.substring(0, 4);
+
+            if (value.length === 1 && parseInt(value) > 2) {
+                value = "0" + value;
+            }
+            if (value.length === 2) {
+                let hh = parseInt(value);
+                if (hh > 23) value = "23";
+            }
+            if (value.length === 3) {
+                let mm = parseInt(value.substring(2));
+                if (mm > 5) { // ví dụ 196 -> 19:06
+                    value = value.substring(0, 2) + "0" + value.substring(2);
+                } else { // 193 -> 19:3_
+                    value = value.substring(0, 2) + ":" + value.substring(2);
+                }
+            }
+            if (value.length === 4) {
+                let hh = parseInt(value.substring(0, 2));
+                let mm = parseInt(value.substring(2, 4));
+                if (hh > 23) hh = 23;
+                if (mm > 59) mm = 59;
+                value = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+            }
+
+            // Xử lý 25 -> 00:25
+            if (value.length <= 2 && e.inputType === 'insertText') {
+                // Nếu người dùng nhập 25, và nó > 23, giả định đó là phút
+                let num = parseInt(value);
+                if (num > 23 && num <= 59) {
+                    value = "00:" + String(num).padStart(2, '0');
+                } else if (num > 59) {
+                    value = "00:59";
+                }
+            }
+
+            e.target.value = value;
+        });
+
+        // Format ngày (DDMM -> DD/MM/YYYY)
+        locationDateInput.addEventListener("input", (e) => {
+            let value = e.target.value.replace(/[^0-9]/g, '');
+            const year = new Date().getFullYear();
+
+            if (value.length > 4) value = value.substring(0, 4);
+
+            if (value.length === 1 && parseInt(value) > 3) {
+                value = "0" + value; // 5 -> 05
+            }
+            if (value.length === 2) {
+                let dd = parseInt(value);
+                if (dd > 31) value = "31";
+            }
+            if (value.length === 3) {
+                let mm = parseInt(value.substring(2));
+                if (mm > 1) { // 251 -> 25/01
+                    value = value.substring(0, 2) + "0" + value.substring(2);
+                } else { // 251 -> 25/1_
+                    value = value.substring(0, 2) + "/" + value.substring(2);
+                }
+            }
+            if (value.length === 4) {
+                let dd = parseInt(value.substring(0, 2));
+                let mm = parseInt(value.substring(2, 4));
+                if (dd > 31) dd = 31;
+                if (mm > 12) mm = 12;
+                if (mm === 0) mm = 1;
+
+                value = `${String(dd).padStart(2, '0')}/${String(mm).padStart(2, '0')}/${year}`;
+            }
+            e.target.value = value;
+        });
+
+        // 6. Lấy thời gian hiện tại
+        getCurrentTimeButton.addEventListener("click", (e) => {
+            e.preventDefault();
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
+            const year = now.getFullYear();
+
+            locationTimeInput.value = `${hours}:${minutes}`;
+            locationDateInput.value = `${day}/${month}/${year}`;
+        });
+
+        // 7. Thêm địa điểm (Submit form)
+        addLocationForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!currentTrip.id || !currentUser) return;
+
+            // SỬA ĐỔI: Lấy dữ liệu từ các input mới
+            const locationName = document.getElementById("location-name").value;
+            const address = locationAddressInput.value; // Địa chỉ text
+            const position = locationPositionInput.value; // Tọa độ
+
+            const numPeople = parseInt(locationPeopleInput.value, 10);
+            const cost = parseInt(locationCostInput.dataset.raw || 0, 10);
+            const time = locationTimeInput.value; // (đã format HH:MM)
+            let date = locationDateInput.value; // (đã format DD/MM/YYYY)
+            const rating = document.getElementById("location-rating").value;
+            const notes = document.getElementById("location-notes").value;
+
+            if (date.length === 2 && !isNaN(date)) {
+                const now = new Date();
+                const day = String(date).padStart(2, '0');
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const year = now.getFullYear();
+                date = `${day}/${month}/${year}`;
+            }
+
+            let sortableTime = null;
+            try {
+                const [day, month, year] = date.split('/');
+                const [hours, minutes] = time.split(':');
+                sortableTime = new Date(year, month - 1, day, hours, minutes);
+            } catch (err) {
+                console.warn("Invalid date/time for sorting", err);
+                sortableTime = new Date(); // fallback
+            }
+
+            // SỬA ĐỔI: Lưu cả address và position
+            const locationData = {
+                tripId: currentTrip.id,
+                locationName,
+                address,
+                position,
+                numPeople,
+                cost,
+                time,
+                date,
+                rating: parseInt(rating, 10),
+                notes,
+                createdBy: {
+                    uid: currentUser.uid,
+                    name: currentUser.name || currentUser.displayName || currentUser.email // Dùng displayName
+                },
+                createdAt: serverTimestamp(),
+                sortableTime: sortableTime
+            };
+
+            showLoading("Đang thêm địa điểm...");
+            try {
+                const collectionRef = collection(db, "trips", currentTrip.id, "locations");
+                await addDoc(collectionRef, locationData);
+
+                hideLoading();
+                addLocationForm.reset();
+                locationCostInput.dataset.raw = ''; // reset giá trị raw
+
+                // Chuyển qua tab lịch sử
+                showTripTab('history-tab');
+
+            } catch (error) {
+                hideLoading();
+                console.error("Error adding location: ", error);
+                alert("Lỗi khi thêm địa điểm.");
+            }
+        });
+
+        // =================================================================
+        // TAB 2: LỊCH SỬ
+        // =================================================================
+
+        // 1. Tải lịch sử
+        function loadHistory(tripId) {
+            showLoading("Đang tải lịch sử...");
+            const q = query(collection(db, "trips", tripId, "locations"), orderBy("sortableTime", "desc"));
+
+            historyUnsubscribe = onSnapshot(q, (snapshot) => {
+                localHistoryCache = [];
+                historyList.innerHTML = "";
+
+                if (snapshot.empty) {
+                    historyList.innerHTML = "<p>Chưa có địa điểm nào được thêm.</p>";
+                }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    data.id = doc.id;
+                    localHistoryCache.push(data);
+                });
+
+                renderHistory(localHistoryCache);
+                calculateAndShowStats(localHistoryCache);
+                hideLoading();
+
+            }, (error) => {
+                hideLoading();
+                console.error("Error loading history: ", error);
+            });
+        }
+
+        // 2. Render danh sách lịch sử (từ 1 mảng data)
+        function renderHistory(dataArray) {
+            historyList.innerHTML = "";
+            dataArray.forEach(data => {
+                const item = document.createElement("div");
+                item.style.border = "1px solid black";
+                item.style.margin = "5px";
+                item.style.padding = "5px";
+
+                let costPerPerson = 0;
+                if (data.cost > 0 && data.numPeople > 0) {
+                    costPerPerson = data.cost / data.numPeople;
+                }
+
+                // SỬA ĐỔI: Cập nhật hiển thị theo yêu cầu
+                item.innerHTML = `
+                    <h4>${data.locationName}</h4>
+                    <p><strong>Người đăng:</strong> ${data.createdBy.name}</p>
+                    <p><strong>Địa chỉ:</strong> ${data.address || "Không rõ"}</p>
+                    <p>
+                        <strong>Vị trí:</strong> 
+                        <a href="https://www.google.com/maps?q=${data.position}" target="_blank">
+                            Xem Google Map (${data.position})
+                        </a>
+                    </p>
+                    <p><strong>Thời gian:</strong> ${data.time} - ${data.date}</p>
+                    <p><strong>Số người:</strong> ${data.numPeople}</p>
+                    <p><strong>Tổng tiền:</strong> ${formatter.format(data.cost)} VNĐ</p>
+                    <p><strong>Chi phí/người:</strong> ${formatter.format(costPerPerson)} VNĐ</p>
+                    <p><strong>Đánh giá:</strong> ${data.rating} / 5 sao</p>
+                    <p><strong>Ghi chú:</strong> ${data.notes || ""}</p>
+                `;
+
+                // Nút điều khiển
+                if (currentUser.uid === currentTrip.ownerId || currentUser.uid === data.createdBy.uid) {
+                    const editBtn = document.createElement("button");
+                    editBtn.textContent = "Sửa";
+                    editBtn.onclick = () => showEditLocationModal(data);
+
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.textContent = "Xóa";
+                    deleteBtn.onclick = () => deleteHistoryItem(data.id);
+
+                    item.appendChild(editBtn);
+                    item.appendChild(deleteBtn);
+                }
+
+                const duplicateBtn = document.createElement("button");
+                duplicateBtn.textContent = "Sao chép";
+                duplicateBtn.onclick = () => duplicateHistoryItem(data);
+
+                item.appendChild(duplicateBtn);
+                historyList.appendChild(item);
+            });
+        }
+
+        // 3. Hiển thị modal sửa địa điểm
+        function showEditLocationModal(data) {
+            editingLocationId = data.id;
+            document.getElementById("edit-location-name").value = data.locationName;
+
+            // SỬA ĐỔI: Tách address và position
+            // (Modal sửa chưa có input cho address, dùng tạm position)
+            document.getElementById("edit-location-position").value = data.address || data.position;
+
+            document.getElementById("edit-location-people").value = data.numPeople;
+
+            const costInput = document.getElementById("edit-location-cost");
+            costInput.value = formatter.format(data.cost);
+            costInput.dataset.raw = data.cost;
+
+            document.getElementById("edit-location-time").value = data.time;
+            document.getElementById("edit-location-date").value = data.date;
+            document.getElementById("edit-location-rating").value = data.rating;
+            document.getElementById("edit-location-notes").value = data.notes;
+
+            editLocationModal.style.display = "block";
+        }
+
+        closeEditLocationModal.onclick = () => { editLocationModal.style.display = "none"; editingLocationId = null; }
+
+        document.getElementById("edit-location-cost").addEventListener("input", (e) => {
+            let value = e.target.value.replace(/\./g, '');
+            if (isNaN(value) || value === '') {
+                e.target.dataset.raw = ''; e.target.value = '';
+            } else {
+                let num = parseInt(value, 10);
+                e.target.dataset.raw = num;
+                e.target.value = formatter.format(num);
+            }
+        });
+
+        // 4. Xử lý sửa địa điểm
+        editLocationForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!editingLocationId || !currentTrip.id) return;
+
+            // SỬA ĐỔI: (Tạm thời gán address = position)
+            const address = document.getElementById("edit-location-position").value;
+
+            const locationData = {
+                locationName: document.getElementById("edit-location-name").value,
+                address: address, // Tạm
+                // position: (Cần thêm 1 input nữa)
+                numPeople: parseInt(document.getElementById("edit-location-people").value, 10),
+                cost: parseInt(document.getElementById("edit-location-cost").dataset.raw || 0, 10),
+                time: document.getElementById("edit-location-time").value,
+                date: document.getElementById("edit-location-date").value,
+                rating: parseInt(document.getElementById("edit-location-rating").value, 10),
+                notes: document.getElementById("edit-location-notes").value,
+            };
+
+            try {
+                const [day, month, year] = locationData.date.split('/');
+                const [hours, minutes] = locationData.time.split(':');
+                locationData.sortableTime = new Date(year, month - 1, day, hours, minutes);
+            } catch (err) {
+                console.warn("Invalid date/time for sorting");
+            }
+
+            showLoading("Đang cập nhật địa điểm...");
+            try {
+                const docRef = doc(db, "trips", currentTrip.id, "locations", editingLocationId);
+                await updateDoc(docRef, locationData);
+                hideLoading();
+                editLocationModal.style.display = "none";
+                editingLocationId = null;
+            } catch (error) {
+                hideLoading();
+                console.error("Error updating location: ", error);
+                alert("Lỗi khi cập nhật.");
+            }
+        });
+
+        // 5. Xóa địa điểm
+        async function deleteHistoryItem(docId) {
+            if (!confirm("Bạn có chắc muốn xóa mục này?")) return;
+
+            showLoading("Đang xóa...");
+            try {
+                await deleteDoc(doc(db, "trips", currentTrip.id, "locations", docId));
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                console.error("Error deleting location: ", error);
+                alert("Lỗi khi xóa.");
+            }
+        }
+
+        // 6. Sao chép địa điểm
+        async function duplicateHistoryItem(data) {
+            if (!confirm("Bạn có muốn nhân bản mục này?")) return;
+
+            delete data.id;
+
+            data.createdBy = {
+                uid: currentUser.uid,
+                name: currentUser.displayName || currentUser.email
+            };
+            data.createdAt = serverTimestamp();
+
+            showLoading("Đang sao chép...");
+            try {
+                const collectionRef = collection(db, "trips", currentTrip.id, "locations");
+                await addDoc(collectionRef, data);
+                hideLoading();
+            } catch (error) {
+                hideLoading();
+                console.error("Error duplicating location: ", error);
+                alert("Lỗi khi sao chép.");
+            }
+        }
+
+        // 7. Tìm kiếm & Lọc
+        searchHistoryInput.addEventListener("input", (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredData = localHistoryCache.filter(item =>
+                item.locationName.toLowerCase().includes(searchTerm) ||
+                (item.address && item.address.toLowerCase().includes(searchTerm))
+            );
+            renderHistory(filteredData);
+        });
+
+        sortHistorySelect.addEventListener("change", (e) => {
+            const sortBy = e.target.value;
+            let sortedData = [...localHistoryCache];
+
+            switch (sortBy) {
+                case "time": // sortableTime (newest first)
+                    sortedData.sort((a, b) => b.sortableTime.seconds - a.sortableTime.seconds);
+                    break;
+                case "name":
+                    sortedData.sort((a, b) => a.locationName.localeCompare(b.locationName));
+                    break;
+                case "cost":
+                    sortedData.sort((a, b) => b.cost - a.cost);
+                    break;
+            }
+            renderHistory(sortedData);
+        });
+
+        // 8. Xuất dữ liệu
+
+        function getHistoryDataAsString() {
+            let text = `LỊCH SỬ CHUYẾN ĐI: ${currentTrip.name}\n\n`;
+            localHistoryCache.forEach(data => {
+                text += `----------------------------------------\n`;
+                text += `Tên: ${data.locationName}\n`;
+                text += `Địa chỉ: ${data.address || ""}\n`;
+                text += `Người đăng: ${data.createdBy.name}\n`;
+                text += `Thời gian: ${data.time} - ${data.date}\n`;
+                text += `Số người: ${data.numPeople}\n`;
+                text += `Tổng tiền: ${formatter.format(data.cost)} VNĐ\n`;
+                text += `Đánh giá: ${data.rating} sao\n`;
+                text += `Ghi chú: ${data.notes || ""}\n`;
+                text += `\n`;
+            });
+            return text;
+        }
+
+        exportTxtButton.addEventListener("click", () => {
+            const text = getHistoryDataAsString();
+            const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+            saveAs(blob, `ShareGo_${currentTrip.name}.txt`);
+        });
+
+        exportJsonButton.addEventListener("click", () => {
+            const json = JSON.stringify(localHistoryCache, null, 2);
+            const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+            saveAs(blob, `ShareGo_${currentTrip.name}.json`);
+        });
+
+        copyHistoryButton.addEventListener("click", () => {
+            const text = getHistoryDataAsString();
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert("Đã sao chép vào clipboard!");
+                }, (err) => {
+                    alert("Lỗi khi sao chép.");
+                });
+            } else {
+                alert("Trình duyệt không hỗ trợ sao chép.");
+            }
+        });
+
+        exportXlsxButton.addEventListener("click", () => {
+            const dataToExport = localHistoryCache.map(data => ({
+                "Tên địa điểm": data.locationName,
+                "Địa chỉ": data.address,
+                "Người đăng": data.createdBy.name,
+                "Giờ": data.time,
+                "Ngày": data.date,
+                "Số người": data.numPeople,
+                "Tổng tiền": data.cost,
+                "Đánh giá (sao)": data.rating,
+                "Ghi chú": data.notes,
+                "Vị trí (lat,lng)": data.position
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(dataToExport);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Lịch sử");
+
+            XLSX.writeFile(wb, `ShareGo_${currentTrip.name}.xlsx`);
+        });
+
+        // =================================================================
+        // TAB 3: TIN NHẮN (CHAT)
+        // =================================================================
+
+        // 1. Tải tin nhắn
+        function loadChat(tripId) {
+            const q = query(collection(db, "trips", tripId, "chat"), orderBy("timestamp", "asc"), where("timestamp", "!=", null));
+
+            chatUnsubscribe = onSnapshot(q, (snapshot) => {
+                chatMessages.innerHTML = "";
+                snapshot.forEach(doc => {
+                    // SỬA ĐỔI: Truyền cả ID của tin nhắn
+                    renderMessage(doc.data(), doc.id);
+                });
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            });
+        }
+
+        // 2. Gửi tin nhắn
+        chatForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (text === "" || !currentUser || !currentTrip.id) return;
+
+            chatInput.value = "";
+
+            let messageType = 'text';
+            let content = text;
+
+            if (text.startsWith("@code ")) {
+                messageType = 'code';
+                content = text.substring(6);
+            } else if (text.startsWith("@c ")) {
+                messageType = 'copyable';
+                content = text.substring(3);
+            }
+
+            try {
+                // SỬA ĐỔI: Gửi kèm facebookId
+                await addDoc(collection(db, "trips", currentTrip.id, "chat"), {
+                    sender: {
+                        uid: currentUser.uid,
+                        name: currentUser.name || currentUser.displayName || currentUser.email,
+                        facebookId: currentUser.facebookId || null
+                    },
+                    content: content,
+                    type: messageType,
+                    timestamp: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error sending message: ", error);
+                chatInput.value = text;
+            }
+        });
+
+        // SỬA ĐỔI: 3. Hiển thị tin nhắn (Render)
+        function renderMessage(data, docId) {
+            const msgDiv = document.createElement("div");
+
+            // BỔ SUNG: Avatar
+            const fbId = data.sender.facebookId;
+            const avatarUrl = fbId
+                ? `https://graph.facebook.com/${fbId}/picture?width=9999&access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662`
+                : 'https://via.placeholder.com/30'; // Ảnh dự phòng
+
+            const avatarImg = document.createElement("img");
+            avatarImg.src = avatarUrl;
+            avatarImg.className = "chat-avatar";
+
+            msgDiv.appendChild(avatarImg);
+
+            const nameStrong = document.createElement("strong");
+            nameStrong.textContent = `${data.sender.name}: `;
+            msgDiv.appendChild(nameStrong);
+
+            // Nội dung tin nhắn
+            switch (data.type) {
+                case 'code':
+                    const p = document.createElement("p");
+                    p.innerText = "[Xem code HTML bên dưới]";
+                    msgDiv.appendChild(p);
+
+                    const iframe = document.createElement("iframe");
+                    iframe.style.width = "100%";
+                    iframe.style.height = "100px";
+                    iframe.style.border = "1px dashed #ccc";
+                    iframe.sandbox = "allow-scripts allow-same-origin";
+                    iframe.srcdoc = data.content;
+                    msgDiv.appendChild(iframe);
+                    break;
+
+                case 'copyable':
+                    const span = document.createElement("span");
+                    span.textContent = data.content;
+                    msgDiv.appendChild(span);
+
+                    const copyBtn = document.createElement("button");
+                    copyBtn.textContent = "Copy";
+                    copyBtn.onclick = () => {
+                        if (navigator.clipboard) {
+                            navigator.clipboard.writeText(data.content)
+                                .then(() => alert("Đã sao chép!"))
+                                .catch(() => alert("Lỗi sao chép!"));
+                        }
+                    };
+                    msgDiv.appendChild(copyBtn);
+                    break;
+
+                case 'text':
+                default:
+                    const textNode = document.createTextNode(data.content);
+                    msgDiv.appendChild(textNode);
+                    break;
+            }
+
+            // BỔ SUNG: Nút Xóa (cho chủ tin nhắn hoặc chủ nhóm)
+            if (currentUser.uid === data.sender.uid || currentUser.uid === currentTrip.ownerId) {
+                const deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "Xóa";
+                deleteBtn.style.marginLeft = "10px";
+                deleteBtn.style.fontSize = "10px";
+                deleteBtn.onclick = () => deleteChatMessage(docId);
+                msgDiv.appendChild(deleteBtn);
+            }
+
+            chatMessages.appendChild(msgDiv);
+        }
+
+        // BỔ SUNG: 4. Hàm xóa tin nhắn
+        async function deleteChatMessage(docId) {
+            if (!confirm("Bạn có chắc muốn xóa tin nhắn này?")) return;
+            try {
+                await deleteDoc(doc(db, "trips", currentTrip.id, "chat", docId));
+                // onSnapshot sẽ tự động cập nhật UI
+            } catch (error) {
+                console.error("Error deleting message:", error);
+                alert("Lỗi khi xóa tin nhắn.");
+            }
+        }
+
+        // =================================================================
+        // TAB 4: THỐNG KÊ
+        // =================================================================
+
+        function calculateAndShowStats(dataArray) {
+            if (dataArray.length === 0) {
+                statsContent.innerHTML = "<p>Chưa có dữ liệu để thống kê.</p>";
+                return;
+            }
+
+            const totalLocations = dataArray.length;
+            const totalCost = dataArray.reduce((sum, item) => sum + item.cost, 0);
+
+            let totalCostPerPersonSum = 0;
+            let itemsWithCost = 0;
+            let totalRating = 0;
+            let itemsWithRating = 0;
+
+            dataArray.forEach(item => {
+                if (item.cost > 0 && item.numPeople > 0) {
+                    totalCostPerPersonSum += (item.cost / item.numPeople);
+                    itemsWithCost++;
+                }
+                if (item.rating > 0) {
+                    totalRating += item.rating;
+                    itemsWithRating++;
+                }
+            });
+
+            const avgCostPerPerson = itemsWithCost > 0 ? (totalCostPerPersonSum / itemsWithCost) : 0;
+            const avgRating = itemsWithRating > 0 ? (totalRating / itemsWithRating) : 0;
+
+            statsContent.innerHTML = `
+                <h3>Thống kê chuyến đi: ${currentTrip.name}</h3>
+                <p><strong>Tổng số địa điểm:</strong> ${totalLocations}</p>
+                <p><strong>Tổng chi phí:</strong> ${formatter.format(totalCost)} VNĐ</p>
+                <p><strong>Chi phí trung bình (cho mỗi lần nhập):</strong> ${formatter.format(avgCostPerPerson)} VNĐ/người</p>
+                <p><strong>Đánh giá trung bình:</strong> ${avgRating.toFixed(1)} / 5 sao (${itemsWithRating} lượt)</p>
+            `;
+        }
+
+        // =================================================================
+        // KHỞI CHẠY (Gắn listener)
+        // =================================================================
+
+        tabButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                const tabId = button.dataset.tab; // data-tab="input-tab"
+                showTripTab(tabId);
+            });
+        });
+
+    </script>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+</head>
+
+<body>
+
+    <div id="loading"
+        style="display: none; background: yellow; padding: 10px; position: fixed; top: 0; width: 100%; text-align: center; z-index: 1000;">
+        Đang tải...
+    </div>
+
+    <div id="auth-container">
+
+        <div id="login-form">
+            <h2>Đăng nhập Share&Go</h2>
+            <form>
+                <label for="login-email">Email:</label>
+                <input type="email" id="login-email" required>
+                <br>
+                <label for="login-password">Mật khẩu:</label>
+                <input type="password" id="login-password" required>
+                <br>
+                <button type="submit">Đăng nhập</button>
+            </form>
+            <p>
+                <a href="#" id="show-register-link">Chưa có tài khoản? Đăng ký</a>
+                <br>
+                <a href="#" id="show-forgot-pass-link">Quên mật khẩu?</a>
+            </p>
+        </div>
+
+        <div id="register-form" style="display: none;">
+            <h2>Đăng ký tài khoản</h2>
+            <form>
+                <label for="register-name">Tên hiển thị:</label>
+                <input type="text" id="register-name" required>
+                <br>
+                <label for="register-facebook">ID Facebook (tùy chọn, để hiển thị avatar):</label>
+                <input type="text" id="register-facebook">
+                <br>
+                <label for="register-email">Email:</label>
+                <input type="email" id="register-email" placeholder="chỉ nhận @gmail, @icloud, @mhung.site" required>
+                <br>
+                <label for="register-password">Mật khẩu:</label>
+                <input type="password" id="register-password" required>
+                <br>
+                <label for="register-confirm-password">Xác nhận mật khẩu:</label>
+                <input type="password" id="register-confirm-password" required>
+                <button type="button" id="register-toggle-pass">Hiện/Ẩn</button>
+                <br>
+                <button type="submit">Đăng ký</button>
+            </form>
+            <a href="#" id="show-login-link">Đã có tài khoản? Đăng nhập</a>
+        </div>
+
+        <div id="forgot-password-form" style="display: none;">
+            <h2>Quên mật khẩu</h2>
+            <form>
+                <label for="forgot-email">Nhập email của bạn:</label>
+                <input type="email" id="forgot-email" required>
+                <br>
+                <button type="submit">Gửi email khôi phục</button>
+            </form>
+            <a href="#" id="back-to-login-link">Quay lại Đăng nhập</a>
+        </div>
+
+    </div>
+
+    <div id="app-container" style="display: none;">
+        <header>
+            <h1>Share&Go</h1>
+            <span id="user-display"></span>
+            <button id="account-button">Tài khoản</button>
+            <button id="logout-button">Đăng xuất</button>
+        </header>
+
+        <hr>
+
+        <div id="trips-view">
+            <h2>Tạo chuyến đi mới</h2>
+            <form id="create-trip-form">
+                <label for="trip-name">Tên chuyến đi:</label>
+                <input type="text" id="trip-name" required>
+                <br>
+                <label for="trip-description">Mô tả:</label>
+                <input type="text" id="trip-description">
+                <br>
+                <label for="trip-max-people">Số người tham gia:</label>
+                <input type="number" id="trip-max-people" min="1" required>
+                <br>
+                <button type="submit">Tạo chuyến đi</button>
+            </form>
+
+            <hr>
+            <h2>Tham gia chuyến đi</h2>
+            <form id="join-trip-form">
+                <label for="join-code">Nhập Mã mời (hoặc Link):</label>
+                <input type="text" id="join-code" placeholder="VD: ABC123">
+                <button type="submit">Tham gia</button>
+            </form>
+
+            <hr>
+            <h2>Các chuyến đi của bạn</h2>
+            <div id="trips-list">
+            </div>
+        </div>
+
+        <div id="single-trip-view" style="display: none;">
+            <button id="back-to-trips">Quay lại Danh sách</button>
+            <h2 id="trip-name-display"></h2>
+
+            <div id="trip-controls">
+            </div>
+
+            <nav>
+                <button class="tab-button" data-tab="input-tab">Nhập liệu</button>
+                <button class="tab-button" data-tab="history-tab">Lịch sử</button>
+                <button class="tab-button" data-tab="chat-tab">Nhắn tin</button>
+                <button class="tab-button" data-tab="stats-tab">Thống kê</button>
+            </nav>
+
+            <hr>
+
+            <div id="input-tab" class="tab-content">
+                <h3>Thêm địa điểm mới</h3>
+                <form id="add-location-form">
+                    <label for="location-name">Tên địa điểm:</label>
+                    <input type="text" id="location-name" required>
+                    <br>
+
+                    <label for="location-address">Địa chỉ (tự động tìm kiếm khi gõ):</label>
+                    <input type="text" id="location-address" placeholder="VD: Quận 1, TPHCM" autocomplete="off">
+                    <input type="hidden" id="location-position">
+                    <br>
+
+                    <div id="map-search-results"></div>
+                    <br>
+
+                    <div>
+                        <strong>Bản đồ (OpenStreetMap):</strong>
+                        <button type="button" id="get-location-button">Lấy vị trí của tôi</button>
+                        <br>
+                        Chế độ:
+                        <button type="button" id="map-mode-default">Mặc định</button>
+                        <button type="button" id="map-mode-satellite">Vệ tinh</button>
+                        <button type="button" id="map-mode-dark">Tối</button>
+                        <div id="map-container"></div>
+                    </div>
+
+                    <label for="location-people">Số người:</label>
+                    <button type="button" id="people-decrease">-</button>
+                    <input type="number" id="location-people" value="1" min="1">
+                    <button type="button" id="people-increase">+</button>
+                    <button type="button" id="people-max">Max (Theo nhóm)</button>
+                    <br>
+
+                    <label for="location-cost">Tổng tiền (VNĐ):</label>
+                    <input type="text" id="location-cost" placeholder="100000">
+                    <br>
+
+                    <label for="location-time">Thời gian (HHMM):</label>
+                    <input type="text" id="location-time" placeholder="1930 (19:30) hoặc 25 (00:25)">
+                    <br>
+
+                    <label for="location-date">Ngày (DDMM):</label>
+                    <input type="text" id="location-date" placeholder="2512 (25/12/năm nay)">
+                    <button type="button" id="get-current-time-button">Lấy giờ hiện tại</button>
+                    <br>
+
+                    <label for="location-rating">Đánh giá:</label>
+                    <select id="location-rating">
+                        <option value="1">1 sao</option>
+                        <option value="2">2 sao</option>
+                        <option value="3">3 sao</option>
+                        <option value="4">4 sao</option>
+                        <option value="5" selected>5 sao</option>
+                    </select>
+                    <br>
+
+                    <label for="location-notes">Ghi chú:</label>
+                    <textarea id="location-notes"></textarea>
+                    <br>
+
+                    <button type="submit">Xác nhận Thêm địa điểm</button>
+                </form>
+            </div>
+
+            <div id="history-tab" class="tab-content" style="display: none;">
+                <h3>Lịch sử chuyến đi</h3>
+                <div>
+                    <input type="text" id="search-history" placeholder="Tìm theo tên/địa chỉ...">
+                    <select id="sort-history">
+                        <option value="time">Sắp xếp theo thời gian (mới nhất)</option>
+                        <option value="name">Sắp xếp theo tên (A-Z)</option>
+                        <option value="cost">Sắp xếp theo tổng tiền (cao-thấp)</option>
+                    </select>
+                </div>
+                <div>
+                    <strong>Xuất dữ liệu:</strong>
+                    <button id="export-txt">Xuất TXT</button>
+                    <button id="export-json">Xuất JSON</button>
+                    <button id="export-xlsx">Xuất Excel (XLSX)</button>
+                    <button id="copy-history">Copy vào Clipboard</button>
+                </div>
+                <div id="history-list">
+                </div>
+            </div>
+
+            <div id="chat-tab" class="tab-content" style="display: none;">
+                <h3>Trò chuyện nhóm</h3>
+                <div id="chat-messages" style="height: 300px; overflow-y: scroll; border: 1px solid #ccc;">
+                </div>
+                <form id="chat-form">
+                    <input type="text" id="chat-input" placeholder="Nhập tin nhắn, @c ... hoặc @code ..."
+                        style="width: 80%;">
+                    <button type="submit">Gửi</button>
+                </form>
+            </div>
+
+            <div id="stats-tab" class="tab-content" style="display: none;">
+                <h3>Thống kê</h3>
+                <div id="stats-content">
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="edit-trip-modal" class="modal">
+        <div class="modal-content">
+            <h3>Sửa thông tin chuyến đi</h3>
+            <form id="edit-trip-form">
+                <label for="edit-trip-name">Tên chuyến đi:</label>
+                <input type="text" id="edit-trip-name" required>
+                <br>
+                <label for="edit-trip-description">Mô tả:</label>
+                <input type="text" id="edit-trip-description">
+                <br>
+                <label for="edit-trip-max-people">Số người:</label>
+                <input type="number" id="edit-trip-max-people" min="1" required>
+                <br>
+                <button type="submit">Lưu thay đổi</button>
+                <button type="button" id="close-edit-trip-modal">Đóng</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-location-modal" class="modal">
+        <div class="modal-content">
+            <h3>Sửa địa điểm</h3>
+            <form id="edit-location-form">
+                <label for="edit-location-name">Tên địa điểm:</label>
+                <input type="text" id="edit-location-name" required>
+                <br>
+                <label for="edit-location-position">Địa chỉ:</label>
+                <input type="text" id="edit-location-position">
+                <br>
+                <label for="edit-location-people">Số người:</label>
+                <input type="number" id="edit-location-people" value="1" min="1">
+                <br>
+                <label for="edit-location-cost">Tổng tiền (VNĐ):</label>
+                <input type="text" id="edit-location-cost">
+                <br>
+                <label for="edit-location-time">Thời gian (HH:MM):</label>
+                <input type="text" id="edit-location-time">
+                <br>
+                <label for="edit-location-date">Ngày (DD/MM/YYYY):</label>
+                <input type="text" id="edit-location-date">
+                <br>
+                <label for="edit-location-rating">Đánh giá:</label>
+                <select id="edit-location-rating">
+                    <option value="1">1 sao</option>
+                    <option value="2">2 sao</option>
+                    <option value="3">3 sao</option>
+                    <option value="4">4 sao</option>
+                    <option value="5">5 sao</option>
+                </select>
+                <br>
+                <label for="edit-location-notes">Ghi chú:</label>
+                <textarea id="edit-location-notes"></textarea>
+                <br>
+                <button type="submit">Lưu thay đổi</button>
+                <button type="button" id="close-edit-location-modal">Đóng</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="account-modal" class="modal">
+        <div class="modal-content">
+            <h3>Quản lý Tài khoản</h3>
+
+            <form id="update-profile-form">
+                <h4>Cập nhật thông tin</h4>
+                <label for="account-name">Tên hiển thị:</label>
+                <input type="text" id="account-name" required>
+                <br>
+                <label for="account-facebook">ID Facebook (cho avatar):</label>
+                <input type="text" id="account-facebook">
+                <br>
+                <button type="submit">Lưu thông tin</button>
+            </form>
+
+            <hr>
+
+            <form id="update-password-form">
+                <h4>Đổi mật khẩu</h4>
+                <label for="account-current-pass">Mật khẩu hiện tại:</label>
+                <input type="password" id="account-current-pass" required>
+                <br>
+                <label for="account-new-pass">Mật khẩu mới:</label>
+                <input type="password" id="account-new-pass" required>
+                <br>
+                <label for="account-confirm-pass">Xác nhận mật khẩu mới:</label>
+                <input type="password" id="account-confirm-pass" required>
+                <br>
+                <button type="submit">Đổi mật khẩu</button>
+            </form>
+
+            <hr>
+            <button type="button" id="close-account-modal">Đóng</button>
+        </div>
+    </div>
+
+</body>
+
+</html>
