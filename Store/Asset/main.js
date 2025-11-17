@@ -971,7 +971,7 @@ const fetchAndDisplayProducts = async (searchTerm = '') => {
                 return `
             <div class="royal-card rounded-2xl overflow-hidden flex flex-col group transition-shadow hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/20">
                 <a href="#product/${product.slug}" class="block">
-                    <img src="${product.imageUrl || 'https://placehold.co/400x400/e2e8f0/cbd5e0?text=Image'}" alt="${product.name}" class="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300">
+                    <img src="${product.imageUrl || 'https://placehold.co/400x400/e2e8f0/cbd5e0?text=Image'}" alt="${product.name}" class="bg-white w-full h-40 object-cover group-hover:scale-105 transition-transform duration-300">
                 </a>
                 <div class="p-3 flex flex-col flex-grow">
                     <a href="#product/${product.slug}" class="block">
