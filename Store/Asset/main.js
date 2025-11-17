@@ -2199,7 +2199,7 @@ document.getElementById('hunq-paygate-link').addEventListener('click', async (e)
             const { displayOrderId, finalTotal } = orderDetails;
             const ref = `Donate ${displayOrderId}`;
             const amount = finalTotal;
-            const paymentUrl = `https://mhunh.site/PayGate/?Ref=${encodeURIComponent(ref)}&Amout=${amount}`;
+            const paymentUrl = `https://mhung.site/PayGate/?Ref=${encodeURIComponent(ref)}&Amout=${amount}`;
 
             // 3. Điều hướng tab đã mở ở bước 1 đến URL thanh toán
             newTab.location.href = paymentUrl;
