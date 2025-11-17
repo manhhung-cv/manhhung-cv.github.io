@@ -2176,48 +2176,99 @@ document.getElementById('confirm-order-btn').addEventListener('click', () => {
 document.getElementById('hunq-paygate-link').addEventListener('click', async (e) => {
     e.preventDefault();
 
-    // 1. Mở một tab mới (trống) NGAY LẬP TỨC.
-    // Safari sẽ cho phép điều này vì nó xảy ra đồng bộ với cú click.
+    // 1. Mở tab mới NGAY LẬP TỨC (Đồng bộ với click)
     const newTab = window.open('', '_blank');
+
+    // Kiểm tra nếu trình duyệt chặn hoàn toàn (hiếm gặp nếu dùng cách này, nhưng nên có)
     if (!newTab) {
-        // Trường hợp trình duyệt vẫn chặn (ví dụ: cài đặt quá nghiêm ngặt)
-        console.error("Không thể mở tab mới. Vui lòng kiểm tra cài đặt chặn pop-up.");
-        // Bạn có thể hiển thị thông báo cho người dùng ở đây
-        // alert("Không thể mở tab mới. Vui lòng cho phép pop-up cho trang này.");
+        alert("Trình duyệt đang chặn cửa sổ bật lên. Vui lòng kiểm tra cài đặt!");
         return;
     }
 
-    // (Tùy chọn) Hiển thị thông báo đang tải trên tab mới
-    // để người dùng không nhìn thấy một trang trắng
-    newTab.document.write('Đang chuyển đến cổng thanh toán, vui lòng đợi...');
+    // Focus vào tab mới để người dùng chú ý
+    newTab.focus();
+
+    // 2. Tạo giao diện "Loading" chuyên nghiệp hơn
+    // Thay vì document.write text thường, ta chèn HTML/CSS đơn giản
+    const loaderHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Đang xử lý thanh toán...</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+                    display: flex; flex-direction: column; align-items: center; justify-content: center; 
+                    height: 100vh; margin: 0; background: #f9fafb; 
+                }
+                .loader {
+                    border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%;
+                    width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 20px;
+                }
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                p { color: #555; font-size: 16px; text-align: center; padding: 0 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="loader"></div>
+            <p>Đang kết nối đến cổng thanh toán...</p>
+            <p style="font-size: 13px; color: #999;">Vui lòng không đóng cửa sổ này.</p>
+        </body>
+        </html>
+    `;
+    newTab.document.write(loaderHTML);
+    newTab.document.close(); // Quan trọng: báo cho trình duyệt biết đã ghi xong HTML
 
     try {
-        // 2. Bây giờ mới thực hiện tác vụ bất đồng bộ (await)
+        // 3. Thực hiện tác vụ bất đồng bộ
         const orderDetails = await placeOrder('bank');
-        
+
+        // 4. Kiểm tra an toàn: Người dùng có lỡ tắt tab trong lúc chờ không?
+        if (newTab.closed) {
+            console.warn("Người dùng đã đóng tab thanh toán trước khi tải xong.");
+            return;
+        }
+
         if (orderDetails) {
             const { displayOrderId, finalTotal } = orderDetails;
+            
+            // Kiểm tra dữ liệu hợp lệ trước khi tạo link
+            if (!displayOrderId || !finalTotal) throw new Error("Dữ liệu đơn hàng không hợp lệ");
+
             const ref = `Donate ${displayOrderId}`;
-            const amount = finalTotal;
-            const paymentUrl = `https://mhung.site/PayGate/?Ref=${encodeURIComponent(ref)}&Amout=${amount}`;
+            // encodeURIComponent là rất quan trọng để tránh lỗi URL
+            const paymentUrl = `https://mhung.site/PayGate/?Ref=${encodeURIComponent(ref)}&Amout=${finalTotal}`;
 
-            // 3. Điều hướng tab đã mở ở bước 1 đến URL thanh toán
+            // 5. Chuyển hướng
             newTab.location.href = paymentUrl;
-
-            paymentModal.classList.add('hidden');
-            // Navigation đến #orders được xử lý bên trong placeOrder
+            
+            // Ẩn modal ở trang gốc
+            if (typeof paymentModal !== 'undefined') {
+                paymentModal.classList.add('hidden');
+            }
+            
         } else {
-            // Nếu có lỗi (ví dụ: placeOrder không trả về gì), hãy đóng tab mới
-            console.error("Không nhận được chi tiết đơn hàng.");
-            newTab.document.write('Xảy ra lỗi, bạn có thể đóng tab này.');
-            // newTab.close(); // Tùy chọn: tự động đóng
+            // Xử lý khi không có đơn hàng (Logic lỗi nghiệp vụ)
+            newTab.document.body.innerHTML = `
+                <div style="text-align:center; color: #e74c3c;">
+                    <h3>Không thể tạo đơn hàng</h3>
+                    <p>Vui lòng thử lại sau.</p>
+                    <button onclick="window.close()" style="padding:10px 20px; cursor:pointer;">Đóng cửa sổ</button>
+                </div>
+            `;
         }
     } catch (error) {
-        // 4. Nếu có lỗi nghiêm trọng, hiển thị lỗi trên tab mới
-        console.error("Payment initiation failed:", error);
-        if (newTab) {
-            newTab.document.write('Quá trình thanh toán thất bại. Bạn có thể đóng tab này.');
-            // newTab.close(); // Tùy chọn: tự động đóng
+        console.error("Payment error:", error);
+        // Xử lý khi lỗi hệ thống/mạng
+        if (newTab && !newTab.closed) {
+            newTab.document.body.innerHTML = `
+                <div style="text-align:center; color: #e74c3c;">
+                    <h3>Đã xảy ra lỗi kết nối</h3>
+                    <p>${error.message || "Vui lòng thử lại."}</p>
+                    <button onclick="window.close()" style="padding:10px 20px; cursor:pointer;">Đóng cửa sổ</button>
+                </div>
+            `;
         }
     }
 });
