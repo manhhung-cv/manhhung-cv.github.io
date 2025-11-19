@@ -1,228 +1,248 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thử nghiệm Trình phát hiện Trình duyệt</title>
+    <title>Chuyển Đổi Tiền Tệ (Smiles & Standard)</title>
     <style>
-        /* CSS đơn giản để căn giữa nội dung */
+        /* --- CSS CƠ BẢN --- */
+        :root {
+            --primary-color: #0056b3;
+            --success-color: #28a745;
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #333;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             display: flex;
             justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            min-height: 100vh;
-            text-align: center;
-            background-color: #f0f2f5;
-            color: #333;
-            margin: 0;
             padding: 20px;
-            box-sizing: border-box;
+            margin: 0;
         }
-        .container {
-            max-width: 600px;
-            padding: 30px;
-            background-color: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+        .currency-tool {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 500px;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
-        h1 {
-            color: #1877f2; /* Màu xanh Facebook */
+
+        h2 { text-align: center; margin-bottom: 20px; color: var(--primary-color); }
+
+        /* Loading Message */
+        #loading-message {
+            text-align: center;
+            color: #d9534f;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: none;
+        }
+
+        /* --- CONVERTER SECTION --- */
+        .converter-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             margin-bottom: 15px;
         }
-        p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin-bottom: 20px;
+
+        .input-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
-        .note {
-            font-size: 0.9rem;
-            color: #666;
-            background-color: #eee;
-            padding: 15px;
+
+        .input-group label { font-size: 12px; color: #666; margin-bottom: 4px; }
+        
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            padding: 5px;
+            background: #fff;
+        }
+
+        .input-wrapper img { width: 24px; height: 16px; margin: 0 8px; border-radius: 2px; }
+
+        select { border: none; background: transparent; font-weight: bold; cursor: pointer; outline: none; width: 60px;}
+        input[type="text"] { border: none; outline: none; flex: 1; text-align: right; font-size: 16px; padding: 5px;}
+
+        #swap-button {
+            background: #eef2f7;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: 0.3s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #swap-button:hover { background: #dbe2ef; transform: rotate(180deg); }
+
+        #rate-display {
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            background: #eef6ff;
+            padding: 10px;
             border-radius: 8px;
         }
+
+        /* --- TRACKING LIST SECTION --- */
+        .tracking-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        #base-currency-select { padding: 5px; border-radius: 5px; border: 1px solid #ddd; }
+
+        .rounding-btn {
+            background: #f0f0f0; border: none; padding: 5px 10px; cursor: pointer; font-size: 12px; border-radius: 4px;
+        }
+        .rounding-btn.active { background: var(--primary-color); color: white; }
+
+        #tracking-list { display: flex; flex-direction: column; gap: 10px; }
+
+        .tracking-item {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: grab;
+            transition: 0.2s;
+        }
+        .tracking-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .tracking-item.dragging { opacity: 0.5; }
+
+        .currency-flag { width: 32px; height: 32px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
+        .currency-name { flex: 1; font-size: 14px; }
+        .currency-name small { color: #888; }
+        
+        .rate-value { font-weight: bold; font-size: 16px; }
+        .rate-value span { font-size: 12px; color: #666; margin-left: 4px; }
+
+        /* Highlight Smiles Source */
+        .rate-value.smiles-source { color: var(--success-color); }
+        .smiles-source::after {
+            /* content: ' ★'; */ /* Bỏ comment nếu muốn hiện dấu sao */
+        }
+
+        .remove-currency-btn {
+            background: none; border: none; color: #999; font-size: 20px; cursor: pointer; margin-left: 10px;
+        }
+        .remove-currency-btn:hover { color: #d9534f; }
+
+        /* --- ADD BUTTON & DROPDOWN --- */
+        .add-section { margin-top: 20px; position: relative; text-align: center; }
+
+        #add-currency-btn {
+            background: var(--primary-color); color: white; border: none;
+            padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,86,179,0.2);
+        }
+        #add-currency-btn:hover { background: #004494; }
+
+        #currency-dropdown {
+            position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+            width: 280px; max-height: 300px; background: white;
+            border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            display: none; overflow: hidden; z-index: 100;
+            flex-direction: column;
+        }
+        #currency-dropdown.show { display: flex; }
+
+        #currency-search-input {
+            width: 100%; padding: 10px; border: none; border-bottom: 1px solid #eee; outline: none;
+        }
+        #currency-list-for-add { overflow-y: auto; max-height: 250px; text-align: left; }
+        #currency-list-for-add a {
+            display: flex; align-items: center; padding: 10px; text-decoration: none; color: #333; transition: 0.2s;
+        }
+        #currency-list-for-add a:hover { background: #f9f9f9; }
+        #currency-list-for-add img { width: 20px; margin-right: 10px; }
+
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Trang Thử Nghiệm</h1>
-        <p>Đây là trang web để thử nghiệm chức năng phát hiện trình duyệt trong ứng dụng.</p>
+    <div class="currency-tool" id="currency">
+        <h2>💱 Tỷ Giá & Chuyển Đổi</h2>
         
-        <div class="note">
-            <strong>Cách kiểm tra:</strong><br>
-            Hãy mở liên kết đến trang này từ bên trong một ứng dụng như <strong>Facebook, Instagram, Zalo, hoặc Messenger</strong>. Nếu thành công, bạn sẽ thấy một thanh thông báo xuất hiện ở cuối màn hình.
+        <div id="loading-message">Đang tải dữ liệu...</div>
+
+        <div class="converter-section">
+            <div class="converter-row">
+                <div class="input-group">
+                    <label>Số tiền</label>
+                    <div class="input-wrapper">
+                        <img id="from-flag" src="" alt="">
+                        <select id="from-currency"></select>
+                        <input type="text" id="from-amount" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: -10px 0;">
+                <button id="swap-button">⇅</button>
+            </div>
+
+            <div class="converter-row">
+                <div class="input-group">
+                    <label>Quy đổi sang</label>
+                    <div class="input-wrapper">
+                        <img id="to-flag" src="" alt="">
+                        <select id="to-currency"></select>
+                        <input type="text" id="to-amount" readonly>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="rate-display">...</div>
+        </div>
+
+        <div class="tracking-section">
+            <div class="tracking-header">
+                <div>
+                    <label style="font-size: 12px; color:#666">Tỷ giá cơ sở:</label>
+                    <select id="base-currency-select"></select>
+                </div>
+                <div id="rounding-options">
+                    <button class="rounding-btn" data-round="integer">0</button>
+                    <button class="rounding-btn active" data-round="two_decimals">.00</button>
+                    <button class="rounding-btn" data-round="default">Full</button>
+                </div>
+            </div>
+
+            <div id="tracking-list">
+                </div>
+
+            <div class="add-section">
+                <button id="add-currency-btn">+ Thêm tiền tệ</button>
+                
+                <div id="currency-dropdown">
+                    <input type="text" id="currency-search-input" placeholder="Tìm kiếm (ví dụ: VND)...">
+                    <div id="currency-list-for-add"></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- 
-      PHẦN JAVASCRIPT ĐƯỢC NHÚNG TRỰC TIẾP 
-      Đây chính là mã từ tệp inAppBrowserDetector.js
-    -->
-    <script id="in-app-browser-detector-script">
-        /**
-         * Tệp JavaScript này tự động phát hiện trình duyệt trong ứng dụng (In-App Browser)
-         * và hiển thị một thanh thông báo ở cuối trang.
-         *
-         * Cách hoạt động:
-         * 1. Sử dụng một biểu thức tự gọi (IIFE) để không làm ảnh hưởng đến global scope.
-         * 2. Đợi sự kiện 'DOMContentLoaded' để đảm bảo DOM đã sẵn sàng.
-         * 3. Kiểm tra 'navigator.userAgent' để tìm các chuỗi ký tự (strings) phổ biến
-         * của các trình duyệt trong ứng dụng.
-         * 4. Nếu phát hiện, một hàm sẽ tự động tạo và chèn các kiểu CSS (styles)
-         * và các phần tử HTML (element) cho thanh thông báo.
-         * 5. Thanh thông báo có một nút đóng (X) để người dùng có thể ẩn nó đi.
-         */
+    <script src="asset/currency.js"></script>
 
-        (function() {
-            
-            /**
-             * Hàm chính để kiểm tra user agent và quyết định có hiển thị thông báo hay không.
-             */
-            function kiemTraTrinhDuyetTrongUngDung() {
-                const ua = navigator.userAgent || navigator.vendor || window.opera;
-                let tenUngDung = null;
-
-                // Danh sách các từ khóa để phát hiện trình duyệt trong ứng dụng
-                const quyTacPhatHien = {
-                    'Facebook': /FBAN|FBAV/i,
-                    'Messenger': /Messenger/i,
-                    'Instagram': /Instagram/i,
-                    'Zalo': /Zalo/i,
-                    'Twitter (X)': /Twitter/i,
-                    'Viber': /Viber/i,
-                    'Line': /Line/i
-                };
-
-                // Lặp qua các quy tắc để xem user agent có khớp không
-                for (const ungDung in quyTacPhatHien) {
-                    if (quyTacPhatHien[ungDung].test(ua)) {
-                        tenUngDung = ungDung;
-                        break; // Dừng lại khi tìm thấy kết quả đầu tiên
-                    }
-                }
-
-                // Nếu phát hiện được một ứng dụng, hãy tạo thông báo
-                if (tenUngDung) {
-                    taoThanhThongBao(tenUngDung);
-                } else {
-                    // Dùng cho mục đích gỡ lỗi: Hiển thị thông báo nếu không phát hiện
-                    console.log("Không phát hiện trình duyệt trong ứng dụng.");
-                    // Bạn có thể tạo một thông báo tạm thời ở đây để xác nhận script chạy
-                    // taoThanhThongBao("TEST_MODE (Không phải trong ứng dụng)");
-                }
-            }
-
-            /**
-             * Tạo và chèn thanh thông báo vào trang.
-             * @param {string} tenUngDung - Tên của ứng dụng được phát hiện (ví dụ: "Facebook").
-             */
-            function taoThanhThongBao(tenUngDung) {
-                // Kiểm tra xem thanh thông báo đã tồn tại chưa
-                if (document.getElementById('in-app-browser-alert-bar')) {
-                    return;
-                }
-
-                // 1. Tạo các kiểu CSS cho thông báo
-                const cssStyles = `
-                    #in-app-browser-alert-bar {
-                        position: fixed;
-                        bottom: 0;
-                        left: 0;
-                        width: 100%;
-                        background-color: #222; /* Màu nền tối */
-                        color: #fff; /* Chữ trắng */
-                        padding: 14px;
-                        box-sizing: border-box;
-                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                        font-size: 15px;
-                        line-height: 1.4;
-                        z-index: 99998; /* Đảm bảo nó ở trên cùng */
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        box-shadow: 0 -2px 8px rgba(0,0,0,0.3); /* Đổ bóng nhẹ */
-                        border-top: 1px solid #444;
-                        transform: translateY(0);
-                        transition: transform 0.3s ease-out;
-                    }
-                    #in-app-browser-alert-bar.hidden {
-                         transform: translateY(100%);
-                    }
-                    #in-app-browser-alert-bar p {
-                        margin: 0;
-                        padding-right: 15px; /* Khoảng cách với nút đóng */
-                    }
-                    #in-app-browser-alert-bar p strong {
-                        color: #ffd700; /* Nhấn mạnh tên ứng dụng */
-                    }
-                    #in-app-browser-alert-close-btn {
-                        background: none;
-                        border: none;
-                        color: #aaa; /* Màu nút đóng */
-                        font-size: 24px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        padding: 0 5px;
-                        line-height: 1;
-                    }
-                    #in-app-browser-alert-close-btn:hover {
-                        color: #fff; /* Sáng hơn khi di chuột qua */
-                    }
-                `;
-
-                // Chèn CSS vào <head>
-                const styleElement = document.createElement('style');
-                styleElement.type = 'text/css';
-                styleElement.appendChild(document.createTextNode(cssStyles));
-                document.head.appendChild(styleElement);
-
-                // 2. Tạo phần tử HTML cho thanh thông báo
-                const alertBar = document.createElement('div');
-                alertBar.id = 'in-app-browser-alert-bar';
-
-                // 3. Tạo nội dung văn bản
-                const message = document.createElement('p');
-                message.innerHTML = `Bạn đang dùng trình duyệt của <strong>${tenUngDung}</strong>. Vui lòng bấm vào <strong>biểu tượng 3 chấm (⋮)</strong> &gt; <strong>Mở bằng trình duyệt</strong> bên ngoài để có trải nghiệm tốt nhất.`;
-
-                // 4. Tạo nút đóng
-                const closeButton = document.createElement('button');
-                closeButton.id = 'in-app-browser-alert-close-btn';
-                closeButton.innerHTML = '&times;'; // Ký tự 'x'
-                closeButton.setAttribute('aria-label', 'Đóng thông báo');
-
-                // 5. Thêm sự kiện click để đóng thông báo
-                closeButton.onclick = function() {
-                    alertBar.classList.add('hidden');
-                    // Xóa hẳn khỏi DOM sau khi transition kết thúc
-                    setTimeout(() => {
-                        if (alertBar.parentNode) {
-                            alertBar.parentNode.removeChild(alertBar);
-                        }
-                    }, 300); // 300ms khớp với thời gian transition
-                };
-
-                // 6. Gắn các phần tử lại với nhau và thêm vào <body>
-                alertBar.appendChild(message);
-                alertBar.appendChild(closeButton);
-                document.body.appendChild(alertBar);
-            }
-
-            // 7. Chạy hàm kiểm tra khi DOM đã tải xong
-            // Điều này đảm bảo rằng `document.body` đã tồn tại
-            if (document.readyState === 'loading') {
-                // Vẫn đang tải, đợi sự kiện
-                document.addEventListener('DOMContentLoaded', kiemTraTrinhDuyetTrongUngDung);
-            } else {
-                // Đã tải xong, chạy ngay
-                kiemTraTrinhDuyetTrongUngDung();
-            }
-
-        })();
-    </script>
 </body>
 </html>
-

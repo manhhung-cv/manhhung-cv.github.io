@@ -1,13 +1,22 @@
 // asset/currency.js
 
+const SCRAPINGBEE_KEYS = [
+    "YFH8ZPMDE27ABK3HAVVALLVZLVAF4PNMDYE12GSH2ILVSQ5AVLTGMTUZCDNG2SAGCII7PKXLZWJI7GD7", 
+    "API_KEY_2",
+    "API_KEY_3",
+    "API_KEY_4",
+    "API_KEY_5"
+];
+
 document.addEventListener('DOMContentLoaded', () => {
     const currencyTool = document.getElementById('currency');
     if (!currencyTool) return;
 
-    const API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
+    const STANDARD_API_URL = 'https://api.exchangerate-api.com/v4/latest/USD';
+    const SMILES_TARGET_URL = 'https://www.smileswallet.com/japan/vi/ty-gia/';
     const FLAG_CDN_URL = 'https://flagcdn.com/w40/';
 
-    // --- DỮ LIỆU TIỀN TỆ MỚI ---
+    // --- DỮ LIỆU TIỀN TỆ ---
     const commonCurrencies = {
         'VND': { name: 'Đồng Việt Nam', flag: 'vn' }, 'USD': { name: 'Đô la Mỹ', flag: 'us' },
         'EUR': { name: 'Euro', flag: 'eu' }, 'JPY': { name: 'Yên Nhật', flag: 'jp' },
@@ -18,7 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'THB': { name: 'Bạt Thái Lan', flag: 'th' }, 'MYR': { name: 'Ringgit Malaysia', flag: 'my' },
         'IDR': { name: 'Rupiah Indonesia', flag: 'id' }, 'PHP': { name: 'Peso Philippine', flag: 'ph' },
         'TWD': { name: 'Tân Đài tệ', flag: 'tw' }, 'NZD': { name: 'Đô la New Zealand', flag: 'nz' },
-        'RUB': { name: 'Rúp Nga', flag: 'ru' }, 'INR': { name: 'Rupee Ấn Độ', flag: 'in' }
+        'RUB': { name: 'Rúp Nga', flag: 'ru' }, 'INR': { name: 'Rupee Ấn Độ', flag: 'in' },
+        'BDT': { name: 'Taka Bangladesh', flag: 'bd' }, 'NPR': { name: 'Rupee Nepal', flag: 'np' }
     };
     const supportedCurrencyCodes = Object.keys(commonCurrencies);
 
@@ -39,12 +49,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const currencySearchInput = document.getElementById('currency-search-input');
     const loadingMessage = document.getElementById('loading-message');
     const roundingOptionsContainer = document.getElementById('rounding-options');
+    
+    // [MỚI] Elements cho Toggle
+    const sourceToggle = document.getElementById('source-toggle');
+    const sourceStatusText = document.getElementById('source-status-text');
 
     // --- State ---
-    let rates = {};
-    let trackedCurrencies = JSON.parse(localStorage.getItem('trackedCurrencies')) || ['USD', 'EUR', 'JPY', 'CNY', 'KRW'];
+    let standardRates = {};
+    let smilesRates = {};
+    let trackedCurrencies = JSON.parse(localStorage.getItem('trackedCurrencies')) || ['JPY', 'EUR', 'USD', 'CNY', 'KRW'];
     let baseTrackingCurrency = localStorage.getItem('baseTrackingCurrency') || 'VND';
     let roundingOption = localStorage.getItem('roundingOption') || 'default';
+    
+    // [MỚI] State cho chế độ ưu tiên Smiles
+    let useSmilesMode = localStorage.getItem('useSmilesMode') === 'true'; 
 
     // --- Helper Functions ---
     const getFlagUrl = (currencyCode) => {
@@ -55,30 +73,94 @@ document.addEventListener('DOMContentLoaded', () => {
     const parseFormattedNumber = (str) => !str ? 0 : parseFloat(String(str).replace(/\./g, '').replace(/,/g, '.')) || 0;
 
     // --- API Functions ---
-    async function fetchRates() {
+    async function fetchStandardRates() {
         try {
-            loadingMessage.style.display = 'block';
-            const response = await fetch(API_URL);
-            if (!response.ok) throw new Error('Network response was not ok');
+            const response = await fetch(STANDARD_API_URL);
+            if (!response.ok) throw new Error('Standard API failed');
             const data = await response.json();
-            rates = data.rates;
+            standardRates = data.rates;
             return true;
         } catch (error) {
-            console.error('Failed to fetch exchange rates:', error);
-            if(rateDisplay) rateDisplay.textContent = 'Không thể tải dữ liệu tỷ giá.';
-            if(loadingMessage) loadingMessage.textContent = 'Lỗi tải dữ liệu. Vui lòng thử lại sau.';
+            console.warn('Failed to fetch standard rates:', error);
             return false;
-        } finally {
-            if(loadingMessage) loadingMessage.style.display = 'none';
         }
     }
 
+    async function fetchSmilesRates() {
+        const extractRules = {
+            "currencies": {
+                "selector": ".currency",
+                "type": "list",
+                "output": {
+                    "rateString": ".exchange_rate",
+                    "country": ".country_name"
+                }
+            }
+        };
+
+        for (let i = 0; i < SCRAPINGBEE_KEYS.length; i++) {
+            const apiKey = SCRAPINGBEE_KEYS[i];
+            if (!apiKey) continue;
+            try {
+                const apiUrl = `https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(SMILES_TARGET_URL)}&extract_rules=${encodeURIComponent(JSON.stringify(extractRules))}&render_js=false`;
+                const response = await fetch(apiUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.currencies) {
+                        data.currencies.forEach(item => {
+                            const parts = item.rateString.trim().split(' ');
+                            if (parts.length >= 2) {
+                                const rateVal = parseFloat(parts[0]);
+                                const currencyCode = parts[1];
+                                if (!isNaN(rateVal) && currencyCode) smilesRates[currencyCode] = rateVal;
+                            }
+                        });
+                    }
+                    return true;
+                }
+            } catch (err) { console.warn(`Key ${i+1} lỗi:`, err.message); }
+        }
+        return false;
+    }
+
+    async function fetchAllRates() {
+        loadingMessage.style.display = 'block';
+        await Promise.all([fetchStandardRates(), fetchSmilesRates()]);
+        loadingMessage.style.display = 'none';
+        if (Object.keys(standardRates).length === 0) {
+            if(rateDisplay) rateDisplay.textContent = 'Lỗi tải dữ liệu.';
+            return false;
+        }
+        return true;
+    }
+
+    // --- Logic tính toán tỷ giá (UPDATED) ---
+    function getConversionRate(from, to) {
+        // Nếu chế độ Smiles ĐANG BẬT
+        if (useSmilesMode) {
+            if (from === 'JPY' && smilesRates[to]) return smilesRates[to];
+            if (to === 'JPY' && smilesRates[from]) return 1 / smilesRates[from];
+        }
+        
+        // Mặc định (hoặc Fallback) dùng Standard
+        if (standardRates[from] && standardRates[to]) {
+            return (1 / standardRates[from]) * standardRates[to];
+        }
+        return 0;
+    }
+
     // --- Render Functions ---
+    function updateSourceUI() {
+        sourceToggle.checked = useSmilesMode;
+        sourceStatusText.textContent = useSmilesMode ? "Smiles Wallet" : "Quốc tế";
+        sourceStatusText.style.color = useSmilesMode ? "#28a745" : "#333";
+    }
+
     function populateCurrencySelects(selectElement) {
         if (!selectElement) return;
         const fragment = document.createDocumentFragment();
         supportedCurrencyCodes.forEach(currency => {
-            const currencyName = commonCurrencies[currency].name;
+            const currencyName = commonCurrencies[currency]?.name || currency;
             const option = new Option(`${currency} - ${currencyName}`, currency);
             fragment.appendChild(option);
         });
@@ -103,26 +185,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderTrackingTable() {
         trackingList.innerHTML = '';
-        if (!rates[baseTrackingCurrency]) {
-            loadingMessage.textContent = `Tỷ giá cho ${baseTrackingCurrency} không có sẵn.`;
-            loadingMessage.style.display = 'block'; return;
-        }
-        loadingMessage.style.display = 'none';
+        if (Object.keys(standardRates).length === 0) return;
 
-        const baseRate = rates[baseTrackingCurrency];
         trackedCurrencies.forEach(currencyCode => {
-            if (!rates[currencyCode] || currencyCode === baseTrackingCurrency) return;
+            if (currencyCode === baseTrackingCurrency) return;
+            
+            const displayRate = getConversionRate(baseTrackingCurrency, currencyCode);
+            
+            // Kiểm tra nguồn
+            let isSmilesUsed = false;
+            if (useSmilesMode) {
+                isSmilesUsed = (baseTrackingCurrency === 'JPY' && smilesRates[currencyCode]) || (currencyCode === 'JPY' && smilesRates[baseTrackingCurrency]);
+            }
+
+            const sourceClass = isSmilesUsed ? 'smiles-source' : 'std-source'; 
+            const sourceNote = isSmilesUsed ? '<span style="font-size:10px; color:#28a745;">(Smiles)</span>' : '';
+
+            if (!displayRate) return;
+
             const item = document.createElement('div');
             item.className = 'tracking-item';
             item.dataset.currency = currencyCode;
             item.draggable = true;
-            const targetRate = rates[currencyCode];
-            const displayRate = baseRate / targetRate;
             const flagUrl = getFlagUrl(currencyCode);
+            
             item.innerHTML = `
                 <img class="currency-flag" src="${flagUrl}" alt="${currencyCode}" style="display: ${flagUrl ? 'block' : 'none'};">
-                <div class="currency-name"><strong>${currencyCode}</strong><br><small>${commonCurrencies[currencyCode].name}</small></div>
-                <div class="rate-value">
+                <div class="currency-name">
+                    <strong>${currencyCode}</strong> ${sourceNote}<br>
+                    <small>${commonCurrencies[currencyCode]?.name || ''}</small>
+                </div>
+                <div class="rate-value ${sourceClass}">
                     ${displayRate.toLocaleString('vi-VN', getRoundingOptions())}
                     <span>${baseTrackingCurrency}</span>
                 </div>
@@ -141,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const flagUrl = getFlagUrl(currency);
             link.href = '#';
             link.dataset.currency = currency;
-            link.innerHTML = `<img class="currency-flag" src="${flagUrl}" alt="${currency}"><span><strong>${currency}</strong> - ${commonCurrencies[currency].name}</span>`;
+            link.innerHTML = `<img class="currency-flag" src="${flagUrl}" alt="${currency}"><span><strong>${currency}</strong> - ${commonCurrencies[currency]?.name || ''}</span>`;
             currencyListForAdd.appendChild(link);
         });
     }
@@ -149,21 +242,30 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateRateDisplay() {
         const fromCurrency = fromCurrencySelect.value;
         const toCurrency = toCurrencySelect.value;
-        const singleUnitRate = (1 / rates[fromCurrency]) * rates[toCurrency];
-        rateDisplay.textContent = `1 ${fromCurrency} = ${singleUnitRate.toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 6 })} ${toCurrency}`;
+        const rate = getConversionRate(fromCurrency, toCurrency);
+        
+        let isSmilesUsed = false;
+        if (useSmilesMode) {
+            isSmilesUsed = (fromCurrency === 'JPY' && smilesRates[toCurrency]) || (toCurrency === 'JPY' && smilesRates[fromCurrency]);
+        }
+        const suffix = isSmilesUsed ? ' (Smiles Wallet)' : ' (Quốc tế)';
+
+        rateDisplay.textContent = `1 ${fromCurrency} = ${rate.toLocaleString('vi-VN', { minimumFractionDigits: 4, maximumFractionDigits: 6 })} ${toCurrency}${suffix}`;
     }
 
     function calculateConversion(isReverse = false) {
-        if (!Object.keys(rates).length) return;
         const fromCurrency = fromCurrencySelect.value;
         const toCurrency = toCurrencySelect.value;
+        const rate = getConversionRate(fromCurrency, toCurrency);
+
         if (isReverse) {
             const toAmount = parseFormattedNumber(toAmountInput.value);
-            const convertedAmount = (toAmount / rates[toCurrency]) * rates[fromCurrency];
+            const reverseRate = getConversionRate(toCurrency, fromCurrency);
+            const convertedAmount = toAmount * reverseRate;
             fromAmountInput.value = convertedAmount.toLocaleString('de-DE', { maximumFractionDigits: 4 });
         } else {
             const fromAmount = parseFormattedNumber(fromAmountInput.value);
-            const convertedAmount = (fromAmount / rates[fromCurrency]) * rates[toCurrency];
+            const convertedAmount = fromAmount * rate;
             toAmountInput.value = convertedAmount.toLocaleString('de-DE', { maximumFractionDigits: 4 });
         }
         updateRateDisplay();
@@ -181,7 +283,16 @@ document.addEventListener('DOMContentLoaded', () => {
         updateFlag(toCurrencySelect, toFlag);
         calculateConversion();
     }
+
+    function handleToggleSource(e) {
+        useSmilesMode = e.target.checked;
+        localStorage.setItem('useSmilesMode', useSmilesMode);
+        updateSourceUI();
+        calculateConversion();
+        renderTrackingTable();
+    }
     
+    // ... (Các hàm Add/Remove/Drag giống cũ, giữ nguyên để tiết kiệm không gian, đảm bảo code đầy đủ)
     function handleAddCurrency(e) {
         e.preventDefault();
         const target = e.target.closest('a');
@@ -196,7 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
     function handleRemoveCurrency(e) {
         if (e.target.classList.contains('remove-currency-btn')) {
             const currencyToRemove = e.target.dataset.currency;
@@ -206,7 +316,6 @@ document.addEventListener('DOMContentLoaded', () => {
             populateAddCurrencyDropdown();
         }
     }
-
     function handleCurrencySearch() {
         const filter = currencySearchInput.value.toUpperCase();
         const links = currencyListForAdd.getElementsByTagName('a');
@@ -215,12 +324,9 @@ document.addEventListener('DOMContentLoaded', () => {
             links[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
         }
     }
-
     function handleBaseCurrencyChange() {
         const newBase = this.value;
-        if (!trackedCurrencies.includes(baseTrackingCurrency) && baseTrackingCurrency !== newBase) {
-            trackedCurrencies.push(baseTrackingCurrency);
-        }
+        if (!trackedCurrencies.includes(baseTrackingCurrency) && baseTrackingCurrency !== newBase) trackedCurrencies.push(baseTrackingCurrency);
         baseTrackingCurrency = newBase;
         trackedCurrencies = trackedCurrencies.filter(c => c !== baseTrackingCurrency);
         localStorage.setItem('baseTrackingCurrency', baseTrackingCurrency);
@@ -228,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTrackingTable();
         populateAddCurrencyDropdown();
     }
-
     function handleRoundingChange(e) {
         if (e.target.tagName === 'BUTTON') {
             roundingOption = e.target.dataset.round;
@@ -237,13 +342,11 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTrackingTable();
         }
     }
-
     function updateActiveRoundingButton() {
         roundingOptionsContainer.querySelectorAll('button').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.round === roundingOption);
         });
     }
-
     let draggedItem = null;
     function addDragAndDropListeners() {
         const items = trackingList.querySelectorAll('.tracking-item');
@@ -261,7 +364,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-
     function getDragAfterElement(container, y) {
         const draggableElements = [...container.querySelectorAll('.tracking-item:not(.dragging)')];
         return draggableElements.reduce((closest, child) => {
@@ -270,20 +372,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return (offset < 0 && offset > closest.offset) ? { offset: offset, element: child } : closest;
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
-
     const saveTrackedCurrencies = () => localStorage.setItem('trackedCurrencies', JSON.stringify(trackedCurrencies));
 
     async function init() {
-        const success = await fetchRates();
+        updateSourceUI(); // Set trạng thái ban đầu cho nút gạt
+        const success = await fetchAllRates();
+        
         if (success) {
-            // Lọc danh sách theo dõi để chỉ giữ lại các loại tiền được hỗ trợ
             trackedCurrencies = trackedCurrencies.filter(c => c !== baseTrackingCurrency && supportedCurrencyCodes.includes(c));
-
             populateCurrencySelects(fromCurrencySelect);
             populateCurrencySelects(toCurrencySelect);
             populateCurrencySelects(baseCurrencySelect);
-            fromCurrencySelect.value = 'VND';
-            toCurrencySelect.value = 'USD';
+            fromCurrencySelect.value = 'JPY';
+            toCurrencySelect.value = 'VND';
             baseCurrencySelect.value = baseTrackingCurrency;
             updateFlag(fromCurrencySelect, fromFlag);
             updateFlag(toCurrencySelect, toFlag);
@@ -292,6 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderTrackingTable();
             populateAddCurrencyDropdown();
         }
+        
         fromCurrencySelect.addEventListener('change', () => { updateFlag(fromCurrencySelect, fromFlag); calculateConversion(); });
         toCurrencySelect.addEventListener('change', () => { updateFlag(toCurrencySelect, toFlag); calculateConversion(); });
         fromAmountInput.addEventListener('input', handleAmountInput);
@@ -304,6 +406,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currencyListForAdd.addEventListener('click', handleAddCurrency);
         currencySearchInput.addEventListener('keyup', handleCurrencySearch);
         document.addEventListener('click', (e) => { if (!currencyDropdown.contains(e.target) && !addCurrencyBtn.contains(e.target)) { currencyDropdown.classList.remove('show'); } });
+        
+        // [MỚI] Sự kiện toggle
+        sourceToggle.addEventListener('change', handleToggleSource);
     }
     init();
 });
