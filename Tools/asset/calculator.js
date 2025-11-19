@@ -7,7 +7,7 @@
     const addCalculatorBtn = multiCalculator.querySelector('#add-calculator-btn');
     const calculatorContainer = multiCalculator.querySelector('#calculator-container');
     const calculatorTemplate = document.getElementById('calculator-template');
-    
+
     if (!tabsBar || !addCalculatorBtn || !calculatorContainer || !calculatorTemplate) {
         console.error("Lỗi: Thiếu thành phần HTML.");
         return;
@@ -28,9 +28,9 @@
 
         if (!display) return;
         const isResult = display.dataset.isResult === 'true';
-        const isEmpty = display.value === '';
+        const isEmpty = display.value === '' || display.value === 'Lỗi';
 
-        if(clearButton) clearButton.innerHTML = (isResult || isEmpty) ? 'C' : backspaceIcon;
+        if (clearButton) clearButton.innerHTML = (isResult || isEmpty) ? 'C' : backspaceIcon;
         if (copyButton) copyButton.style.display = (isResult && !isEmpty && display.value !== 'Lỗi') ? 'flex' : 'none';
     };
 
@@ -56,7 +56,7 @@
         const item = document.createElement('div');
         item.className = 'history-item';
         item.innerHTML = `<div class="history-expression">${expression}</div><div class="history-result">${result}</div>`;
-        
+
         item.addEventListener('click', () => {
             const display = calculator.querySelector('.calculator-display');
             display.value = result;
@@ -79,9 +79,11 @@
         const calculatorNode = calculatorTemplate.content.cloneNode(true);
         const calculatorElement = calculatorNode.querySelector('.calculator');
         calculatorElement.id = newTabId;
-        
+        // THÊM: Biến lưu trữ biểu thức trước khi lỗi
+        calculatorElement.dataset.lastExpression = '';
+
         const copyButton = calculatorElement.querySelector('.btn-copy');
-        if(copyButton) copyButton.innerHTML = copyIcon;
+        if (copyButton) copyButton.innerHTML = copyIcon;
 
         calculatorContainer.appendChild(calculatorNode);
 
@@ -96,11 +98,14 @@
 
     const performCalculation = (calculator) => {
         const display = calculator.querySelector('.calculator-display');
+        // LƯU: Lưu biểu thức gốc trước khi tính
+        calculator.dataset.lastExpression = display.value;
         let expression = display.value;
         if (expression === '' || expression === 'Lỗi') return;
 
         const originalExpression = expression;
         try {
+            // Logic xử lý phần trăm
             expression = expression.replace(/(\d+\.?\d*)\s*([+\-*/])\s*(\d+\.?\d*)%/g, (match, base, op, perc) => {
                 const baseVal = parseFloat(base);
                 const percVal = parseFloat(perc);
@@ -108,6 +113,10 @@
                 return baseVal * (percVal / 100);
             });
             expression = expression.replace(/(\d+\.?\d*)%/g, (match, perc) => parseFloat(perc) / 100);
+
+            // Xóa các ký tự không hợp lệ cuối cùng (ví dụ: nếu biểu thức kết thúc bằng toán tử)
+            expression = expression.replace(/([+\-*/%]\s*)+$/, '');
+
 
             const result = new Function('return ' + expression.replace(/[^-()\d/*+.]/g, ''))();
             if (!isFinite(result)) throw new Error("Infinite");
@@ -120,6 +129,7 @@
         } catch (error) {
             display.value = 'Lỗi';
             display.dataset.isResult = 'false';
+            // Không thay đổi lastExpression khi lỗi
         }
         updateUIAfterStateChange(calculator);
     };
@@ -171,20 +181,48 @@
         }
 
         if (event.target.closest('.btn-clear-history')) {
-             calculator.querySelector('.history-list').innerHTML = '';
-             return;
+            calculator.querySelector('.history-list').innerHTML = '';
+            return;
         }
 
         const button = event.target.closest('.calculator-buttons button');
         if (button && button.dataset.action !== 'clear-backspace') {
             const action = button.dataset.action;
-            if (display.dataset.isResult === 'true' && action !== 'calculate') {
-                if (['+', '-', '*', '/'].includes(button.textContent)) display.dataset.isResult = 'false';
-                else { display.value = ''; display.dataset.isResult = 'false'; }
+            const buttonText = button.textContent;
+            const isOperator = ['+', '-', '*', '/'].includes(buttonText);
+            const lastChar = display.value.slice(-1);
+            const isLastCharOperator = ['+', '-', '*', '/'].includes(lastChar);
+
+            // --- Xử lý sau khi có kết quả ---
+            if (display.dataset.isResult === 'true') {
+                if (isOperator) {
+                    // Nếu là toán tử, tiếp tục biểu thức
+                    display.dataset.isResult = 'false';
+                } else if (action !== 'calculate') {
+                    // Nếu là số/dấu chấm, bắt đầu biểu thức mới
+                    display.value = '';
+                    display.dataset.isResult = 'false';
+                }
             }
+
+            // Xóa lỗi nếu có
             if (display.value === 'Lỗi') display.value = '';
-            if (action === 'append' || action === 'percentage') display.value += button.textContent;
-            else if (action === 'calculate') performCalculation(calculator);
+
+            // --- Xử lý nhập liệu ---
+            if (action === 'append' || action === 'percentage') {
+                if (isOperator && isLastCharOperator) {
+                    // Nếu là toán tử và ký tự cuối cũng là toán tử: Thay thế toán tử cũ bằng toán tử mới (Trừ trường hợp toán tử là %)
+                    if (action === 'append' && buttonText !== lastChar) {
+                        display.value = display.value.slice(0, -1) + buttonText;
+                    }
+                } else {
+                    // Thêm ký tự mới
+                    display.value += buttonText;
+                }
+            } else if (action === 'calculate') {
+                performCalculation(calculator);
+            }
+
             updateUIAfterStateChange(calculator);
         }
     });
@@ -193,7 +231,8 @@
         const calculator = button.closest('.calculator');
         pressTimer = setTimeout(() => {
             const display = calculator.querySelector('.calculator-display');
-            display.value = ''; display.dataset.isResult = 'false';
+            display.value = '';
+            display.dataset.isResult = 'false';
             updateUIAfterStateChange(calculator); pressTimer = null;
         }, 500);
     };
@@ -203,20 +242,34 @@
         clearTimeout(pressTimer); pressTimer = null;
         const calculator = button.closest('.calculator');
         const display = calculator.querySelector('.calculator-display');
-        if (display.dataset.isResult === 'true') display.value = '';
-        else display.value = display.value.slice(0, -1);
+
+        // THAY ĐỔI LOGIC TẠI ĐÂY
+        if (display.value === 'Lỗi') {
+            // Nếu đang lỗi, khôi phục biểu thức trước đó
+            display.value = calculator.dataset.lastExpression || '';
+            display.dataset.isResult = 'false'; // Đặt lại về chế độ nhập liệu
+        } else if (display.dataset.isResult === 'true') {
+            // Nếu đang là kết quả, bấm Backspace sẽ xóa toàn bộ để nhập biểu thức mới
+            display.value = '';
+        }
+        else {
+            // Nếu đang nhập liệu, xóa ký tự cuối cùng
+            display.value = display.value.slice(0, -1);
+        }
+
         display.dataset.isResult = 'false';
         updateUIAfterStateChange(calculator);
     };
 
-    calculatorContainer.addEventListener('mousedown', e => { if(e.target.dataset.action === 'clear-backspace') handleClearPress(e.target); });
-    calculatorContainer.addEventListener('mouseup', e => { if(e.target.dataset.action === 'clear-backspace') handleClearRelease(e.target); });
-    calculatorContainer.addEventListener('touchstart', e => { if(e.target.dataset.action === 'clear-backspace') { e.preventDefault(); handleClearPress(e.target); } }, {passive: false});
-    calculatorContainer.addEventListener('touchend', e => { if(e.target.dataset.action === 'clear-backspace') handleClearRelease(e.target); });
+    calculatorContainer.addEventListener('mousedown', e => { if (e.target.dataset.action === 'clear-backspace') handleClearPress(e.target); });
+    calculatorContainer.addEventListener('mouseup', e => { if (e.target.dataset.action === 'clear-backspace') handleClearRelease(e.target); });
+    calculatorContainer.addEventListener('touchstart', e => { if (e.target.dataset.action === 'clear-backspace') { e.preventDefault(); handleClearPress(e.target); } }, { passive: false });
+    calculatorContainer.addEventListener('touchend', e => { if (e.target.dataset.action === 'clear-backspace') handleClearRelease(e.target); });
 
     calculatorContainer.addEventListener('input', (event) => {
         if (event.target.matches('.calculator-display')) {
             const calc = event.target.closest('.calculator');
+            // Cập nhật regex để cho phép tất cả các toán tử và dấu ngoặc cần thiết
             event.target.value = event.target.value.replace(/[^-0-9/*+%.()]/g, '');
             event.target.dataset.isResult = 'false';
             updateUIAfterStateChange(calc);
@@ -229,5 +282,6 @@
         }
     });
 
+    // Khởi tạo máy tính đầu tiên
     addCalculator();
 })();
