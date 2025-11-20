@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chuyển tiền</title>
+    <style>
+        :root {
+            --primary: #ffb700;
+            --primary-hover: #ffaa00;
+            --text-dark: #1a1a1a;
+            --text-grey: #666;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --radius: 24px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            color: var(--text-dark);
+        }
+
+        /* Hiệu ứng nền */
+        .background-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .shape {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.6;
+            border-radius: 50%;
+            animation: move 20s infinite alternate;
+        }
+        .shape-1 { background: #ffb700; width: 350px; height: 350px; top: -10%; left: -10%; }
+        .shape-2 { background: #4facfe; width: 300px; height: 300px; bottom: -5%; right: -5%; }
+        
+        @keyframes move { from { transform: translate(0, 0); } to { transform: translate(20px, 40px); } }
+
+        /* Thẻ chính */
+        .main-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--radius);
+            padding: 2rem;
+            width: 100%;
+            max-width: 460px;
+            margin: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.5);
+            position: relative;
+        }
+
+        h2 {
+            text-align: center;
+            margin: 0 0 5px 0;
+            font-weight: 800;
+            color: #333;
+        }
+
+        .status-bar {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .rate-text { font-weight: 700; color: #2e7d32; font-size: 1.1rem; }
+        .last-updated { font-size: 0.75rem; color: #888; font-style: italic; }
+
+        /* Input Groups */
+        .input-group {
+            background: #fff;
+            border: 1px solid #e1e1e1;
+            border-radius: 16px;
+            padding: 10px 15px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .input-group:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255, 183, 0, 0.2);
+        }
+
+        .input-content { flex: 1; }
+        .input-label { display: block; font-size: 0.7rem; color: var(--text-grey); font-weight: 600; text-transform: uppercase; }
+        .input-field { width: 100%; border: none; font-size: 1.4rem; font-weight: 700; outline: none; color: #333; background: transparent; }
+        .currency-badge { font-weight: 700; font-size: 0.9rem; color: #999; padding-left: 10px; }
+
+        /* Khu vực kết quả & Điểm */
+        .result-area {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 15px 20px;
+            border: 1px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        /* Input nhập điểm riêng biệt */
+        .points-input-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px dashed #ddd;
+        }
+        
+        .points-input-wrapper {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 5px 10px;
+            border-radius: 8px;
+            width: 120px;
+        }
+        
+        .points-input-wrapper input {
+            width: 100%;
+            border: none;
+            outline: none;
+            text-align: right;
+            font-weight: bold;
+            color: #e65100;
+        }
+
+        .info-row {
+            display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem;
+        }
+        
+        .highlight-val { font-weight: 600; }
+        .fee-text { color: #e53935; }
+        .points-text { color: #2e7d32; background: #e8f5e9; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;}
+
+        /* Tổng tiền & Nút Copy */
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .total-left { display: flex; flex-direction: column; }
+        .total-label { font-weight: 600; font-size: 0.9rem; color: #333; }
+        .total-val { font-size: 1.8rem; font-weight: 800; color: var(--primary-hover); letter-spacing: -0.5px; line-height: 1.2;}
+
+        .btn-copy {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #666;
+        }
+
+        .btn-copy:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #000;
+            transform: translateY(-2px);
+        }
+        
+        .btn-copy:active { transform: scale(0.95); }
+
+        /* Tooltip copy thành công */
+        .copy-feedback {
+            position: absolute;
+            top: -30px;
+            right: 0;
+            background: #333;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .show-feedback { opacity: 1; top: -40px; }
+
+        /* Nút Refresh */
+        .btn-refresh {
+            width: 100%; padding: 14px; border: none; border-radius: 16px;
+            background: var(--primary); color: #000; font-weight: 700;
+            cursor: pointer; transition: 0.2s; display: flex; justify-content: center; gap: 8px;
+        }
+        .btn-refresh:hover { background: var(--primary-hover); }
+
+        .loader {
+            border: 2px solid rgba(0,0,0,0.1); border-top: 2px solid #000;
+            border-radius: 50%; width: 14px; height: 14px; animation: spin 1s linear infinite; display: none;
+        }
+        .btn-refresh.loading .loader { display: block; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="background-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+    </div>
+
+    <div class="main-card">
+        <h2>Mô phỏng chuyển tiền Smiles</h2>
+        
+        <div class="status-bar">
+            <div id="rateDisplay" class="rate-text">Đang tải tỷ giá...</div>
+            <div id="lastUpdatedTime" class="last-updated"></div>
+        </div>
+         <button class="btn-refresh" id="btnRefresh" onclick="forceUpdateRate()">
+            <div class="loader"></div>
+            <span>Cập nhật Tỷ giá</span>
+        </button>
+        <br>
+
+        <div class="input-group">
+            <div class="input-content">
+                <label class="input-label">Bạn gửi đi</label>
+                <input type="text" id="inputJPY" class="input-field" placeholder="50,000" oninput="formatNumberInput(this)">
+            </div>
+            <span class="currency-badge">JPY</span>
+        </div>
+
+        <div class="input-group">
+            <div class="input-content">
+                <label class="input-label">Người nhận</label>
+                <input type="text" id="inputVND" class="input-field" placeholder="0" oninput="formatNumberInput(this)">
+            </div>
+            <span class="currency-badge">VND</span>
+        </div>
+
+        <div class="result-area">
+            
+            <div class="points-input-row">
+                <span style="font-size: 0.9rem; color: #555;">Sử dụng điểm:</span>
+                <div class="points-input-wrapper">
+                    <input type="text" id="inputPoints" placeholder="0" oninput="formatNumberInput(this)" style="font-size: 1rem;">
+                    <span style="font-size: 0.8rem; color: #999; margin-left: 4px;">pts</span>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <span style="color: #666;">Phí chuyển tiền:</span>
+                <span class="highlight-val fee-text" id="feeDisplay">0 ¥</span>
+            </div>
+            <div class="info-row">
+                <span style="color: #666;">Điểm thưởng nhận được:</span>
+                <span class="highlight-val points-text" id="pointDisplay">+0 pts</span>
+            </div>
+
+            <div class="total-row" style="position: relative;">
+                <div class="total-left">
+                    <span class="total-label">Tổng thanh toán</span>
+                    <span class="total-val" id="totalPayDisplay">0 ¥</span>
+                </div>
+                
+                <div style="position: relative;">
+                    <div id="copyFeedback" class="copy-feedback">Đã sao chép!</div>
+                    <button class="btn-copy" onclick="copyTotal()" title="Sao chép số tiền">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+       
+    </div>
+
+<script>
+    // --- 1. CẤU HÌNH ---
+    const LOCAL_STORAGE_KEY = 'smiles_rate_cache_v2';
+    // Điền API Key của bạn vào đây
+    const SCRAPINGBEE_KEYS = [
+        "YFH8ZPMDE27ABK3HAVVALLVZLVAF4PNMDYE12GSH2ILVSQ5AVLTGMTUZCDNG2SAGCII7PKXLZWJI7GD7"
+    ];
+
+    let currentRate = 0;
+
+    // --- 2. LOGIC LƯU TRỮ & TỶ GIÁ ---
+    function getCurrentDateTime() {
+        return new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+    }
+
+    function saveRateToLocal(rate) {
+        const data = { rate: rate, timestamp: getCurrentDateTime() };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function getRateFromLocal() {
+        const dataStr = localStorage.getItem(LOCAL_STORAGE_KEY);
+        return dataStr ? JSON.parse(dataStr) : null;
+    }
+
+    function updateRateUI(rate, timeStr) {
+        const rateEl = document.getElementById('rateDisplay');
+        const timeEl = document.getElementById('lastUpdatedTime');
+        currentRate = rate;
+        rateEl.innerText = `1 JPY = ${rate} VND`;
+        if(timeStr) {
+            timeEl.innerText = `Cập nhật: ${timeStr}`;
+            timeEl.style.display = 'block';
+        }
+        calculate('inputJPY');
+    }
+
+    async function forceUpdateRate() {
+        const btn = document.getElementById('btnRefresh');
+        const rateEl = document.getElementById('rateDisplay');
+        
+        btn.classList.add('loading');
+        rateEl.innerText = "Đang tải...";
+        rateEl.style.color = "#e65100";
+
+        const targetUrl = 'https://www.smileswallet.com/japan/vi/ty-gia/';
+        const extractRules = { "currencies": { "selector": ".currency", "type": "list", "output": { "country": ".country_name", "rate": ".exchange_rate" } } };
+
+        let fetchedRate = 0;
+        for (let i = 0; i < SCRAPINGBEE_KEYS.length; i++) {
+            if (!SCRAPINGBEE_KEYS[i]) continue;
+            try {
+                const apiUrl = `https://app.scrapingbee.com/api/v1/?api_key=${SCRAPINGBEE_KEYS[i]}&url=${encodeURIComponent(targetUrl)}&extract_rules=${encodeURIComponent(JSON.stringify(extractRules))}&render_js=false`;
+                const response = await fetch(apiUrl);
+                if (response.ok) {
+                    const data = await response.json();
+                    const vnData = data.currencies?.find(c => c.country.includes("Vietnam") || c.country.includes("Việt Nam"));
+                    if (vnData) {
+                        const rateMatch = vnData.rate.match(/([\d,.]+)/); 
+                        if (rateMatch) fetchedRate = parseFloat(rateMatch[0].replace(/,/g, ''));
+                        break;
+                    }
+                }
+            } catch (e) { console.warn("Next key..."); }
+        }
+
+        btn.classList.remove('loading');
+        if (fetchedRate > 0) {
+            saveRateToLocal(fetchedRate);
+            updateRateUI(fetchedRate, getCurrentDateTime());
+            rateEl.style.color = "#2e7d32";
+        } else {
+            rateEl.innerText = "⚠️ Lỗi cập nhật. Dùng tỷ giá mẫu.";
+            currentRate = 165.5; // Fallback
+            calculate('inputJPY');
+        }
+    }
+
+    // --- 3. LOGIC TÍNH TOÁN MỚI (CÓ ĐIỂM) ---
+    function getFeeAndPoints(amountJpy) {
+        const amount = parseInt(amountJpy);
+        if (isNaN(amount) || amount <= 0) return { fee: 0, points: 0 };
+        if (amount >= 300 && amount <= 10000) return { fee: 380, points: 10 };
+        if (amount > 10000 && amount <= 50000) return { fee: 450, points: 20 };
+        if (amount > 50000 && amount <= 100000) return { fee: 760, points: 50 };
+        if (amount > 100000 && amount <= 300000) return { fee: 980, points: 100 };
+        if (amount > 300000 && amount <= 1000000) return { fee: 1700, points: 150 };
+        return { fee: 0, points: 0 };
+    }
+
+    function formatNumber(num) { return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+
+    function formatNumberInput(input) {
+        let value = input.value.replace(/,/g, '');
+        if (!value) { 
+            input.value = ''; 
+            // Nếu xóa hết input chính thì reset, nếu xóa input điểm thì vẫn tính
+            calculate(input.id === 'inputPoints' ? 'inputJPY' : input.id); 
+            return; 
+        }
+        input.value = parseInt(value).toLocaleString('en-US');
+        calculate(input.id === 'inputPoints' ? 'inputJPY' : input.id); // Luôn trigger tính toán lại
+    }
+
+    function getRawValue(id) {
+        const el = document.getElementById(id);
+        if (!el) return 0;
+        const val = el.value.replace(/,/g, '');
+        return val ? parseInt(val) : 0;
+    }
+
+    function calculate(source) {
+        if (currentRate === 0) return;
+        
+        const inputJPY = document.getElementById('inputJPY');
+        const inputVND = document.getElementById('inputVND');
+        
+        let jpyAmount = 0;
+
+        // 1. Tính toán quy đổi JPY <-> VND
+        if (source === 'inputJPY' || source === 'inputPoints') { // Nếu sửa điểm cũng tính lại từ gốc JPY hiện tại
+            jpyAmount = getRawValue('inputJPY');
+            if(source === 'inputJPY') { // Chỉ update VND khi gõ JPY
+                 inputVND.value = formatNumber(Math.floor(jpyAmount * currentRate));
+            }
+        } else if (source === 'inputVND') {
+            const vndVal = getRawValue('inputVND');
+            jpyAmount = Math.ceil(vndVal / currentRate);
+            inputJPY.value = formatNumber(jpyAmount);
+        }
+
+        // 2. Tính Phí & Điểm thưởng
+        const result = getFeeAndPoints(jpyAmount);
+        
+        // 3. Lấy số điểm người dùng muốn dùng
+        const pointsUsed = getRawValue('inputPoints');
+
+        // 4. Tính Tổng thanh toán = (Gốc + Phí) - Điểm dùng
+        let totalPay = (jpyAmount + result.fee) - pointsUsed;
+        if (totalPay < 0) totalPay = 0; // Không được âm
+
+        // 5. Hiển thị
+        document.getElementById('feeDisplay').innerText = `¥${formatNumber(result.fee)}`;
+        document.getElementById('pointDisplay').innerText = `+${result.points} pts`;
+        document.getElementById('totalPayDisplay').innerText = `¥${formatNumber(totalPay)}`;
+    }
+
+    // --- 4. CHỨC NĂNG COPY ---
+    async function copyTotal() {
+        const displayEl = document.getElementById('totalPayDisplay');
+        const feedbackEl = document.getElementById('copyFeedback');
+        
+        // Lấy text và xóa hết dấu phẩy, ký tự tiền tệ, chỉ giữ lại số
+        const text = displayEl.innerText;
+        const rawNumber = text.replace(/[^\d]/g, ''); 
+
+        try {
+            await navigator.clipboard.writeText(rawNumber);
+            
+            // Hiệu ứng thông báo
+            feedbackEl.classList.add('show-feedback');
+            setTimeout(() => {
+                feedbackEl.classList.remove('show-feedback');
+            }, 1500);
+        } catch (err) {
+            console.error('Không thể copy', err);
+        }
+    }
+
+    // --- 5. KHỞI CHẠY ---
+    function initApp() {
+        const cachedData = getRateFromLocal();
+        if (cachedData && cachedData.rate) {
+            updateRateUI(cachedData.rate, cachedData.timestamp);
+        } else {
+            forceUpdateRate();
+        }
+    }
+
+    initApp();
+
+</script>
+
+</body>
+</html>
