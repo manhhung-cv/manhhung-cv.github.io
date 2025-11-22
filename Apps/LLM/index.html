@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tra cứu điểm Lilama2</title>
+    <style>
+        :root {
+            --primary-color: #007aff; /* iOS Blue */
+            --bg-color: #f2f2f7;
+            --card-bg: #ffffff;
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+            --success: #34c759;
+            --danger: #ff3b30;
+            --border-radius: 12px;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); margin: 0; padding: 0; color: var(--text-main); }
+        
+        .container { max-width: 600px; margin: 0 auto; padding: 15px; }
+        
+        /* Header Search */
+        .app-header { position: sticky; top: 0; z-index: 100; background: rgba(242, 242, 247, 0.95); backdrop-filter: blur(10px); padding-bottom: 10px; }
+        .search-box { background: var(--card-bg); padding: 10px; border-radius: var(--border-radius); box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; border: none; background: #f0f0f5; padding: 12px; border-radius: 8px; font-size: 16px; outline: none; }
+        button#btnSearch { background-color: var(--primary-color); color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+        button#btnSearch:active { opacity: 0.7; }
+        button:disabled { background-color: #ccc; }
+
+        /* Duplicate Warning */
+        #student-select-area { display: none; margin-top: 10px; background: #fff3cd; padding: 10px; border-radius: 8px; border: 1px solid #ffeeba; color: #856404; font-size: 14px; text-align: center; }
+        #student-select-area select { margin-top: 5px; padding: 5px; width: 100%; border-radius: 4px; border: 1px solid #ced4da; }
+
+        /* Student Profile Card */
+        .profile-card { background: var(--card-bg); padding: 20px; border-radius: var(--border-radius); margin-top: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; display: none; }
+        .profile-avatar { width: 60px; height: 60px; background: #e1e1e1; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #888; }
+        .profile-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .profile-info { font-size: 14px; color: var(--text-sub); display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+        .profile-info span { background: #f0f0f5; padding: 4px 8px; border-radius: 4px; }
+
+        /* Semester Sections */
+        .semester-block { margin-top: 20px; }
+        .semester-header { font-size: 16px; font-weight: 700; color: var(--text-sub); margin-bottom: 8px; padding-left: 5px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; }
+        .semester-gpa { color: var(--primary-color); font-size: 14px; }
+
+        /* Subject List */
+        .subject-list { background: var(--card-bg); border-radius: var(--border-radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .subject-item { padding: 15px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .subject-item:last-child { border-bottom: none; }
+        
+        .subj-left { flex: 1; padding-right: 10px; }
+        .subj-name { font-size: 15px; font-weight: 500; color: var(--text-main); margin-bottom: 4px; display: block;}
+        .subj-meta { font-size: 12px; color: var(--text-sub); }
+        
+        .subj-right { text-align: right; min-width: 50px; }
+        .score-badge { font-size: 16px; font-weight: bold; display: inline-block; }
+        .score-pass { color: var(--success); }
+        .score-fail { color: var(--danger); }
+        .status-text { font-size: 10px; display: block; margin-top: 2px; text-transform: uppercase; }
+
+        /* Graduation Info */
+        .grad-card { background: linear-gradient(135deg, #007aff 0%, #0051a8 100%); color: white; padding: 20px; border-radius: var(--border-radius); margin-top: 25px; margin-bottom: 40px; display: none; }
+        .grad-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.3); padding-bottom: 10px; }
+        .grad-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+        .grad-val { font-weight: bold; }
+
+        .loading { text-align: center; display: none; padding: 20px; color: var(--text-sub); }
+        .error { color: var(--danger); text-align: center; margin-top: 10px; font-weight: 500; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="app-header">
+        <h2 style="text-align:center; margin: 10px 0 15px; font-size: 20px;">Tra cứu điểm Lilama2</h2>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Nhập tên hoặc MSSV" value="Lê Huy Hoàng">
+            <button id="btnSearch" onclick="startSearch()">Tìm</button>
+        </div>
+        
+        <div id="student-select-area">
+            <span>⚠️ Có nhiều sinh viên trùng tên. Chọn MSSV đúng:</span>
+            <select id="duplicateStudentSelect" onchange="selectSpecificStudent(this.value)"></select>
+        </div>
+    </div>
+
+    <div id="loading" class="loading">Đang tải dữ liệu...</div>
+    <div id="error-msg" class="error"></div>
+
+    <div id="app-result">
+        <div id="profile-area" class="profile-card"></div>
+        <div id="transcript-area"></div>
+        <div id="graduation-area" class="grad-card"></div>
+    </div>
+    
+    <div id="raw-html-storage" style="display:none;"></div>
+</div>
+
+<script>
+    // --- CẤU HÌNH ---
+    const SCRAPINGBEE_API_KEY = 'YFH8ZPMDE27ABK3HAVVALLVZLVAF4PNMDYE12GSH2ILVSQ5AVLTGMTUZCDNG2SAGCII7PKXLZWJI7GD7'; 
+    const SCHOOL_SELECT_ID = 'ctl00_cphMain_SubjectMarkOfStudent1_SubjectMarkOfStudent1_ddlStudentID';
+    const SCHOOL_CONTENT_ID = 'ctl00_cphMain_SubjectMarkOfStudent1_SubjectMarkOfStudent1_udpContent';
+
+    // --- 1. PARSER (Hàm bạn cung cấp) ---
+    function parseStudentTranscript(htmlString) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(htmlString, "text/html");
+
+        const result = {
+            studentInfo: {},
+            academicHistory: [],
+            graduationInfo: {}
+        };
+
+        // 1. Lấy thông tin sinh viên
+        const infoTable = doc.querySelector('table[width="800px"]');
+        if (infoTable) {
+            const tds = infoTable.querySelectorAll('td');
+            tds.forEach(td => {
+                const parts = td.innerText.split(':');
+                if (parts.length > 1) {
+                    const key = parts[0].trim();
+                    const value = parts[1].trim();
+                    result.studentInfo[key] = value;
+                }
+            });
+        }
+
+        // 2. Lấy bảng điểm chi tiết
+        const contentTables = doc.querySelectorAll('.Learning_Content table');
+        // Lưu ý: index bảng có thể thay đổi tùy dữ liệu, nhưng thường bảng 1 là bảng điểm
+        const transcriptTable = contentTables[1]; 
+
+        if (transcriptTable) {
+            const rows = transcriptTable.querySelectorAll('tr');
+            let currentSemester = null;
+
+            rows.forEach(row => {
+                const groupCell = row.querySelector('.Learning_GroupRow');
+                if (groupCell) {
+                    const text = groupCell.innerText;
+                    const regex = /Niên học:\s*(.*?)\s*-\s*Học kì:\s*(.*?)\s*-\s*TBHK\s*:\s*(.*?)\s*-\s*XLHK:\s*(.*)/;
+                    const match = text.match(regex);
+
+                    if (match) {
+                        currentSemester = {
+                            nienHoc: match[1],
+                            hocKi: match[2],
+                            diemTrungBinh: match[3],
+                            xepLoai: match[4],
+                            monHoc: []
+                        };
+                        result.academicHistory.push(currentSemester);
+                    }
+                } else if (currentSemester && !row.classList.contains('Learning_Header') && row.cells.length > 5) {
+                    const cells = row.querySelectorAll('td');
+                    const subject = {
+                        stt: cells[0]?.innerText.trim(),
+                        tenMon: cells[1]?.innerText.trim(),
+                        soTinChi: cells[2]?.innerText.trim(),
+                        diemTongKet: cells[15]?.innerText.trim() || cells[16]?.innerText.trim() || cells[17]?.innerText.trim(),
+                        ketQua: cells[18]?.innerText.trim()
+                    };
+                    currentSemester.monHoc.push(subject);
+                }
+            });
+        }
+
+        // 3. Lấy thông tin tốt nghiệp
+        const graduationTable = contentTables[2]; 
+        if (graduationTable) {
+            const gradRows = graduationTable.querySelectorAll('tr');
+            for (let i = 0; i < gradRows.length; i++) {
+                const cells = gradRows[i].querySelectorAll('td');
+                if (cells.length >= 4 && cells[1].innerText === 'Chính trị') {
+                     result.graduationInfo['ChinhTri'] = cells[2].innerText.trim();
+                     result.graduationInfo['TBToanKhoa'] = cells[3].innerText.trim();
+                }
+                if (cells.length >= 4 && cells[1].innerText === 'Lý thuyết chuyên môn') {
+                     result.graduationInfo['LyThuyetChuyenMon'] = cells[2].innerText.trim();
+                     result.graduationInfo['TBXepLoaiTotNghiep'] = cells[3].innerText.trim();
+                }
+                 if (cells.length >= 4 && cells[1].innerText === 'Vẽ Kỹ Thuật') {
+                     result.graduationInfo['VeKyThuat'] = cells[2].innerText.trim();
+                     result.graduationInfo['XepLoaiTotNghiep'] = cells[3].innerText.trim();
+                }
+                if (cells.length >= 3 && cells[1].innerText.includes('Trung bình thi tốt nghiệp')) {
+                     result.graduationInfo['TBThiTotNghiep'] = cells[2].innerText.trim();
+                }
+            }
+        }
+        return JSON.stringify(result, null, 4);
+    }
+
+    // --- 2. RENDER UI (Hàm hiển thị giao diện App) ---
+    function renderAppUI(jsonString) {
+        const data = JSON.parse(jsonString);
+        const profileArea = document.getElementById('profile-area');
+        const transcriptArea = document.getElementById('transcript-area');
+        const gradArea = document.getElementById('graduation-area');
+
+        // A. Render Profile
+        if (data.studentInfo && Object.keys(data.studentInfo).length > 0) {
+            const info = data.studentInfo;
+            // Tìm tên và lớp (key có thể khác nhau tùy HTML, giả định key phổ biến)
+            const name = info['Họ tên'] || info['Họ và tên'] || 'Sinh viên';
+            const mssv = info['Mã sinh viên'] || info['Mã SV'] || '';
+            const dob = info['Ngày sinh'] || '';
+            const clazz = info['Lớp'] || '';
+
+            profileArea.innerHTML = `
+                <div class="profile-avatar">🎓</div>
+                <div class="profile-name">${name}</div>
+                <div class="profile-info">
+                    <span>${mssv}</span>
+                    <span>${clazz}</span>
+                    <span>${dob}</span>
+                </div>
+            `;
+            profileArea.style.display = 'block';
+        } else {
+            profileArea.style.display = 'none';
+        }
+
+        // B. Render Bảng điểm
+        let html = '';
+        if (data.academicHistory && data.academicHistory.length > 0) {
+            // Đảo ngược để xem học kỳ mới nhất trước (nếu muốn), ở đây giữ nguyên
+            data.academicHistory.forEach(sem => {
+                html += `
+                <div class="semester-block">
+                    <div class="semester-header">
+                        <span>HK ${sem.hocKi} (${sem.nienHoc})</span>
+                        <span class="semester-gpa">TB: ${sem.diemTrungBinh}</span>
+                    </div>
+                    <div class="subject-list">
+                `;
+
+                sem.monHoc.forEach(sub => {
+                    // Xử lý màu sắc điểm
+                    const score = parseFloat(sub.diemTongKet);
+                    const isPass = !isNaN(score) ? (score >= 5.0) : (sub.ketQua !== 'Hỏng');
+                    const scoreClass = isPass ? 'score-pass' : 'score-fail';
+                    const displayScore = sub.diemTongKet || '-';
+
+                    html += `
+                        <div class="subject-item">
+                            <div class="subj-left">
+                                <span class="subj-name">${sub.tenMon}</span>
+                                <span class="subj-meta">TC: ${sub.soTinChi}</span>
+                            </div>
+                            <div class="subj-right">
+                                <span class="score-badge ${scoreClass}">${displayScore}</span>
+                                <span class="status-text ${scoreClass}">${sub.ketQua}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`; // Đóng .subject-list và .semester-block
+            });
+            transcriptArea.innerHTML = html;
+        } else {
+            transcriptArea.innerHTML = '<div style="text-align:center; padding:20px; color:#888">Không có dữ liệu bảng điểm.</div>';
+        }
+
+        // C. Render Tốt Nghiệp
+        if (data.graduationInfo && Object.keys(data.graduationInfo).length > 0) {
+            const g = data.graduationInfo;
+            gradArea.innerHTML = `
+                <div class="grad-title">🎓 Thông tin tốt nghiệp</div>
+                <div class="grad-row"><span>TB Toàn khóa:</span> <span class="grad-val">${g.TBToanKhoa || '-'}</span></div>
+                <div class="grad-row"><span>TB Thi TN:</span> <span class="grad-val">${g.TBThiTotNghiep || '-'}</span></div>
+                <div class="grad-row"><span>Xếp loại TN:</span> <span class="grad-val" style="color:#ffff00">${g.XepLoaiTotNghiep || '-'}</span></div>
+            `;
+            gradArea.style.display = 'block';
+        } else {
+            gradArea.style.display = 'none';
+        }
+    }
+
+
+    // --- 3. LOGIC FETCH API (Giữ nguyên logic xử lý trùng tên) ---
+    function startSearch() {
+        const query = document.getElementById('searchInput').value.trim();
+        if(query) fetchTranscript(query);
+    }
+
+    async function fetchTranscript(queryCode) {
+        const loading = document.getElementById('loading');
+        const errorMsg = document.getElementById('error-msg');
+        const btn = document.getElementById('btnSearch');
+        const selectArea = document.getElementById('student-select-area');
+        const profileArea = document.getElementById('profile-area');
+        const transcriptArea = document.getElementById('transcript-area');
+        const gradArea = document.getElementById('graduation-area');
+
+        // Reset UI
+        errorMsg.innerText = '';
+        transcriptArea.innerHTML = '';
+        profileArea.style.display = 'none';
+        gradArea.style.display = 'none';
+        
+        if(queryCode === document.getElementById('searchInput').value.trim()) {
+             selectArea.style.display = 'none'; 
+        }
+        
+        loading.style.display = 'block';
+        btn.disabled = true;
+
+        try {
+            const targetUrl = `http://congthongtin.lilama2.edu.vn/Pages/Sims/SubjectMarkOfStudent.aspx?pt=2&code=${encodeURIComponent(queryCode)}`;
+            const apiUrl = `https://app.scrapingbee.com/api/v1/?api_key=${SCRAPINGBEE_API_KEY}&url=${encodeURIComponent(targetUrl)}&render_js=false`;
+
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`Lỗi kết nối: ${response.status}`);
+
+            const htmlText = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+
+            // Xử lý Trùng Tên
+            const schoolSelect = doc.getElementById(SCHOOL_SELECT_ID);
+            if (schoolSelect && schoolSelect.options.length > 1) {
+                handleDuplicateStudents(schoolSelect, queryCode);
+            }
+
+            // Xử lý nội dung chính
+            const content = doc.getElementById(SCHOOL_CONTENT_ID);
+            if (content) {
+                // 1. Parse HTML thành JSON
+                const jsonResult = parseStudentTranscript(content.innerHTML);
+                // 2. Render ra giao diện App
+                renderAppUI(jsonResult);
+            } else {
+                errorMsg.innerText = "Không tìm thấy dữ liệu. Vui lòng kiểm tra lại tên hoặc mã số.";
+            }
+
+        } catch (error) {
+            console.error(error);
+            errorMsg.innerText = "Lỗi: " + error.message;
+        } finally {
+            loading.style.display = 'none';
+            btn.disabled = false;
+        }
+    }
+
+    function handleDuplicateStudents(selectElementFromHTML, currentQuery) {
+        const selectArea = document.getElementById('student-select-area');
+        const mySelect = document.getElementById('duplicateStudentSelect');
+        mySelect.innerHTML = '<option value="">-- Chọn mã sinh viên --</option>';
+        
+        const options = selectElementFromHTML.querySelectorAll('option');
+        options.forEach(opt => {
+            if(!opt.value) return;
+            const newOption = document.createElement('option');
+            newOption.value = opt.value;
+            newOption.text = opt.value; 
+            if (opt.hasAttribute('selected') || currentQuery === opt.value) {
+                newOption.selected = true;
+            }
+            mySelect.appendChild(newOption);
+        });
+        selectArea.style.display = 'block';
+    }
+
+    function selectSpecificStudent(studentID) {
+        if (studentID) {
+            document.getElementById('searchInput').value = studentID;
+            fetchTranscript(studentID);
+        }
+    }
+</script>
+
+</body>
+</html>
