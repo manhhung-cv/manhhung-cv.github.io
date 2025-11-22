@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drive Manager (Mobile-First)</title>
+    <style>
+        /* ======================================================= */
+        /* BASE & MOBILE-FIRST LIQUIDGLASS THEME */
+        /* ======================================================= */
+        
+        :root {
+            --primary-blue: #007aff;
+            --primary-red: #ff3b30;
+            --primary-green: #34c759;
+            --primary-orange: #ff9500; /* Apple Orange/Gold */
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.18);
+        }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #1f2f4e, #4a638c); 
+            display: flex; 
+            justify-content: center; 
+            align-items: flex-start; 
+            padding: 20px 0; 
+            color: #E0E0E0;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container { 
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px); 
+            -webkit-backdrop-filter: blur(10px);
+            padding: 1.5rem; 
+            border-radius: 20px; 
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); 
+            border: 1px solid var(--glass-border);
+            width: 95%; 
+            max-width: 700px; 
+        }
+        h2, h3 { color: white; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.5); margin-top: 0; }
+        
+        /* Buttons - Optimized for touch */
+        .btn { padding: 12px 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-bottom: 10px; transition: 0.3s; color: white; width: 100%; }
+        .btn-primary { background-color: var(--primary-blue); } 
+        .btn-danger { background-color: var(--primary-red); } 
+        .btn-action { background: var(--primary-green); margin-left: 0; padding: 10px; font-size: 0.85em; } 
+        .btn-open-folder { background: var(--primary-orange) !important; }
+        .btn-link { background: none; color: var(--primary-orange); padding: 5px 0; font-size: 0.9em; margin: 0; width: auto; } 
+
+        .form-upload { display: flex; flex-direction: column; gap: 10px; padding: 15px; border: 1px solid var(--glass-border); border-radius: 10px; }
+        input[type="file"] { padding: 10px; border: 1px solid var(--glass-border); border-radius: 8px; background: rgba(0, 0, 0, 0.1); color: white; }
+        
+        /* List Items */
+        li { 
+            background: rgba(255, 255, 255, 0.05); 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+            padding: 10px; 
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .file-info { flex-grow: 1; min-width: 60%; margin-right: 10px; }
+        .file-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+        .file-actions button { flex-grow: 1; padding: 8px; font-size: 0.8em; }
+        
+        .inline-image { max-width: 80px; max-height: 80px; border-radius: 8px; margin-right: 15px; object-fit: cover; border: 1px solid var(--glass-border); cursor: pointer; }
+        
+        /* Desktop/Tablet adjustment */
+        @media (min-width: 600px) {
+            .file-actions { margin-top: 0; flex-wrap: nowrap; }
+            .file-actions button { width: auto; padding: 5px 10px; flex-grow: 0; }
+            .btn { width: auto; }
+            .btn-full { width: 100%; }
+        }
+
+        /* ======================================================= */
+        /* LIGHTBOX/MODAL FOR ZOOM (Giữ nguyên) */
+        /* ======================================================= */
+        #lightbox {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.9); 
+            align-items: center;
+            justify-content: center;
+        }
+
+        #lightbox-content {
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+        }
+
+        #lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="lightbox" onclick="closeLightbox()">
+    <span id="lightbox-close">&times;</span>
+    <img id="lightbox-content" />
+</div>
+
+<div class="container">
+    <h2> File Manager</h2>
+    
+    <div class="warning">
+        ⚠️ **CẢNH BÁO:** Ứng dụng này tự động chia sẻ tệp của bạn công khai để kích hoạt link tải/xem trước.
+    </div>
+
+    <button id="authorize_button" class="btn btn-primary" onclick="handleAuthClick()">🔐 Đăng nhập Google</button>
+    <button id="signout_button" class="btn btn-danger" onclick="handleSignoutClick()" style="display: none;">🔓 Đăng xuất</button>
+
+    <div id="content" style="display: none;">
+        <h3>📤 Tải lên Tệp</h3>
+        <div class="form-upload">
+            <input type="file" id="file_to_upload">
+            <button onclick="uploadFile()" class="btn btn-primary">⬆️ Tải lên Drive</button>
+        </div>
+
+        <h3>📄 Danh sách File của tôi</h3>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+            <button onclick="listFiles()" class="btn" style="background: rgba(255, 255, 255, 0.15); flex-grow: 1;">🔄 Làm mới danh sách</button>
+            <button onclick="openFolderInDrive()" class="btn btn-open-folder" style="flex-grow: 1;">📂 Mở Thư mục HunqCloud</button>
+        </div>
+        
+        <ul id="file_list"></ul>
+    </div>
+</div>
+
+<script>
+    /* CẤU HÌNH - THAY THẾ THÔNG TIN CỦA BẠN Ở ĐÂY */
+    const CLIENT_ID = 'YOUR_CLIENT_ID_HERE'; 
+    const API_KEY = 'YOUR_API_KEY_HERE';     
+    const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
+    
+    const FILE_FIELDS = 'id, name, mimeType, webViewLink, webContentLink, thumbnailLink'; 
+    const SCOPES = 'https://www.googleapis.com/auth/drive.file'; 
+
+    let tokenClient;
+    let gapiInited = false;
+    let gisInited = false;
+    
+    let HUNQ_CLOUD_FOLDER_ID = null;
+    const HUNQ_CLOUD_FOLDER_NAME = 'HunqCloud';
+
+    document.getElementById('authorize_button').style.visibility = 'hidden';
+
+    // --- CÁC HÀM KHỞI TẠO VÀ XÁC THỰC ---
+
+    function gapiLoaded() { gapi.load('client', initializeGapiClient); }
+    async function initializeGapiClient() {
+        await gapi.client.init({ apiKey: API_KEY, discoveryDocs: [DISCOVERY_DOC] });
+        gapiInited = true; maybeEnableButtons();
+    }
+    function gisLoaded() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID, scope: SCOPES, callback: '',
+        });
+        gisInited = true; maybeEnableButtons();
+    }
+
+    function updateSignInStatus(isSignedIn) {
+        if (isSignedIn) {
+            document.getElementById('signout_button').style.display = 'block';
+            document.getElementById('authorize_button').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+        } else {
+            document.getElementById('signout_button').style.display = 'none';
+            document.getElementById('authorize_button').style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+        }
+    }
+
+    // Hàm Tìm hoặc Tạo Thư mục HunqCloud (Giữ nguyên)
+    async function findOrCreateFolder() {
+        if (HUNQ_CLOUD_FOLDER_ID) return; // Nếu đã có ID thì thoát
+
+        console.log(`Đang tìm thư mục "${HUNQ_CLOUD_FOLDER_NAME}"...`);
+        try {
+            const searchResponse = await gapi.client.drive.files.list({
+                q: `mimeType='application/vnd.google-apps.folder' and name='${HUNQ_CLOUD_FOLDER_NAME}' and trashed=false`,
+                fields: 'files(id)',
+            });
+
+            const existingFiles = searchResponse.result.files;
+
+            if (existingFiles && existingFiles.length > 0) {
+                HUNQ_CLOUD_FOLDER_ID = existingFiles[0].id;
+                console.log(`Đã tìm thấy thư mục: ${HUNQ_CLOUD_FOLDER_ID}`);
+                return;
+            }
+
+            console.log(`Không tìm thấy, đang tạo thư mục mới...`);
+            const metadata = {
+                'name': HUNQ_CLOUD_FOLDER_NAME,
+                'mimeType': 'application/vnd.google-apps.folder',
+            };
+            const createResponse = await gapi.client.drive.files.create({
+                resource: metadata,
+                fields: 'id',
+            });
+
+            HUNQ_CLOUD_FOLDER_ID = createResponse.result.id;
+            console.log(`Đã tạo thư mục mới: ${HUNQ_CLOUD_FOLDER_ID}`);
+
+        } catch (error) {
+            console.error("LỖI KHI TÌM/TẠO THƯ MỤC:", error);
+            alert("Lỗi nghiêm trọng: Không thể tìm hoặc tạo thư mục HunqCloud.");
+        }
+    }
+
+
+    async function checkInitialState() {
+        tokenClient.requestAccessToken({ prompt: 'none', callback: async (resp) => {
+            if (resp.error) {
+                updateSignInStatus(false);
+                return;
+            }
+            updateSignInStatus(true);
+            await findOrCreateFolder(); 
+            listFiles();
+        }});
+    }
+
+    function maybeEnableButtons() {
+        if (gapiInited && gisInited) {
+            document.getElementById('authorize_button').style.visibility = 'visible';
+            checkInitialState(); 
+        }
+    }
+
+    function handleAuthClick() {
+        tokenClient.callback = async (resp) => {
+            if (resp.error) { console.error(resp); return; }
+            updateSignInStatus(true);
+            await findOrCreateFolder(); 
+            await listFiles();
+        };
+
+        if (gapi.client.getToken() === null) {
+            tokenClient.requestAccessToken({prompt: 'consent'}); 
+        } else {
+            tokenClient.requestAccessToken({prompt: ''});
+        }
+    }
+
+    function handleSignoutClick() {
+        const token = gapi.client.getToken();
+        if (token !== null) {
+            google.accounts.oauth2.revoke(token.access_token);
+            gapi.client.setToken('');
+            updateSignInStatus(false);
+            HUNQ_CLOUD_FOLDER_ID = null; 
+            document.getElementById('file_list').innerHTML = '';
+        }
+    }
+    
+    // --- HÀM HỖ TRỢ ---
+    async function shareFilePublicly(fileId) {
+        try {
+            await gapi.client.drive.permissions.create({
+                fileId: fileId,
+                resource: { role: 'reader', type: 'anyone' },
+                fields: 'id',
+            });
+            console.log('Chia sẻ công khai thành công.');
+        } catch (error) {
+            console.error('Lỗi khi chia sẻ tệp:', error);
+        }
+    }
+
+    // [MỚI] Mở thư mục HunqCloud trong tab mới
+    function openFolderInDrive() {
+        if (!HUNQ_CLOUD_FOLDER_ID) {
+            alert("Thư mục HunqCloud chưa được tìm thấy.");
+            return;
+        }
+        const folderUrl = `https://drive.google.com/drive/folders/${HUNQ_CLOUD_FOLDER_ID}`;
+        window.open(folderUrl, '_blank');
+    }
+
+    // [ĐÃ ĐỔI TÊN] Mở Tệp trong tab mới
+    function openInNewTab(webViewLink) {
+        if (webViewLink) {
+            window.open(webViewLink, '_blank');
+        } else {
+            alert("Không thể tạo link xem tệp trong Drive.");
+        }
+    }
+
+    // --- CÁC HÀM CHỨC NĂNG CHÍNH ---
+
+    // 1. Liệt kê files (Đã cập nhật nút)
+    async function listFiles() {
+        if (!HUNQ_CLOUD_FOLDER_ID) {
+            alert("Không thể tải danh sách: Thư mục HunqCloud chưa được tìm thấy.");
+            return;
+        }
+
+        let response;
+        try {
+            response = await gapi.client.drive.files.list({
+                'pageSize': 10,
+                q: `'${HUNQ_CLOUD_FOLDER_ID}' in parents and trashed=false`,
+                'fields': `nextPageToken, files(${FILE_FIELDS})`, 
+            });
+        } catch (err) {
+            console.error("LỖI KHI TẢI DANH SÁCH:", err);
+            const errorMessage = (err && err.result && err.result.error && err.result.error.message) || (err && err.message) || "Không xác định. Vui lòng kiểm tra Console (F12).";
+            alert('Lỗi khi tải danh sách: ' + errorMessage);
+            return;
+        }
+        
+        const files = response.result.files;
+        const ul = document.getElementById('file_list');
+        ul.innerHTML = ''; 
+
+        if (!files || files.length == 0) {
+            ul.innerHTML = `<li>Không tìm thấy file nào trong thư mục "${HUNQ_CLOUD_FOLDER_NAME}".</li>`;
+            return;
+        }
+
+        files.forEach(file => {
+            const isImage = file.mimeType.startsWith('image/');
+
+            const imageDisplay = isImage && file.thumbnailLink 
+                ? `<img src="${file.thumbnailLink}" class="inline-image" alt="${file.name}" onclick="openLightbox('${file.thumbnailLink}')">` 
+                : '';
+            
+            // [MỚI] Nút Mở Tệp trong Drive (Áp dụng cho mọi loại file)
+            const openFileButton = `<button class="btn btn-action" onclick="openInNewTab('${file.webViewLink}')">↗️ Mở trong Drive</button>`;
+
+            const li = document.createElement('li');
+            li.innerHTML = `
+                ${imageDisplay}
+                <div class="file-info">
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-id">Loại: ${file.mimeType}</span>
+                </div>
+                <div class="file-actions">
+                    <button class="btn btn-action" onclick="copyDownloadLink('${file.id}', '${file.name}')">🔗 Link Tải</button>
+                    ${openFileButton}
+                    <button class="btn btn-action" onclick="downloadFile('${file.id}', '${file.name}')">⬇️ Tải xuống</button>
+                    <button class="btn btn-link" onclick="deleteFile('${file.id}', '${file.name}')">🗑️ Xóa</button>
+                </div>
+            `;
+            ul.appendChild(li);
+        });
+    }
+
+    // 2. Tải lên file mới (Giữ nguyên)
+    async function uploadFile() {
+        const fileInput = document.getElementById('file_to_upload');
+        const file = fileInput.files[0];
+
+        if (!file) { alert("Vui lòng chọn một tệp để tải lên."); return; }
+        if (!gapi.client.getToken()) { alert("Vui lòng đăng nhập trước khi tải lên."); return; }
+        if (!HUNQ_CLOUD_FOLDER_ID) { alert("Lỗi: Không tìm thấy thư mục HunqCloud."); return; } 
+
+        const metadata = { 
+            'name': file.name, 
+            'mimeType': file.type || 'application/octet-stream',
+            'parents': [HUNQ_CLOUD_FOLDER_ID] 
+        };
+        const accessToken = gapi.client.getToken().access_token;
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+        form.append('file', file); 
+
+        try {
+            const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                method: 'POST',
+                headers: new Headers({ 'Authorization': 'Bearer ' + accessToken }),
+                body: form
+            });
+            const val = await res.json();
+            
+            if (res.ok) {
+                const newFileId = val.id; 
+                await shareFilePublicly(newFileId); 
+                
+                alert(`Đã tải lên và chia sẻ thành công vào thư mục HunqCloud: ${val.name}`);
+                fileInput.value = ''; 
+                listFiles(); 
+            } else {
+                alert("Lỗi tải lên: " + (val.error ? val.error.message : res.statusText));
+            }
+        } catch (error) {
+            console.error("Lỗi upload:", error);
+            alert("Lỗi mạng hoặc server.");
+        }
+    }
+
+    // 3. Xóa file (Giữ nguyên)
+    async function deleteFile(fileId, fileName) {
+        if (!confirm(`Bạn có chắc chắn muốn xóa file "${fileName}" không?`)) return;
+        try {
+            await gapi.client.drive.files.delete({ 'fileId': fileId });
+            alert(`Đã xóa file "${fileName}" thành công.`);
+            listFiles(); 
+        } catch (error) {
+            console.error("Lỗi xóa file:", error);
+            alert("Lỗi khi xóa file. Bạn chỉ được xóa tệp do chính bạn tạo.");
+        }
+    }
+
+    // 4. Tải xuống file (Giữ nguyên)
+    async function downloadFile(fileId, fileName) {
+        if (!gapi.client.getToken()) { alert("Vui lòng đăng nhập."); return; }
+        
+        try {
+            const response = await gapi.client.request({
+                path: `https://www.googleapis.com/drive/v3/files/${fileId}`,
+                params: { 'alt': 'media' }
+            });
+
+            const blob = new Blob([response.body], { type: response.headers['content-type'] });
+            const url = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName; 
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            alert(`Đang tải xuống file "${fileName}"...`);
+        } catch (error) {
+            console.error("Lỗi tải xuống:", error);
+            alert("Lỗi khi tải xuống. Đảm bảo tệp đã được tạo thành công.");
+        }
+    }
+
+    // 5. Sao chép Link Tải (Giữ nguyên)
+    async function copyDownloadLink(fileId, fileName) {
+        if (!gapi.client.getToken()) { alert("Vui lòng đăng nhập."); return; }
+        
+        try {
+            const response = await gapi.client.drive.files.get({
+                fileId: fileId,
+                fields: 'webContentLink'
+            });
+
+            const downloadLink = response.result.webContentLink;
+
+            if (downloadLink) {
+                await navigator.clipboard.writeText(downloadLink);
+                alert(`Đã sao chép link tải xuống của "${fileName}" vào clipboard.`);
+            } else {
+                alert("Không tìm thấy link tải xuống. Đảm bảo tệp đã được chia sẻ công khai.");
+            }
+        } catch (error) {
+            console.error("Lỗi khi lấy link tải:", error);
+            alert("Lỗi khi lấy link tải. Vui lòng kiểm tra lại quyền.");
+        }
+    }
+    
+    // 6. LIGHTBOX FUNCTIONS (Giữ nguyên)
+
+    function openLightbox(thumbnailLink) {
+        const lightbox = document.getElementById('lightbox');
+        const img = document.getElementById('lightbox-content');
+        
+        if (thumbnailLink) {
+            const fullResLink = thumbnailLink.replace(/=s\d+/g, '=s0'); 
+            img.src = fullResLink;
+            lightbox.style.display = 'flex';
+        }
+    }
+
+    function closeLightbox() {
+        document.getElementById('lightbox').style.display = 'none';
+        document.getElementById('lightbox-content').src = '';
+    }
+</script>
+
+<script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+<script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+
+</body>
+</html>
