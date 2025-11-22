@@ -144,7 +144,6 @@ let editingLocationId = null;
 
 // Account Modal
 const accountModal = document.getElementById("account-modal");
-const closeAccountModal = document.getElementById("close-account-modal");
 const updateProfileForm = document.getElementById("update-profile-form");
 const updatePasswordForm = document.getElementById("update-password-form");
 
@@ -441,10 +440,9 @@ userDisplay.addEventListener("click", () => {
     document.getElementById("account-name").value = currentUser.name || currentUser.displayName || '';
     document.getElementById("account-facebook").value = currentUser.facebookId || '';
     updatePasswordForm.reset();
-    accountModal.style.display = "flex"; // Sửa thành flex
+    accountModal.style.display = "flex";
 });
 
-closeAccountModal.onclick = () => { accountModal.style.display = "none"; }
 
 updateProfileForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -657,47 +655,69 @@ function openTrip(tripId, tripData) {
     currentTrip.maxPeople = tripData.maxPeople;
     currentTrip.inviteCode = tripData.inviteCode;
 
-    tripNameDisplay.textContent = `${tripData.name}`;
 
-    tripControls.innerHTML = "";
+    tripControls.innerHTML = ""; // Xóa nội dung cũ
+
     if (currentUser.uid === tripData.ownerId) {
-        const editButton = document.createElement("button");
-        editButton.innerHTML = `<i class="fa-solid fa-pen"></i> Sửa`;
-        editButton.className = "secondary";
-        editButton.onclick = () => showEditTripModal(tripData);
-
-        const deleteButton = document.createElement("button");
-        deleteButton.innerHTML = `<i class="fa-solid fa-trash"></i> Xóa`;
-        deleteButton.className = "secondary";
-        deleteButton.onclick = () => deleteTrip(tripId, tripData.name, tripData.ownerId);
-
-        const addMemberButton = document.createElement("button");
-        addMemberButton.innerHTML = `<i class="fa-solid fa-user-plus"></i> Thêm`;
-        addMemberButton.className = "secondary";
-        addMemberButton.onclick = () => addMemberToTrip(tripId);
-
-        tripControls.appendChild(editButton);
-        tripControls.appendChild(deleteButton);
-        tripControls.appendChild(addMemberButton);
-
-        const inviteDiv = document.createElement("div");
-        inviteDiv.className = "invite-info"; // BỔ SUNG
+        // 1. Tạo Link mời
         const inviteLink = `${window.location.origin}${window.location.pathname}#join=${tripData.inviteCode}`;
-        inviteDiv.innerHTML = `
-                    <p>
-                        <strong><i class="fa-solid fa-key"></i> Mã mời:</strong> ${tripData.inviteCode} 
-                    </p>
-                    <p>
-                        <strong><i class="fa-solid fa-link"></i> Link:</strong> <a href="${inviteLink}" target="_blank">${inviteLink}</a>
-                    </p>
-                `;
-        const changeCodeBtn = document.createElement("button");
-        changeCodeBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> Đổi mã`;
-        changeCodeBtn.className = "secondary";
-        changeCodeBtn.onclick = () => changeInviteCode(tripId, tripData.inviteCode);
 
-        tripControls.appendChild(inviteDiv);
-        tripControls.appendChild(changeCodeBtn);
+        // 2. Render HTML (Copy cấu trúc HTML mới vào đây)
+        tripControls.innerHTML = `
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+           
+        <h2 style="flex: 1 1 auto; margin: 0;">${tripData.name}</h2>
+
+        <button class="secondary small" id="btn-edit-trip" style="flex: 1;">
+                <i class="fa-solid fa-pen"></i> Sửa
+            </button>
+            <button class="secondary small" id="btn-add-member" style="flex: 1;">
+                <i class="fa-solid fa-user-plus"></i> Thêm
+            </button>
+            <button class="red small" id="btn-delete-trip" style="flex: 1;">
+                <i class="fa-solid fa-trash"></i> Xóa
+            </button>
+        </div>
+
+        <div style="background: var(--input-bg); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--glass-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.9rem; color: var(--text-muted);">Mã tham gia:</span>
+                <button class="icon-btn" id="btn-change-code" style="width: 24px; height: 24px; font-size: 0.9rem;" title="Đổi mã mới">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <div style="flex: 1; font-weight: 800; font-size: 1.5rem; letter-spacing: 2px; color: var(--primary-color);">
+                    ${tripData.inviteCode}
+                </div>
+                <button class="small" id="btn-copy-link" style="width: auto; padding: 8px 16px;">
+                    <i class="fa-solid fa-link"></i> Copy Link
+                </button>
+            </div>
+        </div>
+    `;
+
+        // 3. Gán sự kiện (Event Listeners)
+        // Tìm các nút vừa tạo bên trong tripControls và gán hàm
+        tripControls.querySelector("#btn-edit-trip").onclick = () => showEditTripModal(tripData);
+        tripControls.querySelector("#btn-add-member").onclick = () => addMemberToTrip(tripId);
+
+        // Nút xóa dùng style class 'red' cho nổi bật
+        tripControls.querySelector("#btn-delete-trip").onclick = () => deleteTrip(tripId, tripData.name, tripData.ownerId);
+
+        tripControls.querySelector("#btn-change-code").onclick = () => changeInviteCode(tripId, tripData.inviteCode);
+
+        // Xử lý logic Copy Link
+        tripControls.querySelector("#btn-copy-link").onclick = () => {
+            navigator.clipboard.writeText(inviteLink).then(() => {
+                alert("Đã sao chép link tham gia vào bộ nhớ tạm!");
+            }).catch(err => {
+                console.error('Không thể copy text: ', err);
+                // Fallback nếu trình duyệt không hỗ trợ (tùy chọn)
+                prompt("Copy link thủ công:", inviteLink);
+            });
+        };
     }
 
     showView('singleTrip');
@@ -1314,58 +1334,105 @@ function loadHistory(tripId) {
 
 function renderHistory(dataArray) {
     historyList.innerHTML = "";
+
+    // Kiểm tra nếu không có dữ liệu
+    if (!dataArray || dataArray.length === 0) {
+        historyList.innerHTML = "<p style='text-align:center; color: var(--text-muted);'>Chưa có địa điểm nào được thêm.</p>";
+        return;
+    }
+
     dataArray.forEach(data => {
         const item = document.createElement("div");
-        item.className = "card"; // BỔ SUNG
+        item.className = "card"; // Giữ nguyên class card style Glassmorphism
 
+        // Tính chi phí bình quân
         let costPerPerson = 0;
         if (data.cost > 0 && data.numPeople > 0) {
             costPerPerson = data.cost / data.numPeople;
         }
 
-        // BỔ SUNG: Dùng icon
+        // Đảm bảo formatter đã tồn tại (fallback nếu chưa khai báo)
+        const formatMoney = (amount) => {
+            return new Intl.NumberFormat('vi-VN').format(amount);
+        };
+
+        // Render HTML thẻ
+        // Lưu ý: Tôi đã sửa lại thẻ <a> của Google Map cho chuẩn đường dẫn
         item.innerHTML = `
-                    <h4>${data.locationName}</h4>
-                    <p><strong><i class="fa-solid fa-user-pen" style="width: 20px;"></i></strong> ${data.createdBy.name}</p>
-                    <p><strong><i class="fa-solid fa-map-pin" style="width: 20px;"></i></strong> ${data.address || "Không rõ"}</p>
-                    <p>
-                        <strong><i class="fa-solid fa-map-location-dot" style="width: 20px;"></i></strong> 
-                        <a href="https://www.google.com/maps?q=${data.position}" target="_blank">
-                            Xem Google Map
-                        </a>
-                    </p>
-                    <p><strong><i class="fa-solid fa-clock" style="width: 20px;"></i></strong> ${data.time} - ${data.date}</p>
-                    <p><strong><i class="fa-solid fa-users" style="width: 20px;"></i></strong> ${data.numPeople} người</p>
-                    <p><strong><i class="fa-solid fa-money-bill" style="width: 20px;"></i></strong> ${formatter.format(data.cost)} VNĐ</p>
-                    <p><strong><i class="fa-solid fa-calculator" style="width: 20px;"></i></strong> ${formatter.format(costPerPerson)} VNĐ/người</p>
-                    <p><strong><i class="fa-solid fa-star" style="width: 20px;"></i></strong> ${data.rating} / 5 sao</p>
-                    <p><strong><i class="fa-solid fa-note-sticky" style="width: 20px;"></i></strong> ${data.notes || "..."}</p>
-                    <div class="card-actions"></div>
-                `;
+            <h4 style="color: var(--primary-color); margin-bottom: 10px;">${data.locationName}</h4>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.95rem;">
+                <p style="margin: 0;"><strong><i class="fa-solid fa-user-pen" style="width: 24px; text-align: center;"></i></strong> ${data.createdBy.name}</p>
+                <p style="margin: 0;"><strong><i class="fa-solid fa-map-pin" style="width: 24px; text-align: center;"></i></strong> ${data.address || "Chưa có địa chỉ"}</p>
+                <p style="margin: 0;">
+                    <strong><i class="fa-solid fa-map-location-dot" style="width: 24px; text-align: center;"></i></strong> 
+                    <a href="https://www.google.com/maps/search/?api=1&query=${data.position}" target="_blank" style="text-decoration: underline;">
+                        Xem trên Google Map
+                    </a>
+                </p>
+                <p style="margin: 0;"><strong><i class="fa-solid fa-clock" style="width: 24px; text-align: center;"></i></strong> ${data.time} - ${data.date}</p>
+                <p style="margin: 0;"><strong><i class="fa-solid fa-users" style="width: 24px; text-align: center;"></i></strong> ${data.numPeople} người</p>
+                <p style="margin: 0;"><strong><i class="fa-solid fa-money-bill" style="width: 24px; text-align: center;"></i></strong> ${formatMoney(data.cost)} VNĐ</p>
+                <p style="margin: 0;"><strong><i class="fa-solid fa-calculator" style="width: 24px; text-align: center;"></i></strong> ${formatMoney(costPerPerson)} VNĐ/người</p>
+                <p style="margin: 0;"><strong><i class="fa-solid fa-star" style="width: 24px; text-align: center; color: #FFD700;"></i></strong> ${data.rating} / 5 sao</p>
+                <p style="margin: 0;"><strong><i class="fa-solid fa-note-sticky" style="width: 24px; text-align: center;"></i></strong> <span style="font-style: italic;">${data.notes || "Không có ghi chú"}</span></p>
+            </div>
+            
+            <div class="card-actions" style="margin-top: 15px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;"></div>
+        `;
 
         const actionsDiv = item.querySelector('.card-actions');
 
+        // 1. Nút Sửa & Xóa (Chỉ hiện nếu là Owner hoặc người tạo ra nó)
         if (currentUser.uid === currentTrip.ownerId || currentUser.uid === data.createdBy.uid) {
             const editBtn = document.createElement("button");
             editBtn.innerHTML = `<i class="fa-solid fa-pen"></i> Sửa`;
-            editBtn.className = "secondary";
+            editBtn.className = "secondary small"; // Thêm class small cho gọn
             editBtn.onclick = () => showEditLocationModal(data);
 
             const deleteBtn = document.createElement("button");
             deleteBtn.innerHTML = `<i class="fa-solid fa-trash"></i> Xóa`;
-            deleteBtn.className = "secondary";
+            deleteBtn.className = "secondary small";
             deleteBtn.onclick = () => deleteHistoryItem(data.id);
 
             actionsDiv.appendChild(editBtn);
             actionsDiv.appendChild(deleteBtn);
         }
 
-        const duplicateBtn = document.createElement("button");
-        duplicateBtn.innerHTML = `<i class="fa-solid fa-copy"></i> Sao chép`;
-        duplicateBtn.className = "secondary";
-        duplicateBtn.onclick = () => duplicateHistoryItem(data);
+        // 2. Nút Copy Info (Thay thế nút Duplicate cũ)
+        const copyInfoBtn = document.createElement("button");
+        copyInfoBtn.innerHTML = `<i class="fa-regular fa-copy"></i> `;
+        copyInfoBtn.className = "secondary small";
 
-        actionsDiv.appendChild(duplicateBtn);
+        copyInfoBtn.onclick = () => {
+            // Tạo nội dung văn bản đẹp để copy
+            const textToCopy =
+                `📍 ĐIỂM ĐẾN: ${data.locationName.toUpperCase()}
+-----------------------
+🏠 Địa chỉ: ${data.address || "N/A"}
+⏰ Thời gian: ${data.time} ngày ${data.date}
+👥 Số lượng: ${data.numPeople} người
+💰 Chi phí: ${formatMoney(data.cost)} VNĐ
+📝 Ghi chú: ${data.notes || "Không có"}
+-----------------------
+🔗 Map: https://www.google.com/maps/search/?api=1&query=${data.position}`;
+
+            // Thực hiện lệnh Copy
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => alert("Đã sao chép thông tin địa điểm vào bộ nhớ tạm!"))
+                    .catch(err => {
+                        console.error("Lỗi copy:", err);
+                        // Fallback nếu lỗi
+                        prompt("Nhấn Ctrl+C để sao chép:", textToCopy);
+                    });
+            } else {
+                // Fallback cho trình duyệt cũ
+                prompt("Nhấn Ctrl+C để sao chép:", textToCopy);
+            }
+        };
+
+        actionsDiv.appendChild(copyInfoBtn);
         historyList.appendChild(item);
     });
 }
@@ -1619,6 +1686,79 @@ chatForm.addEventListener("submit", async (e) => {
     const text = chatInput.value.trim();
     if (text === "" || !currentUser || !currentTrip.id) return;
 
+    // 1. XỬ LÝ LỆNH ĐẶC BIỆT (XÓA TIN NHẮN)
+    
+    // Lệnh: @del-all (Xóa toàn bộ chat - Chỉ chủ phòng)
+    if (text === "@del-all") {
+        if (currentUser.uid !== currentTrip.ownerId) {
+            alert("Chỉ chủ chuyến đi mới có quyền xóa toàn bộ tin nhắn!");
+            chatInput.value = "";
+            return;
+        }
+
+        if (!confirm("CẢNH BÁO: Bạn có chắc muốn xóa TOÀN BỘ lịch sử chat không?")) {
+            chatInput.value = "";
+            return;
+        }
+
+        showLoading("Đang xóa toàn bộ tin nhắn...");
+        try {
+            const q = query(collection(db, "trips", currentTrip.id, "chat"));
+            const snapshot = await getDocs(q);
+            
+            // Xóa từng document (dùng Promise.all để xóa song song cho nhanh)
+            const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+            await Promise.all(deletePromises);
+            
+            hideLoading();
+            alert("Đã xóa toàn bộ tin nhắn.");
+        } catch (error) {
+            hideLoading();
+            console.error("Error deleting all messages:", error);
+            alert("Lỗi khi xóa tin nhắn.");
+        }
+        chatInput.value = "";
+        return; // Dừng hàm, không gửi tin nhắn "@del-all" lên
+    }
+
+    // Lệnh: @del-me (Xóa tin nhắn của bản thân)
+    if (text === "@del-me") {
+        if (!confirm("Bạn có chắc muốn xóa tất cả tin nhắn của mình không?")) {
+            chatInput.value = "";
+            return;
+        }
+
+        showLoading("Đang xóa tin nhắn của bạn...");
+        try {
+            // Tìm tin nhắn mà sender.uid trùng với currentUser.uid
+            const q = query(
+                collection(db, "trips", currentTrip.id, "chat"), 
+                where("sender.uid", "==", currentUser.uid)
+            );
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                hideLoading();
+                alert("Bạn chưa nhắn tin nào.");
+                chatInput.value = "";
+                return;
+            }
+
+            const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+            await Promise.all(deletePromises);
+
+            hideLoading();
+            alert("Đã xóa tin nhắn của bạn.");
+        } catch (error) {
+            hideLoading();
+            console.error("Error deleting my messages:", error);
+            alert("Lỗi khi xóa tin nhắn.");
+        }
+        chatInput.value = "";
+        return; // Dừng hàm
+    }
+
+    // 2. XỬ LÝ GỬI TIN NHẮN THÔNG THƯỜNG (Code cũ của bạn)
     chatInput.value = "";
 
     let messageType = 'text';
@@ -1645,91 +1785,137 @@ chatForm.addEventListener("submit", async (e) => {
         });
     } catch (error) {
         console.error("Error sending message: ", error);
-        chatInput.value = text;
+        chatInput.value = text; // Trả lại text nếu lỗi
     }
 });
 
 function renderMessage(data, docId) {
     const msgDiv = document.createElement("div");
+    const isMe = data.sender.uid === currentUser.uid;
 
-    // BỔ SUNG: Kiểm tra tin nhắn của tôi
-    if (data.sender.uid === currentUser.uid) {
+    // 1. Thiết lập Layout: Của tôi (phải) vs Người khác (trái)
+    if (isMe) {
         msgDiv.className = "my-message";
+    } else {
+        msgDiv.style.display = "flex";
+        msgDiv.style.alignItems = "flex-end";
+        msgDiv.style.gap = "8px";
+        msgDiv.style.marginBottom = "12px"; // Khoảng cách giữa các tin nhắn
     }
 
+    // 2. Xử lý Avatar (Chỉ hiện nếu là người khác, hoặc tùy chỉnh CSS)
     const fbId = data.sender.facebookId;
     const name = data.sender.name;
     const avatarUrl = fbId
         ? `https://graph.facebook.com/${fbId}/picture?width=9999&access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662`
         : '';
 
+    // Nếu có FB ID thì dùng ảnh, không thì dùng chữ cái đầu
     const avatarHtml = fbId
         ? `<img src="${avatarUrl}" class="chat-avatar">`
-        : `<span class="chat-avatar" style="display: inline-flex; align-items: center; justify-content: center; background-color: var(--input-bg); color: var(--text-color); font-weight: 600;">${name.charAt(0).toUpperCase()}</span>`;
+        : `<span class="chat-avatar" style="display: inline-flex; align-items: center; justify-content: center; background-color: var(--input-bg); color: var(--text-color); font-weight: 600; border: 1px solid var(--glass-border);">${name.charAt(0).toUpperCase()}</span>`;
 
-    msgDiv.innerHTML = avatarHtml;
-
-    const contentDiv = document.createElement("div");
-    contentDiv.className = "message-content";
-
-    const nameStrong = document.createElement("strong");
-    nameStrong.textContent = `${data.sender.name}`;
-    contentDiv.appendChild(nameStrong);
+    // 3. Xử lý Nội dung tin nhắn
+    let contentHtml = '';
 
     switch (data.type) {
         case 'code':
-            const p = document.createElement("p");
-            p.innerText = "[Xem code HTML bên dưới]";
-            contentDiv.appendChild(p);
-
-            const iframe = document.createElement("iframe");
-            iframe.style.width = "100%";
-            iframe.style.height = "100px";
-            iframe.style.border = "1px dashed #ccc";
-            iframe.sandbox = "allow-scripts allow-same-origin";
-            iframe.srcdoc = data.content;
-            contentDiv.appendChild(iframe);
+            // Dạng Code: Preview trong iframe
+            contentHtml = `
+                <iframe style="width: 100%;  height: auto; border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; background: var(--glass-bg);" 
+                    sandbox="allow-scripts allow-same-origin" 
+                    srcdoc="${data.content.replace(/"/g, '&quot;')}">
+                </iframe>
+            `;
             break;
 
         case 'copyable':
-            const span = document.createElement("span");
-            span.textContent = data.content;
-            contentDiv.appendChild(span);
-
-            const copyBtn = document.createElement("button");
-            copyBtn.innerHTML = `<i class="fa-solid fa-copy"></i>`;
-            copyBtn.className = "small secondary";
-            copyBtn.style.marginTop = "8px";
-            copyBtn.onclick = () => {
-                if (navigator.clipboard) {
-                    navigator.clipboard.writeText(data.content)
-                        .then(() => alert("Đã sao chép!"))
-                        .catch(() => alert("Lỗi sao chép!"));
-                }
-            };
-            contentDiv.appendChild(copyBtn);
+            // Dạng Copy: Thẻ nhỏ gọn (Coupon Style)
+            contentHtml = `
+                <div style="
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: space-between; 
+                    background: rgba(255,255,255,0.15); 
+                    padding: 6px 10px; 
+                    border-radius: 8px; 
+                    gap: 10px; 
+                    margin-top: 4px;
+                    border: 1px solid rgba(255,255,255,0.2);
+                    min-width: 160px;
+                ">
+                    <span style="font-family: 'Courier New', monospace; font-size: 1.1rem; font-weight: 800; letter-spacing: 1px;">
+                        ${data.content}
+                    </span>
+                    <button type="button" class="icon-btn" 
+                        id="copy-${docId}"
+                        style="width: 30px; height: 30px; border-radius: 6px; background: rgba(255,255,255,0.25); color: inherit; flex-shrink: 0; font-size: 0.9rem;"
+                        title="Sao chép">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                </div>
+            `;
             break;
 
         case 'text':
         default:
-            const textNode = document.createElement("p");
-            textNode.textContent = data.content;
-            textNode.style.marginBottom = "0"; // Ghi đè p style
-            contentDiv.appendChild(textNode);
+            // Dạng Text thường
+            contentHtml = `<p style="margin: 0; line-height: 1.5;">${data.content}</p>`;
             break;
     }
 
-    if (currentUser.uid === data.sender.uid || currentUser.uid === currentTrip.ownerId) {
-        const deleteBtn = document.createElement("button");
-        deleteBtn.innerHTML = `<i class="fa-solid fa-trash"></i>`;
-        deleteBtn.className = "small secondary";
-        deleteBtn.style.marginTop = "8px";
-        deleteBtn.onclick = () => deleteChatMessage(docId);
-        contentDiv.appendChild(deleteBtn);
+    // 4. Xử lý Nút Xóa (Ẩn, nhỏ, chỉ hiện khi cần)
+    let deleteBtnHtml = '';
+    if (isMe || currentUser.uid === currentTrip.ownerId) {
+        deleteBtnHtml = `
+            <button type="button" class="icon-btn" id="del-${docId}" 
+                style="width: 20px; height: 20px; font-size: 0.7rem; margin-top: 4px; opacity: 0.3; margin-left: auto; display: block; transition: opacity 0.2s;" 
+                onmouseover="this.style.opacity=1" 
+                onmouseout="this.style.opacity=0.3"
+                title="Xóa tin nhắn">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        `;
     }
 
-    msgDiv.appendChild(contentDiv);
+    // 5. Gộp HTML lại
+    // Cấu trúc: [Avatar] + [Bong bóng chat: Tên -> Nội dung -> Nút xóa]
+    msgDiv.innerHTML = `
+        ${avatarHtml}
+        <div class="message-content" style="position: relative; min-width: 100px; max-width: 75%;">
+            <strong style="display: block; font-size: 0.7rem; opacity: 0.6; margin-bottom: 4px;">${name}</strong>
+            ${contentHtml}
+            ${deleteBtnHtml}
+        </div>
+    `;
+
+    // 6. Gắn sự kiện (Event Listeners)
+    // Vì dùng innerHTML nên phải tìm lại element để gán hàm click
+
+    // a. Sự kiện Xóa
+    const delBtn = msgDiv.querySelector(`#del-${docId}`);
+    if (delBtn) {
+        delBtn.onclick = () => deleteChatMessage(docId);
+    }
+
+    // b. Sự kiện Copy (Nếu là dạng copyable)
+    if (data.type === 'copyable') {
+        const copyBtn = msgDiv.querySelector(`#copy-${docId}`);
+        if (copyBtn) {
+            copyBtn.onclick = () => {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(data.content)
+                        // .then(() => alert(`Đã sao chép: ${data.content}`))
+                        .catch(() => alert("Lỗi khi sao chép!"));
+                }
+            };
+        }
+    }
+
     chatMessages.appendChild(msgDiv);
+
+    // Tự động cuộn xuống đáy
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 async function deleteChatMessage(docId) {
@@ -1747,13 +1933,19 @@ async function deleteChatMessage(docId) {
 // =================================================================
 
 function calculateAndShowStats(dataArray) {
-    if (dataArray.length === 0) {
-        statsContent.innerHTML = "<p>Chưa có dữ liệu để thống kê.</p>";
+    // 1. Xử lý trường hợp chưa có dữ liệu
+    if (!dataArray || dataArray.length === 0) {
+        statsContent.innerHTML = `
+            <div style="text-align: center; padding: 40px; opacity: 0.7;">
+                <i class="fa-solid fa-chart-pie" style="font-size: 3rem; margin-bottom: 15px; color: var(--text-muted);"></i>
+                <p>Chưa có dữ liệu để thống kê.</p>
+            </div>`;
         return;
     }
 
+    // 2. Tính toán số liệu
     const totalLocations = dataArray.length;
-    const totalCost = dataArray.reduce((sum, item) => sum + item.cost, 0);
+    const totalCost = dataArray.reduce((sum, item) => sum + (item.cost || 0), 0);
 
     let totalCostPerPersonSum = 0;
     let itemsWithCost = 0;
@@ -1774,14 +1966,76 @@ function calculateAndShowStats(dataArray) {
     const avgCostPerPerson = itemsWithCost > 0 ? (totalCostPerPersonSum / itemsWithCost) : 0;
     const avgRating = itemsWithRating > 0 ? (totalRating / itemsWithRating) : 0;
 
-    // BỔ SUNG: Dùng icon
+    // 3. Helper: Hàm render sao (Visual Rating)
+    const renderStars = (rating) => {
+        let starsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            if (i <= Math.round(rating)) {
+                starsHtml += '<i class="fa-solid fa-star" style="color: #FFD700;"></i>'; // Sao vàng
+            } else {
+                starsHtml += '<i class="fa-regular fa-star" style="color: #ccc;"></i>'; // Sao rỗng
+            }
+        }
+        return starsHtml;
+    };
+
+    // 4. Render HTML Dashboard
+    // Sử dụng Grid 2 cột để hiển thị đẹp hơn
     statsContent.innerHTML = `
-                <h3>Thống kê: ${currentTrip.name}</h3>
-                <p><strong><i class="fa-solid fa-map-signs" style="width: 20px;"></i> Tổng địa điểm:</strong> ${totalLocations}</p>
-                <p><strong><i class="fa-solid fa-wallet" style="width: 20px;"></i> Tổng chi phí:</strong> ${formatter.format(totalCost)} VNĐ</p>
-                <p><strong><i class="fa-solid fa-divide" style="width: 20px;"></i> TB chi phí/lần:</strong> ${formatter.format(avgCostPerPerson)} VNĐ/người</p>
-                <p><strong><i class="fa-solid fa-star-half-alt" style="width: 20px;"></i> Đánh giá TB:</strong> ${avgRating.toFixed(1)} / 5 sao (${itemsWithRating} lượt)</p>
-            `;
+        <div style="margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+            <h3 style="margin: 0; color: var(--primary-color); font-size: 1.2rem;">
+                <i class="fa-solid fa-chart-simple" style="margin-right: 8px;"></i>
+                Thống kê: ${currentTrip.name}
+            </h3>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            
+            <div class="stat-card" style="background: rgba(52, 199, 89, 0.1); padding: 15px; border-radius: 16px; border: 1px solid rgba(52, 199, 89, 0.2); grid-column: span 2;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #34c759, #248a3d); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(52, 199, 89, 0.3);">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <p style="margin: 0; font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; color: #248a3d; font-weight: 700;">Tổng chi phí</p>
+                        <p style="margin: 0; font-size: 1.5rem; font-weight: 800; color: #248a3d;">${formatter.format(totalCost)} <span style="font-size: 0.8rem;">VNĐ</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stat-card" style="background: var(--input-bg); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border);">
+                <div style="margin-bottom: 8px; width: 36px; height: 36px; border-radius: 10px; background: rgba(0, 122, 255, 0.15); color: var(--primary-color); display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                </div>
+                <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Tổng địa điểm</p>
+                <p style="margin: 0; font-size: 1.2rem; font-weight: 700;">${totalLocations}</p>
+            </div>
+
+            <div class="stat-card" style="background: var(--input-bg); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border);">
+                <div style="margin-bottom: 8px; width: 36px; height: 36px; border-radius: 10px; background: rgba(255, 204, 0, 0.15); color: #e6b800; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-star"></i>
+                </div>
+                <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Đánh giá TB</p>
+                <div style="display: flex; align-items: baseline; gap: 4px;">
+                    <p style="margin: 0; font-size: 1.2rem; font-weight: 700;">${avgRating.toFixed(1)}</p>
+                    <span style="font-size: 0.7rem; color: #FFD700;">${renderStars(avgRating)}</span>
+                </div>
+            </div>
+
+            <div class="stat-card" style="background: var(--input-bg); padding: 15px; border-radius: 16px; border: 1px solid var(--glass-border); grid-column: span 2; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: rgba(175, 82, 222, 0.1); color: #af52de; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-calculator"></i>
+                    </div>
+                    <div>
+                        <p style="margin: 0; font-size: 0.8rem; color: var(--text-muted);">Trung bình / người / điểm</p>
+                        <p style="margin: 0; font-weight: 700; color: #af52de;">${formatter.format(avgCostPerPerson)} VNĐ</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    `;
 }
 
 // =================================================================
@@ -1799,3 +2053,85 @@ tabButtons.forEach(button => {
 [editTripModal, editLocationModal, accountModal].forEach(modal => {
     modal.style.display = 'none'; // Đảm bảo tất cả modal đều ẩn
 });
+
+
+// Logic Ẩn/Hiện Header chuyến đi
+const toggleInfoBtn = document.getElementById('toggle-info-btn');
+const infoContent = document.getElementById('trip-info-content');
+const toggleIcon = toggleInfoBtn.querySelector('i');
+
+toggleInfoBtn.onclick = () => {
+    if (infoContent.style.display === 'none') {
+        // Hiện lại
+        infoContent.style.display = 'block';
+        toggleIcon.className = 'fa-solid fa-chevron-up'; // Mũi tên lên
+        toggleInfoBtn.style.background = ''; // Trả lại màu mặc định
+    } else {
+        // Ẩn đi
+        infoContent.style.display = 'none';
+        toggleIcon.className = 'fa-solid fa-list'; // Mũi tên xuống
+        toggleInfoBtn.style.background = 'var(--primary-gradient)'; // Đổi màu nút để báo hiệu đang ẩn
+        toggleInfoBtn.style.color = 'white';
+    }
+};
+
+// =================================================================
+// XỬ LÝ POPUP CHAT (Gán vào window để HTML gọi được onclick)
+// =================================================================
+
+window.toggleChatPopup = function () {
+    const chatPopup = document.getElementById('chat-tab');
+    const triggerBtn = document.getElementById('chat-trigger-btn');
+
+    if (!chatPopup || !triggerBtn) return;
+
+    if (chatPopup.style.display === 'none' || chatPopup.style.display === '') {
+        // Mở Chat
+        chatPopup.style.display = 'flex';
+        triggerBtn.innerHTML = '<i class="fa-solid fa-chevron-down"></i>'; // Đổi icon thành mũi tên xuống
+
+        // Cuộn xuống tin nhắn cuối cùng
+        const messages = document.getElementById('chat-messages');
+        if (messages) messages.scrollTop = messages.scrollHeight;
+    } else {
+        // Đóng Chat
+        chatPopup.style.display = 'none';
+        triggerBtn.innerHTML = '<i class="fa-solid fa-comment-dots"></i>'; // Đổi lại icon chat
+    }
+}
+
+// Hàm hỗ trợ đổi class active
+function setActiveMapMode(btnId) {
+    // Xóa active cũ
+    document.querySelectorAll('.map-mode-group .map-btn').forEach(btn => btn.classList.remove('active'));
+    // Thêm active mới
+    document.getElementById(btnId).classList.add('active');
+}
+
+// Cập nhật sự kiện click (Thêm dòng setActiveMapMode vào)
+mapModeDefault.onclick = () => {
+    if (map && currentTileLayer !== tileLayers.default) {
+        map.removeLayer(currentTileLayer);
+        currentTileLayer = tileLayers.default;
+        currentTileLayer.addTo(map);
+        setActiveMapMode('map-mode-default'); // <--- Thêm dòng này
+    }
+};
+
+mapModeSatellite.onclick = () => {
+    if (map && currentTileLayer !== tileLayers.satellite) {
+        map.removeLayer(currentTileLayer);
+        currentTileLayer = tileLayers.satellite;
+        currentTileLayer.addTo(map);
+        setActiveMapMode('map-mode-satellite'); // <--- Thêm dòng này
+    }
+};
+
+mapModeDark.onclick = () => {
+    if (map && currentTileLayer !== tileLayers.dark) {
+        map.removeLayer(currentTileLayer);
+        currentTileLayer = tileLayers.dark;
+        currentTileLayer.addTo(map);
+        setActiveMapMode('map-mode-dark'); // <--- Thêm dòng này
+    }
+};
