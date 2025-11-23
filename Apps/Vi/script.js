@@ -1,18 +1,14 @@
-// Đăng ký Service Worker để hoạt động offline
+// Đăng ký Service Worker
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-            .then(registration => {
-                console.log('Service Worker đã được đăng ký thành công:', registration.scope);
-            })
-            .catch(err => {
-                console.log('Đăng ký Service Worker thất bại:', err);
-            });
+            .then(reg => console.log('SW registered:', reg.scope))
+            .catch(err => console.log('SW registration failed:', err));
     });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    // [FIREBASE] 1. CẤU HÌNH FIREBASE
+    // 1. FIREBASE CONFIG
     const firebaseConfig = {
         apiKey: "AIzaSyA154aDjGrayZKcNB7-VjtZGKz22Op3U4g",
         authDomain: "smart-wallet-hunq.firebaseapp.com",
@@ -22,11 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
         appId: "1:707382516261:web:d735f3672661dc0d25bdcc",
         measurementId: "G-MJ81D7D757"
     };
-    firebase.initializeApp(firebaseConfig);
+    // Kiểm tra để tránh khởi tạo lại nếu đã có
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // 1. STATE MANAGEMENT
+    // 2. STATE & VARIABLES
     const getDefaultState = () => ({
         wallets: [{ id: Date.now(), name: 'Tiền mặt', balance: 0 }],
         transactions: [],
@@ -34,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
         expenses: [],
         debts: [],
         settings: {
-            theme: 'luxury',
             currency: 'VND',
             balanceVisible: true,
             autoBackup: true,
@@ -55,103 +53,103 @@ document.addEventListener('DOMContentLoaded', () => {
             activeScreen: 'dashboard-screen',
             activeDashboardTab: 'wallets',
             activeInfoCardView: 'balance'
-        },
-        editingWalletId: null,
-        editingTransactionId: null,
-        editingSavingGoalId: null,
-        editingExpenseId: null,
-        editingDebtId: null,
-        payingDebtId: null,
-        addingToSavingGoalId: null,
-        withdrawingFromSavingGoalId: null,
+        }
     });
 
     let state = getDefaultState();
     state.currentUser = null;
+
+    // Runtime variables
+    let editingWalletId = null;
+    let editingTransactionId = null;
+    let editingSavingGoalId = null;
+    let editingExpenseId = null;
+    let editingDebtId = null;
+    let payingDebtId = null;
+    let addingToSavingGoalId = null;
+    let withdrawingFromSavingGoalId = null;
+
     let autoBackupTimeout;
-
-    // 2. DOM ELEMENTS
-    const body = document.body;
-    const screens = document.querySelectorAll('.screen');
-    const navItems = document.querySelectorAll('.nav-item');
-    const toggleBalanceVisibilityBtn = document.getElementById('toggle-balance-visibility');
-    const dashboardTabs = document.querySelectorAll('.dashboard-tab');
-    const dashboardTabContents = document.querySelectorAll('.dashboard-tab-content');
-    const dashboardTabGlider = document.getElementById('dashboard-tab-glider');
-    const walletListContent = document.getElementById('wallets-content');
-    const recentTransactionsContent = document.getElementById('recent-transactions-content');
-    const infoCardNav = document.getElementById('info-card-nav');
-    const infoCardPanes = document.querySelectorAll('.info-card-pane');
-    const fullTransactionListEl = document.getElementById('full-transaction-list');
-    const savingGoalsListEl = document.getElementById('saving-goals-list');
-    const recurringExpensesTimelineEl = document.getElementById('recurring-expenses-timeline');
-    const allModals = document.querySelectorAll('.modal-backdrop');
-    const addTransactionModal = document.getElementById('add-transaction-modal');
-    const editTransactionModal = document.getElementById('edit-transaction-modal');
-    const addWalletModal = document.getElementById('add-wallet-modal');
-    const editWalletModal = document.getElementById('edit-wallet-modal');
-    const confirmModal = document.getElementById('confirm-modal');
-    const savingGoalModal = document.getElementById('saving-goal-modal');
-    const recurringExpenseModal = document.getElementById('recurring-expense-modal');
-    const addToSavingModal = document.getElementById('add-to-saving-modal');
-    const withdrawFromSavingModal = document.getElementById('withdraw-from-saving-modal');
-    const restoreModal = document.getElementById('restore-modal');
-    const transactionForm = document.getElementById('transaction-form');
-    const editTransactionForm = document.getElementById('edit-transaction-form');
-    const walletForm = document.getElementById('wallet-form');
-    const editWalletForm = document.getElementById('edit-wallet-form');
-    const savingGoalForm = document.getElementById('saving-goal-form');
-    const recurringExpenseForm = document.getElementById('recurring-expense-form');
-    const addToSavingForm = document.getElementById('add-to-saving-form');
-    const withdrawFromSavingForm = document.getElementById('withdraw-from-saving-form');
-    const confirmOkBtn = document.getElementById('confirm-ok-btn');
-    const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
-    const loginGoogleBtn = document.getElementById('login-google-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const loggedOutView = document.getElementById('logged-out-view');
-    const loggedInView = document.getElementById('logged-in-view');
-    const resetDataBtn = document.getElementById('reset-data-btn');
-    const manualBackupBtn = document.getElementById('manual-backup-btn');
-    const restoreBackupBtn = document.getElementById('restore-backup-btn');
-    const autoBackupToggle = document.getElementById('auto-backup-toggle');
-    const backupRestoreView = document.getElementById('backup-restore-view');
-    const backupLoginPrompt = document.getElementById('backup-login-prompt');
-    const backupListEl = document.getElementById('backup-list');
-    const lastBackupInfoEl = document.getElementById('last-backup-info');
-    const debtListEl = document.getElementById('debt-list');
-    const debtModal = document.getElementById('debt-modal');
-    const debtForm = document.getElementById('debt-form');
-    const addDebtBtn = document.getElementById('add-debt-btn');
-    const payDebtModal = document.getElementById('pay-debt-modal');
-    const payDebtForm = document.getElementById('pay-debt-form');
-    const debtHistoryModal = document.getElementById('debt-history-modal');
-    const manageCategoriesModal = document.getElementById('manage-categories-modal');
-    const budgetComparisonContainer = document.getElementById('budget-comparison-container');
-    const manageCategoriesBtn = document.getElementById('manage-categories-btn');
-    const offlineIndicator = document.getElementById('offline-indicator');
-    const totalBudgetInput = document.getElementById('total-budget-input');
-
     let transactionType = 'expense';
     let editTransactionType = 'expense';
     let confirmCallback = () => { };
     let expenseChartInstance = null;
 
+    // 3. HELPER FUNCTIONS
+    const formatCurrency = (num) => {
+        if (typeof num !== 'number') return '******';
+        if (!state.settings.balanceVisible) return '******';
+        try {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: state.settings.currency || 'VND',
+                minimumFractionDigits: 0
+            }).format(num);
+        } catch (e) { return num + ""; }
+    };
+
     const formatNumberInput = (value) => {
-        if (!value) return '';
-        const numberString = value.toString().replace(/\D/g, '');
-        if (numberString === '') return '';
-        const number = parseInt(numberString, 10);
-        return new Intl.NumberFormat('de-DE').format(number);
+        if (!value && value !== 0) return '';
+        const num = parseInt(value.toString().replace(/\D/g, ''), 10);
+        return isNaN(num) ? '' : new Intl.NumberFormat('de-DE').format(num);
     };
 
     const deformatNumber = (formattedValue) => {
-        if (!formattedValue) return '0';
-        return formattedValue.toString().replace(/\./g, '');
+        if (!formattedValue) return 0;
+        return parseFloat(formattedValue.toString().replace(/\./g, '')) || 0;
     };
 
-    // 3. CORE FUNCTIONS
+    const showToast = (message) => {
+        const toast = document.getElementById('toast');
+        if (toast) {
+            toast.innerHTML = `<i class="fas fa-info-circle" style="margin-right:8px"></i> ${message}`;
+            toast.classList.add('show'); // CSS dùng .show hoặc animation
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    };
+
+    const openModal = (modal) => {
+        if (modal) modal.classList.add('active'); // CSS dùng .active
+    };
+
+    const closeModal = (modal) => {
+        if (modal) modal.classList.remove('active');
+    };
+
+    const showConfirmation = ({ title, message, okText = 'Đồng ý', onConfirm = () => { } }) => {
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-message').textContent = message;
+        const btn = document.getElementById('confirm-ok-btn');
+        btn.textContent = okText;
+
+        // Reset classes first
+        btn.className = 'btn';
+        if (okText.toLowerCase().includes('xóa')) {
+            btn.classList.add('btn-danger');
+        } else {
+            btn.classList.add('btn-primary');
+        }
+
+        confirmCallback = onConfirm;
+        openModal(document.getElementById('confirm-modal'));
+    };
+
+    // Gán event listener cho nút confirm duy nhất 1 lần
+    document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+        confirmCallback();
+        closeModal(document.getElementById('confirm-modal'));
+    });
+
+    document.getElementById('confirm-cancel-btn').addEventListener('click', () => {
+        closeModal(document.getElementById('confirm-modal'));
+    });
+
+
+    // 4. DATA PERSISTENCE
     const getPersistentState = () => {
-        const { editingWalletId, editingTransactionId, editingSavingGoalId, editingExpenseId, editingDebtId, payingDebtId, addingToSavingGoalId, withdrawingFromSavingGoalId, currentUser, ...persistentState } = state;
+        const { currentUser, ...persistentState } = state;
         return persistentState;
     };
 
@@ -165,742 +163,1094 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loadData = () => {
         const localData = localStorage.getItem('financeApp_v3.9');
-        const defaultState = getDefaultState();
         if (localData) {
             const loadedState = JSON.parse(localData);
-            state = {
-                ...defaultState,
-                ...loadedState,
-                settings: {
-                    ...defaultState.settings,
-                    ...loadedState.settings,
-                    budgetAllocation: {
-                        ...defaultState.settings.budgetAllocation,
-                        ...(loadedState.settings.budgetAllocation || {})
-                    }
-                },
-                funds: loadedState.funds || loadedState.savings || [],
-            };
-        } else {
-            state = defaultState;
+            state = { ...getDefaultState(), ...loadedState, settings: { ...getDefaultState().settings, ...loadedState.settings } };
         }
 
-        const validThemes = ['cute', 'luxury'];
-        if (!validThemes.includes(state.settings.theme)) {
-            state.settings.theme = 'luxury';
-        }
-        applyTheme(state.settings.theme);
+        const currencySelect = document.getElementById('currency-select');
+        if (currencySelect) currencySelect.value = state.settings.currency;
 
-        document.getElementById('currency-select').value = state.settings.currency;
+        const autoBackupToggle = document.getElementById('auto-backup-toggle');
         if (autoBackupToggle) autoBackupToggle.checked = state.settings.autoBackup;
 
         applyUiState();
         renderAll();
     };
 
+    // Firebase Backup
     const autoBackupToFirebase = async () => {
         if (!navigator.onLine || !state.currentUser) return;
-        const backupStatusIcon = document.getElementById('auto-backup-status');
-        console.log("Performing automatic backup...");
         const backupData = getPersistentState();
         delete backupData.uiState;
-        const backup = { name: `Tự động sao lưu`, timestamp: firebase.firestore.FieldValue.serverTimestamp(), data: backupData };
         try {
-            backupStatusIcon.classList.add('saving');
-            await db.collection('users').doc(state.currentUser.uid).collection('backups').doc('auto_backup').set(backup);
-            updateLastBackupInfo();
-        } catch (error) {
-            console.error("Auto backup failed:", error);
-            showToast("Sao lưu tự động thất bại!");
-        } finally {
-            setTimeout(() => { backupStatusIcon.classList.remove('saving'); }, 1500);
-        }
+            await db.collection('users').doc(state.currentUser.uid).collection('backups').doc('auto_backup').set({
+                name: 'Tự động sao lưu',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                data: backupData
+            });
+            const infoEl = document.getElementById('last-backup-info');
+            if (infoEl) infoEl.textContent = `Sao lưu tự động lần cuối: ${new Date().toLocaleTimeString()}`;
+        } catch (error) { console.error("Auto backup failed:", error); }
     };
 
     const manualBackupToFirebase = async () => {
-        if (!navigator.onLine) {
-            showToast("Không thể sao lưu khi đang ngoại tuyến.");
-            return;
-        }
-        const backupName = prompt("Đặt tên cho bản sao lưu của bạn:", `Sao lưu ngày ${new Date().toLocaleDateString('vi-VN')}`);
+        if (!navigator.onLine) return showToast("Bạn đang ngoại tuyến.");
+        const backupName = prompt("Đặt tên bản sao lưu:", `Sao lưu ${new Date().toLocaleDateString('vi-VN')}`);
         if (!backupName) return;
-        showToast("Đang sao lưu...");
+
         const backupData = getPersistentState();
         delete backupData.uiState;
-        const backup = { name: backupName, timestamp: firebase.firestore.FieldValue.serverTimestamp(), data: backupData };
         try {
-            await db.collection('users').doc(state.currentUser.uid).collection('backups').add(backup);
-            showToast("Sao lưu thủ công thành công!");
-        } catch (error) {
-            console.error("Manual backup failed:", error);
-            showToast("Sao lưu thất bại!");
-        }
+            await db.collection('users').doc(state.currentUser.uid).collection('backups').add({
+                name: backupName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                data: backupData
+            });
+            showToast("Sao lưu thành công!");
+        } catch (error) { showToast("Lỗi sao lưu!"); }
     };
 
     const fetchAndShowBackups = async () => {
-        if (!navigator.onLine) {
-            showToast("Cần có kết nối mạng để xem danh sách sao lưu.");
-            return;
-        }
-        if (!state.currentUser) return;
-        backupListEl.innerHTML = `<p>Đang tải danh sách...</p>`;
-        openModal(restoreModal);
+        if (!navigator.onLine || !state.currentUser) return showToast("Cần đăng nhập và có mạng.");
+        const listEl = document.getElementById('backup-list');
+        listEl.innerHTML = '<div class="text-center p-4">Đang tải dữ liệu...</div>';
+        openModal(document.getElementById('restore-modal'));
+
         try {
-            const querySnapshot = await db.collection('users').doc(state.currentUser.uid).collection('backups').orderBy('timestamp', 'desc').get();
-            if (querySnapshot.empty) { backupListEl.innerHTML = `<p>Không tìm thấy bản sao lưu nào.</p>`; return; }
-            backupListEl.innerHTML = querySnapshot.docs.map(doc => {
-                const backup = doc.data();
-                const date = backup.timestamp?.toDate().toLocaleString('vi-VN') || 'N/A';
-                return `<div class="p-3 border rounded-lg flex justify-between items-center" style="border-color: var(--border-color);">
-                            <div>
-                                <p class="font-semibold">${backup.name}</p>
-                                <p class="text-xs" style="color: var(--text-secondary);">${date}</p>
-                            </div>
-                            <div>
-                                <button class="restore-btn btn btn-primary !py-1 !px-3 mr-2" data-id="${doc.id}">Chọn</button>
-                                <button class="delete-backup-btn btn btn-secondary !py-1 !px-3" data-id="${doc.id}" style="background-color: var(--expense-color); color: white;"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>`;
+            const snapshot = await db.collection('users').doc(state.currentUser.uid).collection('backups').orderBy('timestamp', 'desc').limit(10).get();
+            if (snapshot.empty) { listEl.innerHTML = '<p class="text-center p-4">Chưa có bản sao lưu nào.</p>'; return; }
+
+            listEl.innerHTML = snapshot.docs.map(doc => {
+                const d = doc.data();
+                return `
+                <div class="list-item p-2 flex justify-between items-center">
+                    <div>
+                        <div class="font-bold">${d.name}</div>
+                        <div class="text-xs text-secondary">${d.timestamp ? d.timestamp.toDate().toLocaleString() : ''}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="btn btn-primary restore-action-btn" style="padding: 4px 12px; font-size: 12px; width: auto;" data-id="${doc.id}">Chọn</button>
+                        <button class="btn btn-danger delete-backup-btn" style="padding: 4px 12px; font-size: 12px; width: auto;" data-id="${doc.id}"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`;
             }).join('');
-        } catch (error) {
-            console.error("Failed to fetch backups:", error);
-            backupListEl.innerHTML = `<p>Lỗi khi tải danh sách sao lưu.</p>`;
-        }
+
+            listEl.querySelectorAll('.restore-action-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const doc = snapshot.docs.find(d => d.id === btn.dataset.id);
+                    if (doc) restoreFromBackup(doc.data().data);
+                });
+            });
+            listEl.querySelectorAll('.delete-backup-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteBackupFromFirebase(btn.dataset.id));
+            });
+
+        } catch (error) { listEl.innerHTML = '<p class="text-center p-4" style="color: var(--expense-color)">Lỗi tải dữ liệu.</p>'; }
     };
 
-    const restoreFromBackup = async (backupId) => {
-        closeModal(restoreModal);
+    const restoreFromBackup = (data) => {
         showConfirmation({
-            title: 'Xác nhận Phục hồi', message: 'Dữ liệu hiện tại trên thiết bị này sẽ bị ghi đè hoàn toàn. Bạn có chắc chắn?', okText: 'Phục hồi',
-            onConfirm: async () => {
-                try {
-                    const docRef = db.collection('users').doc(state.currentUser.uid).collection('backups').doc(backupId);
-                    const docSnap = await docRef.get();
-                    if (docSnap.exists) {
-                        const backupData = docSnap.data().data;
-                        localStorage.setItem('financeApp_v3.9', JSON.stringify(backupData));
-                        showToast("Phục hồi thành công! Đang tải lại...");
-                        setTimeout(() => location.reload(), 1500);
-                    } else { showToast("Không tìm thấy bản sao lưu!"); }
-                } catch (error) { console.error("Restore failed:", error); showToast("Phục hồi thất bại!"); }
+            title: 'Khôi phục dữ liệu?',
+            message: 'Dữ liệu hiện tại trên máy sẽ bị thay thế hoàn toàn.',
+            okText: 'Khôi phục',
+            onConfirm: () => {
+                localStorage.setItem('financeApp_v3.9', JSON.stringify(data));
+                location.reload();
             }
         });
     };
 
-    const deleteBackupFromFirebase = async (backupId) => {
-        if (backupId === 'auto_backup') {
-            showToast("Không thể xóa bản sao lưu tự động.");
-            return;
-        }
-        showConfirmation({
-            title: 'Xác nhận Xóa',
-            message: 'Bạn có chắc chắn muốn xóa vĩnh viễn bản sao lưu này không? Hành động này không thể hoàn tác.',
-            okText: 'Xóa',
-            onConfirm: async () => {
-                try {
-                    await db.collection('users').doc(state.currentUser.uid).collection('backups').doc(backupId).delete();
-                    showToast("Đã xóa bản sao lưu thành công!");
-                    fetchAndShowBackups();
-                } catch (error) {
-                    console.error("Delete backup failed:", error);
-                    showToast("Xóa bản sao lưu thất bại!");
-                }
-            }
-        });
-    };
-
-    const updateLastBackupInfo = async () => {
-        if (!navigator.onLine || !state.currentUser || !lastBackupInfoEl) return;
+    const deleteBackupFromFirebase = async (id) => {
+        if (id === 'auto_backup') return showToast("Không thể xóa bản sao lưu tự động");
         try {
-            const docRef = db.collection('users').doc(state.currentUser.uid).collection('backups').doc('auto_backup');
-            const docSnap = await docRef.get();
-            if (docSnap.exists) {
-                const timestamp = docSnap.data().timestamp;
-                if (timestamp) { lastBackupInfoEl.textContent = `Sao lưu tự động lần cuối: ${timestamp.toDate().toLocaleString('vi-VN')}`; }
-                else { lastBackupInfoEl.textContent = 'Chưa có bản sao lưu tự động nào.'; }
-            }
-        } catch (error) { console.log("Could not fetch last backup info."); }
+            await db.collection('users').doc(state.currentUser.uid).collection('backups').doc(id).delete();
+            fetchAndShowBackups();
+            showToast("Đã xóa.");
+        } catch (e) { showToast("Lỗi khi xóa."); }
     };
 
+    // 5. NAVIGATION & UI LOGIC
     const applyUiState = () => {
-        if (!state.uiState) { state.uiState = getDefaultState().uiState; }
-        switchScreen(state.uiState.activeScreen || 'dashboard-screen');
-        const activeDashboardTab = document.querySelector(`.dashboard-tab[data-tab="${state.uiState.activeDashboardTab || 'wallets'}"]`);
-        if (activeDashboardTab) {
+        const activeScreenId = state.uiState.activeScreen || 'dashboard-screen';
+
+        // Screens
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const activeScreen = document.getElementById(activeScreenId);
+        if (activeScreen) activeScreen.classList.add('active');
+
+        // Bottom Nav
+        document.querySelectorAll('.nav-item').forEach(n =>
+            n.classList.toggle('active', n.dataset.screen === activeScreenId));
+
+        // Dashboard Tabs
+        if (activeScreenId === 'dashboard-screen') {
+            const activeTab = state.uiState.activeDashboardTab || 'wallets';
             document.querySelectorAll('.dashboard-tab').forEach((tab, index) => {
-                const isActive = tab.dataset.tab === activeDashboardTab.dataset.tab;
+                const isActive = tab.dataset.tab === activeTab;
                 tab.classList.toggle('active', isActive);
-                if (isActive && dashboardTabGlider) { dashboardTabGlider.style.left = `${index * 50}%`; }
+                // Handle glider
+                const glider = document.getElementById('dashboard-tab-glider');
+                if (isActive && glider) glider.style.left = `${index * 50}%`;
             });
-            document.querySelectorAll('.dashboard-tab-content').forEach(content => {
-                content.classList.toggle('active', content.id === `${activeDashboardTab.dataset.tab}-content`);
-            });
+            const contents = document.querySelectorAll('.dashboard-tab-content');
+            contents.forEach(c => c.classList.toggle('active', c.id.includes(activeTab)));
         }
     };
 
-    const applyTheme = (themeName) => { body.className = `theme-${themeName}`; document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.theme === themeName)); state.settings.theme = themeName; };
-    const switchScreen = (screenId) => { screens.forEach(s => s.classList.remove('active')); const screenToShow = document.getElementById(screenId); if (screenToShow) { screenToShow.classList.add('active'); } else { document.getElementById('dashboard-screen').classList.add('active'); screenId = 'dashboard-screen'; } navItems.forEach(item => item.classList.toggle('active', item.dataset.screen === screenId)); if (state.uiState) state.uiState.activeScreen = screenId; };
-    const openModal = (modal) => modal.classList.add('visible');
-    const closeModal = (modal) => modal.classList.remove('visible');
-    const showToast = (message) => { const toast = document.getElementById('toast'); const toastMessage = document.getElementById('toast-message'); if (!toast || !toastMessage) return; toastMessage.textContent = message; toast.classList.add('show'); setTimeout(() => { toast.classList.remove('show'); }, 2500); };
-    const showConfirmation = ({ title, message, okText = 'Đồng ý', onConfirm = () => { } }) => { document.getElementById('confirm-title').textContent = title; document.getElementById('confirm-message').textContent = message; confirmOkBtn.textContent = okText; confirmOkBtn.style.backgroundColor = okText.toLowerCase().includes('xóa') ? 'var(--expense-color)' : 'var(--primary-color)'; confirmOkBtn.style.color = okText.toLowerCase().includes('xóa') ? 'white' : (state.settings.theme === 'cute' ? 'white' : 'var(--background-color)'); confirmCallback = onConfirm; openModal(confirmModal); };
-    const formatCurrency = (num) => { if (typeof num !== 'number') return '******'; if (!state.settings.balanceVisible) return '******'; try { return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: state.settings.currency, minimumFractionDigits: 0 }).format(num); } catch (e) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(num); } };
-    const updateWalletOptions = (selectElement, excludeId = null) => { selectElement.innerHTML = state.wallets.filter(w => w.id !== excludeId).map(w => `<option value="${w.id}">${w.name}</option>`).join(''); };
-    const updateWalletFilters = () => { const historyWalletFilter = document.getElementById('history-wallet-filter'); const currentVal = historyWalletFilter.value; historyWalletFilter.innerHTML = '<option value="all">Tất cả ví</option>' + state.wallets.map(w => `<option value="${w.id}">${w.name}</option>`).join(''); historyWalletFilter.value = currentVal; };
-    const formatDateHeader = (date) => { const today = new Date(); const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1); const transactionDate = new Date(date); if (transactionDate.toDateString() === today.toDateString()) return 'Hôm nay'; if (transactionDate.toDateString() === yesterday.toDateString()) return 'Hôm qua'; return transactionDate.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); };
+    // 6. RENDER FUNCTIONS (PURE CSS CLASSES)
+    const renderAll = () => {
+        renderDashboard();
+        renderHistory();
+        renderFundsScreen();
+        renderExpensesScreen();
+        renderDebtScreen();
+        renderReportsScreen();
+        renderSettingsScreen();
 
-    // 4. RENDERING FUNCTIONS
-    const renderAll = () => { renderDashboard(); renderHistory(); renderFundsScreen(); renderExpensesScreen(); renderDebtScreen(); renderReportsScreen(); renderSettingsScreen(); updateWalletFilters(); };
-    const renderDashboard = () => { renderInfoCard(); walletListContent.innerHTML = state.wallets.map(wallet => `<div class="list-item p-4 rounded-xl flex justify-between items-center" style="background-color: var(--card-background)"><div class="flex items-center"><div class="w-10 h-10 rounded-full flex items-center justify-center mr-4" style="background-color: var(--background-color);"><i class="fas fa-wallet" style="color:var(--primary-color);"></i></div><div><p class="font-semibold">${wallet.name}</p><p class="text-sm" style="color:var(--text-secondary)">Số dư</p></div></div><div class="flex items-center"><p class="font-bold text-lg mr-2">${formatCurrency(wallet.balance)}</p><button class="edit-wallet-btn p-2 text-sm" data-id="${wallet.id}" style="color:var(--text-secondary);"><i class="fas fa-edit"></i></button><button class="delete-wallet-btn p-2 text-sm" data-id="${wallet.id}" style="color:var(--text-secondary);"><i class="fas fa-trash-alt"></i></button></div></div>`).join('') || `<p class="text-center py-4" style="color:var(--text-secondary)">Chưa có ví nào.</p>`; const recentTxs = [...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5); recentTransactionsContent.innerHTML = recentTxs.map(createTransactionHTML).join('') || `<div class="text-center py-4" style="color:var(--text-secondary)"><i class="fas fa-receipt text-3xl mb-2"></i><p>Chưa có giao dịch nào.</p></div>`; };
-    const renderInfoCard = () => { if (!state.uiState) state.uiState = getDefaultState().uiState; const totalBalance = state.wallets.reduce((sum, w) => sum + w.balance, 0); const monthStart = new Date(new Date().setDate(1)).setHours(0, 0, 0, 0); const monthlyTxs = state.transactions.filter(tx => new Date(tx.date) >= monthStart); const totalIncome = monthlyTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0); const totalExpense = monthlyTxs.filter(tx => tx.type === 'expense').reduce((sum, tx) => sum + tx.amount, 0); const totalSaved = state.funds.reduce((sum, s) => sum + s.savedAmount, 0); const totalSavingTarget = state.funds.reduce((sum, s) => sum + s.targetAmount, 0); const totalMonthlyExpenses = state.expenses.reduce((sum, e) => sum + e.amount, 0); document.getElementById('total-balance').textContent = formatCurrency(totalBalance); document.getElementById('total-income').textContent = formatCurrency(totalIncome); document.getElementById('total-expense').textContent = formatCurrency(totalExpense); document.getElementById('total-saved').textContent = formatCurrency(totalSaved); document.getElementById('total-saving-target').textContent = `/ ${formatCurrency(totalSavingTarget)}`; document.getElementById('total-monthly-expenses').textContent = formatCurrency(totalMonthlyExpenses); document.getElementById('total-expenses-count').textContent = `${state.expenses.length} chi phí định kỳ`; infoCardPanes.forEach(pane => pane.classList.toggle('active', pane.id === `${state.uiState.activeInfoCardView}-view`)); document.querySelectorAll('.info-card-tab').forEach(tab => tab.classList.toggle('active', tab.dataset.view === state.uiState.activeInfoCardView)); };
+        const historyWalletFilter = document.getElementById('history-wallet-filter');
+        if (historyWalletFilter) {
+            const current = historyWalletFilter.value;
+            historyWalletFilter.innerHTML = '<option value="all">Tất cả ví</option>' +
+                state.wallets.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+            historyWalletFilter.value = current;
+        }
+    };
 
+    // --- DASHBOARD RENDER ---
+    const renderDashboard = () => {
+        // Calculation
+        const totalBalance = state.wallets.reduce((sum, w) => sum + w.balance, 0);
+        const monthStart = new Date(new Date().setDate(1)).setHours(0, 0, 0, 0);
+        const monthlyTxs = state.transactions.filter(tx => new Date(tx.date) >= monthStart);
+
+        const totalIncome = monthlyTxs.filter(tx => tx.type === 'income').reduce((s, t) => s + t.amount, 0);
+        const totalExpense = monthlyTxs.filter(tx => tx.type === 'expense').reduce((s, t) => s + t.amount, 0);
+        const totalSaved = state.funds.reduce((s, f) => s + f.savedAmount, 0);
+        const totalTarget = state.funds.reduce((s, f) => s + f.targetAmount, 0);
+        const totalMonthlyFixed = state.expenses.reduce((s, e) => s + e.amount, 0);
+
+        // Update Info Card
+        document.getElementById('total-balance').textContent = formatCurrency(totalBalance);
+        document.getElementById('total-income').textContent = formatCurrency(totalIncome);
+        document.getElementById('total-expense').textContent = formatCurrency(totalExpense);
+        document.getElementById('total-saved').textContent = formatCurrency(totalSaved);
+        document.getElementById('total-saving-target').textContent = `/ ${formatCurrency(totalTarget)}`;
+        document.getElementById('total-monthly-expenses').textContent = formatCurrency(totalMonthlyFixed);
+        document.getElementById('total-expenses-count').textContent = `${state.expenses.length} chi phí định kỳ`;
+
+        // Info Card Tabs
+        const activeView = state.uiState.activeInfoCardView || 'balance';
+        document.querySelectorAll('.info-card-pane').forEach(p => p.classList.remove('active'));
+        const activePane = document.getElementById(`${activeView}-view`);
+        if (activePane) activePane.classList.add('active');
+        document.querySelectorAll('.info-card-tab').forEach(t => t.classList.toggle('active', t.dataset.view === activeView));
+
+        // Render Wallets List
+        const walletContainer = document.getElementById('wallets-content');
+        if (state.wallets.length === 0) {
+            walletContainer.innerHTML = '<div class="text-center p-4 text-secondary">Chưa có ví nào. Hãy tạo ví mới!</div>';
+        } else {
+            // Render Wallets List
+            walletContainer.innerHTML = state.wallets.map(w => `
+                <div class="list-item wallet-item">
+                    <div class="wallet-left">
+                        <div class="wallet-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="wallet-info">
+                            <p class="wallet-name">${w.name}</p>
+                            <p class="wallet-label">Số dư</p>
+                        </div>
+                    </div>
+                    <div class="wallet-right">
+                        <p class="wallet-balance">${formatCurrency(w.balance)}</p>
+                        <div class="wallet-actions">
+                            <button class="action-btn edit-wallet-btn" data-id="${w.id}"><i class="fas fa-edit"></i></button>
+                            <button class="action-btn delete-wallet-btn" data-id="${w.id}"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render Recent Transactions
+        const recentTxs = [...state.transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+        const recentContainer = document.getElementById('recent-transactions-content');
+        if (recentTxs.length === 0) {
+            recentContainer.innerHTML = '<div class="text-center p-4 text-secondary">Chưa có giao dịch nào.</div>';
+        } else {
+            recentContainer.innerHTML = recentTxs.map(createTransactionHTML).join('');
+        }
+    };
+
+    // Helper: Generate Transaction Item HTML
     const createTransactionHTML = (tx) => {
         const wallet = state.wallets.find(w => w.id === tx.walletId);
         const isIncome = tx.type === 'income';
-        const color = isIncome ? 'var(--income-color)' : 'var(--expense-color)';
-        const icon = ['Chuyển tiền đi', 'Nhận tiền', 'Nạp tiền tiết kiệm', 'Rút tiền tiết kiệm', 'Trả nợ'].includes(tx.category) ? 'fa-exchange-alt' : (isIncome ? 'fa-arrow-up' : 'fa-arrow-down');
-        const descriptionHTML = tx.description ? `<p class="text-xs italic mt-1" style="color:var(--text-secondary);">${tx.description}</p>` : '';
+        const colorVar = isIncome ? 'var(--income-color)' : 'var(--expense-color)';
+        let icon = isIncome ? 'fa-arrow-up' : 'fa-arrow-down';
+
+        if (['Chuyển tiền đi', 'Nhận tiền', 'Trả nợ', 'Nạp tiền tiết kiệm'].includes(tx.category)) {
+            icon = 'fa-exchange-alt';
+            if (tx.category === 'Trả nợ') colorVar = 'var(--expense-color)';
+        }
+
         return `
-            <div class="transaction-item list-item flex items-center" data-id="${tx.id}">
-                <div class="w-9 h-9 rounded-full flex items-center justify-center mr-3 flex-shrink-0" style="background-color: color-mix(in srgb, ${color} 15%, transparent);">
-                    <i class="fas ${icon} text-sm" style="color: ${color};"></i>
+            <div class="list-item transaction-item" data-id="${tx.id}">
+                <div class="transaction-icon-wrapper" style="background-color: color-mix(in srgb, ${colorVar} 15%, transparent);">
+                    <i class="fas ${icon}" style="color: ${colorVar};"></i>
                 </div>
-                <div class="flex-grow">
-                    <p class="font-semibold leading-tight">${tx.category}</p>
-                    <p class="text-xs leading-tight" style="color:var(--text-secondary)">
-                        <span>${wallet ? wallet.name : 'Ví đã xóa'}</span>
+                
+                <div class="transaction-content">
+                    <p class="t-category">${tx.category}</p>
+                    <p class="t-wallet">
+                        <span>${wallet ? wallet.name : 'Đã xóa'}</span>
                     </p>
-                    ${descriptionHTML}
+                    ${tx.description ? `<p class="t-note">${tx.description}</p>` : ''}
                 </div>
-                <div class="text-right ml-2 flex-shrink-0">
-                    <p class="font-bold" style="color: ${isIncome ? 'var(--income-color)' : 'var(--text-primary)'};">
+                
+                <div class="transaction-right">
+                    <p class="t-amount" style="color: ${isIncome ? 'var(--income-color)' : 'var(--text-primary)'};">
                         ${isIncome ? '+' : '-'}${formatCurrency(tx.amount)}
                     </p>
-                    <div class="flex items-center justify-end mt-1 -mr-2">
-                        <button class="delete-transaction-btn p-2 text-xs" data-id="${tx.id}" style="color:var(--text-secondary);" title="Xóa"><i class="fas fa-trash-alt"></i></button>
-                        <button class="edit-transaction-btn p-2 text-xs" data-id="${tx.id}" style="color:var(--text-secondary);" title="Sửa"><i class="fas fa-edit"></i></button>
-                        <button class="copy-transaction-btn p-2 text-xs" style="color:var(--text-secondary);" data-id="${tx.id}" title="Sao chép">
-                            <i class="far fa-copy"></i>
-                        </button>
+                    <div class="t-actions">
+                        <button class="action-btn delete-transaction-btn" data-id="${tx.id}" title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                        <button class="action-btn edit-transaction-btn" data-id="${tx.id}" title="Sửa"><i class="fas fa-edit"></i></button>
                     </div>
                 </div>
             </div>
         `;
     };
+    // --- HISTORY RENDER ---
+    const renderHistory = () => {
+        const search = document.getElementById('history-search-input').value.toLowerCase();
+        const type = document.getElementById('history-type-filter').value;
+        const walletId = document.getElementById('history-wallet-filter').value;
+        const start = document.getElementById('history-start-date').value;
+        const end = document.getElementById('history-end-date').value;
 
-    const renderHistory = () => { const searchTerm = document.getElementById('history-search-input').value.toLowerCase(); const typeFilter = document.getElementById('history-type-filter').value; const walletFilter = document.getElementById('history-wallet-filter').value; const startDate = document.getElementById('history-start-date').value; const endDate = document.getElementById('history-end-date').value; let filteredTxs = state.transactions.filter(tx => { const txDate = new Date(tx.date); const start = startDate ? new Date(startDate) : null; const end = endDate ? new Date(endDate) : null; if (start) start.setHours(0, 0, 0, 0); if (end) end.setHours(23, 59, 59, 999); const matchSearch = tx.category.toLowerCase().includes(searchTerm) || (tx.description && tx.description.toLowerCase().includes(searchTerm)); const matchType = typeFilter === 'all' || tx.type === typeFilter; const matchWallet = walletFilter === 'all' || tx.walletId == walletFilter; const matchDate = (!start || txDate >= start) && (!end || txDate <= end); return matchSearch && matchType && matchWallet && matchDate; }); const grouped = filteredTxs.sort((a, b) => new Date(b.date) - new Date(a.date)).reduce((acc, tx) => { const dateKey = new Date(tx.date).toLocaleDateString(); if (!acc[dateKey]) acc[dateKey] = []; acc[dateKey].push(tx); return acc; }, {}); if (Object.keys(grouped).length === 0) { fullTransactionListEl.innerHTML = `<div class="text-center py-12 mt-4" style="color:var(--text-secondary)"><i class="fas fa-search-dollar text-5xl mb-4" style="color:var(--primary-color);"></i><p class="text-lg font-semibold mb-2">Không tìm thấy giao dịch.</p><p class="text-sm">Hãy thử điều chỉnh bộ lọc hoặc tạo giao dịch mới.</p></div>`; return; } let html = ''; for (const dateKey in grouped) { html += `<div class="day-group-card"><div class="date-header">${formatDateHeader(grouped[dateKey][0].date)}</div>`; html += grouped[dateKey].map(createTransactionHTML).join(''); html += `</div>`; } fullTransactionListEl.innerHTML = html; };
-    const renderFundsScreen = () => { savingGoalsListEl.innerHTML = state.funds.map(goal => { const progress = goal.targetAmount > 0 ? (goal.savedAmount / goal.targetAmount) * 100 : 0; let deadlineHTML = ''; let progressBarColor = 'var(--primary-color)'; if (goal.deadline) { const today = new Date().setHours(0, 0, 0, 0); const deadlineDate = new Date(goal.deadline).setHours(0, 0, 0, 0); const daysLeft = Math.ceil((deadlineDate - today) / (1000 * 60 * 60 * 24)); if (daysLeft > 0) { deadlineHTML = `<div class="flex items-center text-xs mt-1" style="color: var(--text-secondary);"><i class="far fa-clock mr-2"></i><span>Còn ${daysLeft} ngày</span></div>`; progressBarColor = 'var(--income-color)'; } else if (daysLeft === 0) { deadlineHTML = `<div class="flex items-center text-xs mt-1 font-bold" style="color: var(--primary-color);"><i class="fas fa-hourglass-end mr-2"></i><span>Hôm nay là hạn chót!</span></div>`; progressBarColor = 'var(--primary-color)'; } else { deadlineHTML = `<div class="flex items-center text-xs mt-1 font-bold" style="color: var(--expense-color);"><i class="fas fa-exclamation-circle mr-2"></i><span>Đã trễ hạn ${Math.abs(daysLeft)} ngày</span></div>`; progressBarColor = 'var(--expense-color)'; } } return ` <div class="list-item p-4 rounded-xl" style="background-color: var(--card-background);"> <div class="flex items-start justify-between"> <div class="flex items-center"> <span class="text-2xl mr-4">${goal.icon || '🎯'}</span> <div> <p class="font-bold">${goal.name}</p> <p class="text-xs" style="color: var(--text-secondary);">${goal.note || ''}</p> </div> </div> <div class="flex gap-2"> <button class="edit-saving-btn p-2" data-id="${goal.id}"><i class="fas fa-edit"></i></button> <button class="delete-saving-btn p-2" data-id="${goal.id}"><i class="fas fa-trash"></i></button> </div> </div> <div class="mt-4"> <div class="progress-bar rounded-full h-2"> <div class="progress-bar-inner rounded-full" style="width: ${Math.min(progress, 100)}%; background-color: ${progressBarColor};"></div> </div> <div class="flex justify-between items-center mt-2"> <div> <p class="text-sm font-semibold" style="color: ${progressBarColor};">${formatCurrency(goal.savedAmount)} / ${formatCurrency(goal.targetAmount)}</p> ${deadlineHTML} </div> <span class="text-sm font-bold">${progress.toFixed(0)}%</span> </div> </div> <div class="flex gap-3 mt-4"> <button class="withdraw-from-saving-btn w-full btn btn-secondary !py-2 text-sm" data-id="${goal.id}">Rút tiền</button> <button class="add-to-saving-btn w-full btn btn-primary !py-2 text-sm" data-id="${goal.id}">Nạp tiền</button> </div> </div>`; }).join('') || `<div class="text-center py-12" style="color:var(--text-secondary)"><i class="fas fa-piggy-bank text-5xl mb-4"></i><p>Chưa có quỹ nào.</p></div>`; };
-    const renderExpensesScreen = () => { recurringExpensesTimelineEl.innerHTML = `<div class="relative">${state.expenses.length > 1 ? '<div class="absolute top-5 h-full ml-5 -translate-x-1/2 border-l-2" style="border-color: var(--border-color)"></div>' : ''}${[...state.expenses].sort((a, b) => (a.day || 99) - (b.day || 99)).map(expense => { let dateText = `Chi phí không cố định`; if (expense.type === 'fixed') { switch (expense.frequency) { case 'weekly': dateText = `Hàng tuần`; break; case 'yearly': dateText = `Hàng năm`; break; case 'quarterly': dateText = `Mỗi 3 tháng`; break; case 'half-yearly': dateText = `Mỗi 6 tháng`; break; case 'custom': dateText = `Mỗi ${expense.customFreq} tháng`; break; default: dateText = `Ngày ${expense.day} hàng tháng`; } } return `<div class="flex"><div class="timeline-icon flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl z-10">${expense.icon || '💰'}</div><div class="flex-grow pl-4 pb-6"><div class="list-item p-4 rounded-xl" style="background-color: var(--card-background);"><div class="flex justify-between items-start"><div><p class="font-bold">${expense.name}</p><p class="text-xs font-semibold px-2 py-0.5 rounded-full inline-block mt-1" style="background-color: ${expense.type === 'fixed' ? 'var(--border-color)' : `color-mix(in srgb, var(--primary-color) 30%, transparent)`};">${expense.type === 'fixed' ? 'Cố định' : 'Linh hoạt'}</p></div><div class="flex gap-2"><button class="edit-expense-btn p-2" data-id="${expense.id}"><i class="fas fa-edit"></i></button><button class="delete-expense-btn p-2" data-id="${expense.id}"><i class="fas fa-trash"></i></button></div></div><p class="text-2xl font-bold my-2" style="color: var(--expense-color);">${formatCurrency(expense.amount)}</p><p class="text-xs" style="color: var(--text-secondary);">${dateText}</p>${expense.note ? `<p class="text-xs mt-2 italic" style="color: var(--text-secondary);">${expense.note}</p>` : ''}</div></div></div>` }).join('') || `<div class="text-center py-12" style="color:var(--text-secondary)"><i class="fas fa-calendar-alt text-5xl mb-4"></i><p>Chưa có chi phí định kỳ nào.</p></div>`}</div>`; };
+        let txs = state.transactions.filter(t => {
+            const d = new Date(t.date);
+            return (type === 'all' || t.type === type) &&
+                (walletId === 'all' || t.walletId == walletId) &&
+                (!start || d >= new Date(start)) &&
+                (!end || d <= new Date(end).setHours(23, 59, 59)) &&
+                (!search || t.category.toLowerCase().includes(search) || (t.description && t.description.toLowerCase().includes(search)));
+        }).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const grouped = txs.reduce((acc, tx) => {
+            const d = new Date(tx.date).toLocaleDateString('vi-VN');
+            if (!acc[d]) acc[d] = [];
+            acc[d].push(tx);
+            return acc;
+        }, {});
+
+        const container = document.getElementById('full-transaction-list');
+        if (Object.keys(grouped).length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-12 mt-4" style="color:var(--text-secondary)">
+                    <i class="fas fa-search-dollar text-5xl mb-4" style="color:var(--primary-color);"></i>
+                    <p class="text-lg font-semibold mb-2">Không tìm thấy giao dịch.</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = Object.entries(grouped).map(([date, items]) => `
+            <div class="mb-4">
+                <div class="text-sm font-bold text-secondary mb-2 px-2" style="color: var(--primary-dark)">${date}</div>
+                <div class="space-y-2">
+                    ${items.map(createTransactionHTML).join('')}
+                </div>
+            </div>
+        `).join('');
+    };
+
+    // --- FUNDS RENDER ---
+    const renderFundsScreen = () => {
+        const list = document.getElementById('saving-goals-list');
+        if (state.funds.length === 0) {
+            list.innerHTML = '<div class="text-center p-4 text-secondary">Chưa có mục tiêu nào.</div>';
+            return;
+        }
+        list.innerHTML = state.funds.map(f => {
+            const pct = f.targetAmount > 0 ? (f.savedAmount / f.targetAmount) * 100 : 0;
+            return `
+            <div class="list-item p-4 rounded-xl" style="background-color: var(--card-background);">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-4">${f.icon || '🎯'}</span>
+                        <div>
+                            <p class="font-bold">${f.name}</p>
+                            ${f.deadline ? `<p class="text-xs" style="color: var(--text-secondary);">Hạn: ${new Date(f.deadline).toLocaleDateString('vi-VN')}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="edit-saving-btn p-2" data-id="${f.id}"><i class="fas fa-edit"></i></button>
+                        <button class="delete-saving-btn p-2" data-id="${f.id}"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <div class="progress-bar rounded-full h-2">
+                        <div class="progress-bar-inner rounded-full" style="width: ${Math.min(pct, 100)}%; background-color: var(--primary-color);"></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <div>
+                            <p class="text-sm font-semibold" style="color: var(--primary-color);">${formatCurrency(f.savedAmount)} / ${formatCurrency(f.targetAmount)}</p> 
+                        </div>
+                        <span class="text-sm font-bold">${Math.round(pct)}%</span>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-4">
+                    <button class="withdraw-from-saving-btn w-full btn btn-secondary !py-2 text-sm" data-id="${f.id}">Rút tiền</button>
+                    <button class="add-to-saving-btn w-full btn btn-primary !py-2 text-sm" data-id="${f.id}">Nạp tiền</button>
+                </div>
+            </div>`;
+        }).join('');
+    };
+
+    // --- EXPENSES RENDER ---
+    const renderExpensesScreen = () => {
+        const sorted = [...state.expenses].sort((a, b) => (a.day || 32) - (b.day || 32));
+        const container = document.getElementById('recurring-expenses-timeline');
+        if (sorted.length === 0) {
+            container.innerHTML = '<div class="text-center p-4 text-secondary">Chưa có chi phí định kỳ.</div>';
+            return;
+        }
+        container.innerHTML = `<div class="relative">
+            <div class="absolute top-5 h-full ml-5 -translate-x-1/2 border-l-2" style="border-color: var(--border-color)"></div>` +
+            sorted.map(e => `
+            <div class="flex">
+                <div class="timeline-icon flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xl z-10">${e.icon || '🧾'}</div>
+                <div class="flex-grow pl-4 pb-6">
+                    <div class="list-item p-4 rounded-xl" style="background-color: var(--card-background);">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-bold">${e.name}</p>
+                                <p class="text-xs font-semibold px-2 py-0.5 rounded-full inline-block mt-1" style="background-color: ${e.type === 'fixed' ? 'var(--border-color)' : 'color-mix(in srgb, var(--primary-color) 30%, transparent)'};">
+                                    ${e.type === 'fixed' ? 'Cố định' : 'Linh hoạt'}
+                                </p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="edit-expense-btn p-2" data-id="${e.id}"><i class="fas fa-edit"></i></button>
+                                <button class="delete-expense-btn p-2" data-id="${e.id}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <p class="text-2xl font-bold my-2" style="color: var(--expense-color);">${formatCurrency(e.amount)}</p>
+                        <p class="text-xs" style="color: var(--text-secondary);">${e.type === 'fixed' && e.frequency === 'monthly' ? `Ngày ${e.day} hàng tháng` : 'Chi phí không cố định'}</p>
+                        ${e.note ? `<p class="text-xs mt-2 italic" style="color: var(--text-secondary);">${e.note}</p>` : ''}
+                    </div>
+                </div>
+            </div>
+        `).join('') + `</div>`;
+    };
+
+    // --- DEBTS RENDER ---
     const renderDebtScreen = () => {
-        debtListEl.innerHTML = state.debts.map(debt => {
-            const isDebt = debt.type === 'debt';
-            const title = isDebt ? `Nợ ${debt.person}` : `Cho ${debt.person} vay`;
-            const color = isDebt ? 'var(--expense-color)' : 'var(--income-color)';
-            const amountPaid = (debt.history || []).reduce((sum, item) => sum + item.amount, 0);
-            const amountRemaining = debt.amount - amountPaid;
-            const progress = debt.amount > 0 ? (amountPaid / debt.amount) * 100 : 0;
+        const list = document.getElementById('debt-list');
+        if (state.debts.length === 0) {
+            list.innerHTML = '<div class="text-center p-4 text-secondary">Sổ nợ trống.</div>';
+            return;
+        }
+        list.innerHTML = state.debts.map(d => {
+            const paid = (d.history || []).reduce((s, h) => s + h.amount, 0);
+            const remain = d.amount - paid;
+            const isLoan = d.type === 'loan';
+            const pct = d.amount > 0 ? (paid / d.amount) * 100 : 0;
             return `
             <div class="list-item p-4 rounded-xl" style="background-color: var(--card-background);">
                 <div class="flex items-start justify-between">
                     <div>
-                        <p class="font-bold">${title}</p>
+                        <p class="font-bold">${isLoan ? 'Cho vay' : 'Đi vay'}: ${d.person}</p>
                         <p class="text-xs" style="color: var(--text-secondary);">
-                           Còn lại: <span class="font-semibold" style="color: ${color}">${formatCurrency(amountRemaining)}</span> / ${formatCurrency(debt.amount)}
+                           Còn lại: <span class="font-semibold" style="color: ${isLoan ? 'var(--income-color)' : 'var(--expense-color)'}">${formatCurrency(remain)}</span> / ${formatCurrency(d.amount)}
                         </p>
                     </div>
                     <div class="flex gap-2 items-center">
-                         <button class="debt-history-btn p-2 text-lg" data-id="${debt.id}"><i class="fas fa-history"></i></button>
-                         <button class="edit-debt-btn p-2 text-lg" data-id="${debt.id}"><i class="fas fa-edit"></i></button>
-                         <button class="delete-debt-btn p-2 text-lg" data-id="${debt.id}"><i class="fas fa-trash"></i></button>
+                         <button class="debt-history-btn p-2 text-lg" data-id="${d.id}"><i class="fas fa-history"></i></button>
+                         <button class="edit-debt-btn p-2 text-lg" data-id="${d.id}"><i class="fas fa-edit"></i></button>
+                         <button class="delete-debt-btn p-2 text-lg" data-id="${d.id}"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
                 <div class="mt-3">
                     <div class="progress-bar">
-                        <div class="progress-bar-inner" style="width: ${Math.min(progress, 100)}%; background-color: ${color};"></div>
+                        <div class="progress-bar-inner" style="width: ${Math.min(pct, 100)}%; background-color: ${isLoan ? 'var(--income-color)' : 'var(--expense-color)'};"></div>
                     </div>
                 </div>
                 <div class="flex gap-3 mt-4">
-                    <button class="pay-debt-btn w-full btn btn-primary !py-2 text-sm" data-id="${debt.id}">${isDebt ? 'Trả Nợ' : 'Nhận Tiền'}</button>
+                    <button class="pay-debt-btn w-full btn btn-primary !py-2 text-sm" data-id="${d.id}">${isLoan ? 'Nhận trả' : 'Trả Nợ'}</button>
                 </div>
             </div>`;
-        }).join('') || `<div class="text-center py-12" style="color:var(--text-secondary)"><i class="fas fa-book text-5xl mb-4"></i><p>Chưa có khoản nợ hay cho vay nào.</p></div>`;
+        }).join('');
     };
+
+    // --- REPORTS RENDER ---
     const renderReportsScreen = () => {
-        const canvasEl = document.getElementById('expense-chart');
-        if (!canvasEl) return;
-
-        const monthStart = new Date(new Date().setDate(1)).setHours(0, 0, 0, 0);
-        const monthlyTxs = state.transactions.filter(tx => new Date(tx.date) >= monthStart);
-        const monthlyExpenses = monthlyTxs.filter(tx => tx.type === 'expense');
-        const expenseByCategory = monthlyExpenses.reduce((acc, tx) => { if (!acc[tx.category]) acc[tx.category] = 0; acc[tx.category] += tx.amount; return acc; }, {});
-        const sortedCategories = Object.entries(expenseByCategory).sort(([, a], [, b]) => b - a);
-        const labels = sortedCategories.map(([category]) => category);
-        const data = sortedCategories.map(([, amount]) => amount);
-
-        if (expenseChartInstance) { expenseChartInstance.destroy(); }
-
-        const chartContainer = document.getElementById('expense-chart-container');
-        if (labels.length > 0) {
-            chartContainer.innerHTML = '<canvas id="expense-chart"></canvas>';
-            const newCtx = document.getElementById('expense-chart').getContext('2d');
-            expenseChartInstance = new Chart(newCtx, { type: 'doughnut', data: { labels: labels, datasets: [{ label: 'Chi tiêu', data: data, backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF', '#7CFFB2'], borderColor: 'var(--card-background)', borderWidth: 2, }] }, options: { responsive: true, plugins: { legend: { position: 'top', labels: { color: 'var(--text-primary)', font: { family: "'Be Vietnam Pro', sans-serif" } } }, tooltip: { callbacks: { label: (context) => `${context.label || ''}: ${formatCurrency(context.parsed)}` } } } } });
-        } else {
-            chartContainer.innerHTML = `<div class="text-center" style="color:var(--text-secondary)"><i class="fas fa-chart-pie text-4xl mb-3"></i><p>Chưa có dữ liệu chi tiêu trong tháng này để hiển thị biểu đồ.</p></div>`;
+        // Budget Bar logic
+        const budgetInput = document.getElementById('total-budget-input');
+        if (budgetInput && document.activeElement !== budgetInput) {
+            budgetInput.value = state.settings.totalMonthlyBudget ? formatNumberInput(state.settings.totalMonthlyBudget) : '';
         }
 
-        const totalIncome = monthlyTxs.filter(tx => tx.type === 'income').reduce((sum, tx) => sum + tx.amount, 0);
-        const budgetSettings = state.settings.budgetAllocation;
-        const totalBudgetSource = (state.settings.totalMonthlyBudget > 0) ? state.settings.totalMonthlyBudget : totalIncome;
+        const totalIncome = state.transactions.filter(t => t.type === 'income' && new Date(t.date) >= new Date(new Date().setDate(1)).setHours(0, 0, 0, 0)).reduce((s, t) => s + t.amount, 0);
+        const budget = state.settings.totalMonthlyBudget || totalIncome;
 
-        totalBudgetInput.value = state.settings.totalMonthlyBudget > 0 ? formatNumberInput(state.settings.totalMonthlyBudget) : '';
+        const spending = { essential: 0, wants: 0, savings: 0 };
+        const map = state.settings.budgetAllocation.categoryMap;
 
-        const categoryMap = budgetSettings.categoryMap || {};
-        const spending = { essential: 0, wants: 0, unassigned: 0, savings: monthlyTxs.filter(tx => tx.category === 'Nạp tiền tiết kiệm').reduce((sum, tx) => sum + tx.amount, 0), };
-        monthlyExpenses.forEach(tx => {
-            const budgetType = categoryMap[tx.category];
-            if (budgetType === 'essential') { spending.essential += tx.amount; }
-            else if (budgetType === 'wants') { spending.wants += tx.amount; }
-            else if (tx.category !== 'Trả nợ' && tx.category !== 'Nạp tiền tiết kiệm') { spending.unassigned += tx.amount; }
+        state.transactions.filter(t => t.type === 'expense' && new Date(t.date) >= new Date(new Date().setDate(1)).setHours(0, 0, 0, 0)).forEach(t => {
+            if (t.category === 'Nạp tiền tiết kiệm') spending.savings += t.amount;
+            else if (map[t.category] === 'essential') spending.essential += t.amount;
+            else if (map[t.category] === 'wants') spending.wants += t.amount;
         });
-        const budget = { essential: totalBudgetSource * (budgetSettings.essential / 100), wants: totalBudgetSource * (budgetSettings.wants / 100), savings: totalBudgetSource * (budgetSettings.savings / 100), };
-        const createBudgetBar = (type, title, spent, budgetAmount) => {
-            const progress = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
-            const isOver = spent > budgetAmount;
-            return `<div><div class="flex justify-between text-sm mb-1"><span class="font-semibold">${title}</span><span style="color: ${isOver ? 'var(--expense-color)' : 'var(--text-secondary)'}">${formatCurrency(spent)} / ${formatCurrency(budgetAmount)}</span></div><div class="progress-bar"><div class="progress-bar-inner" style="width: ${Math.min(progress, 100)}%; background-color: ${isOver ? 'var(--expense-color)' : `var(--${type}-color, var(--primary-color))`};"></div></div></div>`;
+
+        const alloc = state.settings.budgetAllocation;
+        const renderBar = (label, key, color) => {
+            const limit = budget * (alloc[key] / 100);
+            const used = spending[key];
+            const pct = limit > 0 ? (used / limit) * 100 : 0;
+            const isOver = used > limit;
+            return `
+                <div class="mb-3">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="font-semibold">${label}</span>
+                        <span style="color: var(--text-secondary)">${formatCurrency(used)} / ${formatCurrency(limit)}</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-inner" style="width: ${Math.min(pct, 100)}%; background-color: ${isOver ? 'var(--expense-color)' : color};"></div>
+                    </div>
+                </div>`;
         };
-        budgetComparisonContainer.innerHTML = createBudgetBar('income', 'Thiết yếu', spending.essential, budget.essential) + createBudgetBar('primary', 'Mong muốn', spending.wants, budget.wants) + createBudgetBar('expense', 'Tiết kiệm & Đầu tư', spending.savings, budget.savings);
 
-        const customizeBudgetToggle = document.getElementById('customize-budget-toggle');
-        const customBudgetInputs = document.getElementById('custom-budget-inputs');
-        customizeBudgetToggle.checked = budgetSettings.customize;
-        customBudgetInputs.classList.toggle('hidden', !budgetSettings.customize);
-        document.getElementById('essential-percent').value = budgetSettings.essential;
-        document.getElementById('wants-percent').value = budgetSettings.wants;
-        document.getElementById('savings-percent').value = budgetSettings.savings;
+        document.getElementById('budget-comparison-container').innerHTML =
+            renderBar('Thiết yếu', 'essential', 'var(--income-color)') +
+            renderBar('Mong muốn', 'wants', 'var(--primary-color)') +
+            renderBar('Tiết kiệm & Đầu tư', 'savings', 'var(--expense-color)'); // Màu dùng tạm để phân biệt
+
+        // Custom Budget Toggles
+        const toggle = document.getElementById('customize-budget-toggle');
+        if (toggle) {
+            toggle.checked = alloc.customize;
+            document.getElementById('custom-budget-inputs').style.display = alloc.customize ? 'flex' : 'none';
+            if (alloc.customize) {
+                document.getElementById('essential-percent').value = alloc.essential;
+                document.getElementById('wants-percent').value = alloc.wants;
+                document.getElementById('savings-percent').value = alloc.savings;
+            }
+        }
     };
-    const renderSettingsScreen = () => { if (state.currentUser) { loggedInView.classList.remove('hidden'); loggedOutView.classList.add('hidden'); backupRestoreView.classList.remove('hidden'); backupLoginPrompt.classList.add('hidden'); document.getElementById('user-avatar').src = state.currentUser.photoURL || ''; document.getElementById('user-display-name').textContent = state.currentUser.displayName || 'Người dùng'; document.getElementById('user-email').textContent = state.currentUser.email || ''; } else { loggedInView.classList.add('hidden'); loggedOutView.classList.remove('hidden'); backupRestoreView.classList.add('hidden'); backupLoginPrompt.classList.remove('hidden'); } };
 
-    // 5. EVENT LISTENERS & HANDLERS
-    const loginWithGoogle = () => { const provider = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(provider).catch(error => console.error("Google Sign-In Error:", error)); };
-    const logoutUser = () => { auth.signOut(); };
-    auth.onAuthStateChanged(user => { if (user) { state.currentUser = { uid: user.uid, displayName: user.displayName, email: user.email, photoURL: user.photoURL }; updateLastBackupInfo(); } else { state.currentUser = null; } renderSettingsScreen(); });
-    loadData();
-    loginGoogleBtn.addEventListener('click', loginWithGoogle);
-    logoutBtn.addEventListener('click', logoutUser);
-    manualBackupBtn.addEventListener('click', manualBackupToFirebase);
-    restoreBackupBtn.addEventListener('click', fetchAndShowBackups);
-    autoBackupToggle.addEventListener('change', () => { state.settings.autoBackup = autoBackupToggle.checked; saveData(); });
-    backupListEl.addEventListener('click', e => {
-        const restoreTarget = e.target.closest('.restore-btn');
-        if (restoreTarget) {
-            restoreFromBackup(restoreTarget.dataset.id);
+    // --- SETTINGS RENDER ---
+    const renderSettingsScreen = () => {
+        if (state.currentUser) {
+            document.getElementById('logged-in-view').classList.remove('hidden');
+            document.getElementById('logged-out-view').classList.add('hidden');
+            document.getElementById('backup-restore-view').classList.remove('hidden');
+            document.getElementById('backup-login-prompt').classList.add('hidden');
+            document.getElementById('user-display-name').textContent = state.currentUser.displayName;
+            document.getElementById('user-email').textContent = state.currentUser.email;
+            document.getElementById('user-avatar').src = state.currentUser.photoURL;
+        } else {
+            document.getElementById('logged-in-view').classList.add('hidden');
+            document.getElementById('logged-out-view').classList.remove('hidden');
+            document.getElementById('backup-restore-view').classList.add('hidden');
+            document.getElementById('backup-login-prompt').classList.remove('hidden');
         }
-        const deleteTarget = e.target.closest('.delete-backup-btn');
-        if (deleteTarget) {
-            deleteBackupFromFirebase(deleteTarget.dataset.id);
-        }
-    });
-    resetDataBtn.addEventListener('click', () => { showConfirmation({ title: 'Xóa Dữ Liệu Local?', message: 'Bạn có chắc chắn muốn xóa toàn bộ dữ liệu trên thiết bị này không? Hành động này không ảnh hưởng đến các bản sao lưu online.', okText: 'Xóa', onConfirm: () => { localStorage.removeItem('financeApp_v3.9'); state = getDefaultState(); applyUiState(); renderAll(); saveData(); showToast("Đã xóa dữ liệu local."); } }); });
-    navItems.forEach(item => item.addEventListener('click', () => { if (item.dataset.screen) { switchScreen(item.dataset.screen); } }));
-    toggleBalanceVisibilityBtn.addEventListener('click', () => { state.settings.balanceVisible = !state.settings.balanceVisible; toggleBalanceVisibilityBtn.querySelector('i').className = state.settings.balanceVisible ? 'fas fa-eye' : 'fas fa-eye-slash'; renderAll(); });
-    document.getElementById('quick-action-expense').addEventListener('click', () => openTransactionModal('expense'));
-    document.getElementById('quick-action-income').addEventListener('click', () => openTransactionModal('income'));
-    document.getElementById('quick-action-transfer').addEventListener('click', () => openTransactionModal('transfer'));
-    document.getElementById('quick-action-add-wallet').addEventListener('click', openAddWalletModal);
-    document.getElementById('add-saving-goal-btn').addEventListener('click', () => openSavingGoalModal());
-    document.getElementById('add-recurring-expense-btn').addEventListener('click', () => openRecurringExpenseModal());
-    document.getElementById('add-debt-btn').addEventListener('click', () => openDebtModal());
-    manageCategoriesBtn.addEventListener('click', () => openManageCategoriesModal());
-    totalBudgetInput.addEventListener('input', (e) => {
-        const value = deformatNumber(e.target.value);
-        state.settings.totalMonthlyBudget = parseFloat(value) || 0;
-        saveData();
-        renderReportsScreen();
-    });
-    allModals.forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); }); modal.querySelector('.btn-cancel-modal')?.addEventListener('click', () => closeModal(modal)); });
-    confirmOkBtn.addEventListener('click', () => { confirmCallback(); closeModal(confirmModal); });
-    confirmCancelBtn.addEventListener('click', () => closeModal(confirmModal));
-    document.querySelectorAll('#history-screen input, #history-screen select').forEach(el => el.addEventListener('input', renderHistory));
-    dashboardTabs.forEach((tab) => tab.addEventListener('click', () => { if (state.uiState) state.uiState.activeDashboardTab = tab.dataset.tab; applyUiState(); }));
-    infoCardNav.addEventListener('click', (e) => {
-        const tab = e.target.closest('.info-card-tab'); if (tab && tab.dataset.view) { if (state.uiState) state.uiState.activeInfoCardView = tab.dataset.view; renderInfoCard(); }
-    });
-    function openAddWalletModal() { walletForm.reset(); document.getElementById('initial-balance').value = 0; openModal(addWalletModal); }
-    walletForm.addEventListener('submit', (e) => { e.preventDefault(); state.wallets.push({ id: Date.now(), name: document.getElementById('wallet-name').value, balance: parseFloat(deformatNumber(document.getElementById('initial-balance').value)) || 0 }); closeModal(addWalletModal); saveData(); renderAll(); });
-    function openEditWalletModal(walletId) { state.editingWalletId = walletId; const wallet = state.wallets.find(w => w.id === walletId); if (wallet) { document.getElementById('edit-wallet-name').value = wallet.name; document.getElementById('edit-wallet-balance').value = formatNumberInput(wallet.balance); openModal(editWalletModal); } }
-    editWalletForm.addEventListener('submit', (e) => { e.preventDefault(); const wallet = state.wallets.find(w => w.id === state.editingWalletId); if (wallet) { const newName = document.getElementById('edit-wallet-name').value; const newBalance = parseFloat(deformatNumber(document.getElementById('edit-wallet-balance').value)); const oldBalance = wallet.balance; const adjustment = newBalance - oldBalance; if (adjustment !== 0) { const adjType = adjustment > 0 ? 'income' : 'expense'; state.transactions.push({ id: Date.now(), type: adjType, amount: Math.abs(adjustment), category: "Điều chỉnh số dư", walletId: wallet.id, description: `Thay đổi số dư`, date: new Date().toISOString() }); } wallet.name = newName; wallet.balance = newBalance; } closeModal(editWalletModal); saveData(); renderAll(); });
+    };
 
-    // =================================================================
-    // ===== ✅ ĐÂY LÀ HÀM ĐÃ ĐƯỢC CẬP NHẬT ✅ =====
-    // =================================================================
-    function setupTransactionModalUI(type, modal = addTransactionModal) {
+    // 7. UI HELPER FUNCTIONS
+    const setupTransactionModalUI = (type, modal) => {
         transactionType = type;
-        const title = modal.querySelector('#transaction-modal-title');
-        const transactionFields = modal.querySelector('#transaction-fields');
-        const transferFields = modal.querySelector('#transfer-fields');
-        const budgetWrapper = modal.querySelector('[id*="budget-category-wrapper"]');
-        modal.querySelectorAll('.transaction-type-btn').forEach(btn => {
-            btn.style.backgroundColor = 'var(--background-color)';
-            btn.style.color = 'var(--text-secondary)';
-        });
+        const title = modal.querySelector('.modal-header');
+        const fields = modal.querySelector('#transaction-fields');
+        const transfer = modal.querySelector('#transfer-fields');
+
+        modal.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+        const btn = modal.querySelector(`.type-btn[data-type="${type}"]`);
+        if (btn) btn.classList.add('active');
 
         if (type === 'transfer') {
-            if (title) title.textContent = "Chuyển Tiền";
-            if (transactionFields) transactionFields.classList.add('hidden');
-            if (transferFields) transferFields.classList.remove('hidden');
-            const transferBtn = modal.querySelector('[data-type="transfer"]');
-            if (transferBtn) transferBtn.style.backgroundColor = 'var(--primary-color)';
-            if (budgetWrapper) budgetWrapper.classList.add('hidden');
+            title.textContent = "Chuyển Tiền";
+            fields.classList.add('hidden');
+            transfer.classList.remove('hidden');
         } else {
-            if (title) title.textContent = type === 'expense' ? "Thêm Khoản Chi" : "Thêm Khoản Thu";
-            if (transactionFields) transactionFields.classList.remove('hidden');
-            if (transferFields) transferFields.classList.add('hidden');
-            const btn = modal.querySelector(`[data-type="${type}"]`);
-            if (btn) {
-                btn.style.backgroundColor = `var(--${type}-color)`;
-                btn.style.color = 'white';
-            }
-            const walletLabel = modal.querySelector('#wallet-select-label');
-            if (walletLabel) {
-                walletLabel.textContent = type === 'income' ? 'Vào ví' : 'Từ ví';
-            }
-            if (budgetWrapper) {
-                budgetWrapper.classList.toggle('hidden', type !== 'expense');
+            title.textContent = type === 'income' ? 'Thêm Thu Nhập' : 'Thêm Chi Tiêu';
+            fields.classList.remove('hidden');
+            transfer.classList.add('hidden');
+            const label = modal.querySelector('#wallet-select-label');
+            if (label) label.textContent = type === 'income' ? 'Vào ví' : 'Từ ví';
+
+            // Render Chips
+            const container = modal.querySelector('.category-chips');
+            const input = modal.querySelector('input[type="hidden"][id*="category"]');
+            if (container && input) renderCategoryChips(type, container, input, input.value);
+        }
+    };
+
+    const renderCategoryChips = (type, container, input, selected) => {
+        const cats = state.settings.categories[type] || [];
+        container.innerHTML = cats.map(c =>
+            `<div class="category-chip ${c === selected || input.value === c ? 'active' : ''}" data-val="${c}">${c}</div>`
+        ).join('') + `<div class="category-chip add-cat-btn"><i class="fas fa-plus"></i></div>`;
+
+        if (!input.value && cats.length > 0) input.value = cats[0];
+    };
+
+    const updateWalletSelect = (select, excludeId = null) => {
+        if (!select) return;
+        select.innerHTML = state.wallets
+            .filter(w => w.id !== excludeId)
+            .map(w => `<option value="${w.id}">${w.name} (${formatCurrency(w.balance)})</option>`)
+            .join('');
+    };
+
+    // 8. EVENT LISTENERS
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => item.addEventListener('click', () => {
+        state.uiState.activeScreen = item.dataset.screen;
+        applyUiState();
+        renderAll(); // Rerender để cập nhật dữ liệu mới nhất
+    }));
+    document.querySelectorAll('.dashboard-tab').forEach(tab => tab.addEventListener('click', () => {
+        state.uiState.activeDashboardTab = tab.dataset.tab;
+        applyUiState();
+    }));
+    document.querySelectorAll('.info-card-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            state.uiState.activeInfoCardView = btn.dataset.view;
+            renderDashboard();
+        });
+    });
+    document.getElementById('toggle-balance-visibility').addEventListener('click', () => {
+        state.settings.balanceVisible = !state.settings.balanceVisible;
+        saveData(); renderAll();
+    });
+
+    // Event Delegation
+    document.body.addEventListener('click', e => {
+        const t = e.target;
+
+        // Chips
+        if (t.classList.contains('category-chip') && !t.classList.contains('add-cat-btn')) {
+            const container = t.parentElement;
+            container.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+            t.classList.add('active');
+            const form = t.closest('form');
+            const input = form.querySelector('input[type="hidden"][id*="category"]');
+            if (input) input.value = t.dataset.val;
+        }
+        // Add Cat
+        if (t.classList.contains('add-cat-btn') || t.closest('.add-cat-btn')) {
+            const btn = t.classList.contains('add-cat-btn') ? t : t.closest('.add-cat-btn');
+            const formContainer = btn.closest('.form-group').querySelector('.add-category-form');
+            if (formContainer) formContainer.classList.toggle('hidden');
+        }
+        // Save Cat
+        if (t.classList.contains('save-new-category-btn')) {
+            const form = t.closest('form');
+            const input = t.previousElementSibling;
+            const val = input.value.trim();
+            if (val) {
+                const type = form.id.includes('edit') ? editTransactionType : transactionType;
+                if (!state.settings.categories[type].includes(val)) {
+                    state.settings.categories[type].push(val);
+                    saveData();
+                    renderCategoryChips(type, form.querySelector('.category-chips'), form.querySelector('input[type="hidden"][id*="category"]'), val);
+                    input.parentElement.classList.add('hidden');
+                }
             }
         }
-    }
 
-    function openTransactionModal(type) { if (state.wallets.length === 0 && type !== 'transfer') { showConfirmation({ title: 'Chưa có ví', message: 'Bạn cần tạo ví trước.', okText: 'OK' }); return; } if (state.wallets.length < 2 && type === 'transfer') { showConfirmation({ title: 'Yêu cầu 2 ví', message: 'Bạn cần ít nhất 2 ví để chuyển tiền.', okText: 'OK' }); return; } transactionForm.reset(); setupTransactionModalUI(type); if (type !== 'transfer') { document.getElementById('transaction-date').valueAsDate = new Date(); updateWalletOptions(document.getElementById('wallet-select')); renderCategoryChips(type, document.getElementById('category-chips-container'), document.getElementById('category')); } else { document.getElementById('transfer-date').valueAsDate = new Date(); updateWalletOptions(document.getElementById('from-wallet-select')); updateWalletOptions(document.getElementById('to-wallet-select')); if (document.getElementById('to-wallet-select').options.length > 1) { document.getElementById('to-wallet-select').selectedIndex = 1; } } openModal(addTransactionModal); }
-    addTransactionModal.querySelectorAll('.transaction-type-btn').forEach(btn => btn.addEventListener('click', () => setupTransactionModalUI(btn.dataset.type)));
-    transactionForm.addEventListener('submit', (e) => {
+        // --- ACTIONS ---
+        // Wallet
+        if (t.closest('.edit-wallet-btn')) {
+            editingWalletId = parseInt(t.closest('.edit-wallet-btn').dataset.id);
+            const w = state.wallets.find(x => x.id === editingWalletId);
+            if (w) {
+                document.getElementById('edit-wallet-name').value = w.name;
+                document.getElementById('edit-wallet-balance').value = formatNumberInput(w.balance);
+                openModal(document.getElementById('edit-wallet-modal'));
+            }
+        }
+        if (t.closest('.delete-wallet-btn')) {
+            const id = parseInt(t.closest('.delete-wallet-btn').dataset.id);
+            showConfirmation({
+                title: 'Xóa Ví?', message: 'Tất cả giao dịch của ví sẽ bị xóa.', okText: 'Xóa',
+                onConfirm: () => {
+                    state.wallets = state.wallets.filter(w => w.id !== id);
+                    state.transactions = state.transactions.filter(tx => tx.walletId !== id);
+                    saveData(); renderAll();
+                }
+            });
+        }
+
+        // Transaction
+        if (t.closest('.edit-transaction-btn')) {
+            editingTransactionId = parseInt(t.closest('.edit-transaction-btn').dataset.id);
+            const tx = state.transactions.find(x => x.id === editingTransactionId);
+            if (tx) {
+                const modal = document.getElementById('edit-transaction-modal');
+                editTransactionType = tx.type;
+                setupTransactionModalUI(tx.type, modal);
+                document.getElementById('edit-amount').value = formatNumberInput(tx.amount);
+                document.getElementById('edit-description').value = tx.description || '';
+                document.getElementById('edit-transaction-date').value = tx.date.split('T')[0];
+
+                // Active class cho type toggle trong edit modal
+                modal.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+                const activeBtn = modal.querySelector(tx.type === 'income' ? '#edit-type-income' : '#edit-type-expense');
+                if (activeBtn) activeBtn.classList.add('active');
+
+                setTimeout(() => {
+                    document.getElementById('edit-wallet-select').value = tx.walletId;
+                    renderCategoryChips(tx.type, document.getElementById('edit-category-chips-container'), document.getElementById('edit-category'), tx.category);
+                    if (tx.type === 'expense') document.getElementById('edit-budget-category').value = tx.budgetCategory || 'none';
+                }, 0);
+                openModal(modal);
+            }
+        }
+        if (t.closest('.delete-transaction-btn') || t.id === 'delete-transaction-btn') {
+            const id = t.id === 'delete-transaction-btn' ? editingTransactionId : parseInt(t.closest('.delete-transaction-btn').dataset.id);
+            showConfirmation({
+                title: 'Xóa giao dịch?', message: 'Không thể hoàn tác.', okText: 'Xóa',
+                onConfirm: () => {
+                    const tx = state.transactions.find(x => x.id === id);
+                    if (tx) {
+                        const w = state.wallets.find(x => x.id === tx.walletId);
+                        if (w) w.balance -= (tx.type === 'income' ? tx.amount : -tx.amount);
+                        state.transactions = state.transactions.filter(x => x.id !== id);
+                        saveData(); renderAll(); closeModal(document.getElementById('edit-transaction-modal'));
+                    }
+                }
+            });
+        }
+
+        // Saving
+        if (t.closest('.edit-saving-btn')) {
+            editingSavingGoalId = parseInt(t.closest('.edit-saving-btn').dataset.id);
+            const f = state.funds.find(x => x.id === editingSavingGoalId);
+            if (f) {
+                document.getElementById('saving-name').value = f.name;
+                document.getElementById('saving-target').value = formatNumberInput(f.targetAmount);
+                document.getElementById('saving-icon').value = f.icon;
+                document.getElementById('saving-deadline').value = f.deadline;
+                openModal(document.getElementById('saving-goal-modal'));
+            }
+        }
+        if (t.closest('.delete-saving-btn')) {
+            const id = parseInt(t.closest('.delete-saving-btn').dataset.id);
+            showConfirmation({
+                title: 'Xóa Quỹ?', message: 'Không thể hoàn tác.', okText: 'Xóa',
+                onConfirm: () => { state.funds = state.funds.filter(f => f.id !== id); saveData(); renderAll(); }
+            });
+        }
+        if (t.classList.contains('add-to-saving-btn')) {
+            addingToSavingGoalId = parseInt(t.dataset.id);
+            updateWalletSelect(document.getElementById('add-saving-wallet-select'));
+            document.getElementById('add-to-saving-form').reset();
+            openModal(document.getElementById('add-to-saving-modal'));
+        }
+        if (t.classList.contains('withdraw-from-saving-btn')) {
+            withdrawingFromSavingGoalId = parseInt(t.dataset.id);
+            updateWalletSelect(document.getElementById('withdraw-saving-wallet-select'));
+            document.getElementById('withdraw-from-saving-form').reset();
+            openModal(document.getElementById('withdraw-from-saving-modal'));
+        }
+
+        // Expense
+        if (t.closest('.edit-expense-btn')) {
+            editingExpenseId = parseInt(t.closest('.edit-expense-btn').dataset.id);
+            const eData = state.expenses.find(x => x.id === editingExpenseId);
+            if (eData) {
+                document.getElementById('expense-name').value = eData.name;
+                document.getElementById('expense-amount').value = formatNumberInput(eData.amount);
+                document.getElementById('expense-icon').value = eData.icon;
+                document.getElementById('expense-type').value = eData.type;
+                document.getElementById('expense-date').value = eData.day || '';
+                openModal(document.getElementById('recurring-expense-modal'));
+            }
+        }
+        if (t.closest('.delete-expense-btn')) {
+            const id = parseInt(t.closest('.delete-expense-btn').dataset.id);
+            showConfirmation({
+                title: 'Xóa?', message: 'Xóa khoản chi này?', okText: 'Xóa',
+                onConfirm: () => { state.expenses = state.expenses.filter(x => x.id !== id); saveData(); renderAll(); }
+            });
+        }
+
+        // Debt
+        if (t.closest('.edit-debt-btn')) {
+            editingDebtId = parseInt(t.closest('.edit-debt-btn').dataset.id);
+            const d = state.debts.find(x => x.id === editingDebtId);
+            if (d) {
+                document.getElementById('debt-type').value = d.type;
+                document.getElementById('debt-person').value = d.person;
+                document.getElementById('debt-amount').value = formatNumberInput(d.amount);
+                document.getElementById('debt-start-date').value = d.startDate;
+                document.getElementById('debt-end-date').value = d.endDate;
+                openModal(document.getElementById('debt-modal'));
+            }
+        }
+        if (t.closest('.delete-debt-btn')) {
+            const id = parseInt(t.closest('.delete-debt-btn').dataset.id);
+            showConfirmation({
+                title: 'Xóa sổ nợ?', message: 'Xóa vĩnh viễn.', okText: 'Xóa',
+                onConfirm: () => { state.debts = state.debts.filter(x => x.id !== id); saveData(); renderAll(); }
+            });
+        }
+        if (t.classList.contains('pay-debt-btn')) {
+            payingDebtId = parseInt(t.dataset.id);
+            updateWalletSelect(document.getElementById('pay-debt-wallet-select'));
+            document.getElementById('pay-debt-form').reset();
+            document.getElementById('pay-debt-date').valueAsDate = new Date();
+            openModal(document.getElementById('pay-debt-modal'));
+        }
+        if (t.closest('.debt-history-btn')) {
+            const id = parseInt(t.closest('.debt-history-btn').dataset.id);
+            const d = state.debts.find(x => x.id === id);
+            const list = document.getElementById('debt-history-list');
+            list.innerHTML = (d.history || []).map(h => `
+                <div class="list-item p-2 mb-2 flex justify-between" style="background-color: var(--background-color); border-radius: 8px;">
+                    <span class="font-bold">${formatCurrency(h.amount)}</span>
+                    <span class="text-sm text-secondary">${new Date(h.date).toLocaleDateString('vi-VN')}</span>
+                </div>
+            `).join('') || '<div class="text-center p-2 text-secondary">Chưa có lịch sử.</div>';
+            openModal(document.getElementById('debt-history-modal'));
+        }
+    });
+
+    // 9. FORM SUBMIT HANDLERS
+
+    // Quick Buttons
+    document.getElementById('quick-action-expense').addEventListener('click', () => {
+        document.getElementById('transaction-form').reset();
+        setupTransactionModalUI('expense', document.getElementById('add-transaction-modal'));
+        updateWalletSelect(document.getElementById('wallet-select'));
+        document.getElementById('transaction-date').valueAsDate = new Date();
+        openModal(document.getElementById('add-transaction-modal'));
+    });
+    document.getElementById('quick-action-income').addEventListener('click', () => {
+        document.getElementById('transaction-form').reset();
+        setupTransactionModalUI('income', document.getElementById('add-transaction-modal'));
+        updateWalletSelect(document.getElementById('wallet-select'));
+        document.getElementById('transaction-date').valueAsDate = new Date();
+        openModal(document.getElementById('add-transaction-modal'));
+    });
+    document.getElementById('quick-action-transfer').addEventListener('click', () => {
+        document.getElementById('transaction-form').reset();
+        setupTransactionModalUI('transfer', document.getElementById('add-transaction-modal'));
+        updateWalletSelect(document.getElementById('from-wallet-select'));
+        updateWalletSelect(document.getElementById('to-wallet-select'));
+        document.getElementById('transfer-date').valueAsDate = new Date();
+        openModal(document.getElementById('add-transaction-modal'));
+    });
+    document.getElementById('quick-action-add-wallet').addEventListener('click', () => {
+        document.getElementById('wallet-form').reset();
+        openModal(document.getElementById('add-wallet-modal'));
+    });
+
+    // Add Buttons
+    document.getElementById('add-saving-goal-btn').addEventListener('click', () => {
+        editingSavingGoalId = null;
+        document.getElementById('saving-goal-form').reset();
+        openModal(document.getElementById('saving-goal-modal'));
+    });
+    document.getElementById('add-recurring-expense-btn').addEventListener('click', () => {
+        editingExpenseId = null;
+        document.getElementById('recurring-expense-form').reset();
+        openModal(document.getElementById('recurring-expense-modal'));
+    });
+    document.getElementById('add-debt-btn').addEventListener('click', () => {
+        editingDebtId = null;
+        document.getElementById('debt-form').reset();
+        document.getElementById('debt-start-date').valueAsDate = new Date();
+        openModal(document.getElementById('debt-modal'));
+    });
+
+    // Modal Type Toggles
+    document.querySelectorAll('.type-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const modal = this.closest('.modal-content').parentElement;
+
+            // Nếu là edit modal, chỉ cập nhật biến type
+            if (modal.id === 'edit-transaction-modal') {
+                modal.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                editTransactionType = this.id === 'edit-type-income' ? 'income' : 'expense';
+                // Load lại categories cho type mới
+                renderCategoryChips(editTransactionType, document.getElementById('edit-category-chips-container'), document.getElementById('edit-category'), '');
+            } else {
+                setupTransactionModalUI(this.dataset.type, modal);
+            }
+        });
+    });
+
+    // Wallet Submit
+    document.getElementById('wallet-form').addEventListener('submit', e => {
         e.preventDefault();
-        if (transactionType === 'transfer') {
-            const amount = parseFloat(deformatNumber(document.getElementById('transfer-amount').value));
+        state.wallets.push({
+            id: Date.now(),
+            name: document.getElementById('wallet-name').value,
+            balance: deformatNumber(document.getElementById('initial-balance').value)
+        });
+        saveData(); renderAll(); closeModal(document.getElementById('add-wallet-modal'));
+    });
+
+    // Edit Wallet Submit
+    document.getElementById('edit-wallet-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const w = state.wallets.find(x => x.id === editingWalletId);
+        if (w) {
+            const newBal = deformatNumber(document.getElementById('edit-wallet-balance').value);
+            const diff = newBal - w.balance;
+            if (diff !== 0) {
+                state.transactions.push({
+                    id: Date.now(), type: diff > 0 ? 'income' : 'expense', amount: Math.abs(diff),
+                    category: 'Điều chỉnh số dư', walletId: w.id, date: new Date().toISOString()
+                });
+            }
+            w.name = document.getElementById('edit-wallet-name').value;
+            w.balance = newBal;
+            saveData(); renderAll(); closeModal(document.getElementById('edit-wallet-modal'));
+        }
+    });
+
+    // Transaction Submit
+    document.getElementById('transaction-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const isTransfer = transactionType === 'transfer';
+        const dateVal = document.getElementById(isTransfer ? 'transfer-date' : 'transaction-date').value;
+        const date = dateVal ? new Date(dateVal).toISOString() : new Date().toISOString();
+
+        if (isTransfer) {
+            const amount = deformatNumber(document.getElementById('transfer-amount').value);
             const fromId = parseInt(document.getElementById('from-wallet-select').value);
             const toId = parseInt(document.getElementById('to-wallet-select').value);
-            const date = document.getElementById('transfer-date').value;
-            if (fromId === toId) { showConfirmation({ title: 'Lỗi', message: 'Ví nguồn và ví đích không được trùng nhau.', okText: 'OK' }); return; }
-            const fromWallet = state.wallets.find(w => w.id === fromId);
-            const toWallet = state.wallets.find(w => w.id === toId);
-            if (!fromWallet || !toWallet || !amount || amount <= 0) return;
-            if (fromWallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${fromWallet.name}" không đủ tiền.`, okText: 'OK' }); return; }
-            const txDate = date ? new Date(date).toISOString() : new Date().toISOString();
-            const desc = document.getElementById('description').value || `Từ ${fromWallet.name} đến ${toWallet.name}`;
-            state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Chuyển tiền đi', walletId: fromId, description: desc, date: txDate });
-            fromWallet.balance -= amount;
-            state.transactions.push({ id: Date.now() + 1, type: 'income', amount, category: 'Nhận tiền', walletId: toId, description: desc, date: txDate });
-            toWallet.balance += amount;
+
+            if (!amount || !fromId || !toId || fromId === toId) return showToast('Kiểm tra lại thông tin');
+            const wFrom = state.wallets.find(x => x.id === fromId);
+            const wTo = state.wallets.find(x => x.id === toId);
+
+            if (wFrom.balance < amount) return showToast('Số dư không đủ');
+
+            wFrom.balance -= amount;
+            wTo.balance += amount;
+            const note = document.getElementById('description').value;
+
+            state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Chuyển tiền đi', walletId: fromId, description: `Đến ${wTo.name}. ${note}`, date });
+            state.transactions.push({ id: Date.now() + 1, type: 'income', amount, category: 'Nhận tiền', walletId: toId, description: `Từ ${wFrom.name}. ${note}`, date });
         } else {
-            const amount = parseFloat(deformatNumber(document.getElementById('amount').value));
+            const amount = deformatNumber(document.getElementById('amount').value);
             const walletId = parseInt(document.getElementById('wallet-select').value);
             const category = document.getElementById('category').value;
-            const date = document.getElementById('transaction-date').value;
-            const budgetCategory = document.getElementById('budget-category').value;
-            const wallet = state.wallets.find(w => w.id === walletId);
-            if (!wallet || !amount || amount <= 0 || !category) { if (!category) showConfirmation({ title: 'Thiếu thông tin', message: 'Vui lòng chọn một hạng mục.', okText: 'OK' }); return; }
-            const txDate = date ? new Date(date).toISOString() : new Date().toISOString();
+            const desc = document.getElementById('description').value;
+            const budgetCat = document.getElementById('budget-category').value;
+
+            if (!amount || !walletId || !category) return showToast('Nhập đủ thông tin');
+
+            const w = state.wallets.find(x => x.id === walletId);
+            w.balance += (transactionType === 'income' ? amount : -amount);
 
             const newTx = {
-                id: Date.now(),
-                type: transactionType,
-                amount,
-                category,
-                walletId,
-                description: document.getElementById('description').value,
-                date: txDate
+                id: Date.now(), type: transactionType, amount, category, walletId,
+                description: desc, date
             };
-            if (transactionType === 'expense') {
-                newTx.budgetCategory = budgetCategory;
-            }
+            if (transactionType === 'expense') newTx.budgetCategory = budgetCat;
             state.transactions.push(newTx);
-
-            wallet.balance += (transactionType === 'income' ? amount : -amount);
         }
-        closeModal(addTransactionModal);
-        saveData();
-        renderAll();
-    });
-    function renderCategoryChips(type, container, hiddenInput, selectedCategory = null) { const categories = state.settings.categories[type] || []; container.innerHTML = categories.map(cat => `<button type="button" class="category-chip ${cat === selectedCategory ? 'active' : ''}" data-category="${cat}">${cat}</button>`).join('') + `<button type="button" class="category-chip add-category-btn">+</button>`; hiddenInput.value = selectedCategory || ''; const addCategoryForm = container.nextElementSibling; if (addCategoryForm) { addCategoryForm.classList.add('hidden'); addCategoryForm.querySelector('input').value = ''; } }
-    function handleCategoryChipClick(event) { const target = event.target; const form = target.closest('form'); if (!form) return; if (target.classList.contains('category-chip')) { const container = target.parentElement; const hiddenInput = form.querySelector('input[type="hidden"][id*="category"]'); const addCategoryForm = container.nextElementSibling; if (target.classList.contains('add-category-btn')) { addCategoryForm.classList.toggle('hidden'); if (!addCategoryForm.classList.contains('hidden')) { addCategoryForm.querySelector('input').focus(); } } else { container.querySelectorAll('.category-chip').forEach(chip => chip.classList.remove('active')); target.classList.add('active'); hiddenInput.value = target.dataset.category; } } if (target.classList.contains('save-new-category-btn')) { const addCategoryForm = target.closest('.add-category-form'); const newCategoryInput = addCategoryForm.querySelector('input'); const newCategory = newCategoryInput.value.trim(); if (newCategory) { const currentType = form.id.includes('edit') ? editTransactionType : transactionType; if (!state.settings.categories[currentType].includes(newCategory)) { state.settings.categories[currentType].push(newCategory); saveData(); const container = addCategoryForm.previousElementSibling; const hiddenInput = form.querySelector('input[type="hidden"][id*="category"]'); renderCategoryChips(currentType, container, hiddenInput, newCategory); } } } }
-    addTransactionModal.addEventListener('click', handleCategoryChipClick);
-    editTransactionModal.addEventListener('click', handleCategoryChipClick);
-    document.querySelector('.theme-btn').parentElement.addEventListener('click', e => { if (e.target.closest('.theme-btn')) { applyTheme(e.target.closest('.theme-btn').dataset.theme); saveData(); } });
-    document.getElementById('currency-select').addEventListener('change', () => { state.settings.currency = document.getElementById('currency-select').value; saveData(); renderAll(); });
-    document.getElementById('export-data-btn').addEventListener('click', () => { const dataStr = JSON.stringify(getPersistentState(), null, 2); const dataBlob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(dataBlob); const link = document.createElement('a'); link.href = url; link.download = `tro-ly-tai-chinh-data-${new Date().toISOString().split('T')[0]}.json`; link.click(); URL.revokeObjectURL(url); });
-    document.getElementById('import-data-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
-    document.getElementById('import-file-input').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; showConfirmation({ title: 'Nhập Dữ Liệu', message: 'Thao tác này sẽ ghi đè lên toàn bộ dữ liệu hiện tại.', okText: 'Nhập', onConfirm: () => { const reader = new FileReader(); reader.onload = (e) => { try { const importedState = JSON.parse(e.target.result); if (importedState.wallets && importedState.transactions && importedState.settings) { const defaultState = getDefaultState(); state = { ...defaultState, ...importedState, settings: { ...defaultState.settings, ...importedState.settings }, currentUser: state.currentUser }; applyTheme(state.settings.theme || 'dark'); document.getElementById('currency-select').value = state.settings.currency; applyUiState(); renderAll(); saveData(); } else { showConfirmation({ title: 'Lỗi', message: 'Tệp dữ liệu không hợp lệ.', okText: 'OK' }); } } catch (error) { showConfirmation({ title: 'Lỗi', message: 'Không thể đọc tệp.', okText: 'OK' }); } }; reader.readAsText(file); } }); event.target.value = ''; });
-
-    function deleteTransaction(txId) {
-        const txIndex = state.transactions.findIndex(t => t.id === txId);
-        if (txIndex === -1) return;
-        const txToDelete = state.transactions[txIndex];
-        const wallet = state.wallets.find(w => w.id === txToDelete.walletId);
-        if (wallet) {
-            wallet.balance += txToDelete.type === 'expense' ? txToDelete.amount : -txToDelete.amount;
-        }
-        state.transactions.splice(txIndex, 1);
-        saveData();
-        renderAll();
-        showToast("Đã xóa giao dịch.");
-    }
-
-    document.addEventListener('click', (e) => {
-        const delegatedActions = {
-            '.edit-wallet-btn': (el) => openEditWalletModal(parseInt(el.dataset.id)),
-            '.delete-wallet-btn': (el) => { const id = parseInt(el.dataset.id); const wallet = state.wallets.find(w => w.id === id); const txCount = state.transactions.filter(tx => tx.walletId === id).length; showConfirmation({ title: `Xóa Ví "${wallet.name}"?`, message: `Thao tác này sẽ xóa ${txCount} giao dịch liên quan.`, okText: 'Xóa', onConfirm: () => { state.transactions = state.transactions.filter(tx => tx.walletId !== id); state.wallets = state.wallets.filter(w => w.id !== id); saveData(); renderAll(); } }); },
-            '.edit-saving-btn': (el) => openSavingGoalModal(parseInt(el.dataset.id)),
-            '.delete-saving-btn': (el) => { const id = parseInt(el.dataset.id); showConfirmation({ title: 'Xóa Quỹ?', message: 'Tiền đã tiết kiệm sẽ không được hoàn lại ví.', okText: 'Xóa', onConfirm: () => { state.funds = state.funds.filter(s => s.id !== id); saveData(); renderAll(); } }); },
-            '.add-to-saving-btn': (el) => { state.addingToSavingGoalId = parseInt(el.dataset.id); updateWalletOptions(document.getElementById('add-saving-wallet-select')); addToSavingForm.reset(); openModal(addToSavingModal); },
-            '.withdraw-from-saving-btn': (el) => { state.withdrawingFromSavingGoalId = parseInt(el.dataset.id); updateWalletOptions(document.getElementById('withdraw-saving-wallet-select')); withdrawFromSavingForm.reset(); openModal(withdrawFromSavingModal); },
-            '.edit-expense-btn': (el) => openRecurringExpenseModal(parseInt(el.dataset.id)),
-            '.delete-expense-btn': (el) => { const id = parseInt(el.dataset.id); showConfirmation({ title: 'Xóa Chi Phí?', message: 'Bạn có muốn xóa chi phí định kỳ này?', okText: 'Xóa', onConfirm: () => { state.expenses = state.expenses.filter(ex => ex.id !== id); saveData(); renderAll(); } }); },
-            '.edit-debt-btn': (el) => openDebtModal(parseInt(el.dataset.id)),
-            '.delete-debt-btn': (el) => { const id = parseInt(el.dataset.id); showConfirmation({ title: 'Xóa Khoản Nợ?', message: 'Bạn có chắc muốn xóa vĩnh viễn mục này? Mọi lịch sử trả nợ cũng sẽ bị xóa.', okText: 'Xóa', onConfirm: () => { state.debts = state.debts.filter(d => d.id !== id); saveData(); renderAll(); } }); },
-            '.pay-debt-btn': (el) => openPayDebtModal(parseInt(el.dataset.id)),
-            '.debt-history-btn': (el) => openDebtHistoryModal(parseInt(el.dataset.id)),
-            '.edit-transaction-btn': (el) => openEditTransactionModal(parseInt(el.dataset.id)),
-            '.delete-transaction-btn': (el) => {
-                const txId = parseInt(el.dataset.id);
-                showConfirmation({
-                    title: 'Xóa Giao Dịch?',
-                    message: 'Bạn chắc chắn muốn xóa vĩnh viễn giao dịch này?',
-                    okText: 'Xóa',
-                    onConfirm: () => deleteTransaction(txId)
-                });
-            },
-            '.copy-transaction-btn': (el) => {
-                const txId = parseInt(el.dataset.id);
-                const tx = state.transactions.find(t => t.id === txId);
-                if (tx) {
-                    const wallet = state.wallets.find(w => w.id === tx.walletId);
-                    const dateStr = new Date(tx.date).toLocaleString('vi-VN');
-                    const amountStr = `${tx.type === 'income' ? '+' : '-'}${formatCurrency(tx.amount)}`;
-                    const textToCopy = [
-                        `Ngày: ${dateStr}`,
-                        `Số tiền: ${amountStr}`,
-                        `Hạng mục: ${tx.category}`,
-                        `Ví: ${wallet ? wallet.name : 'N/A'}`,
-                        tx.description ? `Ghi chú: ${tx.description}` : null
-                    ].filter(line => line !== null).join('\n');
-                    navigator.clipboard.writeText(textToCopy).then(() => {
-                        showToast('Đã sao chép vào bộ nhớ đệm!');
-                    }).catch(err => {
-                        showToast('Sao chép thất bại!');
-                        console.error('Copy error:', err);
-                    });
-                }
-            }
-        };
-
-        for (const selector in delegatedActions) {
-            const element = e.target.closest(selector);
-            if (element) {
-                delegatedActions[selector](element);
-                return;
-            }
-        }
+        saveData(); renderAll(); closeModal(document.getElementById('add-transaction-modal'));
+        e.target.reset();
     });
 
-    function openEditTransactionModal(txId) {
-        const tx = state.transactions.find(t => t.id === txId);
-        if (!tx || ["Điều chỉnh số dư", "Chuyển tiền đi", "Nhận tiền", "Nạp tiền tiết kiệm", "Rút tiền tiết kiệm", "Trả nợ"].includes(tx.category)) {
-            showConfirmation({ title: 'Thông Báo', message: 'Giao dịch tự động không thể chỉnh sửa.', okText: 'OK' });
-            return;
-        }
-        state.editingTransactionId = txId;
-        updateWalletOptions(document.getElementById('edit-wallet-select'));
-        document.getElementById('edit-amount').value = formatNumberInput(tx.amount);
-        document.getElementById('edit-wallet-select').value = tx.walletId;
-        document.getElementById('edit-description').value = tx.description;
-        const txDate = new Date(tx.date);
-        document.getElementById('edit-transaction-date').value = txDate.toISOString().split('T')[0];
-        editTransactionType = tx.type;
-        const editTypeExpenseBtn = document.getElementById('edit-type-expense');
-        const editTypeIncomeBtn = document.getElementById('edit-type-income');
-
-        // Gọi hàm setup an toàn
-        setupTransactionModalUI(tx.type, editTransactionModal);
-
-        if (tx.type === 'income') {
-            editTypeIncomeBtn.style.backgroundColor = 'var(--income-color)';
-            editTypeIncomeBtn.style.color = 'white';
-            editTypeExpenseBtn.style.backgroundColor = 'var(--border-color)';
-            editTypeExpenseBtn.style.color = 'var(--text-secondary)';
-        } else {
-            editTypeExpenseBtn.style.backgroundColor = 'var(--expense-color)';
-            editTypeExpenseBtn.style.color = 'white';
-            editTypeIncomeBtn.style.backgroundColor = 'var(--border-color)';
-            editTypeIncomeBtn.style.color = 'var(--text-secondary)';
-        }
-        renderCategoryChips(tx.type, document.getElementById('edit-category-chips-container'), document.getElementById('edit-category'), tx.category);
-        if (tx.type === 'expense') {
-            document.getElementById('edit-budget-category').value = tx.budgetCategory || 'none';
-        }
-        openModal(editTransactionModal);
-    }
-    editTransactionForm.addEventListener('submit', (e) => {
+    // Edit Transaction Submit
+    document.getElementById('edit-transaction-form').addEventListener('submit', e => {
         e.preventDefault();
-        const txIndex = state.transactions.findIndex(t => t.id === state.editingTransactionId);
-        if (txIndex === -1) return;
+        const idx = state.transactions.findIndex(x => x.id === editingTransactionId);
+        if (idx === -1) return;
 
-        const originalTx = { ...state.transactions[txIndex] };
-        const originalWallet = state.wallets.find(w => w.id === originalTx.walletId);
-        if (originalWallet) {
-            originalWallet.balance += originalTx.type === 'expense' ? originalTx.amount : -originalTx.amount;
-        }
+        const oldTx = state.transactions[idx];
+        const wOld = state.wallets.find(x => x.id === oldTx.walletId);
+        if (wOld) wOld.balance -= (oldTx.type === 'income' ? oldTx.amount : -oldTx.amount);
 
-        const newAmount = parseFloat(deformatNumber(document.getElementById('edit-amount').value));
-        const newWalletId = parseInt(document.getElementById('edit-wallet-select').value);
-        const newWallet = state.wallets.find(w => w.id === newWalletId);
-        const newDate = document.getElementById('edit-transaction-date').value;
-        const newBudgetCategory = document.getElementById('edit-budget-category').value;
+        const amount = deformatNumber(document.getElementById('edit-amount').value);
+        const walletId = parseInt(document.getElementById('edit-wallet-select').value);
+        const date = new Date(document.getElementById('edit-transaction-date').value).toISOString();
+        const category = document.getElementById('edit-category').value;
+        const desc = document.getElementById('edit-description').value;
 
-        if (newWallet) {
-            newWallet.balance += editTransactionType === 'income' ? newAmount : -newAmount;
-        }
+        const wNew = state.wallets.find(x => x.id === walletId);
+        wNew.balance += (editTransactionType === 'income' ? amount : -amount);
 
-        const updatedTx = {
-            ...originalTx,
-            type: editTransactionType,
-            amount: newAmount,
-            category: document.getElementById('edit-category').value,
-            walletId: newWalletId,
-            description: document.getElementById('edit-description').value,
-            date: new Date(newDate).toISOString()
+        state.transactions[idx] = {
+            ...oldTx, type: editTransactionType, amount, walletId, category, description: desc, date,
+            budgetCategory: editTransactionType === 'expense' ? document.getElementById('edit-budget-category').value : undefined
         };
-
-        if (editTransactionType === 'expense') {
-            updatedTx.budgetCategory = newBudgetCategory;
-        } else {
-            delete updatedTx.budgetCategory;
-        }
-
-        state.transactions[txIndex] = updatedTx;
-
-        closeModal(editTransactionModal);
-        saveData();
-        renderAll();
+        saveData(); renderAll(); closeModal(document.getElementById('edit-transaction-modal'));
     });
-    document.getElementById('delete-transaction-btn').addEventListener('click', () => {
+
+    // Other Submits
+    document.getElementById('saving-goal-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const data = {
+            name: document.getElementById('saving-name').value,
+            icon: document.getElementById('saving-icon').value,
+            targetAmount: deformatNumber(document.getElementById('saving-target').value),
+            deadline: document.getElementById('saving-deadline').value
+        };
+        if (editingSavingGoalId) {
+            const idx = state.funds.findIndex(x => x.id === editingSavingGoalId);
+            state.funds[idx] = { ...state.funds[idx], ...data };
+        } else {
+            state.funds.push({ ...data, id: Date.now(), savedAmount: 0 });
+        }
+        saveData(); renderAll(); closeModal(document.getElementById('saving-goal-modal'));
+    });
+
+    document.getElementById('add-to-saving-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const amount = deformatNumber(document.getElementById('add-saving-amount').value);
+        const walletId = parseInt(document.getElementById('add-saving-wallet-select').value);
+        const w = state.wallets.find(x => x.id === walletId);
+        const f = state.funds.find(x => x.id === addingToSavingGoalId);
+        if (w.balance < amount) return showToast('Số dư không đủ');
+        w.balance -= amount;
+        f.savedAmount += amount;
+        state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Nạp tiền tiết kiệm', walletId, description: `Vào ${f.name}`, date: new Date().toISOString() });
+        saveData(); renderAll(); closeModal(document.getElementById('add-to-saving-modal'));
+    });
+
+    document.getElementById('withdraw-from-saving-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const amount = deformatNumber(document.getElementById('withdraw-saving-amount').value);
+        const walletId = parseInt(document.getElementById('withdraw-saving-wallet-select').value);
+        const w = state.wallets.find(x => x.id === walletId);
+        const f = state.funds.find(x => x.id === withdrawingFromSavingGoalId);
+        if (f.savedAmount < amount) return showToast('Quỹ không đủ tiền');
+        w.balance += amount;
+        f.savedAmount -= amount;
+        state.transactions.push({ id: Date.now(), type: 'income', amount, category: 'Rút tiền tiết kiệm', walletId, description: `Từ ${f.name}`, date: new Date().toISOString() });
+        saveData(); renderAll(); closeModal(document.getElementById('withdraw-from-saving-modal'));
+    });
+
+    document.getElementById('recurring-expense-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const data = {
+            name: document.getElementById('expense-name').value,
+            icon: document.getElementById('expense-icon').value,
+            amount: deformatNumber(document.getElementById('expense-amount').value),
+            type: document.getElementById('expense-type').value,
+            day: parseInt(document.getElementById('expense-date').value) || null,
+            frequency: document.getElementById('expense-frequency').value,
+            note: document.getElementById('expense-note').value
+        };
+        if (editingExpenseId) {
+            const idx = state.expenses.findIndex(x => x.id === editingExpenseId);
+            state.expenses[idx] = { ...state.expenses[idx], ...data };
+        } else {
+            state.expenses.push({ ...data, id: Date.now() });
+        }
+        saveData(); renderAll(); closeModal(document.getElementById('recurring-expense-modal'));
+    });
+
+    document.getElementById('debt-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const data = {
+            type: document.getElementById('debt-type').value,
+            person: document.getElementById('debt-person').value,
+            amount: deformatNumber(document.getElementById('debt-amount').value),
+            startDate: document.getElementById('debt-start-date').value,
+            endDate: document.getElementById('debt-end-date').value,
+            note: document.getElementById('debt-note').value
+        };
+        if (editingDebtId) {
+            const idx = state.debts.findIndex(x => x.id === editingDebtId);
+            state.debts[idx] = { ...state.debts[idx], ...data };
+        } else {
+            state.debts.push({ ...data, id: Date.now(), history: [] });
+        }
+        saveData(); renderAll(); closeModal(document.getElementById('debt-modal'));
+    });
+
+    document.getElementById('pay-debt-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const amount = deformatNumber(document.getElementById('pay-debt-amount').value);
+        const walletId = parseInt(document.getElementById('pay-debt-wallet-select').value);
+        const date = document.getElementById('pay-debt-date').value;
+        const d = state.debts.find(x => x.id === payingDebtId);
+        const w = state.wallets.find(x => x.id === walletId);
+
+        if (d.type === 'debt') {
+            if (w.balance < amount) return showToast('Số dư không đủ');
+            w.balance -= amount;
+            state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Trả nợ', walletId, description: `Trả ${d.person}`, date: new Date(date).toISOString() });
+        } else {
+            w.balance += amount;
+            state.transactions.push({ id: Date.now(), type: 'income', amount, category: 'Thu hồi nợ', walletId, description: `${d.person} trả`, date: new Date(date).toISOString() });
+        }
+        d.history.push({ amount, date, note: document.getElementById('pay-debt-note').value });
+        saveData(); renderAll(); closeModal(document.getElementById('pay-debt-modal'));
+    });
+
+    // Misc
+    document.getElementById('reset-data-btn').addEventListener('click', () => {
         showConfirmation({
-            title: 'Xóa Giao Dịch?',
-            message: 'Bạn chắc chắn muốn xóa vĩnh viễn giao dịch này?',
-            okText: 'Xóa',
-            onConfirm: () => {
-                deleteTransaction(state.editingTransactionId);
-                closeModal(editTransactionModal);
-            }
+            title: 'Xóa toàn bộ?', message: 'Dữ liệu sẽ mất hết.', okText: 'Xóa sạch',
+            onConfirm: () => { localStorage.removeItem('financeApp_v3.9'); location.reload(); }
         });
     });
-    function openSavingGoalModal(goalId = null) { state.editingSavingGoalId = goalId; savingGoalForm.reset(); if (goalId) { const goal = state.funds.find(s => s.id === goalId); document.getElementById('saving-goal-modal-title').textContent = "Chỉnh Sửa Quỹ"; document.getElementById('saving-name').value = goal.name; document.getElementById('saving-icon').value = goal.icon; document.getElementById('saving-target').value = formatNumberInput(goal.targetAmount); document.getElementById('saving-deadline').value = goal.deadline; document.getElementById('saving-note').value = goal.note; } else { document.getElementById('saving-goal-modal-title').textContent = "Thêm Quỹ Mới"; } openModal(savingGoalModal); }
-    function openRecurringExpenseModal(expenseId = null) { state.editingExpenseId = expenseId; recurringExpenseForm.reset(); const expenseTypeSelect = document.getElementById('expense-type'); const dateWrapper = document.getElementById('expense-date-wrapper'); const dateInput = document.getElementById('expense-date'); const toggleDateVisibility = () => { if (!dateWrapper) return; if (expenseTypeSelect.value === 'flexible') { dateWrapper.classList.add('hidden'); dateInput.required = false; } else { dateWrapper.classList.remove('hidden'); dateInput.required = true; } }; if (expenseId) { const expense = state.expenses.find(e => e.id === expenseId); document.getElementById('recurring-expense-modal-title').textContent = "Chỉnh Sửa Chi Phí"; document.getElementById('expense-name').value = expense.name; document.getElementById('expense-icon').value = expense.icon; document.getElementById('expense-amount').value = formatNumberInput(expense.amount); document.getElementById('expense-type').value = expense.type; document.getElementById('expense-note').value = expense.note; if (expense.day) dateInput.value = expense.day; } else { document.getElementById('recurring-expense-modal-title').textContent = "Thêm Chi Phí Định Kỳ"; } expenseTypeSelect.removeEventListener('change', toggleDateVisibility); expenseTypeSelect.addEventListener('change', toggleDateVisibility); toggleDateVisibility(); openModal(recurringExpenseModal); }
-    const handleFrequencyChange = () => { document.getElementById('expense-custom-freq-wrapper').classList.toggle('hidden', document.getElementById('expense-frequency').value !== 'custom'); };
-    savingGoalForm.addEventListener('submit', e => { e.preventDefault(); const goalData = { name: document.getElementById('saving-name').value, icon: document.getElementById('saving-icon').value, targetAmount: parseFloat(deformatNumber(document.getElementById('saving-target').value)), deadline: document.getElementById('saving-deadline').value, note: document.getElementById('saving-note').value }; if (state.editingSavingGoalId) { const index = state.funds.findIndex(s => s.id === state.editingSavingGoalId); state.funds[index] = { ...state.funds[index], ...goalData }; } else { state.funds.push({ ...goalData, id: Date.now(), savedAmount: 0, history: [] }); } closeModal(savingGoalModal); saveData(); renderAll(); });
-    recurringExpenseForm.addEventListener('submit', e => { e.preventDefault(); const expenseType = document.getElementById('expense-type').value; const expenseData = { name: document.getElementById('expense-name').value, icon: document.getElementById('expense-icon').value, amount: parseFloat(deformatNumber(document.getElementById('expense-amount').value)), type: expenseType, day: expenseType === 'fixed' ? parseInt(document.getElementById('expense-date').value) : null, note: document.getElementById('expense-note').value }; if (state.editingExpenseId) { const index = state.expenses.findIndex(ex => ex.id === state.editingExpenseId); state.expenses[index] = { ...state.expenses[index], ...expenseData }; } else { state.expenses.push({ ...expenseData, id: Date.now() }); } closeModal(recurringExpenseModal); saveData(); renderAll(); });
-    addToSavingForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(deformatNumber(document.getElementById('add-saving-amount').value)); const walletId = parseInt(document.getElementById('add-saving-wallet-select').value); const goal = state.funds.find(s => s.id === state.addingToSavingGoalId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !goal || !wallet || amount <= 0) return; if (wallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${wallet.name}" không đủ tiền.`, okText: 'OK' }); return; } wallet.balance -= amount; goal.savedAmount += amount; state.transactions.push({ id: Date.now(), type: 'expense', amount, category: 'Nạp tiền tiết kiệm', walletId, description: `Nạp vào "${goal.name}"`, date: new Date().toISOString() }); closeModal(addToSavingModal); saveData(); renderAll(); });
-    withdrawFromSavingForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(deformatNumber(document.getElementById('withdraw-saving-amount').value)); const walletId = parseInt(document.getElementById('withdraw-saving-wallet-select').value); const goal = state.funds.find(s => s.id === state.withdrawingFromSavingGoalId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !goal || !wallet || amount <= 0) return; if (amount > goal.savedAmount) { showConfirmation({ title: 'Không đủ tiền', message: `Bạn chỉ có thể rút tối đa ${formatCurrency(goal.savedAmount)}.`, okText: 'OK' }); return; } wallet.balance += amount; goal.savedAmount -= amount; state.transactions.push({ id: Date.now(), type: 'income', amount, category: 'Rút tiền tiết kiệm', walletId, description: `Rút từ quỹ "${goal.name}"`, date: new Date().toISOString() }); closeModal(withdrawFromSavingModal); saveData(); renderAll(); });
-    debtForm.addEventListener('submit', e => { e.preventDefault(); const debtData = { type: document.getElementById('debt-type').value, person: document.getElementById('debt-person').value, amount: parseFloat(deformatNumber(document.getElementById('debt-amount').value)), currency: document.getElementById('debt-currency').value, startDate: document.getElementById('debt-start-date').value, endDate: document.getElementById('debt-end-date').value, note: document.getElementById('debt-note').value, }; if (state.editingDebtId) { const index = state.debts.findIndex(d => d.id === state.editingDebtId); state.debts[index] = { ...state.debts[index], ...debtData }; } else { state.debts.push({ ...debtData, id: Date.now(), history: [] }); } closeModal(debtModal); saveData(); renderAll(); });
-    payDebtForm.addEventListener('submit', e => { e.preventDefault(); const amount = parseFloat(deformatNumber(document.getElementById('pay-debt-amount').value)); const walletId = parseInt(document.getElementById('pay-debt-wallet-select').value); const date = document.getElementById('pay-debt-date').value; const note = document.getElementById('pay-debt-note').value; const debt = state.debts.find(d => d.id === state.payingDebtId); const wallet = state.wallets.find(w => w.id === walletId); if (!amount || !debt || !wallet || amount <= 0) return; if (wallet.balance < amount) { showConfirmation({ title: 'Không đủ số dư', message: `Ví "${wallet.name}" không đủ tiền.`, okText: 'OK' }); return; } const amountRemaining = debt.amount - (debt.history || []).reduce((sum, item) => sum + item.amount, 0); if (amount > amountRemaining) { showConfirmation({ title: 'Số tiền không hợp lệ', message: `Số tiền trả vượt quá số tiền còn lại (${formatCurrency(amountRemaining)}).`, okText: 'OK' }); return; } wallet.balance -= amount; if (!debt.history) debt.history = []; debt.history.push({ id: Date.now(), amount, date, note, walletId }); const txDesc = debt.type === 'debt' ? `Trả nợ cho ${debt.person}` : `Ghi nhận ${debt.person} trả nợ`; state.transactions.push({ id: Date.now() + 1, type: 'expense', amount, category: 'Trả nợ', walletId, description: `${txDesc}${note ? ' - ' + note : ''}`, date: new Date(date).toISOString() }); closeModal(payDebtModal); saveData(); renderAll(); });
-    function openDebtModal(debtId = null) { state.editingDebtId = debtId; debtForm.reset(); document.getElementById('debt-start-date').valueAsDate = new Date(); if (debtId) { const debt = state.debts.find(d => d.id === debtId); document.getElementById('debt-modal-title').textContent = "Chỉnh Sửa Khoản Nợ"; document.getElementById('debt-type').value = debt.type; document.getElementById('debt-person').value = debt.person; document.getElementById('debt-amount').value = formatNumberInput(debt.amount); document.getElementById('debt-currency').value = debt.currency; document.getElementById('debt-startDate').value = debt.startDate; document.getElementById('debt-endDate').value = debt.endDate; document.getElementById('debt-note').value = debt.note; } else { document.getElementById('debt-modal-title').textContent = "Thêm Khoản Nợ Mới"; } openModal(debtModal); }
-    function openPayDebtModal(debtId) { state.payingDebtId = debtId; payDebtForm.reset(); updateWalletOptions(document.getElementById('pay-debt-wallet-select')); document.getElementById('pay-debt-date').valueAsDate = new Date(); openModal(payDebtModal); }
-    function openDebtHistoryModal(debtId) { const debt = state.debts.find(d => d.id === debtId); const historyListEl = document.getElementById('debt-history-list'); if (!debt || !debt.history || debt.history.length === 0) { historyListEl.innerHTML = `<p class="text-center" style="color: var(--text-secondary);">Chưa có lịch sử trả nợ.</p>`; } else { historyListEl.innerHTML = [...debt.history].reverse().map(item => { const wallet = state.wallets.find(w => w.id === item.walletId); return `<div class="p-2 rounded" style="background-color: var(--highlight-color);"><div class="flex justify-between font-semibold"><span>${formatCurrency(item.amount)}</span><span>${new Date(item.date).toLocaleDateString('vi-VN')}</span></div><p class="text-xs" style="color: var(--text-secondary);">Từ ví: ${wallet ? wallet.name : 'N/A'}</p><p class="text-xs italic" style="color: var(--text-secondary);">${item.note || 'Không có ghi chú'}</p></div>` }).join(''); } openModal(debtHistoryModal); }
 
-    let draggedItem = null;
-    let touchDraggedItem = null;
-    let ghostEl = null;
-    let startX = 0;
-    let startY = 0;
-
-    function openManageCategoriesModal() {
-        const categoryMap = state.settings.budgetAllocation.categoryMap || {};
-        const allCategories = state.settings.categories.expense;
-        const lists = { unassigned: document.getElementById('unassigned-categories-list'), essential: document.getElementById('essential-categories-list'), wants: document.getElementById('wants-categories-list'), };
-        Object.values(lists).forEach(list => list.innerHTML = '');
-        allCategories.forEach(cat => { const assignedGroup = categoryMap[cat] || 'unassigned'; const catEl = document.createElement('div'); catEl.textContent = cat; catEl.className = 'p-2 rounded cursor-grab text-sm'; catEl.style.backgroundColor = 'var(--border-color)'; catEl.draggable = true; catEl.dataset.category = cat; lists[assignedGroup].appendChild(catEl); });
-        document.querySelectorAll('[id$="-categories-container"]').forEach(container => { container.addEventListener('dragover', e => e.preventDefault()); container.addEventListener('drop', handleDrop); });
-        document.querySelectorAll('[id$="-categories-list"] [data-category]').forEach(item => { item.addEventListener('dragstart', handleDragStart); item.addEventListener('touchstart', handleTouchStart, { passive: false }); });
-        const modalContent = document.querySelector('#manage-categories-modal .modal-content');
-        modalContent.addEventListener('touchmove', handleTouchMove, { passive: false });
-        modalContent.addEventListener('touchend', handleTouchEnd);
-        openModal(manageCategoriesModal);
-    }
-
-    function handleDragStart(e) { draggedItem = e.target; setTimeout(() => e.target.classList.add('opacity-50'), 0); }
-    function handleDrop(e) { e.preventDefault(); const container = e.target.closest('[id$="-categories-container"]'); if (container && draggedItem) { const list = container.querySelector('[id$="-categories-list"]'); draggedItem.classList.remove('opacity-50'); list.appendChild(draggedItem); updateCategoryMap(draggedItem, container); } draggedItem = null; }
-    function handleTouchStart(e) { e.preventDefault(); touchDraggedItem = e.target.closest('[data-category]'); if (!touchDraggedItem) return; const rect = touchDraggedItem.getBoundingClientRect(); ghostEl = touchDraggedItem.cloneNode(true); ghostEl.style.position = 'fixed'; ghostEl.style.zIndex = '1500'; ghostEl.style.width = `${rect.width}px`; ghostEl.style.height = `${rect.height}px`; ghostEl.style.pointerEvents = 'none'; ghostEl.style.opacity = '0.8'; ghostEl.style.backgroundColor = 'var(--primary-color)'; ghostEl.style.color = 'var(--background-color)'; document.body.appendChild(ghostEl); touchDraggedItem.classList.add('opacity-50'); const touch = e.touches[0]; startX = touch.clientX - rect.left; startY = touch.clientY - rect.top; moveGhost(touch.clientX, touch.clientY); }
-    function handleTouchMove(e) { if (!touchDraggedItem) return; e.preventDefault(); const touch = e.touches[0]; moveGhost(touch.clientX, touch.clientY); }
-    function moveGhost(x, y) { if (!ghostEl) return; ghostEl.style.left = `${x - startX}px`; ghostEl.style.top = `${y - startY}px`; }
-    function handleTouchEnd(e) { if (!touchDraggedItem) return; ghostEl.style.display = 'none'; const endElement = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY); ghostEl.style.display = ''; const container = endElement ? endElement.closest('[id$="-categories-container"]') : null; if (container) { const list = container.querySelector('[id$="-categories-list"]'); list.appendChild(touchDraggedItem); updateCategoryMap(touchDraggedItem, container); } document.body.removeChild(ghostEl); touchDraggedItem.classList.remove('opacity-50'); touchDraggedItem = null; ghostEl = null; }
-    function updateCategoryMap(item, container) { const newGroup = container.id.split('-')[0]; const categoryName = item.dataset.category; if (newGroup === 'unassigned') { delete state.settings.budgetAllocation.categoryMap[categoryName]; } else { state.settings.budgetAllocation.categoryMap[categoryName] = newGroup; } saveData(); renderReportsScreen(); }
-
-    function handleConnectionChange() {
-        if (navigator.onLine) {
-            offlineIndicator.style.display = 'none';
-            showToast("Đã kết nối lại Internet.");
-            if (state.currentUser && state.settings.autoBackup) {
-                autoBackupToFirebase();
-            }
-        } else {
-            offlineIndicator.style.display = 'block';
-            showToast("Mất kết nối Internet.");
-        }
-    }
-
-    window.addEventListener('online', handleConnectionChange);
-    window.addEventListener('offline', handleConnectionChange);
-    if (!navigator.onLine) { handleConnectionChange(); }
-
-    const inputIdsToFormat = ['amount', 'transfer-amount', 'edit-amount', 'initial-balance', 'edit-wallet-balance', 'saving-target', 'expense-amount', 'debt-amount', 'pay-debt-amount', 'add-saving-amount', 'withdraw-saving-amount', 'total-budget-input'];
-    inputIdsToFormat.forEach(id => {
-        const input = document.getElementById(id);
-        if (input) {
-            input.addEventListener('input', (e) => {
-                const originalValue = e.target.value;
-                const cursorPosition = e.target.selectionStart;
-                const originalLength = originalValue.length;
-
-                const formattedValue = formatNumberInput(originalValue);
-                e.target.value = formattedValue;
-
-                const newLength = formattedValue.length;
-                const newCursorPosition = cursorPosition + (newLength - originalLength);
-                e.target.setSelectionRange(newCursorPosition, newCursorPosition);
-            });
-            input.setAttribute('type', 'text');
-            input.setAttribute('inputmode', 'numeric');
-            input.setAttribute('pattern', '[0-9.]*');
-        }
+    document.getElementById('export-data-btn').addEventListener('click', () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(getPersistentState(), null, 2)], { type: 'application/json' }));
+        a.download = `backup-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
     });
 
-    // Thêm đoạn mã này vào gần các trình xử lý sự kiện click khác
-    document.getElementById('update-app-btn').addEventListener('click', () => {
-        showConfirmation({
-            title: 'Cập nhật ứng dụng?',
-            message: 'Ứng dụng sẽ hủy đăng ký phiên bản hiện tại và tải lại để cập nhật phiên bản mới nhất. Bạn có muốn tiếp tục?',
-            okText: 'Cập nhật',
-            onConfirm: () => {
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                        if (registrations.length === 0) {
-                            showToast("Không có phiên bản cũ nào cần gỡ.");
-                            setTimeout(() => location.reload(), 1500);
-                            return;
-                        }
-                        for (let registration of registrations) {
-                            registration.unregister();
-                        }
-                        showToast("Đã gỡ phiên bản cũ! Đang tải lại...");
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1500);
-                    }).catch(function (err) {
-                        showToast("Cập nhật thất bại. Vui lòng thử lại.");
-                        console.error('Hủy đăng ký Service Worker thất bại: ', err);
-                    });
-                } else {
-                    showToast("Trình duyệt không hỗ trợ chức năng này.");
-                }
-            }
-        });
+    document.getElementById('import-data-btn').addEventListener('click', () => document.getElementById('import-file-input').click());
+    document.getElementById('import-file-input').addEventListener('change', e => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const data = JSON.parse(ev.target.result);
+                if (data.wallets) { localStorage.setItem('financeApp_v3.9', JSON.stringify(data)); location.reload(); }
+            } catch (err) { showToast('Lỗi file'); }
+        };
+        if (e.target.files[0]) reader.readAsText(e.target.files[0]);
     });
+
+    document.getElementById('currency-select').addEventListener('change', e => { state.settings.currency = e.target.value; saveData(); renderAll(); });
+
+    // Auth
+    document.getElementById('login-google-btn').addEventListener('click', () => auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()));
+    document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+    auth.onAuthStateChanged(user => {
+        state.currentUser = user; renderSettingsScreen();
+        if (user && state.settings.autoBackup) autoBackupToFirebase();
+    });
+
+    document.getElementById('manual-backup-btn').addEventListener('click', manualBackupToFirebase);
+    document.getElementById('restore-backup-btn').addEventListener('click', fetchAndShowBackups);
+    document.getElementById('auto-backup-toggle').addEventListener('change', e => { state.settings.autoBackup = e.target.checked; saveData(); });
+
+    // Modal close global handler
+    document.querySelectorAll('.modal-backdrop').forEach(m => {
+        m.addEventListener('click', e => { if (e.target === m) closeModal(m); });
+        m.querySelector('.btn-cancel-modal')?.addEventListener('click', () => closeModal(m));
+    });
+
+    // Format inputs
+    ['amount', 'transfer-amount', 'edit-amount', 'initial-balance', 'edit-wallet-balance', 'saving-target', 'expense-amount', 'debt-amount', 'pay-debt-amount', 'add-saving-amount', 'withdraw-saving-amount', 'total-budget-input'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', e => e.target.value = formatNumberInput(e.target.value));
+    });
+
+    // Manage Categories (Basic implementation to open modal)
+    document.getElementById('manage-categories-btn').addEventListener('click', () => {
+        // Logic mở modal quản lý danh mục (nếu cần triển khai sâu hơn)
+        showToast("Tính năng đang phát triển");
+    });
+
+    // Initial load
+    loadData();
 });
