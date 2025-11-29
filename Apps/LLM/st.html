@@ -3,244 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML to JSON Converter - Student Transcript</title>
+    <title>Full HTML to JSON Parser</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        :root {
-            --bg-color: #f4f4f9;
-            --panel-bg: #ffffff;
-            --border-color: #ddd;
-            --primary-color: #2563eb;
-            --text-color: #333;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            height: 100vh;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-        }
-
-        header {
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        h1 { margin: 0; font-size: 1.2rem; }
-
-        .container {
-            display: flex;
-            flex: 1;
-            gap: 20px;
-            height: calc(100% - 60px);
-        }
-
-        .panel {
-            flex: 1;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .panel-header {
-            padding: 10px 15px;
-            background: #eee;
-            border-bottom: 1px solid var(--border-color);
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-
-        textarea {
-            flex: 1;
-            border: none;
-            padding: 15px;
-            resize: none;
-            font-family: monospace;
-            font-size: 12px;
-            outline: none;
-        }
-
-        #jsonOutput {
-            flex: 1;
-            margin: 0;
-            padding: 15px;
-            overflow: auto;
-            background-color: #282c34;
-            color: #abb2bf;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 13px;
-        }
-
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        button:hover { opacity: 0.9; }
-
-        /* Scrollbar đẹp hơn */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #bbb; }
-
-        @media (max-width: 768px) {
-            .container { flex-direction: column; }
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 h-screen flex flex-col">
 
-    <header>
-        <h1>Công cụ chuyển đổi Bảng điểm HTML sang JSON</h1>
-        <button onclick="convertHtmlToJson()">Chuyển đổi (Convert)</button>
+    <header class="bg-emerald-700 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Công cụ tách TOÀN BỘ dữ liệu HTML</h1>
+            <span class="text-xs bg-emerald-800 px-2 py-1 rounded">Version 2.0 (Full Data)</span>
+        </div>
     </header>
 
-    <div class="container">
-        <div class="panel">
-            <div class="panel-header">Input HTML</div>
-            <textarea id="htmlInput" placeholder="Dán toàn bộ code HTML vào đây..."></textarea>
+    <main class="flex-grow container mx-auto p-4 gap-4 flex flex-col md:flex-row h-full">
+        
+        <div class="flex-1 flex flex-col bg-white rounded shadow border border-gray-300">
+            <div class="p-2 bg-gray-50 border-b flex justify-between items-center">
+                <span class="font-bold text-gray-600">HTML Đầu vào</span>
+                <button onclick="document.getElementById('htmlInput').value=''" class="text-red-500 text-sm hover:underline">Xóa</button>
+            </div>
+            <textarea id="htmlInput" class="flex-grow p-3 text-xs font-mono focus:outline-none resize-none" placeholder="Dán mã HTML vào đây..."></textarea>
         </div>
 
-        <div class="panel">
-            <div class="panel-header">Output JSON</div>
-            <pre id="jsonOutput">// Kết quả sẽ hiện ở đây...</pre>
+        <div class="flex md:flex-col justify-center gap-2">
+            <button onclick="convertFull()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded shadow transition">
+                Chuyển đổi ➔
+            </button>
         </div>
-    </div>
+
+        <div class="flex-1 flex flex-col bg-white rounded shadow border border-gray-300">
+             <div class="p-2 bg-gray-50 border-b flex justify-between items-center">
+                <span class="font-bold text-gray-600">JSON Kết quả</span>
+                <button onclick="copyToClipboard()" id="copyBtn" class="bg-emerald-100 text-emerald-800 text-xs px-2 py-1 rounded hover:bg-emerald-200">Copy</button>
+            </div>
+            <textarea id="jsonOutput" class="flex-grow p-3 text-xs font-mono bg-gray-50 focus:outline-none resize-none" readonly placeholder="JSON sẽ hiện ở đây..."></textarea>
+        </div>
+
+    </main>
 
     <script>
-        function convertHtmlToJson() {
-            const htmlString = document.getElementById('htmlInput').value;
-            if (!htmlString.trim()) {
-                alert("Vui lòng dán HTML vào ô bên trái!");
-                return;
-            }
+        function convertFull() {
+            const htmlContent = document.getElementById('htmlInput').value;
+            if (!htmlContent.trim()) { alert("Chưa có HTML!"); return; }
 
-            try {
-                // 1. Parse HTML từ chuỗi text
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlString, "text/html");
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlContent, 'text/html');
 
-                const result = {
-                    studentInfo: {},
-                    academicHistory: [],
-                    graduationInfo: {}
-                };
+            const result = {
+                metadata: {
+                    extracted_at: new Date().toISOString(),
+                    source_type: "Academic Transcript"
+                },
+                student_info: parseStudentInfo(doc),
+                semester_summary: parseSummaryTable(doc), // Bảng tóm tắt (học phí, rèn luyện)
+                detailed_transcript: parseDetailedTranscript(doc) // Bảng điểm chi tiết
+            };
 
-                // --- XỬ LÝ: Thông tin sinh viên ---
-                const infoTable = doc.querySelector('table[width="800px"]');
-                if (infoTable) {
-                    const tds = infoTable.querySelectorAll('td');
-                    tds.forEach(td => {
-                        const text = td.innerText.replace(/\s+/g, ' ').trim(); // Xóa khoảng trắng thừa
-                        const parts = text.split(':');
-                        if (parts.length > 1) {
-                            const key = parts[0].trim();
-                            const value = parts[1].trim();
-                            result.studentInfo[key] = value;
-                        }
-                    });
-                }
+            document.getElementById('jsonOutput').value = JSON.stringify(result, null, 2);
+        }
 
-                // --- XỬ LÝ: Bảng điểm ---
-                // Tìm bảng chứa class .Learning_Content (thường là wrapper)
-                // Trong cấu trúc bạn gửi, các bảng nằm trong div.Learning_Content > center > div
-                const contentDiv = doc.querySelector('.Learning_Content center div');
+        // 1. Tách thông tin sinh viên
+        function parseStudentInfo(doc) {
+            const tds = Array.from(doc.querySelectorAll('td'));
+            const getValue = (label) => {
+                const cell = tds.find(td => td.textContent.includes(label));
+                return cell ? (cell.querySelector('b')?.innerText.trim() || '') : '';
+            };
+            
+            // Lấy mã SV từ input hoặc dropdown
+            let svCode = doc.querySelector('input[name*="txtStudentCode"]')?.value;
+            if (!svCode) svCode = doc.querySelector('select option[selected]')?.value;
+
+            return {
+                student_code: svCode || getValue('Mã sinh viên'),
+                full_name: getValue('Họ tên:'),
+                dob: getValue('Ngày sinh:'),
+                gender: getValue('Giới tính:'),
+                class: getValue('Lớp:'),
+                cohort: getValue('Khoá:'),
+                department: getValue('Khoa:'),
+                major: getValue('Nghề:'),
+                level: getValue('Bậc:'),
+                type: getValue('Loại:')
+            };
+        }
+
+        // 2. Tách bảng tổng hợp (Học phí, Rèn luyện,...)
+        function parseSummaryTable(doc) {
+            const tables = doc.querySelectorAll('.Learning_Content table');
+            if (tables.length < 1) return [];
+
+            const summaryRows = Array.from(tables[0].querySelectorAll('tr')).slice(1); // Bỏ header
+            
+            return summaryRows.map(row => {
+                const cols = row.querySelectorAll('td');
+                if (cols.length < 10) return null;
                 
-                if (contentDiv) {
-                    const tables = contentDiv.querySelectorAll('table');
-                    
-                    // Bảng điểm thường là bảng thứ 2 trong khu vực này (index 1)
-                    // Bảng 1 là tóm tắt tài chính (index 0)
-                    const transcriptTable = tables[1];
+                const getTxt = (idx) => cols[idx]?.innerText.trim() || null;
 
-                    if (transcriptTable) {
-                        const rows = transcriptTable.querySelectorAll('tr');
-                        let currentSemester = null;
+                return {
+                    stt: getTxt(0),
+                    academic_year: getTxt(1),
+                    semester: getTxt(2),
+                    financial: {
+                        tuition_fee: getTxt(3),
+                        paid: getTxt(4)
+                    },
+                    status: {
+                        discipline: getTxt(5),
+                        reward: getTxt(6)
+                    },
+                    scholarship: {
+                        rank: getTxt(7),
+                        amount: getTxt(8)
+                    },
+                    conduct: {
+                        score: getTxt(9),
+                        rank: getTxt(10)
+                    }
+                };
+            }).filter(item => item !== null);
+        }
 
-                        rows.forEach(row => {
-                            // Kiểm tra dòng Header nhóm (Học kỳ)
-                            const groupCell = row.querySelector('.Learning_GroupRow');
-                            if (groupCell) {
-                                const text = groupCell.innerText;
-                                // Regex linh hoạt hơn để bắt thông tin
-                                const regex = /Niên học:[\s\xa0]*(.*?)[\s\xa0]*-[\s\xa0]*Học kì:[\s\xa0]*(.*?)[\s\xa0]*-[\s\xa0]*TBHK[\s\xa0]*:[\s\xa0]*(.*?)[\s\xa0]*-[\s\xa0]*XLHK:[\s\xa0]*(.*)/i;
-                                const match = text.match(regex);
+        // 3. Tách bảng điểm chi tiết (Toàn bộ cột)
+        function parseDetailedTranscript(doc) {
+            const transcript = [];
+            let currentSem = null;
+            const tables = doc.querySelectorAll('.Learning_Content table');
+            
+            // Bảng điểm thường là bảng thứ 2
+            if (tables.length < 2) return [];
+            const rows = tables[1].querySelectorAll('tr');
 
-                                if (match) {
-                                    currentSemester = {
-                                        nienHoc: match[1].trim(),
-                                        hocKi: match[2].trim(),
-                                        diemTrungBinh: match[3].trim(),
-                                        xepLoai: match[4].trim(),
-                                        monHoc: []
-                                    };
-                                    result.academicHistory.push(currentSemester);
-                                }
-                            } 
-                            // Kiểm tra dòng môn học (có nhiều cột và không phải header)
-                            else if (currentSemester && !row.classList.contains('Learning_Header') && row.cells.length > 10) {
-                                const cells = row.querySelectorAll('td');
-                                // Index dựa trên bảng HTML mẫu
-                                const subject = {
-                                    stt: cells[0]?.innerText.trim(),
-                                    tenMon: cells[1]?.innerText.trim(),
-                                    soTinChi: cells[2]?.innerText.trim(),
-                                    // Lấy điểm tổng kết ở cột L1 (khoảng index 15)
-                                    diemTongKet: (cells[15]?.innerText.trim() || cells[16]?.innerText.trim() || ''),
-                                    ketQua: cells[18]?.innerText.trim()
-                                };
-                                currentSemester.monHoc.push(subject);
+            rows.forEach(row => {
+                // Xử lý dòng tiêu đề học kỳ
+                if (row.classList.contains('Learning_GroupRow')) {
+                    if (currentSem) transcript.push(currentSem);
+
+                    const text = row.innerText; 
+                    currentSem = {
+                        semester_header: {
+                            raw_string: text,
+                            year: text.match(/Niên học:\s*([^\s-]+)/)?.[1] || "",
+                            semester: text.match(/Học kì:\s*(\d+)/)?.[1] || "",
+                            avg_score: parseFloat(text.match(/TBHK\s*:\s*([\d\.]+)/)?.[1] || 0),
+                            rank: text.match(/XLHK:\s*(.*)/)?.[1]?.trim() || ""
+                        },
+                        subjects: []
+                    };
+                } 
+                // Xử lý dòng môn học
+                else if (!row.classList.contains('Learning_Header') && currentSem) {
+                    const cells = row.querySelectorAll('td');
+                    // Cấu trúc bảng có 25 cột (dựa trên HTML bạn gửi)
+                    if (cells.length >= 24) {
+                        const getVal = (idx) => cells[idx]?.innerText.trim() || null;
+                        const getNum = (idx) => {
+                            const val = getVal(idx);
+                            return val ? parseFloat(val) : null;
+                        };
+
+                        // Helper lấy mảng điểm từ cột start đến end
+                        const getArrayScores = (start, end) => {
+                            let arr = [];
+                            for(let i=start; i<=end; i++) {
+                                let val = getNum(i);
+                                if(val !== null) arr.push({ col: i-start+1, score: val });
                             }
+                            return arr;
+                        };
+
+                        currentSem.subjects.push({
+                            stt: getVal(0),
+                            subject_name: getVal(1),
+                            credits: getNum(2),
+                            components: {
+                                // Cột 3 -> 9: Kiểm tra thường xuyên (7 cột)
+                                regular_tests: getArrayScores(3, 9), 
+                                // Cột 10 -> 16: Kiểm tra định kỳ (7 cột)
+                                periodic_tests: getArrayScores(10, 16),
+                                // Cột 17: Trung bình kiểm tra
+                                test_avg: getNum(17) 
+                            },
+                            exams: {
+                                l1: getNum(18),
+                                l2: getNum(19),
+                                l3: getNum(20)
+                            },
+                            final_summary: {
+                                l1: getNum(21),
+                                l2: getNum(22),
+                                l3: getNum(23)
+                            },
+                            result: getVal(24) // Cột KQ
                         });
                     }
-
-                    // --- XỬ LÝ: Tốt nghiệp ---
-                    // Bảng tốt nghiệp thường là bảng cuối cùng
-                    const gradTable = tables[tables.length - 1];
-                    if (gradTable && gradTable.innerText.includes('TỐT NGHIỆP')) {
-                         const gradRows = gradTable.querySelectorAll('tr');
-                         gradRows.forEach(row => {
-                             const cells = row.querySelectorAll('td');
-                             // Logic đơn giản: lấy tên môn và điểm nếu dòng đó có dữ liệu
-                             if(cells.length >= 3 && parseInt(cells[0].innerText) > 0) {
-                                 const key = cells[1].innerText.trim();
-                                 const val = cells[2].innerText.trim();
-                                 result.graduationInfo[key] = val;
-                                 
-                                 // Lấy thêm cột xếp loại bên phải nếu có
-                                 if(cells.length > 3 && cells[3].innerText.trim() !== "") {
-                                     const key2 = cells[3].innerText.trim();
-                                     const val2 = cells[4]?.innerText.trim();
-                                     if(key2) result.graduationInfo[key2] = val2;
-                                 }
-                             }
-                         });
-                    }
                 }
+            });
 
-                // Xuất kết quả ra màn hình
-                document.getElementById('jsonOutput').textContent = JSON.stringify(result, null, 4);
+            if (currentSem) transcript.push(currentSem);
+            return transcript;
+        }
 
-            } catch (e) {
-                alert("Có lỗi xảy ra khi phân tích HTML: " + e.message);
-                console.error(e);
-            }
+        function copyToClipboard() {
+            const output = document.getElementById('jsonOutput');
+            output.select();
+            document.execCommand('copy');
+            const btn = document.getElementById('copyBtn');
+            btn.innerText = "Đã chép";
+            setTimeout(() => btn.innerText = "Copy", 2000);
         }
     </script>
 </body>

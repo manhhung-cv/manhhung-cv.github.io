@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PIP Master Pro</title>
+    <style>
+        :root {
+            --bg-body: #121212;
+            --bg-card: #1e1e1e;
+            --bg-input: #2c2c2c;
+            --accent: #0A84FF;
+            --accent-gradient: linear-gradient(135deg, #0A84FF, #0056b3);
+            --text-main: #ffffff;
+            --text-sub: #a0a0a0;
+            --border-radius: 16px;
+            --danger: #FF453A;
+            --success: #30D158;
+        }
+
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 100px; /* Space for bottom bar */
+        }
+
+        /* Header */
+        header {
+            padding: 20px;
+            text-align: center;
+            background: rgba(30, 30, 30, 0.8);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid #333;
+        }
+        header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px; }
+        header span { color: var(--accent); }
+
+        /* Preview Area */
+        .preview-container {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            background: var(--bg-body);
+        }
+        canvas {
+            width: 100%;
+            max-width: 500px;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+
+        /* Modules */
+        .modules { padding: 0 16px; max-width: 600px; margin: 0 auto; }
+        
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .card-title { font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+        .icon { font-size: 1.2rem; }
+
+        /* Controls */
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 10px;
+        }
+        .control-label { color: var(--text-sub); font-size: 0.9rem; }
+        
+        /* Inputs */
+        input[type="text"], input[type="number"], select {
+            background: var(--bg-input);
+            border: none;
+            color: white;
+            padding: 10px 12px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 0.95rem;
+            /* appearance: none; */
+        }
+        
+        /* Color Picker Custom */
+        .color-wrapper {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #444;
+        }
+        input[type="color"] {
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            cursor: pointer;
+            border: none; padding: 0;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 28px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #444;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(22px); }
+
+        /* Buttons & Chips */
+        .btn-group { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; }
+        .chip {
+            background: var(--bg-input);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid transparent;
+        }
+        .chip.active {
+            background: rgba(10, 132, 255, 0.2);
+            color: var(--accent);
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+
+        .btn-action {
+            background: var(--bg-input);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn-action.primary { background: var(--accent); }
+        .btn-action.danger { background: rgba(255, 69, 58, 0.2); color: var(--danger); }
+
+        /* Bottom Floating Bar */
+        .bottom-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            background: rgba(40, 40, 40, 0.9);
+            backdrop-filter: blur(15px);
+            padding: 12px;
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            display: flex;
+            gap: 10px;
+            border: 1px solid #444;
+            z-index: 1000;
+        }
+        .btn-pip {
+            background: var(--accent-gradient);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            font-size: 1rem;
+            font-weight: 700;
+            flex: 1;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
+        }
+        .btn-pip:active { transform: scale(0.98); }
+
+        /* Hidden helpers */
+        .hidden { display: none; }
+        input[type="range"] { width: 100%; accent-color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>PIP <span>MASTER</span> PRO</h1>
+</header>
+
+<div class="preview-container">
+    <canvas id="canvas" width="1280" height="720"></canvas>
+</div>
+
+<div class="modules">
+
+    <!-- 1. BACKGROUND -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><span class="icon">🖼️</span> Nền (Background)</div>
+        </div>
+        <div class="btn-group">
+            <div class="chip active" onclick="setBgMode('color', this)">Màu</div>
+            <div class="chip" onclick="triggerFile('image', this)">Ảnh</div>
+            <div class="chip" onclick="triggerFile('video', this)">Video</div>
+            <div class="chip" onclick="startScreenShare(this)">Màn hình</div>
+        </div>
+        
+        <div class="control-row" style="margin-top: 15px;">
+            <span class="control-label">Màu nền</span>
+            <div class="color-wrapper"><input type="color" id="bgColor" value="#000000"></div>
+        </div>
+        <small id="mediaStatus" style="color: var(--text-sub); display:block; margin-top:5px;">Đang dùng: Màu đơn sắc</small>
+        <input type="file" id="fileInput" class="hidden">
+    </div>
+
+    <!-- 2. TIME SUITE -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><span class="icon">⏱️</span> Thời gian</div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="showTimeWidget" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+        
+        <div class="btn-group">
+            <div class="chip active" onclick="setTimeMode('clock', this)">Đồng hồ</div>
+            <div class="chip" onclick="setTimeMode('timer', this)">Bấm giờ</div>
+            <div class="chip" onclick="setTimeMode('pomodoro', this)">Pomodoro</div>
+        </div>
+
+        <div id="timerControls" class="control-row hidden" style="margin-top: 15px;">
+            <button class="btn-action primary" onclick="toggleTimer()">Start / Stop</button>
+            <button class="btn-action danger" onclick="resetTimer()">Reset</button>
+        </div>
+
+        <!-- NEW: Position Selector -->
+        <div class="control-row" style="margin-top: 15px;">
+            <span class="control-label">Vị trí</span>
+            <select id="timePosition" style="text-align: right;">
+                <option value="top-left">Góc trái trên</option>
+                <option value="top-right">Góc phải trên</option>
+                <option value="bottom-left">Góc trái dưới</option>
+                <option value="bottom-right">Góc phải dưới</option>
+                <option value="center">Giữa màn hình</option>
+            </select>
+        </div>
+
+        <div class="control-row">
+            <span class="control-label">Hiển thị ngày</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="showDate">
+                <span class="slider"></span>
+            </label>
+        </div>
+        
+        <div class="control-row">
+            <span class="control-label">Hiển thị Mili giây</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="showMs">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- 3. TEXT & MARQUEE -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><span class="icon">💬</span> Văn bản & Thông báo</div>
+            <label class="toggle-switch">
+                <input type="checkbox" id="showTextWidget" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+        
+        <input type="text" id="textContent" placeholder="Nhập nội dung..." value="PIP Master">
+        
+        <!-- NEW: Position Selector -->
+        <div class="control-row" style="margin-top: 15px;">
+            <span class="control-label">Vị trí</span>
+            <select id="textPosition" style="text-align: right;">
+                <option value="bottom">Dưới cùng</option>
+                <option value="top">Trên cùng</option>
+                <option value="middle">Giữa (Đè lên)</option>
+            </select>
+        </div>
+
+        <div class="control-row">
+            <span class="control-label">Cỡ chữ</span>
+            <input type="number" id="textSize" value="60" style="width: 60px; text-align: center;">
+            <div class="color-wrapper"><input type="color" id="textColor" value="#ffffff"></div>
+        </div>
+
+        <div class="control-row">
+            <span class="control-label">Chạy chữ (Marquee)</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="textMarquee" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- 4. EXTRAS -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title"><span class="icon">🎮</span> Tiện ích Gamer</div>
+        </div>
+        
+        <div class="control-row">
+            <span class="control-label">FPS Giả lập (60-144)</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="showFPS">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="control-row">
+            <span class="control-label">Thêm Logo/Sticker</span>
+            <button class="btn-action" onclick="document.getElementById('logoInput').click()" style="width: auto; flex: none;">Chọn ảnh</button>
+            <input type="file" id="logoInput" accept="image/*" class="hidden">
+        </div>
+    </div>
+
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+    <button class="btn-pip" onclick="startPIP()">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1"/></svg>
+        BẮT ĐẦU PIP
+    </button>
+</div>
+
+<!-- HIDDEN RESOURCES -->
+<video id="sourceVideo" loop playsinline muted class="hidden"></video>
+<img id="sourceImage" class="hidden">
+<img id="sourceLogo" class="hidden">
+<video id="pipVideo" controls playsinline class="hidden"></video>
+
+<script>
+    /**
+     * CORE PIP ENGINE
+     */
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // State Management
+    const state = {
+        bgMode: 'color', // color, image, video, screen
+        timeMode: 'clock', // clock, timer, pomodoro
+        timerState: { running: false, start: 0, elapsed: 0, duration: 25 * 60 * 1000 },
+        textX: canvas.width
+    };
+
+    // DOM Elements
+    const els = {
+        bgColor: document.getElementById('bgColor'),
+        mediaStatus: document.getElementById('mediaStatus'),
+        sourceVideo: document.getElementById('sourceVideo'),
+        sourceImage: document.getElementById('sourceImage'),
+        sourceLogo: document.getElementById('sourceLogo'),
+        pipVideo: document.getElementById('pipVideo'),
+        timerControls: document.getElementById('timerControls')
+    };
+
+    // --- 1. BACKGROUND HANDLERS ---
+    function setBgMode(mode, el) {
+        state.bgMode = mode;
+        updateChips(el);
+        els.mediaStatus.innerText = "Đang dùng: Màu đơn sắc";
+    }
+
+    function updateChips(el) {
+        if(!el || !el.parentElement) return;
+        Array.from(el.parentElement.children).forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function triggerFile(type, el) {
+        const input = document.getElementById('fileInput');
+        input.accept = type === 'video' ? 'video/*' : 'image/*';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const url = URL.createObjectURL(file);
+            
+            state.bgMode = type;
+            if(type === 'video') {
+                els.sourceVideo.srcObject = null;
+                els.sourceVideo.src = url;
+                els.sourceVideo.play();
+                els.mediaStatus.innerText = `Video: ${file.name}`;
+            } else {
+                els.sourceImage.src = url;
+                els.mediaStatus.innerText = `Ảnh: ${file.name}`;
+            }
+            updateChips(el);
+        };
+        input.click();
+    }
+
+    async function startScreenShare(el) {
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+            state.bgMode = 'video'; // Treat screen as video source
+            els.sourceVideo.srcObject = stream;
+            els.sourceVideo.play();
+            els.mediaStatus.innerText = "Đang quay màn hình";
+            updateChips(el);
+        } catch(e) {
+            console.error(e);
+            alert("Không thể chia sẻ màn hình.");
+        }
+    }
+
+    // --- 2. TIME LOGIC ---
+    function setTimeMode(mode, el) {
+        state.timeMode = mode;
+        updateChips(el);
+        
+        if(mode === 'timer') {
+            state.timerState = { running: false, start: 0, elapsed: 0 };
+            els.timerControls.classList.remove('hidden');
+        } else if (mode === 'pomodoro') {
+            state.timerState = { running: false, start: 0, elapsed: 0, duration: 25 * 60 * 1000 };
+            els.timerControls.classList.remove('hidden');
+        } else {
+            els.timerControls.classList.add('hidden');
+        }
+    }
+
+    function toggleTimer() {
+        if(state.timerState.running) {
+            state.timerState.running = false;
+            state.timerState.elapsed += Date.now() - state.timerState.start;
+        } else {
+            state.timerState.running = true;
+            state.timerState.start = Date.now();
+        }
+    }
+
+    function resetTimer() {
+        state.timerState.running = false;
+        state.timerState.elapsed = 0;
+    }
+
+    // --- 3. EXTRA LOGIC ---
+    document.getElementById('logoInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if(file) els.sourceLogo.src = URL.createObjectURL(file);
+    };
+
+    // --- RENDER LOOP ---
+    function draw() {
+        // A. Clear & Background
+        ctx.fillStyle = els.bgColor.value;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (state.bgMode === 'video' || state.bgMode === 'screen') {
+            drawImageProp(ctx, els.sourceVideo);
+        } else if (state.bgMode === 'image') {
+            drawImageProp(ctx, els.sourceImage);
+        }
+
+        // B. Draw Time Widget
+        if(document.getElementById('showTimeWidget').checked) {
+            drawTime();
+        }
+
+        // C. Draw Text Widget
+        if(document.getElementById('showTextWidget').checked) {
+            drawText();
+        }
+
+        // D. Gamer Extras
+        if(document.getElementById('showFPS').checked) drawFPS();
+        
+        // E. Logo
+        if(els.sourceLogo.src && els.sourceLogo.src !== window.location.href) {
+            ctx.drawImage(els.sourceLogo, canvas.width - 150, 20, 130, 130);
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    function drawTime() {
+        let text = "";
+        
+        // --- 1. Get Time String ---
+        if (state.timeMode === 'clock') {
+            const now = new Date();
+            text = now.toLocaleTimeString('vi-VN', {hour12: false});
+            if(document.getElementById('showMs').checked) {
+                const ms = String(now.getMilliseconds()).padStart(3, '0');
+                text += `.${ms}`;
+            }
+        } else {
+            // Timer & Pomodoro Logic
+            let time = state.timerState.elapsed;
+            if (state.timerState.running) time += Date.now() - state.timerState.start;
+            
+            if (state.timeMode === 'pomodoro') {
+                let remain = state.timerState.duration - time;
+                if(remain < 0) remain = 0;
+                time = remain;
+            }
+
+            const m = Math.floor(time / 60000);
+            const s = Math.floor((time % 60000) / 1000);
+            const ms = Math.floor((time % 1000) / 10);
+            text = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${String(ms).padStart(2,'0')}`;
+        }
+
+        // --- 2. Calculate Position ---
+        const pos = document.getElementById('timePosition').value;
+        const padding = 40;
+        let x, y;
+
+        ctx.font = "bold 100px sans-serif";
+        ctx.fillStyle = state.timeMode === 'pomodoro' && state.timerState.running ? "#FF453A" : "#0A84FF";
+        ctx.shadowColor = "rgba(0,0,0,0.8)";
+        ctx.shadowBlur = 10;
+        
+        if (pos === 'top-left') {
+            ctx.textAlign = 'left';
+            x = padding; 
+            y = 100;
+        } else if (pos === 'top-right') {
+            ctx.textAlign = 'right';
+            x = canvas.width - padding;
+            y = 100;
+        } else if (pos === 'bottom-left') {
+            ctx.textAlign = 'left';
+            x = padding;
+            y = canvas.height - padding;
+        } else if (pos === 'bottom-right') {
+            ctx.textAlign = 'right';
+            x = canvas.width - padding;
+            y = canvas.height - padding;
+        } else if (pos === 'center') {
+            ctx.textAlign = 'center';
+            x = canvas.width / 2;
+            y = canvas.height / 2 + 30; // offset slightly to be visual center
+        }
+
+        // Draw Time
+        ctx.fillText(text, x, y);
+        
+        // --- 3. Draw Date ---
+        if(document.getElementById('showDate').checked) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('vi-VN');
+            
+            ctx.font = "bold 40px sans-serif";
+            ctx.fillStyle = "#ddd";
+            
+            // Smart positioning for date (Above time if Bottom, Below time if Top)
+            let dateY;
+            if (pos.includes('bottom')) {
+                dateY = y - 90; // Place above
+            } else {
+                dateY = y + 45; // Place below
+            }
+            
+            ctx.fillText(dateStr, x, dateY);
+        }
+
+        ctx.shadowBlur = 0;
+        ctx.textAlign = 'start'; // Reset alignment
+    }
+
+    function drawText() {
+        const content = document.getElementById('textContent').value;
+        if(!content) return;
+        
+        const size = document.getElementById('textSize').value;
+        const color = document.getElementById('textColor').value;
+        const isMarquee = document.getElementById('textMarquee').checked;
+        const posMode = document.getElementById('textPosition').value;
+
+        ctx.font = `bold ${size}px sans-serif`;
+        ctx.fillStyle = color;
+        ctx.textBaseline = 'bottom';
+        
+        // --- Calculate Y Position ---
+        let y;
+        if (posMode === 'top') {
+            y = parseInt(size) + 20;
+        } else if (posMode === 'middle') {
+            y = (canvas.height / 2) + (parseInt(size) / 2);
+        } else {
+            y = canvas.height - 30; // bottom default
+        }
+
+        // Background strip
+        ctx.fillStyle = "rgba(0,0,0,0.6)";
+        // Rect: x=0, y=top of text, w=width, h=height+padding
+        ctx.fillRect(0, y - size - 10, canvas.width, parseInt(size) + 20);
+        
+        ctx.fillStyle = color;
+        
+        if(isMarquee) {
+            state.textX -= 3;
+            const w = ctx.measureText(content).width;
+            if(state.textX < -w) state.textX = canvas.width;
+            ctx.fillText(content, state.textX, y);
+        } else {
+            ctx.textAlign = 'center';
+            ctx.fillText(content, canvas.width/2, y);
+            ctx.textAlign = 'start'; // reset
+        }
+    }
+
+    function drawFPS() {
+        const fps = Math.floor(Math.random() * (144 - 140) + 140); 
+        ctx.fillStyle = "#00ff00";
+        ctx.font = "20px Monospace";
+        ctx.textAlign = "left";
+        ctx.fillText(`FPS: ${fps}`, 10, 30);
+    }
+
+    // Helper: Contain Image/Video keeping aspect ratio
+    function drawImageProp(ctx, img) {
+        if(!img) return;
+        const w = img.videoWidth || img.naturalWidth;
+        const h = img.videoHeight || img.naturalHeight;
+        if(!w) return;
+        
+        const scale = Math.min(canvas.width/w, canvas.height/h);
+        const nw = w * scale;
+        const nh = h * scale;
+        ctx.drawImage(img, (canvas.width-nw)/2, (canvas.height-nh)/2, nw, nh);
+    }
+
+    // --- PIP TRIGGER ---
+    async function startPIP() {
+        const stream = canvas.captureStream(60);
+        els.pipVideo.srcObject = stream;
+        try {
+            await els.pipVideo.play();
+            if (document.pictureInPictureElement) await document.exitPictureInPicture();
+            await els.pipVideo.requestPictureInPicture();
+        } catch (error) {
+            alert("Lỗi: " + error.message);
+        }
+    }
+
+    // Init
+    draw();
+
+</script>
+</body>
+</html>
