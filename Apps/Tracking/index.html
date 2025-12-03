@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dịch Vụ Order Hàng Quốc Tế</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Config Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb',
+                        secondary: '#475569',
+                        bg: '#f8fafc'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, doc, updateDoc, onSnapshot, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CẤU HÌNH FIREBASE ---
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyD9cEO4BO16eE7bSBxiKB5Wnn9p-CKuRXk",
+  authDomain: "order-hunq.firebaseapp.com",
+  projectId: "order-hunq",
+  storageBucket: "order-hunq.firebasestorage.app",
+  messagingSenderId: "412087735806",
+  appId: "1:412087735806:web:5289068cd0acccfbc79caf",
+  measurementId: "G-HKJFVER4ZT"
+};
+        const fallbackConfig = { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" }; 
+        const app = initializeApp(Object.keys(firebaseConfig).length ? firebaseConfig : fallbackConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'order-system-app';
+
+        let currentUser = null;
+        let cartItems = [];
+
+        // --- AUTH ---
+        signInAnonymously(auth).catch(console.error);
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                initAdminListener();
+            }
+        });
+
+        // --- DOM ---
+        const views = {
+            home: document.getElementById('view-home'),
+            tracking: document.getElementById('view-tracking'),
+            admin: document.getElementById('view-admin')
+        };
+        const navButtons = document.querySelectorAll('.bottom-nav-btn');
+        const productListEl = document.getElementById('product-list');
+        const trackingResultEl = document.getElementById('tracking-result');
+        const adminOrderListEl = document.getElementById('admin-order-list');
+        const adminModal = document.getElementById('admin-modal');
+
+        // --- NAVIGATION ---
+        window.switchView = (viewName) => {
+            // Ẩn tất cả view
+            Object.values(views).forEach(el => el.classList.add('hidden'));
+            // Hiện view được chọn
+            views[viewName].classList.remove('hidden');
+            
+            // Cập nhật trạng thái nút điều hướng
+            navButtons.forEach(btn => {
+                const icon = btn.querySelector('i');
+                const text = btn.querySelector('span');
+                
+                if(btn.dataset.target === viewName) {
+                    btn.classList.add('text-primary');
+                    btn.classList.remove('text-gray-400');
+                } else {
+                    btn.classList.remove('text-primary');
+                    btn.classList.add('text-gray-400');
+                }
+            });
+
+            if (viewName === 'admin') checkAdminAccess();
+            window.scrollTo(0,0);
+        };
+
+        // --- CLIENT LOGIC: ORDER ---
+        window.addItem = () => {
+            const platformSelect = document.getElementById('platform');
+            const otherPlatformInput = document.getElementById('other-platform');
+            const platform = platformSelect.value === 'Khác' ? otherPlatformInput.value : platformSelect.value;
+            const nameLink = document.getElementById('product-name').value;
+            const note = document.getElementById('product-note').value;
+
+            if (!nameLink) return alert("Vui lòng nhập tên hoặc link sản phẩm");
+            if (platformSelect.value === 'Khác' && !platform) return alert("Vui lòng nhập tên sàn");
+
+            cartItems.push({ platform, nameLink, note });
+            renderCart();
+            
+            document.getElementById('product-name').value = '';
+            document.getElementById('product-note').value = '';
+            // Focus lại input để nhập tiếp
+            document.getElementById('product-name').focus();
+        };
+
+        window.toggleOtherInput = (select) => {
+            const input = document.getElementById('other-platform');
+            input.classList.toggle('hidden', select.value !== 'Khác');
+        };
+
+        function renderCart() {
+            productListEl.innerHTML = '';
+            if (cartItems.length === 0) {
+                productListEl.innerHTML = `<div class="text-center text-gray-400 py-6 text-sm bg-gray-50 rounded-xl border border-dashed border-gray-300">Chưa có sản phẩm nào</div>`;
+                return;
+            }
+
+            cartItems.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-start bg-white p-4 rounded-xl shadow-sm mb-3 border border-gray-100";
+                div.innerHTML = `
+                    <div class="flex-1 pr-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-1 rounded-md mb-1 inline-block">${item.platform}</span>
+                        <p class="font-medium text-gray-800 line-clamp-2 text-sm">${item.nameLink}</p>
+                        ${item.note ? `<p class="text-xs text-gray-500 mt-1"><i class="fas fa-pen-nib mr-1"></i>${item.note}</p>` : ''}
+                    </div>
+                    <button onclick="removeItem(${index})" class="text-red-400 hover:text-red-600 p-2">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                `;
+                productListEl.appendChild(div);
+            });
+        }
+
+        window.removeItem = (index) => {
+            cartItems.splice(index, 1);
+            renderCart();
+        };
+
+        window.submitOrder = async () => {
+            if (!currentUser) return alert("Đang kết nối...");
+            if (cartItems.length === 0) return alert("Giỏ hàng đang trống");
+            const contactInfo = document.getElementById('contact-info').value;
+            if (!contactInfo) return alert("Vui lòng nhập thông tin liên hệ");
+
+            const submitBtn = document.getElementById('btn-submit');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>Đang gửi...`;
+
+            try {
+                const orderCode = 'ORD-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+                const initialLog = {
+                    status: 'Đã tiếp nhận',
+                    description: 'Hệ thống đã nhận được yêu cầu.',
+                    location: 'Hệ thống',
+                    timestamp: new Date().toISOString()
+                };
+
+                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), {
+                    orderCode,
+                    items: cartItems,
+                    contactInfo,
+                    status: 'Chờ xử lý',
+                    logs: [initialLog],
+                    createdAt: serverTimestamp(),
+                    userId: currentUser.uid
+                });
+
+                cartItems = [];
+                renderCart();
+                document.getElementById('contact-info').value = '';
+                
+                document.getElementById('success-modal').classList.remove('hidden');
+                document.getElementById('new-order-code').innerText = orderCode;
+
+            } catch (error) {
+                alert("Lỗi: " + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        };
+
+        window.closeSuccessModal = () => {
+            document.getElementById('success-modal').classList.add('hidden');
+            switchView('tracking');
+            // Auto fill tracking code
+            const code = document.getElementById('new-order-code').innerText;
+            document.getElementById('tracking-code-input').value = code;
+        };
+
+        // --- CLIENT LOGIC: TRACKING ---
+        window.trackOrder = async () => {
+            const code = document.getElementById('tracking-code-input').value.trim().toUpperCase();
+            if (!code) return alert("Vui lòng nhập mã");
+
+            const loading = document.getElementById('tracking-loading');
+            loading.classList.remove('hidden');
+            trackingResultEl.innerHTML = '';
+
+            try {
+                const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), where("orderCode", "==", code));
+                const snapshot = await getDocs(q);
+                loading.classList.add('hidden');
+
+                if (snapshot.empty) {
+                    trackingResultEl.innerHTML = `<div class="bg-red-50 text-red-500 p-4 rounded-xl text-center text-sm font-medium">Không tìm thấy mã ${code}</div>`;
+                    return;
+                }
+                renderTrackingResult(snapshot.docs[0].data());
+            } catch (error) {
+                loading.classList.add('hidden');
+                alert("Lỗi tra cứu");
+            }
+        };
+
+        function renderTrackingResult(order) {
+            const sortedLogs = order.logs ? order.logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) : [];
+            
+            let timelineHtml = sortedLogs.map((log, index) => {
+                const date = new Date(log.timestamp);
+                const isLatest = index === 0;
+                
+                return `
+                <div class="relative pl-6 pb-6 last:pb-0 border-l-2 ${isLatest ? 'border-primary' : 'border-gray-200'} ml-2">
+                    <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full ${isLatest ? 'bg-primary ring-4 ring-blue-100' : 'bg-gray-300'}"></div>
+                    
+                    <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 mt-[-5px]">
+                        <div class="flex justify-between items-start">
+                            <span class="font-bold text-sm ${isLatest ? 'text-primary' : 'text-gray-600'}">${log.status}</span>
+                            <span class="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">${date.toLocaleDateString('vi-VN')} ${date.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'})}</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-1">${log.description}</p>
+                        <p class="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><i class="fas fa-map-pin"></i> ${log.location}</p>
+                    </div>
+                </div>`;
+            }).join('');
+
+            trackingResultEl.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="bg-gradient-to-r from-blue-600 to-blue-500 p-5 text-white">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h2 class="text-2xl font-bold tracking-tight">${order.orderCode}</h2>
+                                <p class="text-sm opacity-90 font-medium bg-white/20 inline-block px-2 py-0.5 rounded mt-1">${order.status}</p>
+                            </div>
+                            <i class="fas fa-box text-4xl opacity-30"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="p-5">
+                        <div class="mb-6">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Sản phẩm</h3>
+                            <div class="space-y-2">
+                                ${order.items.map(i => `
+                                    <div class="flex items-center gap-3 bg-gray-50 p-2 rounded-lg">
+                                        <div class="w-8 h-8 rounded bg-white flex items-center justify-center text-gray-400 shadow-sm"><i class="fas fa-link text-xs"></i></div>
+                                        <a href="${i.nameLink}" class="text-sm text-blue-600 font-medium truncate flex-1 block" target="_blank">${i.nameLink}</a>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Hành trình</h3>
+                            <div class="mt-2">${timelineHtml}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- ADMIN LOGIC ---
+        let isAdminAuthenticated = false;
+        let selectedOrderId = null;
+        let selectedOrderData = null;
+
+        window.checkAdminAccess = () => {
+            const adminPass = localStorage.getItem('admin_pass');
+            if (adminPass !== 'admin123') {
+                const input = prompt("Mật khẩu Admin (admin123):");
+                if (input === 'admin123') {
+                    localStorage.setItem('admin_pass', 'admin123');
+                    isAdminAuthenticated = true;
+                    initAdminListener();
+                } else {
+                    switchView('home');
+                }
+            } else {
+                isAdminAuthenticated = true;
+                initAdminListener();
+            }
+        };
+
+        function initAdminListener() {
+            if (!currentUser || !isAdminAuthenticated) return;
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), orderBy('createdAt', 'desc'));
+            onSnapshot(q, (snapshot) => renderAdminList(snapshot.docs));
+        }
+
+        function renderAdminList(docs) {
+            adminOrderListEl.innerHTML = '';
+            docs.forEach(docSnapshot => {
+                const data = docSnapshot.data();
+                const docId = docSnapshot.id;
+                const date = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : 'N/A';
+                
+                // Card layout for mobile/desktop unified
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-blue-300 transition cursor-pointer relative overflow-hidden group";
+                card.onclick = () => openAdminModal(docId, data);
+
+                const statusColors = {
+                    'Hoàn thành': 'bg-green-100 text-green-700',
+                    'Hủy': 'bg-red-100 text-red-700',
+                    'Chờ xử lý': 'bg-gray-100 text-gray-700'
+                };
+                const statusClass = statusColors[data.status] || 'bg-yellow-100 text-yellow-800';
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="font-bold text-lg text-primary">${data.orderCode}</span>
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-full ${statusClass}">${data.status}</span>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-2">
+                        <i class="fas fa-user-circle mr-1 text-gray-400"></i> ${data.contactInfo}
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 border-t pt-2 mt-2">
+                        <span><i class="fas fa-box mr-1"></i> ${data.items.length} món</span>
+                        <span>${date}</span>
+                    </div>
+                    <div class="absolute right-0 top-0 bottom-0 w-1 bg-blue-500 opacity-0 group-hover:opacity-100 transition"></div>
+                `;
+                adminOrderListEl.appendChild(card);
+            });
+        }
+
+        window.openAdminModal = (docId, data) => {
+            selectedOrderId = docId;
+            selectedOrderData = data;
+            adminModal.classList.remove('hidden');
+            document.getElementById('modal-title').innerText = data.orderCode;
+            document.getElementById('modal-status').value = data.status;
+            document.getElementById('log-status').value = '';
+            document.getElementById('log-desc').value = '';
+            document.getElementById('log-loc').value = '';
+        };
+
+        window.closeAdminModal = () => {
+            adminModal.classList.add('hidden');
+            selectedOrderId = null;
+        };
+
+        window.updateOrder = async () => {
+            if (!selectedOrderId) return;
+            const newStatus = document.getElementById('modal-status').value;
+            const logStatus = document.getElementById('log-status').value;
+            const logDesc = document.getElementById('log-desc').value;
+            const logLoc = document.getElementById('log-loc').value;
+
+            let updatedLogs = [...selectedOrderData.logs];
+            if (logStatus) {
+                updatedLogs.push({
+                    status: logStatus,
+                    description: logDesc || 'Cập nhật trạng thái',
+                    location: logLoc || 'Kho',
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', selectedOrderId), {
+                status: newStatus,
+                logs: updatedLogs
+            });
+            
+            closeAdminModal();
+        };
+
+        window.fillLog = (s, d, l, st) => {
+            document.getElementById('log-status').value = s;
+            document.getElementById('log-desc').value = d;
+            document.getElementById('log-loc').value = l;
+            document.getElementById('modal-status').value = st;
+        };
+    </script>
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+        /* Ẩn scrollbar nhưng vẫn scroll được */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .safe-pb { padding-bottom: calc(4rem + env(safe-area-inset-bottom)); }
+        
+        /* Hiệu ứng focus input */
+        input:focus, select:focus, textarea:focus { 
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); 
+            border-color: #2563eb; 
+        }
+    </style>
+</head>
+<body class="bg-bg font-sans text-gray-800 min-h-screen relative safe-pb">
+
+    <!-- TOP HEADER (Chỉ hiện Logo) -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-200">
+        <div class="px-4 py-3 flex justify-between items-center max-w-lg mx-auto">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-gradient-to-tr from-blue-600 to-blue-400 text-white rounded-lg flex items-center justify-center text-sm shadow-blue-200 shadow-lg">
+                    <i class="fas fa-plane"></i>
+                </div>
+                <h1 class="font-bold text-lg text-gray-800 tracking-tight">Order<span class="text-primary">Ship</span></h1>
+            </div>
+            <div class="text-xs text-gray-400 font-medium">Global Service</div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="px-4 py-4 max-w-lg mx-auto w-full">
+
+        <!-- VIEW: HOME -->
+        <div id="view-home" class="space-y-4">
+            <!-- Add Product Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Tạo đơn hàng mới</h2>
+                
+                <div class="space-y-3">
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="col-span-1">
+                            <select id="platform" onchange="toggleOtherInput(this)" class="w-full h-10 px-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium outline-none">
+                                <option value="Amazon">Amazon</option>
+                                <option value="eBay">eBay</option>
+                                <option value="Taobao">Taobao</option>
+                                <option value="Costco">Costco</option>
+                                <option value="Jomashop">Joma</option>
+                                <option value="Khác">Khác</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2">
+                            <input type="text" id="other-platform" placeholder="Tên web..." class="hidden w-full h-10 px-3 border border-gray-200 rounded-lg text-sm outline-none mb-2">
+                            <input type="text" id="product-name" placeholder="Link/Tên sản phẩm..." class="w-full h-10 px-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none">
+                        </div>
+                    </div>
+                    
+                    <textarea id="product-note" rows="2" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none resize-none" placeholder="Ghi chú: Size, Màu, Số lượng..."></textarea>
+
+                    <button onclick="addItem()" class="w-full py-2.5 border-2 border-dashed border-blue-200 text-blue-600 rounded-xl font-semibold text-sm hover:bg-blue-50 transition active:scale-[0.98]">
+                        <i class="fas fa-plus mr-1"></i> Thêm vào danh sách
+                    </button>
+                </div>
+            </div>
+
+            <!-- List Products -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-400 mb-2 ml-1">Danh sách chờ (<span id="count-items">0</span>)</h3>
+                <div id="product-list"></div>
+            </div>
+
+            <!-- Contact & Submit -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 sticky bottom-[80px] z-30">
+                <div class="relative mb-4">
+                    <i class="fas fa-user absolute left-3 top-3.5 text-gray-400"></i>
+                    <input type="text" id="contact-info" placeholder="SĐT hoặc Facebook của bạn" class="w-full pl-9 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium outline-none">
+                </div>
+                <button id="btn-submit" onclick="submitOrder()" class="w-full bg-primary text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 active:scale-[0.98] transition">
+                    Gửi Yêu Cầu
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW: TRACKING -->
+        <div id="view-tracking" class="hidden space-y-4">
+            <div class="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 flex p-2">
+                <input type="text" id="tracking-code-input" placeholder="Nhập mã đơn (VD: ORD-ABC)" class="flex-grow px-4 py-2 bg-transparent text-lg font-bold uppercase placeholder-gray-300 outline-none text-gray-700">
+                <button onclick="trackOrder()" class="bg-gray-900 text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+
+            <div id="tracking-loading" class="hidden text-center py-10">
+                <div class="inline-block w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+
+            <div id="tracking-result" class="animate-fade-in">
+                <!-- Empty State -->
+                <div class="flex flex-col items-center justify-center py-12 text-gray-300">
+                    <i class="fas fa-cube text-6xl mb-4"></i>
+                    <p class="text-sm">Nhập mã vận đơn để kiểm tra</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW: ADMIN -->
+        <div id="view-admin" class="hidden">
+            <div class="flex justify-between items-center mb-4 px-1">
+                <h2 class="text-lg font-bold text-gray-800">Quản lý đơn</h2>
+                <button onclick="location.reload()" class="text-xs bg-gray-200 px-3 py-1 rounded-full text-gray-600 font-bold">Thoát</button>
+            </div>
+            <div id="admin-order-list" class="space-y-3 pb-20">
+                <!-- Cards render here -->
+                <div class="text-center py-10 text-gray-400">Đang tải dữ liệu...</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION (MOBILE FIRST) -->
+    <nav class="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-gray-200 z-50 pb-[env(safe-area-inset-bottom)]">
+        <div class="flex justify-around items-center h-16 max-w-lg mx-auto">
+            <button onclick="switchView('home')" class="bottom-nav-btn flex flex-col items-center justify-center w-full h-full text-primary transition active:scale-90" data-target="home">
+                <i class="fas fa-plus-circle text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">Đặt hàng</span>
+            </button>
+            <button onclick="switchView('tracking')" class="bottom-nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 transition active:scale-90" data-target="tracking">
+                <i class="fas fa-search-location text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">Tra cứu</span>
+            </button>
+            <button onclick="switchView('admin')" class="bottom-nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 transition active:scale-90" data-target="admin">
+                <i class="fas fa-shield-alt text-xl mb-1"></i>
+                <span class="text-[10px] font-bold">Admin</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- SUCCESS MODAL -->
+    <div id="success-modal" class="fixed inset-0 bg-black/60 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-xs rounded-3xl p-6 text-center shadow-2xl animate-bounce-in">
+            <div class="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fas fa-check"></i>
+            </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-1">Thành công!</h3>
+            <p class="text-sm text-gray-500 mb-4">Đơn hàng đã được gửi đi.</p>
+            
+            <div class="bg-gray-50 p-3 rounded-xl border border-dashed border-gray-300 mb-6">
+                <p class="text-xs text-gray-400 uppercase font-bold mb-1">Mã đơn hàng</p>
+                <div id="new-order-code" class="text-2xl font-mono font-bold text-gray-800 select-all">...</div>
+            </div>
+
+            <button onclick="closeSuccessModal()" class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black transition">
+                Tra cứu ngay
+            </button>
+        </div>
+    </div>
+
+    <!-- ADMIN MODAL -->
+    <div id="admin-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-end sm:items-center justify-center sm:p-4">
+        <!-- Sheet on mobile, Modal on desktop -->
+        <div class="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl h-[85vh] sm:h-auto flex flex-col animate-slide-up">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h3 id="modal-title" class="font-bold text-xl text-gray-800">ORD-XXX</h3>
+                    <p class="text-xs text-gray-400">Cập nhật trạng thái</p>
+                </div>
+                <button onclick="closeAdminModal()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="flex-grow overflow-y-auto no-scrollbar space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase">Trạng thái chính</label>
+                    <select id="modal-status" class="w-full mt-1 p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none font-bold text-gray-700">
+                        <option value="Chờ xử lý">Chờ xử lý</option>
+                        <option value="Đã tiếp nhận">Đã tiếp nhận</option>
+                        <option value="Đã mua hàng">Đã mua hàng</option>
+                        <option value="Đang vận chuyển">Đang vận chuyển</option>
+                        <option value="Đang giao">Đang giao</option>
+                        <option value="Hoàn thành">Hoàn thành</option>
+                        <option value="Hủy">Hủy</option>
+                    </select>
+                </div>
+
+                <div class="border-t border-gray-100 pt-4">
+                    <label class="text-xs font-bold text-blue-600 uppercase mb-2 block">Cập nhật nhanh</label>
+                    <div class="grid grid-cols-3 gap-2 mb-4">
+                        <button onclick="fillLog('Đã mua', 'Đã mua xong trên web', 'Online', 'Đã mua hàng')" class="p-2 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold truncate border border-blue-100">Đã Mua</button>
+                        <button onclick="fillLog('Về kho US', 'Đã nhập kho Oregon', 'Oregon US', 'Đang vận chuyển')" class="p-2 bg-purple-50 text-purple-600 rounded-lg text-xs font-bold truncate border border-purple-100">Kho US</button>
+                        <button onclick="fillLog('Về VN', 'Đã về kho Hà Nội', 'Hà Nội', 'Đang giao')" class="p-2 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold truncate border border-orange-100">Về VN</button>
+                    </div>
+
+                    <div class="space-y-3">
+                        <input id="log-status" placeholder="Tiêu đề (VD: Đang bay)" class="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none">
+                        <input id="log-loc" placeholder="Vị trí (VD: Tokyo)" class="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none">
+                        <textarea id="log-desc" rows="2" placeholder="Chi tiết..." class="w-full p-3 border border-gray-200 rounded-xl text-sm outline-none resize-none"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="updateOrder()" class="w-full bg-primary text-white font-bold py-3.5 rounded-xl mt-4 shadow-lg shadow-blue-200">
+                Lưu Thay Đổi
+            </button>
+        </div>
+    </div>
+
+    <style>
+        .animate-slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+
+</body>
+</html>

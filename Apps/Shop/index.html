@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="vi" class="light">
+<head>
+    <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" href="/Asset/logo/iconApps.png" />
+    <link rel="apple-touch-icon" href="/Asset/logo/iconApps.png" sizes="150x150" />
+
+    <meta property="og:image" content="/Asset/img/Banner.png" />
+    <meta property="og:title" content="Share&Go" />
+    <meta property="og:description" content="Thiết kế và lập trình Đinh Mạnh Hùng" />
+    <title>Trợ Lý Đi Chợ Pro v2</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#18181b',
+                            card: '#27272a',
+                            input: '#3f3f46'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .slide-in { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Ẩn mũi tên input number */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* Custom Checkbox cho phần giảm giá */
+        .discount-radio:checked + label {
+            background-color: #f97316; color: white; border-color: #f97316;
+        }
+
+        /* Chế độ riêng tư: Làm mờ các con số */
+        .privacy-active .sensitive-data {
+            filter: blur(8px);
+            opacity: 0.6;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        .privacy-active .sensitive-data:hover {
+            filter: blur(0); /* Soi nhanh khi hover */
+            opacity: 1;
+        }
+
+        /* Modal Animation */
+        .modal-enter { opacity: 0; transform: scale(0.9); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
+        .modal-exit { opacity: 1; transform: scale(1); }
+        .modal-exit-active { opacity: 0; transform: scale(0.9); transition: all 0.2s ease-in; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-dark-bg text-gray-800 dark:text-gray-100 min-h-screen pb-32 transition-colors duration-200">
+
+    <!-- Header -->
+    <header class="bg-teal-600 dark:bg-teal-800 text-white p-3 shadow-lg sticky top-0 z-40">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <h1 class="text-lg font-bold flex items-center"><i class="fas fa-shopping-basket mr-2"></i>Đi Chợ</h1>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <!-- Nút Privacy -->
+                <button onclick="togglePrivacy()" id="privacyBtn" class="w-8 h-8 rounded-full bg-teal-700 hover:bg-teal-600 flex items-center justify-center transition">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <!-- Nút Settings -->
+                <button onclick="openSettings()" class="w-8 h-8 rounded-full bg-teal-700 hover:bg-teal-600 flex items-center justify-center transition">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Tổng tiền Header -->
+        <div class="container mx-auto mt-2 flex justify-end items-end">
+             <div class="text-right">
+                <p class="text-[10px] text-teal-100 uppercase tracking-wider">Tổng tạm tính</p>
+                <h2 class="text-3xl font-bold leading-none sensitive-data" id="headerTotal">0</h2>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto p-3 max-w-lg">
+        
+        <!-- Form nhập liệu -->
+        <div class="bg-white dark:bg-dark-card rounded-xl shadow-md p-3 mb-4 slide-in relative transition-colors">
+            
+            <!-- Gợi ý giá cũ -->
+            <div id="priceHint" class="hidden absolute -top-3 left-4 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100 text-xs px-2 py-1 rounded shadow border border-yellow-200 dark:border-yellow-700 z-10 truncate max-w-[90%]">
+                <i class="fas fa-history mr-1"></i>Lần trước: <b id="hintPrice" class="sensitive-data">0</b>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 pt-2">
+                <!-- Tên món -->
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mb-1">Tên món đồ</label>
+                    <div class="relative">
+                        <input type="text" id="itemName" list="itemSuggestions" 
+                               placeholder="Nhập tên món (vd: Thịt bò)..." 
+                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-dark-input dark:text-white rounded-lg p-3 focus:ring-2 focus:ring-teal-500 focus:outline-none transition font-medium"
+                               oninput="checkPriceHistory(this)">
+                        <datalist id="itemSuggestions"></datalist>
+                        <button onclick="clearInput('itemName')" class="absolute right-2 top-3 text-gray-300 hover:text-gray-500 dark:hover:text-gray-200">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hàng 2: Giá - Số lượng - Khối lượng -->
+                <div class="grid grid-cols-12 gap-2">
+                    <!-- Giá tiền -->
+                    <div class="col-span-6">
+                        <label class="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mb-1">Giá tem/gói</label>
+                        <div class="relative">
+                            <input type="text" id="itemPrice" inputmode="numeric" placeholder="0" 
+                                   class="w-full border border-gray-300 dark:border-gray-600 dark:bg-dark-input dark:text-teal-400 rounded-lg p-3 font-mono text-lg font-bold text-right text-teal-700 focus:ring-2 focus:ring-teal-500 focus:outline-none" 
+                                   onkeyup="formatCurrencyInput(this); calculatePreview()">
+                            <span class="currency-symbol absolute left-2 top-3.5 text-gray-400 text-sm select-none">₫</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Số lượng -->
+                    <div class="col-span-3">
+                        <label class="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mb-1 text-center">SL</label>
+                        <input type="number" id="itemQty" value="1" inputmode="decimal"
+                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-dark-input dark:text-white rounded-lg p-3 font-mono text-lg text-center focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                               oninput="calculatePreview()">
+                    </div>
+
+                    <!-- Khối lượng -->
+                    <div class="col-span-3">
+                        <label class="block text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mb-1 text-center">Gam</label>
+                        <input type="number" id="itemWeight" placeholder="g" inputmode="numeric"
+                               class="w-full border border-gray-300 dark:border-gray-600 dark:bg-dark-input dark:text-white rounded-lg p-3 font-mono text-lg text-center bg-gray-50 focus:ring-2 focus:ring-teal-500 focus:outline-none placeholder-gray-300"
+                               oninput="calculatePreview()">
+                    </div>
+                </div>
+
+                <!-- Khu vực giảm giá -->
+                <div class="bg-orange-50 dark:bg-gray-800/50 rounded-lg p-2 border border-orange-100 dark:border-gray-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-[10px] font-bold text-orange-400 uppercase"><i class="fas fa-tag mr-1"></i>Giảm giá (1 món)</label>
+                        <span id="previewDiscount" class="text-xs font-bold text-orange-600 sensitive-data"></span>
+                    </div>
+                    
+                    <div class="grid grid-cols-5 gap-1 mb-2">
+                        <input type="radio" name="discount" id="d0" value="0" class="discount-radio hidden" checked onchange="setDiscount(0, 'percent')">
+                        <label for="d0" class="cursor-pointer text-xs font-bold py-1.5 rounded bg-white dark:bg-dark-input dark:text-gray-300 dark:border-gray-600 text-gray-500 border border-gray-200 text-center hover:bg-gray-50 transition">0</label>
+                        
+                        <input type="radio" name="discount" id="d5" value="5" class="discount-radio hidden" onchange="setDiscount(5, 'percent')">
+                        <label for="d5" class="cursor-pointer text-xs font-bold py-1.5 rounded bg-white dark:bg-dark-input dark:text-gray-300 dark:border-gray-600 text-gray-500 border border-gray-200 text-center hover:bg-gray-50 transition">-5%</label>
+
+                        <input type="radio" name="discount" id="d10" value="10" class="discount-radio hidden" onchange="setDiscount(10, 'percent')">
+                        <label for="d10" class="cursor-pointer text-xs font-bold py-1.5 rounded bg-white dark:bg-dark-input dark:text-gray-300 dark:border-gray-600 text-gray-500 border border-gray-200 text-center hover:bg-gray-50 transition">-10%</label>
+                        
+                        <input type="radio" name="discount" id="d20" value="20" class="discount-radio hidden" onchange="setDiscount(20, 'percent')">
+                        <label for="d20" class="cursor-pointer text-xs font-bold py-1.5 rounded bg-white dark:bg-dark-input dark:text-gray-300 dark:border-gray-600 text-gray-500 border border-gray-200 text-center hover:bg-gray-50 transition">-20%</label>
+                        
+                        <input type="radio" name="discount" id="d50" value="50" class="discount-radio hidden" onchange="setDiscount(50, 'percent')">
+                        <label for="d50" class="cursor-pointer text-xs font-bold py-1.5 rounded bg-white dark:bg-dark-input dark:text-gray-300 dark:border-gray-600 text-gray-500 border border-gray-200 text-center hover:bg-gray-50 transition">-50%</label>
+                    </div>
+
+                    <div class="flex gap-2 items-center">
+                        <input type="text" id="customDiscount" placeholder="Nhập số khác..." 
+                               class="flex-1 text-xs border border-orange-200 dark:border-gray-600 dark:bg-dark-input dark:text-white rounded p-1.5 focus:outline-none focus:border-orange-500 text-right"
+                               onfocus="document.querySelectorAll('.discount-radio').forEach(r => r.checked = false)"
+                               oninput="handleCustomDiscount(this)">
+                        
+                        <div class="flex bg-white dark:bg-dark-input rounded border border-orange-200 dark:border-gray-600 overflow-hidden">
+                            <button id="btnTypePercent" class="px-2 py-1 text-xs font-bold bg-orange-500 text-white" onclick="toggleDiscType('percent')">%</button>
+                            <button id="btnTypeFixed" class="px-2 py-1 text-xs font-bold bg-white dark:bg-dark-input text-gray-500 dark:text-gray-300" onclick="toggleDiscType('fixed')"><span class="currency-symbol">₫</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Kết quả -->
+                <div class="flex justify-between items-end px-1 border-t border-dashed border-gray-200 dark:border-gray-700 pt-2 mt-1">
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                        Quy đổi: <span id="unitPricePreview" class="font-bold text-indigo-600 dark:text-indigo-400 text-sm sensitive-data">---</span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-xs text-gray-400 block">Thành tiền (Đã nhân SL)</span>
+                        <span id="finalItemPrice" class="text-2xl font-bold text-teal-700 dark:text-teal-400 sensitive-data">0</span>
+                    </div>
+                </div>
+
+                <button onclick="addItem()" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-lg shadow-md active:transform active:scale-95 transition mt-1">
+                    THÊM VÀO GIỎ
+                </button>
+            </div>
+        </div>
+
+        <!-- Danh sách hiện tại -->
+        <div id="currentListSection" class="pb-20">
+            <div class="flex justify-between items-center mb-2 px-1">
+                <h3 class="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase">Giỏ hàng (<span id="itemCount">0</span>)</h3>
+                <button onclick="toggleHistory()" class="text-xs text-teal-600 dark:text-teal-400 font-semibold bg-white dark:bg-dark-card border dark:border-gray-700 px-2 py-1 rounded shadow-sm">
+                    <i class="fas fa-history mr-1"></i>Xem Lịch sử
+                </button>
+            </div>
+            
+            <div id="cartList" class="space-y-2"></div>
+
+            <div id="finishBtnGroup" class="hidden mt-6">
+                 <button onclick="openConfirmModal('finish')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg active:scale-95 transition flex justify-center items-center">
+                    <i class="fas fa-save mr-2"></i> HOÀN TẤT CHUYẾN ĐI
+                </button>
+            </div>
+        </div>
+
+        <!-- Section Lịch sử -->
+        <div id="historySection" class="hidden fixed inset-0 bg-gray-100 dark:bg-dark-bg z-50 overflow-y-auto">
+            <div class="sticky top-0 bg-white dark:bg-dark-card p-4 shadow-md flex justify-between items-center border-b dark:border-gray-700">
+                <h3 class="font-bold text-lg"><i class="fas fa-history text-teal-600 mr-2"></i>Lịch sử</h3>
+                <button onclick="toggleHistory()" class="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="p-4 container mx-auto max-w-lg">
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-white dark:bg-dark-card p-3 rounded-xl shadow-sm border-l-4 border-purple-500">
+                        <p class="text-[10px] text-gray-400 uppercase">Món đắt nhất</p>
+                        <p class="font-bold text-gray-800 dark:text-white truncate" id="statMaxItem">---</p>
+                        <p class="text-xs text-purple-600 dark:text-purple-400 font-bold sensitive-data" id="statMaxPrice">0</p>
+                    </div>
+                    <div class="bg-white dark:bg-dark-card p-3 rounded-xl shadow-sm border-l-4 border-blue-500">
+                        <p class="text-[10px] text-gray-400 uppercase">Tổng chi tháng này</p>
+                        <p class="font-bold text-gray-800 dark:text-white text-lg sensitive-data" id="statTotalMonth">0</p>
+                    </div>
+                </div>
+                <div id="historyList" class="space-y-4"></div>
+                <button onclick="openConfirmModal('clear')" class="w-full mt-8 text-red-500 text-xs font-semibold py-3 border border-red-200 dark:border-red-900 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                    Xóa toàn bộ lịch sử
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRM (Thay thế window.confirm) -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div class="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-6 max-w-sm w-full transform transition-all scale-100">
+            <div class="text-center mb-5">
+                <div id="modalIcon" class="w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-300 text-2xl">
+                    <i class="fas fa-question"></i>
+                </div>
+                <h3 id="modalTitle" class="text-lg font-bold text-gray-800 dark:text-white mb-2">Xác nhận</h3>
+                <p id="modalMsg" class="text-sm text-gray-500 dark:text-gray-400">Bạn có chắc chắn muốn thực hiện?</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-semibold hover:bg-gray-50 dark:hover:bg-gray-700">Hủy</button>
+                <button id="modalConfirmBtn" class="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-md">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div class="bg-white dark:bg-dark-card rounded-t-2xl sm:rounded-2xl shadow-2xl p-5 w-full sm:max-w-xs slide-in">
+            <div class="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-3">
+                <h3 class="font-bold text-lg dark:text-white">Cài đặt</h3>
+                <button onclick="closeSettings()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="space-y-5">
+                <!-- Toggle Dark Mode -->
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium dark:text-gray-300"><i class="fas fa-moon mr-2"></i>Chế độ tối</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggleTheme" class="sr-only peer" onchange="toggleTheme()">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-600"></div>
+                    </label>
+                </div>
+
+                <!-- Currency Settings -->
+                <div>
+                    <label class="block text-sm font-medium dark:text-gray-300 mb-2"><i class="fas fa-coins mr-2"></i>Đơn vị tiền tệ</label>
+                    <div class="flex gap-2">
+                         <input type="text" id="settingCurrency" class="flex-1 border dark:border-gray-600 dark:bg-dark-input dark:text-white rounded px-3 py-2 text-sm text-center" placeholder="Ký hiệu (vd: ₫)">
+                         <label class="flex items-center gap-2 cursor-pointer">
+                             <input type="checkbox" id="toggleShowCurrency" class="w-4 h-4 text-teal-600" checked>
+                             <span class="text-sm dark:text-gray-400">Hiện</span>
+                         </label>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="saveSettings()" class="w-full mt-6 bg-teal-600 text-white font-bold py-2.5 rounded-xl shadow">Lưu thay đổi</button>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed top-16 left-1/2 transform -translate-x-1/2 bg-gray-800/90 dark:bg-gray-600/90 backdrop-blur text-white px-4 py-2 rounded-full shadow-xl opacity-0 transition-opacity duration-300 pointer-events-none z-[70] text-sm flex items-center whitespace-nowrap">
+        <span id="toastMsg">Thông báo</span>
+    </div>
+
+    <script>
+        // --- CONFIG & STATE ---
+        let cart = [];
+        let history = JSON.parse(localStorage.getItem('shoppingHistory')) || [];
+        let itemDb = {}; 
+        
+        let settings = JSON.parse(localStorage.getItem('appSettings')) || {
+            currency: '₫',
+            showCurrency: true,
+            theme: 'light',
+            privacy: false
+        };
+
+        let currentDiscType = 'percent'; 
+        let currentDiscValue = 0;
+        let confirmCallback = null;
+
+        // --- INIT ---
+        window.onload = function() {
+            loadSettings(); // Apply theme & currency
+            buildItemDb();
+            renderCart();
+            calculatePreview(); 
+        }
+
+        // --- SETTINGS & THEME ---
+        function loadSettings() {
+            // Apply Theme
+            const html = document.documentElement;
+            if (settings.theme === 'dark') {
+                html.classList.add('dark');
+                document.getElementById('toggleTheme').checked = true;
+            } else {
+                html.classList.remove('dark');
+                document.getElementById('toggleTheme').checked = false;
+            }
+
+            // Apply Privacy
+            if(settings.privacy) togglePrivacyUI(true);
+
+            // Set Inputs
+            document.getElementById('settingCurrency').value = settings.currency;
+            document.getElementById('toggleShowCurrency').checked = settings.showCurrency;
+
+            // Apply Currency to UI
+            updateCurrencyUI();
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (document.getElementById('toggleTheme').checked) {
+                html.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+            }
+        }
+
+        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+
+        function saveSettings() {
+            settings.theme = document.getElementById('toggleTheme').checked ? 'dark' : 'light';
+            settings.currency = document.getElementById('settingCurrency').value.trim();
+            settings.showCurrency = document.getElementById('toggleShowCurrency').checked;
+            
+            localStorage.setItem('appSettings', JSON.stringify(settings));
+            loadSettings();
+            renderCart(); // Re-render to update symbols
+            calculatePreview();
+            closeSettings();
+            showToast("Đã lưu cài đặt");
+        }
+
+        function updateCurrencyUI() {
+            const symbols = document.querySelectorAll('.currency-symbol');
+            symbols.forEach(el => {
+                if (settings.showCurrency) {
+                    el.innerText = settings.currency;
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        }
+
+        // --- PRIVACY MODE ---
+        function togglePrivacy() {
+            settings.privacy = !settings.privacy;
+            localStorage.setItem('appSettings', JSON.stringify(settings));
+            togglePrivacyUI(settings.privacy);
+            showToast(settings.privacy ? "Đã bật chế độ riêng tư" : "Đã tắt chế độ riêng tư");
+        }
+
+        function togglePrivacyUI(isActive) {
+            const btn = document.getElementById('privacyBtn');
+            const icon = btn.querySelector('i');
+            const body = document.body;
+
+            if (isActive) {
+                body.classList.add('privacy-active');
+                icon.className = 'fas fa-eye-slash';
+                btn.classList.add('bg-gray-800');
+            } else {
+                body.classList.remove('privacy-active');
+                icon.className = 'fas fa-eye';
+                btn.classList.remove('bg-gray-800');
+            }
+        }
+
+        // --- MODAL SYSTEM ---
+        function openConfirmModal(type) {
+            const modal = document.getElementById('confirmModal');
+            const title = document.getElementById('modalTitle');
+            const msg = document.getElementById('modalMsg');
+            const icon = document.getElementById('modalIcon');
+            const btn = document.getElementById('modalConfirmBtn');
+
+            modal.classList.remove('hidden');
+            
+            if (type === 'finish') {
+                title.innerText = "Hoàn tất mua sắm?";
+                msg.innerText = "Chuyến đi sẽ được lưu vào lịch sử.";
+                icon.className = "w-16 h-16 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-300 text-2xl";
+                icon.innerHTML = '<i class="fas fa-check"></i>';
+                btn.className = "flex-1 py-2.5 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 shadow-md";
+                confirmCallback = doFinishShopping;
+            } else if (type === 'clear') {
+                title.innerText = "Xóa lịch sử?";
+                msg.innerText = "Hành động này không thể hoàn tác!";
+                icon.className = "w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600 dark:text-red-300 text-2xl";
+                icon.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                btn.className = "flex-1 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-md";
+                confirmCallback = doClearHistory;
+            }
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            confirmCallback = null;
+        }
+
+        document.getElementById('modalConfirmBtn').onclick = function() {
+            if (confirmCallback) confirmCallback();
+            closeConfirmModal();
+        };
+
+        // --- CORE FUNCTIONS (Updated with Privacy/Currency) ---
+        
+        function formatMoney(amount) {
+            const num = Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            if (!settings.showCurrency) return num;
+            return `${num} ${settings.currency}`;
+        }
+
+        function calculatePreview() {
+            const priceInput = document.getElementById('itemPrice').value;
+            const priceRaw = parseCurrency(priceInput);
+            const qty = parseFloat(document.getElementById('itemQty').value) || 1;
+            const weight = parseFloat(document.getElementById('itemWeight').value) || 0;
+            
+            let discountAmt = 0;
+            if (currentDiscType === 'percent') {
+                discountAmt = priceRaw * (currentDiscValue / 100);
+            } else {
+                discountAmt = currentDiscValue;
+            }
+
+            let realUnitPrice = priceRaw - discountAmt;
+            if (realUnitPrice < 0) realUnitPrice = 0;
+            let total = realUnitPrice * qty;
+
+            document.getElementById('finalItemPrice').innerText = formatMoney(total);
+            
+            const discEl = document.getElementById('previewDiscount');
+            if (discountAmt > 0) {
+                let discStr = currentDiscType === 'percent' ? `-${currentDiscValue}%` : `-${formatMoney(currentDiscValue)}`;
+                discEl.innerText = `${discStr} (-${formatMoney(discountAmt * qty)} tổng)`;
+            } else {
+                discEl.innerText = "";
+            }
+            
+            const unitRefEl = document.getElementById('unitPricePreview');
+            if (priceRaw > 0 && weight > 0) {
+                const pricePerGram = realUnitPrice / weight;
+                if (weight >= 500) {
+                    unitRefEl.innerText = `${formatMoney(pricePerGram * 1000)} / kg`;
+                } else {
+                    unitRefEl.innerText = `${formatMoney(pricePerGram * 100)} / 100g`;
+                }
+            } else if (priceRaw > 0) {
+                unitRefEl.innerText = "Nhập khối lượng để xem quy đổi";
+            } else {
+                unitRefEl.innerText = "---";
+            }
+        }
+
+        // --- DATABASE & HINT ---
+        function buildItemDb() {
+            itemDb = {};
+            [...history].reverse().forEach(trip => {
+                if (trip.items) {
+                    trip.items.forEach(item => {
+                        const key = item.name.toLowerCase().trim();
+                        itemDb[key] = { price: item.realUnitPrice, weight: item.weight };
+                    });
+                }
+            });
+
+            const datalist = document.getElementById('itemSuggestions');
+            datalist.innerHTML = '';
+            Object.keys(itemDb).sort().forEach(name => {
+                const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+                const option = document.createElement('option');
+                option.value = displayName;
+                datalist.appendChild(option);
+            });
+        }
+
+        function checkPriceHistory(input) {
+            const val = input.value.toLowerCase().trim();
+            const hintBox = document.getElementById('priceHint');
+            const hintPrice = document.getElementById('hintPrice');
+            
+            if (itemDb[val]) {
+                const dbItem = itemDb[val];
+                let priceStr = formatMoney(dbItem.price);
+                if (dbItem.weight > 0) priceStr += ` / ${dbItem.weight}g`;
+                hintPrice.innerText = priceStr;
+                hintBox.classList.remove('hidden');
+            } else {
+                hintBox.classList.add('hidden');
+            }
+        }
+
+        // --- CART ACTIONS ---
+        function addItem() {
+            const name = document.getElementById('itemName').value.trim() || `Món #${cart.length + 1}`;
+            const priceRaw = parseCurrency(document.getElementById('itemPrice').value);
+            const qty = parseFloat(document.getElementById('itemQty').value) || 1;
+            const weight = parseFloat(document.getElementById('itemWeight').value) || 0;
+            
+            if (priceRaw === 0) {
+                showToast("⚠️ Vui lòng nhập giá tiền!");
+                document.getElementById('itemPrice').focus();
+                return;
+            }
+
+            let discountAmt = 0;
+            if (currentDiscType === 'percent') {
+                discountAmt = priceRaw * (currentDiscValue / 100);
+            } else {
+                discountAmt = currentDiscValue;
+            }
+            
+            let realUnitPrice = priceRaw - discountAmt;
+            if (realUnitPrice < 0) realUnitPrice = 0;
+            const total = realUnitPrice * qty;
+
+            let discountDesc = "";
+            if (currentDiscValue > 0) {
+                discountDesc = currentDiscType === 'percent' ? `-${currentDiscValue}%` : `-${formatMoney(currentDiscValue)}`;
+            }
+
+            const item = {
+                id: Date.now(),
+                name,
+                originalPrice: priceRaw,
+                realUnitPrice,
+                qty,
+                weight,
+                discountDesc,
+                total
+            };
+
+            cart.unshift(item);
+            itemDb[name.toLowerCase()] = { price: realUnitPrice, weight: weight };
+            
+            renderCart();
+            resetForm();
+            showToast(`Đã thêm: ${name}`);
+        }
+
+        function renderCart() {
+            const listEl = document.getElementById('cartList');
+            const totalEl = document.getElementById('headerTotal');
+            const countEl = document.getElementById('itemCount');
+            const finishGroup = document.getElementById('finishBtnGroup');
+
+            const total = cart.reduce((sum, item) => sum + item.total, 0);
+            totalEl.innerText = formatMoney(total);
+            countEl.innerText = cart.length;
+
+            if (cart.length > 0) {
+                finishGroup.classList.remove('hidden');
+                listEl.innerHTML = '';
+            } else {
+                finishGroup.classList.add('hidden');
+                listEl.innerHTML = `
+                    <div class="text-center text-gray-400 dark:text-gray-600 py-10 opacity-60">
+                        <i class="fas fa-basket-shopping text-4xl mb-2"></i>
+                        <p class="text-sm">Giỏ hàng đang trống</p>
+                    </div>`;
+                return;
+            }
+
+            cart.forEach(item => {
+                let subDesc = "";
+                if (item.weight > 0) subDesc += `<span class="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-1 rounded border border-blue-100 dark:border-blue-800 mr-1">${item.weight}g</span>`;
+                subDesc += `x ${item.qty}`;
+
+                const html = `
+                    <div class="bg-white dark:bg-dark-card p-3 rounded-lg shadow-sm flex justify-between items-center border border-gray-100 dark:border-gray-700 slide-in">
+                        <div class="flex-1 overflow-hidden">
+                            <h4 class="font-bold text-gray-800 dark:text-gray-200 truncate text-sm">${item.name}</h4>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex items-center flex-wrap">
+                                <span class="text-gray-600 dark:text-gray-300 font-medium sensitive-data">${formatMoney(item.realUnitPrice)}</span>
+                                <span class="text-gray-300 mx-2">|</span>
+                                ${subDesc}
+                                ${item.discountDesc ? `<span class="text-orange-500 ml-2 bg-orange-50 dark:bg-orange-900/30 px-1 rounded border border-orange-100 dark:border-orange-900 text-[10px] font-bold">${item.discountDesc}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="text-right pl-2">
+                            <div class="font-bold text-teal-700 dark:text-teal-400 text-base sensitive-data">${formatMoney(Math.round(item.total))}</div>
+                            <button onclick="removeItem(${item.id})" class="text-gray-300 hover:text-red-500 p-1">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listEl.innerHTML += html;
+            });
+        }
+
+        function renderStats() {
+            let maxPrice = 0; let maxItemName = "Chưa có"; let totalMonth = 0;
+            const now = new Date();
+            history.forEach(trip => {
+                const tDate = new Date(trip.date);
+                if (tDate.getMonth() === now.getMonth() && tDate.getFullYear() === now.getFullYear()) totalMonth += trip.total;
+                if (trip.items) {
+                    trip.items.forEach(i => {
+                        if (i.total > maxPrice) { maxPrice = i.total; maxItemName = i.name; }
+                    });
+                }
+            });
+            document.getElementById('statMaxItem').innerText = maxItemName;
+            document.getElementById('statMaxPrice').innerText = formatMoney(maxPrice);
+            document.getElementById('statTotalMonth').innerText = formatMoney(totalMonth);
+        }
+
+        function renderHistoryList() {
+            const el = document.getElementById('historyList');
+            el.innerHTML = '';
+            if (history.length === 0) { el.innerHTML = '<p class="text-center text-gray-400 text-sm mt-10">Chưa có dữ liệu.</p>'; return; }
+            history.forEach(trip => {
+                const d = new Date(trip.date);
+                const time = `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:${d.getMinutes()}`;
+                let details = '';
+                if(trip.items) {
+                    details = trip.items.map(i => 
+                        `<li class="flex justify-between py-1 border-b dark:border-gray-700 border-gray-100 last:border-0">
+                            <span class="dark:text-gray-300">${i.name} <small class="text-gray-400">(${i.qty}${i.weight > 0 ? ' x '+i.weight+'g' : ''})</small></span>
+                            <span class="sensitive-data dark:text-gray-300">${formatMoney(Math.round(i.total))}</span>
+                         </li>`
+                    ).join('');
+                }
+                el.innerHTML += `
+                    <div class="bg-white dark:bg-dark-card rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        <div class="bg-gray-50 dark:bg-gray-800 px-3 py-2 flex justify-between items-center cursor-pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                            <div><span class="font-bold text-gray-700 dark:text-gray-200 text-sm">${time}</span><span class="text-xs text-gray-500 ml-2">${trip.itemCount} món</span></div>
+                            <span class="font-bold text-teal-600 dark:text-teal-400 sensitive-data">${formatMoney(Math.round(trip.total))}</span>
+                        </div>
+                        <div class="p-3 text-xs text-gray-600 hidden bg-white dark:bg-dark-card"><ul>${details}</ul></div>
+                    </div>`;
+            });
+        }
+
+        // --- HELPERS ---
+        function removeItem(id) { cart = cart.filter(item => item.id !== id); renderCart(); }
+        function resetForm() {
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemPrice').value = '';
+            document.getElementById('itemQty').value = '1';
+            document.getElementById('itemWeight').value = '';
+            document.getElementById('priceHint').classList.add('hidden');
+            document.getElementById('d0').checked = true;
+            document.getElementById('customDiscount').value = '';
+            setDiscount(0, 'percent');
+            document.getElementById('itemName').focus();
+        }
+        function clearInput(id) { document.getElementById(id).value = ''; document.getElementById(id).focus(); }
+        function doFinishShopping() {
+            const total = cart.reduce((sum, item) => sum + item.total, 0);
+            const trip = { date: new Date().toISOString(), total: total, itemCount: cart.length, items: [...cart] };
+            history.unshift(trip);
+            localStorage.setItem('shoppingHistory', JSON.stringify(history));
+            buildItemDb();
+            cart = [];
+            renderCart();
+            showToast("✅ Đã lưu!");
+            setTimeout(() => toggleHistory(), 500);
+        }
+        function doClearHistory() { history = []; localStorage.removeItem('shoppingHistory'); buildItemDb(); renderStats(); renderHistoryList(); showToast("Đã xóa"); }
+        function toggleHistory() {
+            const hist = document.getElementById('historySection');
+            if (hist.classList.contains('hidden')) { hist.classList.remove('hidden'); renderStats(); renderHistoryList(); }
+            else { hist.classList.add('hidden'); }
+        }
+        
+        // --- HANDLERS (Same as before) ---
+        function setDiscount(val, type) {
+            currentDiscType = type; currentDiscValue = val;
+            document.getElementById('customDiscount').value = '';
+            updateDiscountBtnStyles(type); calculatePreview();
+        }
+        function handleCustomDiscount(input) {
+            let val = parseInt(input.value.replace(/\D/g, "")) || 0;
+            if (currentDiscType === 'percent' && val > 100) val = 100;
+            currentDiscValue = val;
+            document.querySelectorAll('.discount-radio').forEach(r => r.checked = false);
+            calculatePreview();
+        }
+        function toggleDiscType(type) {
+            currentDiscType = type;
+            handleCustomDiscount(document.getElementById('customDiscount'));
+            updateDiscountBtnStyles(type);
+            document.getElementById('customDiscount').placeholder = type === 'percent' ? "Nhập %" : "Nhập tiền";
+        }
+        function updateDiscountBtnStyles(type) {
+             if(type === 'percent') {
+                document.getElementById('btnTypePercent').className = "px-2 py-1 text-xs font-bold bg-orange-500 text-white";
+                document.getElementById('btnTypeFixed').className = "px-2 py-1 text-xs font-bold bg-white dark:bg-dark-input text-gray-500 dark:text-gray-300";
+            } else {
+                document.getElementById('btnTypePercent').className = "px-2 py-1 text-xs font-bold bg-white dark:bg-dark-input text-gray-500 dark:text-gray-300";
+                document.getElementById('btnTypeFixed').className = "px-2 py-1 text-xs font-bold bg-orange-500 text-white";
+            }
+        }
+        function parseCurrency(str) { return parseInt(str.replace(/\D/g, '')) || 0; }
+        function formatCurrencyInput(input) { 
+            const val = input.value.replace(/\D/g, "");
+            input.value = val.replace(/\B(?=(\d{3})+(?!\d))/g, ","); 
+        }
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toastMsg').innerText = msg; t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 2000); }
+    </script>
+</body>
+</html>

@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Gia Đình 4.0</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDKs removed from here to use ES Modules in script below -->
+
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #F3F4F6;
+        }
+        .hide { display: none !important; }
+        .active-tab { color: #2563EB; border-bottom: 2px solid #2563EB; }
+        .card-shadow { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden">
+
+    <!-- Auth Section -->
+    <div id="auth-section" class="flex-1 flex flex-col items-center justify-center p-6 bg-blue-50">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+            <h1 class="text-3xl font-bold text-center text-blue-600 mb-2">Gia Đình 4.0 🏠</h1>
+            <p class="text-center text-gray-500 mb-8">Quản lý công việc & tài chính</p>
+            
+            <div id="login-form">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Tên thành viên</label>
+                    <input type="text" id="login-username" class="w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Ví dụ: Bo, Me, Tun...">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Mã PIN (4 số)</label>
+                    <input type="password" id="login-pin" maxlength="4" class="w-full px-3 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="****">
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition duration-300">Đăng Nhập / Đăng Ký</button>
+                <p class="mt-4 text-xs text-center text-gray-400">Nếu chưa có tài khoản, hệ thống sẽ tự tạo mới. Tài khoản đầu tiên là Admin.</p>
+            </div>
+            <div id="auth-loading" class="hide flex justify-center">
+                <div class="loader"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Section -->
+    <div id="app-section" class="hide flex-1 flex flex-col h-full relative">
+        
+        <!-- Header -->
+        <header class="bg-white shadow-sm p-4 flex justify-between items-center z-10">
+            <div class="flex items-center gap-2">
+                <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xl" id="header-avatar">?</div>
+                <div>
+                    <h2 class="font-bold text-lg leading-tight" id="header-username">User</h2>
+                    <span class="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700" id="header-role">Member</span>
+                </div>
+            </div>
+            <button onclick="logout()" class="text-red-500 hover:bg-red-50 p-2 rounded-full"><i class="fas fa-sign-out-alt"></i></button>
+        </header>
+
+        <!-- Content Area -->
+        <main class="flex-1 overflow-y-auto bg-gray-50 p-4 pb-20" id="main-content">
+            <!-- Dynamic Content Injected Here -->
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bg-white border-t flex justify-around items-center p-2 absolute bottom-0 w-full z-20">
+            <button onclick="switchTab('home')" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-blue-600" id="nav-home">
+                <i class="fas fa-home text-xl mb-1"></i>
+                <span class="text-xs">Trang chủ</span>
+            </button>
+            <button onclick="switchTab('tasks')" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-blue-600" id="nav-tasks">
+                <i class="fas fa-tasks text-xl mb-1"></i>
+                <span class="text-xs">Việc làm</span>
+            </button>
+            <button onclick="switchTab('wallet')" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-blue-600" id="nav-wallet">
+                <i class="fas fa-wallet text-xl mb-1"></i>
+                <span class="text-xs">Ví tiền</span>
+            </button>
+            <button onclick="switchTab('requests')" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-blue-600" id="nav-requests">
+                <i class="fas fa-paper-plane text-xl mb-1"></i>
+                <span class="text-xs">Xin phép</span>
+            </button>
+            <button onclick="switchTab('admin')" class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-blue-600 hide" id="nav-admin">
+                <i class="fas fa-user-shield text-xl mb-1"></i>
+                <span class="text-xs">Admin</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Task Modal -->
+    <div id="modal-add-task" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hide px-4">
+        <div class="bg-white rounded-xl w-full max-w-sm p-6">
+            <h3 class="text-xl font-bold mb-4">Giao việc mới 🧹</h3>
+            <input type="text" id="task-title" placeholder="Tên công việc (VD: Rửa bát)" class="w-full border p-2 rounded mb-3">
+            <input type="number" id="task-reward" placeholder="Tiền thưởng (VNĐ)" class="w-full border p-2 rounded mb-3">
+            <select id="task-assignee" class="w-full border p-2 rounded mb-4"></select>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal('modal-add-task')" class="px-4 py-2 text-gray-500">Hủy</button>
+                <button onclick="submitTask()" class="px-4 py-2 bg-blue-600 text-white rounded">Giao việc</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Money Request Modal -->
+    <div id="modal-money-req" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hide px-4">
+        <div class="bg-white rounded-xl w-full max-w-sm p-6">
+            <h3 class="text-xl font-bold mb-4">Giao dịch 💸</h3>
+            <select id="money-type" class="w-full border p-2 rounded mb-3" onchange="toggleMoneyTarget()">
+                <option value="withdraw">Rút tiền mặt (Trừ ví)</option>
+                <option value="deposit">Nạp tiền vào ví</option>
+                <option value="contribute">Góp Quỹ Chung</option>
+                <option value="borrow">Vay từ Quỹ Chung</option>
+            </select>
+            <input type="number" id="money-amount" placeholder="Số tiền (VNĐ)" class="w-full border p-2 rounded mb-3">
+            <input type="text" id="money-note" placeholder="Lý do..." class="w-full border p-2 rounded mb-4">
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal('modal-money-req')" class="px-4 py-2 text-gray-500">Hủy</button>
+                <button onclick="submitMoneyReq()" class="px-4 py-2 bg-green-600 text-white rounded">Gửi</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Permission Request Modal -->
+    <div id="modal-perm-req" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hide px-4">
+        <div class="bg-white rounded-xl w-full max-w-sm p-6">
+            <h3 class="text-xl font-bold mb-4">Xin phép 📝</h3>
+            <textarea id="perm-content" placeholder="Bạn muốn xin phép gì? (VD: Đi chơi với bạn Nam đến 9h tối)" class="w-full border p-2 rounded mb-4 h-24"></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeModal('modal-perm-req')" class="px-4 py-2 text-gray-500">Hủy</button>
+                <button onclick="submitPermReq()" class="px-4 py-2 bg-purple-600 text-white rounded">Gửi đơn</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 bg-gray-800 text-white px-6 py-3 rounded shadow-lg transform translate-x-full transition-transform duration-300 z-50">
+        Nội dung thông báo
+    </div>
+
+    <script type="module">
+        // Import Firebase functions using ES Modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Configuration ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyBevgQ-MEoSg1tnLyvOFY8ndcKN7HvaahU",
+            authDomain: "fami-wallet.firebaseapp.com",
+            projectId: "fami-wallet",
+            storageBucket: "fami-wallet.firebasestorage.app",
+            messagingSenderId: "851225524722",
+            appId: "1:851225524722:web:023d64b5b0d7205045d36b",
+            measurementId: "G-4DNH0PN1CS"
+        };
+        const appId = window.__app_id || 'family-manager-default';
+        
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // --- State Management ---
+        let currentUser = null; // User object from Firestore
+        let currentUserUid = null; // Auth UID
+        let allUsers = [];
+        let systemFund = 0;
+        let currentTab = 'home';
+        
+        // --- Helper Functions ---
+        const getCollectionPath = (colName) => `artifacts/${appId}/public/data/${colName}`;
+        
+        const showToast = (msg, type = 'info') => {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.className = `fixed top-4 right-4 text-white px-6 py-3 rounded shadow-lg transform transition-transform duration-300 z-50 ${type === 'error' ? 'bg-red-500' : 'bg-gray-800'}`;
+            toast.style.transform = 'translateX(0)';
+            setTimeout(() => { toast.style.transform = 'translateX(150%)'; }, 3000);
+        };
+
+        const formatMoney = (amount) => {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+        };
+
+        const closeModal = (id) => document.getElementById(id).classList.add('hide');
+        const openModal = (id) => document.getElementById(id).classList.remove('hide');
+
+        // --- Authentication Logic ---
+        window.handleLogin = async () => {
+            const username = document.getElementById('login-username').value.trim();
+            const pin = document.getElementById('login-pin').value.trim();
+
+            if (!username || pin.length !== 4) {
+                showToast("Vui lòng nhập tên và mã PIN 4 số", 'error');
+                return;
+            }
+
+            document.getElementById('login-form').classList.add('hide');
+            document.getElementById('auth-loading').classList.remove('hide');
+
+            try {
+                // Ensure anonymous auth first
+                if (!auth.currentUser) {
+                    // Check for custom token from environment
+                    if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                         await signInWithCustomToken(auth, window.__initial_auth_token);
+                    } else {
+                         await signInAnonymously(auth);
+                    }
+                }
+
+                // Check if user exists in our DB
+                const usersRef = collection(db, getCollectionPath('users'));
+                // Note: In a real app we'd use a query, but for small family size, getting all is fine and avoids index errors
+                // However, let's try to query by username to be cleaner
+                // IMPORTANT: Since we can't create indexes easily, we will fetch all users and filter in memory (Rule 2 safe)
+                
+                // Fetch all users to check login (Assuming < 20 family members)
+                let foundUser = null;
+                let isFirstUser = false;
+                
+                const q = query(usersRef);
+                const snapshot = await new Promise((resolve, reject) => {
+                     // Use one-time fetch for login check
+                     const unsub = onSnapshot(q, (snap) => {
+                         unsub();
+                         resolve(snap);
+                     }, reject);
+                });
+
+                if (snapshot.empty) {
+                    isFirstUser = true;
+                } else {
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.username.toLowerCase() === username.toLowerCase() && data.pin === pin) {
+                            foundUser = { id: doc.id, ...data };
+                        }
+                    });
+                }
+
+                if (isFirstUser) {
+                    // Create Admin Account
+                    const newUser = {
+                        username: username,
+                        pin: pin,
+                        role: 'admin',
+                        balance: 0,
+                        avatar: username.charAt(0).toUpperCase(),
+                        createdAt: serverTimestamp()
+                    };
+                    const docRef = await addDoc(usersRef, newUser);
+                    currentUser = { id: docRef.id, ...newUser };
+                    currentUserUid = auth.currentUser.uid;
+                    localStorage.setItem('family_user_id', docRef.id); // Persist simplified session
+                    showToast("Chào mừng Chủ Hộ! Tài khoản Admin đã được tạo.");
+                    initApp();
+                } else if (foundUser) {
+                    // Login Success
+                    currentUser = foundUser;
+                    currentUserUid = auth.currentUser.uid;
+                    localStorage.setItem('family_user_id', foundUser.id);
+                    showToast(`Chào mừng trở lại, ${foundUser.username}!`);
+                    initApp();
+                } else {
+                    showToast("Sai tên đăng nhập hoặc mã PIN. Hoặc tên đã tồn tại.", 'error');
+                    document.getElementById('login-form').classList.remove('hide');
+                    document.getElementById('auth-loading').classList.add('hide');
+                }
+
+            } catch (error) {
+                console.error(error);
+                showToast("Lỗi đăng nhập: " + error.message, 'error');
+                document.getElementById('login-form').classList.remove('hide');
+                document.getElementById('auth-loading').classList.add('hide');
+            }
+        };
+
+        window.logout = () => {
+            localStorage.removeItem('family_user_id');
+            location.reload();
+        };
+
+        // --- Core Application Logic ---
+
+        const initApp = () => {
+            document.getElementById('auth-section').classList.add('hide');
+            document.getElementById('app-section').classList.remove('hide');
+
+            // Setup Header
+            document.getElementById('header-username').innerText = currentUser.username;
+            document.getElementById('header-role').innerText = currentUser.role === 'admin' ? 'Quản trị viên' : 'Thành viên';
+            document.getElementById('header-avatar').innerText = currentUser.avatar;
+
+            // Show Admin Tab if applicable
+            if (currentUser.role === 'admin') {
+                document.getElementById('nav-admin').classList.remove('hide');
+            }
+
+            // Start Listeners
+            listenToData();
+            switchTab('home');
+        };
+
+        const listenToData = () => {
+            // Listen to current user updates (balance changes)
+            onSnapshot(doc(db, getCollectionPath('users'), currentUser.id), (doc) => {
+                if(doc.exists()) {
+                    currentUser = { id: doc.id, ...doc.data() };
+                    // Refresh current view if needed
+                    if(currentTab === 'wallet') renderWallet();
+                    if(currentTab === 'home') renderHome();
+                }
+            });
+
+            // Listen to all users (for Admin & Dropdowns)
+            onSnapshot(collection(db, getCollectionPath('users')), (snapshot) => {
+                allUsers = [];
+                snapshot.forEach(doc => allUsers.push({ id: doc.id, ...doc.data() }));
+                updateAssigneeDropdown();
+            });
+
+            // Listen to Fund (System config)
+            onSnapshot(doc(db, getCollectionPath('system'), 'fund'), (doc) => {
+                if (doc.exists()) {
+                    systemFund = doc.data().amount || 0;
+                } else {
+                    // Init fund if not exists
+                    setDoc(doc.ref, { amount: 0 });
+                }
+                if(currentTab === 'wallet') renderWallet();
+                if(currentTab === 'home') renderHome();
+            });
+        };
+
+        // --- Render Functions ---
+
+        window.switchTab = (tabName) => {
+            currentTab = tabName;
+            // Update Tab UI
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'active-tab');
+                btn.classList.add('text-gray-400');
+            });
+            document.getElementById(`nav-${tabName}`).classList.add('text-blue-600', 'active-tab');
+            document.getElementById(`nav-${tabName}`).classList.remove('text-gray-400');
+
+            // Render Content
+            const container = document.getElementById('main-content');
+            container.innerHTML = '<div class="flex justify-center mt-10"><div class="loader"></div></div>';
+
+            setTimeout(() => {
+                if (tabName === 'home') renderHome();
+                else if (tabName === 'tasks') renderTasks();
+                else if (tabName === 'wallet') renderWallet();
+                else if (tabName === 'requests') renderRequests();
+                else if (tabName === 'admin') renderAdmin();
+            }, 300);
+        };
+
+        // 1. HOME
+        const renderHome = () => {
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <!-- Balance Card -->
+                    <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
+                        <p class="text-blue-100 text-sm mb-1">Số dư ví của bạn</p>
+                        <h1 class="text-4xl font-bold mb-4">${formatMoney(currentUser.balance)}</h1>
+                        <div class="flex justify-between items-center text-sm bg-blue-700 bg-opacity-30 rounded-lg p-2">
+                            <span>Quỹ chung gia đình:</span>
+                            <span class="font-bold text-yellow-300">${formatMoney(systemFund)}</span>
+                        </div>
+                    </div>
+
+                    <!-- Actions Grid -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div onclick="switchTab('tasks')" class="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center justify-center h-24">
+                            <i class="fas fa-broom text-orange-500 text-2xl mb-2"></i>
+                            <span class="font-bold text-gray-700">Việc cần làm</span>
+                        </div>
+                        <div onclick="switchTab('wallet')" class="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer flex flex-col items-center justify-center h-24">
+                            <i class="fas fa-money-bill-wave text-green-500 text-2xl mb-2"></i>
+                            <span class="font-bold text-gray-700">Ví & Giao dịch</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // 2. TASKS
+        const renderTasks = () => {
+            const container = document.getElementById('main-content');
+            let html = `
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Danh sách công việc</h2>
+                    ${currentUser.role === 'admin' ? '<button onclick="openModal(\'modal-add-task\')" class="bg-blue-600 text-white px-3 py-1 rounded-full text-sm shadow"><i class="fas fa-plus"></i> Giao việc</button>' : ''}
+                </div>
+                <div id="task-list" class="space-y-3">
+                    <div class="flex justify-center"><div class="loader"></div></div>
+                </div>
+            `;
+            container.innerHTML = html;
+
+            // Fetch Tasks
+            onSnapshot(collection(db, getCollectionPath('tasks')), (snapshot) => {
+                const listEl = document.getElementById('task-list');
+                if(!listEl) return;
+                
+                let tasks = [];
+                snapshot.forEach(doc => tasks.push({id: doc.id, ...doc.data()}));
+                
+                // Sort: Pending first, then by date
+                tasks.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
+
+                if (tasks.length === 0) {
+                    listEl.innerHTML = '<p class="text-center text-gray-400 mt-10">Chưa có công việc nào.</p>';
+                    return;
+                }
+
+                listEl.innerHTML = tasks.map(task => {
+                    const isMyTask = task.assignedTo === currentUser.id;
+                    const assigneeName = allUsers.find(u => u.id === task.assignedTo)?.username || 'Ai đó';
+                    
+                    let statusBadge = '';
+                    let actionBtn = '';
+
+                    if (task.status === 'todo') {
+                        statusBadge = '<span class="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-xs">Cần làm</span>';
+                        if (isMyTask) actionBtn = `<button onclick="updateTaskStatus('${task.id}', 'pending')" class="mt-2 w-full bg-blue-500 text-white py-1.5 rounded text-sm hover:bg-blue-600">Báo cáo xong</button>`;
+                    } else if (task.status === 'pending') {
+                        statusBadge = '<span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs">Chờ duyệt</span>';
+                        if (currentUser.role === 'admin') actionBtn = `<button onclick="approveTask('${task.id}', ${task.reward}, '${task.assignedTo}')" class="mt-2 w-full bg-green-500 text-white py-1.5 rounded text-sm hover:bg-green-600">Duyệt & Thưởng tiền</button>`;
+                    } else if (task.status === 'done') {
+                        statusBadge = '<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Đã xong</span>';
+                    }
+
+                    return `
+                        <div class="bg-white p-4 rounded-xl shadow-sm border-l-4 ${task.status === 'done' ? 'border-green-500 opacity-75' : 'border-orange-500'}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-gray-800 ${task.status === 'done' ? 'line-through' : ''}">${task.title}</h3>
+                                    <p class="text-sm text-gray-500">Người làm: <strong>${assigneeName}</strong></p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="block font-bold text-orange-600">+${formatMoney(task.reward)}</span>
+                                    ${statusBadge}
+                                </div>
+                            </div>
+                            ${actionBtn}
+                            ${currentUser.role === 'admin' && task.status === 'todo' ? `<button onclick="deleteTask('${task.id}')" class="mt-2 text-red-400 text-xs underline">Xóa việc</button>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            });
+        };
+
+        // 3. WALLET
+        const renderWallet = () => {
+            const container = document.getElementById('main-content');
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-sm mb-4 text-center">
+                    <p class="text-gray-500 text-sm">Tổng tài sản hiện có</p>
+                    <h2 class="text-3xl font-bold text-blue-600 my-2">${formatMoney(currentUser.balance)}</h2>
+                    <div class="flex justify-center gap-4 mt-4">
+                        <button onclick="openMoneyModal('deposit')" class="flex flex-col items-center gap-1 text-green-600">
+                            <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center"><i class="fas fa-plus"></i></div>
+                            <span class="text-xs font-bold">Nạp tiền</span>
+                        </button>
+                        <button onclick="openMoneyModal('withdraw')" class="flex flex-col items-center gap-1 text-orange-600">
+                            <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center"><i class="fas fa-arrow-down"></i></div>
+                            <span class="text-xs font-bold">Rút tiền</span>
+                        </button>
+                         <button onclick="openMoneyModal('contribute')" class="flex flex-col items-center gap-1 text-purple-600">
+                            <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center"><i class="fas fa-hand-holding-heart"></i></div>
+                            <span class="text-xs font-bold">Góp quỹ</span>
+                        </button>
+                    </div>
+                </div>
+
+                <h3 class="font-bold text-gray-700 mb-2">Lịch sử giao dịch</h3>
+                <div id="transaction-list" class="space-y-2 pb-10">
+                   <!-- Loaded via JS -->
+                </div>
+            `;
+            
+            // Initial call to load transactions
+            loadTransactions();
+        };
+
+        const loadTransactions = () => {
+             onSnapshot(collection(db, getCollectionPath('transactions')), (snapshot) => {
+                const listEl = document.getElementById('transaction-list');
+                if(!listEl) return;
+
+                let txs = [];
+                snapshot.forEach(doc => txs.push({id: doc.id, ...doc.data()}));
+                
+                // Filter: Only show my transactions unless admin (Admin sees all?) - Let's keep it simple: Everyone sees their own.
+                // Actually Admin manages, so Admin sees all pending requests. But this is history.
+                // Let's show All Public for Transparency in family? No, keep it personal + Admin sees all.
+                if (currentUser.role !== 'admin') {
+                    txs = txs.filter(t => t.userId === currentUser.id);
+                }
+                
+                txs.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
+
+                listEl.innerHTML = txs.map(tx => {
+                    const isPlus = tx.type === 'task_reward' || (tx.type === 'deposit' && tx.status === 'approved') || (tx.type === 'borrow' && tx.status === 'approved');
+                    const color = isPlus ? 'text-green-600' : 'text-red-600';
+                    const icon = isPlus ? 'fa-arrow-up' : 'fa-arrow-down';
+                    
+                    // Status Text
+                    let statusHtml = '';
+                    if(tx.status === 'pending') statusHtml = '<span class="text-yellow-600 text-xs">Đang chờ duyệt</span>';
+                    else if(tx.status === 'rejected') statusHtml = '<span class="text-red-600 text-xs">Bị từ chối</span>';
+                    else statusHtml = '<span class="text-green-600 text-xs">Thành công</span>';
+
+                    let userNameDisplay = '';
+                    if (currentUser.role === 'admin') {
+                        const u = allUsers.find(u => u.id === tx.userId);
+                        userNameDisplay = `<span class="text-xs text-gray-400 block">${u ? u.username : 'Unknown'}</span>`;
+                    }
+
+                    return `
+                        <div class="bg-white p-3 rounded-lg shadow-sm flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                    <i class="fas ${getTxIcon(tx.type)}"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-gray-800">${getTxTitle(tx.type)}</p>
+                                    <p class="text-xs text-gray-500">${tx.note || ''}</p>
+                                    ${userNameDisplay}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold ${color}">${isPlus ? '+' : '-'}${formatMoney(tx.amount)}</span>
+                                <div class="block">${statusHtml}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+             });
+        }
+
+        const getTxIcon = (type) => {
+            if(type === 'task_reward') return 'fa-broom';
+            if(type === 'withdraw') return 'fa-wallet';
+            if(type === 'deposit') return 'fa-piggy-bank';
+            if(type === 'contribute') return 'fa-donate';
+            return 'fa-exchange-alt';
+        }
+        
+        const getTxTitle = (type) => {
+            if(type === 'task_reward') return 'Thưởng công việc';
+            if(type === 'withdraw') return 'Rút tiền mặt';
+            if(type === 'deposit') return 'Nạp tiền vào ví';
+            if(type === 'contribute') return 'Góp quỹ chung';
+            if(type === 'borrow') return 'Vay quỹ chung';
+            return 'Giao dịch';
+        }
+
+        // 4. REQUESTS (Permission)
+        const renderRequests = () => {
+             const container = document.getElementById('main-content');
+             container.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">Xin phép</h2>
+                    <button onclick="openModal('modal-perm-req')" class="bg-purple-600 text-white px-3 py-1 rounded-full text-sm shadow"><i class="fas fa-plus"></i> Tạo đơn</button>
+                </div>
+                <div id="perm-list" class="space-y-3"></div>
+             `;
+             
+             onSnapshot(collection(db, getCollectionPath('requests')), (snapshot) => {
+                const listEl = document.getElementById('perm-list');
+                if(!listEl) return;
+
+                let reqs = [];
+                snapshot.forEach(doc => reqs.push({id: doc.id, ...doc.data()}));
+                
+                // Sort
+                reqs.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
+
+                listEl.innerHTML = reqs.map(req => {
+                    const user = allUsers.find(u => u.id === req.userId);
+                    const isMine = req.userId === currentUser.id;
+                    
+                    let statusBadge = '<span class="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs">Đang chờ</span>';
+                    if(req.status === 'approved') statusBadge = '<span class="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs">Đã duyệt</span>';
+                    if(req.status === 'rejected') statusBadge = '<span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">Từ chối</span>';
+
+                    let adminActions = '';
+                    if (currentUser.role === 'admin' && req.status === 'pending') {
+                        adminActions = `
+                            <div class="mt-3 flex gap-2 border-t pt-2">
+                                <button onclick="handlePermReq('${req.id}', 'approved')" class="flex-1 bg-green-100 text-green-700 py-1 rounded text-sm font-bold">Đồng ý</button>
+                                <button onclick="handlePermReq('${req.id}', 'rejected')" class="flex-1 bg-red-100 text-red-700 py-1 rounded text-sm font-bold">Không</button>
+                            </div>
+                        `;
+                    }
+
+                    return `
+                        <div class="bg-white p-4 rounded-xl shadow-sm">
+                            <div class="flex justify-between mb-2">
+                                <span class="font-bold text-blue-600">${user ? user.username : 'Unknown'}</span>
+                                ${statusBadge}
+                            </div>
+                            <p class="text-gray-800">${req.content}</p>
+                            <p class="text-xs text-gray-400 mt-2">${new Date(req.createdAt?.seconds * 1000).toLocaleString('vi-VN')}</p>
+                            ${adminActions}
+                        </div>
+                    `;
+                }).join('');
+             });
+        }
+
+        // 5. ADMIN PANEL (For managing pending money requests)
+        const renderAdmin = () => {
+            const container = document.getElementById('main-content');
+            if (currentUser.role !== 'admin') {
+                container.innerHTML = '<p class="text-center text-red-500 mt-10">Bạn không có quyền truy cập.</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <h2 class="text-xl font-bold mb-4">Quản trị viên</h2>
+                
+                <div class="bg-white p-4 rounded-xl shadow-sm mb-6">
+                    <h3 class="font-bold mb-3 border-b pb-2">Yêu cầu tài chính đang chờ</h3>
+                    <div id="admin-money-reqs" class="space-y-3">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <h3 class="font-bold mb-3 border-b pb-2">Thêm thành viên</h3>
+                    <div class="flex gap-2 mb-2">
+                        <input type="text" id="new-user-name" placeholder="Tên" class="border p-2 rounded w-2/3">
+                        <input type="text" id="new-user-pin" placeholder="PIN (4 số)" maxlength="4" class="border p-2 rounded w-1/3">
+                    </div>
+                    <button onclick="createNewUser()" class="w-full bg-blue-600 text-white py-2 rounded">Tạo thành viên</button>
+                </div>
+            `;
+
+            // Load pending money requests
+            onSnapshot(query(collection(db, getCollectionPath('transactions')), where('status', '==', 'pending')), (snapshot) => {
+                const listEl = document.getElementById('admin-money-reqs');
+                if(!listEl) return;
+                
+                if (snapshot.empty) {
+                    listEl.innerHTML = '<p class="text-sm text-gray-400">Không có yêu cầu nào.</p>';
+                    return;
+                }
+
+                let html = '';
+                snapshot.forEach(doc => {
+                    const tx = {id: doc.id, ...doc.data()};
+                    const user = allUsers.find(u => u.id === tx.userId);
+                    
+                    html += `
+                        <div class="bg-gray-50 p-3 rounded border">
+                            <div class="flex justify-between">
+                                <span class="font-bold">${user ? user.username : '...'}</span>
+                                <span class="font-bold ${tx.type === 'deposit' ? 'text-green-600' : 'text-red-600'}">${formatMoney(tx.amount)}</span>
+                            </div>
+                            <p class="text-sm text-gray-600">${getTxTitle(tx.type)} - ${tx.note}</p>
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="handleMoneyReq('${tx.id}', 'approved')" class="bg-green-500 text-white px-3 py-1 rounded text-xs">Duyệt</button>
+                                <button onclick="handleMoneyReq('${tx.id}', 'rejected')" class="bg-red-500 text-white px-3 py-1 rounded text-xs">Từ chối</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                listEl.innerHTML = html;
+            });
+        };
+
+        // --- Action Handlers ---
+
+        window.updateAssigneeDropdown = () => {
+            const select = document.getElementById('task-assignee');
+            if(select) {
+                select.innerHTML = allUsers.map(u => `<option value="${u.id}">${u.username} (${u.role === 'admin' ? 'Admin' : 'Member'})</option>`).join('');
+            }
+        };
+
+        window.submitTask = async () => {
+            const title = document.getElementById('task-title').value;
+            const reward = parseInt(document.getElementById('task-reward').value);
+            const assignee = document.getElementById('task-assignee').value;
+
+            if (!title || !reward) return showToast('Vui lòng nhập đủ thông tin', 'error');
+
+            await addDoc(collection(db, getCollectionPath('tasks')), {
+                title, reward, assignedTo: assignee, createdBy: currentUser.id,
+                status: 'todo', createdAt: serverTimestamp()
+            });
+            
+            closeModal('modal-add-task');
+            document.getElementById('task-title').value = '';
+            document.getElementById('task-reward').value = '';
+            showToast('Đã giao việc thành công!');
+        };
+
+        window.updateTaskStatus = async (taskId, status) => {
+            await updateDoc(doc(db, getCollectionPath('tasks'), taskId), { status });
+            showToast('Đã cập nhật trạng thái!');
+        };
+        
+        window.deleteTask = async (taskId) => {
+             if(confirm("Bạn chắc chắn muốn xóa?")) {
+                 await deleteDoc(doc(db, getCollectionPath('tasks'), taskId));
+             }
+        };
+
+        window.approveTask = async (taskId, rewardAmount, workerId) => {
+            try {
+                // Transaction: Update Task Status AND Add Money to User
+                await runTransaction(db, async (transaction) => {
+                    const userRef = doc(db, getCollectionPath('users'), workerId);
+                    const taskRef = doc(db, getCollectionPath('tasks'), taskId);
+                    const userDoc = await transaction.get(userRef);
+
+                    if (!userDoc.exists()) throw "User not found";
+                    
+                    const newBalance = (userDoc.data().balance || 0) + rewardAmount;
+                    
+                    transaction.update(userRef, { balance: newBalance });
+                    transaction.update(taskRef, { status: 'done' });
+                    
+                    // Create history record
+                    const txRef = doc(collection(db, getCollectionPath('transactions')));
+                    transaction.set(txRef, {
+                        userId: workerId,
+                        type: 'task_reward',
+                        amount: rewardAmount,
+                        status: 'approved',
+                        note: 'Hoàn thành việc nhà',
+                        createdAt: serverTimestamp()
+                    });
+                });
+                showToast('Đã duyệt và chuyển tiền thưởng!');
+            } catch (e) {
+                console.error(e);
+                showToast('Lỗi khi duyệt: ' + e.message, 'error');
+            }
+        };
+
+        window.openMoneyModal = (type) => {
+            document.getElementById('money-type').value = type;
+            openModal('modal-money-req');
+        };
+
+        window.submitMoneyReq = async () => {
+            const type = document.getElementById('money-type').value;
+            const amount = parseInt(document.getElementById('money-amount').value);
+            const note = document.getElementById('money-note').value;
+
+            if (!amount) return showToast('Nhập số tiền', 'error');
+
+            // Logic for Contribution (Immediate if balance enough)
+            if (type === 'contribute') {
+                if (currentUser.balance < amount) return showToast('Số dư không đủ', 'error');
+                
+                // Subtract from user, Add to Fund
+                 await runTransaction(db, async (transaction) => {
+                    const userRef = doc(db, getCollectionPath('users'), currentUser.id);
+                    const fundRef = doc(db, getCollectionPath('system'), 'fund');
+                    const fundDoc = await transaction.get(fundRef);
+                    
+                    const currentFund = fundDoc.exists() ? fundDoc.data().amount : 0;
+
+                    transaction.update(userRef, { balance: currentUser.balance - amount });
+                    transaction.set(fundRef, { amount: currentFund + amount }, {merge: true});
+
+                     // Create record
+                    const txRef = doc(collection(db, getCollectionPath('transactions')));
+                    transaction.set(txRef, {
+                        userId: currentUser.id,
+                        type: 'contribute',
+                        amount: amount,
+                        status: 'approved', // Auto approve
+                        note: note || 'Góp quỹ',
+                        createdAt: serverTimestamp()
+                    });
+                 });
+                 showToast('Đã góp quỹ thành công!');
+                 closeModal('modal-money-req');
+                 return;
+            }
+
+            // Other types: Create Pending Request
+            await addDoc(collection(db, getCollectionPath('transactions')), {
+                userId: currentUser.id,
+                type, amount, note,
+                status: 'pending',
+                createdAt: serverTimestamp()
+            });
+            
+            closeModal('modal-money-req');
+            showToast('Đã gửi yêu cầu, chờ Admin duyệt.');
+        };
+        
+        window.handleMoneyReq = async (txId, decision) => {
+            // Admin approving/rejecting Withdraw/Deposit/Borrow
+            try {
+                await runTransaction(db, async (transaction) => {
+                    const txRef = doc(db, getCollectionPath('transactions'), txId);
+                    const txDoc = await transaction.get(txRef);
+                    if (!txDoc.exists()) throw "Tx not found";
+                    
+                    const txData = txDoc.data();
+                    const userRef = doc(db, getCollectionPath('users'), txData.userId);
+                    const userDoc = await transaction.get(userRef);
+                    const userBalance = userDoc.data().balance || 0;
+
+                    const fundRef = doc(db, getCollectionPath('system'), 'fund');
+                    const fundDoc = await transaction.get(fundRef);
+                    const fundBalance = fundDoc.exists() ? fundDoc.data().amount : 0;
+
+                    if (decision === 'approved') {
+                        if (txData.type === 'deposit') {
+                            // Add to user balance (Parent takes cash, gives virtual money)
+                            transaction.update(userRef, { balance: userBalance + txData.amount });
+                        } else if (txData.type === 'withdraw') {
+                             if (userBalance < txData.amount) throw "Người dùng không đủ tiền";
+                             // Subtract user balance (Parent gives cash)
+                             transaction.update(userRef, { balance: userBalance - txData.amount });
+                        } else if (txData.type === 'borrow') {
+                             // Subtract Fund, Add to User
+                             if (fundBalance < txData.amount) throw "Quỹ không đủ tiền";
+                             transaction.set(fundRef, { amount: fundBalance - txData.amount }, {merge:true});
+                             transaction.update(userRef, { balance: userBalance + txData.amount });
+                        }
+                    }
+
+                    transaction.update(txRef, { status: decision });
+                });
+                showToast('Đã xử lý giao dịch!');
+            } catch (e) {
+                showToast(e.message || 'Có lỗi xảy ra', 'error');
+            }
+        };
+
+        window.submitPermReq = async () => {
+            const content = document.getElementById('perm-content').value;
+            if(!content) return showToast('Nhập nội dung', 'error');
+
+            await addDoc(collection(db, getCollectionPath('requests')), {
+                userId: currentUser.id,
+                content,
+                status: 'pending',
+                createdAt: serverTimestamp()
+            });
+            
+            closeModal('modal-perm-req');
+            document.getElementById('perm-content').value = '';
+            showToast('Đã gửi đơn xin phép!');
+        };
+
+        window.handlePermReq = async (reqId, status) => {
+            await updateDoc(doc(db, getCollectionPath('requests'), reqId), { status });
+            showToast('Đã cập nhật đơn xin phép');
+        };
+
+        window.createNewUser = async () => {
+            const name = document.getElementById('new-user-name').value;
+            const pin = document.getElementById('new-user-pin').value;
+            if(!name || pin.length !== 4) return showToast('Thông tin không hợp lệ', 'error');
+
+            await addDoc(collection(db, getCollectionPath('users')), {
+                username: name,
+                pin: pin,
+                role: 'member',
+                balance: 0,
+                avatar: name.charAt(0).toUpperCase(),
+                createdAt: serverTimestamp()
+            });
+            
+            document.getElementById('new-user-name').value = '';
+            document.getElementById('new-user-pin').value = '';
+            showToast(`Đã tạo thành viên: ${name}`);
+        };
+
+        // --- Initialization ---
+        // Check for existing session on load
+        const storedId = localStorage.getItem('family_user_id');
+        if (storedId) {
+            // Attempt auto-login
+             if (!auth.currentUser) {
+                 if (typeof window.__initial_auth_token !== 'undefined' && window.__initial_auth_token) {
+                     signInWithCustomToken(auth, window.__initial_auth_token).then(() => {
+                         getDoc(doc(db, getCollectionPath('users'), storedId)).then(d => {
+                             if(d.exists()) {
+                                 currentUser = { id: d.id, ...d.data() };
+                                 currentUserUid = auth.currentUser.uid;
+                                 initApp();
+                             } else {
+                                 localStorage.removeItem('family_user_id');
+                             }
+                         });
+                     });
+                 } else {
+                    signInAnonymously(auth).then(() => {
+                        getDoc(doc(db, getCollectionPath('users'), storedId)).then(d => {
+                            if(d.exists()) {
+                                currentUser = { id: d.id, ...d.data() };
+                                currentUserUid = auth.currentUser.uid;
+                                initApp();
+                            } else {
+                                localStorage.removeItem('family_user_id'); // Invalid id
+                            }
+                        });
+                    });
+                 }
+            }
+        }
+
+    </script>
+</body>
+</html>
