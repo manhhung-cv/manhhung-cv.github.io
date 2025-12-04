@@ -1140,44 +1140,45 @@ locationCostInput.addEventListener("input", (e) => {
     }
 });
 
-locationTimeInput.addEventListener("input", (e) => {
+locationTimeInput.addEventListener("blur", (e) => {
+    // 1. Lấy chuỗi số mà người dùng đã nhập
     let value = e.target.value.replace(/[^0-9]/g, '');
+
+    // Nếu không nhập gì thì thôi
+    if (value.length === 0) return;
+
+    // 2. Xử lý các trường hợp nhập tắt thông minh
+    // Ví dụ: Nhập "8" -> Hiểu là 08:00
+    // Nhập "12" -> Hiểu là 12:00
+    // Nhập "830" -> Hiểu là 08:30
+    if (value.length === 1) {
+        value = "0" + value + "00"; // 8 -> 0800
+    } else if (value.length === 2) {
+        value = value + "00";       // 12 -> 1200
+    } else if (value.length === 3) {
+        value = "0" + value;        // 830 -> 0830
+    }
+    
+    // Cắt nếu quá dài (lấy 4 số đầu)
     if (value.length > 4) value = value.substring(0, 4);
 
-    if (value.length === 1 && parseInt(value) > 2) {
-        value = "0" + value;
-    }
-    if (value.length === 2) {
-        let hh = parseInt(value);
-        if (hh > 23) value = "23";
-    }
-    if (value.length === 3) {
-        let mm = parseInt(value.substring(2));
-        if (mm > 5) {
-            value = value.substring(0, 2) + "0" + value.substring(2);
-        } else {
-            value = value.substring(0, 2) + ":" + value.substring(2);
-        }
-    }
-    if (value.length === 4) {
-        let hh = parseInt(value.substring(0, 2));
-        let mm = parseInt(value.substring(2, 4));
-        if (hh > 23) hh = 23;
-        if (mm > 59) mm = 59;
-        value = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-    }
+    // 3. Tách giờ và phút để kiểm tra hợp lệ
+    let hh = parseInt(value.substring(0, 2));
+    let mm = parseInt(value.substring(2, 4));
 
-    if (value.length <= 2 && e.inputType === 'insertText') {
-        let num = parseInt(value);
-        if (num > 23 && num <= 59) {
-            value = "00:" + String(num).padStart(2, '0');
-        } else if (num > 59) {
-            value = "00:59";
-        }
-    }
-    e.target.value = value;
+    // Giới hạn giờ (0-23) và phút (0-59)
+    if (hh > 23) hh = 23;
+    if (mm > 59) mm = 59;
+
+    // 4. Định dạng lại thành HH:mm và gán ngược lại vào input
+    e.target.value = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 });
 
+// Tùy chọn: Thêm sự kiện focus để khi user click vào sửa thì xóa dấu ":" đi cho dễ sửa
+locationTimeInput.addEventListener("focus", (e) => {
+    let value = e.target.value.replace(/[^0-9]/g, '');
+    e.target.value = value;
+});
 locationDateInput.addEventListener("input", (e) => {
     let value = e.target.value.replace(/[^0-9]/g, '');
     const year = new Date().getFullYear();
