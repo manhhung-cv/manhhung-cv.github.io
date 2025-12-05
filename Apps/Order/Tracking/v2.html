@@ -236,6 +236,7 @@
             flex-direction: column;
             height: 100%;
             overflow: hidden;
+            position: relative;
         }
 
         .top-bar {
@@ -284,7 +285,6 @@
             border-color: var(--primary);
         }
 
-        /* Nút xoá màu đỏ */
         .btn-danger-sm {
             color: var(--danger);
             border-color: rgba(239, 68, 68, 0.3);
@@ -295,17 +295,30 @@
             border-color: var(--danger);
         }
 
+        .btn-select-mode {
+            color: var(--text-main);
+            border-color: var(--glass-border);
+        }
+        .btn-select-mode.active {
+            background: var(--text-main);
+            color: var(--bg-body);
+        }
+
         .top-right {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             align-items: center;
         }
 
         .stats {
             display: flex;
-            gap: 15px;
-            font-size: 13px;
+            gap: 10px;
+            font-size: 12px;
             color: var(--text-muted);
+        }
+        
+        @media (max-width: 600px) {
+            .stats { display: none; }
         }
 
         .stats b {
@@ -319,6 +332,10 @@
             background: none;
             border: none;
             cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: grid;
+            place-items: center;
         }
 
         /* Input Area */
@@ -471,6 +488,11 @@
             background: var(--bg-card-hover);
             border-color: rgba(var(--p-rgb), 0.3);
         }
+        
+        .card.selected {
+            border-color: var(--primary);
+            background: rgba(var(--p-rgb), 0.1);
+        }
 
         /* Standard Card Elements */
         .card-actions {
@@ -602,6 +624,88 @@
             font-weight: 700;
             color: var(--text-main);
         }
+        
+        /* SELECT MODE INDICATORS */
+        .select-check {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid var(--text-muted);
+            z-index: 5;
+            background: var(--bg-body);
+            display: grid;
+            place-items: center;
+            font-size: 0;
+            transition: 0.2s;
+        }
+        
+        .card.selected .select-check {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--text-inv);
+            font-size: 12px;
+        }
+        
+        /* Chỉnh lại padding header khi có nút select */
+        .select-mode-on .card-header {
+            padding-left: 25px;
+        }
+        
+        /* Bulk Actions Bar */
+        .bulk-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 20px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 50;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .bulk-bar.show {
+            transform: translateY(0);
+        }
+        
+        .bulk-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .bulk-right {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .btn-bulk {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            background: var(--bg-card);
+            color: var(--text-main);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-bulk-danger {
+            color: var(--danger);
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
 
         /* LAYOUT: SUPER MINIMALIST (V7 New Feature) */
         .layout-super {
@@ -619,6 +723,12 @@
             border: 1px solid var(--glass-border);
             border-radius: 8px;
             height: 50px;
+            cursor: pointer;
+        }
+        
+        .super-card.selected {
+             border-color: var(--primary);
+             background: rgba(var(--p-rgb), 0.15);
         }
 
         .super-card:hover {
@@ -633,6 +743,23 @@
             place-items: center;
             font-size: 14px;
             flex-shrink: 0;
+        }
+        
+        .super-select-box {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
+            border: 2px solid var(--glass-border);
+            color: transparent;
+        }
+        
+        .super-card.selected .super-select-box {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: var(--text-inv);
         }
 
         .super-code {
@@ -898,10 +1025,16 @@
                         chép</button>
                     <button class="btn-action-sm btn-danger-sm" onclick="delPkg(data.curId)"><i
                             class="fa-solid fa-trash"></i> Xoá</button>
+                            <button class="btn-action-sm btn-select-mode" id="btnSelectMode" onclick="toggleSelectMode()">
+                        <i class="fa-regular fa-square-check"></i> Chọn
+                    </button>
+                    
                 </div>
                 <div class="top-right">
                     <div class="stats"><span><b><span id="stCount">0</span></b>đơn</span><span><b><span
                                     id="stWeight">0</span></b>kg</span></div>
+                                    
+                    
                     <button class="btn-settings" onclick="openSettings()"><i class="fa-solid fa-gear"></i></button>
                 </div>
             </div>
@@ -917,11 +1050,10 @@
             <div class="toolbar">
                 <button class="filter-chip active" onclick="setFilter('all')">Tất cả</button>
                 <button class="filter-chip" onclick="setFilter('cn')">Kho TQ</button>
-                <button class="filter-chip" onclick="setFilter('vn')">Kho VN</button>
                 <button class="filter-chip" onclick="setFilter('wait')">Chưa nhập kho</button>
-                <button class="filter-chip" onclick="setFilter('delivered')">Đang giao hàng</button>
-
-                <!-- <button class="filter-chip" onclick="setFilter('transit')">Đang về</button> -->
+                <button class="filter-chip" onclick="setFilter('delivered')">Đang giao</button>
+                <button class="filter-chip" onclick="setFilter('vn')">Kho VN</button>
+                <button class="filter-chip" onclick="setFilter('transit')">Đang về</button>
 
 
                 <div class="view-toggle">
@@ -933,11 +1065,28 @@
                             class="fa-solid fa-border-all"></i></button>
                     <button class="view-btn" id="btnDetail" onclick="setView('detail')" title="Chi tiết"><i
                             class="fa-solid fa-circle-info"></i></button>
-
+                    
                 </div>
             </div>
 
             <div class="order-list layout-grid" id="orderList"></div>
+            
+            <div class="bulk-bar" id="bulkBar">
+                <div class="bulk-left">
+                    <button class="btn-bulk" onclick="toggleSelectAll()">
+                        <i class="fa-solid fa-check-double"></i> Chọn tất cả
+                    </button>
+                    <span style="font-size:13px; font-weight:700; color:var(--text-main)" id="selectCount">0 đã chọn</span>
+                </div>
+                <div class="bulk-right">
+                    <button class="btn-bulk" onclick="bulkCopy()">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                    <button class="btn-bulk btn-bulk-danger" onclick="bulkDelete()">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -978,6 +1127,11 @@
         let viewMode = 'grid';
         let filterMode = 'all';
         let settings = { theme: 'dark', color: '#38bdf8' };
+        
+        // Multi-select variables
+        let isSelectMode = false;
+        let selectedCodes = new Set();
+        let currentRenderedList = []; // To keep track of what's currently visible for "Select All"
 
         const colors = [
             { hex: '#38bdf8', rgb: '56, 189, 248' }, { hex: '#818cf8', rgb: '129, 140, 248' },
@@ -1046,6 +1200,11 @@
         function setFilter(f) {
             filterMode = f;
             document.querySelectorAll('.filter-chip').forEach(b => b.classList.toggle('active', b.innerText.includes(event.target.innerText)));
+            // Reset selection when filtering to avoid confusion
+            if(isSelectMode) {
+                 selectedCodes.clear();
+                 updateBulkUI();
+            }
             renderOrders();
         }
 
@@ -1062,7 +1221,14 @@
             document.getElementById('txtPkgName').innerText = data.packages.find(p => p.id === data.curId)?.name || '';
             renderStats();
         }
-        function switchPkg(id) { data.curId = id; renderPkgs(); renderOrders(); }
+        function switchPkg(id) { 
+            data.curId = id; 
+            isSelectMode = false; // Turn off select mode when switching package
+            selectedCodes.clear();
+            updateBulkUI();
+            renderPkgs(); 
+            renderOrders(); 
+        }
 
         // Package CRUD
         let isEdit = false;
@@ -1120,39 +1286,108 @@
                 }
             } return h + '</table>';
         }
+        
+        // --- MULTI SELECT LOGIC ---
+        function toggleSelectMode() {
+            isSelectMode = !isSelectMode;
+            const btn = document.getElementById('btnSelectMode');
+            const bar = document.getElementById('bulkBar');
+            
+            if (isSelectMode) {
+                btn.classList.add('active');
+                btn.innerHTML = `<i class="fa-solid fa-check"></i> Xong`;
+                bar.classList.add('show');
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = `<i class="fa-regular fa-square-check"></i> Chọn`;
+                bar.classList.remove('show');
+                selectedCodes.clear(); // Clear selection when exiting mode
+                updateBulkUI();
+            }
+            renderOrders();
+        }
+
+        function handleSelect(code) {
+            if (!isSelectMode) return;
+            
+            if (selectedCodes.has(code)) {
+                selectedCodes.delete(code);
+            } else {
+                selectedCodes.add(code);
+            }
+            updateBulkUI();
+            renderOrders(); // Re-render to update visuals
+        }
+        
+        function updateBulkUI() {
+            document.getElementById('selectCount').innerText = `${selectedCodes.size} đã chọn`;
+        }
+        
+        function toggleSelectAll() {
+            if (selectedCodes.size === currentRenderedList.length && currentRenderedList.length > 0) {
+                // If all are selected, deselect all
+                selectedCodes.clear();
+            } else {
+                // Select all currently visible
+                currentRenderedList.forEach(o => selectedCodes.add(o.code));
+            }
+            updateBulkUI();
+            renderOrders();
+        }
+        
+        function bulkCopy() {
+            if (selectedCodes.size === 0) return showToast("Chưa chọn đơn nào!");
+            const txt = Array.from(selectedCodes).join('\n');
+            navigator.clipboard.writeText(txt);
+            showToast(`Đã copy ${selectedCodes.size} mã!`);
+        }
+        
+        function bulkDelete() {
+            if (selectedCodes.size === 0) return showToast("Chưa chọn đơn nào!");
+            if (confirm(`Xoá vĩnh viễn ${selectedCodes.size} đơn hàng đã chọn?`)) {
+                const p = data.packages.find(x => x.id === data.curId);
+                p.orders = p.orders.filter(o => !selectedCodes.has(o.code));
+                
+                selectedCodes.clear();
+                toggleSelectMode(); // Exit select mode
+                save();
+                renderOrders();
+                showToast("Đã xoá!");
+            }
+        }
 
         function renderOrders() {
             const con = document.getElementById('orderList');
             con.innerHTML = '';
 
-            // Tìm package hiện tại
             const p = data.packages.find(x => x.id === data.curId);
-            if (!p) return; // Kiểm tra an toàn nếu không tìm thấy package
+            if (!p) return;
 
             let list = p.orders;
-
-            // --- PHẦN SỬA LỖI LOGIC FILTER ---
             if (filterMode !== 'all') {
                 list = list.filter(o => {
                     const s = getStatus(o);
-                    // console.log(s); // Bật lên nếu cần debug
-
                     if (filterMode === 'delivered') return s.c === 'st-ok';
                     if (filterMode === 'vn') return s.c === 'st-vn';
                     if (filterMode === 'transit') return s.c === 'st-mv';
                     if (filterMode === 'cn') return s.c === 'st-cn';
-                    if (filterMode === 'wait') return s.c === 'st-no'; // Đã hoạt động
-
-                    return false; // Nếu không khớp cái nào thì loại bỏ
+                    if (filterMode === 'wait') return s.c === 'st-no';
+                    return false;
                 });
             }
+            
+            currentRenderedList = list; // Update for Select All logic
 
-            // --- PHẦN RENDER GIAO DIỆN (GIỮ NGUYÊN) ---
             list.forEach(o => {
                 const st = getStatus(o);
                 const w = o.data?.Weight || 0;
+                
+                // Select Mode visual logic
+                const isSel = selectedCodes.has(o.code);
+                const selectClass = isSel ? 'selected' : '';
+                const clickAction = isSelectMode ? `onclick="handleSelect('${o.code}')"` : '';
 
-                // Logic for SUPER view notes: StoreVN > StoreCN
+                // Super Note Logic
                 let superNote = '';
                 if (o.data) {
                     if (o.data.StoreVNNote) superNote = `${o.data.StoreVNNote}`;
@@ -1162,16 +1397,25 @@
                 if (viewMode === 'super') {
                     // SUPER MINIMALIST RENDER
                     const div = document.createElement('div');
-                    div.className = 'super-card';
+                    div.className = `super-card ${selectClass}`;
+                    div.setAttribute('onclick', isSelectMode ? `handleSelect('${o.code}')` : '');
+                    
+                    let leftIcon = `<div class="super-status ${st.c}" title="${st.t}"><i class="fa-solid ${st.i}"></i></div>`;
+                    
+                    if(isSelectMode) {
+                        leftIcon = `<div class="super-select-box"><i class="fa-solid fa-check"></i></div>`;
+                    }
+
                     div.innerHTML = `
-            <div class="super-status ${st.c}" title="${st.t}"><i class="fa-solid ${st.i}"></i></div>
+            ${leftIcon}
             <div class="super-code">${o.code}</div>
             ${superNote ? `<div class="super-note">${superNote}</div>` : ''}
             <div class="super-weight">${w} kg</div>
+            ${!isSelectMode ? `
             <div class="super-actions">
-                <button class="s-act-btn" onclick="copyTxt('${o.code}')"><i class="fa-regular fa-copy"></i></button>
-                <button class="s-act-btn" onclick="delOrd('${o.code}')" style="color:var(--danger)"><i class="fa-solid fa-trash"></i></button>
-            </div>
+                <button class="s-act-btn" onclick="event.stopPropagation(); copyTxt('${o.code}')"><i class="fa-regular fa-copy"></i></button>
+                <button class="s-act-btn" onclick="event.stopPropagation(); delOrd('${o.code}')" style="color:var(--danger)"><i class="fa-solid fa-trash"></i></button>
+            </div>` : ''}
         `;
                     con.appendChild(div);
                 } else {
@@ -1179,21 +1423,30 @@
                     let noteTags = '';
                     if (o.data?.StoreCNNote) noteTags += `<span class="api-note-tag">${o.data.StoreCNNote}</span>`;
                     if (o.data?.StoreVNNote) noteTags += `<span class="api-note-tag" style="background:var(--warning);color:var(--bg-body)">${o.data.StoreVNNote}</span>`;
-
+                    
+                    // Add padding to header if in select mode
+                    const headerClass = isSelectMode ? 'select-mode-on' : '';
+                    
                     const div = document.createElement('div');
-                    div.className = 'card';
+                    div.className = `card ${selectClass} ${headerClass}`;
+                    if(isSelectMode) div.setAttribute('onclick', `handleSelect('${o.code}')`);
+
                     div.innerHTML = `
+            ${isSelectMode ? `<div class="select-check"><i class="fa-solid fa-check"></i></div>` : ''}
+            
+            ${!isSelectMode ? `
             <div class="card-actions">
                 <div class="act-btn" onclick="copyTxt('${o.code}')"><i class="fa-regular fa-copy"></i></div>
                 <div class="act-btn act-del" onclick="delOrd('${o.code}')"><i class="fa-solid fa-trash"></i></div>
                 ${o.error ? `<div class="act-btn" onclick="retry('${o.code}')"><i class="fa-solid fa-rotate-right"></i></div>` : ''}
-            </div>
+            </div>` : ''}
+            
             <div class="card-header">
                 <div class="status-badge ${st.c}"><i class="fa-solid ${st.i}"></i> ${st.t}</div>
                 <div class="card-code">${o.code}</div>
             </div>
             <div style="margin-bottom:5px">${noteTags}</div>
-            <input class="user-note-inp" placeholder="+ Ghi chú..." value="${o.note}" onchange="updNote('${o.code}', this.value)">
+            ${!isSelectMode ? `<input class="user-note-inp" placeholder="+ Ghi chú..." value="${o.note}" onchange="updNote('${o.code}', this.value)">` : ''}
             <div class="card-footer"><div class="weight-box">${w} <span>KG</span></div></div>
             ${(viewMode === 'detail' && o.data) ? renderDetailTable(o.data) : ''}
         `;
@@ -1201,7 +1454,6 @@
                 }
             });
 
-            // Cập nhật lại số liệu thống kê sau khi render
             renderStats();
         }
 
