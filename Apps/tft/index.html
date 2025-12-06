@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TFT Team Builder MVP</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-color: #1e293b;
+            --hex-size: 60px;
+            --hex-gap: 4px;
+            --text-color: #e2e8f0;
+            --accent-color: #c084fc;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- Sidebar: Traits & Pool --- */
+        .sidebar {
+            width: 350px;
+            background-color: var(--panel-color);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #334155;
+            z-index: 10;
+        }
+
+        .traits-panel {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            border-bottom: 1px solid #334155;
+        }
+
+        .traits-panel h3 { margin-top: 0; color: var(--accent-color); }
+        
+        .trait-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: rgba(255,255,255,0.05);
+            margin-bottom: 5px;
+            border-radius: 4px;
+        }
+        .trait-active { background: rgba(192, 132, 252, 0.2); border: 1px solid var(--accent-color); }
+
+        .champion-pool {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .pool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 10px;
+        }
+
+        /* --- Champion Card Styles --- */
+        .champ-card {
+            width: 60px;
+            height: 60px;
+            background-color: #334155;
+            border: 2px solid #475569;
+            border-radius: 8px;
+            cursor: grab;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            text-align: center;
+            user-select: none;
+            transition: transform 0.2s;
+            position: relative;
+        }
+        .champ-card:hover { transform: scale(1.05); border-color: var(--accent-color); }
+        .champ-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; opacity: 0.5; position: absolute; }
+        .champ-card span { z-index: 2; font-weight: bold; text-shadow: 0 1px 2px black; pointer-events: none;}
+
+        /* Cost Colors */
+        .cost-1 { border-color: #9ca3af; } /* Grey */
+        .cost-2 { border-color: #22c55e; } /* Green */
+        .cost-3 { border-color: #3b82f6; } /* Blue */
+        .cost-4 { border-color: #a855f7; } /* Purple */
+        .cost-5 { border-color: #eab308; } /* Gold */
+
+        /* --- Main Board Area --- */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+        }
+
+        .board-container {
+            padding: 50px;
+        }
+
+        /* Hex Grid Logic */
+        .hex-row {
+            display: flex;
+            justify-content: center;
+            margin-bottom: -14px; /* Overlap to nest hexes */
+        }
+        
+        .hex-row.even {
+            transform: translateX(32px); /* Offset for honeycomb effect */
+        }
+
+        .hex-slot {
+            width: 64px;
+            height: 74px; /* Hex ratio */
+            background-color: rgba(255,255,255,0.05);
+            margin: 0 2px;
+            clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+            position: relative;
+        }
+
+        .hex-slot:hover { background-color: rgba(255,255,255,0.1); }
+        .hex-slot.drag-over { background-color: rgba(192, 132, 252, 0.4); }
+
+        /* Champion inside Hex */
+        .hex-champ {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            flex-direction: column;
+            cursor: pointer;
+        }
+        .hex-champ img { width: 100%; height: 100%; object-fit: cover; position: absolute; z-index: 0; opacity: 0.7;}
+        .hex-champ span { z-index: 1; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 4px; }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { opacity: 0.9; }
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="traits-panel">
+            <h3>Kích hoạt Tộc/Hệ</h3>
+            <div id="active-traits">
+                <div style="color: #64748b; font-style: italic;">Chưa có kích hoạt...</div>
+            </div>
+        </div>
+        <div class="champion-pool">
+            <h3>Danh sách Tướng</h3>
+            <input type="text" id="search" placeholder="Tìm tên tướng..." style="width: 90%; padding: 8px; margin-bottom: 10px; background: #0f172a; border: 1px solid #334155; color: white;">
+            <div class="pool-grid" id="pool-list">
+                </div>
+        </div>
+    </div>
+
+    <div class="main-area">
+        <div class="controls">
+            <button onclick="resetBoard()">Reset Bàn Cờ</button>
+        </div>
+
+        <div class="board-container" id="board">
+            <div class="hex-row" data-row="0">
+                <div class="hex-slot" data-index="0"></div>
+                <div class="hex-slot" data-index="1"></div>
+                <div class="hex-slot" data-index="2"></div>
+                <div class="hex-slot" data-index="3"></div>
+                <div class="hex-slot" data-index="4"></div>
+                <div class="hex-slot" data-index="5"></div>
+                <div class="hex-slot" data-index="6"></div>
+            </div>
+            <div class="hex-row even" data-row="1">
+                <div class="hex-slot" data-index="7"></div>
+                <div class="hex-slot" data-index="8"></div>
+                <div class="hex-slot" data-index="9"></div>
+                <div class="hex-slot" data-index="10"></div>
+                <div class="hex-slot" data-index="11"></div>
+                <div class="hex-slot" data-index="12"></div>
+                <div class="hex-slot" data-index="13"></div>
+            </div>
+            <div class="hex-row" data-row="2">
+                <div class="hex-slot" data-index="14"></div>
+                <div class="hex-slot" data-index="15"></div>
+                <div class="hex-slot" data-index="16"></div>
+                <div class="hex-slot" data-index="17"></div>
+                <div class="hex-slot" data-index="18"></div>
+                <div class="hex-slot" data-index="19"></div>
+                <div class="hex-slot" data-index="20"></div>
+            </div>
+            <div class="hex-row even" data-row="3">
+                <div class="hex-slot" data-index="21"></div>
+                <div class="hex-slot" data-index="22"></div>
+                <div class="hex-slot" data-index="23"></div>
+                <div class="hex-slot" data-index="24"></div>
+                <div class="hex-slot" data-index="25"></div>
+                <div class="hex-slot" data-index="26"></div>
+                <div class="hex-slot" data-index="27"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Dữ liệu mẫu (Giả lập TFT Set mới) ---
+        const championsData = [
+            { id: 'ahri', name: 'Ahri', cost: 4, traits: ['Ionia', 'Pháp Sư'], color: '#a855f7' },
+            { id: 'yasuo', name: 'Yasuo', cost: 4, traits: ['Ionia', 'Thách Đấu'], color: '#a855f7' },
+            { id: 'sett', name: 'Sett', cost: 2, traits: ['Ionia', 'Dũng Sĩ'], color: '#22c55e' },
+            { id: 'shen', name: 'Shen', cost: 4, traits: ['Ionia', 'Can Trường'], color: '#a855f7' },
+            { id: 'karma', name: 'Karma', cost: 3, traits: ['Ionia', 'Hiệu Triệu'], color: '#3b82f6' },
+            { id: 'darius', name: 'Darius', cost: 3, traits: ['Noxus', 'Dũng Sĩ'], color: '#3b82f6' },
+            { id: 'katarina', name: 'Katarina', cost: 3, traits: ['Noxus', 'Vô Pháp'], color: '#3b82f6' },
+            { id: 'swain', name: 'Swain', cost: 2, traits: ['Noxus', 'Phù Thủy'], color: '#22c55e' },
+            { id: 'lux', name: 'Lux', cost: 4, traits: ['Demacia', 'Pháp Sư'], color: '#a855f7' },
+            { id: 'garen', name: 'Garen', cost: 3, traits: ['Demacia', 'Dũng Sĩ'], color: '#3b82f6' },
+            { id: 'jarvan', name: 'Jarvan IV', cost: 4, traits: ['Demacia', 'Chiến Thuật'], color: '#a855f7' },
+            { id: 'aatrox', name: 'Aatrox', cost: 5, traits: ['Darkin', 'Dũng Sĩ'], color: '#eab308' }
+        ];
+
+        // State quản lý bàn cờ: Map index -> champion object
+        let boardState = {};
+
+        // --- 2. Khởi tạo giao diện ---
+        const poolList = document.getElementById('pool-list');
+        const slots = document.querySelectorAll('.hex-slot');
+        const traitsContainer = document.getElementById('active-traits');
+
+        function renderPool(filter = '') {
+            poolList.innerHTML = '';
+            championsData.forEach(champ => {
+                if(champ.name.toLowerCase().includes(filter.toLowerCase())) {
+                    const el = document.createElement('div');
+                    el.className = `champ-card cost-${champ.cost}`;
+                    el.draggable = true;
+                    // Dùng placehold.co để tạo ảnh giả lập theo màu
+                    el.innerHTML = `
+                        <div style="width:100%; height:100%; background:${champ.color}; opacity:0.3; position:absolute; border-radius:4px;"></div>
+                        <span>${champ.name}</span>
+                    `;
+                    
+                    el.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', JSON.stringify(champ));
+                        e.dataTransfer.effectAllowed = 'copy';
+                    });
+                    poolList.appendChild(el);
+                }
+            });
+        }
+
+        // --- 3. Xử lý Drag & Drop ---
+        slots.forEach(slot => {
+            slot.addEventListener('dragover', (e) => {
+                e.preventDefault(); // Cho phép drop
+                slot.classList.add('drag-over');
+            });
+
+            slot.addEventListener('dragleave', () => {
+                slot.classList.remove('drag-over');
+            });
+
+            slot.addEventListener('drop', (e) => {
+                e.preventDefault();
+                slot.classList.remove('drag-over');
+                
+                const data = e.dataTransfer.getData('text/plain');
+                if (!data) return; // Nếu kéo cái khác không phải tướng
+                
+                const champ = JSON.parse(data);
+                const index = slot.getAttribute('data-index');
+
+                placeChampion(index, champ);
+            });
+            
+            // Click để xóa tướng
+            slot.addEventListener('click', () => {
+                const index = slot.getAttribute('data-index');
+                if(boardState[index]) {
+                    removeChampion(index);
+                }
+            });
+        });
+
+        // --- 4. Logic Game ---
+        function placeChampion(index, champ) {
+            boardState[index] = champ;
+            renderBoard();
+            calculateTraits();
+        }
+
+        function removeChampion(index) {
+            delete boardState[index];
+            renderBoard();
+            calculateTraits();
+        }
+
+        function renderBoard() {
+            slots.forEach(slot => {
+                const index = slot.getAttribute('data-index');
+                slot.innerHTML = ''; // Xóa nội dung cũ
+                
+                if (boardState[index]) {
+                    const champ = boardState[index];
+                    const el = document.createElement('div');
+                    el.className = 'hex-champ';
+                    el.innerHTML = `
+                        <div style="width:100%; height:100%; background:${champ.color}; border-radius: 50%; position:absolute; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"></div>
+                        <span>${champ.name}</span>
+                    `;
+                    slot.appendChild(el);
+                    // Đổi màu viền hex để hiển thị rõ
+                    slot.style.border = `1px solid ${champ.color}`;
+                } else {
+                    slot.style.border = 'none';
+                }
+            });
+        }
+
+        function calculateTraits() {
+            const traitCounts = {};
+            const uniqueChamps = new Set(); // TFT chỉ tính mỗi loại tướng 1 lần cho tộc hệ
+
+            // Lấy danh sách tướng unique trên bàn
+            Object.values(boardState).forEach(champ => {
+                if (!uniqueChamps.has(champ.id)) {
+                    uniqueChamps.add(champ.id);
+                    champ.traits.forEach(trait => {
+                        traitCounts[trait] = (traitCounts[trait] || 0) + 1;
+                    });
+                }
+            });
+
+            // Render ra UI
+            traitsContainer.innerHTML = '';
+            const sortedTraits = Object.entries(traitCounts).sort((a, b) => b[1] - a[1]); // Sắp xếp theo số lượng
+
+            if (sortedTraits.length === 0) {
+                traitsContainer.innerHTML = '<div style="color: #64748b; font-style: italic;">Chưa có kích hoạt...</div>';
+                return;
+            }
+
+            sortedTraits.forEach(([trait, count]) => {
+                const div = document.createElement('div');
+                div.className = 'trait-item';
+                // Logic giả định mốc kích hoạt (ví dụ: > 2 là kích hoạt)
+                if (count >= 2) div.classList.add('trait-active');
+                
+                div.innerHTML = `
+                    <span>${trait}</span>
+                    <span style="font-weight:bold; color:white;">${count}</span>
+                `;
+                traitsContainer.appendChild(div);
+            });
+        }
+
+        function resetBoard() {
+            boardState = {};
+            renderBoard();
+            calculateTraits();
+        }
+
+        // --- 5. Chạy khởi tạo ---
+        renderPool();
+        
+        // Search filter
+        document.getElementById('search').addEventListener('input', (e) => {
+            renderPool(e.target.value);
+        });
+
+    </script>
+</body>
+</html>
