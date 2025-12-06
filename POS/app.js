@@ -23,6 +23,7 @@ import {
     where,
     orderBy,
     limit,
+    writeBatch
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // 2. CONFIG
@@ -45,6 +46,7 @@ const db = getFirestore(app);
 let currentUser = null;
 let userRole = 'staff';
 let currentUserData = null;
+let paymentChart = null; 
 
 // State Chi nhánh
 let branches = [];
@@ -681,6 +683,8 @@ window.selectCustomerForOrder = () => {
     toggleCustomerSelectModal();
 };
 
+
+
 // --- VIEW SWITCHING ---
 window.switchView = (view) => {
     if (userRole !== 'admin' && ['inventory', 'reports', 'promos'].includes(view)) return showToast("Không có quyền!", true);
@@ -694,7 +698,32 @@ window.switchView = (view) => {
     document.getElementById(`view-${view}`).classList.remove('hidden');
     view === 'pos' ? document.getElementById('sidebar-cart').classList.remove('hidden') : document.getElementById('sidebar-cart').classList.add('hidden');
 };
+// --- REPORT DATE HELPER ---
+window.setReportDate = (type) => {
+    // UI: Active button
+    document.querySelectorAll('.report-filter-btn').forEach(b => b.classList.remove('active'));
+    event.currentTarget.classList.add('active');
 
+    const startEl = document.getElementById('report-date-start');
+    const endEl = document.getElementById('report-date-end');
+    const today = new Date();
+    
+    if (type === 'today') {
+        startEl.valueAsDate = today;
+        endEl.valueAsDate = today;
+    } else if (type === 'yesterday') {
+        const yesterday = new Date(today);
+        yesterday.setDate(today.getDate() - 1);
+        startEl.valueAsDate = yesterday;
+        endEl.valueAsDate = yesterday;
+    } else if (type === 'this_month') {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        startEl.valueAsDate = firstDay;
+        endEl.valueAsDate = today;
+    }
+    
+    renderStats(); // Gọi render lại ngay
+};
 // --- STOCK LOGIC ---
 function checkStockAvailability(productId, requestQty) {
     const product = products.find(p => p.id === productId);
@@ -764,6 +793,185 @@ window.editProduct = (id) => {
     document.getElementById('add-product-modal').classList.remove('hidden');
 };
 
+// --- INVENTORY IMPORT/EXPORT ---
+
+window.exportProductsToCSV = () => {
+    if (products.length === 0) return showToast("Không có sản phẩm nào để xuất!", true);
+
+    // 1. Định nghĩa Header CSV
+    const headers = ["id", "name", "price", "stock", "category", "description"];
+    
+    // Thêm BOM (Byte Order Mark) cho Tiếng Việt trong Excel
+    let csvContent = "\uFEFF" + headers.join(",") + "\n";
+
+    // 2. Map dữ liệu sản phẩm
+    products.forEach(p => {
+        // Lấy category ID vì category name có thể không tồn tại trong data
+        const categoryId = p.category || "";
+        
+        const row = [
+            `"${p.id}"`, // Dùng nháy kép cho ID để đảm bảo nó là text trong Excel
+            `"${p.name.replace(/"/g, '""')}"`, // Xử lý dấu nháy kép trong tên
+            p.price,
+            p.stock,
+            `"${categoryId}"`,
+            `"${(p.description || '').replace(/"/g, '""')}"`
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+
+    // 3. Trigger Download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `inventory_${currentBranchId}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast(`Đã xuất ${products.length} sản phẩm ra CSV.`);
+};
+
+// --- INVENTORY MANAGEMENT ---
+
+// Hàm xóa toàn bộ sản phẩm của chi nhánh hiện tại
+window.deleteAllInventory = async () => {
+    // 1. Kiểm tra quyền
+    if (userRole !== 'admin') return showToast("Bạn không có quyền xóa toàn bộ kho hàng!", true);
+    if (!currentBranchId) return showToast("Lỗi: Không tìm thấy chi nhánh hiện tại.", true);
+
+    // 2. Xác nhận kép (Security measure)
+    if (!await customConfirm("⚠️ CẢNH BÁO NGUY HIỂM! Bạn có chắc chắn muốn XÓA VĨNH VIỄN tất cả sản phẩm của chi nhánh này?")) return;
+    if (!await customConfirm("⚠️ XÓA VĨNH VIỄN LẦN CUỐI! Hành động này không thể hoàn tác. Tiếp tục?")) return;
+
+    try {
+        showToast("⏳ Đang xử lý xóa kho hàng...", false);
+
+        // 3. Query tất cả sản phẩm thuộc chi nhánh hiện tại
+        const productsRef = collection(db, 'artifacts', appId, 'public', 'data', 'products');
+        const q = query(productsRef, where("ownerBranchId", "==", currentBranchId));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            showToast("Kho hàng đã trống.", false);
+            return;
+        }
+
+        let batch = writeBatch(db); // Khởi tạo Batch
+        let deleteCount = 0;
+
+        // 4. Xóa theo Batch (tối đa 500 documents/batch)
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+            deleteCount++;
+
+            if (deleteCount % 499 === 0) { // Commit trước khi chạm giới hạn 500
+                batch.commit();
+                batch = writeBatch(db); // Bắt đầu Batch mới
+            }
+        });
+
+        // 5. Commit batch cuối cùng
+        await batch.commit();
+
+        showToast(`✅ Đã xóa thành công ${deleteCount} sản phẩm khỏi chi nhánh này.`, false);
+        
+        // 6. Reload lại dữ liệu sản phẩm để UI cập nhật
+        window.location.reload(); 
+
+    } catch (e) {
+        console.error("Lỗi xóa toàn bộ kho:", e);
+        showToast("Lỗi hệ thống khi xóa kho hàng: " + e.message, true);
+    }
+};
+
+window.importProductsFromCSV = async (event) => {
+    if (userRole !== 'admin') return showToast("Chỉ Admin mới được nhập dữ liệu!", true);
+    if (!currentBranchId) return showToast("Vui lòng chọn chi nhánh trước khi nhập!", true);
+    
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!await customConfirm(`⚠️ Bạn có chắc chắn muốn nhập dữ liệu từ file "${file.name}"?\n\n(Dữ liệu sẽ được ghi vào chi nhánh hiện tại)`)) {
+        event.target.value = ''; // Clear input
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const csvText = e.target.result;
+        
+        const lines = csvText.split('\n').filter(line => line.trim() !== '');
+        if (lines.length < 2) return showToast("File CSV không có dữ liệu!", true);
+
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''));
+        const dataRows = lines.slice(1);
+        
+        let writeCount = 0;
+        let batch = writeBatch(db); // FIX: Sử dụng writeBatch(db) thay vì db.batch()
+
+        for (const row of dataRows) {
+            const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/"/g, '')); 
+
+            if (values.length < 4) continue; 
+
+            const data = {};
+            headers.forEach((h, i) => {
+                data[h] = values[i];
+            });
+            
+            // Validation & Data Conversion
+            if (!data.name || !data.price) {
+                console.warn("Skipped row due to missing Name/Price:", data);
+                continue;
+            }
+
+            data.ownerBranchId = currentBranchId;
+            data.updatedAt = serverTimestamp();
+            data.color = 'bg-slate-100'; 
+            
+            data.price = parseFloat(data.price) || 0;
+            data.stock = parseInt(data.stock) || 0;
+            data.description = data.description || '';
+            
+            let docRef;
+
+            // Nếu cột ID tồn tại, ta sẽ update hoặc set
+            if (data.id) {
+                docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', data.id);
+                batch.set(docRef, data, { merge: true }); 
+            } else {
+                // Tạo ID ngẫu nhiên cho sản phẩm mới
+                docRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'products'));
+                batch.set(docRef, data);
+            }
+            
+            writeCount++;
+
+            // Commit batch nếu đạt 500 lệnh
+            if (writeCount % 500 === 0) {
+                await batch.commit();
+                batch = writeBatch(db); // FIX: Bắt đầu batch mới
+            }
+        }
+
+        // Commit batch cuối cùng
+        if (writeCount % 500 !== 0 || writeCount === 0) {
+            await batch.commit();
+        }
+
+        showToast(`✅ Đã nhập/cập nhật thành công ${writeCount} sản phẩm!`);
+        event.target.value = ''; 
+        // Sau khi import xong, reload để tải lại dữ liệu sản phẩm từ Firestore
+        window.location.reload(); 
+
+    };
+    
+    reader.readAsText(file);
+};
+
 window.addCategory = async () => {
     if (!currentBranchId) return showToast("Chọn chi nhánh!", true);
     const n = document.getElementById('new-cat-name').value;
@@ -806,11 +1014,26 @@ window.updateItemPrice = (id, valStr) => {
     if (item) { item.price = parseFloat(valStr.replace(/,/g, '')) || 0; renderCart(); }
 };
 
+// A. Thêm hàm updateOrderNote vào app.js
+window.updateOrderNote = (val) => {
+    const o = getActiveOrder();
+    o.note = val;
+    saveLocalOrders();
+};
+
+// B. Cập nhật hàm renderCart (Thêm dòng fill dữ liệu note vào textarea)
 window.renderCart = () => {
     const o = getActiveOrder();
     const c = document.getElementById('cart-items');
-    // SAVE TO LOCALSTORAGE
     saveLocalOrders();
+
+    // --- ĐOẠN MỚI THÊM: Fill Note ---
+    const noteEl = document.getElementById('pos-order-note');
+    if(noteEl) {
+        // Nếu chuyển tab khác, load note của tab đó lên. Nếu không có thì rỗng.
+        noteEl.value = o.note || '';
+    }
+    // ---------------------------------
 
     if (o.items.length === 0) {
         c.innerHTML = `<div class="flex flex-col items-center justify-center h-48 text-slate-300"><i class="fa-solid fa-basket-shopping text-4xl mb-3 opacity-30"></i><p>Trống</p></div>`;
@@ -905,19 +1128,26 @@ function updateTotals(o) {
 window.processPayment = async (print) => {
     // 1. VALIDATE
     if (!currentBranchId) return showToast("Lỗi: Chưa chọn chi nhánh!", true);
-
+    
+    // Lấy tổng tiền cuối cùng (Final Total)
     const totalVal = parseInt(document.getElementById('modal-total-amount').textContent.replace(/\D/g, ''));
+    
     if (paymentMethod === 'cash' && getCleanValue('cash-given') < totalVal) {
         return showToast("Thiếu tiền khách đưa!", true);
     }
-
+    
     const order = getActiveOrder();
-    if (!order.discounts) order.discounts = { coupon: null, manual: null, points: 0 };
+    if(!order.discounts) order.discounts = { coupon: null, manual: null, points: 0 };
+
+    // --- TÍNH LẠI SUBTOTAL TỪ DỮ LIỆU GỐC (FIX LỖI 100 vs 100.000) ---
+    // Không lấy từ giao diện html nữa
+    const rawSubtotal = order.items.reduce((a, b) => a + (b.price * b.qty), 0);
+    const rawDiscountVal = rawSubtotal - totalVal; // Tính chiết khấu dựa trên số lệch
 
     let pointsEarned = 0;
     let pointsUsed = order.discounts.points || 0;
 
-    // Tính điểm
+    // Tính điểm tích lũy
     if (order.customer) {
         const currentCust = customers.find(c => c.id === order.customer.id) || order.customer;
         const rankKey = currentCust.rank || 'member';
@@ -925,27 +1155,32 @@ window.processPayment = async (print) => {
         pointsEarned = Math.floor(totalVal * rankConfig.rate);
     }
 
+    // Lấy ghi chú từ input (nếu người dùng chưa kịp enter/blur)
+    const currentNote = document.getElementById('pos-order-note') ? document.getElementById('pos-order-note').value : '';
+    if(currentNote) order.note = currentNote;
+
     const basePayload = {
         items: order.items,
-        totals: {
-            subtotal: getCleanValue('cart-subtotal'),
-            finalTotal: totalVal,
-            discountVal: getCleanValue('cart-discount')
+        totals: { 
+            subtotal: rawSubtotal, // Sử dụng số nguyên chuẩn
+            finalTotal: totalVal, 
+            discountVal: rawDiscountVal // Sử dụng số nguyên chuẩn
         },
         customer: order.customer ? { id: order.customer.id, name: order.customer.name, phone: order.customer.phone } : null,
-        paymentMethod, // <--- Biến toàn cục này đã có giá trị
+        paymentMethod, 
         discountsApplied: order.discounts,
-        pointsEarned,
+        pointsEarned, 
         pointsUsed,
-        cashierId: currentUser.uid,
+        note: order.note || '', // Lưu ghi chú vào DB
+        cashierId: currentUser.uid, 
         cashierName: currentUserData?.name || 'Unknown',
-        branchId: currentBranchId,
+        branchId: currentBranchId, 
         branchName: branches.find(b => b.id === currentBranchId)?.name || 'Unknown',
-        completedAt: serverTimestamp(),
+        completedAt: serverTimestamp(), 
         status: 'active'
     };
 
-    let newId = null;
+    let newId = null; 
 
     try {
         if (order.originalId) {
@@ -971,10 +1206,8 @@ window.processPayment = async (print) => {
                 }
 
                 let newIndex = 0;
-                if (counterSnap.exists()) {
-                    newIndex = counterSnap.data().lastIndex + 1;
-                }
-
+                if (counterSnap.exists()) newIndex = counterSnap.data().lastIndex + 1;
+                
                 newId = `MT-${String(newIndex).padStart(6, '0')}`;
 
                 if (couponSnap) {
@@ -1045,30 +1278,26 @@ window.processPayment = async (print) => {
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', item.id), { stock: item.stock - item.qty });
                 }
             }
-
+            
             let msg = "Thanh toán thành công!";
-            if (pointsEarned > 0) msg += ` (+${pointsEarned} điểm)`;
-            if (pointsUsed > 0) msg += ` (-${pointsUsed} điểm)`;
+            if(pointsEarned > 0) msg += ` (+${pointsEarned} điểm)`;
             showToast(msg);
         }
 
-        // 5. IN HÓA ĐƠN & RESET
         closeCheckoutModal();
-
+        
         if (print) {
             const printId = newId || order.originalId;
-
-            // --- SỬA LỖI TẠI ĐÂY: Thêm paymentMethod vào object in ---
             const printData = {
                 id: printId,
                 items: order.items,
                 totals: basePayload.totals,
                 customer: order.customer,
                 cashierName: currentUserData?.name,
-                paymentMethod: basePayload.paymentMethod, // <--- DÒNG QUAN TRỌNG VỪA THÊM
+                paymentMethod: basePayload.paymentMethod,
+                note: basePayload.note, // Truyền ghi chú sang hàm in
                 completedAt: { seconds: Date.now() / 1000 }
             };
-
             setTimeout(() => printReceiptData(printData), 500);
         }
 
@@ -1076,24 +1305,25 @@ window.processPayment = async (print) => {
             orders = orders.filter(o => o.id !== currentOrderId);
             currentOrderId = orders[orders.length - 1].id;
         } else {
-            orders[0].items = [];
-            orders[0].discounts = { coupon: null, manual: null, points: 0 };
-            orders[0].customer = null;
+            orders[0].items = []; 
+            orders[0].discounts = { coupon: null, manual: null, points: 0 }; 
+            orders[0].customer = null; 
             orders[0].originalId = null;
+            orders[0].note = ''; // Reset note
         }
-
+        
         saveLocalOrders();
-        renderOrderTabs();
+        renderOrderTabs(); 
         renderCart();
-
-        ['disc-coupon-input', 'disc-manual-input', 'disc-point-input'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.value = '';
+        
+        ['disc-coupon-input', 'disc-manual-input', 'disc-point-input', 'pos-order-note'].forEach(id => { 
+            const el = document.getElementById(id); 
+            if(el) el.value = ''; 
         });
 
-    } catch (e) {
-        console.error(e);
-        showToast("Lỗi: " + (typeof e === 'string' ? e : e.message), true);
+    } catch (e) { 
+        console.error(e); 
+        showToast("Lỗi: " + (typeof e === 'string' ? e : e.message), true); 
     }
 };
 
@@ -1178,11 +1408,95 @@ window.editCustomer = (id) => {
 };
 
 // --- RENDERS & FILTERS ---
+// --- QUẢN LÝ DANH MỤC (CATEGORY MANAGEMENT) ---
+
+// 1. Hàm Render chính (Cập nhật cả POS, Select box và Modal Quản lý)
 window.renderCategories = () => {
-    const html = `<button onclick="filterCategory('all')" class="cat-btn ${currentFilter === 'all' ? 'active' : 'bg-white text-slate-600 border border-slate-200'} px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition">Tất cả</button>` +
-        categories.map(c => `<button onclick="filterCategory('${c.id}')" class="cat-btn ${currentFilter === c.id ? 'active' : 'bg-white text-slate-600 border border-slate-200'} px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition">${c.name}</button>`).join('');
-    document.getElementById('pos-categories').innerHTML = html;
-    document.getElementById('prod-cat').innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    // A. Render các nút bấm ở màn hình POS (Logic cũ)
+    const posHtml = `<button onclick="filterCategory('all')" class="cat-btn ${currentFilter === 'all' ? 'active' : 'bg-white text-slate-600 border border-slate-200'} px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition">Tất cả</button>` + 
+                 categories.map(c => `<button onclick="filterCategory('${c.id}')" class="cat-btn ${currentFilter === c.id ? 'active' : 'bg-white text-slate-600 border border-slate-200'} px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition">${c.name}</button>`).join('');
+    
+    const posContainer = document.getElementById('pos-categories');
+    if(posContainer) posContainer.innerHTML = posHtml;
+    
+    // B. Render Select box ở Modal Thêm sản phẩm (Logic cũ)
+    const prodSelect = document.getElementById('prod-cat');
+    if(prodSelect) prodSelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+    // C. Render Danh sách trong Modal Quản lý (LOGIC MỚI)
+    renderCategoryManagementList();
+};
+
+// 2. Hàm vẽ danh sách chi tiết (Có nút Sửa/Xóa)
+window.renderCategoryManagementList = () => {
+    const container = document.getElementById('category-list');
+    if (!container) return;
+
+    if (categories.length === 0) {
+        container.innerHTML = `<div class="text-center text-slate-400 text-xs py-4">Chưa có danh mục nào</div>`;
+        return;
+    }
+
+    container.innerHTML = categories.map(c => `
+        <div class="flex justify-between items-center p-3 bg-slate-50 border border-slate-100 rounded-xl group hover:border-blue-200 transition">
+            <span class="font-bold text-slate-700 text-sm">${c.name}</span>
+            
+            ${userRole === 'admin' ? `
+            <div class="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                <button onclick="editCategory('${c.id}')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-blue-600 hover:bg-blue-50 transition shadow-sm" title="Sửa tên">
+                    <i class="fa-solid fa-pen"></i>
+                </button>
+                <button onclick="deleteCategory('${c.id}')" class="w-8 h-8 rounded-lg bg-white border border-slate-200 text-red-500 hover:bg-red-50 transition shadow-sm" title="Xóa danh mục">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+            ` : ''}
+        </div>
+    `).join('');
+};
+
+// 3. Hàm Xóa Danh mục
+window.deleteCategory = async (id) => {
+    if (userRole !== 'admin') return showToast("Chỉ Admin được xóa!", true);
+
+    // Kiểm tra xem có sản phẩm nào đang dùng danh mục này không
+    const productsInCat = products.filter(p => p.category === id);
+    if (productsInCat.length > 0) {
+        if (!await customConfirm(`⚠️ Danh mục này đang chứa ${productsInCat.length} sản phẩm.\n\nNếu xóa, các sản phẩm sẽ bị mất danh mục.\nBạn có chắc chắn không?`)) {
+            return;
+        }
+    } else {
+        if (!await customConfirm("Bạn muốn xóa danh mục này?")) return;
+    }
+
+    try {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', id));
+        showToast("Đã xóa danh mục");
+    } catch (e) {
+        showToast("Lỗi: " + e.message, true);
+    }
+};
+
+// 4. Hàm Sửa Danh mục
+window.editCategory = async (id) => {
+    if (userRole !== 'admin') return showToast("Chỉ Admin được sửa!", true);
+
+    const cat = categories.find(c => c.id === id);
+    if (!cat) return;
+
+    const newName = await customPrompt("Đổi tên danh mục thành:", cat.name);
+    
+    if (newName && newName.trim() !== "" && newName !== cat.name) {
+        try {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', id), {
+                name: newName.trim(),
+                updatedAt: serverTimestamp()
+            });
+            showToast("Đã cập nhật tên danh mục");
+        } catch (e) {
+            showToast("Lỗi: " + e.message, true);
+        }
+    }
 };
 
 window.renderProducts = () => {
@@ -1359,17 +1673,159 @@ window.renderHistoryTable = () => {
 
 window.renderStats = () => {
     if (userRole !== 'admin') return;
-    const validOrders = ordersHistory.filter(o => o.status !== 'deleted' && (!currentBranchId || o.branchId === currentBranchId));
-    const today = new Date().setHours(0, 0, 0, 0);
-    const todayOrders = validOrders.filter(o => (o.completedAt?.seconds * 1000) >= today);
-    document.getElementById('stat-today-revenue').textContent = formatMoney(todayOrders.reduce((sum, o) => sum + (o.totals?.finalTotal || 0), 0));
-    document.getElementById('stat-total-orders').textContent = todayOrders.length;
-    document.getElementById('stat-new-customers').textContent = customers.filter(c => (c.createdAt?.seconds * 1000) >= today).length;
-    const productCount = {}; validOrders.forEach(o => { o.items?.forEach(i => { productCount[i.name] = (productCount[i.name] || 0) + i.qty; }); });
-    document.getElementById('top-products-list').innerHTML = Object.entries(productCount).sort((a, b) => b[1] - a[1]).slice(0, 5).map((p, i) => `<tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50"><td class="py-3 text-slate-500 font-bold text-sm w-8">#${i + 1}</td><td class="py-3 font-medium text-slate-700 truncate max-w-[120px]" title="${p[0]}">${p[0]}</td><td class="py-3 text-right font-bold text-blue-600">${p[1]} <span class="text-[10px] text-slate-400">bán</span></td></tr>`).join('');
-    const ctx = document.getElementById('revenueChart'); if (!ctx) return; if (revenueChart) revenueChart.destroy();
-    const labels = [], data = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); labels.push(d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })); const s = new Date(d).setHours(0, 0, 0, 0), e = new Date(d).setHours(23, 59, 59, 999); data.push(validOrders.filter(o => { const t = o.completedAt?.seconds * 1000; return t >= s && t <= e; }).reduce((sum, o) => sum + (o.totals?.finalTotal || 0), 0)); }
-    revenueChart = new Chart(ctx.getContext('2d'), { type: 'bar', data: { labels, datasets: [{ label: 'Doanh thu', data, backgroundColor: '#3b82f6', borderRadius: 4, barThickness: 20 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4] }, ticks: { callback: v => v >= 1000 ? v / 1000 + 'k' : v } }, x: { grid: { display: false } } } } });
+
+    // 1. POPULATE & LẤY FILTER
+    const startEl = document.getElementById('report-date-start');
+    const endEl = document.getElementById('report-date-end');
+    const branchSelectEl = document.getElementById('report-branch-select');
+    
+    if (!startEl || !endEl || !branchSelectEl) return; // Safety check
+
+    // 1.1. Populate Branch Filter
+    const currentSelection = branchSelectEl.value; 
+
+    let optionsHtml = '<option value="all">Tất cả chi nhánh</option>';
+    optionsHtml += branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    
+    branchSelectEl.innerHTML = optionsHtml;
+    
+    // Khôi phục lựa chọn cũ hoặc mặc định là 'all'
+    const filterBranchId = currentSelection === undefined ? 'all' : currentSelection;
+    branchSelectEl.value = filterBranchId;
+
+    // 1.2. Xử lý Mặc định Ngày tháng
+    if (!startEl.value || !endEl.value) {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1); 
+        startEl.valueAsDate = firstDay;
+        endEl.valueAsDate = today;
+    }
+
+    // Lấy giá trị Ngày tháng
+    const startDate = new Date(startEl.value); startDate.setHours(0,0,0,0);
+    const endDateUI = new Date(endEl.value);
+    const boundaryDate = new Date(endDateUI);
+    boundaryDate.setDate(endDateUI.getDate() + 1);
+
+    // 2. LỌC DỮ LIỆU
+    const validOrders = ordersHistory.filter(o => {
+        // A. Lọc Chi nhánh (Đã fix: Nếu chọn 'all', hoặc đơn không có branchId, đều pass)
+        const orderBranchId = o.branchId || null;
+        
+        // Logic: Pass nếu người dùng chọn 'all' HOẶC orderBranchId trùng với filterBranchId HOẶC orderBranchId là null (đơn cũ)
+        const isBranchMatch = (filterBranchId === 'all') || (orderBranchId === filterBranchId) || (orderBranchId === null && filterBranchId === currentBranchId);
+        
+        // B. Lọc Thời gian
+        let timeStamp = 0;
+        if (o.completedAt?.seconds) timeStamp = o.completedAt.seconds * 1000;
+        else if (o.createdAt?.seconds) timeStamp = o.createdAt.seconds * 1000;
+        else if (o.completedAt && typeof o.completedAt === 'object' && o.completedAt.toDate) timeStamp = o.completedAt.toDate().getTime(); 
+
+        const isTimeMatch = timeStamp >= startDate.getTime() && timeStamp < boundaryDate.getTime();
+        
+        return isBranchMatch && isTimeMatch;
+    });
+
+    // 3. TÍNH TOÁN KPI
+    const successOrders = validOrders.filter(o => o.status !== 'deleted');
+    const canceledOrders = validOrders.filter(o => o.status === 'deleted');
+
+    const totalRevenue = successOrders.reduce((sum, o) => {
+        let val = o.totals?.finalTotal || o.total || 0;
+        return sum + Number(val);
+    }, 0);
+
+    const totalCount = successOrders.length;
+    const canceledCount = canceledOrders.length;
+    const aov = totalCount > 0 ? Math.round(totalRevenue / totalCount) : 0;
+    const totalOrders = totalCount + canceledCount;
+    const cancelRate = totalOrders > 0 ? Math.round((canceledCount / totalOrders) * 100) : 0;
+
+    // Render KPI
+    document.getElementById('kpi-revenue').textContent = formatMoney(totalRevenue);
+    document.getElementById('kpi-orders').textContent = totalCount;
+    document.getElementById('kpi-aov').textContent = formatMoney(aov);
+    document.getElementById('kpi-canceled').textContent = canceledCount;
+    document.getElementById('kpi-cancel-rate').textContent = `${cancelRate}% tổng đơn`;
+
+    // 4. VẼ BIỂU ĐỒ DOANH THU (Line Chart)
+    const revenueByDate = {};
+    for (let d = new Date(startDate); d < boundaryDate; d.setDate(d.getDate() + 1)) {
+        const key = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+        revenueByDate[key] = 0;
+    }
+    
+    successOrders.forEach(o => {
+        let timeStamp = o.completedAt?.seconds * 1000 || 0;
+        const d = new Date(timeStamp);
+        const key = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+        
+        let val = o.totals?.finalTotal || o.total || 0;
+
+        if (revenueByDate[key] !== undefined) {
+            revenueByDate[key] += Number(val);
+        }
+    });
+
+    const ctxRevenue = document.getElementById('revenueChart');
+    if (ctxRevenue) {
+        if (revenueChart) revenueChart.destroy();
+        revenueChart = new Chart(ctxRevenue.getContext('2d'), {
+            type: 'line',
+            data: { labels: Object.keys(revenueByDate), datasets: [{ label: 'Doanh thu', data: Object.values(revenueByDate), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.3, fill: true, pointBackgroundColor: '#fff', pointBorderColor: '#3b82f6', pointRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4] }, ticks: { callback: v => v >= 1000000 ? v/1000000 + 'tr' : v >= 1000 ? v/1000 + 'k' : v } }, x: { grid: { display: false } } } }
+        });
+    }
+
+    // 5. VẼ BIỂU ĐỒ THANH TOÁN & TOP SẢN PHẨM
+    const paymentCounts = { 'cash': 0, 'transfer': 0, 'gift': 0 };
+    successOrders.forEach(o => {
+        const method = o.paymentMethod || 'cash';
+        let val = o.totals?.finalTotal || o.total || 0;
+        if (paymentCounts[method] !== undefined) paymentCounts[method] += Number(val);
+        else paymentCounts['cash'] += Number(val);
+    });
+
+    const ctxPayment = document.getElementById('paymentChart');
+    if (ctxPayment) {
+        if (paymentChart) paymentChart.destroy();
+        paymentChart = new Chart(ctxPayment.getContext('2d'), {
+            type: 'doughnut',
+            data: { labels: ['Tiền mặt', 'Chuyển khoản', 'Thẻ quà tặng'], datasets: [{ data: [paymentCounts['cash'], paymentCounts['transfer'], paymentCounts['gift']], backgroundColor: ['#22c55e', '#a855f7', '#f97316'], borderWidth: 0, hoverOffset: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+        });
+        const totalPay = Object.values(paymentCounts).reduce((a,b)=>a+b, 0) || 1;
+        const legendHtml = `
+            <div class="flex justify-between text-xs mb-1"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>Tiền mặt</span><span class="font-bold">${formatMoney(paymentCounts.cash)} (${Math.round(paymentCounts.cash/totalPay*100)}%)</span></div>
+            <div class="flex justify-between text-xs mb-1"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>Chuyển khoản</span><span class="font-bold">${formatMoney(paymentCounts.transfer)} (${Math.round(paymentCounts.transfer/totalPay*100)}%)</span></div>
+            <div class="flex justify-between text-xs"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-orange-500 mr-2"></span>Thẻ/Voucher</span><span class="font-bold">${formatMoney(paymentCounts.gift)} (${Math.round(paymentCounts.gift/totalPay*100)}%)</span></div>
+        `;
+        const legendContainer = document.getElementById('payment-legend');
+        if(legendContainer) legendContainer.innerHTML = legendHtml;
+    }
+
+    // 6. BẢNG TOP SẢN PHẨM
+    const productStats = {};
+    successOrders.forEach(o => {
+        if(o.items && Array.isArray(o.items)) {
+            o.items.forEach(i => {
+                if (!productStats[i.name]) productStats[i.name] = { qty: 0, rev: 0 };
+                productStats[i.name].qty += (i.qty || 0);
+                productStats[i.name].rev += ((i.price || 0) * (i.qty || 0));
+            });
+        }
+    });
+
+    const sortedProducts = Object.entries(productStats).sort((a, b) => b[1].rev - a[1].rev).slice(0, 10);
+
+    document.getElementById('top-products-list').innerHTML = sortedProducts.length > 0 ? sortedProducts.map((p, i) => `
+        <tr class="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition">
+            <td class="p-4"><span class="flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${i < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-500'}">${i + 1}</span></td>
+            <td class="p-4 font-bold text-slate-700 text-sm truncate max-w-[150px]" title="${p[0]}">${p[0]}</td>
+            <td class="p-4 text-right font-medium text-slate-600">${p[1].qty}</td>
+            <td class="p-4 text-right font-black text-blue-600">${formatMoney(p[1].rev)}</td>
+        </tr>
+    `).join('') : `<tr><td colspan="4" class="p-8 text-center text-slate-400 text-xs italic">Chưa có dữ liệu bán hàng trong khoảng thời gian này</td></tr>`;
 };
 
 // --- MISC & TOOLS ---
@@ -1621,24 +2077,25 @@ window.checkGiftCard = () => { const c = document.getElementById('gift-code-inpu
 
 // --- PRINTING ENGINE (CORE) ---
 window.printReceiptData = (order) => {
-    // 1. Lấy cấu hình in
+    // 1. Lấy cấu hình in (hoặc dùng mặc định K80)
     const config = JSON.parse(localStorage.getItem('pos_print_config')) || { type: 'k80', code: TEMPLATE_K80 };
-    // Ưu tiên dùng mẫu mặc định nếu là K80 để đảm bảo cập nhật mới nhất
     let template = (config.type === 'k80') ? TEMPLATE_K80 : config.code;
 
-    // 2. Tạo HTML cho danh sách món
+    // --- A. XỬ LÝ DANH SÁCH MÓN ĂN (ITEMS HTML) ---
     let itemsHtml = '';
     if (config.type === 'k58') {
+        // Mẫu K58 (Dạng liệt kê)
         itemsHtml = order.items.map(i => `
             <div style="border-bottom: 1px dashed #eee; padding: 5px 0;">
-                <div class="item-name" style="font-weight:bold">${i.name}</div>
-                <div class="item-meta" style="display:flex; justify-content:space-between; font-size:90%">
+                <div class="item-name" style="font-weight:bold; font-size: 11px;">${i.name}</div>
+                <div class="item-meta" style="display:flex; justify-content:space-between; font-size:10px;">
                     <span>${i.qty} x ${formatMoney(i.price).replace('₫','')}</span>
                     <span style="font-weight:bold">${formatMoney(i.price * i.qty).replace('₫','')}</span>
                 </div>
             </div>
         `).join('');
     } else {
+        // Mẫu K80 (Dạng bảng)
         itemsHtml = order.items.map((i, index) => `
             <tr>
                 <td style="text-align: center;">${index + 1}</td>
@@ -1650,79 +2107,118 @@ window.printReceiptData = (order) => {
         `).join('');
     }
 
-    // 3. Chuẩn bị dữ liệu chi tiết
+    // --- B. CHUẨN BỊ DỮ LIỆU ---
+    // 1. Thời gian
     const dateObj = order.completedAt ? new Date(order.completedAt.seconds * 1000) : new Date();
     
-    // Tính toán tiền nong
-    const subtotalVal = order.totals.subtotal;
-    const finalVal = order.totals.finalTotal;
+    // 2. Tiền nong (Lấy từ order.totals đã lưu)
+    const subtotalVal = order.totals.subtotal || 0;
+    const finalVal = order.totals.finalTotal || 0;
+    // Tính tổng giảm giá: Tạm tính - Thực trả
     const discountVal = subtotalVal - finalVal;
-    
-    // Lấy thông tin khách hàng
-    const custName = order.customer ? order.customer.name : 'Khách lẻ';
-    const custPhone = order.customer ? (userRole === 'admin' ? order.customer.phone : maskPhone(order.customer.phone)) : '';
-    const ptsEarned = order.pointsEarned || 0;
-    const currentPts = order.customer ? "..." : ""; 
 
-    // Tiền khách đưa / Tiền thừa
-    let givenVal = finalVal;
+    // 3. Khách hàng
+    const custName = order.customer ? order.customer.name : 'Khách lẻ';
+    // Admin xem full số, nhân viên xem số che
+    const custPhone = order.customer ? (userRole === 'admin' ? order.customer.phone : maskPhone(order.customer.phone)) : '';
+    // Điểm tích được (nếu có lưu trong đơn)
+    const ptsEarned = order.pointsEarned || 0;
+    const currentPts = order.customer ? "..." : ""; // Điểm hiện tại (có thể fetch thêm nếu cần)
+
+    // 4. Thanh toán (Tiền khách đưa & Tiền thừa)
+    let givenVal = finalVal; // Mặc định khách đưa đủ
     let changeVal = 0;
     
+    // Nếu đang ở màn hình POS và thanh toán tiền mặt -> Lấy từ ô nhập liệu
     const cashGivenEl = document.getElementById('cash-given');
-    // Chỉ lấy từ UI nếu đang ở đúng view POS và là tiền mặt
-    if(currentView === 'pos' && cashGivenEl && paymentMethod === 'cash') {
+    // Kiểm tra paymentMethod từ order (để chắc chắn)
+    const pmRaw = order.paymentMethod || 'cash';
+    
+    if (currentView === 'pos' && cashGivenEl && pmRaw === 'cash') {
         const inputVal = getCleanValue('cash-given');
-        if(inputVal > 0) {
+        // Chỉ lấy nếu số nhập vào hợp lý (lớn hơn 0)
+        if (inputVal >= finalVal) {
             givenVal = inputVal;
             changeVal = inputVal - finalVal;
         }
     }
 
-    // --- SỬA LỖI TẠI ĐÂY: KHAI BÁO pmRaw ---
+    // 5. Phương thức thanh toán (Việt hóa)
     const pmMap = { 'cash': 'Tiền mặt', 'transfer': 'Chuyển khoản', 'gift': 'Thẻ quà tặng' };
-    // Nếu không có paymentMethod, mặc định là 'cash'
-    const pmRaw = order.paymentMethod || 'cash'; 
     const pmDisplay = pmMap[pmRaw] || pmRaw;
 
-    // 4. Bảng ánh xạ dữ liệu (MAP DATA)
+    // --- C. LOGIC HIỂN THỊ NÂNG CAO (Voucher & Ghi chú) ---
+    
+    // 1. Tạo HTML hiển thị chi tiết Voucher/Điểm
+    let voucherHtml = '';
+    // Lấy thông tin giảm giá (hỗ trợ cả cấu trúc cũ và mới)
+    const discounts = order.discountsApplied || order.discounts || {};
+    
+    if (discounts.coupon) {
+        const typeStr = discounts.coupon.type === 'percent' ? `-${discounts.coupon.value}%` : `-${formatMoney(discounts.coupon.value)}`;
+        voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Voucher: <b>${discounts.coupon.code}</b> (${typeStr})</div>`;
+    }
+    if (discounts.points > 0) {
+        voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Điểm thành viên: <b>-${formatMoney(discounts.points)}</b></div>`;
+    }
+    if (discounts.manual) {
+        const mType = discounts.manual.type === 'percent' ? '%' : '₫';
+        voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Giảm thủ công: <b>${formatMoney(discounts.manual.value)}${mType}</b></div>`;
+    }
+
+    // 2. Tạo HTML hiển thị Ghi chú
+    let noteHtml = '';
+    if (order.note && order.note.trim() !== '') {
+        noteHtml = `<div class="note-box" style="margin-top: 10px; padding: 5px; font-size: 12px; text-align: left;"><strong></strong> ${order.note}</div>`;
+    }
+
+    // --- D. BẢNG ÁNH XẠ DỮ LIỆU (MAP DATA) ---
     const mapData = {
-        shopName: "MAI TÂY HAIR SALON",
-        
+        // Thông tin chung
+        shopName: "MAI TÂY HAIR SALON", // Có thể thay bằng biến config nếu có
         orderId: order.id,
         date: dateObj.toLocaleDateString('vi-VN'),
-        time: dateObj.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}),
+        time: dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         cashier: order.cashierName || 'Staff',
         
+        // Khách hàng
         customer: custName,
         customerPhone: custPhone,
         currentPoints: currentPts,
         pointsEarned: ptsEarned,
 
+        // Tài chính (Xóa ký tự ₫ để template tự định dạng)
         subtotal: formatMoney(subtotalVal).replace('₫', ''),
         discount: formatMoney(discountVal).replace('₫', ''),
         total: formatMoney(finalVal).replace('₫', ''),
-        rawTotal: finalVal,
+        rawTotal: finalVal, // Số nguyên cho QR Code
         
+        // Thanh toán
         given: formatMoney(givenVal).replace('₫', ''),
         change: formatMoney(changeVal).replace('₫', ''),
+        paymentMethod: pmDisplay,
         
-        paymentMethod: pmDisplay, // Sử dụng biến đã xử lý
-        
-        items: itemsHtml
+        // Các khối HTML
+        items: itemsHtml,
+        voucherDetails: voucherHtml, // Biến mới
+        noteSection: noteHtml        // Biến mới
     };
 
-    // 5. Thay thế vào Template
+    // --- E. THAY THẾ VÀO TEMPLATE ---
     for (const [key, value] of Object.entries(mapData)) {
+        // Replace All (g flag)
         template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
     }
 
-    // 6. Thực thi In
+    // --- F. THỰC THI IN ---
     const iframe = document.getElementById('print-frame');
     const doc = iframe.contentWindow.document;
+    
     doc.open();
     doc.write(template);
     doc.close();
 
+    // Delay một chút để trình duyệt render QR code và Font chữ
     setTimeout(() => {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
@@ -1744,131 +2240,109 @@ window.resetOrderCounter = async () => { if (userRole !== 'admin') return; const
 window.exportHistoryToExcel = () => { const search = document.getElementById('history-search')?.value.toLowerCase() || '', startDate = document.getElementById('filter-date-start')?.value, endDate = document.getElementById('filter-date-end')?.value, filterBranch = document.getElementById('filter-branch-history')?.value || 'all', filterCashier = document.getElementById('filter-cashier')?.value || 'all', filterStatus = document.getElementById('filter-status')?.value || 'active'; let data = ordersHistory.filter(o => { const isDeleted = o.status === 'deleted'; if (filterStatus === 'active' && isDeleted) return false; if (filterStatus === 'deleted' && !isDeleted) return false; const cName = o.customer ? o.customer.name.toLowerCase() : ''; if (!(o.id.toLowerCase().includes(search) || cName.includes(search))) return false; if (filterBranch !== 'all' && o.branchId !== filterBranch) return false; if (filterCashier !== 'all' && (o.cashierName || 'Unknown') !== filterCashier) return false; if (startDate || endDate) { const t = new Date(o.completedAt?.seconds * 1000); t.setHours(0, 0, 0, 0); if (startDate && t < new Date(startDate).setHours(0, 0, 0, 0)) return false; if (endDate && t > new Date(endDate).setHours(0, 0, 0, 0)) return false; } return true; }); if (data.length === 0) return showToast("Không có dữ liệu!", true); let csv = "data:text/csv;charset=utf-8,\uFEFFMã đơn,Thời gian,Ngày,Khách hàng,SĐT Khách,Chi nhánh,Thu ngân,Tổng tiền,PTTT,Trạng thái,Lý do\n"; const pmMap = { 'cash': 'Tiền mặt', 'transfer': 'Chuyển khoản', 'gift': 'Thẻ quà tặng' }; data.forEach(o => { const d = new Date(o.completedAt?.seconds * 1000); const pm = pmMap[o.paymentMethod] || o.paymentMethod; csv += [`'${o.id}`, d.toLocaleTimeString('vi-VN'), d.toLocaleDateString('vi-VN'), o.customer ? o.customer.name.replace(/,/g, ' ') : 'Khách lẻ', o.customer ? `'${o.customer.phone}` : '', (o.branchName || '').replace(/,/g, ' '), (o.cashierName || '').replace(/,/g, ' '), o.totals.finalTotal, pm, o.status === 'deleted' ? 'Đã hủy' : 'Thành công', (o.deletedReason || '').replace(/,/g, ' ')].join(",") + "\n"; }); const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `Bao_cao_${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
 
 // --- PRINT CONFIGURATION SYSTEM ---
+// --- PRINT TEMPLATES ---
 
-// Mẫu K80 Chuẩn
-// Mẫu K80 (Mai Tây Hair Salon Style)
 const TEMPLATE_K80 = `
 <html>
-    <head>
-        <title>In hóa đơn</title>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-        <style>
-            body { font-family: system-ui, -apple-system, sans-serif; padding: 0 5px; width: 80mm; margin: 0 auto; color: #000; }
-            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-            th, td { padding: 6px 2px; text-align: left; border-bottom: 1px solid #ddd; font-size: 12px; }
-            th { font-size: 11px; border-bottom: 2px solid black; font-weight: bold; }
-            td:last-child, th:last-child { text-align: right; }
-            .preview-header { text-align: center; margin-bottom: 10px; }
-            .preview-header h2 { margin: 5px 0; font-size: 18px; text-transform: uppercase; }
-            .preview-header h3 { margin: 5px 0; font-size: 14px; border-top: 1px dashed #000; padding-top: 10px; }
-            .bill-info { font-size: 12px; margin-bottom: 10px; }
-            .bill-info p { margin: 3px 0; }
-            .bill-summary { margin-top: 10px; text-align: right; font-size: 12px; }
-            .total { font-weight: bold; font-size: 16px; margin-top: 5px; }
-            .bill-footer { text-align: center; margin-top: 15px; font-size: 12px; }
-            .info-Salon { font-size: 12px; margin-top: 5px; }
-            .info-Salon i { width: 15px; text-align: center; }
-            .QR-Banking { margin-top: 15px; border: 2px solid #000; padding: 5px; display: flex; align-items: center; gap: 10px; border-radius: 8px; }
-            .QR-Banking img { width: 80px; height: 80px; display: block; }
-            .Banking { text-align: left; flex: 1; border-left: 1px dashed #000; padding-left: 10px; }
-            .Banking p { margin: 0; font-size: 10px; font-weight: bold; }
-            .Banking h1 { margin: 2px 0; font-size: 18px; letter-spacing: 1px; }
-            .Banking .alert { font-size: 9px; font-weight: normal; font-style: italic; margin-top: 2px; }
-            .Hunq { font-size: 10px; margin-top: 5px; font-style: italic; color: #555; }
-        .preview-header img {
-            width: 200px;
-            display: block;
-            margin: 0 auto;
-            padding-right: 20px;
-        }
-            </style>
-    </head>
-    <body>
-        <div class="preview-header">
-                <img src="./Logo.png" alt="Logo">
-
-            <h2>{{shopName}}</h2>
-            <div class="info-Salon">
-                <p><i class="fa-solid fa-location-dot"></i> 4A Hiền Hoà, Phước Thái, Long Thành, ĐN</p>
-                <p><i class="fa-brands fa-facebook"></i> MaiTayHairSalon | <i class="fa-solid fa-phone"></i> 0938.123.962</p>
-            </div>
-            <h3>HOÁ ĐƠN THANH TOÁN</h3>
-        </div>
-        <div class="bill-info">
-            <p><strong>Số HĐ:</strong> {{orderId}}</p>
-            <p><strong>Thời gian:</strong>{{time}} {{date}}</p>
-            <p><strong>Khách hàng:</strong> {{customer}}</p>
-            <p><strong>Thu ngân:</strong> {{cashier}}</p>
-            <p><strong>Thanh toán:</strong> {{paymentMethod}}</p>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 20px">#</th>
-                    <th>Dịch vụ</th>
-                    <th style="width: 25px; text-align: center;">SL</th>
-                    <th style="text-align: right;">Đơn giá</th>
-                    <th style="text-align: right;">Thành tiền</th>
-                </tr>
-            </thead>
-            <tbody>
-                {{items}}
-            </tbody>
-        </table>
-        <div class="bill-summary">
-            <p>Tạm tính: {{subtotal}}</p>
-            <p>Chiết khấu: {{discount}}</p>
-            <p class="total">TỔNG TIỀN: {{total}}</p>
-        </div>
+<head>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; padding: 0 5px; width: 80mm; margin: 0 auto; color: #000; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 6px 2px; text-align: left; border-bottom: 1px solid #ddd; font-size: 12px; }
+        th { font-size: 11px; border-bottom: 2px solid black; font-weight: bold; }
+        td:last-child, th:last-child { text-align: right; }
+        .preview-header { text-align: center; margin-bottom: 10px; }
+        .preview-header h2 { margin: 5px 0; font-size: 18px; text-transform: uppercase; }
+        .preview-header h3 { margin: 5px 0; font-size: 14px; border-top: 1px dashed #000; padding-top: 10px; }
+        .bill-info { font-size: 12px; margin-bottom: 10px; }
+        .bill-info p { margin: 3px 0; }
+        .bill-summary { margin-top: 10px; text-align: right; font-size: 12px; }
+        .bill-summary p { margin: 4px 0; }
+        .voucher-row { font-style: italic; color: #444; font-size: 11px; margin: 2px 0; }
+        .total { font-weight: bold; font-size: 16px; margin-top: 5px; border-top: 1px solid #000; padding-top: 5px; }
+        .note-box { margin-top: 10px; padding: 5px; font-size: 12px; text-align: left; font-weight: bold; }
+        .bill-footer { text-align: center; margin-top: 15px; font-size: 12px; }
+        .QR-Banking { margin-top: 15px; border: 2px solid #000; padding: 5px; display: flex; align-items: center; gap: 10px; border-radius: 8px; }
+        .QR-Banking img { width: 80px; height: 80px; display: block; }
+        .Banking { text-align: left; flex: 1; border-left: 1px dashed #000; padding-left: 10px; }
+        .Banking p { margin: 0; font-size: 10px; font-weight: bold; }
+        .Banking h1 { margin: 2px 0; font-size: 18px; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+    <div class="preview-header">
+        <h2>{{shopName}}</h2>
+        <div style="font-size: 12px;">ĐC: 4A Hiền Hoà, Phước Thái, Long Thành, ĐN</div>
+        <h3>HOÁ ĐƠN THANH TOÁN</h3>
+    </div>
+    <div class="bill-info">
+        <p>Mã đơn: {{orderId}}</p>
+        <p>Ngày: {{date}} {{time}}</p>
+        <p>Khách: {{customer}}</p>
+        <p>Thu ngân: {{cashier}}</p>
+    </div>
+    <table>
+        <thead><tr><th style="width: 20px">#</th><th>Dịch vụ</th><th style="text-align: center;">SL</th><th style="text-align: right;">Đơn giá</th><th style="text-align: right;">Tiền</th></tr></thead>
+        <tbody>{{items}}</tbody>
+    </table>
+    <div class="bill-summary">
+        <p>Tạm tính: {{subtotal}}</p>
+        <p>Chiết khấu: {{discount}}</p>
         
-        <div class="QR-Banking">
-            <div class="QR">
-                <img src="https://img.vietqr.io/image/BIDV-8834272720-compact.jpg?amount={{rawTotal}}&addInfo={{orderId}}" alt="QR">
-            </div>
-            <div class="Banking">
-                <p>BIDV - DINH HOA XUAN MAI</p>
-                <h1>8834272720</h1>
-                <p class="alert">Quét mã để thanh toán chính xác số tiền.</p>
-            </div>
-        </div>
+        {{voucherDetails}}
+        {{noteSection}}
+        <p class="total">TỔNG TIỀN: {{total}}</p>
+        <p>Thanh toán: {{paymentMethod}}</p>
+    </div>
 
-        <div class="bill-footer">
-            <p>Cảm ơn quý khách ❤️</p>
-            <p class="Hunq">Powered by Đinh Mạnh Hùng</p>
+    
+    
+    <div class="QR-Banking">
+        <div class="QR"><img src="https://img.vietqr.io/image/BIDV-8834272720-compact.jpg?amount={{rawTotal}}&addInfo={{orderId}}" alt="QR"></div>
+        <div class="Banking">
+            <p>BIDV - DINH HOA XUAN MAI</p>
+            <h1>8834272720</h1>
         </div>
-    </body>
+    </div>
+    <div class="bill-footer">
+        <p>Cảm ơn quý khách ❤️</p>
+    </div>
+</body>
 </html>`;
 
-// Mẫu K58 Nhỏ
 const TEMPLATE_K58 = `
 <html>
 <head>
-<style>
-    body { font-family: sans-serif; width: 58mm; margin: 0; padding: 2px; font-size: 10px; color: #000; }
-    .center { text-align: center; }
-    .bold { font-weight: bold; }
-    .line { border-bottom: 1px dotted #000; margin: 5px 0; }
-    .item-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-    .item-name { width: 100%; font-weight: bold; }
-    .item-meta { display: flex; justify-content: space-between; font-size: 9px; padding-left: 10px; color: #333; }
-    .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; margin-top: 5px; }
-</style>
+    <style>
+        body { font-family: sans-serif; width: 58mm; margin: 0; padding: 2px; font-size: 10px; color: #000; }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .line { border-bottom: 1px dotted #000; margin: 5px 0; }
+        .item-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .voucher-row { font-style: italic; color: #444; font-size: 9px; }
+        .note-box { margin-top: 5px; border: 1px dashed #000; padding: 3px; font-weight: bold; }
+        .total-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; margin-top: 5px; }
+    </style>
 </head>
 <body>
     <div class="center bold" style="font-size: 14px">{{shopName}}</div>
-    <div class="center" style="font-size: 9px">Đơn: {{orderId}}</div>
-    <div class="center" style="font-size: 9px">{{date}}</div>
+    <div class="center">Đơn: {{orderId}}</div>
+    <div class="center">{{date}} {{time}}</div>
     <div class="line"></div>
-    <div id="items-container">
-        {{items}}
-    </div>
+    <div id="items-container">{{items}}</div>
     <div class="line"></div>
     <div class="item-row"><span>Tổng:</span><span class="bold">{{subtotal}}</span></div>
-    <div class="item-row"><span>Giảm:</span><span>{{discount}}</span></div>
-    <div class="total-row"><span>PHẢI TRẢ:</span><span>{{total}}</span></div>
-    <div class="center" style="margin-top:10px; font-style:italic">Thank you!</div>
+    
+    {{voucherDetails}}
+    
+    <div class="total-row"><span>THANH TOÁN:</span><span>{{total}}</span></div>
+    
+    {{noteSection}}
+    
+    <div class="center" style="margin-top:10px;">Cảm ơn quý khách!</div>
 </body>
 </html>`;
+
 
 // State cấu hình
 let printConfig = JSON.parse(localStorage.getItem('pos_print_config')) || {
