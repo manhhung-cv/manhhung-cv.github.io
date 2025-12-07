@@ -46,7 +46,7 @@ const db = getFirestore(app);
 let currentUser = null;
 let userRole = 'staff';
 let currentUserData = null;
-let paymentChart = null; 
+let paymentChart = null;
 
 // State Chi nhánh
 let branches = [];
@@ -82,10 +82,28 @@ let revenueChart = null;
 const RANKS = {
     member: { name: 'Thành viên', rate: 0.01, min: 0, color: 'bg-slate-100 text-slate-600' },
     regular: { name: 'Khách quen', rate: 0.03, min: 2000000, color: 'bg-blue-100 text-blue-600' }, // > 2 Triệu
-    vip: { name: 'VIP', rate: 0.05, min: 10000000, color: 'bg-yellow-100 text-yellow-700' } // > 10 Triệu
+    vip: { name: 'VIP', rate: 0.05, min: 10000000, color: 'bg-yellow-100 text-yellow-700' }, // > 10 Triệu
+    priority: { name: 'Ưu tiên', rate: 100, min: 999888777, color: 'bg-teal-200 text-teal-800' }
+
 };
 
 // --- HELPER FUNCTIONS ---
+
+// --- MOBILE UI LOGIC ---
+window.toggleMobileCart = () => {
+    const cart = document.getElementById('sidebar-cart');
+    if (!cart) return;
+
+    // Toggle class translate-x-full để trượt ra/vào
+    const isHidden = cart.classList.contains('translate-x-full');
+
+    if (isHidden) {
+        cart.classList.remove('translate-x-full'); // Hiện ra
+        // Thêm lớp overlay đen mờ nền nếu muốn (Optional)
+    } else {
+        cart.classList.add('translate-x-full'); // Ẩn đi
+    }
+};
 window.formatInput = (el) => {
     let val = el.value.replace(/\D/g, '');
     if (val === '') { el.value = ''; return; }
@@ -402,9 +420,31 @@ window.addNewBranch = async () => {
     if (userRole !== 'admin') return showToast("Chỉ Admin được thêm!", true);
     const name = document.getElementById('new-branch-name').value;
     if (!name) return showToast("Nhập tên chi nhánh!", true);
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'branches'), { name, createdAt: serverTimestamp() });
-    document.getElementById('new-branch-name').value = '';
-    showToast("Đã thêm chi nhánh");
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            // 1. Đọc bộ đếm ID Chi nhánh
+            const counterRef = doc(db, 'artifacts', appId, 'public', 'data', 'counters', 'branch_id');
+            const counterSnap = await transaction.get(counterRef);
+
+            // Bắt đầu ID từ 1 nếu chưa có
+            let newIndex = counterSnap.exists() ? counterSnap.data().lastIndex + 1 : 1;
+
+            // 2. Cập nhật bộ đếm
+            transaction.set(counterRef, { lastIndex: newIndex }, { merge: true });
+
+            // 3. Tạo document Chi nhánh với ID là số tuần tự
+            // *Lưu ý: Document ID phải là chuỗi (String), nên ta chuyển số sang chuỗi*
+            const newBranchRef = doc(db, 'artifacts', appId, 'public', 'data', 'branches', String(newIndex));
+            transaction.set(newBranchRef, { name, createdAt: serverTimestamp() });
+        });
+
+        document.getElementById('new-branch-name').value = '';
+        showToast("✅ Đã thêm chi nhánh với ID tuần tự");
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi khi tạo ID tuần tự: " + e.message, true);
+    }
 };
 
 window.deleteBranch = async (id) => {
@@ -497,18 +537,37 @@ window.saveCustomer = async () => {
 
     try {
         if (id) {
+            // Trường hợp 1: Cập nhật thông tin khách hàng cũ
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'customers', id), payload);
-            showToast("Đã cập nhật khách hàng");
         } else {
-            payload.points = 0;
-            payload.totalSpent = 0;
-            payload.lastVisit = null;
-            payload.createdAt = serverTimestamp();
-            await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'customers'), payload);
-            showToast("Đã thêm khách hàng mới");
+            // Trường hợp 2: Tạo khách hàng mới (Dùng ID tuần tự)
+            await runTransaction(db, async (transaction) => {
+                const counterRef = doc(db, 'artifacts', appId, 'public', 'data', 'counters', 'customer_id');
+                const counterSnap = await transaction.get(counterRef);
+
+                let newIndex = counterSnap.exists() ? counterSnap.data().lastIndex + 1 : 1;
+
+                // 1. Cập nhật bộ đếm
+                transaction.set(counterRef, { lastIndex: newIndex }, { merge: true });
+
+                // 2. Tạo document Khách hàng với ID là số tuần tự
+                const newCustomerRef = doc(db, 'artifacts', appId, 'public', 'data', 'customers', String(newIndex));
+                transaction.set(newCustomerRef, {
+                    ...payload,
+                    points: 0,
+                    totalSpent: 0,
+                    lastVisit: null,
+                    createdAt: serverTimestamp()
+                });
+            });
         }
+
+        showToast("✅ Đã lưu khách hàng");
         toggleCustomerModal();
-    } catch (e) { showToast("Lỗi: " + e.message, true); }
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi khi lưu khách hàng: " + e.message, true);
+    }
 };
 
 window.editCustomer = (id) => {
@@ -707,7 +766,7 @@ window.setReportDate = (type) => {
     const startEl = document.getElementById('report-date-start');
     const endEl = document.getElementById('report-date-end');
     const today = new Date();
-    
+
     if (type === 'today') {
         startEl.valueAsDate = today;
         endEl.valueAsDate = today;
@@ -721,7 +780,7 @@ window.setReportDate = (type) => {
         startEl.valueAsDate = firstDay;
         endEl.valueAsDate = today;
     }
-    
+
     renderStats(); // Gọi render lại ngay
 };
 // --- STOCK LOGIC ---
@@ -732,7 +791,7 @@ function checkStockAvailability(productId, requestQty) {
     return requestQty <= product.stock;
 }
 
-// --- ADMIN ACTIONS (NO IMAGE/NO COLOR) ---
+// --- ADMIN ACTIONS ---
 window.saveProduct = async () => {
     if (userRole !== 'admin') return showToast("Chỉ Admin được sửa!", true);
     if (!currentBranchId) return showToast("Chọn chi nhánh trước!", true);
@@ -753,11 +812,33 @@ window.saveProduct = async () => {
     };
 
     try {
-        if (id) await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', id), d);
-        else { d.createdAt = serverTimestamp(); await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'products'), d); }
-        showToast("Đã lưu sản phẩm");
+        if (id) {
+            // Trường hợp 1: Cập nhật sản phẩm cũ (Dùng ID cũ)
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', id), d);
+        } else {
+            // Trường hợp 2: Tạo sản phẩm mới (Dùng ID tuần tự)
+            await runTransaction(db, async (transaction) => {
+                const counterRef = doc(db, 'artifacts', appId, 'public', 'data', 'counters', 'product_id');
+                const counterSnap = await transaction.get(counterRef);
+
+                // Bắt đầu ID từ 1 nếu chưa có
+                let newIndex = counterSnap.exists() ? counterSnap.data().lastIndex + 1 : 1;
+
+                // Cập nhật bộ đếm
+                transaction.set(counterRef, { lastIndex: newIndex }, { merge: true });
+
+                // Tạo document Sản phẩm với ID là số tuần tự
+                const newProductRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', String(newIndex));
+                transaction.set(newProductRef, { ...d, createdAt: serverTimestamp() });
+            });
+        }
+
+        showToast("✅ Đã lưu sản phẩm");
         toggleAddProductModal();
-    } catch (e) { showToast("Lỗi: " + e.message, true); }
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi khi lưu sản phẩm: " + e.message, true);
+    }
 };
 
 window.deleteProduct = async () => {
@@ -793,6 +874,62 @@ window.editProduct = (id) => {
     document.getElementById('add-product-modal').classList.remove('hidden');
 };
 
+// --- LOAD ORDER TO POS (EDIT MODE) ---
+window.loadOrderToPos = async (orderId) => {
+    // 1. Tìm đơn hàng trong lịch sử
+    const histOrder = ordersHistory.find(o => o.id === orderId);
+    if (!histOrder) return showToast("Không tìm thấy dữ liệu đơn hàng!", true);
+
+    // 2. Kiểm tra quyền (Chỉ cho phép sửa đơn của chi nhánh hiện tại để tránh lệch kho)
+    if (histOrder.branchId !== currentBranchId) {
+        if (!await customConfirm(`⚠️ Đơn này thuộc chi nhánh khác (${histOrder.branchName}).\nNếu sửa, kho sẽ được trừ tại chi nhánh HIỆN TẠI (${branches.find(b=>b.id===currentBranchId)?.name}).\nBạn có muốn tiếp tục?`)) {
+            return;
+        }
+    }
+
+    if (!await customConfirm(`📝 Bạn muốn sửa lại đơn hàng #${orderId}?\n\nĐơn sẽ được mở lại bên tab Bán hàng.`)) return;
+
+    try {
+        // 3. Tạo một Tab mới với dữ liệu cũ
+        const newTabId = Date.now();
+        
+        const restoredOrder = {
+            id: newTabId,
+            // QUAN TRỌNG: Lưu ID gốc để khi thanh toán lại, nó sẽ UPDATE chứ không tạo mới
+            originalId: histOrder.id, 
+            
+            name: `Sửa ${histOrder.id.slice(-4)}`, // Tên tab ngắn gọn
+            items: JSON.parse(JSON.stringify(histOrder.items)), // Deep copy mảng món ăn
+            customer: histOrder.customer,
+            
+            // Khôi phục giảm giá
+            discounts: histOrder.discountsApplied || { coupon: null, manual: null, points: 0 },
+            
+            // Khôi phục ghi chú
+            note: histOrder.note || '',
+            
+            createdAt: Date.now()
+        };
+
+        // 4. Đẩy vào danh sách Tabs
+        orders.push(restoredOrder);
+        
+        // 5. Chuyển hướng
+        currentOrderId = newTabId;
+        saveLocalOrders();
+        
+        switchView('pos');      // Chuyển màn hình
+        renderOrderTabs();      // Vẽ lại tab
+        renderCart();           // Vẽ lại giỏ hàng (sẽ tự fill note, discount...)
+        
+        showToast(`✅ Đã tải đơn ${orderId} để chỉnh sửa`);
+
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi khi tải đơn: " + e.message, true);
+    }
+};
+
 // --- INVENTORY IMPORT/EXPORT ---
 
 window.exportProductsToCSV = () => {
@@ -800,7 +937,7 @@ window.exportProductsToCSV = () => {
 
     // 1. Định nghĩa Header CSV
     const headers = ["id", "name", "price", "stock", "category", "description"];
-    
+
     // Thêm BOM (Byte Order Mark) cho Tiếng Việt trong Excel
     let csvContent = "\uFEFF" + headers.join(",") + "\n";
 
@@ -808,7 +945,7 @@ window.exportProductsToCSV = () => {
     products.forEach(p => {
         // Lấy category ID vì category name có thể không tồn tại trong data
         const categoryId = p.category || "";
-        
+
         const row = [
             `"${p.id}"`, // Dùng nháy kép cho ID để đảm bảo nó là text trong Excel
             `"${p.name.replace(/"/g, '""')}"`, // Xử lý dấu nháy kép trong tên
@@ -824,7 +961,7 @@ window.exportProductsToCSV = () => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
-    
+
     link.setAttribute("href", url);
     link.setAttribute("download", `inventory_${currentBranchId}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
@@ -877,9 +1014,9 @@ window.deleteAllInventory = async () => {
         await batch.commit();
 
         showToast(`✅ Đã xóa thành công ${deleteCount} sản phẩm khỏi chi nhánh này.`, false);
-        
+
         // 6. Reload lại dữ liệu sản phẩm để UI cập nhật
-        window.location.reload(); 
+        window.location.reload();
 
     } catch (e) {
         console.error("Lỗi xóa toàn bộ kho:", e);
@@ -890,7 +1027,7 @@ window.deleteAllInventory = async () => {
 window.importProductsFromCSV = async (event) => {
     if (userRole !== 'admin') return showToast("Chỉ Admin mới được nhập dữ liệu!", true);
     if (!currentBranchId) return showToast("Vui lòng chọn chi nhánh trước khi nhập!", true);
-    
+
     const file = event.target.files[0];
     if (!file) return;
 
@@ -902,26 +1039,26 @@ window.importProductsFromCSV = async (event) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
         const csvText = e.target.result;
-        
+
         const lines = csvText.split('\n').filter(line => line.trim() !== '');
         if (lines.length < 2) return showToast("File CSV không có dữ liệu!", true);
 
         const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''));
         const dataRows = lines.slice(1);
-        
+
         let writeCount = 0;
         let batch = writeBatch(db); // FIX: Sử dụng writeBatch(db) thay vì db.batch()
 
         for (const row of dataRows) {
-            const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/"/g, '')); 
+            const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/"/g, ''));
 
-            if (values.length < 4) continue; 
+            if (values.length < 4) continue;
 
             const data = {};
             headers.forEach((h, i) => {
                 data[h] = values[i];
             });
-            
+
             // Validation & Data Conversion
             if (!data.name || !data.price) {
                 console.warn("Skipped row due to missing Name/Price:", data);
@@ -930,24 +1067,24 @@ window.importProductsFromCSV = async (event) => {
 
             data.ownerBranchId = currentBranchId;
             data.updatedAt = serverTimestamp();
-            data.color = 'bg-slate-100'; 
-            
+            data.color = 'bg-slate-100';
+
             data.price = parseFloat(data.price) || 0;
             data.stock = parseInt(data.stock) || 0;
             data.description = data.description || '';
-            
+
             let docRef;
 
             // Nếu cột ID tồn tại, ta sẽ update hoặc set
             if (data.id) {
                 docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', data.id);
-                batch.set(docRef, data, { merge: true }); 
+                batch.set(docRef, data, { merge: true });
             } else {
                 // Tạo ID ngẫu nhiên cho sản phẩm mới
                 docRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'products'));
                 batch.set(docRef, data);
             }
-            
+
             writeCount++;
 
             // Commit batch nếu đạt 500 lệnh
@@ -963,12 +1100,12 @@ window.importProductsFromCSV = async (event) => {
         }
 
         showToast(`✅ Đã nhập/cập nhật thành công ${writeCount} sản phẩm!`);
-        event.target.value = ''; 
+        event.target.value = '';
         // Sau khi import xong, reload để tải lại dữ liệu sản phẩm từ Firestore
-        window.location.reload(); 
+        window.location.reload();
 
     };
-    
+
     reader.readAsText(file);
 };
 
@@ -1027,13 +1164,9 @@ window.renderCart = () => {
     const c = document.getElementById('cart-items');
     saveLocalOrders();
 
-    // --- ĐOẠN MỚI THÊM: Fill Note ---
+    // Fill Note (Logic cũ)
     const noteEl = document.getElementById('pos-order-note');
-    if(noteEl) {
-        // Nếu chuyển tab khác, load note của tab đó lên. Nếu không có thì rỗng.
-        noteEl.value = o.note || '';
-    }
-    // ---------------------------------
+    if (noteEl) noteEl.value = o.note || '';
 
     if (o.items.length === 0) {
         c.innerHTML = `<div class="flex flex-col items-center justify-center h-48 text-slate-300"><i class="fa-solid fa-basket-shopping text-4xl mb-3 opacity-30"></i><p>Trống</p></div>`;
@@ -1054,8 +1187,35 @@ window.renderCart = () => {
                 </div>
             </div>`).join('');
     }
+
     updateTotals(o);
+
+    // --- CẬP NHẬT MOBILE BOTTOM BAR (MỚI) ---
+    const mobileCount = document.getElementById('mobile-cart-count');
+    const mobileTotal = document.getElementById('mobile-cart-total');
+    if (mobileCount && mobileTotal) {
+        // Tổng số lượng items
+        const totalQty = o.items.reduce((sum, i) => sum + i.qty, 0);
+        mobileCount.textContent = totalQty;
+
+        // Tổng tiền (Lấy từ hàm updateTotals đã tính xong, hoặc tính lại)
+        // Cách nhanh nhất: Lấy từ DOM đã render ở updateTotals
+        mobileTotal.textContent = document.getElementById('cart-total').textContent;
+
+        // Ẩn hiện thanh Bar tùy theo đang ở View nào
+        const bar = document.getElementById('mobile-cart-bar');
+        if (bar) {
+            // Chỉ hiện khi ở POS và có items (hoặc luôn hiện ở POS)
+            if (currentView === 'pos') bar.classList.remove('hidden', 'md:hidden'); // Trên mobile remove hidden
+            else bar.classList.add('hidden');
+
+            // Nhưng class md:hidden vẫn phải giữ để ẩn trên PC
+            bar.className = "md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 flex justify-between items-center z-40 shadow-[0_-5px_20px_rgba(0,0,0,0.1)] cursor-pointer pb-safe transition active:bg-slate-100";
+            if (currentView !== 'pos') bar.classList.add('hidden');
+        }
+    }
 };
+
 
 function updateTotals(o) {
     // A. Khởi tạo cấu trúc giảm giá nếu chưa có (tránh lỗi null)
@@ -1125,29 +1285,37 @@ function updateTotals(o) {
 }
 
 // --- PAYMENT & TRANSACTION (MT-XXXXXX + LOYALTY) ---
-window.processPayment = async (print) => {
-    // 1. VALIDATE
+window.processPayment = async (print, remotePrint = false) => {
+    // 1. VALIDATE CƠ BẢN
     if (!currentBranchId) return showToast("Lỗi: Chưa chọn chi nhánh!", true);
-    
-    // Lấy tổng tiền cuối cùng (Final Total)
+
+    // Lấy tổng tiền cuối cùng từ giao diện
     const totalVal = parseInt(document.getElementById('modal-total-amount').textContent.replace(/\D/g, ''));
-    
+
+    // Kiểm tra tiền khách đưa (nếu là tiền mặt)
     if (paymentMethod === 'cash' && getCleanValue('cash-given') < totalVal) {
         return showToast("Thiếu tiền khách đưa!", true);
     }
-    
-    const order = getActiveOrder();
-    if(!order.discounts) order.discounts = { coupon: null, manual: null, points: 0 };
 
-    // --- TÍNH LẠI SUBTOTAL TỪ DỮ LIỆU GỐC (FIX LỖI 100 vs 100.000) ---
-    // Không lấy từ giao diện html nữa
+    const order = getActiveOrder();
+
+    // Khởi tạo cấu trúc giảm giá nếu thiếu
+    if (!order.discounts) order.discounts = { coupon: null, manual: null, points: 0 };
+
+    // --- TÍNH TOÁN DỮ LIỆU ---
+
+    // A. Tính lại Subtotal từ dữ liệu gốc (Fix lỗi hiển thị)
     const rawSubtotal = order.items.reduce((a, b) => a + (b.price * b.qty), 0);
-    const rawDiscountVal = rawSubtotal - totalVal; // Tính chiết khấu dựa trên số lệch
+    const rawDiscountVal = rawSubtotal - totalVal;
+
+    // B. Lấy ghi chú
+    const currentNote = document.getElementById('pos-order-note') ? document.getElementById('pos-order-note').value : '';
+    if (currentNote) order.note = currentNote;
 
     let pointsEarned = 0;
     let pointsUsed = order.discounts.points || 0;
 
-    // Tính điểm tích lũy
+    // C. Tính điểm dự kiến (Để hiển thị thông báo, logic ghi DB nằm trong transaction)
     if (order.customer) {
         const currentCust = customers.find(c => c.id === order.customer.id) || order.customer;
         const rankKey = currentCust.rank || 'member';
@@ -1155,42 +1323,49 @@ window.processPayment = async (print) => {
         pointsEarned = Math.floor(totalVal * rankConfig.rate);
     }
 
-    // Lấy ghi chú từ input (nếu người dùng chưa kịp enter/blur)
-    const currentNote = document.getElementById('pos-order-note') ? document.getElementById('pos-order-note').value : '';
-    if(currentNote) order.note = currentNote;
-
+    // D. Chuẩn bị Payload
     const basePayload = {
         items: order.items,
-        totals: { 
-            subtotal: rawSubtotal, // Sử dụng số nguyên chuẩn
-            finalTotal: totalVal, 
-            discountVal: rawDiscountVal // Sử dụng số nguyên chuẩn
+        totals: {
+            subtotal: rawSubtotal,
+            finalTotal: totalVal,
+            discountVal: rawDiscountVal
         },
         customer: order.customer ? { id: order.customer.id, name: order.customer.name, phone: order.customer.phone } : null,
-        paymentMethod, 
+        paymentMethod,
         discountsApplied: order.discounts,
-        pointsEarned, 
+        pointsEarned,
         pointsUsed,
-        note: order.note || '', // Lưu ghi chú vào DB
-        cashierId: currentUser.uid, 
+        note: order.note || '',
+        cashierId: currentUser.uid,
         cashierName: currentUserData?.name || 'Unknown',
-        branchId: currentBranchId, 
+        branchId: currentBranchId,
         branchName: branches.find(b => b.id === currentBranchId)?.name || 'Unknown',
-        completedAt: serverTimestamp(), 
+        completedAt: serverTimestamp(),
         status: 'active'
     };
 
-    let newId = null; 
+    // Khai báo biến ID ra ngoài scope try/catch để dùng cho việc in ấn sau này
+    let newId = null;
 
     try {
         if (order.originalId) {
+            // TRƯỜNG HỢP 1: CẬP NHẬT ĐƠN CŨ
             await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', order.originalId), basePayload);
+            newId = order.originalId;
             showToast("Đã cập nhật đơn hàng");
         } else {
+            // TRƯỜNG HỢP 2: TẠO ĐƠN MỚI (TRANSACTION)
             await runTransaction(db, async (transaction) => {
+                // ============================================================
+                // BƯỚC 1: READS (Đọc dữ liệu trước)
+                // ============================================================
+
+                // 1.1. Đọc Counter
                 const counterRef = doc(db, 'artifacts', appId, 'public', 'data', 'counters', 'orders');
                 const counterSnap = await transaction.get(counterRef);
 
+                // 1.2. Đọc Khách hàng
                 let custRef = null;
                 let custSnap = null;
                 if (order.customer) {
@@ -1198,6 +1373,7 @@ window.processPayment = async (print) => {
                     custSnap = await transaction.get(custRef);
                 }
 
+                // 1.3. Đọc Voucher
                 let couponRef = null;
                 let couponSnap = null;
                 if (order.discounts.coupon && order.discounts.coupon.id) {
@@ -1205,16 +1381,24 @@ window.processPayment = async (print) => {
                     couponSnap = await transaction.get(couponRef);
                 }
 
-                let newIndex = 0;
-                if (counterSnap.exists()) newIndex = counterSnap.data().lastIndex + 1;
-                
-                newId = `MT-${String(newIndex).padStart(6, '0')}`;
+                // ============================================================
+                // BƯỚC 2: LOGIC & CALCULATIONS
+                // ============================================================
 
+                // 2.1. Sinh ID mới
+                let newIndex = 0;
+                if (counterSnap.exists()) {
+                    newIndex = counterSnap.data().lastIndex + 1;
+                }
+                const generatedId = `MT-${String(newIndex).padStart(6, '0')}`;
+
+                // 2.2. Validate Voucher
                 if (couponSnap) {
                     if (!couponSnap.exists()) throw "Mã giảm giá không tồn tại!";
                     if (couponSnap.data().status === 'used') throw "Mã giảm giá này đã bị sử dụng!";
                 }
 
+                // 2.3. Logic Khách hàng
                 let custUpdateData = null;
                 let logUseData = null;
                 let logEarnData = null;
@@ -1223,18 +1407,20 @@ window.processPayment = async (print) => {
                     const cData = custSnap.data();
                     const currentPoints = cData.points || 0;
 
-                    if (pointsUsed > currentPoints) throw `Khách hàng không đủ điểm!`;
+                    if (pointsUsed > currentPoints) throw `Khách hàng không đủ điểm (Có: ${currentPoints})`;
 
                     let runningBalance = currentPoints;
 
+                    // Trừ điểm dùng
                     if (pointsUsed > 0) {
                         runningBalance -= pointsUsed;
                         logUseData = {
-                            customerId: order.customer.id, orderId: newId, type: 'use', amount: -pointsUsed,
-                            balanceAfter: runningBalance, description: `Thanh toán đơn ${newId}`, createdAt: serverTimestamp()
+                            customerId: order.customer.id, orderId: generatedId, type: 'use', amount: -pointsUsed,
+                            balanceAfter: runningBalance, description: `Thanh toán đơn ${generatedId}`, createdAt: serverTimestamp()
                         };
                     }
 
+                    // Cộng điểm tích (Tính lại rate từ DB để an toàn)
                     const dbRankKey = cData.rank || 'member';
                     const dbRankConfig = RANKS[dbRankKey] || RANKS.member;
                     const dbPointsEarned = Math.floor(totalVal * dbRankConfig.rate);
@@ -1242,90 +1428,188 @@ window.processPayment = async (print) => {
                     if (dbPointsEarned > 0) {
                         runningBalance += dbPointsEarned;
                         logEarnData = {
-                            customerId: order.customer.id, orderId: newId, type: 'earn', amount: dbPointsEarned,
-                            balanceAfter: runningBalance, description: `Tích điểm đơn ${newId}`, createdAt: serverTimestamp()
+                            customerId: order.customer.id, orderId: generatedId, type: 'earn', amount: dbPointsEarned,
+                            balanceAfter: runningBalance, description: `Tích điểm đơn ${generatedId}`, createdAt: serverTimestamp()
                         };
                     }
 
+                    // Thăng hạng
                     const newTotalSpent = (cData.totalSpent || 0) + totalVal;
                     let newRank = cData.rank || 'member';
                     if (newTotalSpent >= RANKS.vip.min) newRank = 'vip';
                     else if (newTotalSpent >= RANKS.regular.min) newRank = 'regular';
 
-                    custUpdateData = { points: runningBalance, totalSpent: newTotalSpent, rank: newRank, lastVisit: serverTimestamp() };
+                    custUpdateData = {
+                        points: runningBalance,
+                        totalSpent: newTotalSpent,
+                        rank: newRank,
+                        lastVisit: serverTimestamp()
+                    };
                 }
 
-                transaction.set(counterRef, { lastIndex: newIndex }, { merge: true });
-                const newOrderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', newId);
-                transaction.set(newOrderRef, { ...basePayload, id: newId });
+                // ============================================================
+                // BƯỚC 3: WRITES (Ghi dữ liệu)
+                // ============================================================
 
+                // 3.1. Update Counter
+                transaction.set(counterRef, { lastIndex: newIndex }, { merge: true });
+
+                // 3.2. Tạo Order
+                const newOrderRef = doc(db, 'artifacts', appId, 'public', 'data', 'orders', generatedId);
+                transaction.set(newOrderRef, { ...basePayload, id: generatedId });
+
+                // 3.3. Update Voucher
                 if (couponRef) {
                     transaction.update(couponRef, {
                         status: 'used',
-                        usageLog: { orderId: newId, customerId: order.customer ? order.customer.id : null, customerName: order.customer ? order.customer.name : 'Khách lẻ', usedAt: serverTimestamp() }
+                        usageLog: { orderId: generatedId, customerId: order.customer ? order.customer.id : null, customerName: order.customer ? order.customer.name : 'Khách lẻ', usedAt: serverTimestamp() }
                     });
                 }
 
+                // 3.4. Update Customer & Logs
                 if (custRef && custUpdateData) {
                     transaction.update(custRef, custUpdateData);
                     if (logUseData) transaction.set(doc(collection(db, 'artifacts', appId, 'public', 'data', 'point_logs')), logUseData);
                     if (logEarnData) transaction.set(doc(collection(db, 'artifacts', appId, 'public', 'data', 'point_logs')), logEarnData);
                 }
+
+                // Gán ra ngoài để dùng sau
+                newId = generatedId;
             });
 
+            // 4. TRỪ KHO (Sau transaction)
             for (const item of order.items) {
                 if (item.stock !== -1) {
                     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', item.id), { stock: item.stock - item.qty });
                 }
             }
-            
+
             let msg = "Thanh toán thành công!";
-            if(pointsEarned > 0) msg += ` (+${pointsEarned} điểm)`;
+            if (pointsEarned > 0) msg += ` (+${pointsEarned} điểm)`;
+            if (pointsUsed > 0) msg += ` (-${pointsUsed} điểm)`;
             showToast(msg);
         }
 
+        // 5. XỬ LÝ SAU THANH TOÁN (IN ẤN & RESET)
         closeCheckoutModal();
-        
+
+        // Xác định ID để in (Mới hoặc Cũ)
+        const printId = newId || order.originalId;
+
+        // A. XỬ LÝ IN ẤN (LOCAL HOẶC REMOTE)
         if (print) {
-            const printId = newId || order.originalId;
+            // In tại chỗ (Local Print)
             const printData = {
                 id: printId,
                 items: order.items,
                 totals: basePayload.totals,
                 customer: order.customer,
                 cashierName: currentUserData?.name,
-                paymentMethod: basePayload.paymentMethod,
-                note: basePayload.note, // Truyền ghi chú sang hàm in
+                paymentMethod: basePayload.paymentMethod, // Fix lỗi undefined
+                note: basePayload.note,
                 completedAt: { seconds: Date.now() / 1000 }
             };
             setTimeout(() => printReceiptData(printData), 500);
         }
+        else if (remotePrint) {
+            // In từ xa (Cloud Print - Targeted)
+            // 1. Tìm máy in online của chi nhánh này
+            const serversRef = collection(db, 'artifacts', appId, 'public', 'data', 'print_servers');
+            const q = query(
+                serversRef,
+                where("branchId", "==", currentBranchId),
+                where("status", "==", "online")
+            );
 
+            const serverSnap = await getDocs(q);
+            const onlineServers = [];
+            serverSnap.forEach(doc => onlineServers.push(doc.data()));
+
+            if (onlineServers.length === 0) {
+                showToast("❌ Không tìm thấy máy in nào đang bật!", true);
+            } else if (onlineServers.length === 1) {
+                // Nếu chỉ có 1 máy, gửi luôn
+                await sendPrintRequest(printId, onlineServers[0].id);
+                showToast(`📡 Đã gửi tới: ${onlineServers[0].name}`);
+            } else {
+                // Nếu có nhiều máy, hiện Dialog chọn
+                let serverListHtml = onlineServers.map(s =>
+                    `<button onclick="selectPrinterAndSend('${printId}', '${s.id}', '${s.name}')" class="w-full text-left p-3 mb-2 bg-slate-50 border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-200 font-bold text-slate-700 flex justify-between items-center transition">
+                        <span><i class="fa-solid fa-print mr-2 text-blue-500"></i>${s.name}</span>
+                        <span class="text-[10px] bg-green-100 text-green-700 px-2 py-1 rounded-full">Online</span>
+                    </button>`
+                ).join('');
+
+                const modal = document.getElementById('global-dialog');
+                document.getElementById('dialog-title').textContent = "🖨️ Chọn máy in";
+                document.getElementById('dialog-msg').innerHTML = `<div class="mt-2 max-h-[300px] overflow-y-auto">${serverListHtml}</div>`;
+                document.getElementById('dialog-input-container').classList.add('hidden');
+                document.getElementById('dialog-confirm-btn').classList.add('hidden');
+                document.getElementById('dialog-cancel-btn').classList.remove('hidden');
+                document.getElementById('dialog-cancel-btn').onclick = () => modal.classList.add('hidden');
+                modal.classList.remove('hidden');
+
+                // *Lưu ý: Không reset form ngay lập tức ở đây nếu đang đợi chọn máy in*
+                // Nhưng vì đơn đã tạo xong, ta vẫn reset form bên dưới, popup chọn máy in vẫn nổi lên trên.
+            }
+        }
+
+        // B. Reset Tabs & Inputs
         if (orders.length > 1) {
             orders = orders.filter(o => o.id !== currentOrderId);
             currentOrderId = orders[orders.length - 1].id;
         } else {
-            orders[0].items = []; 
-            orders[0].discounts = { coupon: null, manual: null, points: 0 }; 
-            orders[0].customer = null; 
+            orders[0].items = [];
+            orders[0].discounts = { coupon: null, manual: null, points: 0 };
+            orders[0].customer = null;
             orders[0].originalId = null;
-            orders[0].note = ''; // Reset note
+            orders[0].note = '';
         }
-        
+
         saveLocalOrders();
-        renderOrderTabs(); 
+        renderOrderTabs();
         renderCart();
-        
-        ['disc-coupon-input', 'disc-manual-input', 'disc-point-input', 'pos-order-note'].forEach(id => { 
-            const el = document.getElementById(id); 
-            if(el) el.value = ''; 
+
+        ['disc-coupon-input', 'disc-manual-input', 'disc-point-input', 'pos-order-note'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
         });
 
-    } catch (e) { 
-        console.error(e); 
-        showToast("Lỗi: " + (typeof e === 'string' ? e : e.message), true); 
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi: " + (typeof e === 'string' ? e : e.message), true);
     }
 };
+
+// Hàm thực hiện gửi lệnh in (được tách ra để gọi từ 2 nơi)
+window.sendPrintRequest = async (orderId, serverId) => {
+    try {
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), {
+            printRequest: {
+                status: 'waiting',
+                targetServerId: serverId, // Gửi đích danh ID này
+                requester: currentUserData?.name || 'Mobile Device',
+                timestamp: serverTimestamp()
+            }
+        });
+        showToast("✅ Đã gửi lệnh in thành công!");
+    } catch (e) {
+        showToast("Lỗi gửi lệnh in: " + e.message, true);
+    }
+};
+
+// Hàm được gọi khi user bấm chọn máy in trong Dialog (khi có nhiều máy)
+window.selectPrinterAndSend = async (orderId, serverId, serverName) => {
+    // Đóng dialog
+    document.getElementById('global-dialog').classList.add('hidden');
+    // Khôi phục nút dialog mặc định (để không ảnh hưởng các chức năng khác)
+    document.getElementById('dialog-confirm-btn').classList.remove('hidden');
+
+    showToast(`📡 Đang gửi tới: ${serverName}`);
+    await sendPrintRequest(orderId, serverId);
+};
+
+
 
 // --- POINT HISTORY LOGIC ---
 
@@ -1409,25 +1693,89 @@ window.editCustomer = (id) => {
 
 // --- RENDERS & FILTERS ---
 // --- QUẢN LÝ DANH MỤC (CATEGORY MANAGEMENT) ---
+// 1. Hàm Lưu/Tạo Danh mục (Sử dụng ID tuần tự khi Tạo mới)
+window.saveCategory = async () => {
+    if (userRole !== 'admin') return showToast("Chỉ Admin được sửa!", true);
+    if (!currentBranchId) return showToast("Chọn chi nhánh trước!", true);
 
-// 1. Hàm Render chính (Cập nhật cả POS, Select box và Modal Quản lý)
-window.renderCategories = () => {
-    // A. Render các nút bấm ở màn hình POS (Logic cũ)
-    const posHtml = `<button onclick="filterCategory('all')" class="cat-btn ${currentFilter === 'all' ? 'active' : 'bg-white text-slate-600 border border-slate-200'} px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition">Tất cả</button>` + 
-                 categories.map(c => `<button onclick="filterCategory('${c.id}')" class="cat-btn ${currentFilter === c.id ? 'active' : 'bg-white text-slate-600 border border-slate-200'} px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition">${c.name}</button>`).join('');
-    
-    const posContainer = document.getElementById('pos-categories');
-    if(posContainer) posContainer.innerHTML = posHtml;
-    
-    // B. Render Select box ở Modal Thêm sản phẩm (Logic cũ)
-    const prodSelect = document.getElementById('prod-cat');
-    if(prodSelect) prodSelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    // Lấy ID: Nếu là edit thì có, nếu là tạo mới thì rỗng
+    const id = document.getElementById('cat-id')?.value || "";
+    // Lấy tên: Giả định input tạo mới/sửa có ID là #cat-name
+    const name = document.getElementById('cat-name')?.value || document.getElementById('new-cat-name')?.value;
 
-    // C. Render Danh sách trong Modal Quản lý (LOGIC MỚI)
-    renderCategoryManagementList();
+    if (!name || name.trim() === "") return showToast("Nhập tên danh mục!", true);
+
+    const payload = {
+        name: name.trim(),
+        ownerBranchId: currentBranchId,
+        updatedAt: serverTimestamp()
+    };
+
+    try {
+        if (id) {
+            // Trường hợp 1: Cập nhật danh mục cũ
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', id), payload);
+        } else {
+            // Trường hợp 2: Tạo danh mục mới (Dùng ID tuần tự)
+            await runTransaction(db, async (transaction) => {
+                const counterRef = doc(db, 'artifacts', appId, 'public', 'data', 'counters', 'category_id');
+                const counterSnap = await transaction.get(counterRef);
+
+                let newIndex = counterSnap.exists() ? counterSnap.data().lastIndex + 1 : 1;
+
+                transaction.set(counterRef, { lastIndex: newIndex }, { merge: true });
+
+                const newCategoryRef = doc(db, 'artifacts', appId, 'public', 'data', 'categories', String(newIndex));
+                transaction.set(newCategoryRef, { ...payload, createdAt: serverTimestamp() });
+            });
+        }
+
+        showToast("✅ Đã lưu danh mục");
+        toggleCategoryModal();
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi khi lưu danh mục: " + e.message, true);
+    }
 };
 
-// 2. Hàm vẽ danh sách chi tiết (Có nút Sửa/Xóa)
+// 2. Hàm Sửa Danh mục (Gắn data vào modal)
+window.editCategory = (id) => {
+    if (userRole !== 'admin') return showToast("Chỉ Admin được sửa!", true);
+
+    const cat = categories.find(c => c.id === id);
+    if (!cat) return;
+
+    // Giả định Modal có các input này
+    document.getElementById('cat-id').value = cat.id; // ID ẩn
+    document.getElementById('cat-name').value = cat.name; // Tên
+
+    // Nếu bạn không dùng ID #cat-name cho sửa, bạn cần tự mapping
+
+    toggleCategoryModal(); // Mở modal
+};
+
+// 3. Hàm Xóa Danh mục
+window.deleteCategory = async (id) => {
+    if (userRole !== 'admin') return showToast("Chỉ Admin được xóa!", true);
+
+    const productsInCat = products.filter(p => p.category === id);
+    if (productsInCat.length > 0) {
+        if (!await customConfirm(`⚠️ Danh mục này đang chứa ${productsInCat.length} sản phẩm.\n\nNếu xóa, các sản phẩm sẽ bị mất danh mục.\nBạn có chắc chắn không?`)) {
+            return;
+        }
+    } else {
+        if (!await customConfirm("Bạn muốn xóa danh mục này?")) return;
+    }
+
+    try {
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', id));
+        showToast("Đã xóa danh mục");
+    } catch (e) {
+        showToast("Lỗi: " + e.message, true);
+    }
+};
+
+// 4. Hàm Render danh sách quản lý (Vẫn cần để hiển thị danh sách edit/delete)
 window.renderCategoryManagementList = () => {
     const container = document.getElementById('category-list');
     if (!container) return;
@@ -1455,48 +1803,20 @@ window.renderCategoryManagementList = () => {
     `).join('');
 };
 
-// 3. Hàm Xóa Danh mục
-window.deleteCategory = async (id) => {
-    if (userRole !== 'admin') return showToast("Chỉ Admin được xóa!", true);
+// 5. Cập nhật hàm Render chính (Để gọi hàm vẽ list)
+window.renderCategories = () => {
+    // Logic render POS buttons và select box
+    const posHtml = `<button onclick="filterCategory('all')" class="cat-btn ${currentFilter === 'all' ? 'active' : 'bg-white text-slate-600 border border-slate-200'} px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition">Tất cả</button>` +
+        categories.map(c => `<button onclick="filterCategory('${c.id}')" class="cat-btn ${currentFilter === c.id ? 'active' : 'bg-white text-slate-600 border border-slate-200'} px-5 py-2 rounded-xl text-sm font-bold shadow-sm transition">${c.name}</button>`).join('');
 
-    // Kiểm tra xem có sản phẩm nào đang dùng danh mục này không
-    const productsInCat = products.filter(p => p.category === id);
-    if (productsInCat.length > 0) {
-        if (!await customConfirm(`⚠️ Danh mục này đang chứa ${productsInCat.length} sản phẩm.\n\nNếu xóa, các sản phẩm sẽ bị mất danh mục.\nBạn có chắc chắn không?`)) {
-            return;
-        }
-    } else {
-        if (!await customConfirm("Bạn muốn xóa danh mục này?")) return;
-    }
+    const posContainer = document.getElementById('pos-categories');
+    if (posContainer) posContainer.innerHTML = posHtml;
 
-    try {
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', id));
-        showToast("Đã xóa danh mục");
-    } catch (e) {
-        showToast("Lỗi: " + e.message, true);
-    }
-};
+    const prodSelect = document.getElementById('prod-cat');
+    if (prodSelect) prodSelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
 
-// 4. Hàm Sửa Danh mục
-window.editCategory = async (id) => {
-    if (userRole !== 'admin') return showToast("Chỉ Admin được sửa!", true);
-
-    const cat = categories.find(c => c.id === id);
-    if (!cat) return;
-
-    const newName = await customPrompt("Đổi tên danh mục thành:", cat.name);
-    
-    if (newName && newName.trim() !== "" && newName !== cat.name) {
-        try {
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'categories', id), {
-                name: newName.trim(),
-                updatedAt: serverTimestamp()
-            });
-            showToast("Đã cập nhật tên danh mục");
-        } catch (e) {
-            showToast("Lỗi: " + e.message, true);
-        }
-    }
+    // Gọi hàm vẽ danh sách quản lý
+    renderCategoryManagementList();
 };
 
 window.renderProducts = () => {
@@ -1606,21 +1926,16 @@ window.renderInventoryTable = () => {
 
 // --- HISTORY & STATS ---
 window.renderHistoryTable = () => {
+    // 1. Populate Filters (Giữ nguyên)
     const cashierSel = document.getElementById('filter-cashier');
     if (cashierSel && cashierSel.options.length <= 1 && ordersHistory.length > 0) {
         const uniqueCashiers = [...new Set(ordersHistory.map(o => o.cashierName || 'Unknown'))];
-        const currentVal = cashierSel.value;
         cashierSel.innerHTML = '<option value="all">Tất cả</option>' + uniqueCashiers.map(n => `<option value="${n}">${n}</option>`).join('');
-        if (currentVal) cashierSel.value = currentVal;
-
         const branchSel = document.getElementById('filter-branch-history');
-        if (branchSel && branches.length > 0) {
-            const currentBranchVal = branchSel.value;
-            branchSel.innerHTML = '<option value="all">Tất cả</option>' + branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-            if (currentBranchVal) branchSel.value = currentBranchVal;
-        }
+        if (branchSel && branches.length > 0) branchSel.innerHTML = '<option value="all">Tất cả</option>' + branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
     }
 
+    // 2. Filter Logic (Giữ nguyên)
     const search = document.getElementById('history-search')?.value.toLowerCase() || '';
     const startDate = document.getElementById('filter-date-start')?.value;
     const endDate = document.getElementById('filter-date-end')?.value;
@@ -1639,8 +1954,8 @@ window.renderHistoryTable = () => {
         if (filterCashier !== 'all' && (o.cashierName || 'Unknown') !== filterCashier) return false;
         if (startDate || endDate) {
             const orderDate = new Date(o.completedAt?.seconds * 1000); orderDate.setHours(0, 0, 0, 0);
-            if (startDate && orderDate < new Date(startDate).setHours(0, 0, 0, 0)) return false;
-            if (endDate && orderDate > new Date(endDate).setHours(0, 0, 0, 0)) return false;
+            if (startDate && orderDate < new Date(startDate).setHours(0,0,0,0)) return false;
+            if (endDate && orderDate > new Date(endDate).setHours(0,0,0,0)) return false;
         }
         return true;
     });
@@ -1651,6 +1966,7 @@ window.renderHistoryTable = () => {
     if (!container) return;
     if (filtered.length === 0) { container.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400 italic">Không tìm thấy đơn hàng.</td></tr>`; return; }
 
+    // 3. Render Row (CẬP NHẬT CỘT HÀNH ĐỘNG)
     container.innerHTML = filtered.map(o => {
         const isDeleted = o.status === 'deleted';
         const rowClass = isDeleted ? 'bg-slate-50 grayscale opacity-70' : 'hover:bg-slate-50';
@@ -1659,17 +1975,38 @@ window.renderHistoryTable = () => {
         const pmMap = { 'cash': 'Tiền mặt', 'transfer': 'Chuyển khoản', 'gift': 'Thẻ quà tặng' };
         const pmDisplay = pmMap[o.paymentMethod] || o.paymentMethod;
 
+        // Nút hành động
+        let actionButtons = '';
+        
+        if (isDeleted) {
+            // Đơn đã xóa: Chỉ hiện lý do + Xóa vĩnh viễn
+            actionButtons = `<button onclick="customAlert('🛑 Lý do xóa: ${o.deletedReason || 'Không có lý do'}')" class="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-300 font-bold transition">Lý do</button>`;
+            if (userRole === 'admin') {
+                actionButtons += `<button onclick="deleteOrderPermanently('${o.id}')" class="ml-2 bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition shadow-sm" title="Xóa vĩnh viễn"><i class="fa-solid fa-ban"></i></button>`;
+            }
+        } else {
+            // Đơn hoạt động: In + SỬA + Xóa
+            actionButtons = `
+                <button onclick="printOrder('${o.id}')" class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition shadow-sm border border-blue-100" title="In lại"><i class="fa-solid fa-print"></i></button>
+                
+                <button onclick="loadOrderToPos('${o.id}')" class="ml-1 bg-yellow-50 text-yellow-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-yellow-100 transition shadow-sm border border-yellow-100" title="Sửa đơn hàng"><i class="fa-solid fa-pen-to-square"></i></button>
+                
+                <button onclick="deleteOrder('${o.id}')" class="ml-1 bg-red-50 text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition shadow-sm border border-red-100" title="Xóa đơn"><i class="fa-solid fa-trash"></i></button>
+            `;
+        }
+
         return `<tr class="border-b border-slate-100 transition duration-200 ${rowClass}">
             <td class="p-4 align-top"><div class="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded w-fit">#${o.id}</div>${isDeleted ? `<div class="text-[10px] text-red-600 font-bold mt-1 border border-red-200 bg-red-50 px-1 rounded w-fit">ĐÃ HỦY</div>` : ''}</td>
-            <td class="p-4 align-top text-sm"><div class="font-medium text-slate-700">${new Date(o.completedAt?.seconds * 1000).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div><div class="text-xs text-slate-400">${new Date(o.completedAt?.seconds * 1000).toLocaleDateString('vi-VN')}</div></td>
+            <td class="p-4 align-top text-sm"><div class="font-medium text-slate-700">${new Date(o.completedAt?.seconds * 1000).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</div><div class="text-xs text-slate-400">${new Date(o.completedAt?.seconds * 1000).toLocaleDateString('vi-VN')}</div></td>
             <td class="p-4 align-top text-sm"><div class="font-bold text-slate-800">${customerName}</div>${customerPhone}</td>
             <td class="p-4 align-top text-sm text-slate-600 font-medium">${o.branchName || '-'}</td>
             <td class="p-4 align-top text-sm text-slate-600">${o.cashierName || '-'}</td>
             <td class="p-4 align-top"><div class="font-black ${isDeleted ? 'text-slate-500 line-through' : 'text-blue-600'} text-base">${formatMoney(o.totals?.finalTotal || 0)}</div><div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mt-1">${pmDisplay}</div></td>
-            <td class="p-4 align-top text-right"><div class="flex gap-2 justify-end">${isDeleted ? `<button onclick="customAlert('🛑 Lý do xóa: ${o.deletedReason || 'Không có lý do'}')" class="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-300 font-bold transition">Lý do</button>${userRole === 'admin' ? `<button onclick="deleteOrderPermanently('${o.id}')" class="bg-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-700 transition shadow-sm" title="Xóa vĩnh viễn"><i class="fa-solid fa-ban"></i></button>` : ''}` : `<button onclick="printOrder('${o.id}')" class="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-100 transition shadow-sm border border-blue-100" title="In lại"><i class="fa-solid fa-print"></i></button><button onclick="deleteOrder('${o.id}')" class="bg-red-50 text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-100 transition shadow-sm border border-red-100" title="Xóa đơn"><i class="fa-solid fa-trash"></i></button>`}</div></td>
+            <td class="p-4 align-top text-right"><div class="flex gap-2 justify-end">${actionButtons}</div></td>
         </tr>`;
     }).join('');
 };
+
 
 window.renderStats = () => {
     if (userRole !== 'admin') return;
@@ -1678,17 +2015,17 @@ window.renderStats = () => {
     const startEl = document.getElementById('report-date-start');
     const endEl = document.getElementById('report-date-end');
     const branchSelectEl = document.getElementById('report-branch-select');
-    
+
     if (!startEl || !endEl || !branchSelectEl) return; // Safety check
 
     // 1.1. Populate Branch Filter
-    const currentSelection = branchSelectEl.value; 
+    const currentSelection = branchSelectEl.value;
 
     let optionsHtml = '<option value="all">Tất cả chi nhánh</option>';
     optionsHtml += branches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-    
+
     branchSelectEl.innerHTML = optionsHtml;
-    
+
     // Khôi phục lựa chọn cũ hoặc mặc định là 'all'
     const filterBranchId = currentSelection === undefined ? 'all' : currentSelection;
     branchSelectEl.value = filterBranchId;
@@ -1696,13 +2033,13 @@ window.renderStats = () => {
     // 1.2. Xử lý Mặc định Ngày tháng
     if (!startEl.value || !endEl.value) {
         const today = new Date();
-        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1); 
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
         startEl.valueAsDate = firstDay;
         endEl.valueAsDate = today;
     }
 
     // Lấy giá trị Ngày tháng
-    const startDate = new Date(startEl.value); startDate.setHours(0,0,0,0);
+    const startDate = new Date(startEl.value); startDate.setHours(0, 0, 0, 0);
     const endDateUI = new Date(endEl.value);
     const boundaryDate = new Date(endDateUI);
     boundaryDate.setDate(endDateUI.getDate() + 1);
@@ -1711,18 +2048,18 @@ window.renderStats = () => {
     const validOrders = ordersHistory.filter(o => {
         // A. Lọc Chi nhánh (Đã fix: Nếu chọn 'all', hoặc đơn không có branchId, đều pass)
         const orderBranchId = o.branchId || null;
-        
+
         // Logic: Pass nếu người dùng chọn 'all' HOẶC orderBranchId trùng với filterBranchId HOẶC orderBranchId là null (đơn cũ)
         const isBranchMatch = (filterBranchId === 'all') || (orderBranchId === filterBranchId) || (orderBranchId === null && filterBranchId === currentBranchId);
-        
+
         // B. Lọc Thời gian
         let timeStamp = 0;
         if (o.completedAt?.seconds) timeStamp = o.completedAt.seconds * 1000;
         else if (o.createdAt?.seconds) timeStamp = o.createdAt.seconds * 1000;
-        else if (o.completedAt && typeof o.completedAt === 'object' && o.completedAt.toDate) timeStamp = o.completedAt.toDate().getTime(); 
+        else if (o.completedAt && typeof o.completedAt === 'object' && o.completedAt.toDate) timeStamp = o.completedAt.toDate().getTime();
 
         const isTimeMatch = timeStamp >= startDate.getTime() && timeStamp < boundaryDate.getTime();
-        
+
         return isBranchMatch && isTimeMatch;
     });
 
@@ -1754,12 +2091,12 @@ window.renderStats = () => {
         const key = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
         revenueByDate[key] = 0;
     }
-    
+
     successOrders.forEach(o => {
         let timeStamp = o.completedAt?.seconds * 1000 || 0;
         const d = new Date(timeStamp);
         const key = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
-        
+
         let val = o.totals?.finalTotal || o.total || 0;
 
         if (revenueByDate[key] !== undefined) {
@@ -1773,7 +2110,7 @@ window.renderStats = () => {
         revenueChart = new Chart(ctxRevenue.getContext('2d'), {
             type: 'line',
             data: { labels: Object.keys(revenueByDate), datasets: [{ label: 'Doanh thu', data: Object.values(revenueByDate), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.3, fill: true, pointBackgroundColor: '#fff', pointBorderColor: '#3b82f6', pointRadius: 4 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4] }, ticks: { callback: v => v >= 1000000 ? v/1000000 + 'tr' : v >= 1000 ? v/1000 + 'k' : v } }, x: { grid: { display: false } } } }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { borderDash: [2, 4] }, ticks: { callback: v => v >= 1000000 ? v / 1000000 + 'tr' : v >= 1000 ? v / 1000 + 'k' : v } }, x: { grid: { display: false } } } }
         });
     }
 
@@ -1794,20 +2131,20 @@ window.renderStats = () => {
             data: { labels: ['Tiền mặt', 'Chuyển khoản', 'Thẻ quà tặng'], datasets: [{ data: [paymentCounts['cash'], paymentCounts['transfer'], paymentCounts['gift']], backgroundColor: ['#22c55e', '#a855f7', '#f97316'], borderWidth: 0, hoverOffset: 4 }] },
             options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
         });
-        const totalPay = Object.values(paymentCounts).reduce((a,b)=>a+b, 0) || 1;
+        const totalPay = Object.values(paymentCounts).reduce((a, b) => a + b, 0) || 1;
         const legendHtml = `
-            <div class="flex justify-between text-xs mb-1"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>Tiền mặt</span><span class="font-bold">${formatMoney(paymentCounts.cash)} (${Math.round(paymentCounts.cash/totalPay*100)}%)</span></div>
-            <div class="flex justify-between text-xs mb-1"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>Chuyển khoản</span><span class="font-bold">${formatMoney(paymentCounts.transfer)} (${Math.round(paymentCounts.transfer/totalPay*100)}%)</span></div>
-            <div class="flex justify-between text-xs"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-orange-500 mr-2"></span>Thẻ/Voucher</span><span class="font-bold">${formatMoney(paymentCounts.gift)} (${Math.round(paymentCounts.gift/totalPay*100)}%)</span></div>
+            <div class="flex justify-between text-xs mb-1"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span>Tiền mặt</span><span class="font-bold">${formatMoney(paymentCounts.cash)} (${Math.round(paymentCounts.cash / totalPay * 100)}%)</span></div>
+            <div class="flex justify-between text-xs mb-1"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-purple-500 mr-2"></span>Chuyển khoản</span><span class="font-bold">${formatMoney(paymentCounts.transfer)} (${Math.round(paymentCounts.transfer / totalPay * 100)}%)</span></div>
+            <div class="flex justify-between text-xs"><span class="flex items-center"><span class="w-2 h-2 rounded-full bg-orange-500 mr-2"></span>Thẻ/Voucher</span><span class="font-bold">${formatMoney(paymentCounts.gift)} (${Math.round(paymentCounts.gift / totalPay * 100)}%)</span></div>
         `;
         const legendContainer = document.getElementById('payment-legend');
-        if(legendContainer) legendContainer.innerHTML = legendHtml;
+        if (legendContainer) legendContainer.innerHTML = legendHtml;
     }
 
     // 6. BẢNG TOP SẢN PHẨM
     const productStats = {};
     successOrders.forEach(o => {
-        if(o.items && Array.isArray(o.items)) {
+        if (o.items && Array.isArray(o.items)) {
             o.items.forEach(i => {
                 if (!productStats[i.name]) productStats[i.name] = { qty: 0, rev: 0 };
                 productStats[i.name].qty += (i.qty || 0);
@@ -1834,29 +2171,47 @@ window.saveGiftCard = async () => {
     if (userRole !== 'admin') return showToast("Không có quyền!", true);
 
     const code = document.getElementById('promo-code').value.toUpperCase().trim();
-    const type = document.getElementById('promo-type').value; // fixed hoặc percent
+    const type = document.getElementById('promo-type').value;
     const value = getCleanValue('promo-value');
 
     if (!code || value <= 0) return showToast("Thiếu thông tin hoặc giá trị sai!", true);
     if (type === 'percent' && value > 100) return showToast("Phần trăm không quá 100!", true);
 
-    // Check trùng mã (Optional nhưng nên có)
-    const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'giftcards'), where("code", "==", code));
-    const snap = await getDocs(q);
-    if (!snap.empty) return showToast("Mã này đã tồn tại!", true);
+    try {
+        // 1. Check trùng mã (Lệnh đọc phải nằm ngoài Transaction)
+        const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'giftcards'), where("code", "==", code));
+        const snap = await getDocs(q);
+        if (!snap.empty) return showToast("Mã này đã tồn tại!", true);
 
-    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'giftcards'), {
-        code,
-        type,
-        value,
-        status: 'active', // active hoặc used
-        usageLog: null,   // Lưu thông tin người dùng sau này
-        createdAt: serverTimestamp(),
-        createdBy: currentUserData.name
-    });
+        // 2. Transaction tạo ID tuần tự và lưu thẻ
+        await runTransaction(db, async (transaction) => {
+            const counterRef = doc(db, 'artifacts', appId, 'public', 'data', 'counters', 'giftcard_id');
+            const counterSnap = await transaction.get(counterRef);
 
-    showToast("Đã tạo mã ưu đãi");
-    togglePromoModal();
+            let newIndex = counterSnap.exists() ? counterSnap.data().lastIndex + 1 : 1;
+
+            // Cập nhật bộ đếm
+            transaction.set(counterRef, { lastIndex: newIndex }, { merge: true });
+
+            // Tạo document Gift Card với ID là số tuần tự
+            const newGiftCardRef = doc(db, 'artifacts', appId, 'public', 'data', 'giftcards', String(newIndex));
+            transaction.set(newGiftCardRef, {
+                code,
+                type,
+                value,
+                status: 'active',
+                usageLog: null,
+                createdAt: serverTimestamp(),
+                createdBy: currentUserData.name
+            });
+        });
+
+        showToast("✅ Đã tạo mã ưu đãi");
+        togglePromoModal();
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi khi lưu thẻ: " + e.message, true);
+    }
 };
 
 window.renderGiftCardList = () => {
@@ -2072,30 +2427,52 @@ window.clearAllDiscounts = () => {
 window.openCheckoutModal = () => { if (getActiveOrder().items.length > 0) { document.getElementById('modal-total-amount').textContent = document.getElementById('cart-total').textContent; document.getElementById('checkout-modal').classList.remove('hidden'); } };
 window.setPaymentMethod = (m) => { paymentMethod = m; document.querySelectorAll('.pm-btn').forEach(b => b.classList.remove('active')); document.getElementById(`pm-${m}`).classList.add('active');['pay-cash-ui', 'pay-transfer-ui', 'pay-gift-ui'].forEach(id => document.getElementById(id).classList.add('hidden')); document.getElementById(`pay-${m}-ui`).classList.remove('hidden'); };
 window.calculateChange = () => { document.getElementById('cash-change').textContent = formatMoney(getCleanValue('cash-given') - parseInt(document.getElementById('modal-total-amount').textContent.replace(/\D/g, ''))); };
-window.setQuickCash = (v) => { document.getElementById('cash-given').value = v.toLocaleString('en-US'); calculateChange(); };
+// Hàm chọn tiền nhanh (Cộng dồn)
+window.setQuickCash = (v) => {
+    // 1. Lấy giá trị hiện tại trong ô input (dùng hàm getCleanValue có sẵn để lấy số thô)
+    const currentVal = getCleanValue('cash-given');
+
+    // 2. Cộng dồn giá trị mới vào giá trị cũ
+    const newVal = currentVal + v;
+
+    // 3. Format lại thành dạng tiền tệ (có dấu phẩy) và gán vào input
+    document.getElementById('cash-given').value = newVal.toLocaleString('en-US');
+
+    // 4. Tính lại tiền thừa ngay lập tức
+    calculateChange();
+};
 window.checkGiftCard = () => { const c = document.getElementById('gift-code-input').value.toUpperCase(), g = giftCards.find(x => x.code === c && x.status === 'active'), t = parseInt(document.getElementById('modal-total-amount').textContent.replace(/\D/g, '')); const s = document.getElementById('gift-status'); if (g) { s.textContent = g.value >= t ? `Đủ tiền (${formatMoney(g.value)})` : `Thiếu ${formatMoney(t - g.value)}`; s.className = g.value >= t ? "mt-4 text-center text-sm font-bold text-emerald-600" : "mt-4 text-center text-sm font-bold text-orange-500"; } else { s.textContent = "Thẻ lỗi"; s.className = "mt-4 text-center text-sm font-bold text-red-500"; } };
 
 // --- PRINTING ENGINE (CORE) ---
 window.printReceiptData = (order) => {
-    // 1. Lấy cấu hình in (hoặc dùng mặc định K80)
-    const config = JSON.parse(localStorage.getItem('pos_print_config')) || { type: 'k80', code: TEMPLATE_K80 };
+    // 1. LẤY CẤU HÌNH IN
+    // Tìm chi nhánh hiện tại để lấy tên và cấu hình riêng (nếu có)
+    const currentBranch = branches.find(b => b.id === currentBranchId);
+
+    // Ưu tiên lấy config từ DB của chi nhánh, nếu không có thì lấy từ LocalStorage, cuối cùng là mặc định
+    let config = currentBranch?.printConfig;
+    if (!config) {
+        config = JSON.parse(localStorage.getItem('pos_print_config')) || { type: 'k80', code: TEMPLATE_K80 };
+    }
+
+    // Nếu đang dùng mẫu K80 mặc định, hãy dùng biến TEMPLATE_K80 mới nhất trong code để đảm bảo có các biến mới (note, voucher...)
     let template = (config.type === 'k80') ? TEMPLATE_K80 : config.code;
 
     // --- A. XỬ LÝ DANH SÁCH MÓN ĂN (ITEMS HTML) ---
     let itemsHtml = '';
     if (config.type === 'k58') {
-        // Mẫu K58 (Dạng liệt kê)
+        // Mẫu K58 (Dạng liệt kê div)
         itemsHtml = order.items.map(i => `
             <div style="border-bottom: 1px dashed #eee; padding: 5px 0;">
                 <div class="item-name" style="font-weight:bold; font-size: 11px;">${i.name}</div>
                 <div class="item-meta" style="display:flex; justify-content:space-between; font-size:10px;">
-                    <span>${i.qty} x ${formatMoney(i.price).replace('₫','')}</span>
-                    <span style="font-weight:bold">${formatMoney(i.price * i.qty).replace('₫','')}</span>
+                    <span>${i.qty} x ${formatMoney(i.price).replace('₫', '')}</span>
+                    <span style="font-weight:bold">${formatMoney(i.price * i.qty).replace('₫', '')}</span>
                 </div>
             </div>
         `).join('');
     } else {
-        // Mẫu K80 (Dạng bảng)
+        // Mẫu K80 (Dạng bảng table)
         itemsHtml = order.items.map((i, index) => `
             <tr>
                 <td style="text-align: center;">${index + 1}</td>
@@ -2108,35 +2485,39 @@ window.printReceiptData = (order) => {
     }
 
     // --- B. CHUẨN BỊ DỮ LIỆU ---
+
     // 1. Thời gian
     const dateObj = order.completedAt ? new Date(order.completedAt.seconds * 1000) : new Date();
-    
-    // 2. Tiền nong (Lấy từ order.totals đã lưu)
+
+    // 2. Tiền nong
     const subtotalVal = order.totals.subtotal || 0;
     const finalVal = order.totals.finalTotal || 0;
-    // Tính tổng giảm giá: Tạm tính - Thực trả
     const discountVal = subtotalVal - finalVal;
 
     // 3. Khách hàng
     const custName = order.customer ? order.customer.name : 'Khách lẻ';
-    // Admin xem full số, nhân viên xem số che
+    // Logic ẩn số điện thoại: Admin thấy full, nhân viên thấy che
     const custPhone = order.customer ? (userRole === 'admin' ? order.customer.phone : maskPhone(order.customer.phone)) : '';
-    // Điểm tích được (nếu có lưu trong đơn)
     const ptsEarned = order.pointsEarned || 0;
-    const currentPts = order.customer ? "..." : ""; // Điểm hiện tại (có thể fetch thêm nếu cần)
 
-    // 4. Thanh toán (Tiền khách đưa & Tiền thừa)
-    let givenVal = finalVal; // Mặc định khách đưa đủ
+    // Lấy điểm hiện tại (nếu có thông tin customer trong list đã sync)
+    let currentPts = "...";
+    if (order.customer) {
+        const cSync = customers.find(c => c.id === order.customer.id);
+        if (cSync) currentPts = formatMoney(cSync.points || 0).replace('₫', ''); // Format số đẹp
+    }
+
+    // 4. Thanh toán (Tiền khách đưa & Thừa)
+    let givenVal = finalVal;
     let changeVal = 0;
-    
-    // Nếu đang ở màn hình POS và thanh toán tiền mặt -> Lấy từ ô nhập liệu
+
     const cashGivenEl = document.getElementById('cash-given');
-    // Kiểm tra paymentMethod từ order (để chắc chắn)
+    // Kiểm tra paymentMethod (Ưu tiên lấy từ order, nếu không có thì mặc định cash)
     const pmRaw = order.paymentMethod || 'cash';
-    
+
+    // Nếu đang ở màn hình POS, chưa reset form và đúng là đơn tiền mặt thì lấy từ Input
     if (currentView === 'pos' && cashGivenEl && pmRaw === 'cash') {
         const inputVal = getCleanValue('cash-given');
-        // Chỉ lấy nếu số nhập vào hợp lý (lớn hơn 0)
         if (inputVal >= finalVal) {
             givenVal = inputVal;
             changeVal = inputVal - finalVal;
@@ -2147,13 +2528,12 @@ window.printReceiptData = (order) => {
     const pmMap = { 'cash': 'Tiền mặt', 'transfer': 'Chuyển khoản', 'gift': 'Thẻ quà tặng' };
     const pmDisplay = pmMap[pmRaw] || pmRaw;
 
-    // --- C. LOGIC HIỂN THỊ NÂNG CAO (Voucher & Ghi chú) ---
-    
-    // 1. Tạo HTML hiển thị chi tiết Voucher/Điểm
+    // --- C. LOGIC HIỂN THỊ NÂNG CAO ---
+
+    // 1. Voucher & Điểm
     let voucherHtml = '';
-    // Lấy thông tin giảm giá (hỗ trợ cả cấu trúc cũ và mới)
     const discounts = order.discountsApplied || order.discounts || {};
-    
+
     if (discounts.coupon) {
         const typeStr = discounts.coupon.type === 'percent' ? `-${discounts.coupon.value}%` : `-${formatMoney(discounts.coupon.value)}`;
         voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Voucher: <b>${discounts.coupon.code}</b> (${typeStr})</div>`;
@@ -2166,64 +2546,68 @@ window.printReceiptData = (order) => {
         voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Giảm thủ công: <b>${formatMoney(discounts.manual.value)}${mType}</b></div>`;
     }
 
-    // 2. Tạo HTML hiển thị Ghi chú
+    // 2. Ghi chú
     let noteHtml = '';
     if (order.note && order.note.trim() !== '') {
-        noteHtml = `<div class="note-box" style="margin-top: 10px; padding: 5px; font-size: 12px; text-align: left;"><strong></strong> ${order.note}</div>`;
+        noteHtml = `<div class="note-box" style="margin-top: 10px; border: 1px dashed #000; padding: 5px; font-size: 12px; text-align: left;"><strong>Ghi chú:</strong> ${order.note}</div>`;
     }
 
     // --- D. BẢNG ÁNH XẠ DỮ LIỆU (MAP DATA) ---
     const mapData = {
-        // Thông tin chung
-        shopName: "MAI TÂY HAIR SALON", // Có thể thay bằng biến config nếu có
+        // TÊN CỬA HÀNG: Lấy từ tên Chi Nhánh hiện tại
+        shopName: currentBranch?.name || "Mai Tây Hair Salon",
+
+        // Thông tin đơn
         orderId: order.id,
         date: dateObj.toLocaleDateString('vi-VN'),
         time: dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        cashier: order.cashierName || 'Staff',
-        
+        cashier: order.cashierName || 'Nhân viên',
+
         // Khách hàng
         customer: custName,
         customerPhone: custPhone,
         currentPoints: currentPts,
         pointsEarned: ptsEarned,
 
-        // Tài chính (Xóa ký tự ₫ để template tự định dạng)
+        // Tài chính
         subtotal: formatMoney(subtotalVal).replace('₫', ''),
         discount: formatMoney(discountVal).replace('₫', ''),
         total: formatMoney(finalVal).replace('₫', ''),
-        rawTotal: finalVal, // Số nguyên cho QR Code
-        
+
+        // Số thô cho QR Code (Không có dấu chấm phẩy)
+        rawTotal: finalVal,
+
         // Thanh toán
         given: formatMoney(givenVal).replace('₫', ''),
         change: formatMoney(changeVal).replace('₫', ''),
         paymentMethod: pmDisplay,
-        
-        // Các khối HTML
+
+        // HTML Blocks
         items: itemsHtml,
-        voucherDetails: voucherHtml, // Biến mới
-        noteSection: noteHtml        // Biến mới
+        voucherDetails: voucherHtml,
+        noteSection: noteHtml
     };
 
-    // --- E. THAY THẾ VÀO TEMPLATE ---
+    // --- E. REPLACE VÀO TEMPLATE ---
     for (const [key, value] of Object.entries(mapData)) {
-        // Replace All (g flag)
         template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
     }
 
-    // --- F. THỰC THI IN ---
+    // --- F. THỰC THI IN (IFRAME) ---
     const iframe = document.getElementById('print-frame');
     const doc = iframe.contentWindow.document;
-    
+
     doc.open();
     doc.write(template);
     doc.close();
 
-    // Delay một chút để trình duyệt render QR code và Font chữ
+    // Delay 800ms để tải ảnh QR/Logo trước khi in
     setTimeout(() => {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
     }, 800);
 };
+
 
 // Override hàm printOrder cũ
 window.printOrder = (id) => {
@@ -2233,6 +2617,281 @@ window.printOrder = (id) => {
         printReceiptData(order);
     }
 };
+
+window.toggleConfigMode = (mode) => {
+    const basicPanel = document.getElementById('config-basic-panel');
+    const advPanel = document.getElementById('config-advanced-panel');
+    const btnBasic = document.getElementById('btn-mode-basic');
+    const btnAdv = document.getElementById('btn-mode-advanced');
+
+    if (mode === 'basic') {
+        basicPanel.classList.remove('hidden');
+        advPanel.classList.add('hidden');
+
+        btnBasic.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
+        btnBasic.classList.remove('text-slate-500', 'hover:bg-white/50');
+
+        btnAdv.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
+        btnAdv.classList.add('text-slate-500', 'hover:bg-white/50');
+
+        // Cập nhật lại preview theo form data
+        updateBasicTemplate();
+    } else {
+        basicPanel.classList.add('hidden');
+        advPanel.classList.remove('hidden');
+
+        btnAdv.classList.add('bg-white', 'shadow-sm', 'text-blue-600');
+        btnAdv.classList.remove('text-slate-500', 'hover:bg-white/50');
+
+        btnBasic.classList.remove('bg-white', 'shadow-sm', 'text-blue-600');
+        btnBasic.classList.add('text-slate-500', 'hover:bg-white/50');
+
+        // Load code hiện tại vào editor để sửa tiếp
+        updatePreview();
+    }
+};
+
+window.updateBasicTemplate = () => {
+    // 1. Lấy dữ liệu từ Form
+    const shopName = document.getElementById('cfg-shop-name').value || "TÊN CỬA HÀNG";
+    const address = document.getElementById('cfg-shop-addr').value || "Địa chỉ...";
+    const phone = document.getElementById('cfg-shop-phone').value || "09xxxx";
+    const logo = document.getElementById('cfg-shop-logo').value || ""; // URL ảnh
+    const fb = document.getElementById('cfg-shop-fb').value || "";
+
+    // Dữ liệu Ngân hàng - Sẽ dùng để tạo link QR code
+    const bankName = document.getElementById('cfg-bank-name').value || "BANK";
+    const bankNum = document.getElementById('cfg-bank-num').value || "00000000";
+    const bankOwner = document.getElementById('cfg-bank-owner').value || "CHỦ TÀI KHOẢN";
+    const footer = document.getElementById('cfg-footer-text').value || "Cảm ơn quý khách!";
+
+    // 2. Tạo link QR Code động (Sử dụng VietQR API)
+    // Sẽ dùng {{rawTotal}} và {{orderId}} để tạo mã QR động theo từng giao dịch
+    const qrSource = `https://img.vietqr.io/image/${bankName}-${bankNum}-qr_only.jpg?amount={{rawTotal}}&addInfo={{orderId}}`;
+
+    // 3. Tạo HTML từ Mẫu chuẩn (Mẫu mới, đã nhúng các biến động)
+    const html = `
+    <html>
+    <head>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <style>
+            body { font-family: system-ui, sans-serif; padding: 0 5px; width: 80mm; margin: 0 auto; color: #000; }
+            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+            th, td { padding: 6px 2px; text-align: left; border-bottom: 1px solid #ddd; font-size: 12px; }
+            th { font-size: 11px; border-bottom: 2px solid black; font-weight: bold; }
+            td:last-child, th:last-child { text-align: right; }
+            .preview-header { text-align: center; margin-bottom: 10px; }
+            .preview-header h2 { margin: 5px 0; font-size: 18px; text-transform: uppercase; }
+            .info-Salon { font-size: 12px; margin-top: 5px; }
+            .QR-Banking { margin-top: 15px; border: 2px solid #000; padding: 5px; display: flex; align-items: center; gap: 10px; border-radius: 8px; }
+            .QR-Banking img { width: 80px; height: 80px; display: block; }
+            .Banking { text-align: left; flex: 1; border-left: 1px dashed #000; padding-left: 10px; }
+            .Banking p { margin: 0; font-size: 10px; font-weight: bold; }
+            .Banking h1 { margin: 2px 0; font-size: 18px; letter-spacing: 1px; }
+            .total { font-weight: bold; font-size: 16px; margin-top: 5px; border-top: 1px solid #000; padding-top: 5px; }
+        </style>
+    </head>
+    <body>
+        <div class="preview-header">
+            ${logo ? `<img src="${logo}" style="width: 100px; display: block; margin: 0 auto 5px auto;">` : ''}
+            <h2>${shopName}</h2>
+            <div class="info-Salon">
+                <p><i class="fa-solid fa-location-dot"></i> ${address}</p>
+                <div style="display:flex; justify-content:center; gap:10px;">
+                    ${fb ? `<p><i class="fa-brands fa-facebook"></i> ${fb}</p>` : ''}
+                    <p><i class="fa-solid fa-phone"></i> ${phone}</p>
+                </div>
+            </div>
+            <h3 style="border-top:1px dashed #000; padding-top:10px; margin:5px 0; font-size:14px;">HOÁ ĐƠN THANH TOÁN</h3>
+        </div>
+        
+        <div style="font-size:12px; margin-bottom:10px;">
+            <p style="margin:2px 0">Mã đơn: {{orderId}}</p>
+            <p style="margin:2px 0">Ngày: {{date}} {{time}}</p>
+            <p style="margin:2px 0">Thu ngân: {{cashier}}</p>
+            <p style="margin:2px 0">Khách: {{customer}}</p>
+            <p style="margin:2px 0">Thanh toán: {{paymentMethod}}</p>
+
+        </div>
+
+        <table>
+            <thead><tr><th style="width:20px">#</th><th>Dịch vụ</th><th style="text-align:center">SL</th><th style="text-align:right">Đơn giá</th><th style="text-align:right">Tiền</th></tr></thead>
+            <tbody>{{items}}</tbody>
+        </table>
+
+        <div style="text-align:right; font-size:12px; margin-top:10px;">
+            <p style="margin:2px 0">Tạm tính: {{subtotal}}</p>
+            <p style="margin:2px 0">Chiết khấu: {{discount}}</p>
+            {{voucherDetails}}
+            <p class="total">TỔNG TIỀN: {{total}}</p>
+        </div>
+
+        {{noteSection}}
+
+        <div class="QR-Banking">
+            <div class="QR">
+                <img src="${qrSource}" alt="QR Thanh Toán" style="width: 80px; height: 80px; display: block;">
+            </div>
+            <div class="Banking">
+                <p style="text-transform:uppercase;">${bankName} - ${bankOwner}</p>
+                <h1>${bankNum}</h1>
+                <p style="font-size:9px; font-weight:normal; font-style:italic; margin-top:2px">Quý khách vui lòng kiểm tra lại thông tin trước khi chuyển khoản.</p>
+            </div>
+        </div>
+
+        <div style="text-align:center; margin-top:15px; font-size:12px;">
+            <p>${footer}</p>
+            <p style="font-size:10px; font-style:italic; color:#555; margin-top:5px;">Powered by Đinh Mạnh Hùng</p>
+        </div>
+    </body>
+    </html>
+    `;
+
+    // 4. Đổ vào Editor và Preview
+    document.getElementById('print-code-editor').value = html;
+    updatePreview();
+};
+// ============================================================
+// --- BỔ SUNG: LOGIC MÁY CHỦ IN (CLOUD PRINTING) ---
+// ============================================================
+
+// ============================================================
+// --- LOGIC MÁY CHỦ IN (TARGETED PRINT SERVER) ---
+// ============================================================
+
+let printListenerUnsubscribe = null;
+let myServerId = localStorage.getItem('pos_server_id'); // ID định danh máy này
+let myServerName = localStorage.getItem('pos_server_name');
+
+// 1. Đăng ký làm máy in
+window.registerPrintServer = async () => {
+    if (!currentBranchId) return showToast("⚠️ Vui lòng chọn chi nhánh trước!", true);
+
+    const nameInput = document.getElementById('server-name-input').value.trim();
+    if (!nameInput) return showToast("Vui lòng nhập tên máy in!", true);
+
+    try {
+        // Tạo ID máy in nếu chưa có (lưu vào localStorage để F5 vẫn nhớ)
+        if (!myServerId) {
+            myServerId = `PRN-${Date.now().toString().slice(-6)}`;
+            localStorage.setItem('pos_server_id', myServerId);
+        }
+
+        myServerName = nameInput;
+        localStorage.setItem('pos_server_name', myServerName);
+
+        // Lưu thông tin máy in lên Database (Collection 'print_servers')
+        // Dùng setDoc để ghi đè/cập nhật trạng thái 'online'
+        const serverRef = doc(db, 'artifacts', appId, 'public', 'data', 'print_servers', myServerId);
+        await setDoc(serverRef, {
+            id: myServerId,
+            name: myServerName,
+            branchId: currentBranchId,
+            status: 'online',
+            lastSeen: serverTimestamp()
+        });
+
+        // Bắt đầu lắng nghe
+        startPrintListener();
+        updateServerUI(true);
+        showToast(`✅ Đã kích hoạt máy in: ${myServerName}`);
+
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi đăng ký máy in: " + e.message, true);
+    }
+};
+
+// 2. Ngắt kết nối máy in
+window.stopPrintServer = async () => {
+    if (printListenerUnsubscribe) printListenerUnsubscribe();
+
+    // Cập nhật trạng thái offline trên DB
+    if (myServerId) {
+        try {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'print_servers', myServerId), {
+                status: 'offline',
+                lastSeen: serverTimestamp()
+            });
+        } catch (e) { console.log("Lỗi set offline:", e); }
+    }
+
+    localStorage.removeItem('pos_server_name'); // Xóa tên để lần sau nhập lại hoặc giữ tùy ý
+    updateServerUI(false);
+    showToast("Đã tắt chế độ máy in");
+};
+
+// 3. Lắng nghe lệnh in (Targeted)
+function startPrintListener() {
+    if (printListenerUnsubscribe) printListenerUnsubscribe();
+
+    console.log(`🖨️ [Server] Đang chờ lệnh in cho ID: ${myServerId} tại CN: ${currentBranchId}`);
+
+    // Query: Lấy lệnh in có targetServerId == myServerId VÀ status == 'waiting'
+    const q = query(
+        collection(db, 'artifacts', appId, 'public', 'data', 'orders'),
+        where("branchId", "==", currentBranchId),
+        where("printRequest.status", "==", "waiting"),
+        where("printRequest.targetServerId", "==", myServerId) // CHỈ NHẬN LỆNH GỬI CHO MÌNH
+    );
+
+    printListenerUnsubscribe = onSnapshot(q, (snapshot) => {
+        snapshot.docChanges().forEach(async (change) => {
+            if (change.type === "added" || change.type === "modified") {
+                const orderData = change.doc.data();
+                const orderId = change.doc.id;
+
+                // Double check (dù query đã lọc)
+                if (orderData.printRequest?.targetServerId === myServerId && orderData.printRequest.status === 'waiting') {
+
+                    console.log(`🖨️ Nhận lệnh in đơn ${orderId} từ ${orderData.printRequest.requester}`);
+                    showToast(`🖨️ Đang in đơn từ ${orderData.printRequest.requester}...`);
+
+                    // In
+                    printReceiptData({ id: orderId, ...orderData });
+
+                    // Update Done
+                    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), {
+                        "printRequest.status": "done",
+                        "printRequest.printedAt": serverTimestamp()
+                    });
+                }
+            }
+        });
+    });
+}
+
+// 4. UI Helper
+function updateServerUI(isActive) {
+    const setupDiv = document.getElementById('print-server-setup');
+    const activeDiv = document.getElementById('print-server-active');
+
+    if (isActive) {
+        setupDiv.classList.add('hidden');
+        activeDiv.classList.remove('hidden');
+        document.getElementById('server-name-display').textContent = myServerName;
+        document.getElementById('server-id-display').textContent = myServerId;
+    } else {
+        setupDiv.classList.remove('hidden');
+        activeDiv.classList.add('hidden');
+    }
+}
+
+// 5. Auto Init (Khi F5)
+window.initPrintServerState = () => {
+    const savedName = localStorage.getItem('pos_server_name');
+    if (savedName && myServerId) {
+        // Nếu đã từng bật, tự động bật lại
+        // Cần đợi 1 chút để currentBranchId load xong
+        setTimeout(() => {
+            if (currentBranchId) {
+                document.getElementById('server-name-input').value = savedName;
+                registerPrintServer(); // Re-register để set online
+            }
+        }, 1500);
+    }
+};
+
 window.deleteOrder = async (orderId) => { if (userRole !== 'admin') return showToast("Chỉ Admin được xóa đơn!", true); const reason = await customPrompt("⚠️ Lý do xóa đơn hàng:", ""); if (!reason) return; try { const order = ordersHistory.find(o => o.id === orderId); if (!order) return; await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), { status: 'deleted', deletedReason: reason, deletedAt: serverTimestamp(), deletedBy: currentUserData.name }); if (order.items && order.items.length > 0) { for (const item of order.items) { if (item.stock !== -1) { const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', item.id); const pSnap = await getDoc(pRef); if (pSnap.exists()) await updateDoc(pRef, { stock: (pSnap.data().stock || 0) + item.qty }); } } } showToast("Đã xóa đơn và hoàn kho"); } catch (e) { showToast("Lỗi: " + e.message, true); } };
 window.deleteOrderPermanently = async (orderId) => { if (userRole !== 'admin') return showToast("Chỉ Admin được thực hiện!", true); if (await customConfirm("⚠️ CẢNH BÁO CUỐI CÙNG!\n\nXóa vĩnh viễn đơn hàng này?\nKhông thể khôi phục.")) { try { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId)); showToast("Đã xóa vĩnh viễn"); } catch (e) { showToast("Lỗi: " + e.message, true); } } };
 window.deleteAllHistory = async () => { if (userRole !== 'admin') return; const activeOrders = ordersHistory.filter(o => o.status !== 'deleted'); if (activeOrders.length === 0) return showToast("Không có gì để xóa!", true); if (!await customConfirm(`⚠️ Xóa ${activeOrders.length} đơn hàng?\nTồn kho sẽ được cộng lại.`)) return; const reason = await customPrompt("📝 Lý do xóa:", ""); if (!reason) return; try { showToast("Đang xử lý...", false); const promises = activeOrders.map(async (order) => { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', order.id), { status: 'deleted', deletedReason: `[Mass Delete] ${reason}`, deletedAt: serverTimestamp(), deletedBy: currentUserData.name || 'Admin' }); if (order.items) { for (const item of order.items) { if (item.stock !== -1) { const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', item.id); const pSnap = await getDoc(pRef); if (pSnap.exists()) await updateDoc(pRef, { stock: (pSnap.data().stock || 0) + item.qty }); } } } }); await Promise.all(promises); showToast(`✅ Đã xóa ${activeOrders.length} đơn!`); if (currentView === 'reports') renderStats(); } catch (e) { showToast("Lỗi: " + e.message, true); } };
@@ -2244,35 +2903,186 @@ window.exportHistoryToExcel = () => { const search = document.getElementById('hi
 
 const TEMPLATE_K80 = `
 <html>
+
 <head>
+    <title>In hóa đơn</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; padding: 0 5px; width: 80mm; margin: 0 auto; color: #000; }
-        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-        th, td { padding: 6px 2px; text-align: left; border-bottom: 1px solid #ddd; font-size: 12px; }
-        th { font-size: 11px; border-bottom: 2px solid black; font-weight: bold; }
-        td:last-child, th:last-child { text-align: right; }
-        .preview-header { text-align: center; margin-bottom: 10px; }
-        .preview-header h2 { margin: 5px 0; font-size: 18px; text-transform: uppercase; }
-        .preview-header h3 { margin: 5px 0; font-size: 14px; border-top: 1px dashed #000; padding-top: 10px; }
-        .bill-info { font-size: 12px; margin-bottom: 10px; }
-        .bill-info p { margin: 3px 0; }
-        .bill-summary { margin-top: 10px; text-align: right; font-size: 12px; }
-        .bill-summary p { margin: 4px 0; }
-        .voucher-row { font-style: italic; color: #444; font-size: 11px; margin: 2px 0; }
-        .total { font-weight: bold; font-size: 16px; margin-top: 5px; border-top: 1px solid #000; padding-top: 5px; }
-        .note-box { margin-top: 10px; padding: 5px; font-size: 12px; text-align: left; font-weight: bold; }
-        .bill-footer { text-align: center; margin-top: 15px; font-size: 12px; }
-        .QR-Banking { margin-top: 15px; border: 2px solid #000; padding: 5px; display: flex; align-items: center; gap: 10px; border-radius: 8px; }
-        .QR-Banking img { width: 80px; height: 80px; display: block; }
-        .Banking { text-align: left; flex: 1; border-left: 1px dashed #000; padding-left: 10px; }
-        .Banking p { margin: 0; font-size: 10px; font-weight: bold; }
-        .Banking h1 { margin: 2px 0; font-size: 18px; letter-spacing: 1px; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            padding: 0 10px;
+            width: 80mm;
+            margin: 0 auto;
+            background-color: #fff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        th,
+        td {
+            padding: 8px 2px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .preview-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .preview-header h2,
+        .preview-header h3,
+        .preview-header p {
+            margin: 0px;
+        }
+
+        .bill-info p {
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .bill-summary {
+            margin-top: 15px;
+            text-align: right;
+        }
+
+        .total {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+
+        .bill-footer {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .bill-footer p {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .preview-table th {
+            font-size: 13px;
+            border: 2px solid black;
+        }
+
+        .preview-table td {
+            font-size: 14px;
+        }
+
+        .preview-table td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+
+        .info-Salon {
+            margin-top: 5px;
+            padding: 0 10px;
+        }
+
+        .info-Salon .flex {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
+            font-weight: 500;
+            gap: 5px;
+        }
+
+        .info-Salon i {
+            font-size: 16px;
+        }
+
+        .info-Salon .location {
+            font-size: 14px;
+            text-align: left;
+            margin-bottom: 3px;
+        }
+
+        .Hunq {
+            font-size: 12px !important;
+            font-weight: bold;
+        }
+
+        .QR-Banking img {
+            display: block;
+            height: 100px;
+            width: 100px;
+            margin: auto;
+        }
+
+        .QR-Banking {
+            text-align: center;
+            width: 100%;
+            margin: auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 5px;
+            border: 2px solid black;
+            padding: 2px;
+        }
+
+        .QR-Banking p {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .QR-Banking h1 {
+            text-transform: capitalize;
+            font-size: 14px;
+            margin: 0;
+        }
+
+        .Banking {
+            text-align: left;
+            border-left: 2px solid black;
+            padding-left: 10px;
+        }
+
+        .Banking p {
+            margin: 0;
+        }
+
+        .Banking .alert {
+            font-size: 12px;
+            font-weight: normal;
+        }
+
+        .Banking h1 {
+            font-size: 30px;
+        }
+
+        .preview-header img {
+            width: 200px;
+            display: block;
+            margin: 0 auto;
+            padding-right: 20px;
+        }
     </style>
 </head>
+
 <body>
     <div class="preview-header">
-        <h2>{{shopName}}</h2>
-        <div style="font-size: 12px;">ĐC: 4A Hiền Hoà, Phước Thái, Long Thành, ĐN</div>
+        <img src="./Asset/Logo.png" alt="Logo" srcset="./Asset/Logo.png">
+        <!-- <h2>H Hair Studio</h2> -->
+        <div class="info-Salon">
+
+            <div class="flex">
+                <p class="location">
+                    <i class="fa-solid fa-location-dot"></i>
+                    86 Nguyễn An Ninh, TT.Long Thành, ĐN
+                </p>
+                <p><i class="fa-brands fa-facebook"></i> Hiền Trần Hair Studio</p>
+                <p><i class="fa-solid fa-phone"></i> 0933.261.780</p>
+            </div>
+        </div>
+        <hr>
         <h3>HOÁ ĐƠN THANH TOÁN</h3>
     </div>
     <div class="bill-info">
@@ -2280,34 +3090,44 @@ const TEMPLATE_K80 = `
         <p>Ngày: {{date}} {{time}}</p>
         <p>Khách: {{customer}}</p>
         <p>Thu ngân: {{cashier}}</p>
+        <p>Thanh toán: {{paymentMethod}}</p>
     </div>
-    <table>
-        <thead><tr><th style="width: 20px">#</th><th>Dịch vụ</th><th style="text-align: center;">SL</th><th style="text-align: right;">Đơn giá</th><th style="text-align: right;">Tiền</th></tr></thead>
+    <table class="preview-table">
+        <thead>
+            <tr>
+                <th style="width: 20px">#</th>
+                <th>Dịch vụ</th>
+                <th style="text-align: center;">SL</th>
+                <th style="text-align: right;">Đơn giá</th>
+                <th style="text-align: right;">Tiền</th>
+            </tr>
+        </thead>
         <tbody>{{items}}</tbody>
     </table>
-    <div class="bill-summary">
+   <div class="bill-summary">
         <p>Tạm tính: {{subtotal}}</p>
         <p>Chiết khấu: {{discount}}</p>
         
         {{voucherDetails}}
         {{noteSection}}
         <p class="total">TỔNG TIỀN: {{total}}</p>
-        <p>Thanh toán: {{paymentMethod}}</p>
     </div>
-
-    
-    
     <div class="QR-Banking">
-        <div class="QR"><img src="https://img.vietqr.io/image/BIDV-8834272720-compact.jpg?amount={{rawTotal}}&addInfo={{orderId}}" alt="QR"></div>
+        <div class="QR">
+            <img src="./Asset/QR_Banking.png" alt="QR Thanh Toán" srcset="./Asset/QR_Banking.png">
+        </div>
         <div class="Banking">
             <p>BIDV - DINH HOA XUAN MAI</p>
             <h1>8834272720</h1>
+            <p class="alert">Quý khách vui lòng kiểm tra lại thông tin trước khi chuyển khoản.</p>
         </div>
     </div>
     <div class="bill-footer">
         <p>Cảm ơn quý khách ❤️</p>
+        <p class="Hunq">Powered by Đinh Mạnh Hùng</p>
     </div>
 </body>
+
 </html>`;
 
 const TEMPLATE_K58 = `
@@ -2355,18 +3175,29 @@ window.initPrintSettings = () => {
     const select = document.getElementById('print-template-select');
     const editor = document.getElementById('print-code-editor');
 
-    if (select && editor) {
-        select.value = printConfig.type;
-        editor.value = printConfig.code;
-        updatePreview();
+    if (!select || !editor) return;
 
-        // Auto update preview khi gõ code
-        editor.addEventListener('input', () => {
-            printConfig.code = editor.value; // Lưu tạm vào biến
-            updatePreview();
-        });
-    }
+    // 1. Tìm chi nhánh hiện tại trong biến toàn cục 'branches' (đã load từ subscribeAll)
+    const currentBranch = branches.find(b => b.id === currentBranchId);
+
+    // 2. Lấy config từ chi nhánh, hoặc dùng mặc định nếu chưa cấu hình
+    // Mặc định là K80
+    const config = currentBranch?.printConfig || { type: 'k80', code: TEMPLATE_K80 };
+
+    // 3. Đổ dữ liệu vào UI
+    select.value = config.type;
+    editor.value = config.code;
+
+    // 4. Cập nhật Preview
+    updatePreview();
+
+    // Sự kiện gõ code -> update preview realtime
+    // (Xóa listener cũ để tránh duplicate nếu gọi hàm nhiều lần)
+    const newEditor = editor.cloneNode(true);
+    editor.parentNode.replaceChild(newEditor, editor);
+    newEditor.addEventListener('input', updatePreview);
 };
+
 
 window.loadTemplate = (type) => {
     printConfig.type = type;
@@ -2384,53 +3215,69 @@ window.resetTemplate = () => {
     }
 };
 
-window.savePrintSettings = () => {
+window.savePrintSettings = async () => {
+    // 1. Kiểm tra quyền
+    if (userRole !== 'admin') return showToast("Chỉ Admin được sửa cấu hình!", true);
+    if (!currentBranchId) return showToast("Vui lòng chọn chi nhánh trước!", true);
+
+    // 2. Lấy dữ liệu từ Editor
     const code = document.getElementById('print-code-editor').value;
     const type = document.getElementById('print-template-select').value;
 
-    printConfig = { type, code };
-    localStorage.setItem('pos_print_config', JSON.stringify(printConfig));
-    showToast("✅ Đã lưu cấu hình in!");
+    // 3. Tạo object config
+    const config = { type, code };
+
+    try {
+        // 4. Lưu vào Firestore (Collection 'branches', Document ID = currentBranchId)
+        // Dùng set với merge: true để không làm mất tên chi nhánh
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'branches', currentBranchId), {
+            printConfig: config,
+            updatedAt: serverTimestamp()
+        });
+
+        showToast(`✅ Đã lưu mẫu in cho chi nhánh hiện tại!`);
+
+        // Cập nhật lại biến branches cục bộ để không cần reload trang
+        const currentBranch = branches.find(b => b.id === currentBranchId);
+        if (currentBranch) currentBranch.printConfig = config;
+
+    } catch (e) {
+        console.error(e);
+        showToast("Lỗi lưu cấu hình: " + e.message, true);
+    }
 };
 
 // Hàm tạo HTML giả lập để xem trước (Preview)
 window.updatePreview = () => {
     const container = document.getElementById('print-preview-container');
     const frame = document.getElementById('preview-frame');
-    if (!container || !frame) return;
+    const editor = document.getElementById('print-code-editor');
+    const select = document.getElementById('print-template-select');
 
-    if (printConfig.type === 'k58') container.style.width = '58mm';
+    if (!container || !frame || !editor) return;
+
+    const currentType = select.value;
+
+    if (currentType === 'k58') container.style.width = '58mm';
     else container.style.width = '80mm';
 
-    // MOCK DATA ĐẦY ĐỦ (Dùng để test mẫu in)
+    // MOCK DATA ĐỂ PREVIEW
     const mockData = {
-        shopName: "MAI TÂY HAIR SALON",
+        shopName: "MAI TÂY HAIR SALON (DEMO)",
         orderId: "MT-000001",
-        date: "06/12/2025",
-        time: "14:30",
+        date: "07/12/2025", time: "10:30",
         cashier: "Admin",
-
-        customer: "Nguyễn Văn A",
-        customerPhone: "090***123",
-        currentPoints: "1,250",
-        pointsEarned: "50",
-
-        items: printConfig.type === 'k80'
-            ? `<tr><td style="text-align:center">1</td><td>Cắt tóc nam</td><td style="text-align:center">1</td><td style="text-align:right">100.000</td><td style="text-align:right">100.000</td></tr>
-               <tr><td style="text-align:center">2</td><td>Gội đầu</td><td style="text-align:center">1</td><td style="text-align:right">50.000</td><td style="text-align:right">50.000</td></tr>`
-            : `<div class="item-name">Cắt tóc nam</div><div class="item-meta"><span>1 x 100.000</span><span>100.000</span></div>`,
-
-        subtotal: "150.000",
-        discount: "0",
-        total: "150.000",
-        rawTotal: "150000", // Số thô để tạo QR
-
-        given: "200.000",
-        change: "50.000",
-        paymentMethod: "Tiền mặt"
+        customer: "Nguyễn Văn A", customerPhone: "090***123",
+        currentPoints: "1,250", pointsEarned: "50",
+        items: currentType === 'k58'
+            ? `<div style="border-bottom:1px dashed #000;padding:5px 0"><div style="font-weight:bold">Cắt tóc nam</div><div style="display:flex;justify-content:space-between;font-size:10px"><span>1 x 100.000</span><span>100.000</span></div></div>`
+            : `<tr><td style="text-align:center">1</td><td>Cắt tóc nam</td><td style="text-align:center">1</td><td style="text-align:right">100.000</td><td style="text-align:right">100.000</td></tr>`,
+        subtotal: "100.000", discount: "0", total: "100.000", rawTotal: "100000",
+        given: "100.000", change: "0", paymentMethod: "Tiền mặt",
+        voucherDetails: "", noteSection: ""
     };
 
-    let html = printConfig.code;
+    let html = editor.value; // Lấy code trực tiếp từ ô soạn thảo
     for (const [key, value] of Object.entries(mockData)) {
         html = html.replace(new RegExp(`{{${key}}}`, 'g'), value);
     }
@@ -2442,9 +3289,64 @@ window.updatePreview = () => {
 // Gọi init khi chuyển tab
 const originalSwitchView = window.switchView;
 window.switchView = (view) => {
-    originalSwitchView(view);
-    if (view === 'print-settings') initPrintSettings();
+    // 1. Kiểm tra quyền Admin
+    if (userRole !== 'admin' && ['inventory', 'reports', 'promos', 'print-settings'].includes(view)) {
+        return showToast("Không có quyền truy cập!", true);
+    }
+
+    currentView = view;
+
+    // 2. Active Menu
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const menuItem = document.getElementById(`menu-${view}`);
+    if (menuItem) menuItem.classList.add('active');
+
+    // 3. Ẩn tất cả các View chính
+    const views = ['pos', 'inventory', 'history', 'customers', 'reports', 'promos', 'print-settings'];
+    views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.add('hidden');
+    });
+
+    // 4. Hiện View được chọn
+    const targetView = document.getElementById(`view-${view}`);
+    if (targetView) targetView.classList.remove('hidden');
+
+    // --- 5. XỬ LÝ ẨN/HIỆN SIDEBAR (LOGIC MỚI - MẠNH TAY HƠN) ---
+    const sidebar = document.getElementById('sidebar-cart');
+    const mobileBar = document.getElementById('mobile-cart-bar');
+
+    if (view === 'pos') {
+        // TRƯỜNG HỢP: ĐANG Ở POS (HIỆN)
+        if (sidebar) {
+            // Xóa các class ẩn
+            sidebar.classList.remove('hidden', 'md:hidden');
+
+            // Thêm class hiển thị cho PC (Flex để căn chỉnh layout đẹp hơn Block)
+            sidebar.classList.add('md:flex');
+        }
+        if (mobileBar) mobileBar.classList.remove('hidden');
+    } else {
+        // TRƯỜNG HỢP: KHÔNG PHẢI POS (ẨN TUYỆT ĐỐI)
+        if (sidebar) {
+            // Thêm class ẩn cho cả Mobile và PC
+            sidebar.classList.add('hidden');
+            sidebar.classList.add('md:hidden');
+
+            // Gỡ bỏ class hiển thị của PC (để tránh xung đột)
+            sidebar.classList.remove('md:flex', 'md:block');
+
+            // Đóng sidebar nếu đang trượt ra ở mobile
+            sidebar.classList.add('translate-x-full');
+        }
+        if (mobileBar) mobileBar.classList.add('hidden');
+    }
+
+    // 6. Init Print Settings nếu vào tab in
+    if (view === 'print-settings' && window.initPrintSettings)
+        window.initPrintSettings();
 };
+
 
 
 const sb = document.getElementById('sidebar-cart'), h = document.getElementById('resize-handle');
@@ -2456,5 +3358,6 @@ setInterval(() => { const d = new Date(); document.getElementById('current-order
 document.getElementById('pos-search-input').addEventListener('input', renderProducts);
 
 // AUTO INIT
+initPrintServerState();
 renderOrderTabs();
 renderCart();
