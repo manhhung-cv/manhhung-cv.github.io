@@ -882,7 +882,7 @@ window.loadOrderToPos = async (orderId) => {
 
     // 2. Kiểm tra quyền (Chỉ cho phép sửa đơn của chi nhánh hiện tại để tránh lệch kho)
     if (histOrder.branchId !== currentBranchId) {
-        if (!await customConfirm(`⚠️ Đơn này thuộc chi nhánh khác (${histOrder.branchName}).\nNếu sửa, kho sẽ được trừ tại chi nhánh HIỆN TẠI (${branches.find(b=>b.id===currentBranchId)?.name}).\nBạn có muốn tiếp tục?`)) {
+        if (!await customConfirm(`⚠️ Đơn này thuộc chi nhánh khác (${histOrder.branchName}).\nNếu sửa, kho sẽ được trừ tại chi nhánh HIỆN TẠI (${branches.find(b => b.id === currentBranchId)?.name}).\nBạn có muốn tiếp tục?`)) {
             return;
         }
     }
@@ -892,36 +892,36 @@ window.loadOrderToPos = async (orderId) => {
     try {
         // 3. Tạo một Tab mới với dữ liệu cũ
         const newTabId = Date.now();
-        
+
         const restoredOrder = {
             id: newTabId,
             // QUAN TRỌNG: Lưu ID gốc để khi thanh toán lại, nó sẽ UPDATE chứ không tạo mới
-            originalId: histOrder.id, 
-            
+            originalId: histOrder.id,
+
             name: `Sửa ${histOrder.id.slice(-4)}`, // Tên tab ngắn gọn
             items: JSON.parse(JSON.stringify(histOrder.items)), // Deep copy mảng món ăn
             customer: histOrder.customer,
-            
+
             // Khôi phục giảm giá
             discounts: histOrder.discountsApplied || { coupon: null, manual: null, points: 0 },
-            
+
             // Khôi phục ghi chú
             note: histOrder.note || '',
-            
+
             createdAt: Date.now()
         };
 
         // 4. Đẩy vào danh sách Tabs
         orders.push(restoredOrder);
-        
+
         // 5. Chuyển hướng
         currentOrderId = newTabId;
         saveLocalOrders();
-        
+
         switchView('pos');      // Chuyển màn hình
         renderOrderTabs();      // Vẽ lại tab
         renderCart();           // Vẽ lại giỏ hàng (sẽ tự fill note, discount...)
-        
+
         showToast(`✅ Đã tải đơn ${orderId} để chỉnh sửa`);
 
     } catch (e) {
@@ -1954,8 +1954,8 @@ window.renderHistoryTable = () => {
         if (filterCashier !== 'all' && (o.cashierName || 'Unknown') !== filterCashier) return false;
         if (startDate || endDate) {
             const orderDate = new Date(o.completedAt?.seconds * 1000); orderDate.setHours(0, 0, 0, 0);
-            if (startDate && orderDate < new Date(startDate).setHours(0,0,0,0)) return false;
-            if (endDate && orderDate > new Date(endDate).setHours(0,0,0,0)) return false;
+            if (startDate && orderDate < new Date(startDate).setHours(0, 0, 0, 0)) return false;
+            if (endDate && orderDate > new Date(endDate).setHours(0, 0, 0, 0)) return false;
         }
         return true;
     });
@@ -1977,7 +1977,7 @@ window.renderHistoryTable = () => {
 
         // Nút hành động
         let actionButtons = '';
-        
+
         if (isDeleted) {
             // Đơn đã xóa: Chỉ hiện lý do + Xóa vĩnh viễn
             actionButtons = `<button onclick="customAlert('🛑 Lý do xóa: ${o.deletedReason || 'Không có lý do'}')" class="text-xs bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-300 font-bold transition">Lý do</button>`;
@@ -1997,7 +1997,7 @@ window.renderHistoryTable = () => {
 
         return `<tr class="border-b border-slate-100 transition duration-200 ${rowClass}">
             <td class="p-4 align-top"><div class="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded w-fit">#${o.id}</div>${isDeleted ? `<div class="text-[10px] text-red-600 font-bold mt-1 border border-red-200 bg-red-50 px-1 rounded w-fit">ĐÃ HỦY</div>` : ''}</td>
-            <td class="p-4 align-top text-sm"><div class="font-medium text-slate-700">${new Date(o.completedAt?.seconds * 1000).toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'})}</div><div class="text-xs text-slate-400">${new Date(o.completedAt?.seconds * 1000).toLocaleDateString('vi-VN')}</div></td>
+            <td class="p-4 align-top text-sm"><div class="font-medium text-slate-700">${new Date(o.completedAt?.seconds * 1000).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div><div class="text-xs text-slate-400">${new Date(o.completedAt?.seconds * 1000).toLocaleDateString('vi-VN')}</div></td>
             <td class="p-4 align-top text-sm"><div class="font-bold text-slate-800">${customerName}</div>${customerPhone}</td>
             <td class="p-4 align-top text-sm text-slate-600 font-medium">${o.branchName || '-'}</td>
             <td class="p-4 align-top text-sm text-slate-600">${o.cashierName || '-'}</td>
@@ -2446,33 +2446,26 @@ window.checkGiftCard = () => { const c = document.getElementById('gift-code-inpu
 // --- PRINTING ENGINE (CORE) ---
 window.printReceiptData = (order) => {
     // 1. LẤY CẤU HÌNH IN
-    // Tìm chi nhánh hiện tại để lấy tên và cấu hình riêng (nếu có)
     const currentBranch = branches.find(b => b.id === currentBranchId);
-
-    // Ưu tiên lấy config từ DB của chi nhánh, nếu không có thì lấy từ LocalStorage, cuối cùng là mặc định
     let config = currentBranch?.printConfig;
-    if (!config) {
-        config = JSON.parse(localStorage.getItem('pos_print_config')) || { type: 'k80', code: TEMPLATE_K80 };
-    }
+    if (!config) config = JSON.parse(localStorage.getItem('pos_print_config')) || { type: 'k80', code: TEMPLATE_K80 };
 
-    // Nếu đang dùng mẫu K80 mặc định, hãy dùng biến TEMPLATE_K80 mới nhất trong code để đảm bảo có các biến mới (note, voucher...)
-    let template = (config.type === 'k80') ? TEMPLATE_K80 : config.code;
+    let template = config.code;
+    if (!template || template.trim() === "") template = (config.type === 'k58') ? TEMPLATE_K58 : TEMPLATE_K80;
 
-    // --- A. XỬ LÝ DANH SÁCH MÓN ĂN (ITEMS HTML) ---
+    // --- A. XỬ LÝ ITEMS HTML ---
     let itemsHtml = '';
     if (config.type === 'k58') {
-        // Mẫu K58 (Dạng liệt kê div)
         itemsHtml = order.items.map(i => `
             <div style="border-bottom: 1px dashed #eee; padding: 5px 0;">
                 <div class="item-name" style="font-weight:bold; font-size: 11px;">${i.name}</div>
                 <div class="item-meta" style="display:flex; justify-content:space-between; font-size:10px;">
-                    <span>${i.qty} x ${formatMoney(i.price).replace('₫', '')}</span>
-                    <span style="font-weight:bold">${formatMoney(i.price * i.qty).replace('₫', '')}</span>
+                    <span>${i.qty} x ${formatMoney(i.price).replace('₫','')}</span>
+                    <span style="font-weight:bold">${formatMoney(i.price * i.qty).replace('₫','')}</span>
                 </div>
             </div>
         `).join('');
     } else {
-        // Mẫu K80 (Dạng bảng table)
         itemsHtml = order.items.map((i, index) => `
             <tr>
                 <td style="text-align: center;">${index + 1}</td>
@@ -2485,37 +2478,26 @@ window.printReceiptData = (order) => {
     }
 
     // --- B. CHUẨN BỊ DỮ LIỆU ---
-
-    // 1. Thời gian
     const dateObj = order.completedAt ? new Date(order.completedAt.seconds * 1000) : new Date();
-
-    // 2. Tiền nong
     const subtotalVal = order.totals.subtotal || 0;
     const finalVal = order.totals.finalTotal || 0;
     const discountVal = subtotalVal - finalVal;
-
-    // 3. Khách hàng
     const custName = order.customer ? order.customer.name : 'Khách lẻ';
-    // Logic ẩn số điện thoại: Admin thấy full, nhân viên thấy che
     const custPhone = order.customer ? (userRole === 'admin' ? order.customer.phone : maskPhone(order.customer.phone)) : '';
     const ptsEarned = order.pointsEarned || 0;
-
-    // Lấy điểm hiện tại (nếu có thông tin customer trong list đã sync)
+    
     let currentPts = "...";
     if (order.customer) {
         const cSync = customers.find(c => c.id === order.customer.id);
-        if (cSync) currentPts = formatMoney(cSync.points || 0).replace('₫', ''); // Format số đẹp
+        if (cSync) currentPts = formatMoney(cSync.points || 0).replace('₫', '');
     }
 
-    // 4. Thanh toán (Tiền khách đưa & Thừa)
-    let givenVal = finalVal;
+    let givenVal = finalVal; 
     let changeVal = 0;
-
+    
     const cashGivenEl = document.getElementById('cash-given');
-    // Kiểm tra paymentMethod (Ưu tiên lấy từ order, nếu không có thì mặc định cash)
     const pmRaw = order.paymentMethod || 'cash';
-
-    // Nếu đang ở màn hình POS, chưa reset form và đúng là đơn tiền mặt thì lấy từ Input
+    
     if (currentView === 'pos' && cashGivenEl && pmRaw === 'cash') {
         const inputVal = getCleanValue('cash-given');
         if (inputVal >= finalVal) {
@@ -2524,89 +2506,90 @@ window.printReceiptData = (order) => {
         }
     }
 
-    // 5. Phương thức thanh toán (Việt hóa)
     const pmMap = { 'cash': 'Tiền mặt', 'transfer': 'Chuyển khoản', 'gift': 'Thẻ quà tặng' };
     const pmDisplay = pmMap[pmRaw] || pmRaw;
 
-    // --- C. LOGIC HIỂN THỊ NÂNG CAO ---
-
-    // 1. Voucher & Điểm
+    // --- C. HIỂN THỊ NÂNG CAO ---
     let voucherHtml = '';
     const discounts = order.discountsApplied || order.discounts || {};
-
     if (discounts.coupon) {
         const typeStr = discounts.coupon.type === 'percent' ? `-${discounts.coupon.value}%` : `-${formatMoney(discounts.coupon.value)}`;
         voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Voucher: <b>${discounts.coupon.code}</b> (${typeStr})</div>`;
     }
-    if (discounts.points > 0) {
-        voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Điểm thành viên: <b>-${formatMoney(discounts.points)}</b></div>`;
-    }
+    if (discounts.points > 0) voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Điểm thành viên: <b>-${formatMoney(discounts.points)}</b></div>`;
     if (discounts.manual) {
         const mType = discounts.manual.type === 'percent' ? '%' : '₫';
         voucherHtml += `<div class="voucher-row" style="font-size: 11px; font-style: italic; color: #444;">Giảm thủ công: <b>${formatMoney(discounts.manual.value)}${mType}</b></div>`;
     }
 
-    // 2. Ghi chú
     let noteHtml = '';
     if (order.note && order.note.trim() !== '') {
         noteHtml = `<div class="note-box" style="margin-top: 10px; border: 1px dashed #000; padding: 5px; font-size: 12px; text-align: left;"><strong>Ghi chú:</strong> ${order.note}</div>`;
     }
 
-    // --- D. BẢNG ÁNH XẠ DỮ LIỆU (MAP DATA) ---
+    // --- D. MAP DATA ---
     const mapData = {
-        // TÊN CỬA HÀNG: Lấy từ tên Chi Nhánh hiện tại
-        shopName: currentBranch?.name || "Mai Tây Hair Salon",
-
-        // Thông tin đơn
+        shopName: currentBranch?.name || "POS SYSTEM", 
         orderId: order.id,
         date: dateObj.toLocaleDateString('vi-VN'),
         time: dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        cashier: order.cashierName || 'Nhân viên',
-
-        // Khách hàng
+        cashier: order.cashierName || 'Staff',
         customer: custName,
         customerPhone: custPhone,
         currentPoints: currentPts,
         pointsEarned: ptsEarned,
-
-        // Tài chính
         subtotal: formatMoney(subtotalVal).replace('₫', ''),
         discount: formatMoney(discountVal).replace('₫', ''),
         total: formatMoney(finalVal).replace('₫', ''),
-
-        // Số thô cho QR Code (Không có dấu chấm phẩy)
-        rawTotal: finalVal,
-
-        // Thanh toán
+        rawTotal: finalVal, 
         given: formatMoney(givenVal).replace('₫', ''),
         change: formatMoney(changeVal).replace('₫', ''),
         paymentMethod: pmDisplay,
-
-        // HTML Blocks
         items: itemsHtml,
         voucherDetails: voucherHtml,
         noteSection: noteHtml
     };
 
-    // --- E. REPLACE VÀO TEMPLATE ---
     for (const [key, value] of Object.entries(mapData)) {
         template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
     }
 
-    // --- F. THỰC THI IN (IFRAME) ---
-    const iframe = document.getElementById('print-frame');
-    const doc = iframe.contentWindow.document;
+    // --- E. THỰC THI IN (CHỌN CHẾ ĐỘ) ---
+    const usePopup = localStorage.getItem('pos_use_popup_print') === 'true';
 
-    doc.open();
-    doc.write(template);
-    doc.close();
+    if (usePopup) {
+        // CÁCH 1: MỞ CỬA SỔ MỚI (POPUP)
+        const printWindow = window.open('', '_blank', 'width=400,height=600');
+        if (printWindow) {
+            printWindow.document.open();
+            printWindow.document.write(template);
+            printWindow.document.close();
+            
+            // Đợi tải ảnh rồi in
+            printWindow.onload = () => {
+                printWindow.focus();
+                printWindow.print();
+                // Tùy chọn: Tự đóng sau khi in (nhiều trình duyệt chặn cái này)
+                // printWindow.close(); 
+            };
+        } else {
+            showToast("⚠️ Trình duyệt đã chặn cửa sổ bật lên (Popup)!", true);
+        }
+    } else {
+        // CÁCH 2: IFRAME ẨN (MẶC ĐỊNH)
+        const iframe = document.getElementById('print-frame');
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(template);
+        doc.close();
 
-    // Delay 800ms để tải ảnh QR/Logo trước khi in
-    setTimeout(() => {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-    }, 800);
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }, 800);
+    }
 };
+
 
 
 // Override hàm printOrder cũ
@@ -2652,48 +2635,72 @@ window.toggleConfigMode = (mode) => {
 };
 
 window.updateBasicTemplate = () => {
-    // 1. Lấy dữ liệu từ Form
-    const shopName = document.getElementById('cfg-shop-name').value || "TÊN CỬA HÀNG";
-    const address = document.getElementById('cfg-shop-addr').value || "Địa chỉ...";
-    const phone = document.getElementById('cfg-shop-phone').value || "09xxxx";
-    const logo = document.getElementById('cfg-shop-logo').value || ""; // URL ảnh
+    // 1. LẤY DỮ LIỆU FORM
+    const shopName = document.getElementById('cfg-shop-name').value || "";
+    const address = document.getElementById('cfg-shop-addr').value || "";
+    const phone = document.getElementById('cfg-shop-phone').value || "";
     const fb = document.getElementById('cfg-shop-fb').value || "";
+    const footer = document.getElementById('cfg-footer-text').value || "Cảm ơn quý khách ❤️";
 
-    // Dữ liệu Ngân hàng - Sẽ dùng để tạo link QR code
-    const bankName = document.getElementById('cfg-bank-name').value || "BANK";
-    const bankNum = document.getElementById('cfg-bank-num').value || "00000000";
-    const bankOwner = document.getElementById('cfg-bank-owner').value || "CHỦ TÀI KHOẢN";
-    const footer = document.getElementById('cfg-footer-text').value || "Cảm ơn quý khách!";
+    // Lấy ảnh
+    const logoSrc = document.getElementById('cfg-shop-logo').value;
+    const qrSrc = document.getElementById('cfg-bank-qr').value;
 
-    // 2. Tạo link QR Code động (Sử dụng VietQR API)
-    // Sẽ dùng {{rawTotal}} và {{orderId}} để tạo mã QR động theo từng giao dịch
-    const qrSource = `https://img.vietqr.io/image/${bankName}-${bankNum}-qr_only.jpg?amount={{rawTotal}}&addInfo={{orderId}}`;
+    // --- LẤY KÍCH THƯỚC LOGO (MỚI) ---
+    const logoSize = document.getElementById('cfg-logo-size').value;
+    // Cập nhật số hiển thị bên cạnh thanh trượt
+    document.getElementById('disp-logo-size').textContent = logoSize + '%';
 
-    // 3. Tạo HTML từ Mẫu chuẩn (Mẫu mới, đã nhúng các biến động)
+    // Dữ liệu Bank
+    const bankName = document.getElementById('cfg-bank-name').value || "NGÂN HÀNG";
+    const bankNum = document.getElementById('cfg-bank-num').value || "";
+    const bankOwner = document.getElementById('cfg-bank-owner').value || "";
+
+    // Cấu hình Font
+    const fontSize = document.getElementById('cfg-font-size').value;
+    const fontFamily = document.getElementById('cfg-font-family').value;
+
+    // 2. TẠO HTML
     const html = `
     <html>
     <head>
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
-            body { font-family: system-ui, sans-serif; padding: 0 5px; width: 80mm; margin: 0 auto; color: #000; }
-            table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-            th, td { padding: 6px 2px; text-align: left; border-bottom: 1px solid #ddd; font-size: 12px; }
-            th { font-size: 11px; border-bottom: 2px solid black; font-weight: bold; }
+            body { 
+                font-family: ${fontFamily}; 
+                font-size: ${fontSize}; 
+                padding: 0 5px; width: 80mm; margin: 0 auto; color: #000; line-height: 1.3;
+            }
+            table { width: 100%; border-collapse: collapse; margin: 5px 0; }
+            th, td { padding: 4px 0; text-align: left; border-bottom: 1px solid #ddd; }
+            th { border-bottom: 1px solid black; font-weight: bold; font-size: 0.9em; }
             td:last-child, th:last-child { text-align: right; }
-            .preview-header { text-align: center; margin-bottom: 10px; }
-            .preview-header h2 { margin: 5px 0; font-size: 18px; text-transform: uppercase; }
-            .info-Salon { font-size: 12px; margin-top: 5px; }
-            .QR-Banking { margin-top: 15px; border: 2px solid #000; padding: 5px; display: flex; align-items: center; gap: 10px; border-radius: 8px; }
-            .QR-Banking img { width: 80px; height: 80px; display: block; }
-            .Banking { text-align: left; flex: 1; border-left: 1px dashed #000; padding-left: 10px; }
-            .Banking p { margin: 0; font-size: 10px; font-weight: bold; }
-            .Banking h1 { margin: 2px 0; font-size: 18px; letter-spacing: 1px; }
-            .total { font-weight: bold; font-size: 16px; margin-top: 5px; border-top: 1px solid #000; padding-top: 5px; }
+            .info-Salon p { font-size: 1.3em; font-weight: bold}
+            .preview-header { text-align: center; margin-bottom: 5px; }
+            .preview-header h2 { margin: 5px 0; font-size: 1.4em; text-transform: uppercase; }
+            
+            .info-Salon { margin-top: 5px; font-size: 0.9em; }
+            .bill-info p { margin: 2px 0; font-size: 1.2em; font-weight: 500}
+
+            .QR-Banking { 
+                margin-top: 10px; border: 1px solid #000; padding: 5px; 
+                display: flex; align-items: center; gap: 8px; border-radius: 6px; 
+            }
+            .QR-Banking img { width: 70px; height: 70px; display: block; object-fit: contain; }
+            .Banking { text-align: left; flex: 1; border-left: 1px dashed #ddd; padding-left: 8px; overflow: hidden; }
+            .Banking p { margin: 0; font-size: 0.85em; white-space: nowrap; }
+            .Banking h1 { margin: 2px 0; font-size: 1.8em; letter-spacing: 1px; font-weight: bold; }
+            .Banking h2 { margin: 2px 0; font-size: 1.2em; letter-spacing: 1px; font-weight: bold; }
+
+            .total { font-weight: bold; font-size: 1.3em; margin-top: 5px; border-top: 1px solid #000; padding-top: 5px; }
+            .note-box { margin-top: 5px; border: 1px dashed #000; padding: 3px; font-weight: bold; font-size: 0.9em; }
         </style>
     </head>
     <body>
         <div class="preview-header">
-            ${logo ? `<img src="${logo}" style="width: 100px; display: block; margin: 0 auto 5px auto;">` : ''}
+        <br>
+            ${logoSrc ? `<img src="${logoSrc}" style="width: ${logoSize}%; max-width: 100%; display: block; margin: 0 auto 5px auto;">` : ''}
+            
             <h2>${shopName}</h2>
             <div class="info-Salon">
                 <p><i class="fa-solid fa-location-dot"></i> ${address}</p>
@@ -2702,55 +2709,58 @@ window.updateBasicTemplate = () => {
                     <p><i class="fa-solid fa-phone"></i> ${phone}</p>
                 </div>
             </div>
-            <h3 style="border-top:1px dashed #000; padding-top:10px; margin:5px 0; font-size:14px;">HOÁ ĐƠN THANH TOÁN</h3>
+            <h3 style="border-top:1px dashed #000; padding-top:10px; margin:10px 0; font-size:1.6em;">HOÁ ĐƠN THANH TOÁN</h3>
         </div>
         
-        <div style="font-size:12px; margin-bottom:10px;">
-            <p style="margin:2px 0">Mã đơn: {{orderId}}</p>
-            <p style="margin:2px 0">Ngày: {{date}} {{time}}</p>
-            <p style="margin:2px 0">Thu ngân: {{cashier}}</p>
-            <p style="margin:2px 0">Khách: {{customer}}</p>
-            <p style="margin:2px 0">Thanh toán: {{paymentMethod}}</p>
+        <div class="bill-info">
+            <p>Mã đơn: {{orderId}}</p>
+            <p>Ngày: {{date}} {{time}}</p>
+            <p>Khách: {{customer}}</p>
+            <p>Thu ngân: {{cashier}}</p>
+            <p>{{paymentMethod}}</p>
 
-        </div>
+            </div>
 
         <table>
-            <thead><tr><th style="width:20px">#</th><th>Dịch vụ</th><th style="text-align:center">SL</th><th style="text-align:right">Đơn giá</th><th style="text-align:right">Tiền</th></tr></thead>
+            <thead><tr><th style="width:15px">#</th><th>Dịch vụ</th><th style="text-align:center">SL</th><th style="text-align:right">Giá</th><th style="text-align:right">Tiền</th></tr></thead>
             <tbody>{{items}}</tbody>
         </table>
 
-        <div style="text-align:right; font-size:12px; margin-top:10px;">
-            <p style="margin:2px 0">Tạm tính: {{subtotal}}</p>
-            <p style="margin:2px 0">Chiết khấu: {{discount}}</p>
+        <div style="text-align:right; margin-top:5px;">
+            <p>Tạm tính: {{subtotal}}</p>
+            <p>Chiết khấu: {{discount}}</p>
             {{voucherDetails}}
-            <p class="total">TỔNG TIỀN: {{total}}</p>
+            <p class="total">TỔNG: {{total}}</p>
         </div>
 
         {{noteSection}}
 
+        ${qrSrc ? `
         <div class="QR-Banking">
             <div class="QR">
-                <img src="${qrSource}" alt="QR Thanh Toán" style="width: 80px; height: 80px; display: block;">
+                <img src="${qrSrc}" alt="QR">
             </div>
             <div class="Banking">
-                <p style="text-transform:uppercase;">${bankName} - ${bankOwner}</p>
+                <h2>${bankName} - ${bankOwner}</h2>
                 <h1>${bankNum}</h1>
-                <p style="font-size:9px; font-weight:normal; font-style:italic; margin-top:2px">Quý khách vui lòng kiểm tra lại thông tin trước khi chuyển khoản.</p>
+                <p style="font-size:0.8em; font-style:italic; margin-top:2px; white-space:normal;">*Vui lòng kiểm tra tên tài khoản & số tiền trước khi chuyển</p>
             </div>
         </div>
+        ` : ''}
 
-        <div style="text-align:center; margin-top:15px; font-size:12px;">
-            <p>${footer}</p>
-            <p style="font-size:10px; font-style:italic; color:#555; margin-top:5px;">Powered by Đinh Mạnh Hùng</p>
+        <div style="text-align:center; margin-top:15px;">
+            <p style="font-weight:bold">${footer}</p>
+            <p style="font-size:0.7em; font-style:italic; color:#555; margin-top:5px;">Powered by Đinh Mạnh Hùng</p>
         </div>
     </body>
     </html>
     `;
 
-    // 4. Đổ vào Editor và Preview
+    // 3. Đổ vào Editor và Preview
     document.getElementById('print-code-editor').value = html;
     updatePreview();
 };
+
 // ============================================================
 // --- BỔ SUNG: LOGIC MÁY CHỦ IN (CLOUD PRINTING) ---
 // ============================================================
@@ -2861,6 +2871,27 @@ function startPrintListener() {
     });
 }
 
+
+// --- AUTO PRINT POPUP CONFIG ---
+
+// Hàm bật/tắt (Lưu vào localStorage của máy)
+window.toggleAutoPrintPopup = (isChecked) => {
+    localStorage.setItem('pos_use_popup_print', isChecked);
+    const status = isChecked ? "Bật (Cửa sổ mới)" : "Tắt (Iframe ẩn)";
+    showToast(`🖨️ Chế độ in: ${status}`);
+};
+
+// Cập nhật hàm initPrintSettings cũ để load trạng thái nút này
+const originalInit = window.initPrintSettings;
+window.initPrintSettings = () => {
+    if(originalInit) originalInit(); // Gọi logic cũ (load template...)
+    
+    // Logic mới: Load trạng thái nút toggle
+    const toggle = document.getElementById('cfg-auto-print-popup');
+    if(toggle) {
+        toggle.checked = localStorage.getItem('pos_use_popup_print') === 'true';
+    }
+};
 // 4. UI Helper
 function updateServerUI(isActive) {
     const setupDiv = document.getElementById('print-server-setup');
@@ -3124,7 +3155,7 @@ const TEMPLATE_K80 = `
     </div>
     <div class="bill-footer">
         <p>Cảm ơn quý khách ❤️</p>
-        <p class="Hunq">Powered by Đinh Mạnh Hùng</p>
+        <p style="font-size:10px; font-style:italic; color:#555; margin-top:5px;">Powered by Đinh Mạnh Hùng</p>
     </div>
 </body>
 
@@ -3216,20 +3247,22 @@ window.resetTemplate = () => {
 };
 
 window.savePrintSettings = async () => {
-    // 1. Kiểm tra quyền
     if (userRole !== 'admin') return showToast("Chỉ Admin được sửa cấu hình!", true);
     if (!currentBranchId) return showToast("Vui lòng chọn chi nhánh trước!", true);
 
-    // 2. Lấy dữ liệu từ Editor
+    // KIỂM TRA CHẾ ĐỘ HIỆN TẠI
+    // Nếu đang mở panel Basic (không có class hidden), thì phải cập nhật Code từ Form vào Textarea trước khi lưu
+    const basicPanel = document.getElementById('config-basic-panel');
+    if (!basicPanel.classList.contains('hidden')) {
+        updateBasicTemplate(); // <--- BƯỚC QUAN TRỌNG: Compile Form -> HTML Code
+    }
+
     const code = document.getElementById('print-code-editor').value;
     const type = document.getElementById('print-template-select').value;
 
-    // 3. Tạo object config
     const config = { type, code };
 
     try {
-        // 4. Lưu vào Firestore (Collection 'branches', Document ID = currentBranchId)
-        // Dùng set với merge: true để không làm mất tên chi nhánh
         await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'branches', currentBranchId), {
             printConfig: config,
             updatedAt: serverTimestamp()
@@ -3237,7 +3270,6 @@ window.savePrintSettings = async () => {
 
         showToast(`✅ Đã lưu mẫu in cho chi nhánh hiện tại!`);
 
-        // Cập nhật lại biến branches cục bộ để không cần reload trang
         const currentBranch = branches.find(b => b.id === currentBranchId);
         if (currentBranch) currentBranch.printConfig = config;
 
@@ -3259,7 +3291,7 @@ window.updatePreview = () => {
     const currentType = select.value;
 
     if (currentType === 'k58') container.style.width = '58mm';
-    else container.style.width = '80mm';
+    else container.style.width = '100mm'; container.style.height = '100vh';
 
     // MOCK DATA ĐỂ PREVIEW
     const mockData = {
