@@ -2724,7 +2724,7 @@ window.printReceiptData = (order) => {
 
     let noteHtml = '';
     if (order.note && order.note.trim() !== '') {
-        noteHtml = `<div class="note-box" style="margin-top: 10px; border: 1px dashed #000; padding: 5px; font-size: 12px; text-align: left;"><strong>Ghi chú:</strong> ${order.note}</div>`;
+        noteHtml = `<div class="note-box" style="margin-top: 10px; padding: 5px; font-size: 12px; text-align: left;"><strong>Ghi chú:</strong> ${order.note}</div>`;
     }
 
     // --- D. MAP DATA ---
