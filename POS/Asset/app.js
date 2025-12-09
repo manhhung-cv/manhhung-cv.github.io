@@ -2941,7 +2941,7 @@ window.updateBasicTemplate = () => {
                 <img src="${qrSrc}" alt="QR">
             </div>
             <div class="Banking">
-                <h2>${bankName} - ${bankOwner}</h2>
+                <h2>${bankName} <br> ${bankOwner}</h2>
                 <h1>${bankNum}</h1>
                 <p style="font-size:0.8em; font-style:italic; margin-top:2px; white-space:normal;">*Vui lòng kiểm tra tên tài khoản & số tiền trước khi chuyển</p>
             </div>
