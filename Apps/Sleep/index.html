@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" href="/Asset/logo/iconApps.png" />
+    <link rel="apple-touch-icon" href="/Asset/logo/iconApps.png" sizes="150x150" />
+
+    <meta property="og:image" content="/Asset/img/Banner.png" />
+    <meta property="og:title" content="HunqPOS" />
+    <meta property="og:description" content="Thiết kế và lập trình Đinh Mạnh Hùng" />
+    <title>Giấc Ngủ Ngon</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap');
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            overflow-x: hidden;
+            background-color: #0f172a;
+            color: white;
+            transition: background-color 1s ease;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
+
+        /* Background Layers */
+        #videoBg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        
+        #bgCanvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            filter: blur(60px) contrast(1.2); 
+            transform: scale(1.1);
+            transition: opacity 1s ease;
+        }
+        
+        #particleCanvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(20, 20, 30, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+        }
+
+        .tab-active { border-bottom: 2px solid #a78bfa; color: #a78bfa; }
+
+        /* Controls */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 14px; width: 14px;
+            border-radius: 50%; background: #ffffff; cursor: pointer;
+            margin-top: -5px; box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer;
+            background: rgba(255,255,255,0.2); border-radius: 2px;
+        }
+
+        /* Zen Fonts & Widgets */
+        .zen-clock { font-family: 'Share Tech Mono', monospace; text-shadow: 0 0 20px rgba(255,255,255,0.3); }
+        .ui-hidden { opacity: 0; pointer-events: none; transform: scale(0.98); }
+        .fade-transition { transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), transform 0.6s ease; }
+        
+        /* Input Styling */
+        .input-dark {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.2s;
+        }
+        .input-dark:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(167, 139, 250, 0.5);
+            outline: none;
+        }
+
+    </style>
+</head>
+<body class="min-h-screen flex flex-col relative">
+
+    <!-- Backgrounds -->
+    <video id="videoBg" loop muted playsinline></video>
+    <canvas id="bgCanvas"></canvas> 
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- ZEN MODE OVERLAY -->
+    <div id="zenContainer" class="fixed inset-0 flex flex-col items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-1000 p-8">
+        
+        <!-- Zen Widgets Area -->
+        <div class="flex flex-col items-center justify-between h-full w-full max-w-4xl py-12">
+            
+            <!-- Top Widget: Weather & Date -->
+            <div id="zenTopWidget" class="text-center space-y-2 opacity-80">
+                <div id="zenWeather" class="hidden flex items-center justify-center gap-2 text-lg font-light">
+                    <i data-lucide="cloud-moon" class="w-6 h-6"></i>
+                    <span>24°C • Thoáng đãng</span>
+                </div>
+                <div id="zenDate" class="hidden text-xl tracking-widest font-light text-purple-200">...</div>
+            </div>
+
+            <!-- Center Widget: Clock -->
+            <div id="zenClockWidget" class="text-center">
+                <div id="digitalClock" class="zen-clock text-7xl md:text-9xl font-thin tracking-widest text-white/95">00:00</div>
+                <div id="zenQuote" class="hidden mt-6 text-lg md:text-xl italic font-light text-white/60 max-w-2xl mx-auto">
+                    "Hơi thở là chiếc neo giữ tâm trí bạn ở lại hiện tại."
+                </div>
+            </div>
+
+            <!-- Bottom Widget: Now Playing -->
+            <div id="zenBottomWidget" class="text-center space-y-4">
+                <div id="zenNowPlaying" class="hidden glass-panel px-6 py-3 inline-flex items-center gap-3">
+                    <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+                    <span id="nowPlayingText" class="text-sm font-medium tracking-wide">Đang phát: Mưa Rào + Lửa Trại</span>
+                </div>
+                <p class="text-xs text-white/20 animate-pulse mt-4">Chạm vào màn hình để mở giao diện</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settingsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-overlay opacity-0 transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-md p-6 m-4 transform scale-95 transition-transform duration-300 relative" id="settingsContent">
+            <button onclick="toggleSettings()" class="absolute top-4 right-4 text-gray-400 hover:text-white"><i data-lucide="x"></i></button>
+            
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2"><i data-lucide="settings"></i> Cài Đặt</h2>
+
+            <div class="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+                
+                <!-- 1. Sleep Timer (Manual Input) -->
+                <div>
+                    <h3 class="text-sm font-bold text-purple-300 uppercase tracking-wider mb-3">Hẹn Giờ Tắt (Phút)</h3>
+                    <div class="flex gap-2 items-center">
+                        <input type="number" id="timerInput" placeholder="VD: 30" min="1" class="input-dark w-full rounded-lg p-2.5 text-center">
+                        <button onclick="setManualTimer()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-lg whitespace-nowrap font-medium transition-colors">Bắt đầu</button>
+                        <button onclick="cancelTimer()" class="bg-red-500/20 hover:bg-red-500/30 text-red-200 px-3 py-2.5 rounded-lg transition-colors" title="Huỷ hẹn giờ"><i data-lucide="x-circle" class="w-5 h-5"></i></button>
+                    </div>
+                    <p id="timerStatus" class="text-xs text-purple-200 mt-2 text-center h-4 font-medium"></p>
+                </div>
+
+                <!-- 2. Zen Mode Customization -->
+                <div>
+                    <h3 class="text-sm font-bold text-blue-300 uppercase tracking-wider mb-3">Tuỳ Biến Zen Mode</h3>
+                    <div class="space-y-3">
+                        <label class="flex items-center justify-between p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10">
+                            <span class="text-sm">Hiển thị Đồng hồ</span>
+                            <input type="checkbox" id="optClock" checked class="accent-purple-500 w-4 h-4" onchange="updateZenConfig()">
+                        </label>
+                        <label class="flex items-center justify-between p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10">
+                            <span class="text-sm">Hiển thị Ngày tháng</span>
+                            <input type="checkbox" id="optDate" checked class="accent-purple-500 w-4 h-4" onchange="updateZenConfig()">
+                        </label>
+                        <label class="flex items-center justify-between p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10">
+                            <span class="text-sm">Widget Thời tiết (Demo)</span>
+                            <input type="checkbox" id="optWeather" class="accent-purple-500 w-4 h-4" onchange="updateZenConfig()">
+                        </label>
+                        <label class="flex items-center justify-between p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10">
+                            <span class="text-sm">Câu nói truyền cảm hứng</span>
+                            <input type="checkbox" id="optQuote" checked class="accent-purple-500 w-4 h-4" onchange="updateZenConfig()">
+                        </label>
+                        <label class="flex items-center justify-between p-3 rounded-lg bg-white/5 cursor-pointer hover:bg-white/10">
+                            <span class="text-sm">Thông tin Âm thanh</span>
+                            <input type="checkbox" id="optNowPlaying" class="accent-purple-500 w-4 h-4" onchange="updateZenConfig()">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 3. Personal Media (URL Input) -->
+                <div>
+                    <h3 class="text-sm font-bold text-green-300 uppercase tracking-wider mb-3">Thêm Nhạc/Video Từ URL</h3>
+                    <div class="bg-white/5 p-4 rounded-xl border border-white/10 space-y-4">
+                        <div class="text-xs text-gray-400 mb-1">Dán liên kết trực tiếp (.mp3, .mp4,...)</div>
+                        <input type="text" id="mediaUrlInput" placeholder="https://example.com/music.mp3" class="input-dark w-full rounded-lg p-3 text-sm">
+                        
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-4 bg-black/20 px-3 py-1.5 rounded-lg">
+                                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                    <input type="radio" name="mediaType" value="audio" checked class="accent-green-500 w-4 h-4"> Audio
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                                    <input type="radio" name="mediaType" value="video" class="accent-green-500 w-4 h-4"> Video
+                                </label>
+                            </div>
+                            <button onclick="loadMediaFromUrl()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-1.5 rounded-lg text-sm font-medium transition-colors">Phát</button>
+                        </div>
+                        
+                        <!-- Custom Player Control -->
+                        <div id="customPlayer" class="hidden space-y-2 pt-3 border-t border-white/10">
+                            <div class="flex justify-between items-center">
+                                <span id="customFileName" class="text-xs font-medium truncate max-w-[200px] text-green-300">Media URL</span>
+                                <button onclick="removeCustomMedia()" class="text-xs text-red-400 hover:text-red-300">Xoá</button>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button id="customPlayBtn" onclick="toggleCustomMedia()" class="p-2 rounded-full bg-green-600 hover:bg-green-500 text-white">
+                                    <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                                </button>
+                                <input type="range" id="customVolume" min="0" max="1" step="0.01" value="0.8" class="flex-1 h-1 bg-gray-600 rounded-lg">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN UI -->
+    <div id="mainUI" class="flex-grow flex flex-col fade-transition z-10 w-full h-full">
+        <!-- Header -->
+        <header class="p-6 text-center">
+            <div class="flex justify-between items-start max-w-6xl mx-auto w-full relative">
+                <!-- Settings Button -->
+                <button onclick="toggleSettings()" class="flex flex-col items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition-all text-gray-300 hover:text-white" title="Cài đặt & Hẹn giờ">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                </button>
+
+                <div class="flex flex-col items-center">
+                    <div class="flex justify-center items-center gap-3 mb-2">
+                        <i data-lucide="moon" class="w-8 h-8 text-purple-300"></i>
+                        <h1 class="text-3xl font-bold tracking-wide">Giấc Ngủ Ngon</h1>
+                    </div>
+                </div>
+
+                <!-- Zen Mode Button -->
+                <button onclick="toggleZenMode()" class="group relative flex flex-col items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 transition-all" title="Chế độ tập trung">
+                    <i data-lucide="eye-off" class="w-5 h-5 text-gray-300 group-hover:text-white"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 pb-20 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Left Column: Sleep Calculator -->
+            <section class="glass-panel p-6 h-fit">
+                <div class="flex items-center gap-2 mb-6 border-b border-gray-700 pb-2">
+                    <i data-lucide="clock" class="text-purple-400"></i>
+                    <h2 class="text-xl font-semibold">Tính Giờ Ngủ</h2>
+                </div>
+                <div class="flex mb-6 text-sm">
+                    <button onclick="switchTab('wakeUp')" id="btn-wakeUp" class="flex-1 pb-2 text-center tab-active transition-colors">Muốn Dậy Lúc...</button>
+                    <button onclick="switchTab('sleepNow')" id="btn-sleepNow" class="flex-1 pb-2 text-center text-gray-400 hover:text-white transition-colors">Ngủ Bây Giờ</button>
+                </div>
+                <div id="tab-wakeUp" class="space-y-4">
+                    <label class="block text-sm text-gray-300">Bạn muốn thức dậy lúc mấy giờ?</label>
+                    <div class="flex gap-2">
+                        <input type="time" id="wakeTimeInput" class="input-dark rounded-lg p-3 w-full focus:border-purple-500">
+                        <button onclick="calculateSleep('wake')" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-all">Tính</button>
+                    </div>
+                </div>
+                <div id="tab-sleepNow" class="hidden space-y-4">
+                    <p class="text-sm text-gray-300">Nếu bạn đi ngủ ngay bây giờ (cộng thêm 14 phút để chìm vào giấc ngủ), bạn nên dậy lúc:</p>
+                    <button onclick="calculateSleep('now')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-all">Xem giờ dậy tốt nhất</button>
+                </div>
+                <div id="sleepResult" class="mt-6 hidden animate-fade-in">
+                    <p class="text-sm text-gray-400 mb-2">Gợi ý giờ đi ngủ / thức dậy:</p>
+                    <div id="timesList" class="grid grid-cols-2 gap-3 mb-4"></div>
+                    <div class="bg-blue-900/30 p-4 rounded-lg border border-blue-500/20 mt-4">
+                        <p class="text-xs text-gray-300 leading-relaxed"><strong class="text-blue-300">Mẹo:</strong> Một chu kỳ ngủ ~90 phút. Hãy dậy vào cuối chu kỳ để tỉnh táo nhất.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Column: Sound Mixer -->
+            <div class="space-y-6">
+                <!-- Mixer Controls -->
+                <section class="glass-panel p-6">
+                    <div class="flex items-center justify-between mb-6 border-b border-gray-700 pb-2">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="sliders" class="text-pink-400"></i>
+                            <h2 class="text-xl font-semibold">Phối Âm Thanh</h2>
+                        </div>
+                        <button onclick="stopAllSounds()" class="text-xs bg-red-500/20 hover:bg-red-500/40 text-red-200 px-3 py-1 rounded-full transition-colors">Dừng tất cả</button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="soundGrid"></div>
+                </section>
+
+                <!-- Story Mode -->
+                <section class="glass-panel p-6 relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-r from-amber-900/40 to-purple-900/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i data-lucide="book-open" class="text-amber-400"></i>
+                            <h2 class="text-xl font-semibold">Kể Chuyện</h2>
+                        </div>
+                        <div class="flex items-center justify-between bg-black/20 p-4 rounded-xl">
+                            <div>
+                                <h3 class="font-medium">Chuyến Tàu Đêm</h3>
+                                <p class="text-xs text-gray-400">Giọng đọc nhẹ nhàng</p>
+                            </div>
+                            <button id="storyBtn" onclick="toggleStory()" class="w-10 h-10 rounded-full bg-amber-500 hover:bg-amber-600 flex items-center justify-center transition-transform hover:scale-105">
+                                <i data-lucide="play" class="w-5 h-5 fill-white text-white"></i>
+                            </button>
+                        </div>
+                        <div class="mt-3 flex items-center gap-3">
+                             <i data-lucide="volume-2" class="w-4 h-4 text-gray-400"></i>
+                             <input type="range" id="storyVolume" min="0" max="1" step="0.01" value="0.8" class="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Script -->
+    <script>
+        // --- UI & TABS ---
+        function switchTab(tab) {
+            document.getElementById('tab-wakeUp').classList.add('hidden');
+            document.getElementById('tab-sleepNow').classList.add('hidden');
+            document.getElementById('btn-wakeUp').className = 'flex-1 pb-2 text-center text-gray-400 hover:text-white transition-colors';
+            document.getElementById('btn-sleepNow').className = 'flex-1 pb-2 text-center text-gray-400 hover:text-white transition-colors';
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).className = 'flex-1 pb-2 text-center tab-active transition-colors';
+            document.getElementById('sleepResult').classList.add('hidden');
+        }
+
+        // --- SLEEP CALCULATOR ---
+        function calculateSleep(mode) {
+            const resultDiv = document.getElementById('sleepResult');
+            const listDiv = document.getElementById('timesList');
+            listDiv.innerHTML = '';
+            let baseTime = new Date();
+            const cycle = 90; 
+            const fallingAsleepTime = 14; 
+            if (mode === 'wake') {
+                const timeInput = document.getElementById('wakeTimeInput').value;
+                if (!timeInput) return alert('Vui lòng chọn giờ muốn thức dậy');
+                const [hours, minutes] = timeInput.split(':').map(Number);
+                const wakeDate = new Date();
+                wakeDate.setHours(hours, minutes, 0);
+                if (wakeDate < new Date()) wakeDate.setDate(wakeDate.getDate() + 1);
+                [6, 5, 4, 3].forEach(c => addTimeCard(listDiv, new Date(wakeDate.getTime() - (c * cycle * 60000) - (fallingAsleepTime * 60000)), c));
+            } else {
+                const sleepTime = new Date(baseTime.getTime() + (fallingAsleepTime * 60000));
+                [3, 4, 5, 6].forEach(c => addTimeCard(listDiv, new Date(sleepTime.getTime() + (c * cycle * 60000)), c));
+            }
+            resultDiv.classList.remove('hidden');
+        }
+
+        function addTimeCard(container, date, cycles) {
+            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            let colorClass = cycles >= 5 ? "bg-green-900/40 border-green-500/50" : cycles < 4 ? "bg-yellow-900/40 border-yellow-500/50" : "bg-gray-700/50 border-gray-600";
+            container.appendChild(Object.assign(document.createElement('div'), {
+                className: `p-3 rounded-lg border ${colorClass} flex flex-col items-center justify-center text-center`,
+                innerHTML: `<span class="text-2xl font-bold text-white">${timeStr}</span><span class="text-xs text-gray-300 mt-1">${cycles} chu kỳ</span>`
+            }));
+        }
+
+        // --- AUDIO ENGINE ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        class SoundNode {
+            constructor(type, config) {
+                this.type = type; this.config = config;
+                this.gainNode = audioCtx.createGain();
+                this.gainNode.gain.value = 0;
+                this.gainNode.connect(audioCtx.destination);
+                this.isPlaying = false;
+            }
+            play(delay = 0) {
+                if (this.isPlaying) return;
+                if (delay > 0) setTimeout(() => this._start(), delay * 1000); else this._start();
+            }
+            _start() {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                this.source = this._createSource();
+                if(this.source) this.source.connect(this.gainNode);
+                this.isPlaying = true;
+                updateVisualState();
+                updateZenNowPlaying();
+            }
+            stop() {
+                this.gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.5);
+                setTimeout(() => { this.isPlaying = false; this.source = null; updateVisualState(); updateZenNowPlaying(); }, 500);
+            }
+            setVolume(val) { this.gainNode.gain.setTargetAtTime(val, audioCtx.currentTime, 0.1); }
+            _createSource() {
+                const bufferSize = audioCtx.sampleRate * 2; 
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                let lastOut = 0;
+                const isBrown = this.type === 'fire' || this.type === 'stream';
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    data[i] = isBrown ? (lastOut + (0.02 * white)) / 1.02 : white;
+                    lastOut = data[i];
+                    if(isBrown) data[i] *= 3.5;
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer; noise.loop = true; noise.start();
+                
+                if (this.type === 'white_noise') return noise;
+                
+                const filter = audioCtx.createBiquadFilter();
+                if(this.type === 'rain') { filter.type = 'lowpass'; filter.frequency.value = 800; }
+                else if(this.type === 'fire') { filter.type = 'lowpass'; filter.frequency.value = 500; }
+                else if(this.type === 'stream') { filter.type = 'lowpass'; filter.frequency.value = 400; }
+                else if(this.type === 'wind') {
+                    filter.type = 'bandpass'; filter.frequency.value = 400; filter.Q.value = 0.8;
+                    const lfo = audioCtx.createOscillator();
+                    lfo.frequency.value = 0.1;
+                    const lfoGain = audioCtx.createGain(); lfoGain.gain.value = 600;
+                    lfo.connect(lfoGain).connect(filter.frequency); lfo.start();
+                }
+                noise.connect(filter);
+                return filter;
+            }
+        }
+
+        const soundManager = {};
+        const sounds = [
+            { id: 'rain', name: 'Mưa Rào', icon: 'cloud-rain', color: '#3b82f6', type: 'rain' },
+            { id: 'fire', name: 'Lửa Trại', icon: 'flame', color: '#f97316', type: 'fire' },
+            { id: 'wind', name: 'Gió Thổi', icon: 'wind', color: '#a8a29e', type: 'wind' },
+            { id: 'white', name: 'Tiếng Ồn Trắng', icon: 'waves', color: '#e5e7eb', type: 'white_noise' },
+            { id: 'stream', name: 'Suối Chảy', icon: 'droplets', color: '#06b6d4', type: 'stream' },
+        ];
+        
+        // --- RENDER MIXER ---
+        const soundGrid = document.getElementById('soundGrid');
+        sounds.forEach(sound => {
+            soundManager[sound.id] = new SoundNode(sound.type, sound);
+            soundGrid.innerHTML += `
+                <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700 hover:border-gray-500 transition-all">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 rounded-lg bg-gray-700"><i data-lucide="${sound.icon}" style="color: ${sound.color}"></i></div>
+                            <span class="font-medium">${sound.name}</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" class="sr-only peer" onchange="toggleSound('${sound.id}', this)">
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+                    <div class="space-y-3 opacity-50 pointer-events-none transition-opacity" id="controls-${sound.id}">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="volume-2" class="w-3 h-3 text-gray-400"></i>
+                            <input type="range" min="0" max="1" step="0.01" value="0.5" class="w-full" oninput="changeVolume('${sound.id}', this.value)">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="hourglass" class="w-3 h-3 text-gray-400"></i>
+                            <select class="text-xs bg-gray-900 border border-gray-700 rounded px-1 py-1 text-gray-400 w-full outline-none" id="delay-${sound.id}">
+                                <option value="0">Phát ngay</option><option value="5">Chờ 5s</option><option value="30">Chờ 30s</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>`;
+        });
+
+        function toggleSound(id, checkbox) {
+            const controls = document.getElementById(`controls-${id}`);
+            const delay = document.getElementById(`delay-${id}`).value;
+            const volume = controls.querySelector('input[type=range]').value;
+            if (checkbox.checked) {
+                controls.classList.remove('opacity-50', 'pointer-events-none');
+                soundManager[id].setVolume(volume); soundManager[id].play(parseInt(delay));
+            } else {
+                controls.classList.add('opacity-50', 'pointer-events-none');
+                soundManager[id].stop();
+            }
+        }
+        function changeVolume(id, val) { soundManager[id].setVolume(val); }
+
+        // --- STORY & CUSTOM MEDIA ---
+        let isStoryPlaying = false;
+        const storyAudio = new Audio('https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg'); 
+        storyAudio.loop = true;
+
+        // Custom Media Logic
+        let customMediaEl = null;
+        let isCustomPlaying = false;
+
+        function loadMediaFromUrl() {
+            const url = document.getElementById('mediaUrlInput').value.trim();
+            const mediaType = document.querySelector('input[name="mediaType"]:checked').value;
+            
+            if(!url) return alert('Vui lòng nhập URL!');
+
+            // Remove old media if exists
+            if(customMediaEl) { customMediaEl.pause(); }
+
+            if (mediaType === 'video') {
+                // Video replaces background
+                const videoBg = document.getElementById('videoBg');
+                videoBg.src = url;
+                videoBg.style.opacity = '1';
+                document.getElementById('bgCanvas').style.opacity = '0';
+                customMediaEl = videoBg;
+            } else {
+                // Audio is just audio
+                customMediaEl = new Audio(url);
+                customMediaEl.loop = true;
+            }
+
+            // Update UI
+            document.getElementById('customFileName').textContent = "Media từ URL";
+            document.getElementById('customPlayer').classList.remove('hidden');
+            
+            // Auto play attempt
+            toggleCustomMedia();
+        }
+
+        function toggleCustomMedia() {
+            if(!customMediaEl) return;
+            const btn = document.getElementById('customPlayBtn');
+            const vol = document.getElementById('customVolume').value;
+            
+            if(!isCustomPlaying) {
+                customMediaEl.volume = vol;
+                // Promise to catch play errors (common with external URLs)
+                const playPromise = customMediaEl.play();
+                if (playPromise !== undefined) {
+                    playPromise.then(_ => {
+                        btn.innerHTML = '<i data-lucide="pause" class="w-4 h-4 fill-current"></i>';
+                        isCustomPlaying = true;
+                        updateZenNowPlaying();
+                    })
+                    .catch(error => {
+                        console.error("Lỗi phát media:", error);
+                        alert("Không thể phát URL này. Vui lòng kiểm tra định dạng hoặc quyền truy cập.");
+                    });
+                }
+            } else {
+                customMediaEl.pause();
+                btn.innerHTML = '<i data-lucide="play" class="w-4 h-4 fill-current"></i>';
+                isCustomPlaying = false;
+                updateZenNowPlaying();
+            }
+            lucide.createIcons();
+        }
+
+        document.getElementById('customVolume').addEventListener('input', (e) => {
+            if(customMediaEl) customMediaEl.volume = e.target.value;
+        });
+
+        function removeCustomMedia() {
+            if(customMediaEl) {
+                customMediaEl.pause();
+                if(customMediaEl.tagName === 'VIDEO') {
+                    customMediaEl.src = '';
+                    customMediaEl.style.opacity = '0';
+                    document.getElementById('bgCanvas').style.opacity = '1';
+                }
+            }
+            customMediaEl = null;
+            isCustomPlaying = false;
+            document.getElementById('customPlayer').classList.add('hidden');
+            document.getElementById('mediaUrlInput').value = '';
+            updateZenNowPlaying();
+        }
+
+        function toggleStory() {
+            const btn = document.getElementById('storyBtn');
+            if (!isStoryPlaying) {
+                storyAudio.volume = document.getElementById('storyVolume').value; storyAudio.play();
+                btn.innerHTML = '<i data-lucide="pause" class="w-5 h-5 fill-white text-white"></i>';
+                btn.classList.add('scale-110', 'bg-red-500'); btn.classList.remove('bg-amber-500');
+                isStoryPlaying = true;
+            } else {
+                storyAudio.pause();
+                btn.innerHTML = '<i data-lucide="play" class="w-5 h-5 fill-white text-white"></i>';
+                btn.classList.remove('scale-110', 'bg-red-500'); btn.classList.add('bg-amber-500');
+                isStoryPlaying = false;
+            }
+            lucide.createIcons();
+            updateZenNowPlaying();
+        }
+        document.getElementById('storyVolume').addEventListener('input', (e) => storyAudio.volume = e.target.value);
+
+        function stopAllSounds() {
+            // Stop generated
+            Object.keys(soundManager).forEach(key => {
+                const cb = document.querySelector(`input[onchange="toggleSound('${key}', this)"]`);
+                if (cb.checked) { cb.checked = false; toggleSound(key, cb); }
+            });
+            // Stop story
+            if (isStoryPlaying) toggleStory();
+            // Stop custom
+            if (isCustomPlaying) toggleCustomMedia();
+        }
+
+        // --- SLEEP TIMER (MANUAL) ---
+        let timerId = null;
+        let countdownId = null;
+
+        function setManualTimer() {
+            // Clear old stuff
+            cancelTimer();
+
+            const input = document.getElementById('timerInput');
+            const minutes = parseInt(input.value);
+            const statusEl = document.getElementById('timerStatus');
+
+            if (!minutes || minutes <= 0) {
+                statusEl.textContent = "Vui lòng nhập số phút hợp lệ.";
+                return;
+            }
+
+            // Set countdown end time
+            const endTime = Date.now() + minutes * 60000;
+            
+            // Visual countdown
+            statusEl.textContent = `Tắt sau: ${minutes} phút 00 giây`;
+            
+            countdownId = setInterval(() => {
+                const remaining = endTime - Date.now();
+                if(remaining <= 0) {
+                    clearInterval(countdownId);
+                    return;
+                }
+                const m = Math.floor(remaining / 60000);
+                const s = Math.floor((remaining % 60000) / 1000);
+                statusEl.textContent = `Tắt sau: ${m} phút ${s < 10 ? '0'+s : s} giây`;
+            }, 1000);
+
+            // Actual trigger
+            timerId = setTimeout(() => {
+                stopAllSounds();
+                statusEl.textContent = "Đã tắt âm thanh.";
+                clearInterval(countdownId);
+                setTimeout(() => statusEl.textContent = "", 3000);
+            }, minutes * 60000);
+        }
+
+        function cancelTimer() {
+            if(timerId) clearTimeout(timerId);
+            if(countdownId) clearInterval(countdownId);
+            document.getElementById('timerStatus').textContent = "";
+            document.getElementById('timerInput').value = "";
+        }
+
+        // --- SETTINGS & ZEN MODE ---
+        function toggleSettings() {
+            const modal = document.getElementById('settingsModal');
+            const content = document.getElementById('settingsContent');
+            if(modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                // Small delay to allow display:block to apply before opacity transition
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('scale-95');
+                }, 10);
+            } else {
+                modal.classList.add('opacity-0');
+                content.classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+        }
+
+        // Zen Config Logic
+        function updateZenConfig() {
+            const showClock = document.getElementById('optClock').checked;
+            const showDate = document.getElementById('optDate').checked;
+            const showWeather = document.getElementById('optWeather').checked;
+            const showQuote = document.getElementById('optQuote').checked;
+            const showNowPlaying = document.getElementById('optNowPlaying').checked;
+
+            const clockW = document.getElementById('digitalClock');
+            const dateW = document.getElementById('zenDate');
+            const weatherW = document.getElementById('zenWeather');
+            const quoteW = document.getElementById('zenQuote');
+            const playingW = document.getElementById('zenNowPlaying');
+
+            clockW.style.display = showClock ? 'block' : 'none';
+            
+            if(showDate) dateW.classList.remove('hidden'); else dateW.classList.add('hidden');
+            if(showWeather) weatherW.classList.remove('hidden'); else weatherW.classList.add('hidden');
+            if(showQuote) quoteW.classList.remove('hidden'); else quoteW.classList.add('hidden');
+            
+            // Now playing logic checks both checkbox AND if music is playing
+            if(showNowPlaying && (Object.values(soundManager).some(s => s.isPlaying) || isStoryPlaying || isCustomPlaying)) {
+                 playingW.classList.remove('hidden');
+            } else {
+                 playingW.classList.add('hidden');
+            }
+        }
+
+        function updateZenNowPlaying() {
+            // Re-run config check to update visibility
+            updateZenConfig();
+            
+            // Update Text
+            let activeNames = [];
+            if(isCustomPlaying) activeNames.push("Media Cá Nhân");
+            if(isStoryPlaying) activeNames.push("Kể Chuyện");
+            Object.values(soundManager).forEach(s => {
+                if(s.isPlaying) activeNames.push(s.config.name);
+            });
+
+            const textEl = document.getElementById('nowPlayingText');
+            if(activeNames.length > 0) {
+                textEl.textContent = "Đang phát: " + activeNames.join(" + ");
+            } else {
+                textEl.textContent = "Đang tạm dừng";
+            }
+        }
+
+        // --- VISUALIZERS (Lava + Particles) ---
+        const bgCanvas = document.getElementById('bgCanvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        const pCanvas = document.getElementById('particleCanvas');
+        const pCtx = pCanvas.getContext('2d');
+        let width, height, particles = [], lavaBlobs = [], activeColors = [];
+
+        function resize() {
+            width = window.innerWidth; height = window.innerHeight;
+            bgCanvas.width = width; bgCanvas.height = height;
+            pCanvas.width = width; pCanvas.height = height;
+            initParticles(); initLavaBlobs();
+        }
+        window.addEventListener('resize', resize);
+
+        class LavaBlob {
+            constructor(i) { this.i = i; this.init(); }
+            init() {
+                this.r = Math.min(width, height) * (0.4 + Math.random() * 0.4);
+                this.x = Math.random() * width; this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.8; this.vy = (Math.random() - 0.5) * 0.8;
+                this.c = {r:15,g:23,b:42}; this.tc = {r:15,g:23,b:42};
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if(this.x<-this.r/2||this.x>width+this.r/2) this.vx*=-1;
+                if(this.y<-this.r/2||this.y>height+this.r/2) this.vy*=-1;
+                this.tc = activeColors.length ? activeColors[this.i%activeColors.length] : {r:15,g:23,b:42};
+                this.c.r+=(this.tc.r-this.c.r)*0.02; this.c.g+=(this.tc.g-this.c.g)*0.02; this.c.b+=(this.tc.b-this.c.b)*0.02;
+            }
+            draw(ctx) {
+                const g = ctx.createRadialGradient(this.x,this.y,0,this.x,this.y,this.r);
+                g.addColorStop(0,`rgba(${this.c.r},${this.c.g},${this.c.b},0.8)`);
+                g.addColorStop(1,`rgba(${this.c.r},${this.c.g},${this.c.b},0)`);
+                ctx.fillStyle=g; ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fill();
+            }
+        }
+
+        class Particle {
+            constructor() { this.reset(); }
+            reset() {
+                this.x = Math.random() * width; this.y = Math.random() * height;
+                this.size = Math.random() * 2 + 0.5; this.life = Math.random();
+                this.vx = Math.random() * 0.5 - 0.25; this.vy = Math.random() * 0.5 - 0.25;
+            }
+            update(type) {
+                if (type === 'rain') {
+                    this.y += 4 + Math.random(); this.x += 0.2;
+                    if(this.y>height) { this.y=0; this.x=Math.random()*width; }
+                } else if (type === 'fire') {
+                    this.y -= 1 + Math.random(); this.x += (Math.random()-0.5);
+                    if(this.y<0) { this.y=height; this.x=Math.random()*width; }
+                } else {
+                    this.x += this.vx; this.y += this.vy;
+                    if(this.x>width) this.x=0; if(this.x<0) this.x=width;
+                    if(this.y>height) this.y=0; if(this.y<0) this.y=height;
+                }
+            }
+            draw(ctx) {
+                ctx.fillStyle = `rgba(255,255,255,${this.life * 0.3})`;
+                ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill();
+            }
+        }
+
+        function initParticles() { particles = Array(100).fill().map(() => new Particle()); }
+        function initLavaBlobs() { lavaBlobs = Array(6).fill().map((_, i) => new LavaBlob(i)); }
+        function hexToRgb(hex) { const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return r?{r:parseInt(r[1],16),g:parseInt(r[2],16),b:parseInt(r[3],16)}:null; }
+        
+        function updateVisualState() {
+            activeColors = [];
+            Object.values(soundManager).forEach(n => { if(n.isPlaying) activeColors.push(hexToRgb(n.config.color)); });
+        }
+
+        function animate() {
+            // Draw Lava (only if video bg is not active/opaque)
+            // Ideally we check opacity, but saving cycles is better
+            const isVideoActive = customMediaEl && customMediaEl.tagName === 'VIDEO' && !customMediaEl.paused;
+            
+            if(!isVideoActive) {
+                bgCtx.fillStyle = '#0f172a'; bgCtx.fillRect(0, 0, width, height);
+                lavaBlobs.forEach(b => { b.update(); b.draw(bgCtx); });
+            }
+
+            pCtx.clearRect(0, 0, width, height);
+            let moveType = 'normal';
+            Object.values(soundManager).forEach(n => {
+                if(n.isPlaying) { if(n.type==='rain') moveType='rain'; if(n.type==='fire') moveType='fire'; }
+            });
+            particles.forEach(p => { p.update(moveType); p.draw(pCtx); });
+            requestAnimationFrame(animate);
+        }
+
+        // --- ZEN MODE TOGGLE ---
+        let zenMode = false;
+        const mainUI = document.getElementById('mainUI');
+        const zenContainer = document.getElementById('zenContainer');
+
+        function toggleZenMode() {
+            zenMode = !zenMode;
+            if (zenMode) {
+                mainUI.classList.add('ui-hidden');
+                zenContainer.classList.remove('opacity-0', 'pointer-events-none');
+                updateZenConfig(); // Refresh widgets
+                startClock();
+            } else {
+                mainUI.classList.remove('ui-hidden');
+                zenContainer.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+        zenContainer.addEventListener('click', (e) => {
+            // Only exit if clicking the container background, not the widgets themselves
+            if(e.target === zenContainer || e.target.closest('#zenContainer')) {
+                if (zenMode) toggleZenMode();
+            }
+        });
+
+        // --- CLOCK ---
+        function startClock() {
+            updateClock();
+            if (!window.clockInterval) window.clockInterval = setInterval(updateClock, 1000);
+        }
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('vi-VN', {hour12:false});
+            document.getElementById('digitalClock').textContent = timeStr.slice(0,5); // Only HH:MM usually looks cleaner in Zen
+            
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            document.getElementById('zenDate').textContent = now.toLocaleDateString('vi-VN', options);
+        }
+
+        // Init
+        lucide.createIcons();
+        resize();
+        animate();
+    </script>
+</body>
+</html>
