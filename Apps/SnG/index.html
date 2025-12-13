@@ -631,27 +631,6 @@
                             </div>
                         </div>
 
-                        <div
-                            class="flex items-center justify-between bg-black/20 border border-white/10 rounded-xl p-3 mb-4 mt-4">
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-primary">
-                                    <i class="fa-solid fa-gauge-high"></i>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-xs text-white/50 font-bold uppercase">Chế độ tải</span>
-                                    <span class="text-sm font-bold text-white" id="speed-label">Ổn định</span>
-                                </div>
-                            </div>
-
-                            <select id="upload-speed-select" onchange="changeUploadSpeed(this.value)"
-                                class="bg-white/10 text-white text-xs font-bold py-2 px-3 rounded-lg outline-none border border-white/5 focus:border-primary/50 cursor-pointer">
-                                <option value="5242880">🛡️ An toàn (5MB)</option>
-                                <option value="10485760" >⚖️ Ổn định (10MB)</option>
-                                <option value="20971520">🚀 Nhanh (20MB)</option>
-                                <option value="36700160" selected>⚡ Siêu nhanh (35MB) [Có thể lỗi]</option>
-                            </select>
-                        </div>
 
                         <button id="btn-cloud-upload" onclick="processCloudUpload()"
                             class="hidden w-full mt-4 bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/30 transition-all active:scale-95">
@@ -659,12 +638,77 @@
                         </button>
                     </div>
 
-                    <div class="flex items-center justify-between px-2">
-                        <h3 class="text-lg font-bold text-white">Danh sách File</h3>
-                        <button onclick="loadCloudFiles()"
-                            class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-white/70 transition-colors">
-                            <i class="fa-solid fa-rotate mr-1"></i> Làm mới
-                        </button>
+                    <div class="space-y-3 mb-4">
+                        <div class="flex items-center justify-between px-2">
+                            <h3 class="text-lg font-bold text-white">Danh sách File</h3>
+
+                            <div id="bulk-actions" class="hidden items-center gap-2 animate-fade-in-down">
+                                <span id="selected-count" class="text-xs text-white/60 font-medium mr-1">Đã chọn
+                                    0</span>
+                                <button onclick="window.bulkDownload()"
+                                    class="bg-green-500/20 text-green-400 hover:bg-green-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                                    <i class="fa-solid fa-download mr-1"></i> Tải
+                                </button>
+                                <button onclick="window.bulkDelete()"
+                                    class="bg-red-500/20 text-red-400 hover:bg-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                                    <i class="fa-solid fa-trash mr-1"></i> Xóa
+                                </button>
+                            </div>
+
+                            <button onclick="loadCloudFiles()"
+                                class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-white/70 transition-colors"
+                                id="btn-refresh-cloud">
+                                <i class="fa-solid fa-rotate mr-1"></i> Làm mới
+                            </button>
+                        </div>
+
+                        <div class="bg-white/5 border border-white/10 rounded-2xl p-3 flex flex-wrap gap-2">
+                            <div
+                                class="flex items-center justify-center w-10 bg-black/20 rounded-xl border border-white/5">
+                                <input type="checkbox" id="select-all-files" onchange="window.toggleSelectAll(this)"
+                                    class="appearance-none w-5 h-5 border border-white/30 rounded bg-white/10 checked:bg-primary checked:border-primary cursor-pointer transition-all relative 
+                  after:content-['🙉'] after:absolute after:text-white after:text-[10px] after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:opacity-0 checked:after:opacity-100">
+                            </div>
+
+                            <div class="flex-1 relative min-w-[120px]">
+                                <i
+                                    class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-xs"></i>
+                                <input type="text" id="filter-name" placeholder="Tìm tên file..."
+                                    class="w-full bg-black/20 border border-white/5 rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition-colors"
+                                    oninput="window.applyFileFilters()">
+                            </div>
+
+                            <select id="filter-uploader" onchange="window.applyFileFilters()"
+                                class="bg-black/20 border border-white/5 rounded-xl px-2 py-2 text-xs text-white outline-none focus:border-primary/50 max-w-[100px]">
+                                <option value="all">👤 Tất cả</option>
+                            </select>
+
+                            <select id="filter-sort" onchange="window.applyFileFilters()"
+                                class="bg-black/20 border border-white/5 rounded-xl px-2 py-2 text-xs text-white outline-none focus:border-primary/50 max-w-[100px]">
+                                <option value="newest">🕒 Mới nhất</option>
+                                <option value="oldest">🕒 Cũ nhất</option>
+                                <option value="name_asc">🔤 Tên A-Z</option>
+                                <option value="size_desc">💾 Nặng nhất</option>
+                            </select>
+
+                            <div class="flex bg-black/20 rounded-xl p-1 border border-white/5">
+                                <button onclick="window.changeViewMode('list')" id="view-btn-list"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all bg-white/20 text-white"
+                                    title="Danh sách">
+                                    <i class="fa-solid fa-list-ul"></i>
+                                </button>
+                                <button onclick="window.changeViewMode('grid')" id="view-btn-grid"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all"
+                                    title="Lưới">
+                                    <i class="fa-solid fa-border-all"></i>
+                                </button>
+                                <button onclick="window.changeViewMode('gallery')" id="view-btn-gallery"
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all"
+                                    title="Thư viện ảnh">
+                                    <i class="fa-solid fa-images"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="cloud-file-list" class="space-y-3 pb-20">
@@ -888,47 +932,47 @@
         </div>
     </div>
 
-    <div id="chat-actions-modal"
-        class="fixed inset-0 z-[100] hidden flex-col justify-end bg-black/60 backdrop-blur-sm transition-all duration-300"
-        onclick="window.closeChatActions()">
-        <div id="chat-actions-panel"
-            class="bg-[#1c1c1e] rounded-t-[2rem] p-6 pb-10 transform transition-transform duration-300 translate-y-full"
-            onclick="event.stopPropagation()">
-
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-white font-bold text-lg">Tuỳ chọn tin nhắn</h3>
-                <button onclick="window.closeChatActions()"
-                    class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:bg-white/20">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <div class="bg-white/5 p-4 rounded-2xl mb-6 border border-white/5">
-                <p id="chat-preview-text" class="text-white/70 text-sm italic line-clamp-3 break-words">...</p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="window.copyChatMessage()"
-                    class="flex flex-col items-center justify-center gap-2 bg-white/10 hover:bg-white/20 active:scale-95 p-4 rounded-2xl transition-all group">
-                    <i class="fa-regular fa-copy text-2xl text-blue-400 group-hover:scale-110 transition-transform"></i>
-                    <span class="text-white text-sm font-medium">Sao chép</span>
-                </button>
-
-                <button id="btn-delete-chat" onclick="window.deleteChatMessage()"
-                    class="flex flex-col items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 active:scale-95 p-4 rounded-2xl transition-all group">
-                    <i
-                        class="fa-regular fa-trash-can text-2xl text-red-500 group-hover:scale-110 transition-transform"></i>
-                    <span class="text-red-400 text-sm font-medium">Thu hồi</span>
-                </button>
-            </div>
+   <div id="media-view-modal" class="fixed inset-0 z-[200] hidden items-center justify-center bg-black/95 backdrop-blur-xl transition-opacity duration-300">
+    
+    <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 bg-gradient-to-b from-black/80 to-transparent">
+        <span id="gallery-counter" class="text-white/70 text-sm font-mono">1 / 10</span>
+        <div class="flex gap-4">
+             <a id="gallery-download" href="#" class="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-download"></i>
+            </a>
+            <button onclick="closeMediaView()" class="w-10 h-10 rounded-full bg-white/10 hover:bg-red-500/20 text-white hover:text-red-400 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
         </div>
     </div>
+
+    <button class="modal-nav-btn prev" onclick="window.navigateGallery(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+    <button class="modal-nav-btn next" onclick="window.navigateGallery(1)"><i class="fa-solid fa-chevron-right"></i></button>
+
+    <div class="relative w-full h-full flex items-center justify-center p-4" onclick="event.stopPropagation()">
+        
+        <img id="media-view-image" src="" class="hidden max-w-full max-h-[85vh] rounded-lg shadow-2xl object-contain animate-zoom-in">
+        
+        <div id="media-view-video-container" class="hidden w-full max-w-4xl max-h-[85vh] aspect-video bg-black rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] ring-1 ring-white/10">
+            <video id="media-view-video" controls class="w-full h-full object-contain">
+                <source src="" type="video/mp4">
+            </video>
+        </div>
+
+        <div id="media-view-audio" class="hidden custom-audio-player">
+            <div class="custom-audio-cover"></div>
+            <h3 id="audio-title" class="text-white font-bold text-lg mb-1 truncate">Unknown Track</h3>
+            <p class="text-white/50 text-xs mb-6">Audio Preview</p>
+            <audio id="audio-element" controls class="w-full"></audio>
+        </div>
+    </div>
+</div>
 
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script type="module" src="./app.js"></script>
 
     <script>

@@ -3,96 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống Quản lý File</title>
+    <title>Hệ thống Quản lý File Pro (Multi-Upload)</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <style>
-        :root { --primary: #007bff; --bg: #f4f6f8; --danger: #dc3545; --success: #28a745; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); display: flex; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; background: #f0f2f5; }
+        .hidden { display: none !important; }
         
-        .container { width: 100%; max-width: 480px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); height: fit-content; }
-        h2 { text-align: center; color: #333; margin-top: 0; }
+        /* Login Form Styles */
+        .login-container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); max-width: 400px; margin: 50px auto; text-align: center; }
+        .input-group { margin-bottom: 15px; }
+        input[type="email"], input[type="password"], input[type="text"] { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+        
+        /* Buttons */
+        .btn { padding: 10px 20px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; transition: 0.2s; color: white; }
+        .btn-primary { background: #007bff; width: 100%; margin-bottom: 10px; }
+        .btn-google { background: #db4437; width: 100%; }
+        .btn-logout { background: #6c757d; float: right; }
+        .btn-upload { background: #28a745; }
+        
+        /* Main App Styles */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .upload-section { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        
+        /* File List Styles */
+        .file-item { background: white; padding: 15px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); transition: 0.2s; }
+        .file-item:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        
+        .file-left { display: flex; align-items: center; gap: 15px; flex-grow: 1; }
+        .file-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; }
+        .file-details h4 { margin: 0 0 5px 0; font-size: 16px; color: #333; }
+        .file-details span { font-size: 12px; color: #777; }
+        
+        .action-buttons { display: flex; gap: 8px; }
+        .icon-btn { width: 35px; height: 35px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; }
+        
+        /* Action Button Colors */
+        .btn-copy { background: #17a2b8; }
+        .btn-down { background: #28a745; }
+        .btn-edit { background: #ffc107; color: #333; }
+        .btn-del { background: #dc3545; }
+        .disabled { background: #e9ecef; color: #adb5bd; cursor: not-allowed; }
 
-        /* Form Elements */
-        .form-group { margin-bottom: 15px; }
-        input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        input:focus { outline: none; border-color: var(--primary); }
-        
-        button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 15px; transition: 0.2s; margin-top: 10px; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-secondary { background: #6c757d; color: white; }
-        .btn-danger { background: var(--danger); color: white; width: auto; font-size: 12px; padding: 6px 12px; margin-top: 0;}
-        button:disabled { opacity: 0.6; cursor: wait; }
-
-        /* UI States */
-        #auth-view, #app-view { display: none; }
-        .error { color: var(--danger); font-size: 13px; margin-top: 5px; display: none; text-align: center;}
-        
-        /* App Components */
-        .user-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid #eee; margin-bottom: 20px; }
-        .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background: #fafafa; }
-        
-        /* Progress Bar */
-        .progress-container { margin-top: 15px; display: none; }
-        .progress-bar { width: 100%; background: #e9ecef; border-radius: 4px; overflow: hidden; height: 8px; }
-        .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
-        .progress-text { font-size: 12px; color: #666; text-align: center; margin-top: 5px; display: block; }
-
-        /* File List */
-        .file-list { list-style: none; padding: 0; margin-top: 20px; max-height: 400px; overflow-y: auto; }
-        .file-item { background: white; border: 1px solid #eee; padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .file-info strong { display: block; font-size: 14px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
-        .file-info span { font-size: 11px; color: #888; }
-        .download-btn { text-decoration: none; font-size: 18px; padding: 5px; }
+        #uploadStatus { margin-top: 10px; font-weight: bold; font-size: 14px; }
+        .progress-log { font-size: 12px; color: #666; margin-top: 5px; max-height: 60px; overflow-y: auto; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>File Manager</h2>
-
-    <div id="auth-view">
-        <div class="form-group">
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Mật khẩu (min 6 ký tự)">
+    <div id="loginScreen" class="login-container">
+        <h2>Đăng Nhập</h2>
+        <div class="input-group">
+            <input type="email" id="email" placeholder="Email của bạn">
         </div>
-        <div class="error" id="auth-error"></div>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-primary" onclick="handleAuth('login')">Đăng Nhập</button>
-            <button class="btn-secondary" onclick="handleAuth('register')">Đăng Ký</button>
+        <div class="input-group">
+            <input type="password" id="password" placeholder="Mật khẩu">
         </div>
+        <button class="btn btn-primary" onclick="loginEmail()">Đăng nhập</button>
+        <button class="btn btn-primary" style="background:#6c757d" onclick="registerEmail()">Đăng ký</button>
+        <hr>
+        <button class="btn btn-google" onclick="loginGoogle()"><i class="fab fa-google"></i> Đăng nhập Google</button>
     </div>
 
-    <div id="app-view">
-        <div class="user-header">
-            <span id="user-display">User</span>
-            <button class="btn-danger" onclick="logout()">Thoát</button>
+    <div id="mainApp" class="hidden">
+        <div class="header">
+            <div id="userInfo">Đang tải...</div>
+            <button class="btn btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
         </div>
-
-        <div class="upload-area">
-            <input type="file" id="fileInput" multiple>
-            <div class="progress-container" id="progressBox">
-                <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
-                <span class="progress-text" id="progText">Đang chuẩn bị...</span>
+        
+        <div class="upload-section">
+            <div style="display: flex; gap: 10px;">
+                <input type="file" id="fileInput" multiple style="flex-grow: 1; border: 1px solid #ddd; padding: 8px; border-radius: 4px;">
+                <button class="btn btn-upload" id="uploadBtn" onclick="handleUpload()"><i class="fas fa-cloud-upload-alt"></i> Upload</button>
             </div>
-            <button class="btn-primary" id="btnUpload" onclick="processUpload()">Upload lên Drive</button>
+            <p id="uploadStatus"></p>
+            <div id="progressLog" class="progress-log"></div>
         </div>
 
-        <h3>Danh sách file</h3>
-        <ul class="file-list" id="fileList">
-            </ul>
+        <h3><i class="fas fa-folder-open"></i> Danh sách File</h3>
+        <div id="fileList">Loading...</div>
     </div>
-</div>
 
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-
-<script>
-    // ==========================================
-    // 1. CẤU HÌNH (BẠN PHẢI SỬA PHẦN NÀY)
-    // ==========================================
-    
-    // Config Firebase lấy từ Console
-   const firebaseConfig = {
+    <script>
+        // ===============================================
+        // CẤU HÌNH (THAY THÔNG TIN CỦA BẠN VÀO ĐÂY)
+        // ===============================================
+        const firebaseConfig = {
     apiKey: "AIzaSyBQOcwUdtv1quQ1UWV8oaGY6kIUwITlSos",
     authDomain: "sharengo-hunq.firebaseapp.com",
     projectId: "sharengo-hunq",
@@ -102,210 +102,192 @@
     measurementId: "G-T0XNLVWXYV"
 };
 
-    // URL Web App của Google Apps Script (Lấy từ bước 1)
-    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwzTrQHPhnAqYbrnMVykFHkOMHtTD5-ayftFFo0pbb_0JSAEY1RZz__FgoTQK8cjF0x/exec";
 
-    // Kích thước mỗi miếng cắt (2MB là an toàn nhất cho GAS)
-    const CHUNK_SIZE = 2 * 1024 * 1024; 
+        const BUCKET_NAME = 'SnG'; 
+        // ===============================================
 
-    // ==========================================
-    // 2. KHỞI TẠO HỆ THỐNG
-    // ==========================================
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        let supabase = null;
+        let currentUser = null;
+        let currentUserRole = 'user';
 
-    // Lắng nghe trạng thái đăng nhập
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            showView('app-view');
-            document.getElementById('user-display').innerText = user.email;
-            loadFileData(); // Tải danh sách file
-        } else {
-            showView('auth-view');
-            document.getElementById('fileList').innerHTML = "";
-        }
-    });
-
-    // ==========================================
-    // 3. XỬ LÝ AUTH (LOGIN/REGISTER)
-    // ==========================================
-    function handleAuth(type) {
-        const email = document.getElementById('email').value;
-        const pass = document.getElementById('password').value;
-        const errBox = document.getElementById('auth-error');
-        errBox.style.display = 'none';
-
-        if (!email || !pass) {
-            errBox.innerText = "Vui lòng nhập đủ thông tin.";
-            errBox.style.display = 'block';
-            return;
-        }
-
-        const action = type === 'login' 
-            ? auth.signInWithEmailAndPassword(email, pass)
-            : auth.createUserWithEmailAndPassword(email, pass);
-
-        action.catch(err => {
-            let msg = err.message;
-            if(err.code === 'auth/weak-password') msg = "Mật khẩu quá yếu.";
-            if(err.code === 'auth/email-already-in-use') msg = "Email đã tồn tại.";
-            if(err.code === 'auth/wrong-password') msg = "Sai mật khẩu.";
-            if(err.code === 'auth/user-not-found') msg = "Tài khoản không tồn tại.";
-            errBox.innerText = msg;
-            errBox.style.display = 'block';
+        // --- AUTHENTICATION ---
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                initSystem(user.uid);
+            } else {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('mainApp').classList.add('hidden');
+            }
         });
-    }
 
-    function logout() { auth.signOut(); }
+        function loginGoogle() { auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(err => alert(err.message)); }
+        function loginEmail() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            auth.signInWithEmailAndPassword(email, pass).catch(err => alert("Lỗi: " + err.message));
+        }
+        function registerEmail() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            auth.createUserWithEmailAndPassword(email, pass)
+                .then(() => alert("Đăng ký thành công! Vui lòng nhờ Admin cấp quyền."))
+                .catch(err => alert("Lỗi: " + err.message));
+        }
+        function logout() { auth.signOut().then(() => location.reload()); }
 
-    // ==========================================
-    // 4. LOGIC UPLOAD (QUAN TRỌNG NHẤT)
-    // ==========================================
-    async function processUpload() {
-        const fileInput = document.getElementById('fileInput');
-        const files = fileInput.files;
-        if (files.length === 0) return alert("Chưa chọn file!");
-
-        setLoading(true);
-
-        for (let i = 0; i < files.length; i++) {
+        // --- SYSTEM INIT ---
+        async function initSystem(uid) {
             try {
-                const file = files[i];
-                updateProgress(0, `Đang đọc file ${i+1}/${files.length}: ${file.name}`);
-                
-                // B1: Đọc file thành Base64
-                const base64Full = await readFile(file);
-                const content = base64Full.split(",")[1]; // Bỏ header
-                
-                // B2: Cắt và gửi (Chunk Upload)
-                const url = await uploadChunks(file.name, file.type, content);
-                
-                // B3: Lưu vào Firebase
-                await saveToFirestore(file.name, url);
+                const userDoc = await db.collection('users').doc(uid).get();
+                if (userDoc.exists) {
+                    currentUserRole = userDoc.data().role || 'user';
+                    document.getElementById('userInfo').innerHTML = `Xin chào, <b>${currentUser.email}</b> <span style="background:#eee; padding:2px 6px; border-radius:4px; font-size:12px">${currentUserRole.toUpperCase()}</span>`;
+                } else {
+                    alert("Tài khoản này chưa được cấp quyền truy cập!");
+                    logout();
+                    return;
+                }
 
-            } catch (err) {
-                console.error(err);
-                alert(`Lỗi upload file: ${files[i].name}\nChi tiết: ${err.message}`);
+                const configDoc = await db.collection('config').doc('supabase').get();
+                const sbConfig = configDoc.data();
+                supabase = window.supabase.createClient(sbConfig.url, sbConfig.key);
+                loadFiles();
+
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi hệ thống: " + error.message);
             }
         }
 
-        setLoading(false);
-        updateProgress(100, "Hoàn tất!");
-        setTimeout(() => { document.getElementById('progressBox').style.display = 'none'; }, 2000);
-        fileInput.value = "";
-    }
+        // --- MULTI UPLOAD FUNCTION (THAY ĐỔI CHÍNH) ---
+        async function handleUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files; // Lấy danh sách file (Array)
+            
+            if (files.length === 0) return alert("Chưa chọn file!");
 
-    // Hàm chia nhỏ và gửi request
-    async function uploadChunks(fileName, mimeType, base64Str) {
-        const totalSize = base64Str.length;
-        const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
-        let fileId = null;
+            const btn = document.getElementById('uploadBtn');
+            const status = document.getElementById('uploadStatus');
+            const logDiv = document.getElementById('progressLog');
+            
+            btn.disabled = true;
+            status.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Đang xử lý ${files.length} file...`;
+            logDiv.innerHTML = ""; // Xóa log cũ
 
-        // Step 1: START (Lấy fileId tạm)
-        let resStart = await postToGAS({ act: "start", fileName: fileName });
-        fileId = resStart.fileId;
+            let successCount = 0;
+            let errorCount = 0;
 
-        // Step 2: APPEND (Gửi từng phần)
-        for (let i = 0; i < totalChunks; i++) {
-            const start = i * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, totalSize);
-            const chunk = base64Str.substring(start, end);
+            // Duyệt qua từng file và upload tuần tự
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileNameRaw = Date.now() + "_" + file.name;
 
-            // Tính % hiển thị
-            const percent = Math.round((i / totalChunks) * 100);
-            updateProgress(percent, `Đang upload ${fileName} (${percent}%)`);
+                try {
+                    // Update trạng thái chi tiết
+                    logDiv.innerHTML += `<div>⏳ Đang tải: ${file.name}...</div>`;
+                    
+                    // 1. Upload Supabase
+                    const { error } = await supabase.storage.from(BUCKET_NAME).upload(fileNameRaw, file);
+                    if (error) throw error;
 
-            await postToGAS({ act: "append", fileId: fileId, chunk: chunk });
+                    // 2. Lấy URL
+                    const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(fileNameRaw);
+
+                    // 3. Lưu Firestore
+                    await db.collection('files').add({
+                        fileName: fileNameRaw,
+                        displayName: file.name,
+                        url: publicUrlData.publicUrl,
+                        uid: currentUser.uid,
+                        uploadedBy: currentUser.email,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    successCount++;
+                    // Update log thành công (thay thế dòng cuối)
+                    logDiv.lastElementChild.innerHTML = `<div style="color:green">✔ Xong: ${file.name}</div>`;
+
+                } catch (err) {
+                    errorCount++;
+                    console.error(err);
+                    logDiv.lastElementChild.innerHTML = `<div style="color:red">✖ Lỗi: ${file.name} - ${err.message}</div>`;
+                }
+            }
+
+            // Kết thúc
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload';
+            status.innerHTML = `Hoàn tất! Thành công: <b>${successCount}</b>, Lỗi: <b style="color:red">${errorCount}</b>`;
+            fileInput.value = ""; // Reset input
         }
 
-        // Step 3: FINISH (Ghép file)
-        updateProgress(100, `Đang xử lý server... ${fileName}`);
-        let resFinish = await postToGAS({ 
-            act: "finish", 
-            fileId: fileId, 
-            fileName: fileName, 
-            mimeType: mimeType 
-        });
+        // --- CÁC CHỨC NĂNG KHÁC (GIỮ NGUYÊN) ---
+        function loadFiles() {
+            db.collection('files').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+                const listDiv = document.getElementById('fileList');
+                listDiv.innerHTML = "";
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const id = doc.id;
+                    const isOwner = data.uid === currentUser.uid;
+                    const canEdit = (currentUserRole === 'admin') || isOwner;
 
-        return resFinish.viewUrl;
-    }
-
-    // Hàm gọi API Google Script
-    async function postToGAS(payload) {
-        const res = await fetch(GAS_ENDPOINT, {
-            method: "POST",
-            body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (data.status !== "success") throw new Error(data.message || "Unknown Error");
-        return data;
-    }
-
-    // ==========================================
-    // 5. CÁC HÀM TIỆN ÍCH & FIREBASE DATA
-    // ==========================================
-    
-    // Lưu thông tin file vào Firestore
-    function saveToFirestore(name, url) {
-        const user = auth.currentUser;
-        return db.collection("files").add({
-            uid: user.uid,
-            email: user.email,
-            fileName: name,
-            url: url,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-    }
-
-    // Tải danh sách file realtime
-    function loadFileData() {
-        db.collection("files").orderBy("createdAt", "desc")
-          .onSnapshot(snap => {
-            const list = document.getElementById('fileList');
-            list.innerHTML = "";
-            snap.forEach(doc => {
-                const d = doc.data();
-                const li = document.createElement('li');
-                li.className = 'file-item';
-                li.innerHTML = `
-                    <div class="file-info">
-                        <strong>${d.fileName}</strong>
-                        <span>Upload bởi: ${d.email}</span>
-                    </div>
-                    <a href="${d.url}" class="download-btn" target="_blank">⬇️</a>
-                `;
-                list.appendChild(li);
+                    listDiv.innerHTML += `
+                        <div class="file-item">
+                            <div class="file-left">
+                                <img src="${data.url}" class="file-thumb" onerror="this.src='https://via.placeholder.com/50?text=File'">
+                                <div class="file-details">
+                                    <h4 id="name-${id}">${data.displayName || data.fileName}</h4>
+                                    <span>${data.uploadedBy} • ${new Date(data.createdAt?.toDate()).toLocaleDateString('vi-VN')}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="action-buttons">
+                                <button class="icon-btn btn-copy" onclick="copyLink('${data.url}')" title="Sao chép Link"><i class="fas fa-link"></i></button>
+                                <button class="icon-btn btn-down" onclick="downloadFile('${data.url}', '${data.displayName}')" title="Tải xuống"><i class="fas fa-download"></i></button>
+                                ${canEdit ? `
+                                <button class="icon-btn btn-edit" onclick="renameFile('${id}', '${data.displayName}')" title="Đổi tên"><i class="fas fa-pen"></i></button>
+                                <button class="icon-btn btn-del" onclick="deleteFile('${id}', '${data.fileName}')" title="Xóa"><i class="fas fa-trash"></i></button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
             });
-        });
-    }
+        }
 
-    function readFile(file) {
-        return new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result);
-            r.onerror = reject;
-            r.readAsDataURL(file);
-        });
-    }
-
-    function showView(id) {
-        document.getElementById('auth-view').style.display = 'none';
-        document.getElementById('app-view').style.display = 'none';
-        document.getElementById(id).style.display = 'block';
-    }
-
-    function setLoading(isLoading) {
-        document.getElementById('btnUpload').disabled = isLoading;
-        document.getElementById('fileInput').disabled = isLoading;
-        document.getElementById('progressBox').style.display = isLoading ? 'block' : 'none';
-    }
-
-    function updateProgress(percent, text) {
-        document.getElementById('progFill').style.width = percent + "%";
-        document.getElementById('progText').innerText = text;
-    }
-</script>
-
+        function copyLink(url) { navigator.clipboard.writeText(url).then(() => alert("Đã copy link!")); }
+        async function downloadFile(url, filename) {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl; a.download = filename || "download";
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                window.URL.revokeObjectURL(blobUrl);
+            } catch (err) { window.open(url, '_blank'); }
+        }
+        function renameFile(docId, oldName) {
+            const newName = prompt("Nhập tên mới:", oldName);
+            if (newName && newName !== oldName) {
+                db.collection('files').doc(docId).update({ displayName: newName }).catch(err => alert("Lỗi: " + err.message));
+            }
+        }
+        async function deleteFile(docId, fileName) {
+            if (!confirm("Chắc chắn xóa file này?")) return;
+            try {
+                await db.collection('files').doc(docId).delete();
+                await supabase.storage.from(BUCKET_NAME).remove([fileName]);
+            } catch (err) { alert("Lỗi xóa: " + err.message); }
+        }
+    </script>
 </body>
 </html>

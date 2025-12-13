@@ -66,8 +66,7 @@ function hideLoading() {
 // Cấu hình Playlist Nhạc
 const playlist = [
     { title: "Chill Lofi", artist: "Share&Go", src: "./Music/song1.mp3" },
-    { title: "Nhạc Đi Cà Phê", artist: "Unknown", src: "./Music/song2.mp3" },
-    { title: "Giai Điệu Vui Vẻ", artist: "Relax", src: "./Music/song3.mp3" },
+    { title: "Nhạc Đi Cà Phê", artist: "Unknown", src: "https://pixeldrain.com/api/file/LNdBJs4h" },
 ];
 
 // Trạng thái Island
@@ -1227,53 +1226,58 @@ if (btnGetTime) {
     });
 }
 // setIslandState('alert');
-
 // =================================================================
-// 11. CLOUD STORAGE LOGIC (GOOGLE APPS SCRIPT INTEGRATION)
+// 11. CLOUD STORAGE LOGIC (SUPABASE INTEGRATION)
 // =================================================================
 
-// Cấu hình từ code cũ của bạn
-const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwzTrQHPhnAqYbrnMVykFHkOMHtTD5-ayftFFo0pbb_0JSAEY1RZz__FgoTQK8cjF0x/exec";
-// ==========================================
-// CẤU HÌNH TỐC ĐỘ (SPEED CONFIG)
-// ==========================================
+// CẤU HÌNH BUCKET (Tạo bucket tên 'SnG' trong Supabase của bạn và set policy là Public)
+const BUCKET_NAME = 'SnG'; 
 
-// Mặc định là 10MB (Ổn định)
-let CURRENT_CHUNK_SIZE = 10 * 1024 * 1024;
+let supabase = null;
+// Biến cache để lọc phía Client (tránh query Firestore liên tục)
+let allFilesCache = []; 
+let uniqueUploaders = new Set();
+let selectedFileIds = new Set();
 
-// Hàm đổi tốc độ (Gắn vào window để gọi từ HTML)
-window.changeUploadSpeed = (value) => {
-    CURRENT_CHUNK_SIZE = parseInt(value);
 
-    // Cập nhật Label hiển thị cho đẹp
-    const label = document.getElementById('speed-label');
-    const select = document.getElementById('upload-speed-select');
-    const text = select.options[select.selectedIndex].text;
 
-    // Lấy tên chế độ từ text option (Bỏ icon và dung lượng)
-    // VD: "🚀 Nhanh (20MB)" -> Lấy chữ "Nhanh"
-    if (label) {
-        if (value < 6000000) label.textContent = "An toàn";
-        else if (value < 15000000) label.textContent = "Ổn định";
-        else if (value < 25000000) label.textContent = "Nhanh";
-        else label.textContent = "Siêu nhanh";
+// Hàm khởi tạo Supabase (Gọi hàm này ngay sau khi App khởi động hoặc user đăng nhập)
+async function initSupabase() {
+    if (supabase) return; // Đã init rồi thì thôi
+    
+    try {
+        // Cách 1: Lấy Config từ Firestore (Bảo mật hơn, giống mẫu bạn đưa)
+        // Bạn cần tạo collection 'config', document 'supabase' chứa field 'url' và 'key' trong Firestore
+        const docRef = doc(db, "config", "supabase");
+        const docSnap = await getDoc(docRef);
 
-        // Hiệu ứng màu chữ
-        label.className = "text-sm font-bold transition-colors " +
-            (value > 30000000 ? "text-red-400" : value > 15000000 ? "text-yellow-400" : "text-white");
+        if (docSnap.exists()) {
+            const config = docSnap.data();
+            supabase = window.supabase.createClient(config.url, config.key);
+            console.log("Supabase initialized form Firestore config");
+        } else {
+            console.warn("Không tìm thấy config Supabase trong Firestore!");
+            // Cách 2: Hardcode (Dùng tạm nếu chưa cấu hình Firestore)
+            // supabase = window.supabase.createClient("YOUR_SUPABASE_URL", "YOUR_SUPABASE_KEY");
+        }
+    } catch (error) {
+        console.error("Lỗi init Supabase:", error);
     }
+}
 
-    // Rung phản hồi (nếu trên mobile)
-    if (navigator.vibrate) navigator.vibrate(30);
-};
+// Gọi init ngay khi file chạy (hoặc gọi trong onAuthStateChanged ở phần 6)
+initSupabase();
 
-// ==========================================
-// SỬA LẠI HÀM UPLOAD ĐỂ DÙNG BIẾN MỚI
-// ==========================================
+// --- XỬ LÝ UPLOAD MỚI ---
+
 // Biến trạng thái
 let selectedFiles = [];
+let isUploading = false;
+let currentViewMode = 'list'; // list | grid | gallery
+let filteredFilesCache = []; // Lưu danh sách file ĐANG HIỂN THỊ để gallery biết next/prev
+let currentGalleryIndex = -1; // Index của file đang xem
 
-// Xử lý khi chọn file
+// Xử lý khi chọn file (Giữ nguyên logic cũ để hiển thị số lượng file)
 window.handleFileSelect = (input) => {
     selectedFiles = input.files;
     const btn = document.getElementById('btn-cloud-upload');
@@ -1289,236 +1293,662 @@ window.handleFileSelect = (input) => {
     }
 };
 
-// Biến toàn cục theo dõi trạng thái upload
-let isUploading = false;
+// Hàm xử lý Upload chính (Thay thế hoàn toàn logic GAS cũ)
+// ==========================================
+// UPLOAD VỚI THANH TIẾN TRÌNH THỰC TẾ (SPEED & SIZE)
+// ==========================================
 
 window.processCloudUpload = async () => {
-    // Thêm vào đầu hàm processCloudUpload
-    const cloudUploadArea = document.querySelector('#cloud-tab .bg-glass'); // Div chứa vùng upload
-    if (cloudUploadArea) {
-        cloudUploadArea.classList.add('opacity-50', 'pointer-events-none'); // Làm mờ vùng upload
-    }
-
-
+    if (!supabase) await initSupabase();
     if (!selectedFiles.length) return window.sysAlert("Chưa chọn file!", "error");
     if (!currentUser) return window.sysAlert("Vui lòng đăng nhập!", "error");
-    if (isUploading) return window.sysAlert("Đang có tiến trình tải lên!", "info");
+    if (isUploading) return window.sysAlert("Đang tải lên!", "info");
 
-    // 1. CHUYỂN TRẠNG THÁI ISLAND -> UPLOAD
     isUploading = true;
     setIslandState('upload');
-
-    // Ẩn nút upload trong tab Cloud để tránh bấm lại
-    const btn = document.getElementById('btn-cloud-upload');
-    if (btn) btn.classList.add('hidden');
-
-    // UI Island Elements
+    
     const islandText = document.getElementById('island-upload-text');
     const islandPercent = document.getElementById('island-upload-percent');
     const islandBar = document.getElementById('island-upload-bar');
 
-    // Cấu hình chạy song song (như cũ)
-    const MAX_CONCURRENT = 2; // Giảm xuống 2 để Island đỡ lag animation
-    const filesArray = Array.from(selectedFiles);
-    let completedCount = 0;
+    // Biến tính toán tốc độ tổng
+    let totalBytes = 0;
+    let loadedBytesGlobal = 0;
+    Array.from(selectedFiles).forEach(f => totalBytes += f.size);
+    
+    let startTime = Date.now();
+    let successCount = 0;
 
-    const uploadSingleFile = async (file, index) => {
+    // Helper: Format Bytes
+    const formatSize = (bytes) => {
+        if(bytes === 0) return '0 B';
+        const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    // Upload từng file tuần tự
+    for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        const fileExt = file.name.split('.').pop();
+        const fileNameRaw = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
+
         try {
-            // Đổi text trên Island: "File 1/5..."
-            if (islandText) islandText.textContent = `File ${completedCount + 1}/${filesArray.length}: ${file.name}`;
+            // Upload dùng XHR để bắt sự kiện progress
+            const publicUrl = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                // URL API chuẩn của Supabase Storage
+                // Lưu ý: Cần supabaseUrl và supabaseKey từ biến global supabase
+                const uploadUrl = `${supabase.supabaseUrl}/storage/v1/object/${BUCKET_NAME}/${fileNameRaw}`;
+                
+                xhr.open('POST', uploadUrl);
+                xhr.setRequestHeader('Authorization', `Bearer ${supabase.supabaseKey}`);
+                xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+                xhr.setRequestHeader('x-upsert', 'false');
 
-            const base64Full = await readFileAsBase64(file);
-            const content = base64Full.split(",")[1];
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        // Tính toán hiển thị
+                        const currentFileLoaded = e.loaded;
+                        const totalLoadedNow = loadedBytesGlobal + currentFileLoaded;
+                        const percentTotal = Math.round((totalLoadedNow / totalBytes) * 100);
+                        
+                        // Tính tốc độ (Speed)
+                        const elapsedTime = (Date.now() - startTime) / 1000; // giây
+                        const speed = elapsedTime > 0 ? totalLoadedNow / elapsedTime : 0; // bytes/s
 
-            const url = await uploadChunksToGAS(file.name, file.type, content, (percent) => {
-                // UPDATE PROGRESS TRÊN ISLAND
-                // Tính tổng % trung bình hoặc chỉ hiển thị % của file hiện tại
-                // Ở đây mình hiển thị % của file đang chạy để người dùng thấy nó nhảy
-                if (islandPercent) islandPercent.textContent = `${percent}%`;
-                if (islandBar) islandBar.style.width = `${percent}%`;
+                        // Cập nhật UI Island
+                        islandBar.style.width = `${percentTotal}%`;
+                        islandPercent.textContent = `${percentTotal}%`;
+                        islandText.textContent = `${formatSize(totalLoadedNow)} / ${formatSize(totalBytes)} - ${formatSize(speed)}/s`;
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        loadedBytesGlobal += file.size; // Cộng dồn để tính cho file sau
+                        // Lấy Public URL
+                        const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(fileNameRaw);
+                        resolve(data.publicUrl);
+                    } else {
+                        reject(new Error(xhr.responseText));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error("Network Error"));
+                xhr.send(file);
             });
 
+            // Lưu Metadata vào Firestore
             await addDoc(collection(db, "files"), {
                 uid: currentUser.uid,
                 email: currentUser.email || "Ẩn danh",
                 uploaderName: currentUser.name || "No Name",
                 fileName: file.name,
-                fileSize: (file.size / 1024 / 1024).toFixed(2) + " MB",
-                url: url,
+                storageName: fileNameRaw,
+                fileSize: formatSize(file.size),
+                url: publicUrl,
                 createdAt: serverTimestamp()
             });
 
-            completedCount++;
-            return { status: 'success' };
+            successCount++;
+
         } catch (err) {
-            console.error(err);
-            return { status: 'error' };
+            console.error("Upload error:", err);
+            // Nếu lỗi, vẫn cộng dồn loadedBytes coi như đã qua file này để progress bar không bị giật lùi
+            loadedBytesGlobal += file.size; 
         }
-    };
+    }
 
-    // Chạy vòng lặp
-    for (let i = 0; i < filesArray.length; i += MAX_CONCURRENT) {
-        const chunk = filesArray.slice(i, i + MAX_CONCURRENT);
-        await Promise.all(chunk.map((file, idx) => uploadSingleFile(file, i + idx)));
-    }
-    if (cloudUploadArea) {
-        cloudUploadArea.classList.remove('opacity-50', 'pointer-events-none'); // Sáng lại
-    }
-    // 2. KẾT THÚC -> TRẢ VỀ IDLE & THÔNG BÁO
     isUploading = false;
-    setIslandState('idle'); // Thu gọn Island về mặc định
-
-    // Rung & Thông báo xong
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-    window.sysAlert("Tải lên hoàn tất!", "success");
-
-    // Reset Form
+    setIslandState('idle');
+    window.sysAlert(`Hoàn tất! Thành công: ${successCount}/${selectedFiles.length}`, "success");
     document.getElementById('cloud-file-input').value = "";
-    if (btn) btn.classList.add('hidden'); // Vẫn ẩn nút
-    // Thêm vào cuối hàm (phần Kết thúc)
-
-    // Nếu người dùng đang ở tab Cloud thì reload list
-    // Nếu họ đang ở tab khác thì kệ họ, không cần reload ngay
     loadCloudFiles();
 };
 
+// =========================================================
+// CẬP NHẬT: HÀM TẢI DANH SÁCH FILE (CÓ THUMBNAIL & PREVIEW)
+// =========================================================
 
-// Helper: Đọc file
-const readFileAsBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = reject;
-        r.readAsDataURL(file);
-    });
-};
-
-// Helper: Upload từng mảnh (Chunking)
-// Hàm chia nhỏ file và gửi lên Google Apps Script
-async function uploadChunksToGAS(fileName, mimeType, base64Str, onProgress) {
-    const totalSize = base64Str.length;
-
-    // QUAN TRỌNG: Tính toán số lượng gói tin dựa trên CURRENT_CHUNK_SIZE (biến động)
-    // Thay vì dùng CHUNK_SIZE cố định như trước
-    const totalChunks = Math.ceil(totalSize / CURRENT_CHUNK_SIZE);
-    let fileId = null;
-
-    // --- Step 1: START (Báo cho Server biết bắt đầu upload) ---
-    // Server sẽ trả về một fileId tạm để chúng ta gửi các mảnh tiếp theo vào đó
-    let resStart = await postToGAS({
-        act: "start",
-        fileName: fileName
-    });
-    fileId = resStart.fileId;
-
-    // --- Step 2: APPEND (Cắt nhỏ và gửi từng phần) ---
-    for (let i = 0; i < totalChunks; i++) {
-        // Tính vị trí cắt chuỗi dựa trên kích thước gói tin hiện tại
-        const start = i * CURRENT_CHUNK_SIZE;
-        const end = Math.min(start + CURRENT_CHUNK_SIZE, totalSize);
-
-        // Cắt lấy chuỗi Base64 con (chunk)
-        const chunk = base64Str.substring(start, end);
-
-        // Gửi chunk lên server
-        await postToGAS({
-            act: "append",
-            fileId: fileId,
-            chunk: chunk
-        });
-
-        // Tính toán phần trăm hoàn thành
-        const percent = Math.round(((i + 1) / totalChunks) * 100);
-
-        // Gọi hàm callback để cập nhật thanh tiến trình bên ngoài
-        if (onProgress) onProgress(percent);
-    }
-
-    // --- Step 3: FINISH (Báo Server ghép các mảnh lại thành file hoàn chỉnh) ---
-    let resFinish = await postToGAS({
-        act: "finish",
-        fileId: fileId,
-        fileName: fileName,
-        mimeType: mimeType
-    });
-
-    // Trả về đường dẫn xem file (viewUrl) từ Google Drive
-    return resFinish.viewUrl;
-}
-
-// Helper: Gọi API GAS
-async function postToGAS(payload) {
-    const res = await fetch(GAS_ENDPOINT, {
-        method: "POST",
-        body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.status !== "success") throw new Error(data.message || "Unknown Error");
-    return data;
-}
-
-// Hàm tải danh sách file (Realtime)
+// Hàm tải dữ liệu từ Firestore và lưu vào Cache
 window.loadCloudFiles = () => {
     const list = document.getElementById('cloud-file-list');
     if (!list) return;
 
-    // Query lấy tất cả file, sắp xếp mới nhất (Bạn có thể thêm where uid == ... nếu muốn riêng tư)
+    list.innerHTML = `<p class="text-center text-white/30 italic py-4">Đang đồng bộ dữ liệu...</p>`;
+
+    // Query lấy tất cả file
     const q = query(collection(db, "files"), orderBy("createdAt", "desc"));
 
     onSnapshot(q, (snapshot) => {
-        list.innerHTML = "";
+        allFilesCache = [];
+        uniqueUploaders.clear();
+        selectedFileIds.clear(); // Reset lựa chọn khi data thay đổi
+        window.updateBulkActionUI();
+
         if (snapshot.empty) {
-            list.innerHTML = `<div class="text-center text-white/40 py-8 bg-white/5 rounded-2xl border border-white/5">Chưa có file nào được tải lên.</div>`;
+            list.innerHTML = `<div class="text-center text-white/40 py-8 bg-white/5 rounded-2xl border border-white/5">Chưa có file nào.</div>`;
             return;
         }
 
         snapshot.forEach(doc => {
             const d = doc.data();
-            const date = d.createdAt ? new Date(d.createdAt.seconds * 1000).toLocaleDateString('vi-VN') : 'vừa xong';
-
-            // Xác định icon dựa vào đuôi file (cơ bản)
-            let iconClass = "fa-file";
-            const name = d.fileName.toLowerCase();
-            if (name.endsWith('.jpg') || name.endsWith('.png') || name.endsWith('.jpeg')) iconClass = "fa-file-image text-purple-400";
-            else if (name.endsWith('.pdf')) iconClass = "fa-file-pdf text-red-400";
-            else if (name.endsWith('.xls') || name.endsWith('.xlsx')) iconClass = "fa-file-excel text-green-400";
-            else if (name.endsWith('.doc') || name.endsWith('.docx')) iconClass = "fa-file-word text-blue-400";
-            else if (name.endsWith('.zip') || name.endsWith('.rar')) iconClass = "fa-file-zipper text-yellow-400";
-            else if (name.endsWith('.mp3')) iconClass = "fa-file-audio text-pink-400";
-            else if (name.endsWith('.mp4')|| name.endsWith('.mov') || name.endsWith('.hevc')) iconClass = "fa-file-video text-lime-400";
-
-
-
-            const el = document.createElement("div");
-            el.className = "bg-glass backdrop-blur-md border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:bg-white/10 transition-colors group";
-
-            el.innerHTML = `
-                <div class="flex items-center gap-4 overflow-hidden">
-                    <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-                        <i class="fa-solid ${iconClass} text-xl"></i>
-                    </div>
-                    <div class="min-w-0">
-                        <h4 class="text-sm font-bold text-white truncate pr-2">${d.fileName}</h4>
-                        <div class="flex items-center gap-2 text-[10px] text-white/50">
-                            <span>${d.uploaderName}</span>
-                            <span>•</span>
-                            <span>${d.fileSize || 'N/A'}</span>
-                            <span>•</span>
-                            <span>${date}</span>
-                        </div>
-                    </div>
-                </div>
-                <a href="${d.url}" target="_blank" class="w-10 h-10 rounded-full bg-white/5 hover:bg-primary hover:text-white flex items-center justify-center text-white/60 transition-all shrink-0 active:scale-95 shadow-lg">
-                    <i class="fa-solid fa-download"></i>
-                </a>
-            `;
-            list.appendChild(el);
+            d.id = doc.id; // Lưu ID để thao tác
+            d.timestamp = d.createdAt ? d.createdAt.seconds : 0;
+            // Parse size ra số để sort (VD: "10.5 MB" -> 10.5)
+            d.sizeNum = parseFloat(d.fileSize) || 0; 
+            
+            allFilesCache.push(d);
+            if(d.uploaderName) uniqueUploaders.add(d.uploaderName);
         });
+
+        // Cập nhật Dropdown người đăng
+        const uploaderSelect = document.getElementById('filter-uploader');
+        if (uploaderSelect) {
+            uploaderSelect.innerHTML = '<option value="all">👤 Tất cả</option>';
+            uniqueUploaders.forEach(name => {
+                uploaderSelect.innerHTML += `<option value="${name}">${name}</option>`;
+            });
+        }
+
+        // Gọi hàm render lần đầu
+        window.applyFileFilters();
     });
 };
 
+// Hàm lọc và hiển thị ra màn hình
+// Hàm chuyển chế độ xem
+window.changeViewMode = (mode) => {
+    currentViewMode = mode;
+    // Cập nhật UI nút bấm
+    ['list', 'grid', 'gallery'].forEach(m => {
+        const btn = document.getElementById(`view-btn-${m}`);
+        if(m === mode) btn.className = "w-8 h-8 rounded-lg flex items-center justify-center bg-white/20 text-white transition-all shadow-lg";
+        else btn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all";
+    });
+    window.applyFileFilters(); // Render lại
+};
+
+// Hàm Filter & Render (Cập nhật Logic hiển thị)
+// ==========================================
+// HÀM RENDER ĐÃ SỬA LỖI GALLERY BÉ
+// ==========================================
+
+window.applyFileFilters = () => {
+    const list = document.getElementById('cloud-file-list');
+    const searchTerm = document.getElementById('filter-name')?.value.toLowerCase() || "";
+    const uploaderFilter = document.getElementById('filter-uploader')?.value || "all";
+    const sortType = document.getElementById('filter-sort')?.value || "newest";
+
+    // 1. Lọc dữ liệu
+    filteredFilesCache = allFilesCache.filter(item => {
+        const matchesName = (item.fileName || "").toLowerCase().includes(searchTerm);
+        const matchesUploader = uploaderFilter === "all" || item.uploaderName === uploaderFilter;
+        
+        // Gallery chỉ hiện Media
+        if (currentViewMode === 'gallery') {
+            const name = (item.fileName || "").toLowerCase();
+            const isMedia = name.match(/\.(jpg|png|jpeg|gif|webp|heic|mp4|mov|avi|mkv)$/);
+            return matchesName && matchesUploader && isMedia;
+        }
+        return matchesName && matchesUploader;
+    });
+
+    // 2. Sắp xếp
+    filteredFilesCache.sort((a, b) => {
+        if (sortType === 'newest') return b.timestamp - a.timestamp;
+        if (sortType === 'oldest') return a.timestamp - b.timestamp;
+        if (sortType === 'name_asc') return (a.fileName || "").localeCompare(b.fileName || "");
+        if (sortType === 'size_desc') return b.sizeNum - a.sizeNum;
+        return 0;
+    });
+
+    // 3. Render
+    // Gán class view-gallery nếu đang ở chế độ gallery
+    list.className = currentViewMode === 'grid' ? 'view-grid' : (currentViewMode === 'gallery' ? 'view-gallery' : 'space-y-3 pb-20');
+    list.innerHTML = "";
+
+    if (filteredFilesCache.length === 0) {
+        list.innerHTML = `<p class="text-center text-white/30 italic py-4 col-span-full">Không tìm thấy file phù hợp.</p>`;
+        return;
+    }
+
+    filteredFilesCache.forEach((d, index) => {
+        const isGallery = currentViewMode === 'gallery'; // Biến kiểm tra chế độ
+
+        // Xử lý hiển thị Thumbnail
+        const name = (d.fileName || "").toLowerCase();
+        const isImage = name.match(/\.(jpg|png|jpeg|gif|webp|heic)$/);
+        const isVideo = name.match(/\.(mp4|mov|avi|mkv)$/);
+        const isAudio = name.endsWith('.mp3') || name.endsWith('.wav');
+        
+        let mediaDisplay = '';
+        let iconClass = "fa-file";
+
+        // Logic hiển thị ảnh/video
+        if (isImage) mediaDisplay = `<img src="${d.url}" class="w-full h-full object-cover transition-transform duration-500 group-hover/item:scale-110" loading="lazy">`;
+        else if (isVideo) mediaDisplay = `<video src="${d.url}#t=1.0" class="w-full h-full object-cover transition-transform duration-500 group-hover/item:scale-110" muted preload="metadata"></video>`;
+        else {
+             if (name.endsWith('.pdf')) iconClass = "fa-file-pdf text-red-400";
+             else if (name.match(/\.(xls|xlsx)$/)) iconClass = "fa-file-excel text-green-400";
+             else if (name.match(/\.(doc|docx)$/)) iconClass = "fa-file-word text-blue-400";
+             else if (isAudio) iconClass = "fa-file-audio text-pink-400";
+             
+             // Icon lớn nếu là Grid, Icon nhỏ nếu List
+             const iconSize = currentViewMode === 'grid' ? 'text-4xl' : 'text-xl';
+             mediaDisplay = `<div class="w-full h-full flex items-center justify-center bg-white/5"><i class="fa-solid ${iconClass} ${iconSize}"></i></div>`;
+        }
+
+        // --- QUAN TRỌNG: CẤU HÌNH CLASS CHO CONTAINER ẢNH ---
+        // Nếu là Gallery: Full width/height (w-full h-full), bỏ bo góc (rounded-none hoặc để CSS lo)
+        // Nếu là List/Grid: Kích thước cố định (w-12 h-12 hoặc w-full h-32 cho grid)
+        let thumbContainerClass = "";
+        if (isGallery) {
+            thumbContainerClass = "absolute inset-0 w-full h-full"; // Full lấp đầy ô lưới
+        } else if (currentViewMode === 'grid') {
+            thumbContainerClass = "w-full h-32 rounded-xl border border-white/5 bg-black/20 overflow-hidden mb-2";
+        } else {
+            thumbContainerClass = "w-12 h-12 rounded-xl border border-white/5 bg-white/5 overflow-hidden shrink-0";
+        }
+
+        const isChecked = selectedFileIds.has(d.id) ? 'checked' : '';
+        const borderClass = isChecked ? 'border-primary bg-primary/10' : 'border-white/10';
+
+        // Tạo thẻ Wrapper
+        const el = document.createElement("div");
+        el.className = `file-card group/item animate-fade-in-up relative ${!isGallery ? `bg-glass backdrop-blur-md border ${borderClass} rounded-2xl p-3 flex items-center gap-3 shadow-sm hover:bg-white/10 transition-all` : ''}`;
+        
+        // Nội dung HTML
+        el.innerHTML = `
+            <div class="checkbox-wrapper ${isGallery ? 'hidden' : 'flex'} items-center justify-center pl-1 z-10" onclick="event.stopPropagation()">
+                <input type="checkbox" class="appearance-none w-5 h-5 border border-white/30 rounded bg-white/10 checked:bg-primary checked:border-primary cursor-pointer file-checkbox transition-all relative after:content-['✔'] after:absolute after:text-white after:text-[10px] after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:opacity-0 checked:after:opacity-100" 
+                       data-id="${d.id}" ${isChecked} onchange="window.handleFileCheck(this, '${d.id}')">
+            </div>
+
+            <div class="file-content flex ${currentViewMode === 'grid' ? 'flex-col' : 'items-center'} gap-3 overflow-hidden flex-1 cursor-pointer w-full h-full" 
+                 onclick="window.openGalleryAtIndex(${index})">
+                
+                <div class="${thumbContainerClass} flex items-center justify-center relative">
+                    ${mediaDisplay}
+                    ${isVideo ? '<div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-play text-white/80 drop-shadow-md text-2xl"></i></div>' : ''}
+                </div>
+                
+                <div class="file-info min-w-0 flex-1 ${isGallery ? 'hidden' : ''}">
+                    <h4 class="text-sm font-bold text-white truncate pr-2">${d.fileName}</h4>
+                    <div class="flex items-center gap-2 text-[10px] text-white/50">
+                        <span>${d.uploaderName || 'User'}</span> • <span>${d.fileSize}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="file-actions ${isGallery ? 'hidden' : 'flex'} items-center gap-1 z-10">
+                <button onclick="window.forceDownload('${d.url}', '${d.fileName}')" class="w-8 h-8 rounded-full hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center"><i class="fa-solid fa-download text-xs"></i></button>
+                ${(currentUser && d.uid === currentUser.uid) ? `
+                <button onclick="window.renameCloudFile('${d.id}', '${d.fileName}')" class="w-8 h-8 rounded-full hover:bg-yellow-500/20 text-white/60 hover:text-yellow-400 flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
+                <button onclick="window.deleteCloudFile('${d.id}', '${d.storageName || ''}')" class="w-8 h-8 rounded-full hover:bg-red-500/20 text-white/60 hover:text-red-400 flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                ` : ''}
+            </div>
+        `;
+        list.appendChild(el);
+    });
+};
+// Hàm ép trình duyệt tải file về thay vì mở tab
+window.forceDownload = async (url, filename) => {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Network error');
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+        console.error("Download error:", error);
+        // Fallback: Nếu lỗi CORS hoặc fetch, mở tab mới như cũ
+        window.open(url, '_blank');
+    }
+};
+
+// ==========================================
+// HÀM ĐỔI TÊN FILE (GIỮ NGUYÊN ĐUÔI MỞ RỘNG)
+// ==========================================
+
+window.renameCloudFile = async (docId, fullFileName) => {
+    // 1. Tách tên và đuôi file
+    // Tìm vị trí dấu chấm cuối cùng
+    const lastDotIndex = fullFileName.lastIndexOf('.');
+    
+    let baseName = fullFileName;
+    let extension = "";
+
+    // Nếu tìm thấy dấu chấm, tách ra làm 2 phần
+    if (lastDotIndex !== -1) {
+        baseName = fullFileName.substring(0, lastDotIndex);
+        extension = fullFileName.substring(lastDotIndex); // Ví dụ: .png, .jpg
+    }
+
+    // 2. Hiển thị Prompt chỉ với tên gốc (người dùng không cần lo về đuôi file)
+    const newBaseName = await window.sysPrompt(`Đổi tên file (định dạng ${extension} được giữ nguyên):`, baseName);
+    
+    // Kiểm tra: Nếu hủy hoặc tên rỗng hoặc tên chưa thay đổi thì dừng
+    if (!newBaseName || newBaseName.trim() === "" || newBaseName === baseName) return;
+    
+    if (!currentUser) return window.sysAlert("Vui lòng đăng nhập!", "error");
+
+    // 3. Ghép lại tên đầy đủ
+    const finalName = newBaseName.trim() + extension;
+
+    showLoading("Đang đổi tên...");
+    try {
+        // Chỉ cập nhật metadata trong Firestore
+        await updateDoc(doc(db, "files", docId), {
+            fileName: finalName
+        });
+        
+        hideLoading();
+        window.sysAlert("Đổi tên thành công!", "success");
+        
+        // Không cần gọi loadCloudFiles() thủ công vì onSnapshot sẽ tự cập nhật giao diện
+    } catch (e) {
+        hideLoading();
+        console.error(e);
+        window.sysAlert("Lỗi đổi tên: " + e.message, "error");
+    }
+};
+// =========================================================
+// LOGIC XEM TRƯỚC MEDIA (PREVIEW)
+// =========================================================
+
+window.openMediaPreview = (url, type) => {
+    const modal = document.getElementById('media-view-modal');
+    const imgTag = document.getElementById('media-view-image');
+    const videoTag = document.getElementById('media-view-video');
+    
+    if (!modal) return;
+
+    // Reset trạng thái
+    imgTag.classList.add('hidden');
+    videoTag.classList.add('hidden');
+    videoTag.pause(); // Dừng video cũ nếu có
+
+    if (type === 'image') {
+        imgTag.src = url;
+        imgTag.classList.remove('hidden');
+    } else if (type === 'video') {
+        videoTag.src = url;
+        videoTag.classList.remove('hidden');
+        // Tự động phát video khi mở (tùy chọn)
+        videoTag.play().catch(e => console.log("Auto-play prevented"));
+    }
+
+    // Hiển thị Modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    // Rung nhẹ phản hồi
+    if (navigator.vibrate) navigator.vibrate(30);
+};
+
+window.closeMediaView = () => {
+    const modal = document.getElementById('media-view-modal');
+    const videoTag = document.getElementById('media-view-video');
+    
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+    
+    // Dừng video khi đóng modal
+    if (videoTag) {
+        videoTag.pause();
+        videoTag.currentTime = 0;
+    }
+};
+
+// Đóng modal khi nhấn phím ESC
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') window.closeMediaView();
+});
+
+// Hàm xóa file (Bổ sung thêm cho đầy đủ chức năng)
+window.deleteCloudFile = async (docId, storagePath) => {
+    if (!await window.sysConfirm("Bạn chắc chắn muốn xóa file này?")) return;
+    
+    // Yêu cầu quyền xóa
+    if (!currentUser) return window.sysAlert("Vui lòng đăng nhập!", "error");
+
+    showLoading("Đang xóa...");
+    try {
+        // 1. Xóa trên Supabase Storage (nếu có path)
+        if (storagePath && typeof supabase !== 'undefined') {
+            const { error } = await supabase.storage.from('SnG').remove([storagePath]);
+            if (error) console.error("Lỗi xóa Storage:", error);
+        }
+
+        // 2. Xóa Metadata trên Firestore
+        await deleteDoc(doc(db, "files", docId));
+        
+        hideLoading();
+        window.sysAlert("Đã xóa file!", "success");
+    } catch (err) {
+        hideLoading();
+        console.error(err);
+        window.sysAlert("Lỗi xóa file: " + err.message, "error");
+    }
+}
+
 // Kích hoạt load file khi bấm vào tab Cloud
-document.querySelector('.tab-button[data-tab="cloud-tab"]').addEventListener('click', () => {
-    // Chỉ load nếu chưa có dữ liệu để tiết kiệm, hoặc load mỗi lần bấm
-    loadCloudFiles();
+// (Đoạn này đảm bảo khi chuyển tab sẽ tải lại danh sách)
+const cloudTabBtn = document.querySelector('.tab-button[data-tab="cloud-tab"]');
+if (cloudTabBtn) {
+    cloudTabBtn.addEventListener('click', () => {
+        if (typeof window.loadCloudFiles === 'function') {
+            window.loadCloudFiles();
+        }
+    });
+}
+
+// ==========================================
+// LOGIC THAO TÁC HÀNG LOẠT (BULK ACTIONS)
+// ==========================================
+
+// Xử lý khi tick 1 file
+window.handleFileCheck = (checkbox, id) => {
+    if (checkbox.checked) selectedFileIds.add(id);
+    else selectedFileIds.delete(id);
+    window.updateBulkActionUI();
+    
+    // Đổi màu viền item
+    const parent = checkbox.closest('.bg-glass');
+    if(checkbox.checked) parent.classList.add('border-primary', 'bg-primary/10');
+    else parent.classList.remove('border-primary', 'bg-primary/10');
+};
+
+// Xử lý khi tick "Chọn tất cả"
+window.toggleSelectAll = (source) => {
+    const checkboxes = document.querySelectorAll('.file-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = source.checked;
+        const id = cb.getAttribute('data-id');
+        if (source.checked) selectedFileIds.add(id);
+        else selectedFileIds.delete(id);
+        
+        // Update UI từng item
+        const parent = cb.closest('.bg-glass');
+        if(source.checked) parent.classList.add('border-primary', 'bg-primary/10');
+        else parent.classList.remove('border-primary', 'bg-primary/10');
+    });
+    window.updateBulkActionUI();
+};
+
+// Cập nhật hiển thị thanh công cụ
+window.updateBulkActionUI = () => {
+    const bulkDiv = document.getElementById('bulk-actions');
+    const countSpan = document.getElementById('selected-count');
+    const count = selectedFileIds.size;
+
+    if (count > 0) {
+        bulkDiv.classList.remove('hidden');
+        bulkDiv.classList.add('flex');
+        countSpan.textContent = `Đã chọn ${count}`;
+    } else {
+        bulkDiv.classList.add('hidden');
+        bulkDiv.classList.remove('flex');
+        document.getElementById('select-all-files').checked = false;
+    }
+};
+
+// Xóa hàng loạt
+window.bulkDelete = async () => {
+    if (selectedFileIds.size === 0) return;
+    if (!await window.sysConfirm(`Xóa vĩnh viễn ${selectedFileIds.size} file đã chọn?`)) return;
+    
+    showLoading("Đang xóa hàng loạt...");
+    let deletedCount = 0;
+
+    // Chuyển Set thành Array để lặp
+    const ids = Array.from(selectedFileIds);
+    
+    for (const id of ids) {
+        // Tìm file trong cache để lấy storageName
+        const fileData = allFilesCache.find(f => f.id === id);
+        if (fileData) {
+            // Kiểm tra quyền (chỉ xóa file của mình)
+            if (currentUser && fileData.uid === currentUser.uid) {
+                try {
+                    // Xóa Storage
+                    if (fileData.storageName && typeof supabase !== 'undefined') {
+                        await supabase.storage.from('SnG').remove([fileData.storageName]);
+                    }
+                    // Xóa Firestore
+                    await deleteDoc(doc(db, "files", id));
+                    deletedCount++;
+                } catch (e) {
+                    console.error("Lỗi xóa file " + id, e);
+                }
+            }
+        }
+    }
+    
+    selectedFileIds.clear();
+    hideLoading();
+    window.sysAlert(`Đã xóa ${deletedCount} file thành công!`, "success");
+    window.updateBulkActionUI();
+};
+
+// Tải hàng loạt
+window.bulkDownload = async () => {
+    if (selectedFileIds.size === 0) return;
+    
+    window.sysAlert(`Đang bắt đầu tải ${selectedFileIds.size} file...`, "info");
+    
+    const ids = Array.from(selectedFileIds);
+    let delay = 0;
+
+    for (const id of ids) {
+        const fileData = allFilesCache.find(f => f.id === id);
+        if (fileData) {
+            // Tạo delay nhẹ 500ms giữa các file để tránh trình duyệt chặn popup
+            setTimeout(() => {
+                window.forceDownload(fileData.url, fileData.fileName);
+            }, delay);
+            delay += 800; 
+        }
+    }
+    
+    // Bỏ chọn sau khi tải xong
+    setTimeout(() => {
+        selectedFileIds.clear();
+        window.updateBulkActionUI();
+        // Render lại để bỏ checkbox UI
+        window.applyFileFilters(); 
+    }, delay + 500);
+};
+
+// ==========================================
+// LOGIC GALLERY NÂNG CAO
+// ==========================================
+
+window.openGalleryAtIndex = (index) => {
+    if (index < 0 || index >= filteredFilesCache.length) return;
+    currentGalleryIndex = index;
+    const file = filteredFilesCache[index];
+    const name = (file.fileName || "").toLowerCase();
+    
+    // UI Elements
+    const modal = document.getElementById('media-view-modal');
+    const imgTag = document.getElementById('media-view-image');
+    const videoContainer = document.getElementById('media-view-video-container');
+    const videoTag = document.getElementById('media-view-video');
+    const audioContainer = document.getElementById('media-view-audio');
+    const audioTag = document.getElementById('audio-element');
+    const counter = document.getElementById('gallery-counter');
+    const downloadBtn = document.getElementById('gallery-download');
+
+    // Reset UI
+    imgTag.classList.add('hidden');
+    videoContainer.classList.add('hidden');
+    audioContainer.classList.add('hidden');
+    videoTag.pause();
+    audioTag.pause();
+
+    // Xác định loại file để hiển thị
+    if (name.match(/\.(jpg|png|jpeg|gif|webp|heic)$/)) {
+        imgTag.src = file.url;
+        imgTag.classList.remove('hidden');
+    } 
+    else if (name.match(/\.(mp4|mov|avi|mkv)$/)) {
+        videoTag.querySelector('source').src = file.url;
+        videoTag.load();
+        videoContainer.classList.remove('hidden');
+        // Auto play video
+        videoTag.play().catch(() => {});
+    }
+    else if (name.match(/\.(mp3|wav|ogg)$/)) {
+        audioTag.src = file.url;
+        document.getElementById('audio-title').textContent = file.fileName;
+        audioContainer.classList.remove('hidden');
+        audioContainer.classList.remove('paused');
+        audioTag.play().catch(() => {});
+        
+        // Hiệu ứng đĩa xoay
+        audioTag.onplay = () => audioContainer.classList.remove('paused');
+        audioTag.onpause = () => audioContainer.classList.add('paused');
+    } 
+    else {
+        // Nếu file không xem được (zip, doc...), mở link tải luôn
+        window.forceDownload(file.url, file.fileName);
+        return; 
+    }
+
+    // Update Counter & Download Link
+    counter.textContent = `${index + 1} / ${filteredFilesCache.length}`;
+    downloadBtn.onclick = () => window.forceDownload(file.url, file.fileName);
+
+    // Show Modal
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+};
+
+window.navigateGallery = (direction) => {
+    let newIndex = currentGalleryIndex + direction;
+    // Loop vòng tròn
+    if (newIndex < 0) newIndex = filteredFilesCache.length - 1;
+    if (newIndex >= filteredFilesCache.length) newIndex = 0;
+    
+    window.openGalleryAtIndex(newIndex);
+};
+
+// Phím tắt điều hướng
+document.addEventListener('keydown', (e) => {
+    if (document.getElementById('media-view-modal').classList.contains('hidden')) return;
+    if (e.key === 'ArrowLeft') window.navigateGallery(-1);
+    if (e.key === 'ArrowRight') window.navigateGallery(1);
+    if (e.key === 'Escape') window.closeMediaView();
 });
