@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Share&Go - Liquid</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Quan trọng: Kích hoạt chế độ dark bằng class
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'var(--primary-color)',
+                        // Glass effect tự động đổi màu theo chế độ
+                        // Light: Trắng mờ | Dark: Đen mờ
+                        glass: 'var(--glass-bg)',
+                        'glass-border': 'var(--glass-border)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* CSS Biến đổi Glass theo chế độ */
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.65);
+            --glass-border: rgba(255, 255, 255, 0.4);
+        }
+
+        html.dark {
+            --glass-bg: rgba(20, 20, 20, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="antialiased text-white selection:bg-primary selection:text-white">
+
+    <div class="liquid-bg"></div>
+
+    <div id="loading"
+        class="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl transition-opacity duration-300">
+        <div class="liquid-spinner mb-4"></div>
+        <span class="text-sm font-medium tracking-widest uppercase opacity-80">Đang tải...</span>
+    </div>
+
+    <div id="auth-container" class="min-h-screen flex items-center justify-center p-6 relative z-10">
+        <div
+            class="w-full max-w-md bg-glass backdrop-blur-2xl border border-glass-border rounded-4xl p-8 shadow-2xl animate-fade-in-up">
+
+            <div class="text-center mb-8">
+                <div
+                    class="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-primary/20 text-primary mb-4 shadow-[0_0_30px_rgba(var(--primary-rgb),0.4)]">
+                    <i class="fa-solid fa-paper-plane text-2xl"></i>
+                </div>
+                <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
+                    Share&Go</h1>
+                <p class="text-white/50 text-sm mt-2">Khám phá thế giới cùng nhau</p>
+            </div>
+
+            <div id="login-form">
+                <form class="space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-white/60 ml-3">Email</label>
+                        <input type="email" id="login-email"
+                            class="w-full bg-black/20 border border-white/10 rounded-2xl px-5 py-3 focus:outline-none focus:border-primary/50 focus:bg-black/30 transition-all text-white placeholder-white/20"
+                            placeholder="hello@sharengo.com">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-white/60 ml-3">Mật khẩu</label>
+                        <input type="password" id="login-password"
+                            class="w-full bg-black/20 border border-white/10 rounded-2xl px-5 py-3 focus:outline-none focus:border-primary/50 focus:bg-black/30 transition-all text-white placeholder-white/20"
+                            placeholder="••••••••">
+                    </div>
+                    <button type="submit"
+                        class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-primary/30 transition-all transform hover:scale-[1.02] active:scale-95 mt-2">
+                        Đăng nhập
+                    </button>
+                </form>
+                <div class="mt-6 text-center space-y-2">
+                    <a href="#" id="show-register-link"
+                        class="block text-sm text-white/70 hover:text-white transition-colors">Tạo tài khoản mới</a>
+                    <a href="#" id="show-forgot-pass-link"
+                        class="block text-xs text-white/40 hover:text-white transition-colors">Quên mật khẩu?</a>
+                </div>
+            </div>
+
+            <div id="register-form" class="hidden space-y-4">
+                <div class="space-y-1">
+                    <input type="text" id="register-name"
+                        class="w-full bg-black/20 border border-white/10 rounded-2xl px-5 py-3 focus:border-primary text-white"
+                        placeholder="Tên hiển thị">
+                </div>
+                <div class="space-y-1">
+                    <input type="text" id="register-facebook"
+                        class="w-full bg-black/20 border border-white/10 rounded-2xl px-5 py-3 focus:border-primary text-white"
+                        placeholder="Facebook ID (tùy chọn)">
+                </div>
+                <div class="space-y-1">
+                    <input type="email" id="register-email"
+                        class="w-full bg-black/20 border border-white/10 rounded-2xl px-5 py-3 focus:border-primary text-white"
+                        placeholder="Email">
+                </div>
+                <div class="space-y-1">
+                    <input type="password" id="register-password"
+                        class="w-full bg-black/20 border border-white/10 rounded-2xl px-5 py-3 focus:border-primary text-white"
+                        placeholder="Mật khẩu">
+                </div>
+                <div class="flex gap-2">
+                    <input type="password" id="register-confirm-password"
+                        class="flex-1 bg-black/20 border border-white/10 rounded-2xl px-5 py-3 focus:border-primary text-white"
+                        placeholder="Xác nhận">
+                    <button type="button" id="register-toggle-pass"
+                        class="w-12 bg-white/5 border border-white/10 rounded-2xl text-white/60 hover:text-white hover:bg-white/10"><i
+                            class="fa-solid fa-eye"></i></button>
+                </div>
+                <button type="submit"
+                    class="w-full bg-primary text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-primary/30 mt-2">Đăng
+                    ký ngay</button>
+                <a href="#" id="show-login-link"
+                    class="block text-center text-sm text-white/60 hover:text-white mt-4">Quay lại Đăng nhập</a>
+            </div>
+
+            <div id="forgot-password-form" class="hidden text-center">
+                <p class="text-sm text-white/60 mb-4">Nhập email để lấy lại mật khẩu</p>
+                <form class="space-y-4">
+                    <input type="email" id="forgot-email"
+                        class="w-full bg-black/20 border border-white/10 rounded-2xl px-5 py-3 focus:border-primary text-white"
+                        placeholder="Email của bạn">
+                    <button type="submit"
+                        class="w-full bg-primary text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-primary/30">Gửi
+                        Email</button>
+                </form>
+                <a href="#" id="back-to-login-link" class="block text-sm text-white/60 hover:text-white mt-4">Hủy bỏ</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="hidden flex-col h-screen relative overflow-hidden">
+
+        <header id="dynamic-island"
+            class="fixed top-3 left-1/2 -translate-x-1/2 z-50 select-none transition-all duration-300 ease-out"
+            oncontextmenu="return false;">
+
+            <div id="island-container"
+                class="bg-black/90 dark:bg-black shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-3xl overflow-hidden relative island-spring ring-1 ring-white/10"
+                style="width: 160px; height: 36px; border-radius: 20px;">
+
+                <div id="touch-layer" class="absolute inset-0 z-50 cursor-pointer" onmousedown="handlePressStart()"
+                    onmouseup="handlePressEnd()" ontouchstart="handlePressStart()" ontouchend="handlePressEnd()">
+                </div>
+
+                <div id="view-idle"
+                    class="absolute inset-0 flex items-center justify-between px-1.5 transition-opacity duration-300 pointer-events-none">
+                    <div class="relative w-6 h-6 flex items-center justify-center">
+                        <div id="idle-logo"
+                            class="absolute inset-0 w-full h-full rounded-full bg-gradient-to-tr from-primary to-blue-500 flex items-center justify-center shadow-lg shadow-primary/20 transition-all duration-300">
+                            <i class="fa-solid fa-paper-plane text-[10px] text-white"></i>
+                        </div>
+                        <div id="idle-waveform"
+                            class="absolute inset-0 flex items-center justify-center gap-[2px] transition-all duration-300 opacity-0 scale-50">
+                            <div class="bg-primary w-[2px] h-2 rounded-full animate-pulse"></div>
+                            <div class="bg-primary w-[2px] h-4 rounded-full animate-pulse delay-100"></div>
+                            <div class="bg-primary w-[2px] h-3 rounded-full animate-pulse delay-200"></div>
+                        </div>
+                    </div>
+                    <div id="island-avatar-mini"
+                        class="w-6 h-6 rounded-full bg-white/10 overflow-hidden border border-white/10 z-10"></div>
+                </div>
+
+                <div id="view-compact"
+                    class="absolute inset-0 flex items-center justify-between px-4 opacity-0 transition-opacity duration-300 pointer-events-none">
+                    <div class="flex items-center gap-1 h-full">
+                        <div class="bg-primary w-[2px] h-3 rounded-full animate-pulse"></div>
+                    </div>
+                    <div class="flex-1 mx-2 overflow-hidden">
+                        <p id="scrolling-title"
+                            class="text-white text-xs font-bold whitespace-nowrap text-center opacity-90">Share&Go
+                            Player</p>
+                    </div>
+                    <div class="flex items-center gap-1 h-full">
+                        <div class="bg-yellow-400 w-[2px] h-3 rounded-full animate-pulse"></div>
+                    </div>
+                </div>
+
+                <div id="view-expanded"
+                    class="absolute inset-0 flex flex-col p-5 opacity-0 transition-opacity duration-200 delay-75 z-40 pointer-events-none">
+
+                    <div class="flex items-start gap-4 mb-3">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center shadow-2xl shrink-0">
+                            <i class="fa-solid fa-music text-xl text-white"></i>
+                        </div>
+                        <div class="flex-1 min-w-0 flex flex-col justify-center h-12">
+                            <h3 id="widget-title" class="text-white font-bold text-sm truncate mb-0.5">Chưa chọn bài
+                            </h3>
+                            <p id="widget-artist" class="text-white/50 text-[10px] truncate">Share&Go Music</p>
+                            <div class="w-full bg-white/20 h-1 rounded-full overflow-hidden cursor-pointer mt-2"
+                                id="widget-progress-bg">
+                                <div id="widget-progress-bar" class="h-full bg-white w-0 rounded-full"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-2xl text-white px-4 mb-4"> <button
+                            onclick="playPrev()" class="active:scale-90 transition-transform"><i
+                                class="fa-solid fa-backward-step"></i></button>
+                        <button onclick="togglePlay()" id="widget-play-btn"
+                            class="text-4xl active:scale-95 transition-transform"><i
+                                class="fa-solid fa-play"></i></button>
+                        <button onclick="playNext()" class="active:scale-90 transition-transform"><i
+                                class="fa-solid fa-forward-step"></i></button>
+                    </div>
+
+                    <div class="w-full h-[1px] bg-white/10 mb-3"></div>
+
+                    <div class="flex items-center justify-between px-2 mt-auto"> <button onclick="cycleQuickTheme()"
+                            class="flex flex-col items-center gap-1 group active:scale-95 transition-transform">
+                            <div
+                                class="w-8 h-8 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center text-primary ring-1 ring-white/5">
+                                <i class="fa-solid fa-palette text-xs"></i>
+                            </div>
+                            <span class="text-[9px] text-white/50 font-medium">Màu</span>
+                        </button>
+
+                        <button id="island-dark-toggle"
+                            class="flex flex-col items-center gap-1 group active:scale-95 transition-transform">
+                            <div
+                                class="w-8 h-8 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center text-yellow-400 ring-1 ring-white/5">
+                                <i class="fa-solid fa-moon dark:hidden text-xs text-white"></i>
+                                <i class="fa-solid fa-sun hidden dark:inline-block text-xs"></i>
+                            </div>
+                            <span class="text-[9px] text-white/50 font-medium">Chế độ</span>
+                        </button>
+
+                        <button onclick="document.getElementById('account-modal').style.display='flex'"
+                            class="flex flex-col items-center gap-1 group active:scale-95 transition-transform">
+                            <div
+                                class="w-8 h-8 rounded-full bg-white/10 group-hover:bg-white/20 flex items-center justify-center overflow-hidden ring-1 ring-white/5">
+                                <div id="island-control-avatar"
+                                    class="w-full h-full flex items-center justify-center text-white text-xs font-bold">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                            </div>
+                            <span class="text-[9px] text-white/50 font-medium">Acc</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="view-alert"
+                    class="absolute inset-0 flex items-center justify-between px-[2.5px] opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+
+                    <div id="alert-content-box"
+                        class="flex items-center gap-3 w-full transition-all duration-300 justify-start">
+
+                        <div id="alert-icon-wrapper"
+                            class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                            <div id="alert-icon-container" class="text-lg">
+                                <i class="fa-solid fa-circle-exclamation text-yellow-400"></i>
+                            </div>
+                        </div>
+
+                        <p id="alert-message" class="text-white text-sm font-semibold truncate leading-tight">
+                            Thông báo hệ thống
+                        </p>
+                    </div>
+
+                    <div id="alert-actions"
+                        class="flex gap-2 shrink-0 w-0 opacity-0 overflow-hidden transition-all duration-300">
+                        <button id="btn-alert-cancel"
+                            class="h-8 px-4 bg-white/10 hover:bg-white/20 rounded-full text-xs font-bold text-white transition-colors whitespace-nowrap">
+                            Huỷ
+                        </button>
+                        <button id="btn-alert-confirm"
+                            class="h-8 px-4 bg-primary hover:bg-primary/80 rounded-full text-xs font-bold text-white transition-colors shadow-lg shadow-primary/30 whitespace-nowrap">
+                            OK
+                        </button>
+                    </div>
+
+                </div>
+
+                <div id="view-confirm"
+                    class="absolute inset-0 flex flex-col items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+
+                    <div class="mb-2 text-3xl animate-bounce">
+                        <i class="fa-solid fa-circle-question text-primary"></i>
+                    </div>
+
+                    <p id="confirm-message" class="text-white text-sm font-bold text-center mb-5 px-2 leading-tight">
+                        Xác nhận hành động?
+                    </p>
+
+                    <div class="flex gap-3 w-full justify-center">
+                        <button id="btn-confirm-cancel"
+                            class="flex-1 bg-white/10 hover:bg-white/20 py-2.5 rounded-2xl text-xs font-bold text-white transition-colors">
+                            Huỷ
+                        </button>
+                        <button id="btn-confirm-ok"
+                            class="flex-1 bg-primary hover:bg-primary/80 py-2.5 rounded-2xl text-xs font-bold text-white transition-colors shadow-lg shadow-primary/30">
+                            Đồng ý
+                        </button>
+                    </div>
+                </div>
+
+                <div id="view-input"
+                    class="absolute inset-0 flex flex-col items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+
+                    <p id="input-message" class="text-white text-xs font-bold text-center mb-3 w-full truncate">
+                        Nhập thông tin
+                    </p>
+
+                    <input type="text" id="island-input-field"
+                        class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-sm text-white placeholder-white/30 outline-none focus:border-primary/50 focus:bg-white/20 transition-all mb-3 text-center"
+                        autocomplete="off">
+
+                    <div id="input-actions" class="flex gap-2 w-full justify-center">
+                        <button id="btn-input-cancel"
+                            class="flex-1 bg-white/10 hover:bg-white/20 py-1.5 rounded-full text-[10px] font-bold text-white transition-colors">
+                            Huỷ
+                        </button>
+                        <button id="btn-input-confirm"
+                            class="flex-1 bg-primary hover:bg-primary/80 py-1.5 rounded-full text-[10px] font-bold text-white transition-colors shadow-lg shadow-primary/30">
+                            Xác nhận
+                        </button>
+                    </div>
+                </div>
+
+                <div id="view-upload"
+                    class="absolute inset-0 flex items-center justify-between px-3 opacity-0 transition-opacity duration-300 pointer-events-none">
+
+                    <div class="w-8 h-8 flex items-center justify-center text-primary animate-pulse">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+
+                    <div class="flex-1 mx-3 flex flex-col justify-center">
+                        <div class="flex justify-between items-end mb-1">
+                            <span id="island-upload-text"
+                                class="text-[10px] font-bold text-white truncate max-w-[120px]">Đang tải...</span>
+                            <span id="island-upload-percent" class="text-[10px] font-mono text-primary">0%</span>
+                        </div>
+                        <div class="w-full bg-white/20 h-1 rounded-full overflow-hidden">
+                            <div id="island-upload-bar"
+                                class="h-full bg-primary w-0 rounded-full transition-all duration-300"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <audio id="audio-player"></audio>
+        </header>
+
+        <main class="flex-1 pt-24 pb-28 px-4 overflow-y-auto no-scrollbar scroll-smooth" id="main-scroll-area">
+
+            <div id="trips-view" class="max-w-3xl mx-auto space-y-6">
+                <div
+                    class="bg-glass backdrop-blur-2xl border border-glass-border rounded-3xl p-6 shadow-xl relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-primary/20 blur-3xl rounded-full pointer-events-none">
+                    </div>
+
+                    <form id="join-trip-form"
+                        class="relative z-10 flex items-center gap-3 bg-black/20 border border-white/10 p-2 rounded-2xl mb-4 focus-within:border-primary/50 transition-colors">
+                        <i class="fa-solid fa-ticket text-white/40 ml-3"></i>
+                        <input type="text" id="join-code" placeholder="Nhập mã tham gia..."
+                            class="flex-1 bg-transparent border-none outline-none text-white placeholder-white/30 h-10">
+                        <button type="submit"
+                            class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/30 hover:scale-105 transition-transform">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </form>
+
+                    <div class="flex justify-between items-center border-t border-white/10 pt-4">
+                        <h2 class="text-lg font-semibold text-white/90">Chuyến đi của bạn</h2>
+                        <button onclick="document.getElementById('create-trip-modal').style.display='flex'"
+                            class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-medium transition-colors border border-white/5">
+                            <i class="fa-solid fa-plus mr-1"></i> Tạo mới
+                        </button>
+                    </div>
+                </div>
+
+                <div id="trips-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                </div>
+            </div>
+
+            <div id="single-trip-view" class="hidden max-w-4xl mx-auto pb-10">
+                <div class="flex items-center gap-4 mb-6">
+                    <button id="back-to-trips"
+                        class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div class="flex-1">
+                        <h2 id="trip-name-display" class="text-2xl font-bold truncate">Loading...</h2>
+                    </div>
+                    <button id="toggle-info-btn"
+                        class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-primary">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </button>
+                </div>
+
+                <div id="trip-info-content" class="hidden mb-6 animate-fade-in-down">
+                    <div id="trip-controls"
+                        class="bg-glass backdrop-blur-xl border border-glass-border rounded-3xl p-5 shadow-lg">
+                    </div>
+                </div>
+
+                <div id="input-tab" class="tab-content space-y-5">
+                    <form id="add-location-form"
+                        class="bg-glass backdrop-blur-2xl border border-glass-border rounded-3xl p-5 shadow-xl space-y-4 transition-all duration-300 hover:shadow-2xl hover:shadow-primary/5">
+
+                        <div
+                            class="relative w-full h-64 rounded-2xl overflow-hidden border border-white/10 shadow-inner group">
+                            <div id="map-container" class="w-full h-full z-0"></div>
+
+                            <div class="absolute top-3 right-3 z-[400] flex flex-col gap-2">
+                                <div
+                                    class="bg-black/60 backdrop-blur-md p-1.5 rounded-xl border border-white/10 flex flex-col gap-1 shadow-lg">
+                                    <button type="button" id="map-mode-default"
+                                        class="w-8 h-8 rounded-lg text-white/70 hover:bg-white/20 active:bg-primary active:text-white transition-all"
+                                        title="Bản đồ">
+                                        <i class="fa-solid fa-map"></i>
+                                    </button>
+                                    <button type="button" id="map-mode-satellite"
+                                        class="w-8 h-8 rounded-lg text-white/70 hover:bg-white/20 active:bg-primary active:text-white transition-all"
+                                        title="Vệ tinh">
+                                        <i class="fa-solid fa-satellite"></i>
+                                    </button>
+                                    <button type="button" id="map-toggle-history"
+                                        class="w-8 h-8 rounded-lg text-white/70 hover:bg-white/20 active:bg-primary active:text-white transition-all"
+                                        title="Hiện điểm đã đi">
+                                        <i class="fa-solid fa-location-dot"></i>
+                                    </button>
+                                </div>
+
+                                <button type="button" id="get-location-button"
+                                    class="w-11 h-11 rounded-full bg-primary text-white shadow-lg shadow-primary/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all">
+                                    <i class="fa-solid fa-location-crosshairs"></i>
+                                </button>
+                            </div>
+
+                            <div
+                                class="absolute bottom-2 right-2 z-[400] text-[10px] text-white/30 font-medium pointer-events-none select-none backdrop-blur-sm bg-black/20 px-2 py-0.5 rounded-md">
+                                Design by HunqD
+                            </div>
+                        </div>
+
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <label class="text-xs text-white/50 ml-2 font-medium uppercase tracking-wide">Tên địa
+                                    điểm</label>
+                                <input type="text" id="location-name" required
+                                    class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 focus:border-primary/50 focus:bg-black/30 text-white placeholder-white/20 outline-none transition-all duration-200"
+                                    placeholder="Vd: Cafe View Đẹp">
+                            </div>
+
+                            <div class="space-y-1 relative">
+                                <label class="text-xs text-white/50 ml-2 font-medium uppercase tracking-wide">Địa chỉ
+                                    (Tự động/Tìm)</label>
+                                <input type="text" id="location-address"
+                                    class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 focus:border-primary/50 focus:bg-black/30 text-white placeholder-white/20 outline-none transition-all duration-200"
+                                    placeholder="Nhập để tìm kiếm..." autocomplete="off">
+                                <input type="hidden" id="location-position">
+                                <div id="map-search-results"
+                                    class="absolute top-full left-0 w-full bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-xl mt-1 z-50 max-h-40 overflow-y-auto hidden shadow-2xl no-scrollbar">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+
+                            <div class="col-span-1 space-y-1">
+                                <label class="text-xs text-white/50 ml-2 font-medium uppercase tracking-wide">Số
+                                    người</label>
+                                <div
+                                    class="flex items-center bg-black/20 border border-white/10 rounded-xl overflow-hidden h-11 transition-colors hover:border-white/20">
+                                    <button type="button" id="people-decrease"
+                                        class="w-8 h-full hover:bg-white/10 text-white/70 active:text-white transition-colors flex items-center justify-center text-lg">-</button>
+
+                                    <input type="number" id="location-people" value="1" min="1"
+                                        class="flex-1 min-w-[20px] bg-transparent text-center outline-none text-white font-bold h-full appearance-none m-0 p-0">
+
+                                    <button type="button" id="people-increase"
+                                        class="w-8 h-full hover:bg-white/10 text-white/70 active:text-white transition-colors flex items-center justify-center text-lg border-r border-white/10">+</button>
+
+                                    <button type="button" id="people-max"
+                                        class="px-2 h-full hover:bg-primary/20 text-primary font-bold text-[10px] tracking-wider transition-colors active:bg-primary/40 flex items-center justify-center"
+                                        title="Chọn tối đa">MAX</button>
+                                </div>
+                            </div>
+
+                            <div class="col-span-1 md:col-span-2 space-y-1">
+                                <label class="text-xs text-white/50 ml-2 font-medium uppercase tracking-wide">Chi phí
+                                    (VNĐ)</label>
+                                <div class="relative">
+                                    <input type="text" id="location-cost" inputmode="numeric"
+                                        class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 outline-none text-white font-mono focus:border-primary/50 focus:bg-black/30 transition-all h-11"
+                                        placeholder="0">
+                                    <span
+                                        class="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 text-xs font-bold pointer-events-none">VNĐ</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-end gap-3">
+                            <button type="button" id="get-current-time-button"
+                                class="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex-shrink-0 text-primary hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center"
+                                title="Lấy giờ hiện tại">
+                                <i class="fa-solid fa-clock"></i>
+                            </button>
+
+                            <div class="space-y-1 w-24">
+                                <label
+                                    class="text-xs text-white/50 ml-2 font-medium uppercase tracking-wide">Giờ</label>
+                                <input type="text" id="location-time"
+                                    class="w-full bg-black/20 border border-white/10 rounded-xl px-2 py-2.5 text-center outline-none text-sm text-white focus:border-primary/50 transition-all"
+                                    placeholder="HH:MM">
+                            </div>
+
+                            <div class="space-y-1 flex-1">
+                                <label
+                                    class="text-xs text-white/50 ml-2 font-medium uppercase tracking-wide">Ngày</label>
+                                <input type="text" id="location-date"
+                                    class="w-full bg-black/20 border border-white/10 rounded-xl px-2 py-2.5 text-center outline-none text-sm text-white focus:border-primary/50 transition-all"
+                                    placeholder="DD/MM/YYYY">
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center py-2 bg-black/10 rounded-2xl border border-white/5 mt-2">
+                            <div
+                                class="star-rating flex gap-3 text-2xl cursor-pointer text-white/20 hover:text-white/40 transition-colors">
+                                <i class="fa-solid fa-star transition-transform hover:scale-125" data-value="1"></i>
+                                <i class="fa-solid fa-star transition-transform hover:scale-125" data-value="2"></i>
+                                <i class="fa-solid fa-star transition-transform hover:scale-125" data-value="3"></i>
+                                <i class="fa-solid fa-star transition-transform hover:scale-125" data-value="4"></i>
+                                <i class="fa-solid fa-star transition-transform hover:scale-125" data-value="5"></i>
+                            </div>
+                            <input type="hidden" id="location-rating" value="5">
+                        </div>
+
+                        <textarea id="location-notes" rows="2"
+                            class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2.5 outline-none text-sm text-white resize-none focus:border-primary/50 focus:bg-black/30 transition-all"
+                            placeholder="Ghi chú thêm..."></textarea>
+
+                        <button type="submit"
+                            class="w-full bg-gradient-to-r from-primary to-blue-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:scale-[1.01] active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 group">
+                            <span
+                                class="bg-white/20 w-6 h-6 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors"><i
+                                    class="fa-solid fa-check text-xs"></i></span>
+                            Xác nhận thêm
+                        </button>
+                    </form>
+
+                </div>
+
+                <div id="history-tab" class="tab-content hidden space-y-4">
+                    <div
+                        class="flex flex-wrap gap-2 items-center bg-glass backdrop-blur-xl border border-glass-border p-3 rounded-2xl">
+                        <div class="relative flex-1 min-w-[150px]">
+                            <i
+                                class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs"></i>
+                            <input type="text" id="search-history" placeholder="Tìm kiếm..."
+                                class="w-full bg-black/20 border border-white/5 rounded-xl pl-8 pr-3 py-2 text-sm outline-none focus:border-primary/50 text-white">
+                        </div>
+                        <select id="sort-history"
+                            class="bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-sm outline-none text-white">
+                            <option value="time">Mới nhất</option>
+                            <option value="name">Tên A-Z</option>
+                            <option value="cost">Giá cao nhất</option>
+                        </select>
+                        <div class="flex gap-1 ml-auto">
+                            <button id="copy-history"
+                                class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center"><i
+                                    class="fa-solid fa-copy"></i></button>
+                            <button id="export-xlsx"
+                                class="w-8 h-8 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center"><i
+                                    class="fa-solid fa-file-excel"></i></button>
+                        </div>
+                    </div>
+
+                    <div id="history-list" class="space-y-4 pb-20">
+                    </div>
+                </div>
+
+                <div id="stats-tab" class="tab-content hidden">
+                    <div id="stats-content"
+                        class="bg-glass backdrop-blur-2xl border border-glass-border rounded-3xl p-6">
+                    </div>
+                </div>
+
+                <div id="cloud-tab" class="tab-content hidden space-y-5">
+
+                    <div
+                        class="bg-glass backdrop-blur-2xl border border-glass-border rounded-3xl p-6 shadow-xl text-center relative overflow-hidden group">
+                        <div
+                            class="absolute -top-10 -left-10 w-40 h-40 bg-blue-500/20 blur-3xl rounded-full pointer-events-none">
+                        </div>
+
+                        <h2 class="text-xl font-bold text-white mb-1">Lưu trữ Đám mây</h2>
+                        <p class="text-xs text-white/50 mb-4">Upload file không giới hạn qua Google Drive</p>
+
+                        <div
+                            class="border-2 border-dashed border-white/20 rounded-2xl p-6 hover:border-primary/50 transition-colors bg-black/10">
+                            <input type="file" id="cloud-file-input" class="hidden" multiple
+                                onchange="handleFileSelect(this)">
+
+                            <label for="cloud-file-input" class="cursor-pointer flex flex-col items-center gap-2">
+                                <div
+                                    class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-2xl mb-1 group-hover:scale-110 transition-transform text-primary">
+                                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                                </div>
+                                <span class="text-sm font-medium text-white/80">Chạm để chọn file</span>
+                                <span class="text-[10px] text-white/40">Hỗ trợ mọi định dạng</span>
+                            </label>
+                        </div>
+
+                        <div id="cloud-progress-box" class="hidden mt-4 text-left">
+                            <div class="flex justify-between text-xs text-white/70 mb-1">
+                                <span id="cloud-progress-text">Đang chuẩn bị...</span>
+                                <span id="cloud-progress-percent">0%</span>
+                            </div>
+                            <div class="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                                <div id="cloud-progress-bar"
+                                    class="bg-primary h-full rounded-full transition-all duration-300"
+                                    style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex items-center justify-between bg-black/20 border border-white/10 rounded-xl p-3 mb-4 mt-4">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-primary">
+                                    <i class="fa-solid fa-gauge-high"></i>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-xs text-white/50 font-bold uppercase">Chế độ tải</span>
+                                    <span class="text-sm font-bold text-white" id="speed-label">Ổn định</span>
+                                </div>
+                            </div>
+
+                            <select id="upload-speed-select" onchange="changeUploadSpeed(this.value)"
+                                class="bg-white/10 text-white text-xs font-bold py-2 px-3 rounded-lg outline-none border border-white/5 focus:border-primary/50 cursor-pointer">
+                                <option value="5242880">🛡️ An toàn (5MB)</option>
+                                <option value="10485760" >⚖️ Ổn định (10MB)</option>
+                                <option value="20971520">🚀 Nhanh (20MB)</option>
+                                <option value="36700160" selected>⚡ Siêu nhanh (35MB) [Có thể lỗi]</option>
+                            </select>
+                        </div>
+
+                        <button id="btn-cloud-upload" onclick="processCloudUpload()"
+                            class="hidden w-full mt-4 bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-xl shadow-lg shadow-primary/30 transition-all active:scale-95">
+                            <i class="fa-solid fa-paper-plane mr-2"></i> Bắt đầu tải lên
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between px-2">
+                        <h3 class="text-lg font-bold text-white">Danh sách File</h3>
+                        <button onclick="loadCloudFiles()"
+                            class="text-xs bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg text-white/70 transition-colors">
+                            <i class="fa-solid fa-rotate mr-1"></i> Làm mới
+                        </button>
+                    </div>
+
+                    <div id="cloud-file-list" class="space-y-3 pb-20">
+                        <p class="text-center text-white/30 italic py-4">Đang tải danh sách...</p>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+
+        <nav
+            class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-black/60 dark:bg-black/50 backdrop-blur-3xl border border-white/10 dark:border-white/5 rounded-full h-16 shadow-2xl flex items-center gap-2 px-3 z-40 transition-all duration-300 hover:scale-[1.02] hover:bg-black/70">
+
+            <button
+                class="tab-button w-12 h-12 rounded-full flex items-center justify-center text-white/50 hover:bg-white/10 transition-all duration-300"
+                data-tab="input-tab">
+                <i class="fa-solid fa-map-location-dot text-xl"></i>
+            </button>
+
+            <button
+                class="tab-button w-12 h-12 rounded-full flex items-center justify-center text-white/50 hover:bg-white/10 transition-all duration-300"
+                data-tab="history-tab">
+                <i class="fa-solid fa-list-ul text-xl"></i>
+            </button>
+
+            <button
+                class="tab-button w-12 h-12 rounded-full flex items-center justify-center text-white/50 hover:bg-white/10 transition-all duration-300"
+                data-tab="stats-tab">
+                <i class="fa-solid fa-chart-pie text-xl"></i>
+            </button>
+
+            <button
+                class="tab-button w-12 h-12 rounded-full flex items-center justify-center text-white/50 hover:bg-white/10 transition-all duration-300"
+                data-tab="cloud-tab">
+                <i class="fa-solid fa-cloud text-xl"></i>
+            </button>
+
+        </nav>
+
+        <button id="chat-trigger-btn" onclick="toggleChatPopup()"
+            class="fixed bottom-8 right-6 w-14 h-14 rounded-full bg-primary/90 text-white shadow-lg shadow-primary/40 backdrop-blur-md border border-white/10 z-40 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 group">
+            <i class="fa-solid fa-comments text-xl group-hover:animate-pulse"></i>
+
+        </button>
+
+        <div id="chat-tab"
+            class="hidden fixed bottom-24 right-4 w-[90vw] max-w-[380px] h-[60vh] max-h-[600px] bg-gray-900/80 backdrop-blur-3xl border border-white/15 rounded-3xl shadow-2xl z-50 flex-col overflow-hidden animate-slide-up origin-bottom-right">
+            <div class="px-5 py-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                <h3 class="font-semibold text-primary flex items-center gap-2"><i class="fa-solid fa-comments"></i> Nhóm
+                    Chat</h3>
+                <button onclick="toggleChatPopup()" class="text-white/50 hover:text-white"><i
+                        class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div id="chat-messages"
+                class="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-b from-transparent to-black/20">
+            </div>
+
+            <form id="chat-form"
+                class="p-3 bg-white/5 border-t border-white/10 flex gap-2 items-center backdrop-blur-md">
+                <input type="text" id="chat-input" placeholder="Nhắn tin..." autocomplete="off"
+                    class="flex-1 bg-black/30 border border-white/10 rounded-full px-4 py-2.5 text-sm text-white outline-none focus:border-primary/50">
+                <button type="submit"
+                    class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform"><i
+                        class="fa-solid fa-paper-plane text-sm"></i></button>
+            </form>
+        </div>
+
+    </div>
+
+    <div id="theme-modal"
+        class="modal fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-md p-4">
+        <div
+            class="bg-gray-900/90 border border-white/15 rounded-3xl w-full max-w-sm p-6 shadow-2xl transform scale-100 transition-all">
+            <h3 class="text-lg font-bold mb-4 text-center">Chọn màu chủ đạo</h3>
+            <div class="grid grid-cols-3 gap-4 mb-4">
+                <button onclick="changeTheme('#007AFF', '0, 122, 255')"
+                    class="h-12 rounded-xl bg-[#007AFF] shadow-lg hover:scale-105 transition-transform"></button>
+                <button onclick="changeTheme('#AF52DE', '175, 82, 222')"
+                    class="h-12 rounded-xl bg-[#AF52DE] shadow-lg hover:scale-105 transition-transform"></button>
+                <button onclick="changeTheme('#FF2D55', '255, 45, 85')"
+                    class="h-12 rounded-xl bg-[#FF2D55] shadow-lg hover:scale-105 transition-transform"></button>
+                <button onclick="changeTheme('#FF9500', '255, 149, 0')"
+                    class="h-12 rounded-xl bg-[#FF9500] shadow-lg hover:scale-105 transition-transform"></button>
+                <button onclick="changeTheme('#30D158', '48, 209, 88')"
+                    class="h-12 rounded-xl bg-[#30D158] shadow-lg hover:scale-105 transition-transform"></button>
+                <button onclick="changeTheme('#0A84FF', '10, 132, 255')"
+                    class="h-12 rounded-xl bg-[#0A84FF] shadow-lg hover:scale-105 transition-transform"></button>
+            </div>
+            <button onclick="document.getElementById('theme-modal').style.display='none'"
+                class="w-full py-3 bg-white/10 rounded-xl hover:bg-white/20 transition-colors">Đóng</button>
+        </div>
+    </div>
+
+    <div id="create-trip-modal"
+        class="modal fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-md px-4">
+        <div class="bg-glass backdrop-blur-2xl border border-glass-border rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+            <h3 class="text-xl font-bold mb-4 text-center">Tạo chuyến đi mới</h3>
+            <form id="create-trip-form" class="space-y-4">
+                <input type="text" id="trip-name" placeholder="Tên: Vd Đà Lạt" required
+                    class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-primary text-white">
+                <textarea id="trip-description" rows="2" placeholder="Mô tả ngắn..."
+                    class="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 outline-none text-white resize-none"></textarea>
+                <div class="flex items-center justify-between bg-black/20 border border-white/10 rounded-xl px-4 py-2">
+                    <span class="text-sm text-white/60">Số người tối đa</span>
+                    <input type="number" id="trip-max-people" value="10" min="1"
+                        class="w-16 bg-transparent text-right outline-none text-white font-bold">
+                </div>
+                <div class="flex gap-3 mt-2">
+                    <button type="button" onclick="document.getElementById('create-trip-modal').style.display='none'"
+                        class="flex-1 py-3 bg-white/5 rounded-xl hover:bg-white/10">Hủy</button>
+                    <button type="submit"
+                        class="flex-1 py-3 bg-primary text-white rounded-xl shadow-lg shadow-primary/30">Tạo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="edit-location-modal"
+        class="modal fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-md px-4">
+        <div
+            class="bg-gray-900/95 border border-white/15 rounded-3xl w-full max-w-md p-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">Sửa địa điểm</h3>
+                <button id="close-edit-location-modal"
+                    class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><i
+                        class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="edit-location-form" class="space-y-4">
+                <input type="text" id="edit-location-name"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                <input type="text" id="edit-location-position" placeholder="Địa chỉ"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="number" id="edit-location-people"
+                        class="bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                    <input type="text" id="edit-location-cost" data-raw=""
+                        class="bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="edit-location-time"
+                        class="bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                    <input type="text" id="edit-location-date"
+                        class="bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                </div>
+                <select id="edit-location-rating"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                    <option value="5">5 Sao</option>
+                    <option value="4">4 Sao</option>
+                    <option value="3">3 Sao</option>
+                    <option value="2">2 Sao</option>
+                    <option value="1">1 Sao</option>
+                </select>
+                <textarea id="edit-location-notes"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white"></textarea>
+                <button type="submit" class="w-full bg-primary py-3 rounded-xl font-bold">Lưu thay đổi</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="account-modal"
+        class="modal fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-md px-4">
+        <div class="bg-gray-900/95 border border-white/15 rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold">Tài khoản</h3>
+                <button onclick="document.getElementById('account-modal').style.display='none'"
+                    class="w-8 h-8 rounded-full bg-white/10"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="update-profile-form" class="space-y-3 mb-6">
+                <label class="text-xs text-primary uppercase font-bold">Thông tin</label>
+                <input type="text" id="account-name"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white"
+                    placeholder="Tên hiển thị">
+                <input type="text" id="account-facebook"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white"
+                    placeholder="FB ID">
+                <button type="submit"
+                    class="w-full bg-white/10 hover:bg-white/20 py-2 rounded-xl text-sm font-medium">Cập nhật
+                    Profile</button>
+            </form>
+
+            <form id="update-password-form" class="space-y-3">
+                <label class="text-xs text-primary uppercase font-bold">Bảo mật</label>
+                <input type="password" id="account-current-pass" placeholder="Mật khẩu cũ"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                <input type="password" id="account-new-pass" placeholder="Mật khẩu mới"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                <input type="password" id="account-confirm-pass" placeholder="Nhập lại mới"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-2 text-white">
+                <button type="submit"
+                    class="w-full bg-white/10 hover:bg-white/20 py-2 rounded-xl text-sm font-medium">Đổi mật
+                    khẩu</button>
+            </form>
+
+            <button id="logout-button"
+                class="w-full mt-6 py-3 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-xl font-bold flex items-center justify-center gap-2">
+                <i class="fa-solid fa-right-from-bracket"></i> Đăng xuất
+            </button>
+        </div>
+    </div>
+
+    <div id="edit-trip-modal"
+        class="modal fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 backdrop-blur-md px-4">
+        <div class="bg-gray-900/95 border border-white/15 rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+            <h3 class="text-lg font-bold mb-4">Sửa chuyến đi</h3>
+            <form id="edit-trip-form" class="space-y-4">
+                <input type="text" id="edit-trip-name"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white">
+                <textarea id="edit-trip-description"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white"></textarea>
+                <input type="number" id="edit-trip-max-people"
+                    class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white">
+                <div class="flex gap-3">
+                    <button type="button" id="close-edit-trip-modal"
+                        class="flex-1 py-3 bg-white/10 rounded-xl">Hủy</button>
+                    <button type="submit" class="flex-1 py-3 bg-primary text-white rounded-xl">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="chat-actions-modal"
+        class="fixed inset-0 z-[100] hidden flex-col justify-end bg-black/60 backdrop-blur-sm transition-all duration-300"
+        onclick="window.closeChatActions()">
+        <div id="chat-actions-panel"
+            class="bg-[#1c1c1e] rounded-t-[2rem] p-6 pb-10 transform transition-transform duration-300 translate-y-full"
+            onclick="event.stopPropagation()">
+
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-white font-bold text-lg">Tuỳ chọn tin nhắn</h3>
+                <button onclick="window.closeChatActions()"
+                    class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white/50 hover:bg-white/20">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="bg-white/5 p-4 rounded-2xl mb-6 border border-white/5">
+                <p id="chat-preview-text" class="text-white/70 text-sm italic line-clamp-3 break-words">...</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="window.copyChatMessage()"
+                    class="flex flex-col items-center justify-center gap-2 bg-white/10 hover:bg-white/20 active:scale-95 p-4 rounded-2xl transition-all group">
+                    <i class="fa-regular fa-copy text-2xl text-blue-400 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-white text-sm font-medium">Sao chép</span>
+                </button>
+
+                <button id="btn-delete-chat" onclick="window.deleteChatMessage()"
+                    class="flex flex-col items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 active:scale-95 p-4 rounded-2xl transition-all group">
+                    <i
+                        class="fa-regular fa-trash-can text-2xl text-red-500 group-hover:scale-110 transition-transform"></i>
+                    <span class="text-red-400 text-sm font-medium">Thu hồi</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.0/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script type="module" src="./app.js"></script>
+
+    <script>
+        function changeTheme(hex, rgb) {
+            document.documentElement.style.setProperty('--primary-color', hex);
+            document.documentElement.style.setProperty('--primary-rgb', rgb);
+            localStorage.setItem('themeColor', hex);
+            localStorage.setItem('themeRgb', rgb);
+        }
+
+        // Load theme lúc khởi động
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedHex = localStorage.getItem('themeColor');
+            const savedRgb = localStorage.getItem('themeRgb');
+            if (savedHex && savedRgb) {
+                changeTheme(savedHex, savedRgb);
+            }
+        });
+    </script>
+</body>
+
+</html>

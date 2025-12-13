@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản lý File</title>
+    <style>
+        :root { --primary: #007bff; --bg: #f4f6f8; --danger: #dc3545; --success: #28a745; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); display: flex; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        
+        .container { width: 100%; max-width: 480px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); height: fit-content; }
+        h2 { text-align: center; color: #333; margin-top: 0; }
+
+        /* Form Elements */
+        .form-group { margin-bottom: 15px; }
+        input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        input:focus { outline: none; border-color: var(--primary); }
+        
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 15px; transition: 0.2s; margin-top: 10px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-danger { background: var(--danger); color: white; width: auto; font-size: 12px; padding: 6px 12px; margin-top: 0;}
+        button:disabled { opacity: 0.6; cursor: wait; }
+
+        /* UI States */
+        #auth-view, #app-view { display: none; }
+        .error { color: var(--danger); font-size: 13px; margin-top: 5px; display: none; text-align: center;}
+        
+        /* App Components */
+        .user-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 15px; border-bottom: 1px solid #eee; margin-bottom: 20px; }
+        .upload-area { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 8px; background: #fafafa; }
+        
+        /* Progress Bar */
+        .progress-container { margin-top: 15px; display: none; }
+        .progress-bar { width: 100%; background: #e9ecef; border-radius: 4px; overflow: hidden; height: 8px; }
+        .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
+        .progress-text { font-size: 12px; color: #666; text-align: center; margin-top: 5px; display: block; }
+
+        /* File List */
+        .file-list { list-style: none; padding: 0; margin-top: 20px; max-height: 400px; overflow-y: auto; }
+        .file-item { background: white; border: 1px solid #eee; padding: 12px; margin-bottom: 8px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .file-info strong { display: block; font-size: 14px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+        .file-info span { font-size: 11px; color: #888; }
+        .download-btn { text-decoration: none; font-size: 18px; padding: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>File Manager</h2>
+
+    <div id="auth-view">
+        <div class="form-group">
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Mật khẩu (min 6 ký tự)">
+        </div>
+        <div class="error" id="auth-error"></div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-primary" onclick="handleAuth('login')">Đăng Nhập</button>
+            <button class="btn-secondary" onclick="handleAuth('register')">Đăng Ký</button>
+        </div>
+    </div>
+
+    <div id="app-view">
+        <div class="user-header">
+            <span id="user-display">User</span>
+            <button class="btn-danger" onclick="logout()">Thoát</button>
+        </div>
+
+        <div class="upload-area">
+            <input type="file" id="fileInput" multiple>
+            <div class="progress-container" id="progressBox">
+                <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+                <span class="progress-text" id="progText">Đang chuẩn bị...</span>
+            </div>
+            <button class="btn-primary" id="btnUpload" onclick="processUpload()">Upload lên Drive</button>
+        </div>
+
+        <h3>Danh sách file</h3>
+        <ul class="file-list" id="fileList">
+            </ul>
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+<script>
+    // ==========================================
+    // 1. CẤU HÌNH (BẠN PHẢI SỬA PHẦN NÀY)
+    // ==========================================
+    
+    // Config Firebase lấy từ Console
+   const firebaseConfig = {
+    apiKey: "AIzaSyBQOcwUdtv1quQ1UWV8oaGY6kIUwITlSos",
+    authDomain: "sharengo-hunq.firebaseapp.com",
+    projectId: "sharengo-hunq",
+    storageBucket: "sharengo-hunq.firebasestorage.app",
+    messagingSenderId: "20454542571",
+    appId: "1:20454542571:web:8021a519b26f9be30882ae",
+    measurementId: "G-T0XNLVWXYV"
+};
+
+    // URL Web App của Google Apps Script (Lấy từ bước 1)
+    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbwzTrQHPhnAqYbrnMVykFHkOMHtTD5-ayftFFo0pbb_0JSAEY1RZz__FgoTQK8cjF0x/exec";
+
+    // Kích thước mỗi miếng cắt (2MB là an toàn nhất cho GAS)
+    const CHUNK_SIZE = 2 * 1024 * 1024; 
+
+    // ==========================================
+    // 2. KHỞI TẠO HỆ THỐNG
+    // ==========================================
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Lắng nghe trạng thái đăng nhập
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            showView('app-view');
+            document.getElementById('user-display').innerText = user.email;
+            loadFileData(); // Tải danh sách file
+        } else {
+            showView('auth-view');
+            document.getElementById('fileList').innerHTML = "";
+        }
+    });
+
+    // ==========================================
+    // 3. XỬ LÝ AUTH (LOGIN/REGISTER)
+    // ==========================================
+    function handleAuth(type) {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('password').value;
+        const errBox = document.getElementById('auth-error');
+        errBox.style.display = 'none';
+
+        if (!email || !pass) {
+            errBox.innerText = "Vui lòng nhập đủ thông tin.";
+            errBox.style.display = 'block';
+            return;
+        }
+
+        const action = type === 'login' 
+            ? auth.signInWithEmailAndPassword(email, pass)
+            : auth.createUserWithEmailAndPassword(email, pass);
+
+        action.catch(err => {
+            let msg = err.message;
+            if(err.code === 'auth/weak-password') msg = "Mật khẩu quá yếu.";
+            if(err.code === 'auth/email-already-in-use') msg = "Email đã tồn tại.";
+            if(err.code === 'auth/wrong-password') msg = "Sai mật khẩu.";
+            if(err.code === 'auth/user-not-found') msg = "Tài khoản không tồn tại.";
+            errBox.innerText = msg;
+            errBox.style.display = 'block';
+        });
+    }
+
+    function logout() { auth.signOut(); }
+
+    // ==========================================
+    // 4. LOGIC UPLOAD (QUAN TRỌNG NHẤT)
+    // ==========================================
+    async function processUpload() {
+        const fileInput = document.getElementById('fileInput');
+        const files = fileInput.files;
+        if (files.length === 0) return alert("Chưa chọn file!");
+
+        setLoading(true);
+
+        for (let i = 0; i < files.length; i++) {
+            try {
+                const file = files[i];
+                updateProgress(0, `Đang đọc file ${i+1}/${files.length}: ${file.name}`);
+                
+                // B1: Đọc file thành Base64
+                const base64Full = await readFile(file);
+                const content = base64Full.split(",")[1]; // Bỏ header
+                
+                // B2: Cắt và gửi (Chunk Upload)
+                const url = await uploadChunks(file.name, file.type, content);
+                
+                // B3: Lưu vào Firebase
+                await saveToFirestore(file.name, url);
+
+            } catch (err) {
+                console.error(err);
+                alert(`Lỗi upload file: ${files[i].name}\nChi tiết: ${err.message}`);
+            }
+        }
+
+        setLoading(false);
+        updateProgress(100, "Hoàn tất!");
+        setTimeout(() => { document.getElementById('progressBox').style.display = 'none'; }, 2000);
+        fileInput.value = "";
+    }
+
+    // Hàm chia nhỏ và gửi request
+    async function uploadChunks(fileName, mimeType, base64Str) {
+        const totalSize = base64Str.length;
+        const totalChunks = Math.ceil(totalSize / CHUNK_SIZE);
+        let fileId = null;
+
+        // Step 1: START (Lấy fileId tạm)
+        let resStart = await postToGAS({ act: "start", fileName: fileName });
+        fileId = resStart.fileId;
+
+        // Step 2: APPEND (Gửi từng phần)
+        for (let i = 0; i < totalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, totalSize);
+            const chunk = base64Str.substring(start, end);
+
+            // Tính % hiển thị
+            const percent = Math.round((i / totalChunks) * 100);
+            updateProgress(percent, `Đang upload ${fileName} (${percent}%)`);
+
+            await postToGAS({ act: "append", fileId: fileId, chunk: chunk });
+        }
+
+        // Step 3: FINISH (Ghép file)
+        updateProgress(100, `Đang xử lý server... ${fileName}`);
+        let resFinish = await postToGAS({ 
+            act: "finish", 
+            fileId: fileId, 
+            fileName: fileName, 
+            mimeType: mimeType 
+        });
+
+        return resFinish.viewUrl;
+    }
+
+    // Hàm gọi API Google Script
+    async function postToGAS(payload) {
+        const res = await fetch(GAS_ENDPOINT, {
+            method: "POST",
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status !== "success") throw new Error(data.message || "Unknown Error");
+        return data;
+    }
+
+    // ==========================================
+    // 5. CÁC HÀM TIỆN ÍCH & FIREBASE DATA
+    // ==========================================
+    
+    // Lưu thông tin file vào Firestore
+    function saveToFirestore(name, url) {
+        const user = auth.currentUser;
+        return db.collection("files").add({
+            uid: user.uid,
+            email: user.email,
+            fileName: name,
+            url: url,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    // Tải danh sách file realtime
+    function loadFileData() {
+        db.collection("files").orderBy("createdAt", "desc")
+          .onSnapshot(snap => {
+            const list = document.getElementById('fileList');
+            list.innerHTML = "";
+            snap.forEach(doc => {
+                const d = doc.data();
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.innerHTML = `
+                    <div class="file-info">
+                        <strong>${d.fileName}</strong>
+                        <span>Upload bởi: ${d.email}</span>
+                    </div>
+                    <a href="${d.url}" class="download-btn" target="_blank">⬇️</a>
+                `;
+                list.appendChild(li);
+            });
+        });
+    }
+
+    function readFile(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result);
+            r.onerror = reject;
+            r.readAsDataURL(file);
+        });
+    }
+
+    function showView(id) {
+        document.getElementById('auth-view').style.display = 'none';
+        document.getElementById('app-view').style.display = 'none';
+        document.getElementById(id).style.display = 'block';
+    }
+
+    function setLoading(isLoading) {
+        document.getElementById('btnUpload').disabled = isLoading;
+        document.getElementById('fileInput').disabled = isLoading;
+        document.getElementById('progressBox').style.display = isLoading ? 'block' : 'none';
+    }
+
+    function updateProgress(percent, text) {
+        document.getElementById('progFill').style.width = percent + "%";
+        document.getElementById('progText').innerText = text;
+    }
+</script>
+
+</body>
+</html>
