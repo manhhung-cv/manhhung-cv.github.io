@@ -8,7 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 import {
     getFirestore, doc, setDoc, getDoc, addDoc, collection, query, where,
-    onSnapshot, orderBy, serverTimestamp, updateDoc, deleteDoc, arrayUnion, getDocs
+    onSnapshot, orderBy, serverTimestamp, updateDoc, deleteDoc, arrayUnion, getDocs,arrayRemove
 } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 // Cấu hình Firebase (Thay bằng config của bạn nếu cần)
@@ -80,12 +80,12 @@ let currentSongIndex = 0;
 // TRONG FILE app.js
 
 const ISLAND_STATES = {
-    idle: { width: '160px', height: '36px', radius: '20px' },
-    compact: { width: '220px', height: '36px', radius: '20px' },
-    expanded: { width: '360px', height: '218px', radius: '44px' },
-    alert: { width: '360px', height: '54px', radius: '27px' },
-    confirm: { width: '300px', height: '180px', radius: '32px' },
-    input: { width: '300px', height: '180px', radius: '32px' },
+    idle: { width: '190px', height: '40px', radius: '20px' },
+    compact: { width: '220px', height: '40px', radius: '20px' },
+    expanded: { width: '400px', height: '218px', radius: '38px' },
+    alert: { width: '400px', height: '54px', radius: '22px' },
+    confirm: { width: '400px', height: '180px', radius: '22px' },
+    input: { width: '400px', height: '180px', radius: '22px' },
     upload: { width: '260px', height: '44px', radius: '22px' }
 };
 // DOM Elements Island
@@ -817,6 +817,203 @@ function initMap() {
     }
 }
 
+
+
+// =================================================================
+// FIX: LOGIC CẬP NHẬT PROFILE & MỞ MODAL TÀI KHOẢN
+// =================================================================
+
+// 1. Hàm mở Modal và tự động điền thông tin hiện tại
+window.openAccountModal = () => {
+    if (!currentUser) return window.sysAlert("Vui lòng đăng nhập!", "error");
+    
+    // Điền thông tin từ biến currentUser vào ô input
+    document.getElementById('account-name').value = currentUser.name || currentUser.displayName || "";
+    document.getElementById('account-facebook').value = currentUser.facebookId || "";
+    
+    // Hiện Modal
+    document.getElementById('account-modal').style.display = 'flex';
+};
+
+// 2. Xử lý sự kiện khi nhấn nút "Cập nhật Profile"
+const updateProfileForm = document.getElementById("update-profile-form");
+
+if (updateProfileForm) {
+    updateProfileForm.addEventListener("submit", async (e) => {
+        e.preventDefault(); // Chặn load lại trang
+        
+        const newName = document.getElementById("account-name").value.trim();
+        const newFbId = document.getElementById("account-facebook").value.trim();
+
+        if (!newName) return window.sysAlert("Tên không được để trống!", "error");
+
+        showLoading("Đang cập nhật...");
+
+        try {
+            // A. Cập nhật Firebase Auth (DisplayName)
+            await updateProfile(auth.currentUser, { displayName: newName });
+
+            // B. Cập nhật Firestore (Database)
+            const userRef = doc(db, "users", currentUser.uid);
+            
+            // Dùng setDoc với merge: true để an toàn (nếu doc chưa có thì tạo mới, có rồi thì cập nhật)
+            await setDoc(userRef, {
+                name: newName,
+                facebookId: newFbId,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+
+            // C. Cập nhật biến Local (để không cần F5)
+            currentUser.name = newName;
+            currentUser.facebookId = newFbId;
+            currentUser.displayName = newName;
+
+            // D. Cập nhật Giao diện ngay lập tức (Avatar & Tên trên Island)
+            updateUIAfterProfileChange(newName, newFbId);
+
+            hideLoading();
+            window.sysAlert("Cập nhật thành công!", "success");
+            
+            // Đóng modal
+            document.getElementById('account-modal').style.display = 'none';
+
+        } catch (err) {
+            hideLoading();
+            console.error(err);
+            window.sysAlert("Lỗi: " + err.message, "error");
+        }
+    });
+}
+
+// Hàm phụ: Refresh lại giao diện Island/Map sau khi đổi thông tin
+function updateUIAfterProfileChange(name, fbId) {
+    const avatarUrl = fbId 
+        ? `https://graph.facebook.com/${fbId}/picture?width=100&access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662` 
+        : null;
+
+    const avatarHTML = avatarUrl
+        ? `<img src="${avatarUrl}" class="w-full h-full object-cover">`
+        : `<div class="w-full h-full bg-white/20 flex items-center justify-center text-[8px] font-bold text-white">${name.charAt(0).toUpperCase()}</div>`;
+
+    // Update Avatar nhỏ trên Dynamic Island
+    const islandAvatarMini = document.getElementById("island-avatar-mini");
+    const islandControlAvatar = document.getElementById("island-control-avatar");
+    
+    if (islandAvatarMini) islandAvatarMini.innerHTML = avatarHTML;
+    if (islandControlAvatar) islandControlAvatar.innerHTML = avatarHTML;
+
+    // Update Icon trên Map (Nếu đang có map)
+    if (userIcon) {
+        const mapIconHtml = avatarUrl
+            ? `<img src="${avatarUrl}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">`
+            : `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-color); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">${name.charAt(0)}</div>`;
+        
+        userIcon = L.divIcon({ html: mapIconHtml, className: '', iconSize: [42, 42], iconAnchor: [21, 42], popupAnchor: [0, -42] });
+    }
+}
+
+// =================================================================
+// FIX: CHỨC NĂNG THAM GIA NHÓM (JOIN TRIP)
+// =================================================================
+
+const joinForm = document.getElementById("join-trip-form");
+
+if (joinForm) {
+    joinForm.addEventListener("submit", async (e) => {
+        e.preventDefault(); // Chặn reload trang
+
+        // 1. Kiểm tra đăng nhập
+        if (!currentUser) {
+            return window.sysAlert("Vui lòng đăng nhập để tham gia!", "error");
+        }
+
+        // 2. Lấy mã và chuẩn hóa (viết hoa, bỏ khoảng trắng)
+        const codeInput = document.getElementById("join-code");
+        const code = codeInput.value.trim().toUpperCase();
+
+        if (!code) {
+            return window.sysAlert("Vui lòng nhập mã!", "info");
+        }
+
+        showLoading("Đang tìm chuyến đi...");
+
+        try {
+            // 3. Tìm chuyến đi có inviteCode khớp
+            const tripsRef = collection(db, "trips");
+            const q = query(tripsRef, where("inviteCode", "==", code));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                hideLoading();
+                return window.sysAlert("Mã tham gia không tồn tại!", "error");
+            }
+
+            // 4. Lấy dữ liệu chuyến đi tìm được
+            const tripDoc = querySnapshot.docs[0];
+            const tripData = tripDoc.data();
+            const tripId = tripDoc.id;
+
+            // 5. Kiểm tra xem đã là thành viên chưa
+            if (tripData.members && tripData.members.includes(currentUser.uid)) {
+                hideLoading();
+                window.sysAlert("Bạn đã ở trong nhóm này rồi!", "info");
+                // Tự động mở chuyến đi luôn cho tiện
+                openTrip(tripId, tripData);
+                return;
+            }
+
+            // 6. Kiểm tra số lượng thành viên (nếu cần)
+            if (tripData.members.length >= (tripData.maxPeople || 100)) {
+                hideLoading();
+                return window.sysAlert("Nhóm đã đủ người!", "error");
+            }
+
+            // 7. Thêm UID của user vào mảng members
+            await updateDoc(doc(db, "trips", tripId), {
+                members: arrayUnion(currentUser.uid)
+            });
+
+            hideLoading();
+            window.sysAlert(`Đã tham gia "${tripData.name}" thành công!`, "success");
+            
+            // Reset ô nhập và mở chuyến đi
+            codeInput.value = "";
+            // Reload lại danh sách trip bên ngoài (mặc dù onSnapshot đã tự lo, nhưng gọi cho chắc)
+            loadTrips(); 
+            // Mở chuyến đi vừa tham gia
+            openTrip(tripId, tripData);
+
+        } catch (err) {
+            hideLoading();
+            console.error(err);
+            window.sysAlert("Lỗi tham gia: " + err.message, "error");
+        }
+    });
+}
+
+// BỔ SUNG: TỰ ĐỘNG THAM GIA NẾU CÓ LINK CHIA SẺ (dạng #join=CODE123)
+window.addEventListener('load', async () => {
+    // Đợi 1 chút để Firebase Auth check xong (currentUser có giá trị)
+    // Ta dùng setTimeout hoặc check trong onAuthStateChanged, 
+    // nhưng đơn giản nhất là kiểm tra hash khi Auth state change xong.
+});
+
+// Bạn nên thêm đoạn nhỏ này vào bên trong hàm onAuthStateChanged (phần if user) 
+// để khi user click link chia sẻ -> mở web -> đăng nhập xong -> tự điền mã
+/*
+    const hash = window.location.hash; // ví dụ: #join=ABCXYZ
+    if (hash && hash.startsWith('#join=')) {
+        const code = hash.split('=')[1];
+        if(code) {
+            document.getElementById("join-code").value = code;
+            // Tự động submit luôn hoặc để user bấm
+            // document.getElementById("join-trip-form").dispatchEvent(new Event('submit'));
+        }
+        // Xóa hash để nhìn cho đẹp
+        history.replaceState(null, null, ' ');
+    }
+*/
+
 // Logic Nút Số Người & Nút MAX
 const peopleInput = document.getElementById("location-people");
 const decreaseBtn = document.getElementById("people-decrease");
@@ -900,28 +1097,32 @@ function updateMapMarkers(data) {
 function renderHistoryList(data) {
     const list = document.getElementById("history-list");
     list.innerHTML = "";
-    if (!data || data.length === 0) { list.innerHTML = `<p class="text-center text-white/30 italic col-span-full">Không tìm thấy dữ liệu.</p>`; return; }
+    if (!data || data.length === 0) { 
+        list.innerHTML = `<p class="text-center text-gray-400 dark:text-white/30 italic col-span-full">Không tìm thấy dữ liệu.</p>`; 
+        return; 
+    }
 
     data.forEach(d => {
         const card = document.createElement("div");
-        card.className = "bg-white/60 dark:bg-black/20 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-3xl p-5 shadow-lg relative group";
+        // [FIX] Sửa màu nền và viền cho chế độ sáng
+        card.className = "bg-white dark:bg-black/20 backdrop-blur-xl border border-gray-200 dark:border-white/10 rounded-3xl p-5 shadow-lg relative group transition-colors";
         const avg = d.numPeople > 0 ? d.cost / d.numPeople : 0;
 
         card.innerHTML = `
             <div class="flex justify-between items-start mb-2">
-                <h4 class="text-lg font-bold text-primary">${d.locationName}</h4>
-                <div class="flex items-center gap-1 text-yellow-400 text-sm"><span class="font-bold">${d.rating}</span> <i class="fa-solid fa-star"></i></div>
+                <h4 class="text-lg font-bold text-gray-900 dark:text-primary">${d.locationName}</h4>
+                <div class="flex items-center gap-1 text-yellow-500 text-sm"><span class="font-bold">${d.rating}</span> <i class="fa-solid fa-star"></i></div>
             </div>
-            <div class="space-y-2 text-sm text-slate-600 dark:text-white/80">
-                <div class="flex items-start gap-3"><i class="fa-solid fa-map-pin mt-1 text-slate-400 dark:text-white/40 w-4"></i> <span class="flex-1 opacity-80">${d.address || "Chưa có địa chỉ"}</span></div>
-                <div class="flex items-center gap-3"><i class="fa-solid fa-clock text-slate-400 dark:text-white/40 w-4"></i> ${d.time} - ${d.date}</div>
-                <div class="grid grid-cols-2 gap-2 mt-2 bg-slate-100 dark:bg-black/20 p-3 rounded-xl border border-slate-200 dark:border-white/5">
-                    <div><p class="text-xs opacity-50">Tổng tiền</p><p class="font-mono font-bold text-green-500 dark:text-green-400">${formatter.format(d.cost)}</p></div>
-                    <div><p class="text-xs opacity-50">Chia người</p><p class="font-mono font-bold text-purple-500 dark:text-purple-400">${formatter.format(avg)}</p></div>
+            <div class="space-y-2 text-sm text-gray-600 dark:text-white/80">
+                <div class="flex items-start gap-3"><i class="fa-solid fa-map-pin mt-1 text-gray-400 dark:text-white/40 w-4"></i> <span class="flex-1 opacity-90">${d.address || "Chưa có địa chỉ"}</span></div>
+                <div class="flex items-center gap-3"><i class="fa-solid fa-clock text-gray-400 dark:text-white/40 w-4"></i> ${d.time} - ${d.date}</div>
+                <div class="grid grid-cols-2 gap-2 mt-2 bg-gray-50 dark:bg-black/20 p-3 rounded-xl border border-gray-100 dark:border-white/5">
+                    <div><p class="text-xs text-gray-500 dark:text-white/50">Tổng tiền</p><p class="font-mono font-bold text-green-600 dark:text-green-400">${formatter.format(d.cost)}</p></div>
+                    <div><p class="text-xs text-gray-500 dark:text-white/50">Chia người</p><p class="font-mono font-bold text-purple-600 dark:text-purple-400">${formatter.format(avg)}</p></div>
                 </div>
             </div>
             <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                ${(currentUser.uid === currentTrip.ownerId || currentUser.uid === d.createdBy.uid) ? `<button class="w-8 h-8 rounded-full bg-slate-200 dark:bg-white/10 hover:bg-primary hover:text-white flex items-center justify-center transition-colors" onclick="deleteHistoryItem('${d.id}')"><i class="fa-solid fa-trash text-xs"></i></button>` : ''}
+                ${(currentUser.uid === currentTrip.ownerId || currentUser.uid === d.createdBy.uid) ? `<button class="w-8 h-8 rounded-full bg-gray-200 dark:bg-white/10 hover:bg-red-500 hover:text-white text-gray-500 dark:text-white/60 flex items-center justify-center transition-colors" onclick="deleteHistoryItem('${d.id}')"><i class="fa-solid fa-trash text-xs"></i></button>` : ''}
             </div>
         `;
         list.appendChild(card);
@@ -981,15 +1182,22 @@ function updateStats(data) {
     if (!data.length) return;
     const totalCost = data.reduce((sum, i) => sum + i.cost, 0);
     const totalPlaces = data.length;
+    // [FIX] Màu chữ tiêu đề và số liệu
     document.getElementById("stats-content").innerHTML = `
-        <h3 class="text-lg font-bold mb-4 text-center text-slate-800 dark:text-white">Tổng quan</h3>
+        <h3 class="text-lg font-bold mb-4 text-center text-gray-900 dark:text-white">Tổng quan</h3>
         <div class="grid grid-cols-2 gap-4">
             <div class="bg-green-500/10 border border-green-500/20 p-4 rounded-2xl col-span-2 flex items-center gap-4">
                 <div class="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white text-xl"><i class="fa-solid fa-wallet"></i></div>
-                <div><p class="text-xs text-green-600 dark:text-green-400 font-bold uppercase">Tổng chi phí</p><p class="text-2xl font-bold text-slate-800 dark:text-white">${formatter.format(totalCost)} đ</p></div>
+                <div><p class="text-xs text-green-700 dark:text-green-400 font-bold uppercase">Tổng chi phí</p><p class="text-2xl font-bold text-gray-900 dark:text-white">${formatter.format(totalCost)} đ</p></div>
             </div>
-            <div class="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl text-center"><p class="text-2xl font-bold text-blue-500 dark:text-blue-400 mb-1">${totalPlaces}</p><p class="text-xs text-slate-500 dark:text-white/50">Địa điểm</p></div>
-            <div class="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl text-center"><p class="text-2xl font-bold text-yellow-500 dark:text-yellow-400 mb-1">${(data.reduce((s, i) => s + i.rating, 0) / totalPlaces).toFixed(1)}</p><p class="text-xs text-slate-500 dark:text-white/50">Sao TB</p></div>
+            <div class="bg-blue-500/10 border border-blue-500/20 p-4 rounded-2xl text-center">
+                <p class="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-1">${totalPlaces}</p>
+                <p class="text-xs text-gray-600 dark:text-white/50">Địa điểm</p>
+            </div>
+            <div class="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-2xl text-center">
+                <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">${(data.reduce((s, i) => s + i.rating, 0) / totalPlaces).toFixed(1)}</p>
+                <p class="text-xs text-gray-600 dark:text-white/50">Sao TB</p>
+            </div>
         </div>
     `;
 }
@@ -1000,6 +1208,10 @@ function updateStats(data) {
 
 function loadChat(tripId) {
     const q = query(collection(db, "trips", tripId, "chat"), orderBy("timestamp", "asc"));
+    
+    // Hủy listener cũ nếu có để tránh duplicate
+    if (chatUnsubscribe) chatUnsubscribe();
+
     chatUnsubscribe = onSnapshot(q, (snapshot) => {
         const div = document.getElementById("chat-messages");
         div.innerHTML = "";
@@ -1009,52 +1221,93 @@ function loadChat(tripId) {
             const msgId = doc.id;
             const isMe = m.sender.uid === currentUser.uid;
 
-            // Xử lý nội dung an toàn để không lỗi khi truyền vào hàm onclick
-            const safeContent = m.content.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
+            // 1. Xử lý Avatar
+            const fbId = m.sender.faceId;
+            const avatarUrl = fbId 
+                ? `https://graph.facebook.com/${fbId}/picture?width=100&access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662` 
+                : null;
+            
+            // Avatar HTML
+            const avatarHTML = `
+                <div class="w-8 h-8 rounded-full bg-gray-300 dark:bg-white/10 flex-shrink-0 overflow-hidden border border-gray-200 dark:border-white/10 shadow-sm">
+                    ${avatarUrl 
+                        ? `<img src="${avatarUrl}" class="w-full h-full object-cover">` 
+                        : `<div class="w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-500 dark:text-white">${(m.sender.name||"U").charAt(0).toUpperCase()}</div>`
+                    }
+                </div>
+            `;
 
-            // Format thời gian
+            // 2. Xử lý Reaction (Con khỉ)
+            const reactions = m.reactions || []; // Mảng UID người đã react
+            const count = reactions.length;
+            const hasReacted = reactions.includes(currentUser.uid);
+            
+            // Style cho nút khỉ: Nếu đã like thì sáng lên, chưa like thì mờ
+            const reactionClass = hasReacted 
+                ? "text-yellow-500 bg-yellow-500/10 border-yellow-500/20 scale-110" 
+                : "text-gray-400 dark:text-white/30 hover:text-yellow-500 hover:bg-yellow-500/10 border-transparent";
+
+            // 3. Xử lý bong bóng chat
+            const safeContent = m.content.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, '\\n');
             const timeStr = m.timestamp
                 ? new Date(m.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                 : '...';
 
             const bubbleStyle = isMe
-                ? "bg-gradient-to-br from-primary to-blue-600 text-white rounded-2xl rounded-tr-sm shadow-sm"
-                : "bg-white/10 backdrop-blur-md border border-white/10 text-white rounded-2xl rounded-tl-sm";
+                ? "bg-gradient-to-br from-primary to-blue-600 text-white rounded-2xl rounded-tr-sm shadow-md"
+                : "bg-white dark:bg-white/10 backdrop-blur-md border border-gray-200 dark:border-white/10 text-gray-800 dark:text-white rounded-2xl rounded-tl-sm shadow-sm";
 
+            // 4. Tạo HTML tổng thể
             const wrapper = document.createElement("div");
-            wrapper.className = "w-full mb-4 flex flex-col group";
+            wrapper.className = `w-full mb-5 flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`;
 
             wrapper.innerHTML = `
-                <div class="flex w-full ${isMe ? 'justify-end' : 'justify-start'}">
-                    <div class="max-w-[75%] w-fit h-auto min-h-0 break-words px-3.5 py-2.5 text-sm ${bubbleStyle}">
-                        ${!isMe ? `<div class="text-[10px] text-white/50 mb-1 font-bold">${m.sender.name}</div>` : ''}
-                        <span class="whitespace-pre-wrap leading-relaxed block">${m.content}</span>
-                    </div>
-                </div>
+                ${avatarHTML}
 
-                <div class="flex w-full ${isMe ? 'justify-end' : 'justify-start'} items-center gap-3 mt-1 px-1 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[70%]">
                     
-                    <span class="text-[9px] text-white/30 font-medium select-none">${timeStr}</span>
+                    ${!isMe ? `<div class="text-[10px] text-gray-500 dark:text-white/50 mb-1 ml-1 font-bold truncate max-w-[150px]">${m.sender.name}</div>` : ''}
 
-                    <button onclick="window.quickCopy('${safeContent}')" 
-                            class="w-5 h-5 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-blue-400 transition-colors cursor-pointer" 
-                            title="Sao chép">
-                        <i class="fa-regular fa-copy text-[11px]"></i>
-                    </button>
+                    <div class="px-4 py-2.5 text-sm ${bubbleStyle} relative group/bubble">
+                        <span class="whitespace-pre-wrap leading-relaxed block">${m.content}</span>
+                        
+                        ${count > 0 ? `
+                            <div class="absolute -bottom-2 ${isMe ? '-left-2' : '-right-2'} bg-white dark:bg-gray-800 border border-gray-200 dark:border-white/10 rounded-full px-1.5 py-0.5 text-[9px] shadow-sm flex items-center gap-0.5 text-yellow-500 animate-bounce-short">
+                                <span>🙉</span><span class="font-bold">${count}</span>
+                            </div>
+                        ` : ''}
+                    </div>
 
-                    ${isMe ? `
-                    <button onclick="window.quickDelete('${msgId}')" 
-                            class="w-5 h-5 rounded-full hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-red-400 transition-colors cursor-pointer" 
-                            title="Thu hồi">
-                        <i class="fa-solid fa-trash text-[11px]"></i>
-                    </button>
-                    ` : ''}
+                    <div class="flex items-center gap-2 mt-1 px-1 opacity-100 transition-opacity duration-200">
+                        <span class="text-[9px] text-gray-400 dark:text-white/30 font-medium select-none">${timeStr}</span>
+
+                        <button onclick="window.toggleReaction('${msgId}')" 
+                                class="w-6 h-6 rounded-full border flex items-center justify-center transition-all active:scale-95 ${reactionClass}" 
+                                title="Thả tim">
+                            <span class="text-xs">🙉</span>
+                        </button>
+
+                        <button onclick="window.quickCopy('${safeContent}')" 
+                                class="w-6 h-6 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 flex items-center justify-center text-gray-400 dark:text-white/30 hover:text-blue-500 transition-colors" 
+                                title="Sao chép">
+                            <i class="fa-regular fa-copy text-[10px]"></i>
+                        </button>
+
+                        ${isMe ? `
+                        <button onclick="window.quickDelete('${msgId}')" 
+                                class="w-6 h-6 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 flex items-center justify-center text-gray-400 dark:text-white/30 hover:text-red-500 transition-colors" 
+                                title="Thu hồi">
+                            <i class="fa-solid fa-trash text-[10px]"></i>
+                        </button>
+                        ` : ''}
+                    </div>
                 </div>
             `;
 
             div.appendChild(wrapper);
         });
 
+        // Tự động cuộn xuống dưới cùng
         div.scrollTop = div.scrollHeight;
     });
 }
@@ -1094,12 +1347,59 @@ window.quickDelete = async (msgId) => {
         }
     }
 };
+
+// Hàm xử lý thả cảm xúc
+window.toggleReaction = async (msgId) => {
+    if (!currentTrip.id || !currentUser) return;
+
+    // Rung nhẹ phản hồi
+    if (navigator.vibrate) navigator.vibrate(20);
+
+    const msgRef = doc(db, "trips", currentTrip.id, "chat", msgId);
+
+    try {
+        const docSnap = await getDoc(msgRef);
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const reactions = data.reactions || [];
+
+            if (reactions.includes(currentUser.uid)) {
+                // Nếu đã like rồi -> Bỏ like (Remove)
+                await updateDoc(msgRef, {
+                    reactions: arrayRemove(currentUser.uid)
+                });
+            } else {
+                // Chưa like -> Thêm like (Union)
+                await updateDoc(msgRef, {
+                    reactions: arrayUnion(currentUser.uid)
+                });
+                
+                // Hiệu ứng visual (tùy chọn): Alert nhỏ
+                // window.sysAlert("Đã thả 🙉", "success"); 
+            }
+        }
+    } catch (e) {
+        console.error("Lỗi reaction:", e);
+    }
+};
 document.getElementById("chat-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = document.getElementById("chat-input");
     const txt = input.value.trim();
     if (!txt) return;
-    await addDoc(collection(db, "trips", currentTrip.id, "chat"), { sender: { uid: currentUser.uid, name: currentUser.name || currentUser.email }, content: txt, timestamp: serverTimestamp(), type: 'text' });
+
+    // [FIX] Thêm faceId và mảng reactions rỗng khi tạo tin nhắn mới
+    await addDoc(collection(db, "trips", currentTrip.id, "chat"), { 
+        sender: { 
+            uid: currentUser.uid, 
+            name: currentUser.name || currentUser.email,
+            faceId: currentUser.facebookId || null // Lưu thêm cái này để lấy avatar
+        }, 
+        content: txt, 
+        timestamp: serverTimestamp(), 
+        type: 'text',
+        reactions: [] // Mảng chứa UID những người đã thả cảm xúc
+    });
     input.value = "";
 });
 
@@ -1461,19 +1761,23 @@ window.loadCloudFiles = () => {
 // Hàm chuyển chế độ xem
 window.changeViewMode = (mode) => {
     currentViewMode = mode;
-    // Cập nhật UI nút bấm
     ['list', 'grid', 'gallery'].forEach(m => {
         const btn = document.getElementById(`view-btn-${m}`);
-        if(m === mode) btn.className = "w-8 h-8 rounded-lg flex items-center justify-center bg-white/20 text-white transition-all shadow-lg";
-        else btn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all";
+        if(m === mode) {
+            // [FIX] Active style: Nền trắng (light) hoặc trong suốt (dark)
+            btn.className = "w-8 h-8 rounded-lg flex items-center justify-center bg-white text-primary shadow-sm dark:bg-white/20 dark:text-white transition-all";
+        }
+        else {
+            // [FIX] Inactive style
+            btn.className = "w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 dark:text-white/50 hover:bg-gray-200 dark:hover:bg-white/10 hover:text-gray-600 dark:hover:text-white transition-all";
+        }
     });
-    window.applyFileFilters(); // Render lại
+    window.applyFileFilters(); 
 };
 
-// Hàm Filter & Render (Cập nhật Logic hiển thị)
-// ==========================================
-// HÀM RENDER ĐÃ SỬA LỖI GALLERY BÉ
-// ==========================================
+// =================================================================
+// HÀM RENDER FILE (ĐÃ FIX GIAO DIỆN SÁNG/TỐI)
+// =================================================================
 
 window.applyFileFilters = () => {
     const list = document.getElementById('cloud-file-list');
@@ -1504,18 +1808,18 @@ window.applyFileFilters = () => {
         return 0;
     });
 
-    // 3. Render
+    // 3. Render giao diện
     // Gán class view-gallery nếu đang ở chế độ gallery
     list.className = currentViewMode === 'grid' ? 'view-grid' : (currentViewMode === 'gallery' ? 'view-gallery' : 'space-y-3 pb-20');
     list.innerHTML = "";
 
     if (filteredFilesCache.length === 0) {
-        list.innerHTML = `<p class="text-center text-white/30 italic py-4 col-span-full">Không tìm thấy file phù hợp.</p>`;
+        list.innerHTML = `<p class="text-center text-gray-400 dark:text-white/30 italic py-4 col-span-full">Không tìm thấy file phù hợp.</p>`;
         return;
     }
 
     filteredFilesCache.forEach((d, index) => {
-        const isGallery = currentViewMode === 'gallery'; // Biến kiểm tra chế độ
+        const isGallery = currentViewMode === 'gallery'; 
 
         // Xử lý hiển thị Thumbnail
         const name = (d.fileName || "").toLowerCase();
@@ -1526,43 +1830,56 @@ window.applyFileFilters = () => {
         let mediaDisplay = '';
         let iconClass = "fa-file";
 
-        // Logic hiển thị ảnh/video
-        if (isImage) mediaDisplay = `<img src="${d.url}" class="w-full h-full object-cover transition-transform duration-500 group-hover/item:scale-110" loading="lazy">`;
-        else if (isVideo) mediaDisplay = `<video src="${d.url}#t=1.0" class="w-full h-full object-cover transition-transform duration-500 group-hover/item:scale-110" muted preload="metadata"></video>`;
+        // Logic hiển thị ảnh/video/icon
+        if (isImage) {
+            mediaDisplay = `<img src="${d.url}" class="w-full h-full object-cover transition-transform duration-500 group-hover/item:scale-110" loading="lazy">`;
+        }
+        else if (isVideo) {
+            mediaDisplay = `<video src="${d.url}#t=1.0" class="w-full h-full object-cover transition-transform duration-500 group-hover/item:scale-110" muted preload="metadata"></video>`;
+        }
         else {
-             if (name.endsWith('.pdf')) iconClass = "fa-file-pdf text-red-400";
-             else if (name.match(/\.(xls|xlsx)$/)) iconClass = "fa-file-excel text-green-400";
-             else if (name.match(/\.(doc|docx)$/)) iconClass = "fa-file-word text-blue-400";
-             else if (isAudio) iconClass = "fa-file-audio text-pink-400";
+             if (name.endsWith('.pdf')) iconClass = "fa-file-pdf text-red-500";
+             else if (name.match(/\.(xls|xlsx)$/)) iconClass = "fa-file-excel text-green-500";
+             else if (name.match(/\.(doc|docx)$/)) iconClass = "fa-file-word text-blue-500";
+             else if (isAudio) iconClass = "fa-file-audio text-pink-500";
+             else if (name.match(/\.(zip|rar|7z)$/)) iconClass = "fa-file-zipper text-yellow-500";
              
              // Icon lớn nếu là Grid, Icon nhỏ nếu List
              const iconSize = currentViewMode === 'grid' ? 'text-4xl' : 'text-xl';
-             mediaDisplay = `<div class="w-full h-full flex items-center justify-center bg-white/5"><i class="fa-solid ${iconClass} ${iconSize}"></i></div>`;
+             // Màu icon (gray ở light mode, white ở dark mode cho phần nền icon)
+             const iconColor = "text-gray-400 dark:text-white/50";
+             
+             mediaDisplay = `<div class="w-full h-full flex items-center justify-center bg-gray-50 dark:bg-white/5"><i class="fa-solid ${iconClass} ${iconSize}"></i></div>`;
         }
 
-        // --- QUAN TRỌNG: CẤU HÌNH CLASS CHO CONTAINER ẢNH ---
-        // Nếu là Gallery: Full width/height (w-full h-full), bỏ bo góc (rounded-none hoặc để CSS lo)
-        // Nếu là List/Grid: Kích thước cố định (w-12 h-12 hoặc w-full h-32 cho grid)
+        // Cấu hình kích thước container ảnh
         let thumbContainerClass = "";
         if (isGallery) {
-            thumbContainerClass = "absolute inset-0 w-full h-full"; // Full lấp đầy ô lưới
+            thumbContainerClass = "absolute inset-0 w-full h-full"; 
         } else if (currentViewMode === 'grid') {
-            thumbContainerClass = "w-full h-32 rounded-xl border border-white/5 bg-black/20 overflow-hidden mb-2";
+            thumbContainerClass = "w-full h-32 rounded-xl border border-gray-200 dark:border-white/5 bg-gray-100 dark:bg-black/20 overflow-hidden mb-2";
         } else {
-            thumbContainerClass = "w-12 h-12 rounded-xl border border-white/5 bg-white/5 overflow-hidden shrink-0";
+            thumbContainerClass = "w-12 h-12 rounded-xl border border-gray-200 dark:border-white/5 bg-gray-100 dark:bg-white/5 overflow-hidden shrink-0";
         }
 
+        // Kiểm tra đã chọn hay chưa để đổi màu nền
         const isChecked = selectedFileIds.has(d.id) ? 'checked' : '';
-        const borderClass = isChecked ? 'border-primary bg-primary/10' : 'border-white/10';
+        
+        // [FIX] Màu nền và viền thay đổi theo Light/Dark Mode
+        const borderClass = isChecked 
+            ? 'border-primary bg-primary/5 dark:bg-primary/10' 
+            : 'border-gray-200 dark:border-white/10 bg-white dark:bg-glass';
 
         // Tạo thẻ Wrapper
         const el = document.createElement("div");
-        el.className = `file-card group/item animate-fade-in-up relative ${!isGallery ? `bg-glass backdrop-blur-md border ${borderClass} rounded-2xl p-3 flex items-center gap-3 shadow-sm hover:bg-white/10 transition-all` : ''}`;
+        
+        // [FIX] Thêm transition-colors để chuyển chế độ mượt mà
+        el.className = `file-card group/item animate-fade-in-up relative ${!isGallery ? `${borderClass} backdrop-blur-md border rounded-2xl p-3 flex items-center gap-3 shadow-sm hover:shadow-md dark:shadow-none hover:bg-gray-50 dark:hover:bg-white/10 transition-all` : ''}`;
         
         // Nội dung HTML
         el.innerHTML = `
             <div class="checkbox-wrapper ${isGallery ? 'hidden' : 'flex'} items-center justify-center pl-1 z-10" onclick="event.stopPropagation()">
-                <input type="checkbox" class="appearance-none w-5 h-5 border border-white/30 rounded bg-white/10 checked:bg-primary checked:border-primary cursor-pointer file-checkbox transition-all relative after:content-['✔'] after:absolute after:text-white after:text-[10px] after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:opacity-0 checked:after:opacity-100" 
+                <input type="checkbox" class="appearance-none w-5 h-5 border border-gray-400 dark:border-white/30 rounded bg-white dark:bg-white/10 checked:bg-primary checked:border-primary cursor-pointer file-checkbox transition-all relative after:content-['✔'] after:absolute after:text-white after:text-[10px] after:top-1/2 after:left-1/2 after:-translate-x-1/2 after:-translate-y-1/2 after:opacity-0 checked:after:opacity-100" 
                        data-id="${d.id}" ${isChecked} onchange="window.handleFileCheck(this, '${d.id}')">
             </div>
 
@@ -1571,28 +1888,39 @@ window.applyFileFilters = () => {
                 
                 <div class="${thumbContainerClass} flex items-center justify-center relative">
                     ${mediaDisplay}
-                    ${isVideo ? '<div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-play text-white/80 drop-shadow-md text-2xl"></i></div>' : ''}
+                    ${isVideo ? '<div class="absolute inset-0 flex items-center justify-center"><i class="fa-solid fa-play text-white drop-shadow-md text-2xl filter drop-shadow-lg"></i></div>' : ''}
                 </div>
                 
                 <div class="file-info min-w-0 flex-1 ${isGallery ? 'hidden' : ''}">
-                    <h4 class="text-sm font-bold text-white truncate pr-2">${d.fileName}</h4>
-                    <div class="flex items-center gap-2 text-[10px] text-white/50">
+                    <h4 class="text-sm font-bold text-gray-900 dark:text-white truncate pr-2" title="${d.fileName}">${d.fileName}</h4>
+                    <div class="flex items-center gap-2 text-[10px] text-gray-500 dark:text-white/50">
                         <span>${d.uploaderName || 'User'}</span> • <span>${d.fileSize}</span>
                     </div>
                 </div>
             </div>
 
             <div class="file-actions ${isGallery ? 'hidden' : 'flex'} items-center gap-1 z-10">
-                <button onclick="window.forceDownload('${d.url}', '${d.fileName}')" class="w-8 h-8 rounded-full hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center"><i class="fa-solid fa-download text-xs"></i></button>
+                <button onclick="window.forceDownload('${d.url}', '${d.fileName}')" 
+                    class="w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 text-gray-500 dark:text-white/60 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition-colors" title="Tải xuống">
+                    <i class="fa-solid fa-download text-xs"></i>
+                </button>
+                
                 ${(currentUser && d.uid === currentUser.uid) ? `
-                <button onclick="window.renameCloudFile('${d.id}', '${d.fileName}')" class="w-8 h-8 rounded-full hover:bg-yellow-500/20 text-white/60 hover:text-yellow-400 flex items-center justify-center"><i class="fa-solid fa-pen text-xs"></i></button>
-                <button onclick="window.deleteCloudFile('${d.id}', '${d.storageName || ''}')" class="w-8 h-8 rounded-full hover:bg-red-500/20 text-white/60 hover:text-red-400 flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                <button onclick="window.renameCloudFile('${d.id}', '${d.fileName}')" 
+                    class="w-8 h-8 rounded-full hover:bg-yellow-100 dark:hover:bg-yellow-500/20 text-gray-500 dark:text-white/60 hover:text-yellow-600 dark:hover:text-yellow-400 flex items-center justify-center transition-colors" title="Đổi tên">
+                    <i class="fa-solid fa-pen text-xs"></i>
+                </button>
+                <button onclick="window.deleteCloudFile('${d.id}', '${d.storageName || ''}')" 
+                    class="w-8 h-8 rounded-full hover:bg-red-100 dark:hover:bg-red-500/20 text-gray-500 dark:text-white/60 hover:text-red-600 dark:hover:text-red-400 flex items-center justify-center transition-colors" title="Xóa">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
                 ` : ''}
             </div>
         `;
         list.appendChild(el);
     });
 };
+
 // Hàm ép trình duyệt tải file về thay vì mở tab
 window.forceDownload = async (url, filename) => {
     try {
