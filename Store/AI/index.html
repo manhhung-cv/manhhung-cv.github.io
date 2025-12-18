@@ -2,8 +2,18 @@
 <html lang="vi" class="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Shop Bot AI - Firebase</title>
+     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hunq Store AI</title>
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" href="/Asset/logo/logo.png" />
+    <link rel="apple-touch-icon" href="/Asset/logo/iconApps.png" sizes="150x150" />
+
+    <meta property="og:image" content="/Asset/img/Banner.png" />
+    <meta property="og:title" content="Hunq Store AI" />
+    <meta property="og:description" content="Thiết kế và lập trình Đinh Mạnh Hùng" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -68,12 +78,12 @@
             <div class="flex items-center gap-4">
                 <div class="relative group cursor-pointer">
                     <div class="w-11 h-11 rounded-full flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-105" style="background: var(--theme-color)">
-                        <i class="fa-solid fa-robot text-xl"></i>
+                        <img src="/Asset/logo/logo.png" alt="" srcset="">
                     </div>
                     <span class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-400 border-2 border-white dark:border-gray-800 rounded-full animate-pulse"></span>
                 </div>
                 <div>
-                    <h1 class="font-bold text-xl leading-tight">Shop Bot 24/7</h1>
+                    <h1 class="font-bold text-xl leading-tight">Hunq Store AI</h1>
                     <p class="text-xs opacity-70 flex items-center gap-1" id="status-text"><i class="fa-solid fa-circle text-[8px] text-yellow-500"></i> Đang kết nối...</p>
                 </div>
             </div>
@@ -187,7 +197,22 @@
         const darkModeToggle = document.getElementById('dark-mode-toggle');
         const quickMenu = document.getElementById('quick-menu');
         const root = document.documentElement;
-        let isDarkMode = false;
+        
+        // LOAD LOCAL STORAGE SETTINGS
+        let isDarkMode = localStorage.getItem('shopBot_darkMode') === 'true';
+        let currentThemeColor = localStorage.getItem('shopBot_themeColor') || '#3b82f6';
+
+        // APPLY INITIAL SETTINGS
+        if (isDarkMode) root.classList.add('dark');
+        root.style.setProperty('--theme-color', currentThemeColor);
+
+        // SYNC UI TOGGLE
+        if (isDarkMode) {
+            darkModeToggle.classList.remove('bg-gray-300');
+            darkModeToggle.style.backgroundColor = currentThemeColor;
+            darkModeToggle.children[0].classList.remove('left-1');
+            darkModeToggle.children[0].classList.add('translate-x-6');
+        }
 
         window.toggleSettings = () => document.getElementById('settings-panel').classList.toggle('translate-x-full');
         
@@ -220,15 +245,26 @@
         
         window.toggleTheme = () => {
             isDarkMode = !isDarkMode;
+            localStorage.setItem('shopBot_darkMode', isDarkMode); // SAVE
+            
             root.classList.toggle('dark', isDarkMode);
-            darkModeToggle.classList.toggle('bg-gray-300', !isDarkMode);
-            darkModeToggle.classList.toggle('bg-[var(--theme-color)]', isDarkMode);
-            darkModeToggle.children[0].classList.toggle('left-1', !isDarkMode);
-            darkModeToggle.children[0].classList.toggle('translate-x-6', isDarkMode);
+            
+            if (isDarkMode) {
+                darkModeToggle.classList.remove('bg-gray-300');
+                darkModeToggle.style.backgroundColor = getComputedStyle(root).getPropertyValue('--theme-color').trim();
+                darkModeToggle.children[0].classList.remove('left-1');
+                darkModeToggle.children[0].classList.add('translate-x-6');
+            } else {
+                darkModeToggle.style.backgroundColor = '';
+                darkModeToggle.classList.add('bg-gray-300');
+                darkModeToggle.children[0].classList.remove('translate-x-6');
+                darkModeToggle.children[0].classList.add('left-1');
+            }
         };
 
         window.changeColor = (color) => {
             root.style.setProperty('--theme-color', color);
+            localStorage.setItem('shopBot_themeColor', color); // SAVE
             if(isDarkMode) darkModeToggle.style.backgroundColor = color;
         };
 
@@ -242,7 +278,9 @@
         function addMessage(content, sender = 'bot') {
             const wrapper = document.createElement('div');
             wrapper.className = `flex w-full mb-6 ${sender === 'user' ? 'justify-end' : 'justify-start'}`;
-            let avatar = sender === 'bot' ? `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm mr-3 mt-auto shadow-md" style="background: var(--theme-color)"><i class="fa-solid fa-robot"></i></div>` : '';
+            let avatar = sender === 'bot' ? `<div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm mr-3 mt-auto shadow-md" style="background: var(--theme-color)">
+                <img src="/Asset/logo/logo.png" alt="" srcset="">
+                </div>` : '';
             const bubble = document.createElement('div');
             // If content contains carousel class, don't style wrapper
             if (sender === 'bot' && content.includes('product-carousel')) bubble.className = 'w-full overflow-hidden';
@@ -485,12 +523,12 @@
                     });
                 } catch(e) { console.error("Save Error", e); }
 
-                const paymentLink = `https://Paygate.com/?amout=${realAmount}&noidung=${encodeURIComponent(orderCode + ' ' + message)}`;
+                const paymentLink = `https://mhung.site/PayGate/?AMOUT=${realAmount}`;
                 
                 const info = { p: chatState.selectedProduct.name, t: chatState.selectedType, pr: chatState.selectedPrice.toLocaleString('vi-VN') };
                 chatState = { step: 'IDLE', selectedProduct: null, selectedType: null, selectedPrice: 0, contactMethod: null };
 
-                setTimeout(() => addMessage(`Nếu sau khi thanh toán mà chờ quá lâu, nhắn Admin tại: <a href="https://m.me/HunqD" target="_blank" class="text-blue-500 font-bold underline">Messenger</a>`, 'bot'), 1500);
+                setTimeout(() => addMessage(`Nếu sau khi thanh toán và chờ quá lâu, hãy nhắn Admin tại: <a href="https://m.me/HunqD" target="_blank" class="text-blue-500 font-bold underline">Messenger</a>`, 'bot'), 1500);
 
                 return `
                     <div class="text-center mb-3"><div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-500 mb-2"><i class="fa-solid fa-check text-xl"></i></div><div class="font-bold text-green-600">Đã lên đơn: ${orderCode}</div></div>
