@@ -1,10 +1,23 @@
 // Kiểm tra và áp dụng theme ngay khi load trang
-if (localStorage.getItem('theme') === 'dark' || 
+if (localStorage.getItem('theme') === 'dark' ||
     (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
     document.documentElement.classList.add('dark');
 } else {
     document.documentElement.classList.remove('dark');
 }
+
+// Đặt hàm này ở cấp độ cao nhất trong main.js
+const getRemainingDays = (expiryDate) => {
+    if (!expiryDate) return { text: 'Vĩnh viễn', class: 'text-brand-600' };
+    const diff = new Date(expiryDate) - new Date();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+    if (days > 0) return { text: `Còn ${days} ngày`, class: 'text-orange-500' };
+    return { text: 'Hết hạn', class: 'text-red-500' };
+};
+
+
+
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
@@ -62,6 +75,10 @@ const fetchGlobalData = () => {
     const pRef = collection(db, 'artifacts', appId, 'public', 'data', 'products');
     onSnapshot(pRef, (snap) => {
         products = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => !p.hidden);
+        
+        // Thêm dòng này để Chatbot có thể truy cập được products
+        window.products = products; 
+
         if (currentView === 'home') renderHome();
         if (currentView === 'admin' && adminTab === 'products') renderAdmin();
     }, (err) => console.error(err));
@@ -70,9 +87,10 @@ const fetchGlobalData = () => {
 // --- Core UI Logic ---
 const setView = (v) => {
     currentView = v;
+    // Cập nhật trạng thái Active cho các nút Nav
     document.querySelectorAll('.nav-btn').forEach(b => {
         const isActive = b.dataset.view === v;
-        b.classList.toggle('text-emerald-600', isActive);
+        b.classList.toggle('text-brand-600', isActive);
         b.classList.toggle('text-gray-400', !isActive);
     });
 
@@ -85,6 +103,7 @@ const setView = (v) => {
         case 'blog': renderBlog(); break;
         case 'account': renderAccount(); break;
         case 'admin': renderAdmin(); break;
+        case 'chat': renderChatTab(); break; // Thêm dòng này
     }
 };
 
@@ -107,7 +126,7 @@ const renderHome = () => {
                                 <img src="/Asset/Banner/PriorityDark.png" class="absolute inset-0 w-full h-full object-cover">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                                 <div class="absolute bottom-0 p-6">
-                                    <span class="text-emerald-400 text-xs font-bold uppercase tracking-widest">Nổi bật</span>
+                                    <span class="text-brand-400 text-xs font-bold uppercase tracking-widest">Nổi bật</span>
                                     <h3 class="text-white text-2xl font-bold">${p.name}</h3>
                                     <button class="mt-4 px-4 py-1.5 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-full font-bold text-sm">${formatMoney(p.price)}</button>
                                 </div>
@@ -125,17 +144,17 @@ const renderHome = () => {
                     <section>
                         <div class="flex justify-between items-center mb-6">
                             <h2 class="text-2xl font-extrabold capitalize">${cat}</h2>
-                            <button class="text-emerald-500 font-bold text-sm">Xem tất cả</button>
+                            <button class="text-brand-500 font-bold text-sm">Xem tất cả</button>
                         </div>
                         <div class="flex overflow-x-auto gap-4 hide-scrollbar pb-4">
                             ${items.map(p => `
                                 <div class="shrink-0 w-40 cursor-pointer group" onclick="showProductDetails('${p.id}')">
-                                    <div class="w-40 h-40 rounded-[22%] bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-5xl mb-3 shadow-md group-hover:shadow-xl transition">
+                                    <div class="w-40 h-40 rounded-[22%] bg-gradient-to-br from-brand-400 to-teal-500 flex items-center justify-center text-white text-5xl mb-3 shadow-md group-hover:shadow-xl transition">
                                         <i class="fa-solid ${p.icon || 'fa-cube'}"></i>
                                     </div>
                                     <h4 class="font-bold text-sm truncate">${p.name}</h4>
                                     <p class="text-xs text-gray-500">${p.pType || 'Tài khoản'}</p>
-                                    <span class="text-emerald-600 dark:text-emerald-400 font-bold text-sm">${formatMoney(p.price)}</span>
+                                    <span class="text-brand-600 dark:text-brand-400 font-bold text-sm">${formatMoney(p.price)}</span>
                                 </div>
                             `).join('')}
                         </div>
@@ -164,15 +183,15 @@ const renderAdmin = async () => {
 
                 <div class="flex bg-gray-100 dark:bg-zinc-900 p-1.5 rounded-2xl w-full lg:w-auto overflow-x-auto hide-scrollbar">
                     <button onclick="setAdminTab('products')" 
-                        class="flex-1 lg:flex-none px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition ${adminTab === 'products' ? 'bg-white dark:bg-zinc-800 shadow-sm text-emerald-600' : 'text-gray-500 hover:text-emerald-500'}">
+                        class="flex-1 lg:flex-none px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition ${adminTab === 'products' ? 'bg-white dark:bg-zinc-800 shadow-sm text-brand-600' : 'text-gray-500 hover:text-brand-500'}">
                         Sản phẩm
                     </button>
                     <button onclick="setAdminTab('orders')" 
-                        class="flex-1 lg:flex-none px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition ${adminTab === 'orders' ? 'bg-white dark:bg-zinc-800 shadow-sm text-emerald-600' : 'text-gray-500 hover:text-emerald-500'}">
+                        class="flex-1 lg:flex-none px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition ${adminTab === 'orders' ? 'bg-white dark:bg-zinc-800 shadow-sm text-brand-600' : 'text-gray-500 hover:text-brand-500'}">
                         Đơn hàng
                     </button>
                     <button onclick="setAdminTab('news')" 
-                        class="flex-1 lg:flex-none px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition ${adminTab === 'news' ? 'bg-white dark:bg-zinc-800 shadow-sm text-emerald-600' : 'text-gray-500 hover:text-emerald-500'}">
+                        class="flex-1 lg:flex-none px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition ${adminTab === 'news' ? 'bg-white dark:bg-zinc-800 shadow-sm text-brand-600' : 'text-gray-500 hover:text-brand-500'}">
                         Tin tức
                     </button>
                 </div>
@@ -204,7 +223,7 @@ window.renderAdminProducts = () => {
                 <div>
                     <h3 class="text-sm font-bold text-gray-400 uppercase tracking-widest">Danh sách sản phẩm (${products.length})</h3>
                 </div>
-                <button onclick="showProductForm()" class="w-full sm:w-auto bg-emerald-600 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-glow-light active:scale-95 transition flex items-center justify-center gap-2">
+                <button onclick="showProductForm()" class="w-full sm:w-auto bg-brand-600 text-white px-6 py-3 rounded-2xl font-bold text-sm shadow-glow-light active:scale-95 transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-plus"></i> THÊM SẢN PHẨM MỚI
                 </button>
             </div>
@@ -214,19 +233,19 @@ window.renderAdminProducts = () => {
             products.map(p => `
                     <div class="bg-white dark:bg-dark-card p-5 rounded-[2rem] border border-gray-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group">
                         <div class="flex items-center gap-4 mb-4">
-                            <div class="w-14 h-14 squircle bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-2xl">
+                            <div class="w-14 h-14 squircle bg-brand-500/10 text-brand-600 flex items-center justify-center text-2xl">
                                 <i class="fa-solid ${p.icon || 'fa-cube'}"></i>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <h4 class="font-bold text-gray-800 dark:text-white truncate">${p.name}</h4>
-                                <p class="text-[10px] text-emerald-500 font-black uppercase tracking-tighter">${p.category} | ${p.pType || 'Tài khoản'}</p>
+                                <p class="text-[10px] text-brand-500 font-black uppercase tracking-tighter">${p.category} | ${p.pType || 'Tài khoản'}</p>
                             </div>
                         </div>
                         
                         <div class="grid grid-cols-2 gap-3 mb-4">
                             <div class="bg-gray-50 dark:bg-zinc-900/50 p-2 rounded-xl">
                                 <p class="text-[9px] text-gray-400 font-bold uppercase">Giá bán</p>
-                                <p class="font-bold text-sm text-emerald-600">${formatMoney(p.price)}</p>
+                                <p class="font-bold text-sm text-brand-600">${formatMoney(p.price)}</p>
                             </div>
                             <div class="bg-gray-50 dark:bg-zinc-900/50 p-2 rounded-xl">
                                 <p class="text-[9px] text-gray-400 font-bold uppercase">Bảo hành</p>
@@ -235,7 +254,7 @@ window.renderAdminProducts = () => {
                         </div>
 
                         <div class="flex gap-2 pt-3 border-t dark:border-zinc-800">
-                            <button onclick="editProduct('${p.id}')" class="flex-1 py-3 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
+                            <button onclick="editProduct('${p.id}')" class="flex-1 py-3 bg-brand-50 text-brand-600 dark:bg-brand-900/20 rounded-xl font-bold text-xs flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-pen-to-square"></i> CHỈNH SỬA
                             </button>
                             <button onclick="deleteProduct('${p.id}')" class="w-12 h-12 bg-red-50 text-red-500 dark:bg-red-900/20 rounded-xl flex items-center justify-center">
@@ -262,7 +281,7 @@ window.renderAdminProducts = () => {
                             <tr class="hover:bg-gray-50/50 dark:hover:bg-zinc-900/30 transition group">
                                 <td class="p-5">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center"><i class="fa-solid ${p.icon}"></i></div>
+                                        <div class="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-600 flex items-center justify-center"><i class="fa-solid ${p.icon}"></i></div>
                                         <div class="font-bold text-sm">${p.name}</div>
                                     </div>
                                 </td>
@@ -271,9 +290,9 @@ window.renderAdminProducts = () => {
                                     <p class="mt-1 text-gray-400">${p.pType || '-'}</p>
                                 </td>
                                 <td class="p-5 text-sm text-gray-500">${p.warranty || '-'}</td>
-                                <td class="p-5 text-sm font-black text-emerald-600">${formatMoney(p.price)}</td>
+                                <td class="p-5 text-sm font-black text-brand-600">${formatMoney(p.price)}</td>
                                 <td class="p-5 text-right space-x-1">
-                                    <button class="w-9 h-9 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition" onclick="editProduct('${p.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
+                                    <button class="w-9 h-9 text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20 rounded-xl transition" onclick="editProduct('${p.id}')"><i class="fa-solid fa-pen-to-square"></i></button>
                                     <button class="w-9 h-9 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition" onclick="deleteProduct('${p.id}')"><i class="fa-solid fa-trash-can"></i></button>
                                 </td>
                             </tr>
@@ -312,8 +331,8 @@ const renderAdminOrders = async () => {
                         </div>
                         <p class="text-xs text-gray-500 mb-4">${o.items.map(i => i.name).join(', ')}</p>
                         <div class="flex justify-between items-center pt-3 border-t dark:border-zinc-800">
-                            <span class="font-black text-emerald-600">${formatMoney(o.total)}</span>
-                            <button onclick="showEditOrderModal('${o.orderId}')" class="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-bold text-xs">Chi tiết</button>
+                            <span class="font-black text-brand-600">${formatMoney(o.total)}</span>
+                            <button onclick="showEditOrderModal('${o.orderId}')" class="px-4 py-2 bg-brand-50 text-brand-600 rounded-xl font-bold text-xs">Chi tiết</button>
                         </div>
                     </div>
                 `).join('')}
@@ -338,7 +357,7 @@ window.renderAdminNews = async () => {
         adminContent.innerHTML = `
             <div class="space-y-6 fade-in">
                 <div class="flex justify-end px-2">
-                    <button onclick="showNewsForm()" class="bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-glow-light active:scale-95 transition">
+                    <button onclick="showNewsForm()" class="bg-brand-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-glow-light active:scale-95 transition">
                         <i class="fa-solid fa-plus mr-2"></i>VIẾT TIN MỚI
                     </button>
                 </div>
@@ -349,7 +368,7 @@ window.renderAdminNews = async () => {
                 allNews.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds).map(n => `
                         <div class="bg-white dark:bg-dark-card p-5 rounded-3xl border border-gray-100 dark:border-zinc-800 flex justify-between items-center shadow-sm">
                             <div class="flex-1 pr-4 min-w-0">
-                                <h4 class="font-bold text-emerald-600 truncate text-lg">${n.title}</h4>
+                                <h4 class="font-bold text-brand-600 truncate text-lg">${n.title}</h4>
                                 <p class="text-[10px] text-gray-400 uppercase font-bold mt-1">
                                     <i class="fa-regular fa-calendar mr-1"></i> 
                                     ${n.createdAt ? n.createdAt.toDate().toLocaleDateString('vi-VN') : 'Vừa xong'}
@@ -370,6 +389,105 @@ window.renderAdminNews = async () => {
     }
 };
 
+const renderChatTab = () => {
+    const container = document.getElementById('main-view');
+    // Thiết kế tràn khung h-[75vh] để cân đối với Header và Mobile Nav
+    container.innerHTML = `
+        <div class="max-w-3xl mx-auto h-[80vh] flex flex-col bg-white dark:bg-dark-card rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden fade-in">
+            <div class="p-6 bg-brand-600 text-white flex items-center gap-4 shadow-md">
+                <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                    <i class="fa-solid fa-robot text-xl"></i>
+                </div>
+                <div>
+                    <h2 class="font-black text-lg tracking-tight uppercase">HunqStore AI Assistant</h2>
+                    <p class="text-[10px] opacity-80 font-bold uppercase">Hỗ trợ trực tuyến 24/7</p>
+                </div>
+            </div>
+
+            <div id="chat-tab-messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/30 dark:bg-black/10 hide-scrollbar scroll-smooth">
+                <div class="flex gap-3 fade-in">
+                    <div class="w-9 h-9 rounded-xl bg-brand-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <i class="fa-solid fa-robot text-xs"></i>
+                    </div>
+                    <div class="bg-white dark:bg-zinc-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm border border-gray-50 dark:border-zinc-700 max-w-[85%]">
+                        Chào <b>${userData?.name || 'Hùng'}</b>! 👋 Tôi có thể giúp gì cho bạn? Hãy nhập tên sản phẩm hoặc yêu cầu hỗ trợ nhé.
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white dark:bg-dark-card border-t dark:border-zinc-800">
+                <div class="relative flex items-center gap-3">
+                    <input type="text" id="chat-tab-input" 
+                           onkeypress="if(event.key==='Enter') window.handleChatTab()"
+                           class="flex-1 bg-gray-100 dark:bg-black rounded-2xl py-4 px-6 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 transition-all border-none" 
+                           placeholder="Nhập nội dung cần trao đổi...">
+                    <button onclick="window.handleChatTab()" class="w-12 h-12 bg-brand-600 text-white rounded-2xl flex items-center justify-center shadow-glow-light active:scale-90 transition">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+};
+
+window.handleChatTab = () => {
+    const input = document.getElementById('chat-tab-input');
+    const msg = input.value.trim().toLowerCase();
+    if (!msg) return;
+
+    addTabMessage(input.value, false);
+    input.value = '';
+
+    setTimeout(() => {
+        // Dò tìm từ khóa sản phẩm
+        const keywords = msg.replace(/mua|tìm|có|giá/g, '').trim();
+        
+        if (msg.includes('hướng dẫn')) {
+            addTabMessage("Để mua hàng: Chọn sản phẩm -> Bấm Mua ngay -> Thanh toán qua QR và chờ Admin duyệt đơn. Đơn hàng sẽ hiện trong mục 'Tra cứu' nhé! 📑");
+        } else if (msg.includes('admin') || msg.includes('liên hệ')) {
+            addTabMessage(`Bạn có thể nhắn tin trực tiếp với Admin qua Facebook cá nhân tại mục Hồ sơ nhé! 👨‍💻`);
+        } else if (keywords.length >= 2) {
+            // Logic tìm kiếm sản phẩm đã có
+            const matches = products.filter(p => p.name.toLowerCase().includes(keywords)).slice(0, 2);
+            if (matches.length > 0) {
+                let html = `<p class="mb-2">Tôi tìm thấy sản phẩm này cho bạn:</p>`;
+                matches.forEach(p => {
+                    html += `
+                        <div class="bg-gray-100 dark:bg-black/40 p-4 rounded-2xl border border-brand-500/20 mb-2">
+                            <p class="font-bold text-xs">${p.name}</p>
+                            <p class="text-brand-600 font-bold text-[10px] mb-3">${formatMoney(p.price)}</p>
+                            <button onclick="window.addToCartFromChat('${p.id}')" class="w-full py-2.5 bg-brand-600 text-white rounded-xl font-bold text-[10px] shadow-sm active:scale-95 transition">THÊM VÀO GIỎ</button>
+                        </div>`;
+                });
+                addTabMessage(null, true, html);
+            } else {
+                addTabMessage(`Xin lỗi, tôi chưa tìm thấy sản phẩm "${keywords}". Bạn có thể thử từ khóa khác.`);
+            }
+        } else {
+            addTabMessage("Tôi chưa hiểu ý bạn. Bạn có thể tìm sản phẩm hoặc hỏi về cách mua hàng.");
+        }
+    }, 600);
+};
+
+const addTabMessage = (text, isBot = true, html = null) => {
+    const area = document.getElementById('chat-tab-messages');
+    if (!area) return;
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `flex gap-3 ${isBot ? '' : 'flex-row-reverse'} fade-in mb-5`;
+    msgDiv.innerHTML = `
+        <div class="w-8 h-8 rounded-xl ${isBot ? 'bg-brand-500' : 'bg-zinc-600'} text-white flex items-center justify-center shrink-0 shadow-sm">
+            <i class="fa-solid ${isBot ? 'fa-robot' : 'fa-user'} text-[10px]"></i>
+        </div>
+        <div class="${isBot ? 'bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-200' : 'bg-brand-600 text-white'} p-4 rounded-2xl shadow-sm text-sm max-w-[80%] border border-gray-50 dark:border-zinc-700/50">
+            ${html || text}
+        </div>`;
+    area.appendChild(msgDiv);
+    area.scrollTop = area.scrollHeight; // Cuộn xuống tin nhắn mới nhất
+};
+
+// Đừng quên đưa renderChatTab ra ngoài window
+window.renderChatTab = renderChatTab;
+
 window.showNewsForm = () => {
     const container = document.getElementById('modal-content');
     container.innerHTML = `
@@ -384,16 +502,16 @@ window.showNewsForm = () => {
             <div class="space-y-4">
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 tracking-widest">Tiêu đề</label>
-                    <input type="text" id="n-title" class="w-full p-4 bg-gray-50 dark:bg-black rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="Nhập tiêu đề hấp dẫn...">
+                    <input type="text" id="n-title" class="w-full p-4 bg-gray-50 dark:bg-black rounded-2xl border-none focus:ring-2 focus:ring-brand-500 transition" placeholder="Nhập tiêu đề hấp dẫn...">
                 </div>
                 
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 tracking-widest">Nội dung bài viết</label>
-                    <textarea id="n-content" rows="10" class="w-full p-4 bg-gray-50 dark:bg-black rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 transition resize-none" placeholder="Nội dung chi tiết (hỗ trợ xuống dòng)..."></textarea>
+                    <textarea id="n-content" rows="10" class="w-full p-4 bg-gray-50 dark:bg-black rounded-2xl border-none focus:ring-2 focus:ring-brand-500 transition resize-none" placeholder="Nội dung chi tiết (hỗ trợ xuống dòng)..."></textarea>
                 </div>
             </div>
 
-            <button onclick="saveNews()" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-lg shadow-emerald-600/20 active:scale-95 transition">
+            <button onclick="saveNews()" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-lg shadow-brand-600/20 active:scale-95 transition">
                 ĐĂNG BÀI VIẾT NGAY
             </button>
         </div>
@@ -536,7 +654,7 @@ window.showEditOrderModal = async (orderId) => {
                 <label class="text-[10px] font-bold text-gray-400 uppercase">Ghi chú Admin</label>
                 <textarea id="edit-o-notes" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none resize-none" rows="3">${o.notes || ''}</textarea>
             </div>
-            <button onclick="saveOrderDetails('${orderId}', '${o.uid}')" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold">CẬP NHẬT ĐƠN HÀNG</button>
+            <button onclick="saveOrderDetails('${orderId}', '${o.uid}')" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold">CẬP NHẬT ĐƠN HÀNG</button>
         </div>
     `;
     openModal();
@@ -572,29 +690,29 @@ const showProductForm = (pid = null) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Tên sản phẩm</label>
-                            <input type="text" id="f-name" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500 transition" value="${p.name || ''}" placeholder="Netflix Premium">
+                            <input type="text" id="f-name" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.name || ''}" placeholder="Netflix Premium">
                         </div>
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Giá (VNĐ)</label>
-                            <input type="number" id="f-price" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500 transition" value="${p.price || ''}" placeholder="65000">
+                            <input type="number" id="f-price" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.price || ''}" placeholder="65000">
                         </div>
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Danh mục</label>
-                            <input type="text" id="f-cat" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500 transition" value="${p.category || ''}" placeholder="Tài khoản, Game, Tools...">
+                            <input type="text" id="f-cat" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.category || ''}" placeholder="Tài khoản, Game, Tools...">
                         </div>
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Loại sản phẩm</label>
-                            <input type="text" id="f-ptype" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500 transition" value="${p.pType || ''}" placeholder="Nâng cấp, Share Acc, Chính chủ...">
+                            <input type="text" id="f-ptype" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.pType || ''}" placeholder="Nâng cấp, Share Acc, Chính chủ...">
                         </div>
                         <div class="space-y-1">
                             <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Bảo hành</label>
-                            <input type="text" id="f-warranty" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500 transition" value="${p.warranty || ''}" placeholder="1 Tháng, 1 Năm, Trọn đời...">
+                            <input type="text" id="f-warranty" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.warranty || ''}" placeholder="1 Tháng, 1 Năm, Trọn đời...">
                         </div>
                         <div class="space-y-2">
     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Icon (Chọn nhanh hoặc nhập)</label>
     <div class="flex flex-wrap gap-2 mb-2">
         ${iconPresets.map(icon => `
-            <button onclick="document.getElementById('f-icon').value='${icon}'" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition">
+            <button onclick="document.getElementById('f-icon').value='${icon}'" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-brand-500 hover:text-white transition">
                 <i class="fa-solid ${icon} text-xs"></i>
             </button>
         `).join('')}
@@ -605,15 +723,15 @@ const showProductForm = (pid = null) => {
 
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Banner Image Link</label>
-                        <input type="text" id="f-banner" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500 transition" value="${p.banner || 'https:chesino.github.io/DATA/Banner/PriorityDark.png'}" placeholder="https://...">
+                        <input type="text" id="f-banner" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.banner || 'https:chesino.github.io/DATA/Banner/PriorityDark.png'}" placeholder="https://...">
                     </div>
 
                     <div class="space-y-1">
                         <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Mô tả sản phẩm</label>
-                        <textarea id="f-desc" rows="4" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500 transition resize-none" placeholder="Nhập mô tả chi tiết...">${p.desc || ''}</textarea>
+                        <textarea id="f-desc" rows="4" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition resize-none" placeholder="Nhập mô tả chi tiết...">${p.desc || ''}</textarea>
                     </div>
 
-                    <button id="save-product-btn" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-glow-light hover:brightness-110 transition active:scale-95">LƯU DỮ LIỆU</button>
+                    <button id="save-product-btn" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-glow-light hover:brightness-110 transition active:scale-95">LƯU DỮ LIỆU</button>
                 </div>
             `;
 
@@ -684,7 +802,7 @@ const renderAccount = () => {
                 <h2 class="text-2xl font-bold mb-2">Xin chào!</h2>
                 <p class="text-gray-500 mb-8">Vui lòng đăng nhập để quản lý tài khoản và xem lịch sử đơn hàng của bạn.</p>
                 <div class="space-y-4">
-                    <button onclick="showAuthModal('login')" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-glow-light active:scale-95 transition">ĐĂNG NHẬP</button>
+                    <button onclick="showAuthModal('login')" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-glow-light active:scale-95 transition">ĐĂNG NHẬP</button>
                     <button onclick="showAuthModal('register')" class="w-full py-4 bg-gray-100 dark:bg-gray-800 rounded-2xl font-bold active:scale-95 transition">TẠO TÀI KHOẢN</button>
                 </div>
             </div>
@@ -700,12 +818,12 @@ const renderAccount = () => {
         <div class="max-w-4xl mx-auto space-y-8 fade-in">
             
             <div class="bg-white dark:bg-dark-card p-6 rounded-3xl shadow-sm border border-gray-100 dark:border-dark-border flex flex-col sm:row items-center gap-6 relative overflow-hidden">
-                <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl"></div>
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-brand-500/5 rounded-full blur-3xl"></div>
                 
                 <div class="relative group">
                     <img src="https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${seed}" 
-                         class="w-24 h-24 rounded-full border-4 border-emerald-500 shadow-lg bg-emerald-50 dark:bg-zinc-900 object-cover">
-                    <button onclick="showEditProfileModal()" class="absolute bottom-0 right-0 w-8 h-8 bg-emerald-600 text-white rounded-full flex items-center justify-center border-2 border-white dark:border-dark-card hover:scale-110 transition shadow-md">
+                         class="w-24 h-24 rounded-full border-4 border-brand-500 shadow-lg bg-brand-50 dark:bg-zinc-900 object-cover">
+                    <button onclick="showEditProfileModal()" class="absolute bottom-0 right-0 w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center border-2 border-white dark:border-dark-card hover:scale-110 transition shadow-md">
                         <i class="fa-solid fa-camera text-[10px]"></i>
                     </button>
                 </div>
@@ -713,7 +831,7 @@ const renderAccount = () => {
                 <div class="flex-1 text-center sm:text-left z-10">
                     <div class="flex items-center justify-center sm:justify-start gap-2 mb-1">
                         <h2 class="text-2xl font-extrabold tracking-tight">${userData?.name || 'Thành viên'}</h2>
-                        <button onclick="showEditProfileModal()" class="text-gray-400 hover:text-emerald-500 transition">
+                        <button onclick="showEditProfileModal()" class="text-gray-400 hover:text-brand-500 transition">
                             <i class="fa-solid fa-pen-to-square text-sm"></i>
                         </button>
                     </div>
@@ -722,14 +840,14 @@ const renderAccount = () => {
                     <div class="flex flex-wrap justify-center sm:justify-start gap-2">
                         ${userData?.role === 'admin'
             ? '<span class="px-3 py-1 bg-red-100 text-red-600 text-[10px] font-black rounded-full uppercase tracking-wider">Administrator</span>'
-            : '<span class="px-3 py-1 bg-emerald-100 text-emerald-600 text-[10px] font-black rounded-full uppercase tracking-wider">Khách hàng Premium</span>'}
+            : '<span class="px-3 py-1 bg-brand-100 text-brand-600 text-[10px] font-black rounded-full uppercase tracking-wider">Khách hàng Premium</span>'}
                         <span class="px-3 py-1 bg-blue-100 text-blue-600 text-[10px] font-black rounded-full uppercase tracking-wider">Đã xác minh</span>
                     </div>
                 </div>
 
                 <div class="flex sm:flex-col gap-2 w-full sm:w-auto">
                     ${userData?.role === 'admin' ? `
-                        <button onclick="setView('admin')" class="flex-1 sm:w-12 sm:h-12 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center hover:bg-emerald-100 transition shadow-sm py-3 sm:py-0" title="Quản trị">
+                        <button onclick="setView('admin')" class="flex-1 sm:w-12 sm:h-12 bg-brand-50 text-brand-600 dark:bg-brand-900/20 rounded-2xl flex items-center justify-center hover:bg-brand-100 transition shadow-sm py-3 sm:py-0" title="Quản trị">
                             <i class="fa-solid fa-gauge-high text-xl"></i>
                             <span class="sm:hidden ml-2 font-bold text-sm">Quản trị viên</span>
                         </button>
@@ -744,20 +862,20 @@ const renderAccount = () => {
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-dark-card p-4 rounded-3xl border border-gray-100 dark:border-dark-border text-center">
                     <p class="text-[10px] text-gray-400 font-bold uppercase mb-1">Đơn hàng đã mua</p>
-                    <p id="stat-total-orders" class="text-lg font-black text-emerald-600">--</p>
+                    <p id="stat-total-orders" class="text-lg font-black text-brand-600">--</p>
                 </div>
                 <div class="bg-white dark:bg-dark-card p-4 rounded-3xl border border-gray-100 dark:border-dark-border text-center">
                     <p class="text-[10px] text-gray-400 font-bold uppercase mb-1">Hạng thành viên</p>
-                    <p class="text-lg font-black text-amber-500">Bạc</p>
+                    <p class="text-lg font-black text-amber-500">HunqMember</p>
                 </div>
             </div>
 
             <div class="space-y-4">
                 <div class="flex items-center justify-between px-2">
                     <h3 class="text-lg font-bold flex items-center gap-2">
-                        <i class="fa-solid fa-clock-rotate-left text-emerald-500"></i> Lịch sử đơn hàng
+                        <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Lịch sử đơn hàng
                     </h3>
-                    <button onclick="fetchOrderHistory()" class="p-2 text-gray-400 hover:text-emerald-500 transition">
+                    <button onclick="fetchOrderHistory()" class="p-2 text-gray-400 hover:text-brand-500 transition">
                         <i class="fa-solid fa-rotate-right text-sm"></i>
                     </button>
                 </div>
@@ -795,7 +913,7 @@ window.showEditProfileModal = () => {
                 <div class="flex gap-4 overflow-x-auto pb-2 hide-scrollbar py-2">
                     ${avatarSeeds.map(seed => `
                         <div onclick="selectAvatar(this, '${seed}')" 
-                             class="avatar-option shrink-0 w-16 h-16 rounded-full border-4 transition cursor-pointer ${selectedSeed === seed ? 'border-emerald-500 scale-110' : 'border-transparent opacity-60'}">
+                             class="avatar-option shrink-0 w-16 h-16 rounded-full border-4 transition cursor-pointer ${selectedSeed === seed ? 'border-brand-500 scale-110' : 'border-transparent opacity-60'}">
                             <img src="https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${seed}" class="rounded-full">
                         </div>
                     `).join('')}
@@ -805,15 +923,15 @@ window.showEditProfileModal = () => {
             <div class="space-y-4">
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-gray-400 uppercase">Họ và tên</label>
-                    <input type="text" id="edit-name" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500" value="${userData?.name || ''}">
+                    <input type="text" id="edit-name" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500" value="${userData?.name || ''}">
                 </div>
                 <div class="space-y-1">
                     <label class="text-[10px] font-bold text-gray-400 uppercase">Link Facebook</label>
-                    <input type="text" id="edit-fb" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500" value="${userData?.facebook || ''}">
+                    <input type="text" id="edit-fb" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500" value="${userData?.facebook || ''}">
                 </div>
             </div>
 
-            <button onclick="saveUserProfile('${selectedSeed}')" id="btn-save-profile" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-lg shadow-emerald-600/20 active:scale-95 transition">
+            <button onclick="saveUserProfile('${selectedSeed}')" id="btn-save-profile" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-lg shadow-brand-600/20 active:scale-95 transition">
                 LƯU THAY ĐỔI
             </button>
         </div>
@@ -825,12 +943,12 @@ window.showEditProfileModal = () => {
 window.selectAvatar = (el, seed) => {
     // Xóa active cũ
     document.querySelectorAll('.avatar-option').forEach(opt => {
-        opt.classList.remove('border-emerald-500', 'scale-110');
+        opt.classList.remove('border-brand-500', 'scale-110');
         opt.classList.add('border-transparent', 'opacity-60');
     });
     // Thêm active mới
     el.classList.remove('border-transparent', 'opacity-60');
-    el.classList.add('border-emerald-500', 'scale-110');
+    el.classList.add('border-brand-500', 'scale-110');
 
     // Cập nhật lại tham số cho nút Lưu (cách đơn giản nhất)
     document.getElementById('btn-save-profile').setAttribute('onclick', `saveUserProfile('${seed}')`);
@@ -878,9 +996,9 @@ const renderLookup = () => {
                     <div class="bg-white dark:bg-dark-card p-8 rounded-3xl shadow-xl space-y-6">
                         <div>
                             <label class="block text-[10px] font-bold text-gray-400 mb-2 uppercase">NHẬP MÃ ĐƠN HÀNG</label>
-                            <input type="text" id="lookup-id" class="w-full p-4 bg-gray-100 dark:bg-black rounded-2xl border-none focus:ring-2 focus:ring-emerald-500 transition" placeholder="VD: DH123456">
+                            <input type="text" id="lookup-id" class="w-full p-4 bg-gray-100 dark:bg-black rounded-2xl border-none focus:ring-2 focus:ring-brand-500 transition" placeholder="VD: DH123456">
                         </div>
-                        <button id="btn-do-lookup" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-glow-light hover:brightness-110 transition active:scale-95">TÌM KIẾM</button>
+                        <button id="btn-do-lookup" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-glow-light hover:brightness-110 transition active:scale-95">TÌM KIẾM</button>
                     </div>
                     <div id="lookup-result" class="mt-8"></div>
                 </div>
@@ -897,29 +1015,22 @@ const renderLookup = () => {
 
         if (order) {
             const d = order.data();
-            // Thêm helper tính ngày trong script
-            const getRemainingDays = (expiryDate) => {
-                if (!expiryDate) return 'Vĩnh viễn';
-                const diff = new Date(expiryDate) - new Date();
-                const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-                return days > 0 ? `còn ${days} ngày` : 'Đã hết hạn';
-            };
-
+            const remaining = getRemainingDays(d.expiryDate);
             // Trong renderLookup, đoạn d = order.data():
             resDiv.innerHTML = `
                     <div class="bg-white ...">
            
         </div>
-    <div class="bg-white dark:bg-dark-card p-6 rounded-3xl border border-emerald-500/20 shadow-sm fade-in">
+    <div class="bg-white dark:bg-dark-card p-6 rounded-3xl border border-brand-500/20 shadow-sm fade-in">
         <div class="flex justify-between items-start mb-4">
             <div>
                 <p class="text-[10px] text-gray-400 font-bold uppercase">Trạng thái / Hết hạn</p>
-                <span class="px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-lg text-[10px] font-bold uppercase">${d.status}</span>
-                <span class="ml-2 text-[10px] font-bold text-orange-500 underline">${getRemainingDays(d.expiryDate)}</span>
+                <span class="px-2 py-0.5 bg-brand-100 text-brand-600 rounded-lg text-[10px] font-bold uppercase">${d.status}</span>
+                <span class="ml-2 text-[10px] font-bold text-orange-500 ${remaining.class} ">${remaining.text}</span>
             </div>
             <div class="text-right">
                 <p class="text-[10px] text-gray-400 font-bold uppercase">Mã đơn: ${d.orderId}</p>
-                <p class="text-lg font-bold text-emerald-600">${formatMoney(d.total)}</p>
+                <p class="text-lg font-bold text-brand-600">${formatMoney(d.total)}</p>
             </div>
         </div>
         ${d.notes ? `<div class="p-3 bg-yellow-50 dark:bg-yellow-900/10 text-yellow-700 dark:text-yellow-500 text-[11px] rounded-xl mb-4 italic">Ghi chú: ${d.notes}</div>` : ''}
@@ -944,7 +1055,7 @@ const showProductDetails = (id) => {
     if (!p) return;
     const container = document.getElementById('modal-content');
     container.innerHTML = `
-                <div class="h-44 bg-gradient-to-br from-emerald-500 to-teal-700 relative">
+                <div class="h-44 bg-gradient-to-br from-brand-500 to-teal-700 relative">
                     <img src="${p.banner || 'https:chesino.github.io/DATA/Banner/PriorityDark.png'}" class="w-full h-full object-cover opacity-40">
                     <div class="absolute inset-0 flex items-center justify-center">
                         <i class="fa-solid ${p.icon} text-white text-8xl opacity-20"></i>
@@ -953,37 +1064,38 @@ const showProductDetails = (id) => {
                 </div>
                 <div class="p-6">
                     <div class="flex items-start gap-4 -mt-16 relative z-10">
-                        <div class="w-24 h-24 squircle bg-emerald-500 text-white flex items-center justify-center text-4xl shadow-xl border-4 border-white dark:border-dark-card">
+                        <div class="w-24 aspect-square squircle bg-brand-500 text-white 
+                                    flex items-center justify-center text-4xl 
+                                    shadow-xl border-4 border-white dark:border-dark-card shrink-0">
                             <i class="fa-solid ${p.icon}"></i>
                         </div>
                         <div class="pt-10">
                             <h2 class="text-2xl font-bold">${p.name}</h2>
-                            <p class="text-emerald-500 font-bold text-sm">${p.category || 'Dịch vụ'}</p>
+                            <p class="text-brand-500 font-bold text-sm">${p.category || 'Dịch vụ'}</p>
                         </div>
                     </div>
                     <div class="mt-8 space-y-4">
 <div class="mt-8 space-y-4">
     <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed whitespace-pre-line">${p.desc || 'Sản phẩm cao cấp được cung cấp bởi AccStore Pro.'}</p>
     
-    <div class="grid grid-cols-2 gap-4 py-6 border-y border-gray-100 dark:border-zinc-800">
-        </div>
+    
 </div>                        <div class="grid grid-cols-2 gap-4 py-6 border-y border-gray-100 dark:border-zinc-800">
                              <div class="bg-gray-50 dark:bg-zinc-900/50 p-3 rounded-2xl">
                                 <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">Thời hạn bảo hành</p>
-                                <p class="font-bold text-sm text-emerald-600">${p.warranty || 'Liên hệ'}</p>
+                                <p class="font-bold text-sm text-brand-600">${p.warranty || 'Liên hệ'}</p>
                              </div>
                              <div class="bg-gray-50 dark:bg-zinc-900/50 p-3 rounded-2xl">
                                 <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">Loại sản phẩm</p>
-                                <p class="font-bold text-sm text-emerald-600">${p.pType || 'Tài khoản'}</p>
+                                <p class="font-bold text-sm text-brand-600">${p.pType || 'Tài khoản'}</p>
                              </div>
                         </div>
                     </div>
                     <div class="mt-8 flex items-center justify-between">
                         <div>
                             <p class="text-[10px] text-gray-400 font-bold uppercase">Đơn giá</p>
-                            <p class="text-2xl font-black text-emerald-600">${formatMoney(p.price)}</p>
+                            <p class="text-2xl font-black text-brand-600">${formatMoney(p.price)}</p>
                         </div>
-                        <button id="add-to-cart-btn" class="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-bold shadow-glow-light active:scale-95 transition">MUA NGAY</button>
+                        <button id="add-to-cart-btn" class="bg-brand-600 text-white px-8 py-3 rounded-2xl font-bold shadow-glow-light active:scale-95 transition">MUA NGAY</button>
                     </div>
                 </div>
             `;
@@ -1069,40 +1181,40 @@ const renderPaymentUI = (orderId, total) => {
 
     return `
         <div class="p-6 text-center space-y-5">
-            <h2 class="text-xl font-bold text-emerald-600">Thông tin thanh toán</h2>
-            <div class="bg-gray-50 dark:bg-zinc-900 p-4 rounded-2xl space-y-3 text-left border border-emerald-500/20">
+            <h2 class="text-xl font-bold text-brand-600">Thông tin thanh toán</h2>
+            <div class="bg-gray-50 dark:bg-zinc-900 p-4 rounded-2xl space-y-3 text-left border border-brand-500/20">
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Ngân hàng</p>
                         <p class="font-bold text-sm">${bankInfo.bank}</p>
                     </div>
-                    <button onclick="copyText('${bankInfo.bank}')" class="text-emerald-500 text-xs font-bold">Sao chép</button>
+                    <button onclick="copyText('${bankInfo.bank}')" class="text-brand-500 text-xs font-bold">Sao chép</button>
                 </div>
                 <div class="flex justify-between items-center border-t border-gray-100 dark:border-zinc-800 pt-2">
                     <div>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Số tài khoản</p>
                         <p class="font-bold text-sm">${bankInfo.number}</p>
                     </div>
-                    <button onclick="copyText('${bankInfo.number}')" class="text-emerald-500 text-xs font-bold">Sao chép</button>
+                    <button onclick="copyText('${bankInfo.number}')" class="text-brand-500 text-xs font-bold">Sao chép</button>
                 </div>
                 <div class="flex justify-between items-center border-t border-gray-100 dark:border-zinc-800 pt-2">
                     <div>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Chủ tài khoản</p>
                         <p class="font-bold text-sm">${bankInfo.name}</p>
                     </div>
-                    <button onclick="copyText('${bankInfo.name}')" class="text-emerald-500 text-xs font-bold">Sao chép</button>
+                    <button onclick="copyText('${bankInfo.name}')" class="text-brand-500 text-xs font-bold">Sao chép</button>
                 </div>
                  <div class="flex justify-between items-center border-t border-gray-100 dark:border-zinc-800 pt-2">
                     <div>
                         <p class="text-[10px] text-gray-400 font-bold uppercase">Số tiền</p>
-                        <h1 class="font-bold text-xl text-emerald-600">${formatMoney(bankInfo.total)}</h1>
+                        <h1 class="font-bold text-xl text-brand-600">${formatMoney(bankInfo.total)}</h1>
                     </div>
-                    <button onclick="copyText('${bankInfo.total}')" class="text-emerald-500 text-xs font-bold">Sao chép</button>
+                    <button onclick="copyText('${bankInfo.total}')" class="text-brand-500 text-xs font-bold">Sao chép</button>
                
             </div>
             <img src="https://img.vietqr.io/image/VCB-1015894887-compact.png?amount=${total}&accountName=${bankInfo.name}" class="mx-auto border-4 border-white dark:border-zinc-800 rounded-2xl w-48 shadow-lg">
             <p class="text-[11px] text-red-500 italic font-medium">* Vui lòng không tắt bảng này cho đến khi xác nhận.</p>
-            <button id="confirm-pay-btn" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-glow-light">TÔI ĐÃ CHUYỂN KHOẢN</button>
+            <button id="confirm-pay-btn" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-glow-light">TÔI ĐÃ CHUYỂN KHOẢN</button>
         </div>
     `;
 };
@@ -1129,7 +1241,7 @@ const renderBlog = () => {
                 <div class="flex flex-col gap-6">
                     ${news.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds).map(n => `
                         <div class="bg-white dark:bg-dark-card p-6 sm:p-8 rounded-[2rem] shadow-sm border border-gray-100 dark:border-zinc-800 transition hover:shadow-md">
-                            <h2 class="text-2xl font-black text-emerald-600 mb-3">${n.title}</h2>
+                            <h2 class="text-2xl font-black text-brand-600 mb-3">${n.title}</h2>
                             <div class="flex items-center gap-2 mb-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                                 <i class="fa-solid fa-user-pen"></i> ${n.author || 'Admin'} 
                                 <span class="mx-2">•</span>
@@ -1153,14 +1265,14 @@ const showAuthModal = (mode = 'login') => {
                         <p class="text-xs text-gray-400 mt-1 uppercase font-bold tracking-wider">HunqStore Pro System</p>
                     </div>
                     <div class="space-y-4">
-                        ${mode === 'register' ? '<div class="space-y-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Họ tên</label><input type="text" id="auth-name" class="w-full p-3 bg-gray-50 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500"></div>' : ''}
-                        <div class="space-y-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Email</label><input type="email" id="auth-email" class="w-full p-3 bg-gray-50 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500"></div>
-                        <div class="space-y-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Mật khẩu</label><input type="password" id="auth-pass" class="w-full p-3 bg-gray-50 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500"></div>
-                        ${mode === 'register' ? '<div class="space-y-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Link Facebook</label><input type="text" id="auth-fb" class="w-full p-3 bg-gray-50 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500"></div>' : ''}
+                        ${mode === 'register' ? '<div class="space-y-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Họ tên</label><input type="text" id="auth-name" class="w-full p-3 bg-gray-50 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500"></div>' : ''}
+                        <div class="space-y-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Email</label><input type="email" id="auth-email" class="w-full p-3 bg-gray-50 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500"></div>
+                        <div class="space-y-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Mật khẩu</label><input type="password" id="auth-pass" class="w-full p-3 bg-gray-50 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500"></div>
+                        ${mode === 'register' ? '<div class="space-y-1"><label class="text-[10px] font-bold text-gray-400 uppercase">Link Facebook</label><input type="text" id="auth-fb" class="w-full p-3 bg-gray-50 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500"></div>' : ''}
                     </div>
-                    <button id="auth-submit-btn" class="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-lg hover:brightness-110 active:scale-95 transition">${mode === 'login' ? 'VÀO CỬA HÀNG' : 'ĐĂNG KÝ NGAY'}</button>
+                    <button id="auth-submit-btn" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-lg hover:brightness-110 active:scale-95 transition">${mode === 'login' ? 'VÀO CỬA HÀNG' : 'ĐĂNG KÝ NGAY'}</button>
                     <p class="text-center text-sm text-gray-500">
-                        ${mode === 'login' ? 'Chưa có tài khoản? <span id="switch-auth" class="text-emerald-500 font-bold cursor-pointer">Đăng ký</span>' : 'Đã có tài khoản? <span id="switch-auth" class="text-emerald-500 font-bold cursor-pointer">Đăng nhập</span>'}
+                        ${mode === 'login' ? 'Chưa có tài khoản? <span id="switch-auth" class="text-brand-500 font-bold cursor-pointer">Đăng ký</span>' : 'Đã có tài khoản? <span id="switch-auth" class="text-brand-500 font-bold cursor-pointer">Đăng nhập</span>'}
                     </p>
                 </div>
             `;
@@ -1192,26 +1304,100 @@ const showAuthModal = (mode = 'login') => {
 const fetchOrderHistory = async () => {
     const hDiv = document.getElementById('order-history');
     if (!user) return;
+    
     const q = collection(db, 'artifacts', appId, 'users', user.uid, 'orders');
     const snap = await getDocs(q);
+    
     if (snap.empty) {
         hDiv.innerHTML = `<p class="text-center py-10 text-gray-400 text-sm">Bạn chưa có đơn hàng nào.</p>`;
         return;
     }
+
     const history = snap.docs.map(d => d.data());
-    hDiv.innerHTML = history.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds).map(o => `
-    <div onclick="viewOrderHistoryDetail('${o.orderId}')" class="bg-white dark:bg-dark-card p-4 rounded-2xl border border-gray-100 dark:border-zinc-800 flex justify-between items-center transition hover:shadow-md cursor-pointer active:scale-[0.98]">
-        <div>
-            <p class="font-bold text-sm">#${o.orderId}</p>
-            <p class="text-[10px] text-gray-400 truncate max-w-[150px]">${o.items.map(i => i.name).join(', ')}</p>
+    
+    hDiv.innerHTML = history.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds).map(o => {
+        const remaining = getRemainingDays(o.expiryDate);
+        
+        return `
+        <div class="bg-white dark:bg-dark-card rounded-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden mb-3 shadow-sm transition-all">
+            <div class="p-4 flex justify-between items-center cursor-pointer active:bg-gray-50 dark:active:bg-zinc-900/50" onclick="toggleOrderDropdown('${o.orderId}')">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-600 flex items-center justify-center">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <p class="font-black text-sm text-gray-800 dark:text-gray-200">#${o.orderId}</p>
+                            <button onclick="event.stopPropagation(); copyText('${o.orderId}')" class="text-gray-400 hover:text-brand-500 transition p-1">
+                                <i class="fa-regular fa-copy text-[10px]"></i>
+                            </button>
+                        </div>
+                        <p class="text-[10px] font-bold uppercase ${remaining.class}">${remaining.text}</p>
+                    </div>
+                </div>
+                <div class="text-right flex items-center gap-3">
+                    <div>
+                        <p class="text-sm font-black text-brand-600">${formatMoney(o.total)}</p>
+                        <span class="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${o.status === 'Hoàn thành' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'}">${o.status}</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down text-gray-300 text-xs transition-transform duration-300" id="icon-${o.orderId}"></i>
+                </div>
+            </div>
+
+            <div id="drop-${o.orderId}" class="hidden border-t border-gray-50 dark:border-zinc-800 bg-gray-50/30 dark:bg-black/20 p-4 fade-in">
+                <div class="space-y-2 mb-4">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Thông tin chi tiết:</p>
+                    ${o.items.map(i => `
+                        <div class="flex justify-between text-xs">
+                            <span class="text-gray-500 dark:text-gray-400">${i.name} <b class="text-gray-700 dark:text-gray-300">x${i.qty}</b></span>
+                            <span class="font-bold text-gray-700 dark:text-gray-200">${formatMoney(i.price * i.qty)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                
+                ${o.notes ? `<div class="p-3 bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 text-[11px] rounded-xl mb-4 italic">Ghi chú: ${o.notes}</div>` : ''}
+
+                <div class="flex gap-2">
+                    ${o.status === 'Chờ thanh toán' ? `
+                        <button onclick="reShowPayment('${o.orderId}', ${o.total})" class="flex-1 py-2.5 bg-brand-600 text-white rounded-xl font-bold text-xs">THANH TOÁN</button>
+                        <button onclick="cancelOrder('${o.orderId}')" class="px-4 py-2.5 bg-red-50 text-red-500 rounded-xl font-bold text-xs">HỦY ĐƠN</button>
+                    ` : `
+                        <button onclick="copyText('Hỗ trợ đơn #${o.orderId}')" class="flex-1 py-2.5 bg-gray-100 dark:bg-zinc-800 text-gray-500 rounded-xl font-bold text-xs">LIÊN HỆ HỖ TRỢ</button>
+                    `}
+                </div>
+            </div>
         </div>
-        <div class="text-right">
-            <p class="text-sm font-bold text-emerald-600">${formatMoney(o.total)}</p>
-            <span class="text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${o.status === 'Hoàn thành' ? 'bg-green-100 text-green-600' : 'bg-yellow-100 text-yellow-600'
-        }">${o.status}</span>
-        </div>
-    </div>
-`).join('');
+        `;
+    }).join('');
+};
+
+// Hàm xử lý đóng mở Dropdown
+window.toggleOrderDropdown = (orderId) => {
+    const drop = document.getElementById(`drop-${orderId}`);
+    const icon = document.getElementById(`icon-${orderId}`);
+    
+    if (drop.classList.contains('hidden')) {
+        drop.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+    } else {
+        drop.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+    }
+};
+
+window.toggleOrderDropdown = (orderId) => {
+    const drop = document.getElementById(`drop-${orderId}`);
+    const icon = document.getElementById(`icon-${orderId}`);
+
+    if (drop.classList.contains('hidden')) {
+        // Mở đơn hàng được chọn
+        drop.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+    } else {
+        // Đóng đơn hàng
+        drop.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+    }
 };
 // Hàm Hủy Đơn (Yêu cầu 5)
 window.cancelOrder = async (orderId) => {
@@ -1241,11 +1427,11 @@ window.viewOrderHistoryDetail = async (orderId) => {
             </div>
             <div class="space-y-3">
                 ${o.items.map(i => `<div class="flex justify-between text-sm"><span>${i.name} x${i.qty}</span><span class="font-bold">${formatMoney(i.price * i.qty)}</span></div>`).join('')}
-                <div class="flex justify-between pt-2 border-t font-black text-emerald-600"><span>TỔNG CỘNG</span><span>${formatMoney(o.total)}</span></div>
+                <div class="flex justify-between pt-2 border-t font-black text-brand-600"><span>TỔNG CỘNG</span><span>${formatMoney(o.total)}</span></div>
             </div>
             <div class="flex flex-col gap-3">
                 ${o.status === 'Chờ thanh toán' ? `
-                    <button onclick="reShowPayment('${o.orderId}', ${o.total})" class="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold">THANH TOÁN LẠI</button>
+                    <button onclick="reShowPayment('${o.orderId}', ${o.total})" class="w-full py-3 bg-brand-600 text-white rounded-xl font-bold">THANH TOÁN LẠI</button>
                 ` : ''}
                 ${(o.status === 'Chờ thanh toán' || o.status === 'Lỗi') ? `
                     <button onclick="cancelOrder('${o.orderId}')" class="w-full py-3 bg-red-50 text-red-500 rounded-xl font-bold">HỦY ĐƠN HÀNG</button>
@@ -1274,13 +1460,13 @@ const handleSearch = (keyword) => {
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             ${results.map(p => `
                                 <div class="flex items-center gap-4 p-4 bg-white dark:bg-dark-card rounded-3xl shadow-sm border border-gray-50 dark:border-zinc-800 cursor-pointer hover:shadow-md transition" onclick="showProductDetails('${p.id}')">
-                                    <div class="w-16 h-16 squircle bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-2xl">
+                                    <div class="w-16 h-16 squircle bg-brand-500/10 text-brand-600 flex items-center justify-center text-2xl">
                                         <i class="fa-solid ${p.icon}"></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <h4 class="font-bold text-sm truncate">${p.name}</h4>
                                         <p class="text-[10px] text-gray-400 font-bold uppercase">${p.category}</p>
-                                        <p class="text-sm text-emerald-600 font-bold">${formatMoney(p.price)}</p>
+                                        <p class="text-sm text-brand-600 font-bold">${formatMoney(p.price)}</p>
                                     </div>
                                 </div>
                             `).join('')}
@@ -1296,12 +1482,12 @@ window.niceAlert = (title, msg) => {
     const container = document.getElementById('modal-content');
     container.innerHTML = `
         <div class="p-8 text-center space-y-4">
-            <div class="w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-full flex items-center justify-center text-2xl mx-auto">
+            <div class="w-16 h-16 bg-brand-100 dark:bg-brand-900/30 text-brand-600 rounded-full flex items-center justify-center text-2xl mx-auto">
                 <i class="fa-solid fa-circle-info"></i>
             </div>
             <h2 class="text-xl font-bold">${title}</h2>
             <p class="text-sm text-gray-500">${msg}</p>
-            <button onclick="closeModal()" class="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg">ĐÃ HIỂU</button>
+            <button onclick="closeModal()" class="w-full py-3 bg-brand-600 text-white rounded-xl font-bold shadow-lg">ĐÃ HIỂU</button>
         </div>
     `;
     openModal();
@@ -1337,10 +1523,10 @@ window.nicePrompt = (title, placeholder) => {
         container.innerHTML = `
             <div class="p-8 space-y-4">
                 <h2 class="text-xl font-bold text-center">${title}</h2>
-                <input type="text" id="prompt-input" class="w-full p-4 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-emerald-500" placeholder="${placeholder}">
+                <input type="text" id="prompt-input" class="w-full p-4 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500" placeholder="${placeholder}">
                 <div class="flex gap-3">
                     <button id="prompt-cancel" class="flex-1 py-3 bg-gray-100 dark:bg-zinc-800 rounded-xl font-bold text-gray-500">HỦY</button>
-                    <button id="prompt-submit" class="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold shadow-lg">HOÀN TẤT</button>
+                    <button id="prompt-submit" class="flex-1 py-3 bg-brand-600 text-white rounded-xl font-bold shadow-lg">HOÀN TẤT</button>
                 </div>
             </div>
         `;
@@ -1358,7 +1544,7 @@ const formatMoney = (n) => new Intl.NumberFormat('vi-VN', { style: 'currency', c
 const toggleTheme = () => {
     // 1. Thực hiện toggle class như cũ
     const isDark = document.documentElement.classList.toggle('dark');
-    
+
     // 2. Lưu trạng thái vào localStorage (nếu có class dark thì lưu 'dark', không thì 'light')
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
 };
@@ -1412,13 +1598,13 @@ const updateCartUI = () => {
     }
     list.innerHTML = cart.map(i => `
                 <div class="flex items-center gap-4 group">
-                    <div class="w-14 h-14 squircle bg-emerald-500 text-white flex items-center justify-center"><i class="fa-solid ${i.icon}"></i></div>
+                    <div class="w-14 h-14 squircle bg-brand-500 text-white flex items-center justify-center"><i class="fa-solid ${i.icon}"></i></div>
                     <div class="flex-1">
                         <p class="font-bold text-xs">${i.name}</p>
                         <p class="text-[10px] text-gray-500">${formatMoney(i.price)} x ${i.qty}</p>
                     </div>
                     <div class="flex flex-col items-end">
-                        <p class="font-bold text-sm text-emerald-600">${formatMoney(i.price * i.qty)}</p>
+                        <p class="font-bold text-sm text-brand-600">${formatMoney(i.price * i.qty)}</p>
                         <button onclick="removeFromCart('${i.id}')" class="text-[9px] text-red-500 font-bold uppercase hover:underline opacity-0 group-hover:opacity-100 transition">Xóa</button>
                     </div>
                 </div>
@@ -1437,12 +1623,12 @@ const updateUIHeader = () => {
         // Dùng avatarSeed nếu có, không thì dùng uid
         const seed = userData?.avatarSeed || user.uid;
         container.innerHTML = `
-            <div class="w-10 h-10 rounded-full border-2 border-emerald-500 overflow-hidden shadow-sm hover:scale-105 transition active:scale-95" onclick="setView('account')">
+            <div class="w-10 h-10 rounded-full border-2 border-brand-500 overflow-hidden shadow-sm hover:scale-105 transition active:scale-95" onclick="setView('account')">
                 <img src="https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${seed}" class="w-full h-full">
             </div>
         `;
     } else {
-        container.innerHTML = `<button onclick="showAuthModal()" class="px-6 py-2 bg-emerald-600 text-white rounded-full font-bold text-sm shadow-glow-light active:scale-95 transition">LOGIN</button>`;
+        container.innerHTML = `<button onclick="showAuthModal()" class="px-6 py-2 bg-brand-600 text-white rounded-full font-bold text-sm shadow-glow-light active:scale-95 transition">LOGIN</button>`;
     }
 };
 const showToast = (msg, success) => {
@@ -1475,6 +1661,12 @@ window.handleSearch = handleSearch;
 window.setAdminTab = setAdminTab;
 window.updateOrderStatus = updateOrderStatus;
 window.showProductForm = showProductForm;
+window.fetchOrderHistory = fetchOrderHistory;
+window.showToast = showToast;
+window.formatMoney = formatMoney;
+window.products = products;
+window.cart = cart;
+window.updateCartUI = updateCartUI;
 
 // Init App
 initAuth();
