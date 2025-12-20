@@ -87,23 +87,32 @@ const fetchGlobalData = () => {
 // --- Core UI Logic ---
 const setView = (v) => {
     currentView = v;
-    // Cập nhật trạng thái Active cho các nút Nav
+    const container = document.getElementById('main-view');
+    const bottomNav = document.querySelector('nav.md\\:hidden'); // Thanh nav mobile
+
+    // Reset trạng thái các nút nav
     document.querySelectorAll('.nav-btn').forEach(b => {
         const isActive = b.dataset.view === v;
         b.classList.toggle('text-brand-600', isActive);
         b.classList.toggle('text-gray-400', !isActive);
     });
 
-    const container = document.getElementById('main-view');
-    container.innerHTML = `<div class="flex items-center justify-center h-64"><div class="loading-spinner"></div></div>`;
-
-    switch (v) {
-        case 'home': renderHome(); break;
-        case 'lookup': renderLookup(); break;
-        case 'blog': renderBlog(); break;
-        case 'account': renderAccount(); break;
-        case 'admin': renderAdmin(); break;
-        case 'chat': renderChatTab(); break; // Thêm dòng này
+    // Nếu vào tab chat, ẩn thanh bottom nav và làm tràn main-view
+    if (v === 'chat') {
+        bottomNav.classList.add('hidden');
+        container.classList.remove('pt-20', 'px-4'); // Loại bỏ padding mặc định
+        container.classList.add('pt-16'); // Chỉ để lại khoảng trống cho Header
+        renderChatTab();
+    } else {
+        bottomNav.classList.remove('hidden');
+        container.classList.add('pt-20', 'px-4');
+        container.classList.remove('pt-16');
+        
+        if (v === 'home') renderHome();
+        else if (v === 'lookup') renderLookup();
+        else if (v === 'blog') renderBlog();
+        else if (v === 'account') renderAccount();
+        else if (v === 'admin') renderAdmin();
     }
 };
 
@@ -389,45 +398,54 @@ window.renderAdminNews = async () => {
     }
 };
 
-const renderChatTab = () => {
+window.renderChatTab = () => {
     const container = document.getElementById('main-view');
-    // Thiết kế tràn khung h-[75vh] để cân đối với Header và Mobile Nav
     container.innerHTML = `
-        <div class="max-w-3xl mx-auto h-[80vh] flex flex-col bg-white dark:bg-dark-card rounded-[2.5rem] shadow-sm border border-gray-100 dark:border-zinc-800 overflow-hidden fade-in">
-            <div class="p-6 bg-brand-600 text-white flex items-center gap-4 shadow-md">
-                <div class="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                    <i class="fa-solid fa-robot text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="font-black text-lg tracking-tight uppercase">HunqStore AI Assistant</h2>
-                    <p class="text-[10px] opacity-80 font-bold uppercase">Hỗ trợ trực tuyến 24/7</p>
+        <div class="flex flex-col h-[calc(100dvh-64px)] bg-white dark:bg-black fade-in">
+            <div class="px-5 py-4 bg-white dark:bg-dark-card border-b dark:border-zinc-800 flex items-center gap-4 shadow-sm">
+                <button onclick="setView('home')" class="text-gray-400 hover:text-brand-600 transition">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-brand-500 text-white flex items-center justify-center shadow-sm">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-black text-sm uppercase leading-none">HunqStore Support</h2>
+                        <span class="text-[10px] text-green-500 font-bold uppercase tracking-widest">Đang hoạt động</span>
+                    </div>
                 </div>
             </div>
 
-            <div id="chat-tab-messages" class="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/30 dark:bg-black/10 hide-scrollbar scroll-smooth">
+            <div id="chat-tab-messages" class="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50/50 dark:bg-black/40 hide-scrollbar scroll-smooth">
                 <div class="flex gap-3 fade-in">
-                    <div class="w-9 h-9 rounded-xl bg-brand-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                        <i class="fa-solid fa-robot text-xs"></i>
+                    <div class="w-8 h-8 rounded-xl bg-brand-500 text-white flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-robot text-[10px]"></i>
                     </div>
-                    <div class="bg-white dark:bg-zinc-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm border border-gray-50 dark:border-zinc-700 max-w-[85%]">
-                        Chào <b>${userData?.name || 'Hùng'}</b>! 👋 Tôi có thể giúp gì cho bạn? Hãy nhập tên sản phẩm hoặc yêu cầu hỗ trợ nhé.
+                    <div class="bg-white dark:bg-zinc-800 p-4 rounded-2xl rounded-tl-none shadow-sm text-sm border border-gray-100 dark:border-zinc-700 max-w-[85%]">
+                        Chào ${userData?.name || 'Hùng'}, bạn cần mình dò tìm sản phẩm nào hay cần hướng dẫn gì không? 🤖
                     </div>
                 </div>
             </div>
 
-            <div class="p-4 bg-white dark:bg-dark-card border-t dark:border-zinc-800">
-                <div class="relative flex items-center gap-3">
+            <div class="p-4 bg-white dark:bg-dark-card border-t dark:border-zinc-800 sticky bottom-0">
+                <div class="flex items-center gap-3 bg-gray-100 dark:bg-black rounded-[2rem] px-4 py-2">
                     <input type="text" id="chat-tab-input" 
                            onkeypress="if(event.key==='Enter') window.handleChatTab()"
-                           class="flex-1 bg-gray-100 dark:bg-black rounded-2xl py-4 px-6 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 transition-all border-none" 
-                           placeholder="Nhập nội dung cần trao đổi...">
-                    <button onclick="window.handleChatTab()" class="w-12 h-12 bg-brand-600 text-white rounded-2xl flex items-center justify-center shadow-glow-light active:scale-90 transition">
-                        <i class="fa-solid fa-paper-plane"></i>
+                           class="flex-1 bg-transparent border-none py-2 text-sm focus:outline-none dark:text-white" 
+                           placeholder="Nhắn tin hỗ trợ...">
+                    <button onclick="window.handleChatTab()" class="w-10 h-10 bg-brand-600 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition">
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
                     </button>
                 </div>
+                <div class="h-[env(safe-area-inset-bottom)]"></div>
             </div>
         </div>
     `;
+    
+    // Tự động cuộn xuống cuối khi load
+    const area = document.getElementById('chat-tab-messages');
+    area.scrollTop = area.scrollHeight;
 };
 
 window.handleChatTab = () => {
@@ -439,32 +457,28 @@ window.handleChatTab = () => {
     input.value = '';
 
     setTimeout(() => {
-        // Dò tìm từ khóa sản phẩm
         const keywords = msg.replace(/mua|tìm|có|giá/g, '').trim();
         
         if (msg.includes('hướng dẫn')) {
-            addTabMessage("Để mua hàng: Chọn sản phẩm -> Bấm Mua ngay -> Thanh toán qua QR và chờ Admin duyệt đơn. Đơn hàng sẽ hiện trong mục 'Tra cứu' nhé! 📑");
-        } else if (msg.includes('admin') || msg.includes('liên hệ')) {
-            addTabMessage(`Bạn có thể nhắn tin trực tiếp với Admin qua Facebook cá nhân tại mục Hồ sơ nhé! 👨‍💻`);
+            addTabMessage("Để mua hàng: Chọn sản phẩm -> Mua ngay -> Thanh toán QR -> Đợi Admin duyệt đơn là xong! 📑");
         } else if (keywords.length >= 2) {
-            // Logic tìm kiếm sản phẩm đã có
             const matches = products.filter(p => p.name.toLowerCase().includes(keywords)).slice(0, 2);
             if (matches.length > 0) {
-                let html = `<p class="mb-2">Tôi tìm thấy sản phẩm này cho bạn:</p>`;
+                let html = `<p class="mb-2">Mình tìm thấy các sản phẩm này, có phải ý bạn là:</p>`;
                 matches.forEach(p => {
                     html += `
-                        <div class="bg-gray-100 dark:bg-black/40 p-4 rounded-2xl border border-brand-500/20 mb-2">
+                        <div class="bg-gray-100 dark:bg-black/50 p-4 rounded-2xl border border-brand-500/20 mb-2">
                             <p class="font-bold text-xs">${p.name}</p>
                             <p class="text-brand-600 font-bold text-[10px] mb-3">${formatMoney(p.price)}</p>
-                            <button onclick="window.addToCartFromChat('${p.id}')" class="w-full py-2.5 bg-brand-600 text-white rounded-xl font-bold text-[10px] shadow-sm active:scale-95 transition">THÊM VÀO GIỎ</button>
+                            <button onclick="window.addToCartFromChat('${p.id}')" class="w-full py-2.5 bg-brand-600 text-white rounded-xl font-bold text-[10px]">MUA NGAY</button>
                         </div>`;
                 });
                 addTabMessage(null, true, html);
             } else {
-                addTabMessage(`Xin lỗi, tôi chưa tìm thấy sản phẩm "${keywords}". Bạn có thể thử từ khóa khác.`);
+                addTabMessage(`Mình chưa thấy sản phẩm "${keywords}". Bạn thử gõ tên khác xem?`);
             }
         } else {
-            addTabMessage("Tôi chưa hiểu ý bạn. Bạn có thể tìm sản phẩm hoặc hỏi về cách mua hàng.");
+            addTabMessage("Mình chưa hiểu rõ ý bạn. Bạn cần tìm sản phẩm hay hỗ trợ kỹ thuật?");
         }
     }, 600);
 };
@@ -478,12 +492,13 @@ const addTabMessage = (text, isBot = true, html = null) => {
         <div class="w-8 h-8 rounded-xl ${isBot ? 'bg-brand-500' : 'bg-zinc-600'} text-white flex items-center justify-center shrink-0 shadow-sm">
             <i class="fa-solid ${isBot ? 'fa-robot' : 'fa-user'} text-[10px]"></i>
         </div>
-        <div class="${isBot ? 'bg-white dark:bg-zinc-800 text-gray-800 dark:text-gray-200' : 'bg-brand-600 text-white'} p-4 rounded-2xl shadow-sm text-sm max-w-[80%] border border-gray-50 dark:border-zinc-700/50">
+        <div class="${isBot ? 'bg-white dark:bg-zinc-800' : 'bg-brand-600 text-white'} p-4 rounded-2xl shadow-sm text-sm max-w-[80%] border dark:border-zinc-700/50">
             ${html || text}
         </div>`;
     area.appendChild(msgDiv);
-    area.scrollTop = area.scrollHeight; // Cuộn xuống tin nhắn mới nhất
+    area.scrollTop = area.scrollHeight;
 };
+
 
 // Đừng quên đưa renderChatTab ra ngoài window
 window.renderChatTab = renderChatTab;
@@ -679,94 +694,132 @@ window.saveOrderDetails = async (orderId, buyerUid) => {
 const showProductForm = (pid = null) => {
     const p = products.find(x => x.id === pid) || {};
     const iconPresets = ['fa-film', 'fa-music', 'fa-gamepad', 'fa-shield-halved', 'fa-bolt', 'fa-user-secret', 'fa-crown', 'fa-star'];
+    
     const container = document.getElementById('modal-content');
     container.innerHTML = `
-                <div class="p-8 space-y-5 max-h-[85vh] overflow-y-auto">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold">${pid ? 'Cập nhật' : 'Thêm'} sản phẩm</h2>
-                        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Tên sản phẩm</label>
-                            <input type="text" id="f-name" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.name || ''}" placeholder="Netflix Premium">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Giá (VNĐ)</label>
-                            <input type="number" id="f-price" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.price || ''}" placeholder="65000">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Danh mục</label>
-                            <input type="text" id="f-cat" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.category || ''}" placeholder="Tài khoản, Game, Tools...">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Loại sản phẩm</label>
-                            <input type="text" id="f-ptype" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.pType || ''}" placeholder="Nâng cấp, Share Acc, Chính chủ...">
-                        </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Bảo hành</label>
-                            <input type="text" id="f-warranty" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.warranty || ''}" placeholder="1 Tháng, 1 Năm, Trọn đời...">
-                        </div>
-                        <div class="space-y-2">
-    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Icon (Chọn nhanh hoặc nhập)</label>
-    <div class="flex flex-wrap gap-2 mb-2">
-        ${iconPresets.map(icon => `
-            <button onclick="document.getElementById('f-icon').value='${icon}'" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-brand-500 hover:text-white transition">
-                <i class="fa-solid ${icon} text-xs"></i>
-            </button>
-        `).join('')}
-    </div>
-    <input type="text" id="f-icon" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none" value="${p.icon || 'fa-cube'}" placeholder="fa-cube">
-</div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Banner Image Link</label>
-                        <input type="text" id="f-banner" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.banner || 'https:chesino.github.io/DATA/Banner/PriorityDark.png'}" placeholder="https://...">
-                    </div>
-
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Mô tả sản phẩm</label>
-                        <textarea id="f-desc" rows="4" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition resize-none" placeholder="Nhập mô tả chi tiết...">${p.desc || ''}</textarea>
-                    </div>
-
-                    <button id="save-product-btn" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-glow-light hover:brightness-110 transition active:scale-95">LƯU DỮ LIỆU</button>
+        <div class="p-8 space-y-6 max-h-[90vh] overflow-y-auto hide-scrollbar">
+            <div class="flex justify-between items-center">
+                <h2 class="text-2xl font-black text-gray-800 dark:text-white">${pid ? 'Cập nhật' : 'Thêm'} sản phẩm</h2>
+                <button onclick="closeModal()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition">
+                    <i class="fa-solid fa-xmark text-gray-400"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Tên sản phẩm</label>
+                    <input type="text" id="f-name" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none focus:ring-2 focus:ring-brand-500 transition" value="${p.name || ''}">
                 </div>
-            `;
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Danh mục</label>
+                    <input type="text" id="f-cat" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none" value="${p.category || ''}">
+                </div>
+            </div>
 
+            <div class="space-y-3 bg-gray-50/50 dark:bg-zinc-900/50 p-4 rounded-2xl border border-dashed border-gray-200 dark:border-zinc-800">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-[10px] font-black text-brand-600 uppercase tracking-widest">Danh sách phân loại</label>
+                    <button onclick="window.addVariantRow()" class="text-[10px] bg-brand-600 text-white px-3 py-1.5 rounded-lg font-bold shadow-sm active:scale-95 transition">
+                        <i class="fa-solid fa-plus mr-1"></i> THÊM LOẠI
+                    </button>
+                </div>
+                
+                <div id="variant-list" class="space-y-3">
+                    </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Bảo hành</label>
+                    <input type="text" id="f-warranty" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none" value="${p.warranty || ''}">
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Loại (pType)</label>
+                    <input type="text" id="f-ptype" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none" value="${p.pType || ''}">
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Icon đại diện</label>
+                <div class="flex flex-wrap gap-2 mb-2">
+                    ${iconPresets.map(icon => `<button onclick="document.getElementById('f-icon').value='${icon}'" class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-zinc-800 flex items-center justify-center hover:bg-brand-500 hover:text-white transition"><i class="fa-solid ${icon} text-[10px]"></i></button>`).join('')}
+                </div>
+                <input type="text" id="f-icon" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none" value="${p.icon || 'fa-cube'}">
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-[10px] font-bold text-gray-400 uppercase ml-1">Ảnh Banner & Mô tả</label>
+                <input type="text" id="f-banner" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none mb-2" value="${p.banner || ''}" placeholder="Link ảnh...">
+                <textarea id="f-desc" rows="3" class="w-full p-3 bg-gray-100 dark:bg-black rounded-xl border-none resize-none" placeholder="Mô tả sản phẩm...">${p.desc || ''}</textarea>
+            </div>
+
+            <button id="save-product-btn" class="w-full py-4 bg-brand-600 text-white rounded-2xl font-bold shadow-glow-light active:scale-95 transition">
+                LƯU THAY ĐỔI
+            </button>
+        </div>
+    `;
+
+    // 1. Hàm tạo dòng phân loại mới
+    window.addVariantRow = (label = '', price = '') => {
+        const row = document.createElement('div');
+        row.className = "variant-row flex gap-2 animate-fade-in";
+        row.innerHTML = `
+            <input type="text" placeholder="Tên loại (VD: 1 Tháng)" class="v-label flex-1 p-3 bg-white dark:bg-black rounded-xl text-xs border border-gray-100 dark:border-zinc-800 focus:ring-1 focus:ring-brand-500 outline-none" value="${label}">
+            <input type="number" placeholder="Giá tiền" class="v-price w-32 p-3 bg-white dark:bg-black rounded-xl text-xs border border-gray-100 dark:border-zinc-800 focus:ring-1 focus:ring-brand-500 outline-none" value="${price}">
+            <button onclick="this.parentElement.remove()" class="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+        `;
+        document.getElementById('variant-list').appendChild(row);
+    };
+
+    // 2. Đổ dữ liệu cũ vào (nếu có)
+    if (p.variants && p.variants.length > 0) {
+        p.variants.forEach(v => window.addVariantRow(v.label, v.price));
+    } else {
+        window.addVariantRow(); // Mặc định hiện 1 dòng trống
+    }
+
+    // 3. Logic Lưu dữ liệu
     document.getElementById('save-product-btn').onclick = async () => {
+        // Thu thập dữ liệu từ các dòng input phân loại
+        const variantRows = document.querySelectorAll('.variant-row');
+        const variants = Array.from(variantRows).map(row => ({
+            label: row.querySelector('.v-label').value.trim(),
+            price: Number(row.querySelector('.v-price').value)
+        })).filter(v => v.label !== '');
+
         const data = {
             name: document.getElementById('f-name').value.trim(),
-            price: Number(document.getElementById('f-price').value),
             category: document.getElementById('f-cat').value.trim(),
             pType: document.getElementById('f-ptype').value.trim(),
             warranty: document.getElementById('f-warranty').value.trim(),
             icon: document.getElementById('f-icon').value.trim(),
             banner: document.getElementById('f-banner').value.trim(),
             desc: document.getElementById('f-desc').value.trim(),
+            variants: variants,
+            // Giá gốc hiển thị sẽ lấy từ phân loại đầu tiên
+            price: variants.length > 0 ? variants[0].price : 0,
             updatedAt: serverTimestamp()
         };
 
-        if (!data.name || !data.price) {
-            showToast('Vui lòng nhập tên và giá!', false);
-            return;
-        }
+        if (!data.name) { showToast('Vui lòng nhập tên sản phẩm!', false); return; }
 
         try {
-            if (pid) {
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'products', pid), data);
-            } else {
-                await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'products'), data);
-            }
+            const docRef = pid ? doc(db, 'artifacts', appId, 'public', 'data', 'products', pid) : collection(db, 'artifacts', appId, 'public', 'data', 'products');
+            if (pid) await updateDoc(docRef, data);
+            else await addDoc(docRef, data);
+            
             closeModal();
-            showToast('Cập nhật sản phẩm thành công!', true);
+            showToast('Lưu sản phẩm thành công!', true);
         } catch (e) {
             showToast('Lỗi: ' + e.message, false);
         }
     };
     openModal();
 };
+
+
 
 const updateOrderStatus = async (docId, buyerUid, status) => {
     try {
@@ -1053,62 +1106,109 @@ const renderLookup = () => {
 const showProductDetails = (id) => {
     const p = products.find(x => x.id === id);
     if (!p) return;
+
+    let selectedVariant = p.variants && p.variants.length > 0 ? p.variants[0] : null;
+    let currentPrice = selectedVariant ? selectedVariant.price : p.price;
+
     const container = document.getElementById('modal-content');
     container.innerHTML = `
-                <div class="h-44 bg-gradient-to-br from-brand-500 to-teal-700 relative">
-                    <img src="${p.banner || 'https:chesino.github.io/DATA/Banner/PriorityDark.png'}" class="w-full h-full object-cover opacity-40">
-                    <div class="absolute inset-0 flex items-center justify-center">
-                        <i class="fa-solid ${p.icon} text-white text-8xl opacity-20"></i>
-                    </div>
-                    <button onclick="closeModal()" class="absolute top-4 right-4 w-8 h-8 bg-black/20 hover:bg-black/40 text-white rounded-full flex items-center justify-center transition"><i class="fa-solid fa-xmark"></i></button>
+        <div class="h-32 bg-gradient-to-br from-brand-500 to-teal-700 relative">
+            <img src="${p.banner || 'https://chesino.github.io/DATA/Banner/PriorityDark.png'}" class="w-full h-full object-cover opacity-30">
+            <button onclick="closeModal()" class="absolute top-3 right-3 w-8 h-8 bg-black/20 text-white rounded-full flex items-center justify-center backdrop-blur-md"><i class="fa-solid fa-xmark text-xs"></i></button>
+        </div>
+
+        <div class="px-6 pb-6">
+            <div class="flex items-end gap-3 -mt-10 relative z-10 mb-6">
+                <div class="w-16 h-16 squircle bg-brand-500 text-white flex items-center justify-center text-2xl border-4 border-white dark:border-dark-card shadow-lg shrink-0">
+                    <i class="fa-solid ${p.icon || 'fa-cube'}"></i>
                 </div>
-                <div class="p-6">
-                    <div class="flex items-start gap-4 -mt-16 relative z-10">
-                        <div class="w-24 aspect-square squircle bg-brand-500 text-white 
-                                    flex items-center justify-center text-4xl 
-                                    shadow-xl border-4 border-white dark:border-dark-card shrink-0">
-                            <i class="fa-solid ${p.icon}"></i>
-                        </div>
-                        <div class="pt-10">
-                            <h2 class="text-2xl font-bold">${p.name}</h2>
-                            <p class="text-brand-500 font-bold text-sm">${p.category || 'Dịch vụ'}</p>
-                        </div>
-                    </div>
-                    <div class="mt-8 space-y-4">
-<div class="mt-8 space-y-4">
-    <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed whitespace-pre-line">${p.desc || 'Sản phẩm cao cấp được cung cấp bởi AccStore Pro.'}</p>
-    
-    
-</div>                        <div class="grid grid-cols-2 gap-4 py-6 border-y border-gray-100 dark:border-zinc-800">
-                             <div class="bg-gray-50 dark:bg-zinc-900/50 p-3 rounded-2xl">
-                                <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">Thời hạn bảo hành</p>
-                                <p class="font-bold text-sm text-brand-600">${p.warranty || 'Liên hệ'}</p>
-                             </div>
-                             <div class="bg-gray-50 dark:bg-zinc-900/50 p-3 rounded-2xl">
-                                <p class="text-[9px] text-gray-400 font-bold uppercase mb-1">Loại sản phẩm</p>
-                                <p class="font-bold text-sm text-brand-600">${p.pType || 'Tài khoản'}</p>
-                             </div>
-                        </div>
-                    </div>
-                    <div class="mt-8 flex items-center justify-between">
+                <div class="pt-10">
+                    <h1 class="text-2xl font-black leading-tight">${p.name}</h1>
+                    <p class="text-[9px] text-brand-600 font-bold uppercase tracking-widest">${p.category}</p>
+                </div>
+            </div>
+
+            <div class="space-y-5">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800">
+                        <i class="fa-solid fa-shield-check text-brand-500 text-[10px]"></i>
                         <div>
-                            <p class="text-[10px] text-gray-400 font-bold uppercase">Đơn giá</p>
-                            <p class="text-2xl font-black text-brand-600">${formatMoney(p.price)}</p>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase leading-none">Bảo hành</p>
+                            <p class="text-[16px] font-bold text-gray-700 dark:text-gray-300">${p.warranty || '1 đổi 1'}</p>
                         </div>
-                        <button id="add-to-cart-btn" class="bg-brand-600 text-white px-8 py-3 rounded-2xl font-bold shadow-glow-light active:scale-95 transition">MUA NGAY</button>
+                    </div>
+                    <div class="flex items-center gap-2 p-2 bg-gray-50 dark:bg-zinc-900/50 rounded-xl border border-gray-100 dark:border-zinc-800">
+                        <i class="fa-solid fa-layer-group text-brand-500 text-[10px]"></i>
+                        <div>
+                            <p class="text-[10px] text-gray-400 font-bold uppercase leading-none">Loại hàng</p>
+                            <p class="text-[16px] font-bold text-gray-700 dark:text-gray-300">${p.pType || 'Premium'}</p>
+                        </div>
                     </div>
                 </div>
-            `;
+
+                <div class="bg-blue-50/30 dark:bg-white/5 p-3 rounded-2xl">
+                    <p class="text-[14px] text-gray-600 dark:text-gray-400 leading-relaxed">${p.desc || 'Thông tin chi tiết sản phẩm đang được cập nhật.'}</p>
+                </div>
+
+                ${p.variants && p.variants.length > 0 ? `
+                    <div class="space-y-2">
+                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-tighter">Chọn phân loại:</p>
+                        <div class="flex flex-wrap gap-2">
+                            ${p.variants.map((v, idx) => `
+                                <button onclick="selectVariant(this, ${v.price}, '${v.label}')" 
+                                    class="variant-btn px-4 py-2 rounded-xl border font-bold text-[14px] transition-all ${idx === 0 ? 'bg-brand-600 text-white border-brand-600 shadow-sm' : 'bg-white dark:bg-zinc-900 border-gray-200 dark:border-zinc-800 text-gray-500'}">
+                                    ${v.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+
+            <div class="mt-8 flex items-center gap-4 pt-4 border-t dark:border-zinc-800">
+                <div class="flex-1">
+                    <p class="text-[9px] text-gray-400 font-bold uppercase">Giá</p>
+                    <p id="display-price" class="text-xl font-black text-brand-600">${formatMoney(currentPrice)}</p>
+                </div>
+                <button id="add-to-cart-btn" class="flex-[1.5] py-3.5 bg-brand-600 text-white rounded-2xl font-bold text-sm shadow-glow-light active:scale-95 transition-all">
+                    MUA NGAY
+                </button>
+            </div>
+        </div>
+    `;
+
+    let currentSelection = { price: currentPrice, label: selectedVariant ? selectedVariant.label : '' };
+
+    window.selectVariant = (el, price, label) => {
+        document.querySelectorAll('.variant-btn').forEach(btn => {
+            btn.classList.remove('bg-brand-600', 'text-white', 'border-brand-600', 'shadow-sm');
+            btn.classList.add('bg-white', 'dark:bg-zinc-900', 'border-gray-200', 'dark:border-zinc-800', 'text-gray-500');
+        });
+        el.classList.add('bg-brand-600', 'text-white', 'border-brand-600', 'shadow-sm');
+        el.classList.remove('bg-white', 'dark:bg-zinc-900', 'border-gray-200', 'dark:border-zinc-800', 'text-gray-500');
+        
+        document.getElementById('display-price').innerText = formatMoney(price);
+        currentSelection.price = price;
+        currentSelection.label = label;
+    };
+
     document.getElementById('add-to-cart-btn').onclick = () => {
-        const exists = cart.find(i => i.id === p.id);
-        if (exists) exists.qty++;
-        else cart.push({ ...p, qty: 1 });
+        const cartId = currentSelection.label ? `${p.id}-${currentSelection.label}` : p.id;
+        const displayName = currentSelection.label ? `${p.name} (${currentSelection.label})` : p.name;
+        const exists = cart.find(i => i.cartId === cartId);
+        
+        if (exists) { exists.qty++; } 
+        else { cart.push({ ...p, cartId, name: displayName, price: currentSelection.price, qty: 1 }); }
+        
         updateCartUI();
         closeModal();
         showToast('Đã thêm vào giỏ hàng', true);
     };
     openModal();
 };
+
+// Đảm bảo Export ở cuối file main.js
+window.showProductDetails = (id) => showProductDetails(id);
 
 const startCheckout = async () => {
     if (cart.length === 0) return;
