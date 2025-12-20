@@ -65,9 +65,63 @@ function hideLoading() {
 
 // Cấu hình Playlist Nhạc
 const playlist = [
-    { title: "Chill Lofi", artist: "Share&Go", src: "./Music/song1.mp3" },
-    { title: "Nhạc Đi Cà Phê", artist: "Unknown", src: "https://pixeldrain.com/api/file/LNdBJs4h" },
+    { title: "Remix VietNam", artist: "Sưu tầm", src: "https://files.catbox.moe/x4jqvz.mp3", duration: "1h08m15s" },
+    { title: "Modern Talking", artist: "Sưu tầm", src: "https://files.catbox.moe/xd1tyo.mp3", duration: "1h11m00s" },
+    { title: "Nhạc Dance Xưa", artist: "Sưu tầm", src: "https://files.catbox.moe/aghlp7.mp3",  duration: "1h12m35s" },
 ];
+// Hàm chuyển đổi chuỗi "0h3m45s" thành tổng số giây
+function parseDuration(durationStr) {
+    const regex = /(\d+)h(\d+)m(\d+)s/;
+    const matches = durationStr.match(regex);
+    if (matches) {
+        const hours = parseInt(matches[1]) * 3600;
+        const minutes = parseInt(matches[2]) * 60;
+        const seconds = parseInt(matches[3]);
+        return hours + minutes + seconds;
+    }
+    return 0;
+}
+
+window.playLiveFM = () => {
+    // 1. Tính tổng thời gian vòng lặp (giây) bằng cách parse chuỗi duration
+    const totalLoopDuration = playlist.reduce((sum, song) => {
+        return sum + parseDuration(song.duration);
+    }, 0);
+
+    // 2. Lấy thời gian thực tại Nhật Bản/Việt Nam (Dựa trên thiết bị người dùng)
+    const now = new Date();
+    const secondsSinceMidnight = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
+
+    // 3. Vị trí hiện tại trong "vòng lặp vĩnh cửu"
+    let currentPos = secondsSinceMidnight % totalLoopDuration;
+
+    // 4. Tìm bài hát tương ứng
+    let accumulatedTime = 0;
+    let targetSongIndex = 0;
+    let seekTime = 0;
+
+    for (let i = 0; i < playlist.length; i++) {
+        const songDurationSec = parseDuration(playlist[i].duration);
+        if (currentPos < accumulatedTime + songDurationSec) {
+            targetSongIndex = i;
+            seekTime = currentPos - accumulatedTime;
+            break;
+        }
+        accumulatedTime += songDurationSec;
+    }
+
+    // 5. Điều khiển Player
+    loadSong(targetSongIndex);
+    
+    // Đợi nhạc load một chút rồi mới nhảy đến đoạn giữa bài
+    audio.oncanplay = function() {
+        audio.currentTime = seekTime;
+        audio.play();
+        audio.oncanplay = null; // Gỡ bỏ sự kiện sau khi chạy
+    };
+
+    window.sysAlert(`📻 Đang Live: ${playlist[targetSongIndex].title}`, "success");
+};
 
 // Trạng thái Island
 let pressTimer;
@@ -82,10 +136,10 @@ let currentSongIndex = 0;
 const ISLAND_STATES = {
     idle: { width: '190px', height: '40px', radius: '20px' },
     compact: { width: '220px', height: '40px', radius: '20px' },
-    expanded: { width: '400px', height: '218px', radius: '38px' },
-    alert: { width: '400px', height: '54px', radius: '22px' },
-    confirm: { width: '400px', height: '180px', radius: '22px' },
-    input: { width: '400px', height: '180px', radius: '22px' },
+    expanded: { width: '340px', height: '218px', radius: '38px' },
+    alert: { width: '340px', height: '54px', radius: '22px' },
+    confirm: { width: '340px', height: '180px', radius: '22px' },
+    input: { width: '340px', height: '180px', radius: '22px' },
     upload: { width: '260px', height: '44px', radius: '22px' }
 };
 // DOM Elements Island
