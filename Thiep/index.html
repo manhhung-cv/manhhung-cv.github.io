@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Luxury Event Pro - Đinh Mạnh Hùng</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Quicksand:wght@300;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        :root { --primary: #c5a059; --bg: #0a0a0a; }
+        body { background-color: var(--bg); color: white; font-family: 'Quicksand', sans-serif; overflow: hidden; height: 100dvh; }
+        
+        .font-wedding { font-family: 'Dancing Script', cursive; }
+        .font-serif { font-family: 'Playfair Display', serif; }
+
+        /* Nền tinh thể lỏng & Custom Background */
+        #bg-layer { position: fixed; inset: 0; z-index: -2; background-size: cover; background-position: center; transition: 1.5s ease; }
+        .liquid-container { position: fixed; inset: 0; z-index: -1; filter: blur(60px); opacity: 0.5; overflow: hidden; }
+        .liquid-blob { 
+            position: absolute; width: 80vw; height: 80vw; border-radius: 50%; 
+            background: linear-gradient(45deg, var(--primary), #2e1d13);
+            animation: move 25s infinite alternate ease-in-out; 
+        }
+        @keyframes move { 0% { transform: translate(-10%, -10%) rotate(0deg); } 100% { transform: translate(15%, 20%) rotate(180deg); } }
+
+        /* Glassmorphism Panels */
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-dark { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(15px); }
+
+        /* Animation trạng thái */
+        .envelope-hidden { transform: translateY(-110%); opacity: 0; pointer-events: none; transition: 1.2s cubic-bezier(0.7, 0, 0.3, 1); }
+        .main-visible { opacity: 1 !important; transform: scale(1) !important; pointer-events: auto !important; transition: 1s ease-out; }
+        
+        /* Custom UI Elements */
+        .custom-scroll::-webkit-scrollbar { width: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+        input, select, textarea { background: rgba(0,0,0,0.4) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; outline: none; }
+        input:focus { border-color: var(--primary) !important; }
+        .btn-luxury { background: var(--primary); color: black; font-weight: 800; transition: 0.3s; box-shadow: 0 10px 20px rgba(197, 160, 89, 0.2); }
+        .btn-luxury:hover { transform: translateY(-2px); brightness: 1.1; }
+    </style>
+</head>
+<body>
+
+    <div id="bg-layer"></div>
+    <div class="liquid-container">
+        <div class="liquid-blob top-[-10%] left-[-10%]"></div>
+        <div class="liquid-blob bottom-[-10%] right-[-10%]" style="animation-delay: -5s; background: linear-gradient(-45deg, #1a1a1a, var(--primary));"></div>
+    </div>
+
+    <div id="envelope" class="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40">
+        <div class="glass p-10 rounded-[3.5rem] text-center max-w-sm w-full shadow-2xl border-white/20">
+            <div class="relative inline-block mb-8">
+                <div class="w-28 h-28 border-2 border-[#c5a059]/50 rounded-full p-1.5 shadow-2xl">
+                    <img id="env-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=invite" class="w-full h-full rounded-full object-cover bg-white/5">
+                </div>
+                <div class="absolute -bottom-1 -right-1 bg-[#c5a059] p-2 rounded-full"><i data-lucide="sparkles" class="w-4 h-4 text-black"></i></div>
+            </div>
+            <p class="font-serif italic text-white/50 text-[10px] uppercase tracking-[0.4em] mb-2">Trân quý gửi tới</p>
+            <h2 id="env-name" class="text-3xl font-bold mb-10 font-serif tracking-widest uppercase">Quý Khách</h2>
+            <button onclick="openInvitation()" class="btn-luxury w-full py-5 rounded-2xl text-[10px] tracking-[0.4em]">CHẠM ĐỂ MỞ</button>
+        </div>
+    </div>
+
+    <main id="main-content" class="opacity-0 scale-95 pointer-events-none h-screen w-full flex items-center justify-center p-4 md:p-10">
+        <div class="max-w-6xl w-full h-full sm:h-[650px] grid grid-cols-1 md:grid-cols-2 glass rounded-[3.5rem] overflow-hidden shadow-2xl border-white/10">
+            
+            <div class="relative overflow-hidden h-48 md:h-full">
+                <img id="display-hero" src="" class="w-full h-full object-cover opacity-60 transition-transform duration-1000">
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                <div class="absolute bottom-10 left-10">
+                    <h1 id="display-event-name" class="font-wedding text-6xl text-[#c5a059] mb-2 drop-shadow-2xl">Lễ Thành Hôn</h1>
+                    <p id="display-event-type" class="text-[9px] tracking-[0.6em] text-white/50 uppercase font-bold">Exclusive Invitation</p>
+                </div>
+            </div>
+
+            <div id="scroll-container" class="relative flex flex-col h-full overflow-y-auto custom-scroll bg-black/30 p-8 md:p-16">
+                <button onclick="handleAdminTrigger()" class="absolute top-6 right-6 text-white/20 hover:text-[#c5a059] transition-all"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></button>
+
+                <div class="flex-grow flex flex-col justify-center text-center">
+                    <div class="inline-block mx-auto mb-6 px-5 py-1.5 border border-[#c5a059]/30 rounded-full text-[#c5a059] font-bold tracking-[0.4em] text-[8px] uppercase bg-[#c5a059]/5">The Luxury Presence</div>
+                    
+                    <div id="guest-info-section">
+                        <img id="display-guest-avatar" src="" class="w-24 h-24 rounded-full border-2 border-[#c5a059]/30 mx-auto mb-6 object-cover shadow-2xl hidden">
+                        <h2 id="display-guest-name" class="text-4xl md:text-6xl font-serif font-bold text-white mb-6">Quý khách</h2>
+                        <p id="display-note" class="text-white/40 italic text-xs md:text-sm leading-relaxed max-w-sm mx-auto mb-10"></p>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6 border-t border-white/10 pt-10 text-left">
+                        <div class="flex items-center gap-5">
+                            <div class="p-3 bg-[#c5a059]/10 rounded-2xl border border-[#c5a059]/20"><i data-lucide="calendar" class="w-6 h-6 text-[#c5a059]"></i></div>
+                            <div>
+                                <p class="text-[9px] uppercase font-black text-[#c5a059] tracking-widest mb-0.5">Thời gian</p>
+                                <p id="display-date-time" class="font-serif text-lg text-white">Chưa cập nhật...</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-5">
+                            <div class="p-3 bg-[#c5a059]/10 rounded-2xl border border-[#c5a059]/20"><i data-lucide="map-pin" class="w-6 h-6 text-[#c5a059]"></i></div>
+                            <div>
+                                <p class="text-[9px] uppercase font-black text-[#c5a059] tracking-widest mb-0.5">Địa điểm</p>
+                                <p id="display-location" class="font-serif text-lg text-white">Chưa cập nhật địa chỉ...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mt-12">
+                    <button id="btn-save-cal" class="btn-luxury py-4 rounded-2xl text-[10px] tracking-widest flex items-center justify-center gap-2"><i data-lucide="calendar-plus" class="w-4 h-4"></i> LƯU LỊCH</button>
+                    <button id="btn-map" class="py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-bold tracking-widest flex items-center justify-center gap-2"><i data-lucide="compass" class="w-4 h-4 text-[#c5a059]"></i> BẢN ĐỒ</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="login-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-2xl opacity-0 pointer-events-none transition-all duration-500">
+        <div class="glass p-10 rounded-[3rem] w-full max-w-sm border-[#c5a059]/20 shadow-2xl">
+            <h3 class="text-[#c5a059] font-bold text-center tracking-[0.4em] uppercase mb-8">Admin Access</h3>
+            <div class="space-y-4">
+                <input id="login-email" type="email" placeholder="Email quản trị" class="w-full p-4 rounded-xl text-sm">
+                <input id="login-pass" type="password" placeholder="Mật khẩu" class="w-full p-4 rounded-xl text-sm">
+                <button onclick="handleLogin()" class="btn-luxury w-full py-4 rounded-xl tracking-widest mt-4">XÁC MINH DANH TÍNH</button>
+                <button onclick="toggleLogin(false)" class="w-full py-2 text-white/20 text-[10px] uppercase font-bold tracking-widest">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-sidebar" class="fixed inset-y-0 right-0 w-full sm:w-[450px] glass-dark z-[90] p-8 translate-x-full transition-transform duration-500 overflow-y-auto custom-scroll border-l border-[#c5a059]/20 shadow-2xl">
+        <div class="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
+            <div>
+                <h3 class="font-bold text-[#c5a059] tracking-[0.2em] text-xs uppercase">Management Console</h3>
+                <p id="user-display" class="text-[9px] text-white/30"></p>
+            </div>
+            <div class="flex gap-4">
+                <button onclick="handleLogout()" class="text-red-400/60 hover:text-red-400" title="Đăng xuất"><i data-lucide="log-out" class="w-4 h-4"></i></button>
+                <button onclick="toggleAdmin(false)"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <label class="text-white/40 uppercase text-[9px] font-bold tracking-widest">Sự kiện đã tạo</label>
+                <button onclick="resetEventForm()" class="text-[#c5a059] text-[9px] font-black uppercase hover:underline">+ Tạo mới</button>
+            </div>
+            <div id="event-list-render" class="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto custom-scroll pr-2">
+                </div>
+        </div>
+
+        <div class="space-y-5 text-[11px]">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-white/30 mb-2 uppercase tracking-tighter">URL Slug ID</label>
+                    <input id="in-slug" placeholder="slug-id" class="w-full p-3 rounded-xl">
+                </div>
+                <div>
+                    <label class="block text-white/30 mb-2 uppercase tracking-tighter">Loại Sự Kiện</label>
+                    <select id="in-type" class="w-full p-3 rounded-xl">
+                        <option value="wedding">Lễ Thành Hôn</option>
+                        <option value="birthday">Tiệc Sinh Nhật</option>
+                        <option value="event">Sự Kiện Gala</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-white/30 mb-2 uppercase tracking-tighter">Tên Sự Kiện</label>
+                <input id="in-name" placeholder="Ví dụ: Đám Cưới Hùng & Hoa" class="w-full p-3 rounded-xl">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-white/30 mb-2 uppercase tracking-tighter">Ngày diễn ra</label>
+                    <input id="in-date" type="date" class="w-full p-3 rounded-xl">
+                </div>
+                <div>
+                    <label class="block text-white/30 mb-2 uppercase tracking-tighter">Giờ đón khách</label>
+                    <input id="in-time" type="time" class="w-full p-3 rounded-xl">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-white/30 mb-2 uppercase tracking-tighter">Địa chỉ tổ chức</label>
+                <input id="in-loc" placeholder="Tên sảnh, khách sạn, địa chỉ..." class="w-full p-3 rounded-xl">
+            </div>
+
+            <div>
+                <label class="block text-white/30 mb-2 uppercase tracking-tighter">Link Google Map & Ảnh nền (URL)</label>
+                <div class="grid grid-cols-1 gap-2">
+                    <input id="in-map" placeholder="Link chia sẻ từ Google Maps" class="w-full p-3 rounded-xl">
+                    <input id="in-bg" placeholder="URL ảnh nền thiệp mời (tùy chọn)" class="w-full p-3 rounded-xl">
+                </div>
+            </div>
+
+            <button onclick="handleSaveEvent()" class="btn-luxury w-full py-4 rounded-xl uppercase tracking-[0.2em] shadow-xl">Lưu & Cập Nhật Sự Kiện</button>
+            <button id="btn-del-event" onclick="handleDeleteEvent()" class="hidden w-full py-2 text-red-500/40 hover:text-red-500 text-[9px] uppercase font-bold tracking-widest">Xoá hoàn toàn sự kiện</button>
+
+            <div id="guest-management-area" class="pt-8 border-t border-white/10 mt-8 hidden">
+                <div class="flex justify-between items-center mb-5">
+                    <h4 class="font-black text-[#c5a059] text-[10px] uppercase tracking-widest">Danh sách khách mời</h4>
+                    <div class="flex gap-3">
+                        <button onclick="handleExportGuests()" title="Xuất file CSV" class="text-white/40 hover:text-white"><i data-lucide="download" class="w-4 h-4"></i></button>
+                        <button onclick="document.getElementById('csv-file').click()" title="Nhập file CSV" class="text-white/40 hover:text-white"><i data-lucide="upload" class="w-4 h-4"></i></button>
+                        <input type="file" id="csv-file" class="hidden" accept=".csv" onchange="handleImportGuests(event)">
+                    </div>
+                </div>
+                
+                <div id="admin-guest-list" class="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-2 mb-4">
+                    </div>
+
+                <button onclick="handleAddGuestManual()" class="w-full py-3 border border-[#c5a059]/40 text-[#c5a059] rounded-xl font-bold text-[9px] hover:bg-[#c5a059]/10 tracking-widest uppercase">Thêm khách thủ công (+)</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCgUCBbdDPAbi8xqU52MabjB5G9PJLL5IY",
+            authDomain: "invite-hunq.firebaseapp.com",
+            projectId: "invite-hunq",
+            storageBucket: "invite-hunq.firebasestorage.app",
+            messagingSenderId: "493076019794",
+            appId: "1:493076019794:web:00e9886fbb2984a0ab3d8b",
+            measurementId: "G-EV71YCJPDM"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        let currentUser = null;
+        let activeSlug = "";
+
+        // --- AUTHENTICATION ---
+        window.handleLogin = async () => {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                toggleLogin(false);
+                toggleAdmin(true);
+            } catch (e) { alert("Lỗi: " + e.message); }
+        };
+
+        window.handleLogout = () => signOut(auth).then(() => location.reload());
+
+        onAuthStateChanged(auth, user => {
+            currentUser = user;
+            if (user) {
+                document.getElementById('user-display').innerText = `Admin: ${user.email}`;
+                loadEventList();
+            }
+        });
+
+        // --- EVENT MANAGEMENT ---
+        async function loadEventList() {
+            const container = document.getElementById('event-list-render');
+            container.innerHTML = "";
+            const snaps = await getDocs(collection(db, "events"));
+            snaps.forEach(s => {
+                const item = document.createElement('div');
+                item.className = `flex justify-between items-center p-3 rounded-xl border cursor-pointer transition-all ${activeSlug === s.id ? 'border-[#c5a059] bg-[#c5a059]/10' : 'border-white/5 bg-white/5 hover:bg-white/10'}`;
+                item.innerHTML = `
+                    <div class="overflow-hidden pr-4">
+                        <p class="font-bold text-[10px] truncate">${s.data().name || s.id}</p>
+                        <p class="text-[8px] text-white/30 truncate">${window.location.origin}/#${s.id}</p>
+                    </div>
+                    <i data-lucide="chevron-right" class="w-3 h-3 text-[#c5a059]"></i>
+                `;
+                item.onclick = () => { window.location.hash = s.id; };
+                container.appendChild(item);
+            });
+            lucide.createIcons();
+        }
+
+        window.handleSaveEvent = async () => {
+            const slug = document.getElementById('in-slug').value.trim();
+            if(!slug) return alert("Vui lòng nhập Slug!");
+            const data = {
+                name: document.getElementById('in-name').value,
+                type: document.getElementById('in-type').value,
+                date: document.getElementById('in-date').value,
+                time: document.getElementById('in-time').value,
+                location: document.getElementById('in-loc').value,
+                mapLink: document.getElementById('in-map').value,
+                bgUrl: document.getElementById('in-bg').value,
+                updatedAt: serverTimestamp()
+            };
+            await setDoc(doc(db, "events", slug), data, { merge: true });
+            alert("Lưu sự kiện thành công!");
+            window.location.hash = slug;
+            loadEventList();
+        };
+
+        window.handleDeleteEvent = async () => {
+            if(!activeSlug) return;
+            if(confirm(`Bạn có chắc muốn xoá vĩnh viễn sự kiện [${activeSlug}] không?`)) {
+                await deleteDoc(doc(db, "events", activeSlug));
+                window.location.hash = "";
+                location.reload();
+            }
+        };
+
+        // --- GUEST MANAGEMENT ---
+        window.handleAddGuestManual = async () => {
+            const name = prompt("Tên khách mời:");
+            if(!name || !activeSlug) return;
+            const id = Math.random().toString(36).substring(7);
+            await setDoc(doc(db, "events", activeSlug, "guests", id), {
+                name: name,
+                note: "Sự hiện diện của bạn là niềm vinh dự lớn đối với chúng tôi!",
+                avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}${id}`
+            });
+            renderAdminGuestList(activeSlug);
+        };
+
+        async function renderAdminGuestList(slug) {
+            const container = document.getElementById('admin-guest-list');
+            container.innerHTML = "";
+            const snaps = await getDocs(collection(db, "events", slug, "guests"));
+            snaps.forEach(s => {
+                const guest = s.data();
+                const link = `${window.location.origin}${window.location.pathname}#${slug}&${s.id}`;
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5 text-[10px]";
+                div.innerHTML = `
+                    <div class="truncate pr-4">
+                        <p class="font-bold">${guest.name}</p>
+                        <p class="text-[8px] text-white/20 truncate">${link}</p>
+                    </div>
+                    <button onclick="navigator.clipboard.writeText('${link}'); alert('Đã copy link mời khách!')" class="text-[#c5a059]"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                `;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        window.handleExportGuests = async () => {
+            const snaps = await getDocs(collection(db, "events", activeSlug, "guests"));
+            let csv = "ID,Name,Link\n";
+            snaps.forEach(s => {
+                const link = `${window.location.origin}${window.location.pathname}#${activeSlug}&${s.id}`;
+                csv += `${s.id},${s.data().name},${link}\n`;
+            });
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `Khach_Moi_${activeSlug}.csv`; a.click();
+        };
+
+        window.handleImportGuests = (e) => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                const rows = ev.target.result.split('\n').slice(1);
+                for(let row of rows) {
+                    const [id, name] = row.split(',');
+                    if(name && name.trim()) {
+                        const gID = id?.trim() || Math.random().toString(36).substring(7);
+                        await setDoc(doc(db, "events", activeSlug, "guests", gID), {
+                            name: name.trim(),
+                            note: "Sự hiện diện của bạn là niềm vinh dự lớn đối với chúng tôi!",
+                            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name.trim()}`
+                        });
+                    }
+                }
+                alert("Nhập danh sách thành công!");
+                renderAdminGuestList(activeSlug);
+            };
+            reader.readAsText(file);
+        };
+
+        // --- PAGE CORE LOGIC ---
+        async function loadPageData() {
+            const hash = window.location.hash.substring(1);
+            if (!hash) {
+                document.getElementById('main-content').classList.add('opacity-100');
+                return;
+            }
+
+            const [slug, gID] = hash.split('&');
+            activeSlug = slug;
+
+            const snap = await getDoc(doc(db, "events", slug));
+            if (snap.exists()) {
+                const data = snap.data();
+                renderEventUI(data);
+                if (currentUser) {
+                    populateAdminForm(data, slug);
+                    renderAdminGuestList(slug);
+                    document.getElementById('guest-management-area').classList.remove('hidden');
+                    document.getElementById('btn-del-event').classList.remove('hidden');
+                }
+
+                if (gID) {
+                    const gSnap = await getDoc(doc(db, "events", slug, "guests", gID));
+                    if (gSnap.exists()) renderGuestUI(gSnap.data());
+                } else renderGuestUI(null);
+            }
+            document.getElementById('main-content').classList.add('opacity-100');
+            lucide.createIcons();
+        }
+
+        function renderEventUI(data) {
+            document.getElementById('display-event-name').innerText = data.name || "Lễ Thành Hôn";
+            document.getElementById('display-event-type').innerText = data.type || "Exclusive Invitation";
+            document.getElementById('display-date-time').innerText = `${data.date || '--'} | ${data.time || '--'}`;
+            document.getElementById('display-location').innerText = data.location || "Đang cập nhật địa chỉ...";
+            
+            const bg = data.bgUrl || 'https://images.unsplash.com/photo-1519741497674-611481863552';
+            document.getElementById('bg-layer').style.backgroundImage = `url(${bg})`;
+            document.getElementById('display-hero').src = bg;
+
+            document.getElementById('btn-map').onclick = () => window.open(data.mapLink, '_blank');
+            document.getElementById('btn-save-cal').onclick = () => {
+                const start = data.date.replace(/-/g, '') + 'T' + data.time.replace(/:/g, '') + '00';
+                const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(data.name)}&dates=${start}/${start}&location=${encodeURIComponent(data.location)}`;
+                window.open(calUrl, '_blank');
+            };
+        }
+
+        function renderGuestUI(guest) {
+            if (guest) {
+                document.getElementById('env-name').innerText = guest.name.toUpperCase();
+                document.getElementById('env-avatar').src = guest.avatar;
+                document.getElementById('display-guest-name').innerText = guest.name;
+                document.getElementById('display-note').innerText = guest.note;
+                document.getElementById('display-guest-avatar').src = guest.avatar;
+                document.getElementById('display-guest-avatar').classList.remove('hidden');
+            } else {
+                document.getElementById('env-name').innerText = "QUÝ KHÁCH";
+                document.getElementById('display-guest-name').innerText = "Quý Khách";
+                document.getElementById('display-guest-avatar').classList.add('hidden');
+            }
+        }
+
+        function populateAdminForm(data, slug) {
+            document.getElementById('in-slug').value = slug;
+            document.getElementById('in-name').value = data.name || "";
+            document.getElementById('in-type').value = data.type || "wedding";
+            document.getElementById('in-date').value = data.date || "";
+            document.getElementById('in-time').value = data.time || "";
+            document.getElementById('in-loc').value = data.location || "";
+            document.getElementById('in-map').value = data.mapLink || "";
+            document.getElementById('in-bg').value = data.bgUrl || "";
+        }
+
+        window.addEventListener('hashchange', loadPageData);
+        window.onload = loadPageData;
+    </script>
+
+    <script>
+        // --- UI HELPERS ---
+        function openInvitation() { 
+            document.getElementById('envelope').classList.add('envelope-hidden'); 
+            setTimeout(() => {
+                document.getElementById('main-content').classList.add('main-visible');
+            }, 300);
+        }
+
+        function toggleLogin(show) {
+            const modal = document.getElementById('login-modal');
+            modal.style.opacity = show ? "1" : "0";
+            modal.style.pointerEvents = show ? "auto" : "none";
+            if(show) modal.style.transform = "scale(1)";
+        }
+
+        function toggleAdmin(show) {
+            document.getElementById('admin-sidebar').style.transform = show ? "translateX(0)" : "translateX(100%)";
+        }
+
+        function handleAdminTrigger() {
+            if(typeof currentUser !== 'undefined' && currentUser) toggleAdmin(true);
+            else toggleLogin(true);
+        }
+
+        function resetEventForm() {
+            ['in-slug','in-name','in-date','in-time','in-loc','in-map','in-bg'].forEach(id => document.getElementById(id).value = "");
+            document.getElementById('guest-management-area').classList.add('hidden');
+            document.getElementById('btn-del-event').classList.add('hidden');
+        }
+
+        lucide.createIcons();
+    </script>
+</body>
+</html>
