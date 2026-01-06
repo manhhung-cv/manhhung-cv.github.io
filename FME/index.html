@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+        <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+      <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quản lý đăng ký</title>
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" href="/Asset/logo/logo.png" />
+    <link rel="apple-touch-icon" href="/Asset/logo/logo.png" sizes="150x150" />
+
+    <meta property="og:image" content="/Asset/Banner/Banner.png" />
+    <meta property="og:title" content="Quản lý đăng ký" />
+    <meta property="og:description" content="Thiết kế và lập trình Đinh Mạnh Hùng" />
+    <script src="/Asset/Extend/IABD.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: white;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .liquid-bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+            background: #020617;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.2;
+            animation: pulse 10s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); opacity: 0.1; }
+            to { transform: scale(1.2); opacity: 0.3; }
+        }
+
+        .grain {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            opacity: 0.2;
+            pointer-events: none;
+            background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+            mix-blend-mode: overlay;
+        }
+
+        /* Animation cho Dialog */
+        @keyframes modalShow {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-modal {
+            animation: modalShow 0.2s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="selection:bg-indigo-500/30">
+
+    <!-- Nền Liquid -->
+    <div class="liquid-bg">
+        <div class="blob bg-indigo-600 w-[500px] h-[500px] -top-20 -left-20"></div>
+        <div class="blob bg-emerald-500 w-[400px] h-[400px] bottom-10 -right-10" style="animation-delay: 2s;"></div>
+        <div class="grain"></div>
+    </div>
+
+    <div class="max-w-2xl mx-auto min-h-screen flex flex-col relative pb-32">
+        
+        <!-- HEADER -->
+        <header class="pt-10 px-6 pb-6 sticky top-0 z-40 bg-slate-950/20 backdrop-blur-xl">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-white via-white to-white/60 bg-clip-text text-transparent">
+                        Subscription Manager
+                    </h1>
+                    <p id="monthly-summary" class="text-xs text-white/40 mt-0.5 tracking-wide uppercase">Tháng này: 0 ₫</p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="toggle-view" class="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10">
+                        <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                    </button>
+                    <div class="w-10 h-10 rounded-full border border-white/10 overflow-hidden">
+                        <img src="/Asset/logo/logo.png" alt="User">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEARCH & FILTERS -->
+            <div class="space-y-3">
+                <div class="relative group">
+                    <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 w-4 h-4"></i>
+                    <input 
+                        type="text" 
+                        id="search-input"
+                        placeholder="Tìm kiếm dịch vụ..."
+                        class="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 focus:outline-none focus:border-indigo-500/50 transition-all placeholder-white/20"
+                    >
+                </div>
+
+                <div id="category-filters" class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <!-- Categories will be injected here -->
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD SUMMARY -->
+        <div class="px-6 mt-4 grid grid-cols-2 gap-4">
+            <div class="glass p-4 rounded-3xl relative overflow-hidden">
+                <p class="text-[10px] text-white/40 uppercase font-bold mb-1">Dự kiến năm</p>
+                <h3 id="yearly-total" class="text-xl font-bold">0 ₫</h3>
+                <div class="absolute -top-4 -right-4 w-12 h-12 bg-white/5 blur-xl rounded-full"></div>
+            </div>
+            <div class="glass p-4 rounded-3xl relative overflow-hidden">
+                <p class="text-[10px] text-white/40 uppercase font-bold mb-1">Tổng chi trọn đời</p>
+                <h3 id="lifetime-total" class="text-xl font-bold text-indigo-300">0 ₫</h3>
+            </div>
+        </div>
+
+        <!-- MAIN LIST CONTAINER -->
+        <div id="subs-container" class="px-6 mt-8 space-y-3">
+            <!-- Items will be injected here -->
+        </div>
+
+        <!-- FAB -->
+        <div class="fixed bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none">
+            <button id="add-btn" class="pointer-events-auto bg-white text-black rounded-2xl px-6 py-4 flex items-center gap-3 shadow-[0_20px_50px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all">
+                <i data-lucide="plus" class="w-5 h-5"></i>
+                <span class="font-bold text-sm">Thêm Gói</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN FORM MODAL -->
+    <div id="modal" class="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 hidden">
+        <div id="modal-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+        
+        <div class="relative w-full max-w-md bg-slate-900 border-t sm:border border-white/10 sm:rounded-3xl rounded-t-3xl p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mb-6 sm:hidden"></div>
+            
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="modal-title" class="text-xl font-bold">Thêm Gói Mới</h2>
+                <button id="close-modal" class="p-2 bg-white/5 rounded-full hover:bg-white/10">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="sub-form" class="space-y-4 pb-4">
+                <input type="hidden" id="form-id">
+                <input type="text" id="form-name" required placeholder="Dịch vụ (Netflix, Spotify...)" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-indigo-500/50">
+                
+                <div class="flex gap-3">
+                    <div class="flex-1 relative">
+                        <input type="number" id="form-cost" required placeholder="Giá tiền" class="w-full bg-white/5 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-indigo-500/50">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-white/30">VND</span>
+                    </div>
+                    <select id="form-cycle" class="bg-white/5 border border-white/10 rounded-xl px-4 text-sm text-white focus:outline-none">
+                        <option value="weekly">Tuần</option>
+                        <option value="monthly" selected>Tháng</option>
+                        <option value="yearly">Năm</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                   <div>
+                    <label class="text-[10px] text-white/30 uppercase ml-1 mb-1 block">Ngày bắt đầu</label>
+                    <input type="date" id="form-startDate" required class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm [color-scheme:dark] focus:outline-none">
+                   </div>
+                   <div>
+                    <label class="text-[10px] text-white/30 uppercase ml-1 mb-1 block">Kết thúc (Tuỳ chọn)</label>
+                    <input type="date" id="form-expirationDate" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm [color-scheme:dark] focus:outline-none">
+                   </div>
+                </div>
+
+                <div>
+                   <label class="text-[10px] text-white/30 uppercase ml-1 mb-2 block">Danh mục</label>
+                   <div id="form-category-grid" class="grid grid-cols-4 gap-2">
+                       <!-- Category buttons injected here -->
+                   </div>
+                   <input type="hidden" id="form-category" value="Other">
+                </div>
+
+                <div>
+                    <label class="text-[10px] text-white/30 uppercase ml-1 mb-1 block">Trạng thái & Ghi chú</label>
+                    <div class="space-y-3">
+                        <select id="form-status" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none">
+                            <option value="active">Đang dùng</option>
+                            <option value="trial">Dùng thử</option>
+                            <option value="canceled">Đã hủy</option>
+                        </select>
+                        <textarea id="form-notes" placeholder="Ghi chú thêm..." class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white min-h-[80px] focus:outline-none"></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-white text-black font-bold py-4 rounded-2xl shadow-lg hover:scale-[1.01] active:scale-95 transition-all">Lưu Thông Tin</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CUSTOM DIALOG MODAL (REPLACEMENT FOR alert/confirm) -->
+    <div id="dialog-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 hidden">
+        <div id="dialog-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+        <div class="relative w-full max-w-sm glass rounded-3xl p-6 shadow-2xl animate-modal">
+            <div id="dialog-icon-container" class="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-4 mx-auto">
+                <i id="dialog-icon" data-lucide="alert-triangle"></i>
+            </div>
+            <h3 id="dialog-title-text" class="text-center text-lg font-bold mb-2 text-white">Xác nhận</h3>
+            <p id="dialog-message" class="text-center text-white/60 text-sm mb-6"></p>
+            <div class="flex gap-3">
+                <button id="dialog-cancel" class="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-medium transition-colors border border-white/10 text-white/60">Hủy</button>
+                <button id="dialog-confirm" class="flex-1 bg-rose-500 hover:bg-rose-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg shadow-rose-500/20 transition-all">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA & CONFIG ---
+        let subs = [
+            { id: 1, name: 'Apple One', cost: 239000, cycle: 'monthly', startDate: '2023-02-15', expirationDate: '', category: 'Cloud', status: 'active', notes: 'Share với gia đình (6 người)', color: 'from-blue-500 to-purple-600' },
+            { id: 2, name: 'YouTube Premium', cost: 79000, cycle: 'monthly', startDate: '2022-05-10', expirationDate: '', category: 'Video', status: 'active', notes: '', color: 'from-red-500 to-pink-600' },
+            { id: 3, name: 'VSCO X', cost: 499000, cycle: 'yearly', startDate: '2023-06-01', expirationDate: '2026-06-01', category: 'Shop', status: 'active', notes: 'Gia hạn hàng năm', color: 'from-gray-600 to-gray-800' },
+            { id: 4, name: 'Netflix', cost: 260000, cycle: 'monthly', startDate: '2025-12-20', expirationDate: '2026-02-20', category: 'Video', status: 'trial', notes: 'Dùng thử', color: 'from-red-600 to-red-900' },
+        ];
+
+        const CATEGORIES = [
+            { id: 'All', label: 'Tất cả', icon: 'zap' },
+            { id: 'Video', label: 'Phim ảnh', icon: 'video' },
+            { id: 'Music', label: 'Âm nhạc', icon: 'music' },
+            { id: 'Cloud', label: 'Lưu trữ', icon: 'cloud' },
+            { id: 'Game', label: 'Trò chơi', icon: 'gamepad-2' },
+            { id: 'Shop', label: 'Mua sắm', icon: 'shopping-bag' },
+            { id: 'Work', label: 'Công việc', icon: 'briefcase' },
+            { id: 'Other', label: 'Khác', icon: 'zap' },
+        ];
+
+        const CYCLES = {
+            weekly: { label: 'Tuần', multiplier: 4.3, days: 7 },
+            monthly: { label: 'Tháng', multiplier: 1, days: 30.44 },
+            yearly: { label: 'Năm', multiplier: 1/12, days: 365.25 }
+        };
+
+        const STATUSES = {
+            active: { label: 'Đang dùng', color: 'bg-green-500/20 text-green-400 border-green-500/30' },
+            trial: { label: 'Dùng thử', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' },
+            canceled: { label: 'Đã hủy', color: 'bg-red-500/20 text-red-400 border-red-500/30' }
+        };
+
+        let viewMode = 'list';
+        let currentFilter = 'All';
+        let searchQuery = '';
+        let expandedId = null;
+
+        // --- UTILS ---
+        const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+
+        const getNextDate = (sub) => {
+            if (sub.expirationDate) {
+                const exp = new Date(sub.expirationDate);
+                if (exp >= new Date()) return { date: exp, type: 'expiration' };
+            }
+            const start = new Date(sub.startDate);
+            const today = new Date();
+            let next = new Date(start);
+            while (next < today) {
+                if (sub.cycle === 'weekly') next.setDate(next.getDate() + 7);
+                else if (sub.cycle === 'monthly') next.setMonth(next.getMonth() + 1);
+                else if (sub.cycle === 'yearly') next.setFullYear(next.getFullYear() + 1);
+            }
+            return { date: next, type: 'renewal' };
+        };
+
+        const calculateTotalSpent = (sub) => {
+            const start = new Date(sub.startDate);
+            const today = new Date();
+            const end = (sub.status === 'canceled' || (sub.expirationDate && new Date(sub.expirationDate) < today)) 
+                ? (sub.expirationDate ? new Date(sub.expirationDate) : today)
+                : today;
+            if (start > end) return 0;
+            const diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24));
+            const cycleDays = CYCLES[sub.cycle].days;
+            const periods = Math.floor(diffDays / cycleDays) + 1;
+            return periods * sub.cost;
+        };
+
+        // --- DIALOG SYSTEM ---
+        const dialogModal = document.getElementById('dialog-modal');
+        const dialogTitleText = document.getElementById('dialog-title-text');
+        const dialogMessage = document.getElementById('dialog-message');
+        const dialogConfirmBtn = document.getElementById('dialog-confirm');
+        const dialogCancelBtn = document.getElementById('dialog-cancel');
+        const dialogIcon = document.getElementById('dialog-icon');
+        const dialogIconContainer = document.getElementById('dialog-icon-container');
+
+        /**
+         * customConfirm: Thay thế confirm()
+         */
+        function customConfirm(message, onConfirm, options = {}) {
+            dialogTitleText.textContent = options.title || 'Xác nhận';
+            dialogMessage.textContent = message;
+            dialogCancelBtn.classList.remove('hidden');
+            dialogConfirmBtn.textContent = options.confirmText || 'Đồng ý';
+            dialogConfirmBtn.className = options.isDanger === false 
+                ? 'flex-1 bg-indigo-500 hover:bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg transition-all'
+                : 'flex-1 bg-rose-500 hover:bg-rose-600 text-white py-3 rounded-xl text-sm font-bold shadow-lg transition-all';
+            
+            dialogIconContainer.className = options.isDanger === false
+                ? 'w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4 mx-auto'
+                : 'w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mb-4 mx-auto';
+            
+            dialogIcon.setAttribute('data-lucide', options.icon || 'alert-triangle');
+            lucide.createIcons();
+
+            dialogModal.classList.remove('hidden');
+
+            const cleanup = () => {
+                dialogModal.classList.add('hidden');
+            };
+
+            dialogConfirmBtn.onclick = () => {
+                onConfirm();
+                cleanup();
+            };
+
+            dialogCancelBtn.onclick = cleanup;
+            document.getElementById('dialog-overlay').onclick = cleanup;
+        }
+
+        // --- RENDER ENGINE ---
+        function render() {
+            updateStats();
+            renderFilters();
+            renderSubs();
+            lucide.createIcons();
+        }
+
+        function updateStats() {
+            let monthly = 0;
+            let total = 0;
+            subs.forEach(s => {
+                total += calculateTotalSpent(s);
+                if (s.status !== 'canceled' && !(s.expirationDate && new Date(s.expirationDate) < new Date())) {
+                    monthly += s.cost * CYCLES[s.cycle].multiplier;
+                }
+            });
+            document.getElementById('monthly-summary').textContent = `Tháng này: ${formatCurrency(monthly)}`;
+            document.getElementById('yearly-total').textContent = formatCurrency(monthly * 12);
+            document.getElementById('lifetime-total').textContent = formatCurrency(total);
+        }
+
+        function renderFilters() {
+            const container = document.getElementById('category-filters');
+            container.innerHTML = CATEGORIES.map(cat => `
+                <button onclick="setFilter('${cat.id}')" class="px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all border flex items-center gap-2 ${currentFilter === cat.id ? 'bg-white text-black border-white shadow-lg' : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'}">
+                    <i data-lucide="${cat.icon}" class="w-3.5 h-3.5"></i> ${cat.label}
+                </button>
+            `).join('');
+        }
+
+        function renderSubs() {
+            const container = document.getElementById('subs-container');
+            const filtered = subs.filter(s => {
+                const matchesSearch = s.name.toLowerCase().includes(searchQuery.toLowerCase());
+                const matchesCat = currentFilter === 'All' || s.category === currentFilter;
+                return matchesSearch && matchesCat;
+            }).sort((a, b) => getNextDate(a).date - getNextDate(b).date);
+
+            if (viewMode === 'grid') {
+                container.className = "px-6 mt-8 grid grid-cols-2 gap-4";
+            } else {
+                container.className = "px-6 mt-8 space-y-3";
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="col-span-full py-20 text-center text-white/20">Không có dữ liệu</div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(sub => {
+                const nextDateInfo = getNextDate(sub);
+                const diff = Math.ceil((nextDateInfo.date - new Date()) / (1000 * 60 * 60 * 24));
+                const isExpired = sub.expirationDate && new Date(sub.expirationDate) < new Date();
+                const status = STATUSES[sub.status];
+                const catIcon = CATEGORIES.find(c => c.id === sub.category)?.icon || 'zap';
+
+                if (viewMode === 'grid') {
+                    return `
+                        <div onclick="toggleExpand(${sub.id})" class="glass p-4 flex flex-col h-full rounded-3xl border-white/5 ${sub.status === 'canceled' || isExpired ? 'opacity-50 grayscale' : ''}">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br ${sub.color || 'from-slate-700 to-slate-900'} shadow-lg">
+                                    <i data-lucide="${catIcon}" class="w-5 h-5"></i>
+                                </div>
+                                <span class="text-[9px] px-1.5 py-0.5 rounded border uppercase font-bold ${status.color}">${status.label}</span>
+                            </div>
+                            <h4 class="font-bold text-sm mb-1 truncate">${sub.name}</h4>
+                            <p class="text-xs font-semibold text-white/90 mb-4">${formatCurrency(sub.cost)}</p>
+                            <div class="mt-auto pt-2 border-t border-white/5 flex flex-col gap-1">
+                                <span class="text-[10px] ${diff <= 3 ? 'text-rose-400 font-bold' : 'text-white/40'}">
+                                    ${isExpired ? 'Hết hạn' : `${diff} ngày nữa`}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div class="glass rounded-3xl border-white/5 transition-all ${sub.status === 'canceled' || isExpired ? 'opacity-60 grayscale' : ''}">
+                        <div onclick="toggleExpand(${sub.id})" class="flex items-center p-4 cursor-pointer">
+                            <div class="w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br ${sub.color || 'from-slate-700 to-slate-900'} shadow-lg mr-4 shrink-0">
+                                <i data-lucide="${catIcon}" class="w-6 h-6"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <h4 class="font-semibold text-white truncate">${sub.name}</h4>
+                                    <span class="text-[9px] px-1.5 py-0.5 rounded border uppercase font-bold ${status.color}">${status.label}</span>
+                                </div>
+                                <div class="flex items-center text-[10px] text-white/40 mt-1 space-x-2">
+                                    <span class="capitalize">${CYCLES[sub.cycle].label}</span>
+                                    <span class="w-0.5 h-0.5 rounded-full bg-white/20"></span>
+                                    <span class="${diff <= 3 ? 'text-rose-400 font-bold' : ''}">${isExpired ? 'Hết hạn' : `${diff} ngày nữa`}</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="font-bold text-white/90 text-sm">${formatCurrency(sub.cost)}</span>
+                                <i data-lucide="${expandedId === sub.id ? 'chevron-up' : 'chevron-down'}" class="w-4 h-4 text-white/20"></i>
+                            </div>
+                        </div>
+                        ${expandedId === sub.id ? `
+                            <div class="px-4 pb-4 pt-0 border-t border-white/5 mt-2">
+                                <div class="grid grid-cols-2 gap-3 mt-4 mb-4">
+                                    <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                                        <p class="text-[10px] text-white/30 uppercase mb-1">Bắt đầu</p>
+                                        <p class="text-sm font-medium">${new Date(sub.startDate).toLocaleDateString('vi-VN')}</p>
+                                    </div>
+                                    <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                                        <p class="text-[10px] text-white/30 uppercase mb-1">Đã chi trả</p>
+                                        <p class="text-sm font-medium text-emerald-400">${formatCurrency(calculateTotalSpent(sub))}</p>
+                                    </div>
+                                </div>
+                                ${sub.notes ? `<div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-3 mb-4 text-[11px] text-white/70">${sub.notes}</div>` : ''}
+                                <div class="flex gap-2">
+                                    <button onclick="editSub(${sub.id})" class="flex-1 bg-white/5 hover:bg-white/10 py-2.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2">
+                                        <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Chỉnh sửa
+                                    </button>
+                                    <button onclick="deleteSub(${sub.id})" class="w-12 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 py-2.5 rounded-xl flex items-center justify-center">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // --- HANDLERS ---
+        window.setFilter = (cat) => {
+            currentFilter = cat;
+            render();
+        };
+
+        window.toggleExpand = (id) => {
+            expandedId = expandedId === id ? null : id;
+            render();
+        };
+
+        document.getElementById('search-input').oninput = (e) => {
+            searchQuery = e.target.value;
+            render();
+        };
+
+        document.getElementById('toggle-view').onclick = () => {
+            viewMode = viewMode === 'list' ? 'grid' : 'list';
+            // FIX: Selector [data-lucide] targets either <i> or <svg> after replacement
+            const icon = document.querySelector('#toggle-view [data-lucide]');
+            if (icon) {
+                icon.setAttribute('data-lucide', viewMode === 'list' ? 'layout-grid' : 'list');
+            }
+            render();
+        };
+
+        // --- MODAL & FORM ---
+        const modal = document.getElementById('modal');
+        const form = document.getElementById('sub-form');
+
+        document.getElementById('add-btn').onclick = () => openModal();
+        document.getElementById('close-modal').onclick = () => closeModal();
+        document.getElementById('modal-overlay').onclick = () => closeModal();
+
+        function openModal(sub = null) {
+            if (sub) {
+                document.getElementById('modal-title').textContent = 'Chỉnh Sửa Gói';
+                document.getElementById('form-id').value = sub.id;
+                document.getElementById('form-name').value = sub.name;
+                document.getElementById('form-cost').value = sub.cost;
+                document.getElementById('form-cycle').value = sub.cycle;
+                document.getElementById('form-startDate').value = sub.startDate;
+                document.getElementById('form-expirationDate').value = sub.expirationDate;
+                document.getElementById('form-status').value = sub.status;
+                document.getElementById('form-notes').value = sub.notes;
+                document.getElementById('form-category').value = sub.category;
+            } else {
+                document.getElementById('modal-title').textContent = 'Thêm Gói Mới';
+                form.reset();
+                document.getElementById('form-id').value = '';
+                document.getElementById('form-startDate').value = new Date().toISOString().split('T')[0];
+                document.getElementById('form-category').value = 'Other';
+            }
+            renderFormCategories();
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        function renderFormCategories() {
+            const grid = document.getElementById('form-category-grid');
+            const currentCat = document.getElementById('form-category').value;
+            grid.innerHTML = CATEGORIES.filter(c => c.id !== 'All').map(cat => `
+                <button type="button" onclick="setFormCategory('${cat.id}')" class="flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${currentCat === cat.id ? 'bg-indigo-500/20 border-indigo-500 text-white' : 'bg-white/5 border-transparent text-white/30'}">
+                    <i data-lucide="${cat.icon}" class="w-4 h-4"></i>
+                    <span class="text-[9px] font-medium">${cat.label}</span>
+                </button>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        window.setFormCategory = (catId) => {
+            document.getElementById('form-category').value = catId;
+            renderFormCategories();
+        };
+
+        form.onsubmit = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('form-id').value;
+            const data = {
+                name: document.getElementById('form-name').value,
+                cost: parseInt(document.getElementById('form-cost').value),
+                cycle: document.getElementById('form-cycle').value,
+                startDate: document.getElementById('form-startDate').value,
+                expirationDate: document.getElementById('form-expirationDate').value,
+                status: document.getElementById('form-status').value,
+                notes: document.getElementById('form-notes').value,
+                category: document.getElementById('form-category').value,
+            };
+
+            if (id) {
+                subs = subs.map(s => s.id == id ? { ...s, ...data } : s);
+            } else {
+                subs.unshift({ ...data, id: Date.now(), color: 'from-slate-700 to-slate-900' });
+            }
+            
+            closeModal();
+            render();
+        };
+
+        window.editSub = (id) => {
+            const sub = subs.find(s => s.id === id);
+            openModal(sub);
+        };
+
+        window.deleteSub = (id) => {
+            // Thay thế confirm() bằng customConfirm()
+            customConfirm(
+                'Bạn có chắc chắn muốn xóa dịch vụ này khỏi lịch sử không? Hành động này không thể hoàn tác.',
+                () => {
+                    subs = subs.filter(s => s.id !== id);
+                    render();
+                },
+                { 
+                    title: 'Xóa dịch vụ', 
+                    confirmText: 'Xóa ngay',
+                    isDanger: true,
+                    icon: 'trash-2'
+                }
+            );
+        };
+
+        // Init
+        render();
+    </script>
+</body>
+</html>
