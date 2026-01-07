@@ -1,12 +1,17 @@
 <!DOCTYPE html>
-<html lang="vi" class="dark">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Teencode Wiki & Meme Cloud (Supabase)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Teencode Wiki & Meme Cloud (Supabase Admin)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
         
@@ -15,27 +20,27 @@
             touch-action: manipulation;
             -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
-            transition: background-color 0.5s ease;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         .glass-card {
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         
         .ios-shadow {
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         }
 
         .dark .ios-shadow {
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
         }
 
         input, textarea, select { -webkit-user-select: text; user-select: text; }
 
-        .tab-active { color: #007AFF; transform: scale(1.1); font-weight: 700; }
+        .tab-active { color: #007AFF; font-weight: 800; }
         .dark .tab-active { color: #FFFFFF; }
         
         .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
@@ -45,92 +50,250 @@
         }
 
         .supabase-status-dot {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
             display: inline-block;
-            margin-right: 5px;
+            margin-right: 4px;
         }
+
+        #toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-size: 13px;
+            font-weight: 600;
+            z-index: 1000;
+            display: none;
+            backdrop-filter: blur(10px);
+        }
+
+        .ios-checkbox {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid #007AFF;
+            appearance: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .ios-checkbox:checked {
+            background-color: #007AFF;
+        }
+        .ios-checkbox:checked::after {
+            content: '✓';
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .text-meme-preview {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+            word-break: break-word;
+            font-weight: 700;
+            color: white;
+            font-size: 0.875rem;
+        }
+        
+        .dark .text-meme-preview {
+            background: linear-gradient(135deg, #1e1e1e 0%, #333333 100%);
+        }
+
+        body { padding-top: env(safe-area-inset-top); }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
-<body class="bg-[#F2F2F7] dark:bg-black text-black dark:text-white min-h-screen pb-32">
+<body class="bg-[#F2F2F7] dark:bg-[#000000] text-black dark:text-white min-h-screen pb-24">
 
-    <!-- Header -->
-    <header class="sticky top-0 z-40 px-6 pt-14 pb-5 glass-card border-b border-gray-200 dark:border-white/5 bg-white/70 dark:bg-black/70">
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex flex-col">
-                <div class="flex items-center">
+    <!-- Toast Notification -->
+    <div id="toast">✅ Thông báo thành công</div>
+
+    <!-- Modal: Custom Alert -->
+    <div id="modal-alert" class="fixed inset-0 z-[120] hidden flex items-center justify-center p-6 animate-in fade-in duration-200">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeAlertModal()"></div>
+        <div class="relative w-full max-w-xs glass-card rounded-[35px] p-6 ios-shadow bg-white dark:bg-[#1c1c1e] text-center border border-black/5 dark:border-white/5">
+            <div id="alert-icon-container" class="mb-4 flex justify-center"></div>
+            <h3 id="alert-title" class="text-lg font-bold mb-2">Thông báo</h3>
+            <p id="alert-message" class="text-sm opacity-60 mb-6 leading-relaxed"></p>
+            <button onclick="closeAlertModal()" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-2xl active:scale-95 transition-all">Đã hiểu</button>
+        </div>
+    </div>
+
+    <!-- Modal: Custom Confirm -->
+    <div id="modal-confirm" class="fixed inset-0 z-[110] hidden flex items-center justify-center p-6 animate-in fade-in duration-200">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeConfirmModal()"></div>
+        <div class="relative w-full max-w-xs glass-card rounded-[35px] p-6 ios-shadow bg-white dark:bg-[#1c1c1e] text-center border border-black/5 dark:border-white/5">
+            <div class="w-12 h-12 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="alert-triangle"></i>
+            </div>
+            <h3 id="confirm-title" class="text-lg font-bold mb-2">Xác nhận</h3>
+            <p id="confirm-message" class="text-sm opacity-60 mb-8 leading-relaxed">Bạn chắc chắn chứ?</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 bg-gray-100 dark:bg-white/5 font-bold py-3.5 rounded-2xl active:scale-95 transition-all">Hủy</button>
+                <button id="confirm-action-btn" class="flex-1 bg-red-500 text-white font-bold py-3.5 rounded-2xl active:scale-95 transition-all">Thực hiện</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Gọn Gàng -->
+    <header class="sticky top-0 z-40 px-5 pt-8 pb-3 glass-card border-b border-gray-200 dark:border-white/5 bg-white/80 dark:bg-black/80">
+        <div class="flex items-end justify-between mb-4">
+            <div>
+                <div class="flex items-center opacity-40 mb-0.5">
                     <span id="supabase-status" class="supabase-status-dot bg-gray-400"></span>
-                    <span id="header-date" class="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-white/40 mb-1">...</span>
+                    <span id="header-date" class="text-[9px] font-bold uppercase tracking-widest">...</span>
                 </div>
-                <h1 id="app-title" class="text-4xl font-black tracking-tight">Wiki</h1>
+                <h1 id="app-title" class="text-3xl font-black tracking-tight leading-none">Wiki</h1>
             </div>
             
-            <div class="flex items-center gap-3">
-                <div class="flex p-1 rounded-full bg-gray-200 dark:bg-white/10">
-                    <button onclick="setTheme('light')" id="theme-light" class="p-1.5 rounded-full transition-all text-gray-500"><i data-lucide="sun" class="w-3.5 h-3.5"></i></button>
-                    <button onclick="setTheme('system')" id="theme-system" class="p-1.5 rounded-full transition-all text-gray-500"><i data-lucide="laptop" class="w-3.5 h-3.5"></i></button>
-                    <button onclick="setTheme('dark')" id="theme-dark" class="p-1.5 rounded-full transition-all text-gray-500"><i data-lucide="moon" class="w-3.5 h-3.5"></i></button>
+            <div class="flex items-center gap-2">
+                <button id="admin-auth-btn" onclick="toggleAuthModal()" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-500 dark:text-white/40 active:scale-90 transition-all">
+                    <i data-lucide="lock" class="w-4 h-4"></i>
+                </button>
+
+                <div class="flex p-0.5 rounded-full bg-gray-100 dark:bg-white/5 border border-black/5 dark:border-white/5">
+                    <button onclick="setTheme('light')" id="theme-light" class="p-1.5 rounded-full transition-all"><i data-lucide="sun" class="w-3.5 h-3.5"></i></button>
+                    <button onclick="setTheme('system')" id="theme-system" class="p-1.5 rounded-full transition-all"><i data-lucide="laptop" class="w-3.5 h-3.5"></i></button>
+                    <button onclick="setTheme('dark')" id="theme-dark" class="p-1.5 rounded-full transition-all"><i data-lucide="moon" class="w-3.5 h-3.5"></i></button>
                 </div>
 
-                <button onclick="openAddModal()" class="w-12 h-12 rounded-full flex items-center justify-center ios-shadow active:scale-90 transition-transform bg-blue-600 dark:bg-white text-white dark:text-black">
-                    <i data-lucide="plus" class="w-7 h-7"></i>
+                <button id="main-add-btn" onclick="openAddModal()" class="w-9 h-9 rounded-full hidden flex items-center justify-center ios-shadow active:scale-90 transition-transform bg-blue-600 dark:bg-white text-white dark:text-black">
+                    <i data-lucide="plus" class="w-5 h-5"></i>
                 </button>
             </div>
         </div>
         
-        <!-- Search -->
-        <div class="relative mb-4">
-            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/30 w-5 h-5"></i>
-            <input type="text" id="search-input" placeholder="Tìm teencode..." 
-                class="w-full border rounded-[22px] py-4 pl-12 pr-4 transition-all outline-none bg-gray-100 dark:bg-white/5 border-transparent dark:border-white/5 focus:bg-white dark:focus:bg-white/10">
+        <div class="flex gap-2 items-center">
+            <div class="relative flex-1">
+                <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/20 w-4 h-4"></i>
+                <input type="text" id="search-input" placeholder="Tìm kiếm..." 
+                    class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-2.5 pl-10 pr-4 text-sm transition-all outline-none focus:bg-white dark:focus:bg-white/10">
+            </div>
+            <button onclick="toggleAdvancedFilters()" id="filter-toggle" class="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-2xl text-gray-400 dark:text-white/30 active:scale-90">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+            </button>
         </div>
 
-        <div id="category-filters" class="flex gap-2 overflow-x-auto pb-1 no-scrollbar"></div>
+        <div id="advanced-filters" class="hidden mt-3 animate-in slide-in-from-top duration-300">
+            <div class="p-3 rounded-2xl bg-gray-100/50 dark:bg-white/5 border border-black/5 dark:border-white/5 space-y-3">
+                <div id="meme-filters-group" class="grid grid-cols-2 gap-2 hidden">
+                    <div class="space-y-1">
+                        <label class="text-[8px] font-bold uppercase tracking-wider opacity-30 ml-1">Định dạng</label>
+                        <select id="filter-meme-type" onchange="render()" class="w-full bg-white dark:bg-black/40 border-none rounded-xl py-1.5 px-2 text-[11px] outline-none dark:text-white"></select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-[8px] font-bold uppercase tracking-wider opacity-30 ml-1">Ngôn ngữ</label>
+                        <select id="filter-meme-lang" onchange="render()" class="w-full bg-white dark:bg-black/40 border-none rounded-xl py-1.5 px-2 text-[11px] outline-none dark:text-white"></select>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label class="text-[8px] font-bold uppercase tracking-wider opacity-30 ml-1">Thứ tự</label>
+                    <select id="filter-sort" onchange="render()" class="w-full bg-white dark:bg-black/40 border-none rounded-xl py-1.5 px-2 text-[11px] outline-none dark:text-white">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="category-filters" class="flex gap-1.5 overflow-x-auto mt-3 pb-1 no-scrollbar"></div>
     </header>
 
+    <!-- Bulk Actions -->
+    <div id="bulk-toolbar" class="fixed bottom-24 left-5 right-5 z-[45] hidden animate-in slide-in-from-bottom duration-300">
+        <div class="glass-card bg-blue-600/95 dark:bg-white/95 px-4 py-3 rounded-3xl ios-shadow flex items-center justify-between text-white dark:text-black">
+            <div class="flex items-center gap-3">
+                <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll()" class="ios-checkbox !border-white dark:!border-black">
+                <span class="font-bold text-xs" id="selected-count">0 mục</span>
+            </div>
+            <button onclick="handleBulkDelete()" class="bg-red-500 text-white font-bold py-2 px-4 rounded-xl active:scale-95 transition-all text-[10px] uppercase tracking-wider">
+                Xoá hàng loạt
+            </button>
+        </div>
+    </div>
+
     <!-- Main Content -->
-    <main id="main-content" class="px-6 py-8 space-y-6"></main>
+    <main id="main-content" class="px-5 py-6 space-y-4"></main>
 
     <!-- Navigation -->
-    <nav class="fixed bottom-8 left-6 right-6 z-50 px-8 py-5 glass-card rounded-[35px] ios-shadow border border-gray-200 dark:border-white/10 flex justify-around items-center bg-white/80 dark:bg-black/80">
-        <button onclick="switchTab('dictionary')" id="nav-dictionary" class="flex flex-col items-center gap-1 transition-all tab-active">
-            <i data-lucide="book-open" class="w-6 h-6"></i>
-            <span class="text-[10px] font-black uppercase tracking-widest">Wiki</span>
-        </button>
-        <button onclick="switchTab('memes')" id="nav-memes" class="flex flex-col items-center gap-1 transition-all text-gray-400">
-            <i data-lucide="image" class="w-6 h-6"></i>
-            <span class="text-[10px] font-black uppercase tracking-widest">Cloud</span>
-        </button>
+    <nav class="fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-gray-200 dark:border-white/5 bg-white/80 dark:bg-black/80 pb-safe">
+        <div class="flex justify-around items-center h-16 px-6">
+            <button onclick="switchTab('dictionary')" id="nav-dictionary" class="flex flex-col items-center gap-0.5 transition-all tab-active">
+                <i data-lucide="book-open" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase tracking-tight">Wiki</span>
+            </button>
+            <button onclick="switchTab('memes')" id="nav-memes" class="flex flex-col items-center gap-0.5 transition-all text-gray-400">
+                <i data-lucide="image" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase tracking-tight">Cloud</span>
+            </button>
+        </div>
     </nav>
 
-    <!-- Modal: Add New -->
+    <!-- Modal Admin -->
+    <div id="modal-auth" class="fixed inset-0 z-[100] hidden flex items-center justify-center animate-in fade-in duration-300 p-6">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-md" onclick="toggleAuthModal()"></div>
+        <div class="relative w-full max-w-sm glass-card rounded-[35px] p-8 ios-shadow bg-white dark:bg-[#1c1c1e] text-center border border-black/5 dark:border-white/5">
+            <div id="auth-form-container">
+                <i data-lucide="shield-check" class="w-12 h-12 mx-auto mb-4 text-blue-500"></i>
+                <h2 class="text-xl font-black mb-1">Admin Login</h2>
+                <p class="text-[10px] opacity-40 mb-6">Quản lý kho dữ liệu</p>
+                <form id="login-form" class="space-y-3">
+                    <input type="email" id="login-email" placeholder="Email" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3.5 px-5 outline-none text-sm dark:text-white" required>
+                    <input type="password" id="login-password" placeholder="Mật khẩu" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3.5 px-5 outline-none text-sm dark:text-white" required>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl active:scale-95 transition-all mt-2">Đăng nhập</button>
+                </form>
+            </div>
+            <div id="admin-profile-container" class="hidden">
+                <i data-lucide="user-check" class="w-12 h-12 mx-auto mb-4 text-green-500"></i>
+                <h2 class="text-xl font-black mb-1 text-black dark:text-white">Admin Access</h2>
+                <p id="admin-email-display" class="text-[10px] opacity-40 mb-8"></p>
+                <button onclick="handleLogout()" class="w-full bg-red-500/10 text-red-500 font-bold py-3.5 rounded-xl active:scale-95 transition-all">Đăng xuất</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Add/Edit -->
     <div id="modal-add" class="fixed inset-0 z-[60] hidden flex items-end sm:items-center justify-center animate-in fade-in duration-300">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeAddModal()"></div>
-        <form id="add-form" class="relative w-full max-w-lg glass-card rounded-t-[40px] sm:rounded-[40px] p-8 pb-14 ios-shadow max-h-[92vh] overflow-y-auto no-scrollbar bg-white dark:bg-[#1c1c1e]">
-            <div class="flex justify-between items-center mb-10">
-                <h2 class="text-3xl font-black">Thêm mới</h2>
-                <button type="button" onclick="closeAddModal()" class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5"><i data-lucide="x"></i></button>
+        <form id="add-form" class="relative w-full max-w-lg glass-card rounded-t-[35px] sm:rounded-[35px] p-6 pb-12 ios-shadow max-h-[90vh] overflow-y-auto no-scrollbar bg-white dark:bg-[#1c1c1e] border border-black/5 dark:border-white/5">
+            <div class="flex justify-between items-center mb-8">
+                <h2 id="modal-add-title" class="text-2xl font-black">Thêm mới</h2>
+                <button type="button" onclick="closeAddModal()" class="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5 dark:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
-
-            <div id="add-fields" class="space-y-7"></div>
-            
-            <button type="submit" id="submit-btn" class="w-full font-black py-6 rounded-3xl active:scale-[0.97] transition-all ios-shadow text-lg mt-8 bg-blue-600 dark:bg-white text-white dark:text-black">
+            <input type="hidden" id="edit-id">
+            <div id="add-fields" class="space-y-5 text-sm"></div>
+            <button type="submit" id="submit-btn" class="w-full font-black py-4 rounded-2xl active:scale-[0.97] transition-all ios-shadow text-base mt-8 bg-blue-600 dark:bg-white text-white dark:text-black">
                 Lưu vào Cloud
             </button>
         </form>
     </div>
 
-    <!-- Modal: Meme Details -->
+    <!-- Modal Meme Details -->
     <div id="modal-detail" class="fixed inset-0 z-[70] hidden flex items-center justify-center animate-in zoom-in-95 duration-300">
         <div class="absolute inset-0 bg-black/95 backdrop-blur-2xl" onclick="closeDetailModal()"></div>
-        <div class="relative w-full max-w-3xl bg-transparent flex flex-col max-h-[95vh] overflow-y-auto no-scrollbar">
-            <button onclick="closeDetailModal()" class="absolute top-6 right-6 z-10 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center backdrop-blur-xl border border-white/10"><i data-lucide="x"></i></button>
-            <div id="detail-content" class="px-6 pt-20 pb-10"></div>
+        <div class="relative w-full max-w-3xl bg-transparent flex flex-col max-h-[95vh] overflow-y-auto no-scrollbar p-5">
+            <button onclick="closeDetailModal()" class="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center backdrop-blur-xl border border-white/10"><i data-lucide="x" class="w-5 h-5"></i></button>
+            <div id="detail-content" class="pt-12 pb-8 text-white"></div>
         </div>
     </div>
 
     <script>
+        // --- CẤU HÌNH SUPABASE ---
         const SUPABASE_URL = "https://mehpnuxvxongkdtgaeob.supabase.co"; 
         const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1laHBudXh2eG9uZ2tkdGdhZW9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2MjgxMzIsImV4cCI6MjA4MTIwNDEzMn0.5XaDtVfw6t5ipKXUJ6f-BtusJLJdfiJ-TSUCvBAkZCw";
 
@@ -143,7 +306,12 @@
             memes: [],
             uploadPreview: null,
             customTags: [],
-            supabase: null
+            supabase: null,
+            user: null,
+            isAdmin: false,
+            confirmCallback: null,
+            advancedFiltersVisible: false,
+            selectedItemIds: []
         };
 
         const defaultCategories = ['Hài hước', 'Châm biếm', 'Wibu', 'Cute', 'Cà khịa', 'Sad boy/girl', 'Chế', 'Phản ứng', 'Tiếng lóng', 'Gen Z'];
@@ -151,18 +319,23 @@
         const types = ['Ảnh', 'Ảnh động (GIF)', 'Video', 'Text'];
 
         async function init() {
-            lucide.createIcons();
             updateDate();
             applyTheme();
+            lucide.createIcons();
 
             try {
                 state.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 document.getElementById('supabase-status').classList.replace('bg-gray-400', 'bg-green-500');
                 
-                // Lấy dữ liệu ban đầu
+                state.supabase.auth.onAuthStateChange((event, session) => {
+                    handleAuthStateChange(session?.user || null);
+                });
+
+                const { data: { session } } = await state.supabase.auth.getSession();
+                handleAuthStateChange(session?.user || null);
+
                 await fetchData();
-                
-                // Đăng ký lắng nghe thay đổi thời gian thực
+                populateDropdowns();
                 subscribeToChanges();
             } catch (err) {
                 console.error("Supabase Init Error:", err);
@@ -175,389 +348,349 @@
             });
 
             document.getElementById('add-form').addEventListener('submit', handleAddData);
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
         }
 
-        async function fetchData() {
-            const { data: tc, error: err1 } = await state.supabase.from('teencodes').select('*').order('created_at', { ascending: false });
-            const { data: mm, error: err2 } = await state.supabase.from('memes').select('*').order('created_at', { ascending: false });
-
-            if (tc) state.teencodes = tc;
-            if (mm) state.memes = mm;
-            render();
-        }
-
-        function subscribeToChanges() {
-            // Lắng nghe bảng teencodes
-            state.supabase
-                .channel('teencodes-realtime')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'teencodes' }, () => {
-                    fetchData();
-                })
-                .subscribe();
-
-            // Lắng nghe bảng memes
-            state.supabase
-                .channel('memes-realtime')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'memes' }, () => {
-                    fetchData();
-                })
-                .subscribe();
-        }
-
-        function render() {
-            renderFilters();
-            renderContent();
-            lucide.createIcons();
-        }
-
-        function renderFilters() {
-            const container = document.getElementById('category-filters');
-            const data = state.activeTab === 'dictionary' ? state.teencodes : state.memes;
-            const cats = new Set();
-            data.forEach(item => item.categories?.forEach(c => cats.add(c)));
-            const activeCats = Array.from(cats).sort();
-
-            container.innerHTML = activeCats.map(cat => `
-                <button onclick="toggleCategory('${cat}')" 
-                    class="whitespace-nowrap rounded-2xl px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all border 
-                    ${state.selectedCategories.includes(cat) 
-                        ? 'bg-blue-600 dark:bg-white text-white dark:text-black border-transparent' 
-                        : 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-white/40 border-transparent'}">
-                    ${cat}
-                </button>
-            `).join('');
-        }
-
-        function renderContent() {
-            const container = document.getElementById('main-content');
-            container.innerHTML = '';
-
-            if (state.activeTab === 'dictionary') {
-                const filtered = state.teencodes.filter(item => {
-                    const matchSearch = (item.word + item.meaning).toLowerCase().includes(state.searchTerm.toLowerCase());
-                    const matchCats = state.selectedCategories.length === 0 || state.selectedCategories.some(c => item.categories?.includes(c));
-                    return matchSearch && matchCats;
-                });
-
-                if (filtered.length === 0) {
-                    container.innerHTML = `<div class="text-center py-20 opacity-20">Trống trơn...</div>`;
-                    return;
-                }
-
-                container.className = "px-6 py-8 space-y-6";
-                filtered.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = "glass-card rounded-[32px] p-6 border border-gray-200 dark:border-white/5 ios-shadow space-y-5 animate-pop bg-white/50 dark:bg-white/5";
-                    card.innerHTML = `
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <h3 class="text-2xl font-black text-blue-600 dark:text-blue-400">#${item.word}</h3>
-                                <div class="flex flex-wrap gap-1 mt-2">
-                                    ${item.categories?.map(c => `<span class="bg-black/5 dark:bg-white/10 text-gray-500 dark:text-white/40 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">${c}</span>`).join('')}
-                                </div>
-                            </div>
-                            <button onclick="copyToClipboard('${item.word.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-white/40">
-                                <i data-lucide="copy" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-                        <p class="text-lg font-medium leading-tight opacity-80">${item.meaning}</p>
-                        ${item.origin ? `<div class="pt-4 border-t border-gray-100 dark:border-white/5 text-[10px] font-bold uppercase text-gray-400">Nguồn: <span class="normal-case font-normal ml-1">${item.origin}</span></div>` : ''}
-                    `;
-                    container.appendChild(card);
-                });
-            } else {
-                const filtered = state.memes.filter(m => {
-                    const matchSearch = (m.name || '').toLowerCase().includes(state.searchTerm.toLowerCase());
-                    const matchCats = state.selectedCategories.length === 0 || state.selectedCategories.some(c => m.categories?.includes(c));
-                    return matchSearch && matchCats;
-                });
-
-                if (filtered.length === 0) {
-                    container.innerHTML = `<div class="text-center py-20 opacity-20">Chưa có meme nào...</div>`;
-                    return;
-                }
-
-                container.className = "px-6 py-8 grid grid-cols-2 gap-4";
-                filtered.forEach(m => {
-                    const card = document.createElement('div');
-                    card.onclick = () => openDetailModal(m);
-                    card.className = "group relative aspect-[4/5] rounded-[30px] overflow-hidden glass-card border border-gray-200 dark:border-white/5 active:scale-95 transition-all animate-pop bg-white dark:bg-white/5 cursor-pointer";
-                    card.innerHTML = `
-                        <img src="${m.url}" class="w-full h-full object-cover opacity-90" loading="lazy">
-                        <button onclick="event.stopPropagation(); copyImageToClipboard('${m.url}')" class="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md bg-black/20 text-white border border-white/10">
-                            <i data-lucide="copy" class="w-4 h-4"></i>
-                        </button>
-                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent flex flex-col justify-end p-4">
-                            <p class="text-sm font-bold truncate text-white">${m.name}</p>
-                            <p class="text-[9px] text-white/40 font-bold uppercase">${m.type}</p>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            }
-        }
-
-        window.toggleCategory = (cat) => {
-            if (state.selectedCategories.includes(cat)) {
-                state.selectedCategories = state.selectedCategories.filter(c => c !== cat);
-            } else {
-                state.selectedCategories.push(cat);
-            }
-            render();
-        };
-
-        window.switchTab = (tab) => {
-            state.activeTab = tab;
-            state.selectedCategories = [];
-            state.searchTerm = '';
-            document.getElementById('search-input').value = '';
-            document.getElementById('app-title').innerText = tab === 'dictionary' ? 'Wiki' : 'Cloud';
-            document.getElementById('nav-dictionary').className = `flex flex-col items-center gap-1 transition-all ${tab === 'dictionary' ? 'tab-active' : 'text-gray-400'}`;
-            document.getElementById('nav-memes').className = `flex flex-col items-center gap-1 transition-all ${tab === 'memes' ? 'tab-active' : 'text-gray-400'}`;
-            render();
-        };
-
-        window.setTheme = (t) => {
-            state.theme = t;
-            applyTheme();
-        };
-
+        // --- THEME ENGINE ---
+        window.setTheme = (t) => { state.theme = t; applyTheme(); };
         function applyTheme() {
             const html = document.documentElement;
             let resolved = state.theme;
             if (state.theme === 'system') resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            html.className = resolved;
+            if (resolved === 'dark') html.classList.add('dark'); else html.classList.remove('dark');
             localStorage.setItem('theme-preference', state.theme);
             ['light', 'dark', 'system'].forEach(m => {
                 const btn = document.getElementById(`theme-${m}`);
-                if (btn) btn.className = state.theme === m ? "p-1.5 rounded-full bg-white dark:bg-gray-800 text-blue-600 dark:text-white shadow-sm" : "p-1.5 rounded-full text-gray-500 hover:text-gray-700";
+                if (btn) btn.className = state.theme === m ? "p-1.5 rounded-full bg-blue-600 dark:bg-white text-white dark:text-black shadow-md transform scale-105" : "p-1.5 rounded-full text-gray-500 hover:text-gray-700 dark:text-white/30 dark:hover:text-white";
             });
         }
 
-        window.openAddModal = () => {
-            const fields = document.getElementById('add-fields');
-            state.uploadPreview = null;
-            state.customTags = [];
+        // --- CUSTOM MODAL UI ---
+        function showAlertModal(title, message, type = 'info') {
+            const modal = document.getElementById('modal-alert');
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            const container = document.getElementById('alert-icon-container');
+            let icon = 'info', iconClass = 'text-blue-500';
+            if (type === 'error') { icon = 'x-circle'; iconClass = 'text-red-500'; }
+            if (type === 'success') { icon = 'check-circle'; iconClass = 'text-green-500'; }
+            container.innerHTML = `<i data-lucide="${icon}" class="w-12 h-12 ${iconClass}"></i>`;
+            lucide.createIcons(); modal.classList.remove('hidden');
+        }
+        window.closeAlertModal = () => document.getElementById('modal-alert').classList.add('hidden');
 
-            if (state.activeTab === 'dictionary') {
-                fields.innerHTML = `
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Cụm từ</label>
-                        <input name="word" required placeholder="VD: Khùm núm" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-5 px-6 outline-none focus:ring-1 focus:ring-blue-500">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Ý nghĩa</label>
-                        <textarea name="meaning" required placeholder="..." class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-5 px-6 outline-none h-24"></textarea>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Nguồn gốc</label>
-                        <input name="origin" placeholder="Internet..." class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-5 px-6 outline-none">
-                    </div>
-                `;
-            } else {
-                fields.innerHTML = `
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Ảnh Meme</label>
-                        <div id="upload-zone" onclick="document.getElementById('file-input').click()" class="h-32 bg-gray-100 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
-                            <i data-lucide="upload" class="opacity-20 mb-2"></i>
-                            <span class="text-[10px] font-bold opacity-20">TẢI ẢNH LÊN</span>
-                        </div>
-                        <input type="file" id="file-input" class="hidden" accept="image/*" onchange="handleFileChange(event)">
-                        <input name="url" id="url-input" placeholder="Hoặc dán URL ảnh..." class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-4 px-6 mt-2 text-sm outline-none">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Tên Meme</label>
-                        <input name="name" required placeholder="VD: Doge" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-5 px-6 outline-none">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Mô tả chi tiết</label>
-                        <textarea name="meaning" placeholder="Giải thích về meme..." class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-4 px-6 outline-none h-20"></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Loại</label>
-                            <select name="type" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-4 px-4 outline-none">${types.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Ngôn ngữ</label>
-                            <select name="language" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-4 px-4 outline-none">${languages.map(l => `<option value="${l}">${l}</option>`).join('')}</select>
-                        </div>
-                    </div>
-                `;
-            }
-
-            const catSection = document.createElement('div');
-            catSection.className = "space-y-3";
-            catSection.innerHTML = `
-                <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Danh mục</label>
-                <div class="flex bg-gray-100 dark:bg-white/5 border-none rounded-2xl p-2 gap-2 mb-4">
-                    <input type="text" id="tag-input" placeholder="Thêm danh mục..." class="flex-1 bg-transparent border-none outline-none px-3 text-sm">
-                    <button type="button" onclick="addNewTag()" class="bg-blue-600 dark:bg-white text-white dark:text-black p-2 rounded-xl"><i data-lucide="plus" class="w-4 h-4"></i></button>
-                </div>
-                <div id="tag-pool" class="flex flex-wrap gap-2">
-                    ${defaultCategories.map(cat => `
-                        <label class="cursor-pointer">
-                            <input type="checkbox" name="categories" value="${cat}" class="hidden peer">
-                            <span class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 text-[10px] font-bold text-gray-400 dark:text-white/40 border-none peer-checked:bg-blue-600 dark:peer-checked:bg-white peer-checked:text-white dark:peer-checked:text-black transition-all block">${cat}</span>
-                        </label>
-                    `).join('')}
-                </div>
-            `;
-            fields.appendChild(catSection);
-            document.getElementById('modal-add').classList.remove('hidden');
+        function showConfirmModal(title, message, onConfirm) {
+            const modal = document.getElementById('modal-confirm');
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = message;
+            state.confirmCallback = onConfirm;
+            modal.classList.remove('hidden');
             lucide.createIcons();
         }
+        window.closeConfirmModal = () => document.getElementById('modal-confirm').classList.add('hidden');
 
+        // --- AUTH ---
+        function handleAuthStateChange(user) {
+            state.user = user; state.isAdmin = !!user;
+            const authBtn = document.getElementById('admin-auth-btn'), addBtn = document.getElementById('main-add-btn');
+            if (state.isAdmin) {
+                authBtn.innerHTML = '<i data-lucide="unlock" class="w-4 h-4 text-blue-500"></i>';
+                authBtn.classList.add('bg-blue-500/10'); addBtn.classList.remove('hidden');
+                document.getElementById('auth-form-container').classList.add('hidden');
+                document.getElementById('admin-profile-container').classList.remove('hidden');
+                document.getElementById('admin-email-display').innerText = user.email;
+            } else {
+                authBtn.innerHTML = '<i data-lucide="lock" class="w-4 h-4"></i>';
+                authBtn.classList.remove('bg-blue-500/10'); addBtn.classList.add('hidden');
+                document.getElementById('auth-form-container').classList.remove('hidden');
+                document.getElementById('admin-profile-container').classList.add('hidden');
+                state.selectedItemIds = []; updateBulkToolbar();
+            }
+            lucide.createIcons(); render();
+        }
+        async function handleLogin(e) {
+            e.preventDefault();
+            const { data, error } = await state.supabase.auth.signInWithPassword({ email: document.getElementById('login-email').value, password: document.getElementById('login-password').value });
+            if (error) showAlertModal("Lỗi", "Thông tin đăng nhập không chính xác.", "error");
+            else { handleAuthStateChange(data.user); toggleAuthModal(); showToast("🔓 Admin Access Granted"); }
+        }
+        async function handleLogout() { await state.supabase.auth.signOut(); handleAuthStateChange(null); toggleAuthModal(); showToast("🔒 Admin Logged Out"); }
+        window.toggleAuthModal = () => { document.getElementById('modal-auth').classList.toggle('hidden'); lucide.createIcons(); };
+
+        // --- DATA LOGIC ---
+        async function fetchData() {
+            const { data: tc } = await state.supabase.from('teencodes').select('*');
+            const { data: mm } = await state.supabase.from('memes').select('*');
+            if (tc) state.teencodes = tc; if (mm) state.memes = mm; render();
+        }
+        function subscribeToChanges() { state.supabase.channel('global').on('postgres_changes', { event: '*', schema: 'public' }, fetchData).subscribe(); }
+        function populateDropdowns() {
+            const typeSelect = document.getElementById('filter-meme-type'), langSelect = document.getElementById('filter-meme-lang');
+            typeSelect.innerHTML = '<option value="all">Tất cả loại</option>'; langSelect.innerHTML = '<option value="all">Tất cả ngôn ngữ</option>';
+            types.forEach(t => { const opt = document.createElement('option'); opt.value = t; opt.innerText = t; typeSelect.appendChild(opt); });
+            languages.forEach(l => { const opt = document.createElement('option'); opt.value = l; opt.innerText = l; langSelect.appendChild(opt); });
+        }
+
+        // --- BULK ACTIONS ---
+        window.toggleItemSelection = (id) => {
+            const idx = state.selectedItemIds.indexOf(id);
+            if (idx > -1) state.selectedItemIds.splice(idx, 1); else state.selectedItemIds.push(id);
+            updateBulkToolbar();
+        };
+        window.toggleSelectAll = () => {
+            const isAll = document.getElementById('select-all-checkbox').checked;
+            const currentItems = getFilteredData();
+            if (isAll) state.selectedItemIds = currentItems.map(i => i.id); else state.selectedItemIds = [];
+            render(); updateBulkToolbar();
+        };
+        function updateBulkToolbar() {
+            const toolbar = document.getElementById('bulk-toolbar'), countEl = document.getElementById('selected-count'), selectAllCheck = document.getElementById('select-all-checkbox');
+            if (state.selectedItemIds.length > 0 && state.isAdmin) {
+                toolbar.classList.remove('hidden'); countEl.innerText = `${state.selectedItemIds.length} mục`;
+                const currentIds = getFilteredData().map(i => i.id); selectAllCheck.checked = currentIds.every(id => state.selectedItemIds.includes(id));
+            } else { toolbar.classList.add('hidden'); selectAllCheck.checked = false; }
+        }
+        async function handleBulkDelete() {
+            showConfirmModal("Xoá hàng loạt", `Xoá ${state.selectedItemIds.length} mục đã chọn vĩnh viễn?`, async () => {
+                const table = state.activeTab === 'dictionary' ? 'teencodes' : 'memes';
+                const { error } = await state.supabase.from(table).delete().in('id', state.selectedItemIds);
+                if (error) showAlertModal("Lỗi", error.message, 'error');
+                else { showToast(`🗑️ Đã xoá thành công`); state.selectedItemIds = []; updateBulkToolbar(); await fetchData(); }
+            });
+        }
+
+        // --- UI UTILS ---
+        window.toggleAdvancedFilters = () => {
+            state.advancedFiltersVisible = !state.advancedFiltersVisible;
+            document.getElementById('advanced-filters').classList.toggle('hidden', !state.advancedFiltersVisible);
+            document.getElementById('filter-toggle').classList.toggle('text-blue-500', state.advancedFiltersVisible);
+            lucide.createIcons();
+        };
+
+        function getFilteredData() {
+            const searchLow = state.searchTerm.toLowerCase();
+            if (state.activeTab === 'dictionary') {
+                return state.teencodes.filter(item => {
+                    const matchSearch = (item.word + item.meaning + (item.example || "")).toLowerCase().includes(searchLow);
+                    const matchCats = state.selectedCategories.length === 0 || state.selectedCategories.some(c => item.categories?.includes(c));
+                    return matchSearch && matchCats;
+                });
+            } else {
+                const typeFilter = document.getElementById('filter-meme-type').value;
+                const langFilter = document.getElementById('filter-meme-lang').value;
+                return state.memes.filter(m => {
+                    const matchSearch = (m.name + (m.meaning || "") + (m.origin || "")).toLowerCase().includes(searchLow);
+                    const matchCats = state.selectedCategories.length === 0 || state.selectedCategories.some(c => m.categories?.includes(c));
+                    const matchType = typeFilter === 'all' || m.type === typeFilter;
+                    const matchLang = langFilter === 'all' || m.language === langFilter;
+                    return matchSearch && matchCats && matchType && matchLang;
+                });
+            }
+        }
+
+        function render() {
+            renderFilters(); renderContent();
+            const memeGroup = document.getElementById('meme-filters-group');
+            if (memeGroup) memeGroup.classList.toggle('hidden', state.activeTab !== 'memes');
+            updateBulkToolbar(); lucide.createIcons();
+        }
+
+        function renderFilters() {
+            const container = document.getElementById('category-filters'), data = state.activeTab === 'dictionary' ? state.teencodes : state.memes, cats = new Set();
+            data.forEach(item => item.categories?.forEach(c => cats.add(c)));
+            const activeCats = Array.from(cats).sort();
+            if (activeCats.length === 0) { container.innerHTML = `<span class="text-[9px] opacity-20 px-2 italic">Không có danh mục</span>`; return; }
+            container.innerHTML = activeCats.map(cat => `<button onclick="toggleCategory('${cat}')" class="whitespace-nowrap rounded-xl px-3.5 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-all border ${state.selectedCategories.includes(cat) ? 'bg-blue-600 dark:bg-white text-white dark:text-black border-transparent' : 'bg-gray-200/50 dark:bg-white/5 text-gray-500 dark:text-white/30 border-transparent'}">${cat}</button>`).join('');
+        }
+
+        function renderContent() {
+            const container = document.getElementById('main-content'); container.innerHTML = '';
+            const sortVal = document.getElementById('filter-sort').value;
+            let filtered = getFilteredData();
+            filtered.sort((a, b) => { const timeA = new Date(a.created_at).getTime(), timeB = new Date(b.created_at).getTime(); return sortVal === 'newest' ? timeB - timeA : timeA - timeB; });
+            if (filtered.length === 0) { container.innerHTML = `<div class="text-center py-20 opacity-20 flex flex-col items-center gap-2"><i data-lucide="search-x" class="w-10 h-10"></i><p class="text-sm">Trống</p></div>`; lucide.createIcons(); return; }
+            
+            if (state.activeTab === 'dictionary') {
+                container.className = "px-5 py-4 space-y-4";
+                filtered.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = "glass-card rounded-[28px] p-5 border border-gray-200 dark:border-white/5 ios-shadow space-y-4 animate-pop bg-white/50 dark:bg-white/5 relative";
+                    const isChecked = state.selectedItemIds.includes(item.id);
+                    const fullText = `Từ khóa: ${item.word}\nĐịnh nghĩa: ${item.meaning}${item.example ? `\nVí dụ: ${item.example}` : ''}${item.origin ? `\nNguồn: ${item.origin}` : ''}`;
+                    
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div class="flex items-start gap-3">
+                                ${state.isAdmin ? `<input type="checkbox" onchange="toggleItemSelection('${item.id}')" ${isChecked ? 'checked' : ''} class="ios-checkbox mt-1">` : ''}
+                                <div><h3 class="text-xl font-black text-blue-600 dark:text-blue-400 leading-tight">#${item.word}</h3><div class="flex flex-wrap gap-1 mt-1.5">${item.categories?.map(c => `<span class="bg-black/5 dark:bg-white/10 text-gray-500 dark:text-white/40 px-2 py-0.5 rounded-lg text-[7px] font-black uppercase">${c}</span>`).join('')}</div></div>
+                            </div>
+                            <div class="flex gap-1.5">
+                                ${state.isAdmin ? `<button class="edit-btn w-8 h-8 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-500"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button><button class="delete-btn w-8 h-8 rounded-full flex items-center justify-center bg-red-500/10 text-red-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                                <button class="wiki-copy-btn w-8 h-8 rounded-full flex items-center justify-center bg-gray-200/50 dark:bg-white/5 text-gray-400 dark:text-white/40 active:scale-90 transition-transform"><i data-lucide="copy" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <p class="text-[15px] font-medium leading-snug opacity-80 dark:text-white/80">${item.meaning}</p>
+                            ${item.example ? `<div class="p-3.5 rounded-xl bg-black/5 dark:bg-white/5 border-l-3 border-blue-500 italic text-xs opacity-70">"${item.example}"</div>` : ''}
+                        </div>
+                    `;
+                    if (state.isAdmin) { card.querySelector('.edit-btn').onclick = () => editWikiItem(item.id); card.querySelector('.delete-btn').onclick = () => deleteItem(item.id, 'teencodes'); }
+                    card.querySelector('.wiki-copy-btn').onclick = (e) => { e.stopPropagation(); copyToClipboard(fullText); showToast("✅ Chép toàn bộ info"); };
+                    container.appendChild(card);
+                });
+            } else {
+                container.className = "px-5 py-4 grid grid-cols-2 gap-3";
+                filtered.forEach(m => {
+                    const card = document.createElement('div'); card.onclick = () => openDetailModal(m);
+                    card.className = "group relative aspect-[4/5] rounded-[24px] overflow-hidden glass-card border border-gray-200 dark:border-white/5 animate-pop bg-white dark:bg-white/5 cursor-pointer flex flex-col";
+                    const isChecked = state.selectedItemIds.includes(m.id);
+                    let mediaHTML = m.type === 'Video' ? `<video class="w-full h-full object-cover opacity-90" playsinline muted loop><source src="${m.url}" type="video/mp4"></video>` : (m.type === 'Text' ? `<div class="w-full h-full text-meme-preview text-[10px]">${m.url}</div>` : `<img src="${m.url}" class="w-full h-full object-cover opacity-90" loading="lazy">`);
+                    
+                    // Sửa đổi 1: Video -> Download icon
+                    const actionIcon = m.type === 'Video' ? 'download' : 'copy';
+
+                    card.innerHTML = `
+                        <div class="relative flex-1 overflow-hidden">
+                            ${mediaHTML}
+                            <div class="absolute top-2.5 left-2.5 z-20">${state.isAdmin ? `<input type="checkbox" onchange="toggleItemSelection('${m.id}')" ${isChecked ? 'checked' : ''} class="ios-checkbox scale-90" onclick="event.stopPropagation()">` : ''}</div>
+                            <div class="absolute top-2.5 right-2.5 z-10 flex flex-col gap-1.5">
+                                ${state.isAdmin ? `<button class="edit-btn w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md bg-blue-500/80 text-white"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button><button class="delete-btn w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md bg-red-500/80 text-white"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                                ${m.type === 'Video' ? `<button class="play-btn w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md bg-white/20 text-white border border-white/10 active:scale-90"><i data-lucide="play" class="w-3.5 h-3.5"></i></button>` : ''}
+                                <button class="quick-btn w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md bg-black/30 text-white border border-white/10 active:scale-90"><i data-lucide="${actionIcon}" class="w-3.5 h-3.5"></i></button>
+                            </div>
+                        </div>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent pointer-events-none"></div>
+                        <div class="absolute bottom-0 left-0 right-0 p-3 pointer-events-none">
+                            <p class="text-[11px] font-bold truncate text-white">${m.name}</p>
+                            <p class="text-[8px] text-white/40 font-bold uppercase tracking-widest">${m.type}</p>
+                        </div>
+                    `;
+                    if (state.isAdmin) { card.querySelector('.edit-btn').onclick = (e) => { e.stopPropagation(); editMemeItem(m.id); }; card.querySelector('.delete-btn').onclick = (e) => { e.stopPropagation(); deleteItem(m.id, 'memes'); }; }
+                    if (m.type === 'Video') {
+                        card.querySelector('.play-btn').onclick = (e) => { e.stopPropagation(); const v = card.querySelector('video'); if (v.paused) { v.play(); e.currentTarget.innerHTML = '<i data-lucide="pause" class="w-3.5 h-3.5"></i>'; } else { v.pause(); e.currentTarget.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5"></i>'; } lucide.createIcons(); };
+                        card.querySelector('.quick-btn').onclick = (e) => { e.stopPropagation(); downloadImage(m.url, m.name); };
+                    } else {
+                        card.querySelector('.quick-btn').onclick = (e) => { e.stopPropagation(); if (m.type === 'Text') copyToClipboard(m.url); else window.copyImageToClipboard(m.url); };
+                    }
+                    container.appendChild(card);
+                });
+            }
+        }
+
+        // --- HANDLERS ---
+        window.deleteItem = async (id, table) => {
+            showConfirmModal("Xác nhận xoá", "Xoá nội dung này vĩnh viễn?", async () => {
+                const { error } = await state.supabase.from(table).delete().eq('id', id);
+                if (error) showAlertModal("Lỗi", error.message, 'error'); else { showToast("🗑️ Đã xoá"); await fetchData(); }
+            });
+        };
+        window.editWikiItem = (id) => openAddModal(state.teencodes.find(t => t.id === id));
+        window.editMemeItem = (id) => openAddModal(state.memes.find(m => m.id === id));
+        
+        window.openAddModal = (editData = null) => {
+            const fields = document.getElementById('add-fields'), title = document.getElementById('modal-add-title'), editId = document.getElementById('edit-id');
+            state.uploadPreview = (editData?.type !== 'Text') ? (editData?.url || null) : null;
+            editId.value = editData?.id || ''; title.innerText = editData ? 'Cập nhật' : 'Thêm mới';
+            
+            if (state.activeTab === 'dictionary') {
+                fields.innerHTML = `<div class="space-y-1.5"><label class="text-[10px] font-bold uppercase opacity-30 ml-1">Từ khóa</label><input name="word" required value="${editData?.word || ''}" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3 px-4 outline-none dark:text-white"></div><div class="space-y-1.5"><label class="text-[10px] font-bold uppercase opacity-30 ml-1">Ý nghĩa</label><textarea name="meaning" required class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3 px-4 outline-none h-24 dark:text-white">${editData?.meaning || ''}</textarea></div><div class="space-y-1.5"><label class="text-[10px] font-bold uppercase opacity-30 ml-1">Ví dụ</label><textarea name="example" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3 px-4 outline-none h-20 dark:text-white">${editData?.example || ''}</textarea></div><div class="space-y-1.5"><label class="text-[10px] font-bold uppercase opacity-30 ml-1">Nguồn</label><input name="origin" value="${editData?.origin || ''}" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3 px-4 outline-none dark:text-white"></div>`;
+            } else {
+                fields.innerHTML = `<div class="space-y-4"><div class="space-y-1.5"><label class="text-[10px] font-bold uppercase opacity-30 ml-1">Định dạng</label><select name="type" id="add-meme-type" onchange="toggleMemeInputs()" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3 px-4 outline-none dark:text-white">${types.map(t => `<option value="${t}" ${editData?.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div><div id="media-input-group" class="${editData?.type === 'Text' ? 'hidden' : ''}"><div id="upload-zone" onclick="document.getElementById('file-input').click()" class="h-40 bg-gray-100 dark:bg-white/5 border-2 border-dashed border-gray-200 dark:border-white/10 rounded-xl flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">${editData?.url && editData.type !== 'Text' ? `<div class="text-blue-500 font-bold">Media đã nạp</div>` : `<i data-lucide="upload" class="opacity-20 mb-2"></i><span class="text-[10px] font-bold opacity-20 uppercase tracking-widest">Tải lên</span>`}</div><input type="file" id="file-input" class="hidden" accept="image/*,video/*" onchange="handleFileChange(event)"><input name="url" id="url-input" value="${editData?.url && editData.type !== 'Text' ? editData.url : ''}" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3 px-4 mt-2 text-xs outline-none dark:text-white ${editData?.url ? 'hidden' : ''}" placeholder="Dán link (URL)..."></div><div id="text-input-group" class="${editData?.type !== 'Text' ? 'hidden' : ''}"><label class="text-[10px] font-bold uppercase opacity-30 ml-1">Nội dung text</label><textarea name="text_content" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-4 px-6 outline-none h-24 dark:text-white">${editData?.type === 'Text' ? editData.url : ''}</textarea></div><div class="space-y-1.5"><label class="text-[10px] font-bold uppercase opacity-30 ml-1">Tên hiển thị</label><input name="name" required value="${editData?.name || ''}" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3 px-4 outline-none dark:text-white"></div><div class="space-y-1.5"><label class="text-[10px] font-bold uppercase opacity-30 ml-1">Ngôn ngữ</label><select name="language" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-xl py-3 px-4 outline-none dark:text-white">${languages.map(l => `<option value="${l}" ${editData?.language === l ? 'selected' : ''}>${l}</option>`).join('')}</select></div></div>`;
+            }
+            const catSect = document.createElement('div'); catSect.className = "space-y-3 mt-6";
+            catSect.innerHTML = `<label class="text-[10px] font-bold uppercase opacity-30 ml-1">Danh mục</label><div class="flex bg-gray-100 dark:bg-white/5 border-none rounded-xl p-1 gap-2 mb-3"><input type="text" id="tag-input" placeholder="Tạo danh mục mới..." class="flex-1 bg-transparent border-none outline-none px-3 text-sm dark:text-white"><button type="button" onclick="addNewTag()" class="bg-blue-600 dark:bg-white text-white dark:text-black p-2 rounded-lg active:scale-90 transition-all"><i data-lucide="plus" class="w-4 h-4"></i></button></div><div id="tag-pool" class="flex flex-wrap gap-1.5">${defaultCategories.map(cat => `<label class="cursor-pointer"><input type="checkbox" name="categories" value="${cat}" ${editData?.categories?.includes(cat) ? 'checked' : ''} class="hidden peer"><span class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-white/5 text-[9px] font-bold text-gray-500 dark:text-white/30 border-none peer-checked:bg-blue-600 dark:peer-checked:bg-white peer-checked:text-white dark:peer-checked:text-black transition-all block">${cat}</span></label>`).join('')}</div>`;
+            fields.appendChild(catSect); document.getElementById('modal-add').classList.remove('hidden'); lucide.createIcons();
+        };
+
+        window.toggleMemeInputs = () => { const type = document.getElementById('add-meme-type').value; document.getElementById('media-input-group').classList.toggle('hidden', type === 'Text'); document.getElementById('text-input-group').classList.toggle('hidden', type !== 'Text'); };
         window.closeAddModal = () => document.getElementById('modal-add').classList.add('hidden');
 
+        async function handleAddData(e) {
+            e.preventDefault(); const btn = document.getElementById('submit-btn'), editId = document.getElementById('edit-id').value; btn.disabled = true; btn.innerText = "Đang lưu...";
+            const formData = new FormData(e.target), data = Object.fromEntries(formData), cats = Array.from(formData.getAll('categories'));
+            try {
+                let res;
+                if (state.activeTab === 'dictionary') {
+                    const payload = { word: data.word, meaning: data.meaning, example: data.example || '', origin: data.origin || '', categories: cats };
+                    res = editId ? await state.supabase.from('teencodes').update(payload).eq('id', editId) : await state.supabase.from('teencodes').insert([payload]);
+                } else {
+                    const payload = { name: data.name, url: data.type === 'Text' ? data.text_content : (state.uploadPreview || data.url), type: data.type, language: data.language, categories: cats, meaning: data.meaning || '' };
+                    res = editId ? await state.supabase.from('memes').update(payload).eq('id', editId) : await state.supabase.from('memes').insert([payload]);
+                }
+                if (res.error) throw res.error; showToast("✅ Lưu thành công"); await fetchData(); closeAddModal();
+            } catch (err) { showAlertModal("Lỗi", err.message, 'error'); } finally { btn.disabled = false; btn.innerText = "Lưu vào Cloud"; }
+        }
+
+        // --- NAVIGATION ---
+        window.toggleCategory = (cat) => { const idx = state.selectedCategories.indexOf(cat); if (idx > -1) state.selectedCategories.splice(idx, 1); else state.selectedCategories.push(cat); render(); };
+        window.switchTab = (tab) => {
+            state.activeTab = tab; state.selectedCategories = []; state.searchTerm = ''; state.selectedItemIds = [];
+            document.getElementById('app-title').innerText = tab === 'dictionary' ? 'Wiki' : 'Cloud';
+            document.getElementById('nav-dictionary').className = `flex flex-col items-center gap-0.5 transition-all ${tab === 'dictionary' ? 'tab-active' : 'text-gray-400'}`;
+            document.getElementById('nav-memes').className = `flex flex-col items-center gap-0.5 transition-all ${tab === 'memes' ? 'tab-active' : 'text-gray-400'}`;
+            if (state.advancedFiltersVisible) toggleAdvancedFilters(); render();
+        };
         window.handleFileChange = (e) => {
             const file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onloadend = () => {
+                const reader = new FileReader(); reader.onloadend = () => {
                     state.uploadPreview = reader.result;
-                    document.getElementById('upload-zone').innerHTML = `<img src="${reader.result}" class="w-full h-full object-cover">`;
+                    const zone = document.getElementById('upload-zone');
+                    zone.innerHTML = file.type.startsWith('video/') ? `<div class="text-blue-500 font-bold">Video sẵn sàng</div>` : `<img src="${reader.result}" class="w-full h-full object-cover">`;
                     document.getElementById('url-input').classList.add('hidden');
                 };
                 reader.readAsDataURL(file);
             }
         };
-
         window.addNewTag = () => {
-            const input = document.getElementById('tag-input');
-            const val = input.value.trim();
+            const input = document.getElementById('tag-input'), val = input.value.trim();
             if (val && !state.customTags.includes(val)) {
-                state.customTags.push(val);
-                const pool = document.getElementById('tag-pool');
-                const label = document.createElement('label');
-                label.className = "cursor-pointer";
-                label.innerHTML = `<input type="checkbox" name="categories" value="${val}" checked class="hidden peer"><span class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 text-[10px] font-bold text-gray-400 dark:text-white/40 border-none peer-checked:bg-blue-600 dark:peer-checked:bg-white peer-checked:text-white dark:peer-checked:text-black transition-all block">${val}</span>`;
-                pool.appendChild(label);
-                input.value = '';
+                state.customTags.push(val); const pool = document.getElementById('tag-pool'), label = document.createElement('label');
+                label.className = "cursor-pointer"; label.innerHTML = `<input type="checkbox" name="categories" value="${val}" checked class="hidden peer"><span class="px-3 py-1.5 rounded-lg bg-blue-600 dark:bg-white text-white dark:text-black text-[9px] font-bold block animate-pop">${val}</span>`;
+                pool.appendChild(label); input.value = '';
             }
         };
 
-        async function handleAddData(e) {
-            e.preventDefault();
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.innerText = "Đang lưu...";
-
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData);
-            const cats = Array.from(formData.getAll('categories'));
-
-            try {
-                let error;
-                if (state.activeTab === 'dictionary') {
-                    const result = await state.supabase.from('teencodes').insert([{
-                        word: data.word,
-                        meaning: data.meaning,
-                        origin: data.origin || '',
-                        categories: cats
-                    }]);
-                    error = result.error;
-                } else {
-                    const result = await state.supabase.from('memes').insert([{
-                        name: data.name,
-                        url: state.uploadPreview || data.url,
-                        type: data.type,
-                        language: data.language,
-                        categories: cats,
-                        meaning: data.meaning || ''
-                    }]);
-                    error = result.error;
-                }
-                
-                if (error) {
-                    console.error("Supabase Error:", error);
-                    alert("Lỗi lưu dữ liệu: " + error.message);
-                } else {
-                    // Sau khi lưu thành công, chủ động lấy lại dữ liệu ngay lập tức
-                    await fetchData();
-                    closeAddModal();
-                }
-            } catch (err) {
-                console.error("Save Error:", err);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Lưu vào Cloud";
-            }
-        }
-
+        // --- VIEW DETAIL ---
         window.openDetailModal = (m) => {
             const container = document.getElementById('detail-content');
+            let mediaHTML = m.type === 'Video' ? `<div class="rounded-[30px] overflow-hidden bg-black aspect-video mb-6"><video class="w-full h-full" controls playsinline><source src="${m.url}" type="video/mp4"></video></div>` : (m.type === 'Text' ? `<div class="rounded-[30px] overflow-hidden bg-white/5 border border-white/5 mb-6 flex items-center justify-center min-h-[250px] text-meme-preview text-lg p-8 text-white">${m.url}</div>` : `<div class="rounded-[30px] overflow-hidden bg-white/5 border border-white/5 mb-6 flex items-center justify-center min-h-[250px]"><img src="${m.url}" class="max-w-full max-h-[60vh] object-contain"></div>`);
+            
             container.innerHTML = `
-                <div class="rounded-[40px] overflow-hidden bg-white/5 border border-white/5 mb-8 flex items-center justify-center min-h-[300px]">
-                    <img src="${m.url}" class="max-w-full max-h-[70vh] object-contain">
-                </div>
-                <div class="space-y-8 max-w-xl mx-auto text-center">
-                    <div>
-                        <h2 class="text-4xl font-black mb-4 tracking-tighter">${m.name}</h2>
-                        <div class="flex flex-wrap justify-center gap-2">
-                            ${m.categories?.map(c => `<span class="bg-white/5 text-white/50 px-4 py-1.5 rounded-full text-[11px] font-black uppercase border border-white/5">${c}</span>`).join('')}
-                        </div>
-                    </div>
-                    <div class="glass-card p-8 rounded-[40px] border border-white/10 text-left">
-                         <div class="text-[11px] font-black uppercase text-white/30 mb-2">Thông tin</div>
-                         <p class="text-lg leading-snug text-white/90">${m.meaning || 'Kho meme chưa cập nhật mô tả này.'}</p>
-                    </div>
-                    <div class="grid grid-cols-3 gap-4 pt-4">
-                        <button onclick="downloadImage('${m.url}', '${m.name}')" class="flex flex-col items-center gap-3 p-6 rounded-[35px] bg-white/5 border border-white/5 text-white"><i data-lucide="download"></i><span class="text-[10px] font-black uppercase">Lưu</span></button>
-                        <button onclick="copyImageToClipboard('${m.url}')" class="flex flex-col items-center gap-3 p-6 rounded-[35px] bg-white/5 border border-white/5 text-white"><i data-lucide="copy"></i><span class="text-[10px] font-black uppercase">Ảnh</span></button>
-                        <button onclick="shareMeme('${m.url}', '${m.name}')" class="flex flex-col items-center gap-3 p-6 rounded-[35px] bg-blue-600 text-white ios-shadow"><i data-lucide="share-2"></i><span class="text-[10px] font-black uppercase">Gửi</span></button>
+                ${mediaHTML}
+                <div class="space-y-6 max-w-xl mx-auto text-center">
+                    <div><h2 class="text-3xl font-black mb-3 tracking-tighter">${m.name}</h2><div class="flex flex-wrap justify-center gap-1.5">${m.categories?.map(c => `<span class="bg-white/10 text-white/50 px-3 py-1 rounded-full text-[10px] font-bold uppercase border border-white/5">${c}</span>`).join('')}</div></div>
+                    <div class="glass-card p-6 rounded-[30px] border border-white/10 text-left bg-white/10"><p class="text-base leading-snug text-white/90">${m.meaning || 'Kho meme chưa có mô tả chi tiết.'}</p></div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="${m.type === 'Text' ? `copyToClipboard('${m.url}')` : `downloadImage('${m.url}', '${m.name}')`}" class="flex flex-col items-center gap-2 p-5 rounded-[24px] bg-white/5 border border-white/5 active:scale-90 transition-all text-white"><i data-lucide="${m.type === 'Text' ? 'copy' : 'download'}" class="w-5 h-5"></i><span class="text-[9px] font-bold uppercase">${m.type === 'Text' ? 'Chép' : 'Lưu'}</span></button>
+                        <button id="modal-copy-btn" class="flex flex-col items-center gap-2 p-5 rounded-[24px] bg-white/5 border border-white/5 active:scale-90 transition-all text-white"><i data-lucide="copy" class="w-5 h-5"></i><span class="text-[9px] font-bold uppercase tracking-widest">Sao chép</span></button>
+                        <button onclick="shareMeme('${m.url}', '${m.name}')" class="flex flex-col items-center gap-2 p-5 rounded-[24px] bg-blue-600 ios-shadow active:scale-90 transition-all text-white"><i data-lucide="share-2" class="w-5 h-5"></i><span class="text-[9px] font-bold uppercase tracking-widest">Gửi</span></button>
                     </div>
                 </div>
             `;
-            document.getElementById('modal-detail').classList.remove('hidden');
-            lucide.createIcons();
+            document.getElementById('modal-copy-btn').onclick = () => { if (m.type === 'Text') copyToClipboard(m.url); else window.copyImageToClipboard(m.url); };
+            document.getElementById('modal-detail').classList.remove('hidden'); lucide.createIcons();
         };
-
         window.closeDetailModal = () => document.getElementById('modal-detail').classList.add('hidden');
-        window.copyToClipboard = (text) => {
-            const el = document.createElement('textarea');
-            el.value = text;
-            document.body.appendChild(el);
-            el.select();
-            document.execCommand('copy');
-            document.body.removeChild(el);
-        };
 
+        // --- UTILS ---
+        window.copyToClipboard = (text) => { const el = document.createElement('textarea'); el.value = text; document.body.appendChild(el); el.select(); document.execCommand('copy'); document.body.removeChild(el); showToast("✅ Đã chép nội dung"); };
         window.copyImageToClipboard = async (url) => {
+            showToast("⏳ Đang chuẩn bị ảnh...");
             try {
-                const response = await fetch(url);
-                const blob = await response.blob();
-                const item = new ClipboardItem({ [blob.type]: blob });
-                await navigator.clipboard.write([item]);
-            } catch (err) {
-                const el = document.createElement('textarea');
-                el.value = url;
-                document.body.appendChild(el);
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-            }
+                const img = new Image(); img.crossOrigin = "anonymous"; img.src = url;
+                await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+                const canvas = document.createElement("canvas"); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+                canvas.getContext("2d").drawImage(img, 0, 0);
+                const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
+                await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]); showToast("✅ Copy ảnh PNG thành công");
+            } catch (err) { copyToClipboard(url); showToast("⚠️ Đã chép URL thay thế"); }
         };
-
-        window.downloadImage = (url, name) => {
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = name || 'meme';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        };
-
-        window.shareMeme = (url, name) => {
-            if (navigator.share) navigator.share({ title: name, url }).catch(() => {});
-            else window.copyImageToClipboard(url);
-        };
-
-        function updateDate() {
-            const options = { weekday: 'long', day: 'numeric', month: 'long' };
-            document.getElementById('header-date').innerText = new Date().toLocaleDateString('vi-VN', options);
-        }
-
+        function showToast(msg) { const toast = document.getElementById('toast'); toast.innerText = msg; toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 2000); }
+        window.downloadImage = (url, name) => { const a = document.createElement('a'); a.href = url; a.download = (name || 'meme').replace(/\s+/g, '_'); document.body.appendChild(a); a.click(); document.body.removeChild(a); };
+        window.shareMeme = (url, name) => { if (navigator.share) navigator.share({ title: name, url }).catch(() => {}); else window.copyImageToClipboard(url); };
+        function updateDate() { document.getElementById('header-date').innerText = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' }); }
+        
         window.addEventListener('load', init);
     </script>
 </body>
