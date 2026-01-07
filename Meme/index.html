@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Teencode Wiki & Meme Cloud (Supabase)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.5s ease;
+        }
+
+        .glass-card {
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+        }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        .ios-shadow {
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .dark .ios-shadow {
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        input, textarea, select { -webkit-user-select: text; user-select: text; }
+
+        .tab-active { color: #007AFF; transform: scale(1.1); font-weight: 700; }
+        .dark .tab-active { color: #FFFFFF; }
+        
+        .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes pop {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .supabase-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body class="bg-[#F2F2F7] dark:bg-black text-black dark:text-white min-h-screen pb-32">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 px-6 pt-14 pb-5 glass-card border-b border-gray-200 dark:border-white/5 bg-white/70 dark:bg-black/70">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex flex-col">
+                <div class="flex items-center">
+                    <span id="supabase-status" class="supabase-status-dot bg-gray-400"></span>
+                    <span id="header-date" class="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 dark:text-white/40 mb-1">...</span>
+                </div>
+                <h1 id="app-title" class="text-4xl font-black tracking-tight">Wiki</h1>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="flex p-1 rounded-full bg-gray-200 dark:bg-white/10">
+                    <button onclick="setTheme('light')" id="theme-light" class="p-1.5 rounded-full transition-all text-gray-500"><i data-lucide="sun" class="w-3.5 h-3.5"></i></button>
+                    <button onclick="setTheme('system')" id="theme-system" class="p-1.5 rounded-full transition-all text-gray-500"><i data-lucide="laptop" class="w-3.5 h-3.5"></i></button>
+                    <button onclick="setTheme('dark')" id="theme-dark" class="p-1.5 rounded-full transition-all text-gray-500"><i data-lucide="moon" class="w-3.5 h-3.5"></i></button>
+                </div>
+
+                <button onclick="openAddModal()" class="w-12 h-12 rounded-full flex items-center justify-center ios-shadow active:scale-90 transition-transform bg-blue-600 dark:bg-white text-white dark:text-black">
+                    <i data-lucide="plus" class="w-7 h-7"></i>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Search -->
+        <div class="relative mb-4">
+            <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-white/30 w-5 h-5"></i>
+            <input type="text" id="search-input" placeholder="Tìm teencode..." 
+                class="w-full border rounded-[22px] py-4 pl-12 pr-4 transition-all outline-none bg-gray-100 dark:bg-white/5 border-transparent dark:border-white/5 focus:bg-white dark:focus:bg-white/10">
+        </div>
+
+        <div id="category-filters" class="flex gap-2 overflow-x-auto pb-1 no-scrollbar"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main-content" class="px-6 py-8 space-y-6"></main>
+
+    <!-- Navigation -->
+    <nav class="fixed bottom-8 left-6 right-6 z-50 px-8 py-5 glass-card rounded-[35px] ios-shadow border border-gray-200 dark:border-white/10 flex justify-around items-center bg-white/80 dark:bg-black/80">
+        <button onclick="switchTab('dictionary')" id="nav-dictionary" class="flex flex-col items-center gap-1 transition-all tab-active">
+            <i data-lucide="book-open" class="w-6 h-6"></i>
+            <span class="text-[10px] font-black uppercase tracking-widest">Wiki</span>
+        </button>
+        <button onclick="switchTab('memes')" id="nav-memes" class="flex flex-col items-center gap-1 transition-all text-gray-400">
+            <i data-lucide="image" class="w-6 h-6"></i>
+            <span class="text-[10px] font-black uppercase tracking-widest">Cloud</span>
+        </button>
+    </nav>
+
+    <!-- Modal: Add New -->
+    <div id="modal-add" class="fixed inset-0 z-[60] hidden flex items-end sm:items-center justify-center animate-in fade-in duration-300">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeAddModal()"></div>
+        <form id="add-form" class="relative w-full max-w-lg glass-card rounded-t-[40px] sm:rounded-[40px] p-8 pb-14 ios-shadow max-h-[92vh] overflow-y-auto no-scrollbar bg-white dark:bg-[#1c1c1e]">
+            <div class="flex justify-between items-center mb-10">
+                <h2 class="text-3xl font-black">Thêm mới</h2>
+                <button type="button" onclick="closeAddModal()" class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5"><i data-lucide="x"></i></button>
+            </div>
+
+            <div id="add-fields" class="space-y-7"></div>
+            
+            <button type="submit" id="submit-btn" class="w-full font-black py-6 rounded-3xl active:scale-[0.97] transition-all ios-shadow text-lg mt-8 bg-blue-600 dark:bg-white text-white dark:text-black">
+                Lưu vào Cloud
+            </button>
+        </form>
+    </div>
+
+    <!-- Modal: Meme Details -->
+    <div id="modal-detail" class="fixed inset-0 z-[70] hidden flex items-center justify-center animate-in zoom-in-95 duration-300">
+        <div class="absolute inset-0 bg-black/95 backdrop-blur-2xl" onclick="closeDetailModal()"></div>
+        <div class="relative w-full max-w-3xl bg-transparent flex flex-col max-h-[95vh] overflow-y-auto no-scrollbar">
+            <button onclick="closeDetailModal()" class="absolute top-6 right-6 z-10 w-12 h-12 rounded-full bg-white/10 text-white flex items-center justify-center backdrop-blur-xl border border-white/10"><i data-lucide="x"></i></button>
+            <div id="detail-content" class="px-6 pt-20 pb-10"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://mehpnuxvxongkdtgaeob.supabase.co"; 
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1laHBudXh2eG9uZ2tkdGdhZW9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2MjgxMzIsImV4cCI6MjA4MTIwNDEzMn0.5XaDtVfw6t5ipKXUJ6f-BtusJLJdfiJ-TSUCvBAkZCw";
+
+        const state = {
+            activeTab: 'dictionary',
+            theme: localStorage.getItem('theme-preference') || 'system',
+            searchTerm: '',
+            selectedCategories: [],
+            teencodes: [],
+            memes: [],
+            uploadPreview: null,
+            customTags: [],
+            supabase: null
+        };
+
+        const defaultCategories = ['Hài hước', 'Châm biếm', 'Wibu', 'Cute', 'Cà khịa', 'Sad boy/girl', 'Chế', 'Phản ứng', 'Tiếng lóng', 'Gen Z'];
+        const languages = ['Tiếng Việt', 'Tiếng Anh', 'Khác'];
+        const types = ['Ảnh', 'Ảnh động (GIF)', 'Video', 'Text'];
+
+        async function init() {
+            lucide.createIcons();
+            updateDate();
+            applyTheme();
+
+            try {
+                state.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                document.getElementById('supabase-status').classList.replace('bg-gray-400', 'bg-green-500');
+                
+                // Lấy dữ liệu ban đầu
+                await fetchData();
+                
+                // Đăng ký lắng nghe thay đổi thời gian thực
+                subscribeToChanges();
+            } catch (err) {
+                console.error("Supabase Init Error:", err);
+                document.getElementById('supabase-status').classList.replace('bg-gray-400', 'bg-red-500');
+            }
+
+            document.getElementById('search-input').addEventListener('input', (e) => {
+                state.searchTerm = e.target.value;
+                render();
+            });
+
+            document.getElementById('add-form').addEventListener('submit', handleAddData);
+        }
+
+        async function fetchData() {
+            const { data: tc, error: err1 } = await state.supabase.from('teencodes').select('*').order('created_at', { ascending: false });
+            const { data: mm, error: err2 } = await state.supabase.from('memes').select('*').order('created_at', { ascending: false });
+
+            if (tc) state.teencodes = tc;
+            if (mm) state.memes = mm;
+            render();
+        }
+
+        function subscribeToChanges() {
+            // Lắng nghe bảng teencodes
+            state.supabase
+                .channel('teencodes-realtime')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'teencodes' }, () => {
+                    fetchData();
+                })
+                .subscribe();
+
+            // Lắng nghe bảng memes
+            state.supabase
+                .channel('memes-realtime')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'memes' }, () => {
+                    fetchData();
+                })
+                .subscribe();
+        }
+
+        function render() {
+            renderFilters();
+            renderContent();
+            lucide.createIcons();
+        }
+
+        function renderFilters() {
+            const container = document.getElementById('category-filters');
+            const data = state.activeTab === 'dictionary' ? state.teencodes : state.memes;
+            const cats = new Set();
+            data.forEach(item => item.categories?.forEach(c => cats.add(c)));
+            const activeCats = Array.from(cats).sort();
+
+            container.innerHTML = activeCats.map(cat => `
+                <button onclick="toggleCategory('${cat}')" 
+                    class="whitespace-nowrap rounded-2xl px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all border 
+                    ${state.selectedCategories.includes(cat) 
+                        ? 'bg-blue-600 dark:bg-white text-white dark:text-black border-transparent' 
+                        : 'bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-white/40 border-transparent'}">
+                    ${cat}
+                </button>
+            `).join('');
+        }
+
+        function renderContent() {
+            const container = document.getElementById('main-content');
+            container.innerHTML = '';
+
+            if (state.activeTab === 'dictionary') {
+                const filtered = state.teencodes.filter(item => {
+                    const matchSearch = (item.word + item.meaning).toLowerCase().includes(state.searchTerm.toLowerCase());
+                    const matchCats = state.selectedCategories.length === 0 || state.selectedCategories.some(c => item.categories?.includes(c));
+                    return matchSearch && matchCats;
+                });
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `<div class="text-center py-20 opacity-20">Trống trơn...</div>`;
+                    return;
+                }
+
+                container.className = "px-6 py-8 space-y-6";
+                filtered.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = "glass-card rounded-[32px] p-6 border border-gray-200 dark:border-white/5 ios-shadow space-y-5 animate-pop bg-white/50 dark:bg-white/5";
+                    card.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-2xl font-black text-blue-600 dark:text-blue-400">#${item.word}</h3>
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    ${item.categories?.map(c => `<span class="bg-black/5 dark:bg-white/10 text-gray-500 dark:text-white/40 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">${c}</span>`).join('')}
+                                </div>
+                            </div>
+                            <button onclick="copyToClipboard('${item.word.replace(/'/g, "\\'")}')" class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-white/40">
+                                <i data-lucide="copy" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <p class="text-lg font-medium leading-tight opacity-80">${item.meaning}</p>
+                        ${item.origin ? `<div class="pt-4 border-t border-gray-100 dark:border-white/5 text-[10px] font-bold uppercase text-gray-400">Nguồn: <span class="normal-case font-normal ml-1">${item.origin}</span></div>` : ''}
+                    `;
+                    container.appendChild(card);
+                });
+            } else {
+                const filtered = state.memes.filter(m => {
+                    const matchSearch = (m.name || '').toLowerCase().includes(state.searchTerm.toLowerCase());
+                    const matchCats = state.selectedCategories.length === 0 || state.selectedCategories.some(c => m.categories?.includes(c));
+                    return matchSearch && matchCats;
+                });
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `<div class="text-center py-20 opacity-20">Chưa có meme nào...</div>`;
+                    return;
+                }
+
+                container.className = "px-6 py-8 grid grid-cols-2 gap-4";
+                filtered.forEach(m => {
+                    const card = document.createElement('div');
+                    card.onclick = () => openDetailModal(m);
+                    card.className = "group relative aspect-[4/5] rounded-[30px] overflow-hidden glass-card border border-gray-200 dark:border-white/5 active:scale-95 transition-all animate-pop bg-white dark:bg-white/5 cursor-pointer";
+                    card.innerHTML = `
+                        <img src="${m.url}" class="w-full h-full object-cover opacity-90" loading="lazy">
+                        <button onclick="event.stopPropagation(); copyImageToClipboard('${m.url}')" class="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-md bg-black/20 text-white border border-white/10">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent flex flex-col justify-end p-4">
+                            <p class="text-sm font-bold truncate text-white">${m.name}</p>
+                            <p class="text-[9px] text-white/40 font-bold uppercase">${m.type}</p>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            }
+        }
+
+        window.toggleCategory = (cat) => {
+            if (state.selectedCategories.includes(cat)) {
+                state.selectedCategories = state.selectedCategories.filter(c => c !== cat);
+            } else {
+                state.selectedCategories.push(cat);
+            }
+            render();
+        };
+
+        window.switchTab = (tab) => {
+            state.activeTab = tab;
+            state.selectedCategories = [];
+            state.searchTerm = '';
+            document.getElementById('search-input').value = '';
+            document.getElementById('app-title').innerText = tab === 'dictionary' ? 'Wiki' : 'Cloud';
+            document.getElementById('nav-dictionary').className = `flex flex-col items-center gap-1 transition-all ${tab === 'dictionary' ? 'tab-active' : 'text-gray-400'}`;
+            document.getElementById('nav-memes').className = `flex flex-col items-center gap-1 transition-all ${tab === 'memes' ? 'tab-active' : 'text-gray-400'}`;
+            render();
+        };
+
+        window.setTheme = (t) => {
+            state.theme = t;
+            applyTheme();
+        };
+
+        function applyTheme() {
+            const html = document.documentElement;
+            let resolved = state.theme;
+            if (state.theme === 'system') resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            html.className = resolved;
+            localStorage.setItem('theme-preference', state.theme);
+            ['light', 'dark', 'system'].forEach(m => {
+                const btn = document.getElementById(`theme-${m}`);
+                if (btn) btn.className = state.theme === m ? "p-1.5 rounded-full bg-white dark:bg-gray-800 text-blue-600 dark:text-white shadow-sm" : "p-1.5 rounded-full text-gray-500 hover:text-gray-700";
+            });
+        }
+
+        window.openAddModal = () => {
+            const fields = document.getElementById('add-fields');
+            state.uploadPreview = null;
+            state.customTags = [];
+
+            if (state.activeTab === 'dictionary') {
+                fields.innerHTML = `
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Cụm từ</label>
+                        <input name="word" required placeholder="VD: Khùm núm" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-5 px-6 outline-none focus:ring-1 focus:ring-blue-500">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Ý nghĩa</label>
+                        <textarea name="meaning" required placeholder="..." class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-5 px-6 outline-none h-24"></textarea>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Nguồn gốc</label>
+                        <input name="origin" placeholder="Internet..." class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-5 px-6 outline-none">
+                    </div>
+                `;
+            } else {
+                fields.innerHTML = `
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Ảnh Meme</label>
+                        <div id="upload-zone" onclick="document.getElementById('file-input').click()" class="h-32 bg-gray-100 dark:bg-white/5 border-2 border-dashed border-gray-300 dark:border-white/10 rounded-2xl flex flex-col items-center justify-center cursor-pointer overflow-hidden relative">
+                            <i data-lucide="upload" class="opacity-20 mb-2"></i>
+                            <span class="text-[10px] font-bold opacity-20">TẢI ẢNH LÊN</span>
+                        </div>
+                        <input type="file" id="file-input" class="hidden" accept="image/*" onchange="handleFileChange(event)">
+                        <input name="url" id="url-input" placeholder="Hoặc dán URL ảnh..." class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-4 px-6 mt-2 text-sm outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Tên Meme</label>
+                        <input name="name" required placeholder="VD: Doge" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-5 px-6 outline-none">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Mô tả chi tiết</label>
+                        <textarea name="meaning" placeholder="Giải thích về meme..." class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-4 px-6 outline-none h-20"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Loại</label>
+                            <select name="type" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-4 px-4 outline-none">${types.map(t => `<option value="${t}">${t}</option>`).join('')}</select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Ngôn ngữ</label>
+                            <select name="language" class="w-full bg-gray-100 dark:bg-white/5 border-none rounded-2xl py-4 px-4 outline-none">${languages.map(l => `<option value="${l}">${l}</option>`).join('')}</select>
+                        </div>
+                    </div>
+                `;
+            }
+
+            const catSection = document.createElement('div');
+            catSection.className = "space-y-3";
+            catSection.innerHTML = `
+                <label class="text-[10px] font-bold uppercase tracking-widest opacity-40 ml-1">Danh mục</label>
+                <div class="flex bg-gray-100 dark:bg-white/5 border-none rounded-2xl p-2 gap-2 mb-4">
+                    <input type="text" id="tag-input" placeholder="Thêm danh mục..." class="flex-1 bg-transparent border-none outline-none px-3 text-sm">
+                    <button type="button" onclick="addNewTag()" class="bg-blue-600 dark:bg-white text-white dark:text-black p-2 rounded-xl"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                </div>
+                <div id="tag-pool" class="flex flex-wrap gap-2">
+                    ${defaultCategories.map(cat => `
+                        <label class="cursor-pointer">
+                            <input type="checkbox" name="categories" value="${cat}" class="hidden peer">
+                            <span class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 text-[10px] font-bold text-gray-400 dark:text-white/40 border-none peer-checked:bg-blue-600 dark:peer-checked:bg-white peer-checked:text-white dark:peer-checked:text-black transition-all block">${cat}</span>
+                        </label>
+                    `).join('')}
+                </div>
+            `;
+            fields.appendChild(catSection);
+            document.getElementById('modal-add').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        window.closeAddModal = () => document.getElementById('modal-add').classList.add('hidden');
+
+        window.handleFileChange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    state.uploadPreview = reader.result;
+                    document.getElementById('upload-zone').innerHTML = `<img src="${reader.result}" class="w-full h-full object-cover">`;
+                    document.getElementById('url-input').classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        window.addNewTag = () => {
+            const input = document.getElementById('tag-input');
+            const val = input.value.trim();
+            if (val && !state.customTags.includes(val)) {
+                state.customTags.push(val);
+                const pool = document.getElementById('tag-pool');
+                const label = document.createElement('label');
+                label.className = "cursor-pointer";
+                label.innerHTML = `<input type="checkbox" name="categories" value="${val}" checked class="hidden peer"><span class="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 text-[10px] font-bold text-gray-400 dark:text-white/40 border-none peer-checked:bg-blue-600 dark:peer-checked:bg-white peer-checked:text-white dark:peer-checked:text-black transition-all block">${val}</span>`;
+                pool.appendChild(label);
+                input.value = '';
+            }
+        };
+
+        async function handleAddData(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerText = "Đang lưu...";
+
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            const cats = Array.from(formData.getAll('categories'));
+
+            try {
+                let error;
+                if (state.activeTab === 'dictionary') {
+                    const result = await state.supabase.from('teencodes').insert([{
+                        word: data.word,
+                        meaning: data.meaning,
+                        origin: data.origin || '',
+                        categories: cats
+                    }]);
+                    error = result.error;
+                } else {
+                    const result = await state.supabase.from('memes').insert([{
+                        name: data.name,
+                        url: state.uploadPreview || data.url,
+                        type: data.type,
+                        language: data.language,
+                        categories: cats,
+                        meaning: data.meaning || ''
+                    }]);
+                    error = result.error;
+                }
+                
+                if (error) {
+                    console.error("Supabase Error:", error);
+                    alert("Lỗi lưu dữ liệu: " + error.message);
+                } else {
+                    // Sau khi lưu thành công, chủ động lấy lại dữ liệu ngay lập tức
+                    await fetchData();
+                    closeAddModal();
+                }
+            } catch (err) {
+                console.error("Save Error:", err);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "Lưu vào Cloud";
+            }
+        }
+
+        window.openDetailModal = (m) => {
+            const container = document.getElementById('detail-content');
+            container.innerHTML = `
+                <div class="rounded-[40px] overflow-hidden bg-white/5 border border-white/5 mb-8 flex items-center justify-center min-h-[300px]">
+                    <img src="${m.url}" class="max-w-full max-h-[70vh] object-contain">
+                </div>
+                <div class="space-y-8 max-w-xl mx-auto text-center">
+                    <div>
+                        <h2 class="text-4xl font-black mb-4 tracking-tighter">${m.name}</h2>
+                        <div class="flex flex-wrap justify-center gap-2">
+                            ${m.categories?.map(c => `<span class="bg-white/5 text-white/50 px-4 py-1.5 rounded-full text-[11px] font-black uppercase border border-white/5">${c}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="glass-card p-8 rounded-[40px] border border-white/10 text-left">
+                         <div class="text-[11px] font-black uppercase text-white/30 mb-2">Thông tin</div>
+                         <p class="text-lg leading-snug text-white/90">${m.meaning || 'Kho meme chưa cập nhật mô tả này.'}</p>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 pt-4">
+                        <button onclick="downloadImage('${m.url}', '${m.name}')" class="flex flex-col items-center gap-3 p-6 rounded-[35px] bg-white/5 border border-white/5 text-white"><i data-lucide="download"></i><span class="text-[10px] font-black uppercase">Lưu</span></button>
+                        <button onclick="copyImageToClipboard('${m.url}')" class="flex flex-col items-center gap-3 p-6 rounded-[35px] bg-white/5 border border-white/5 text-white"><i data-lucide="copy"></i><span class="text-[10px] font-black uppercase">Ảnh</span></button>
+                        <button onclick="shareMeme('${m.url}', '${m.name}')" class="flex flex-col items-center gap-3 p-6 rounded-[35px] bg-blue-600 text-white ios-shadow"><i data-lucide="share-2"></i><span class="text-[10px] font-black uppercase">Gửi</span></button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('modal-detail').classList.remove('hidden');
+            lucide.createIcons();
+        };
+
+        window.closeDetailModal = () => document.getElementById('modal-detail').classList.add('hidden');
+        window.copyToClipboard = (text) => {
+            const el = document.createElement('textarea');
+            el.value = text;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+        };
+
+        window.copyImageToClipboard = async (url) => {
+            try {
+                const response = await fetch(url);
+                const blob = await response.blob();
+                const item = new ClipboardItem({ [blob.type]: blob });
+                await navigator.clipboard.write([item]);
+            } catch (err) {
+                const el = document.createElement('textarea');
+                el.value = url;
+                document.body.appendChild(el);
+                el.select();
+                document.execCommand('copy');
+                document.body.removeChild(el);
+            }
+        };
+
+        window.downloadImage = (url, name) => {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name || 'meme';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        };
+
+        window.shareMeme = (url, name) => {
+            if (navigator.share) navigator.share({ title: name, url }).catch(() => {});
+            else window.copyImageToClipboard(url);
+        };
+
+        function updateDate() {
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            document.getElementById('header-date').innerText = new Date().toLocaleDateString('vi-VN', options);
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
