@@ -954,7 +954,7 @@
             <button onclick="logout()"
                 class="w-full mt-4 text-red-500 text-sm border border-red-100 bg-red-50 py-3 rounded-full hover:bg-red-100 transition font-bold">Đăng
                 xuất</button>
-            <p class="text-center text-gray-300 text-xs mt-4 mb-20">Phiên bản 1.2.2</p>
+            <p class="text-center text-gray-300 text-xs mt-4 mb-20">Phiên bản 1.2.3</p>
         </div>
 
         <div id="tab-gallery" class="tab-content p-5 pb-24">
@@ -1265,78 +1265,153 @@
         let playerTimeout = null;
         let isLiveMode = false; // Trạng thái Live
 
-        // 1. Hàm bật/tắt chế độ Live
-        function toggleLiveMode() {
-            isLiveMode = !isLiveMode;
-            const btn = document.getElementById('btn-live-mode');
-            const dot = document.getElementById('live-dot');
-            const list = appData.playlist || [];
+        /* --- ADVANCED LIVE FM LOGIC --- */
 
-            if (list.length === 0) { isLiveMode = false; return Modal.alert("Playlist trống!"); }
+// Cấu hình: Thời lượng trung bình 1 bài hát (ms)
+// 3 phút 30 giây = 210000ms. Bạn có thể chỉnh số này
+const LIVE_SLOT_DURATION = 210000; 
 
+function toggleLiveMode() {
+    isLiveMode = !isLiveMode;
+    const btn = document.getElementById('btn-live-mode');
+    const dot = document.getElementById('live-dot');
+    const list = appData.playlist || [];
+
+    if(list.length === 0) { isLiveMode = false; return Modal.alert("Playlist trống!"); }
+
+    if (isLiveMode) {
+        // --- BẬT LIVE ---
+        dot.className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"; 
+        btn.classList.add('border', 'border-red-500/30');
+        
+        Modal.showToast("📻 Đang dò sóng FM... Kết nối vệ tinh...");
+        
+        // Gọi đồng bộ ngay lập tức
+        syncLiveMusic(); 
+        
+        // Thiết lập Interval để check lại mỗi 5s (để đảm bảo không bị trôi giờ)
+        if (window.liveInterval) clearInterval(window.liveInterval);
+        window.liveInterval = setInterval(() => {
+            if(isLiveMode && isPlaying) {
+                // Chỉ log nhẹ để debug, không can thiệp nếu lệch ít
+                // console.log("Keeping Sync...");
+            }
+        }, 5000);
+
+    } else {
+        // --- TẮT LIVE ---
+        dot.className = "w-1.5 h-1.5 rounded-full bg-gray-400";
+        btn.classList.remove('border', 'border-red-500/30');
+        if (window.liveInterval) clearInterval(window.liveInterval);
+        Modal.showToast("Đã chuyển sang chế độ nghe cá nhân.");
+    }
+}
+
+// HÀM TÍNH TOÁN VỊ TRÍ CHÍNH XÁC DỰA TRÊN GIỜ HỆ THỐNG
+function syncLiveMusic() {
+    if (!isLiveMode) return;
+    
+    const list = appData.playlist || [];
+    if (list.length === 0) return;
+
+    const now = Date.now(); // Lấy thời gian thực tế (ms)
+    
+    // Tổng thời gian của cả Playlist (giả định theo slot)
+    const totalLoopDuration = list.length * LIVE_SLOT_DURATION;
+    
+    // Tính vị trí hiện tại trong vòng lặp vô tận
+    const currentLoopPosition = now % totalLoopDuration;
+    
+    // Tính ra Index bài hát
+    const targetSongIndex = Math.floor(currentLoopPosition / LIVE_SLOT_DURATION);
+    
+    // Tính ra giây cần tua đến (Seek Time)
+    const targetSeekTime = (currentLoopPosition % LIVE_SLOT_DURATION) / 1000; // Đổi sang giây
+
+    console.log(`📡 LIVE FM: Bài số ${targetSongIndex + 1}/${list.length} - Tại giây: ${targetSeekTime.toFixed(1)}s`);
+
+    // LOGIC ĐỒNG BỘ PLAYER
+    // Trường hợp 1: Đang chơi đúng bài -> Chỉ cần chỉnh lại thời gian nếu lệch quá nhiều (>3s)
+    if (currentSongIndex === targetSongIndex && isPlaying && audioPlayer.src) {
+        const diff = Math.abs(audioPlayer.currentTime - targetSeekTime);
+        if (diff > 3) {
+            // Hiệu ứng Fade nhẹ (nếu muốn xịn hơn) nhưng ở đây set thẳng cho nhanh
+            audioPlayer.currentTime = targetSeekTime;
+            Modal.showToast(`Đồng bộ lại tín hiệu...`);
+        }
+    } 
+    // Trường hợp 2: Đang chơi sai bài hoặc chưa chơi -> Chuyển bài và Tua
+    else {
+        playSongAtIndex(targetSongIndex, true); // true = fromLive
+        
+        // Quan trọng: Phải đợi metadata load xong mới tua được
+        audioPlayer.onloadedmetadata = () => {
             if (isLiveMode) {
-                // --- BẬT LIVE ---
-                // UI: Đổi màu đỏ, nhấp nháy
-                dot.className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-ping";
-                btn.classList.add('border', 'border-red-500/30'); // Thêm viền nhẹ
-
-                Modal.alert("Đang kết nối live...");
-                syncLiveMusic(); // Bắt đầu đồng bộ
-
-                // Cập nhật liên tục mỗi 10s để đảm bảo không bị lệch
-                // (Trong thực tế chỉ cần sync lúc đầu, nhưng web lướt lâu có thể lệch)
-            } else {
-                // --- TẮT LIVE ---
-                dot.className = "w-1.5 h-1.5 rounded-full bg-gray-400";
-                btn.classList.remove('border', 'border-red-500/30');
-                // Không làm gì cả, nhạc vẫn chạy nhưng không còn bị ép theo giờ hệ thống
-            }
-        }
-
-        // 2. Hàm Đồng bộ nhạc theo thời gian thực (Cốt lõi)
-        function syncLiveMusic() {
-            if (!isLiveMode) return;
-
-            const list = appData.playlist || [];
-            if (list.length === 0) return;
-
-            // GIẢ LẬP RADIO:
-            // Giả sử mỗi bài hát được cấp phát một slot thời gian là 4 phút (240.000ms)
-            // Nếu bài ngắn hơn 4p -> Hết bài sẽ im lặng chờ bài sau (hoặc loop)
-            // Nếu bài dài hơn 4p -> Sẽ bị cắt để qua bài mới
-            const SLOT_DURATION = 4 * 60 * 1000; // 4 phút
-            const now = Date.now(); // Lấy thời gian hiện tại (ms)
-
-            // Tính xem đang ở slot thứ mấy kể từ mốc thời gian 0
-            const totalSlots = Math.floor(now / SLOT_DURATION);
-
-            // Tính bài hát tương ứng với slot đó
-            const songIndex = totalSlots % list.length;
-
-            // Tính thời gian đã trôi qua trong slot hiện tại (giây)
-            const currentSeek = (now % SLOT_DURATION) / 1000;
-
-            console.log(`Live Mode: Playing song #${songIndex} at ${currentSeek}s`);
-
-            // Nếu đang chơi đúng bài đó thì chỉ cần chỉnh lại time (nếu lệch nhiều)
-            if (currentSongIndex === songIndex && isPlaying) {
-                // Nếu lệch quá 5 giây mới chỉnh để tránh giật cục
-                if (Math.abs(audioPlayer.currentTime - currentSeek) > 5) {
-                    audioPlayer.currentTime = currentSeek;
+                // Nếu thời gian tua > độ dài thật của bài hát -> Có thể bài này ngắn quá
+                if (targetSeekTime < audioPlayer.duration) {
+                    audioPlayer.currentTime = targetSeekTime;
+                    console.log("Đã tua đến:", targetSeekTime);
+                } else {
+                    // Nếu đã hết bài (do slot dài hơn bài hát) -> Chờ slot sau hoặc Replay
+                    // Ở đây ta chọn cách im lặng chờ bài sau cho giống Radio thật (Break time)
+                    console.log("Bài hát đã kết thúc trong slot này (Break time)");
                 }
-            } else {
-                // Nếu chưa chơi hoặc khác bài -> Chuyển bài
-                playSongAtIndex(songIndex, true); // True = Là gọi từ Live Mode
-
-                // Đợi load xong metadata thì tua đến đoạn cần phát
-                audioPlayer.onloadedmetadata = () => {
-                    if (isLiveMode && currentSeek < audioPlayer.duration) {
-                        audioPlayer.currentTime = currentSeek;
-                    }
-                };
             }
-        }
+        };
+    }
+}
 
+// Cập nhật lại playSongAtIndex để hỗ trợ tham số fromLive
+function playSongAtIndex(index, fromLive = false) {
+    resetCollapseTimer(); // Reset bộ đếm thu nhỏ UI
+    
+    const list = appData.playlist || [];
+    if(list.length === 0) return;
+    
+    // Nếu người dùng tự bấm chọn bài thì tắt chế độ Live đi
+    if (!fromLive && isLiveMode) toggleLiveMode();
+
+    if(index >= list.length) index = 0;
+    if(index < 0) index = list.length - 1;
+    
+    currentSongIndex = index;
+    
+    // Kiểm tra nếu src đã đúng thì không load lại (tránh giật)
+    if (audioPlayer.src !== list[index].url) {
+        audioPlayer.src = list[index].url;
+    }
+    
+    audioPlayer.play().catch(e => console.log("Autoplay blocked:", e));
+    isPlaying = true;
+
+    // UI Updates
+    const titleEl = document.getElementById('player-title');
+    const playIcon = document.getElementById('player-play-icon');
+    
+    if(titleEl) titleEl.innerText = list[index].name;
+    if(playIcon) playIcon.className = 'fas fa-pause text-xs';
+
+    if (!isPlayerExpanded) toggleExpandPlayer();
+}
+
+// Xử lý sự kiện khi hết bài (onended)
+audioPlayer.onended = () => {
+    if (isLiveMode) {
+        // Nếu đang Live, khi hết bài thật sự, 
+        // nó sẽ check lại thời gian xem đã sang slot mới chưa
+        syncLiveMusic();
+    } else {
+        // Chế độ thường: Qua bài tiếp theo
+        nextSong();
+    }
+};
+
+// Khi mở lại tab trình duyệt, đồng bộ lại ngay
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === 'visible' && isLiveMode) {
+        syncLiveMusic();
+    }
+});
         // 3. Cập nhật toggleExpandPlayer (Giữ nguyên logic cũ)
         function toggleExpandPlayer() {
             const island = document.getElementById('player-island');
@@ -1416,34 +1491,7 @@
             playSongAtIndex(currentSongIndex - 1);
         }
 
-        // 5. Cập nhật playSongAtIndex (Thêm tham số fromLive)
-        function playSongAtIndex(index, fromLive = false) {
-            resetCollapseTimer();
-
-            const list = appData.playlist || [];
-            if (list.length === 0) return;
-
-            // Nếu gọi hàm này thủ công (không phải từ Live Mode) thì tắt Live đi
-            if (!fromLive && isLiveMode) toggleLiveMode();
-
-            if (index >= list.length) index = 0;
-            if (index < 0) index = list.length - 1;
-
-            currentSongIndex = index;
-            audioPlayer.src = list[index].url;
-            audioPlayer.play().catch(e => console.log("Autoplay blocked"));
-            isPlaying = true;
-
-            // UI Updates
-            const titleEl = document.getElementById('player-title');
-            const playIcon = document.getElementById('player-play-icon');
-
-            if (titleEl) titleEl.innerText = list[index].name;
-            if (playIcon) playIcon.className = 'fas fa-pause text-[10px]';
-
-            if (!isPlayerExpanded) toggleExpandPlayer();
-        }
-
+     
         // 6. Xử lý khi hết bài
         // Khi hết bài, nếu đang ở Live Mode thì nó sẽ tự check lại giờ để qua bài mới đúng giờ
         audioPlayer.onended = () => {
