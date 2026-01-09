@@ -2211,68 +2211,93 @@ async function uploadToSupabase(file, folder) {
     return publicUrl;
 }
 /* --- IPHONE SWIPE NAVIGATION LOGIC --- */
-let currentPage = 0;
-const totalPages = 7; // Tổng số trang (0 đến 6)
+/* --- NAVIGATION LOGIC (SỬA LỖI VỊ TRÍ) --- */
 const swipeWrapper = document.getElementById('swipe-wrapper');
-const dotsContainer = document.getElementById('pagination-dots');
+let isScrollingTimeout;
+let currentPage = 0; // Biến theo dõi trang hiện tại
 
-// 1. Khởi tạo Navigation Dots
-// 1. Khởi tạo Navigation Dock với Icons
+// 1. Khởi tạo Navigation
 function initNavigation() {
     const dotsContainer = document.getElementById('pagination-dots');
     dotsContainer.innerHTML = '';
 
-    // Danh sách icon tương ứng với 7 trang (0 -> 6)
     const icons = [
-        'fa-home',          // 0: Home
-        'fa-check-square',  // 1: Todo
-        'fa-fire',          // 2: Sparks
-        'fa-calendar-alt',  // 3: Events
-        'fa-book-open',     // 4: Diary
-        'fa-folder-open',   // 5: Gallery
-        'fa-cog'            // 6: Settings
+        'fa-home', 'fa-check-square', 'fa-fire', 
+        'fa-calendar-alt', 'fa-book-open', 'fa-folder-open', 'fa-cog'
     ];
 
-    for (let i = 0; i < totalPages; i++) {
+    for (let i = 0; i < 7; i++) {
         const dot = document.createElement('div');
-
-        // Thêm class cơ bản
         dot.className = `nav-dot ${i === 0 ? 'active' : ''}`;
-
-        // Thêm icon vào trong
         dot.innerHTML = `<i class="fas ${icons[i]}"></i>`;
-
-        // Sự kiện click
+        
         dot.onclick = () => {
-            // Hiệu ứng rung nhẹ khi bấm
             if (navigator.vibrate) navigator.vibrate(30);
             goToPage(i);
         };
-
         dotsContainer.appendChild(dot);
     }
 
-    // Load dữ liệu trang đầu tiên
-    updatePageData(0);
+    // Lắng nghe sự kiện cuộn để cập nhật icon active khi người dùng tự vuốt
+    swipeWrapper.addEventListener('scroll', handleScrollActive);
 }
 
-// 2. Hàm Chuyển Trang (Thay thế switchTab)
+// 2. Hàm chuyển trang (Dùng scrollIntoView để chính xác tuyệt đối)
 function goToPage(index) {
-    if (index < 0 || index >= totalPages) return;
+    // Nếu bấm vào trang đang đứng thì không làm gì (hoặc có thể scroll lên đầu trang)
+    if (currentPage === index) return;
 
     currentPage = index;
+    const targetPage = document.getElementById(`page-${index}`);
 
-    // Slide hiệu ứng
-    swipeWrapper.style.transform = `translateX(-${currentPage * 100}%)`;
+    if (targetPage) {
+        // Tạm thời tắt lắng nghe scroll để tránh xung đột icon active
+        swipeWrapper.removeEventListener('scroll', handleScrollActive);
+        
+        // --- KEY FIX: Dùng hàm này để trình duyệt tự tìm vị trí chính xác ---
+        targetPage.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'nearest', 
+            inline: 'start' 
+        });
 
-    // Cập nhật Dots
+        updateActiveDot(index);
+        updatePageData(index); // Load dữ liệu trang đó
+
+        // Bật lại lắng nghe sau khi cuộn xong (khoảng 600ms)
+        clearTimeout(isScrollingTimeout);
+        isScrollingTimeout = setTimeout(() => {
+            swipeWrapper.addEventListener('scroll', handleScrollActive);
+        }, 600);
+    }
+}
+
+// 3. Xử lý khi người dùng TỰ VUỐT TAY
+function handleScrollActive() {
+    clearTimeout(isScrollingTimeout);
+    
+    isScrollingTimeout = setTimeout(() => {
+        // Tính toán dựa trên chiều rộng thực tế của wrapper
+        const pageWidth = swipeWrapper.clientWidth;
+        const scrollLeft = swipeWrapper.scrollLeft;
+        
+        // Tính ra index (làm tròn)
+        const activeIndex = Math.round(scrollLeft / pageWidth);
+        
+        if (activeIndex !== currentPage) {
+            currentPage = activeIndex;
+            updateActiveDot(activeIndex);
+            updatePageData(activeIndex);
+        }
+    }, 50); // Debounce 50ms
+}
+
+// 4. Hàm cập nhật giao diện Dot
+function updateActiveDot(index) {
     document.querySelectorAll('.nav-dot').forEach((dot, i) => {
-        if (i === currentPage) dot.classList.add('active');
+        if (i === index) dot.classList.add('active');
         else dot.classList.remove('active');
     });
-
-    // Gọi hàm load dữ liệu tương ứng (Logic cũ của switchTab)
-    updatePageData(index);
 }
 
 // Hàm hỗ trợ load dữ liệu (Tách từ switchTab cũ)
@@ -2290,74 +2315,6 @@ function updatePageData(index) {
     if (index === 5) loadGallery(); // Gallery
     if (index === 6) loadSettingsToUI(); // Settings
 }
-
-// 3. Logic Vuốt Cảm Ứng (Touch Swipe)
-let touchStartX = 0;
-let touchEndX = 0;
-let touchStartY = 0; // Để tránh chặn scroll dọc
-let isSwiping = false;
-
-// Bắt sự kiện trên toàn bộ vùng wrapper
-swipeWrapper.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-    isSwiping = true;
-    swipeWrapper.style.transition = 'none'; // Tắt transition để kéo dính theo ngón tay
-}, { passive: true });
-
-swipeWrapper.addEventListener('touchmove', (e) => {
-    if (!isSwiping) return;
-
-    const currentX = e.changedTouches[0].screenX;
-    const currentY = e.changedTouches[0].screenY;
-
-    // Nếu người dùng vuốt dọc nhiều hơn ngang -> Hủy swipe để cho phép scroll dọc
-    if (Math.abs(currentY - touchStartY) > Math.abs(currentX - touchStartX)) {
-        isSwiping = false;
-        // Trả lại vị trí cũ
-        swipeWrapper.style.transition = 'transform 0.3s ease-out';
-        swipeWrapper.style.transform = `translateX(-${currentPage * 100}%)`;
-        return;
-    }
-
-    // Hiệu ứng kéo theo ngón tay (Rubber band)
-    const diff = touchStartX - currentX;
-    const wrapperWidth = swipeWrapper.offsetWidth;
-    const movePercent = (diff / wrapperWidth) * 100;
-    const currentPercent = currentPage * 100;
-
-    swipeWrapper.style.transform = `translateX(-${currentPercent + movePercent}%)`;
-}, { passive: true });
-
-/* --- SỬA LỖI LOGIC SWIPE --- */
-swipeWrapper.addEventListener('touchend', (e) => {
-    if (!isSwiping) return;
-    isSwiping = false;
-    touchEndX = e.changedTouches[0].screenX;
-
-    // Bật lại animation để trượt mượt mà
-    swipeWrapper.style.transition = 'transform 0.3s ease-out';
-
-    const diff = touchStartX - touchEndX;
-    const threshold = 100; // Phải vuốt ít nhất 100px mới tính là chuyển trang
-
-    // --- DÒNG QUAN TRỌNG MỚI THÊM ---
-    // Nếu vuốt ít hơn 5px (tức là chỉ chạm nhẹ hoặc click) -> Dừng ngay, không reset trang
-    if (Math.abs(diff) < 5) return;
-
-    if (diff > threshold) {
-        // Vuốt sang trái -> Trang tiếp theo
-        if (currentPage < totalPages - 1) goToPage(currentPage + 1);
-        else goToPage(currentPage); // Quay lại
-    } else if (diff < -threshold) {
-        // Vuốt sang phải -> Trang trước
-        if (currentPage > 0) goToPage(currentPage - 1);
-        else goToPage(currentPage); // Quay lại
-    } else {
-        // Vuốt chưa đủ lực (nhưng lớn hơn 5px) -> Quay lại trang hiện tại (Snap back)
-        goToPage(currentPage);
-    }
-}, { passive: true });
 
 // Thêm vào initApp hoặc cuối file
 initNavigation();
