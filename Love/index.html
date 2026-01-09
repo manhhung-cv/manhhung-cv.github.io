@@ -77,6 +77,8 @@
             --love-600: #e11d48;
             --app-font: 'Nunito';
             --app-bg: #fff1f2;
+            --glass-opacity: 0.2;
+            /* Giá trị mặc định */
         }
 
         body {
@@ -241,10 +243,73 @@
             opacity: 1;
         }
 
+        /* --- CHẾ ĐỘ KÍNH TRONG SUỐT (Crystal Clear Glass) --- */
+
+        /* 1. Khung chính: Trong suốt để nhìn rõ hình nền */
+        /* GLASS MODE - SỬ DỤNG BIẾN ĐỘNG --glass-opacity */
+
+
         #app-container.glass-mode {
-            background-color: rgba(255, 255, 255, 0.597);
-            backdrop-filter: blur(0px);
+            /* Chỉ có màu nền mờ (chỉnh bằng thanh trượt), KHÔNG CÓ BLUR */
+            background-color: rgba(255, 255, 255, var(--glass-opacity));
+
+            /* XÓA BỎ 2 DÒNG NÀY ĐỂ ẢNH NỀN NÉT CĂNG */
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+
+            /* Vẫn giữ đổ bóng để tách biệt khung */
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.3);
+            border-left: 1px solid rgba(255, 255, 255, 0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background-color 0.1s;
         }
+
+        /* 2. Các thẻ con (Card/Box): Vẫn cần mờ nhẹ để đọc được chữ */
+        /* Đây là nơi duy nhất có Blur để làm nổi bật nội dung */
+        #app-container.glass-mode .bg-white,
+        #app-container.glass-mode .bg-gray-50,
+        #app-container.glass-mode .bg-love-50,
+        #app-container.glass-mode input,
+        #app-container.glass-mode textarea,
+        #app-container.glass-mode select,
+        #app-container.glass-mode .glass-card-special {
+            /* Nền trắng đục hơn */
+            background-color: rgba(255, 255, 255, 0.85) !important;
+
+            /* Blur cục bộ bên trong thẻ con -> Chữ rõ ràng */
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+
+            border: 1px solid rgba(255, 255, 255, 0.5) !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 3. Tinh chỉnh card Đồng hồ cho đẹp hơn */
+        #app-container.glass-mode .glass-card-special {
+            /* Cho phép đồng hồ trong hơn các thẻ khác một chút */
+            background-color: rgba(255, 255, 255, 0.5) !important;
+            backdrop-filter: blur(15px);
+            /* Blur mạnh bên trong card đồng hồ */
+        }
+
+        /* 4. Tinh chỉnh màu chữ khi ở chế độ Glass */
+        #app-container.glass-mode h1,
+        #app-container.glass-mode h2,
+        #app-container.glass-mode h3,
+        #app-container.glass-mode p,
+        #app-container.glass-mode span,
+        #app-container.glass-mode i {
+            /* Thêm bóng trắng nhẹ xung quanh chữ để nếu hình nền màu đen thì chữ đen vẫn đọc được */
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+        }
+
+        /* Các nút bấm (Button) giữ nguyên độ đậm để nổi bật */
+        #app-container.glass-mode button.bg-love-500,
+        #app-container.glass-mode button.bg-gray-800 {
+            /* background-opacity: 1 !important; */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
 
         .floating-nav {
             position: fixed;
@@ -276,9 +341,10 @@
 
         /* Timeline Styles */
         .timeline-line {
+            display: none;
             position: absolute;
-            left: 19px;
-            top: 40px;
+            left: 1rem;
+            top: 15px;
             bottom: -20px;
             width: 2px;
             background-color: #e5e7eb;
@@ -396,6 +462,46 @@
             filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.8));
             /* Phát sáng */
         }
+
+        .page-content {
+            padding: 20px;
+        }
+
+        /* Container của item sự kiện */
+        .event-swipe-container {
+            position: relative;
+            overflow: hidden;
+            /* Che đi phần nút bị đẩy ra ngoài */
+        }
+
+        /* Các nút hành động (Nằm chìm bên dưới) */
+        .event-actions {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            right: 0;
+            width: 120px;
+            /* Chiều rộng khu vực nút */
+            display: flex;
+            z-index: 0;
+        }
+
+        /* Nội dung chính (Nằm đè lên trên) */
+        .event-content {
+            position: relative;
+            z-index: 10;
+            background-color: white;
+            /* Cần màu nền để che nút bên dưới */
+            transition: transform 0.2s ease-out;
+            /* Hiệu ứng trượt mượt */
+            width: 100%;
+        }
+
+        /* Class kích hoạt khi đã vuốt sang trái */
+        .event-content.swiped {
+            transform: translateX(-120px) !important;
+            /* Trượt sang trái để lộ nút */
+        }
     </style>
 </head>
 
@@ -405,20 +511,20 @@
 
     <audio id="bg-music" loop></audio>
 
-    <div id="mini-player" class="fixed bottom-24 right-5 z-50 flex items-center justify-end hidden">
+    <div id="mini-player" class="fixed bottom-12 z-50 flex items-center justify-end  w-full justify-center  ">
         <div id="player-island" onclick="toggleExpandPlayer()"
-            class="bg-[--love-300] text-love-500 shadow-xl cursor-pointer w-10 h-10 rounded-full relative transition-all duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] flex items-center justify-center overflow-hidden border border-pink-100">
+            class="bg-[--love-300] text-love-500 shadow-xl cursor-pointer w-8 h-8 rounded-full relative transition-all duration-500 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] flex items-center justify-center overflow-hidden border border-pink-100 flex gap-2 bg-white/80 backdrop-blur-xl px-1 py-1 rounded-full shadow-2xl border border-white/50 pointer-events-auto transition-all hover:scale-105 ">
 
             <div id="player-collapsed"
                 class="absolute inset-0 flex items-center justify-center transition-opacity duration-300">
-                <i class="fas fa-music text-xs text-white"></i>
+                <i class="fas fa-music text-xs text-[--love-500]"></i>
             </div>
 
             <div id="player-expanded"
-                class="flex items-center justify-between w-full px-4 opacity-0 pointer-events-none transition-opacity duration-300 absolute">
+                class="flex items-center justify-between w-full px-2 opacity-0 pointer-events-none transition-opacity duration-300 absolute">
 
                 <div class="w-24 mr-1">
-                    <p id="player-title" class="text-[10px] font-bold text-white truncate">Chọn bài hát</p>
+                    <p id="player-title" class="text-[10px] font-bold text-[--love-500] truncate">Chọn bài hát</p>
                 </div>
 
 
@@ -427,17 +533,18 @@
                     <button onclick="event.stopPropagation(); prevSong()" class="text-gray-400 hover:text-white"><i
                             class="fas fa-step-backward text-[10px]"></i></button>
                     <button onclick="event.stopPropagation(); togglePlayMusic()"
-                        class="text-white w-5 h-5 flex items-center justify-center">
+                        class="text-[--love-500] w-5 h-5 flex items-center justify-center">
                         <i id="player-play-icon" class="fas fa-play text-[10px] ml-0.5"></i>
                     </button>
                     <button onclick="event.stopPropagation(); nextSong()" class="text-gray-400 hover:text-white"><i
                             class="fas fa-step-forward text-[10px]"></i></button>
                 </div>
                 <button id="btn-live-mode" onclick="event.stopPropagation(); toggleLiveMode()"
-                    class="px-1.5 py-0.5 rounded flex items-center gap-1 bg-gray-800 hover:bg-gray-700 transition ml-2 group">
+                    class="px-1.5 py-0.5 rounded-full flex items-center gap-1 bg-[--love-500] text-white transition ml-2 group">
                     <div id="live-dot"
-                        class="w-1.5 h-1.5 rounded-full bg-gray-400 group-hover:bg-red-500 transition-colors"></div>
-                    <span class="text-[8px] font-bold text-gray-400 group-hover:text-white">LIVE</span>
+                        class="w-1.5 h-1.5 rounded-full text-white  bg-black group-hover:bg-white transition-colors">
+                    </div>
+                    <span class="text-[8px] font-bold text-white group-hover:text-white">LIVE</span>
                 </button>
             </div>
         </div>
@@ -510,557 +617,683 @@
         </div>
     </div>
 
-    <div id="app-container"
-        class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative overflow-hidden hidden-screen pt-4">
+    <div id="app-container" class="max-w-md mx-auto bg-white h-screen shadow-2xl relative overflow-hidden">
 
-        <div id="tab-home" class="tab-content active p-5">
-            <div class="flex flex-col justify-around h-[calc(100vh-140px)]">
+        <div id="swipe-wrapper" class="flex h-full transition-transform duration-300 ease-out will-change-transform">
+            <div id="page-0" class="page-content w-full flex-shrink-0 h-full overflow-y-auto hide-scrollbar ">
+                <div class="flex flex-col justify-around h-[calc(100vh-140px)]">
 
-                <div
-                    class="bg-gradient-to-br from-love-50 to-white rounded-[2rem] p-6 text-center shadow-lg shadow-love-100/50 border border-love-100 backdrop-blur-sm bg-opacity-90">
-                    <p class="text-gray-500 text-sm font-semibold tracking-wide uppercase mb-2">Hành trình yêu thương
-                    </p>
-                    <div class="relative inline-block">
-                        <h2 id="total-days"
-                            class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-love-500 to-love-600 mb-0 leading-none">
-                            0</h2>
-                    </div>
-                    <p class="text-love-400 font-bold text-lg mt-1">Ngày</p>
+                    <div
+                        class="glass-card-special bg-white/60 rounded-[2rem] p-6 text-center shadow-lg shadow-love-100/20 border border-white/40 mb-auto mt-4">
+                        <p class="text-gray-500 text-sm font-semibold tracking-wide uppercase mb-2">Hành trình yêu
+                            thương
+                        </p>
+                        <div class="relative inline-block flex justify-center">
+                            <h2 id="total-days"
+                                class="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-love-500 to-love-600 mb-0 leading-none">
+                                0</h2>
+                            <p class="text-love-400 font-bold text-lg mt-6">Ngày</p>
 
-                    <div class="grid grid-cols-3 gap-3 mt-6 text-sm">
-                        <div class="bg-white p-3 rounded-2xl shadow-md shadow-gray-100 border border-gray-50">
-                            <span id="count-years" class="block font-black text-xl text-gray-700">0</span>
-                            <span class="text-gray-400 text-xs font-bold uppercase">Năm</span>
                         </div>
-                        <div class="bg-white p-3 rounded-2xl shadow-md shadow-gray-100 border border-gray-50">
-                            <span id="count-months" class="block font-black text-xl text-gray-700">0</span>
-                            <span class="text-gray-400 text-xs font-bold uppercase">Tháng</span>
-                        </div>
-                        <div class="bg-white p-3 rounded-2xl shadow-md shadow-gray-100 border border-gray-50">
-                            <span id="count-days" class="block font-black text-xl text-gray-700">0</span>
-                            <span class="text-gray-400 text-xs font-bold uppercase">Ngày</span>
-                        </div>
-                    </div>
-                </div>
 
-                <div class="flex items-center justify-between relative px-2">
-
-                    <div class="flex flex-col items-center w-1/3 group relative">
-                        <div id="status-bubble-1"
-                            class="hidden absolute -top-12 bg-white px-3 py-2 rounded-2xl shadow-lg border border-love-100 text-xs text-gray-600 w-32 text-center status-bubble z-10 transition-all">
-                            <span id="status-text-1" class="break-words"></span>
-                        </div>
-                        <div class="relative transition-transform transform group-hover:scale-105">
-                            <img id="u1-avatar"
-                                src="https://graph.facebook.com/100045640179308/picture?type=large&amp;access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662"
-                                class="w-24 h-24 rounded-full object-cover avatar-frame bg-blue-50 cursor-pointer"
-                                onclick="openStatusModal()">
-                            <div class="absolute -bottom-2 -right-1 bg-white rounded-full p-1 shadow-md">
-                                <i
-                                    class="fas fa-mars text-blue-400 text-sm w-5 h-5 flex items-center justify-center"></i>
+                        <div class="grid grid-cols-3 gap-3 mt-4 text-sm">
+                            <div class="bg-white p-2 rounded-2xl shadow-md shadow-gray-100 border border-gray-50">
+                                <span id="count-years" class="block font-black text-xl text-gray-700">0</span>
+                                <span class="text-gray-400 text-xs font-bold uppercase">Năm</span>
+                            </div>
+                            <div class="bg-white p-2 rounded-2xl shadow-md shadow-gray-100 border border-gray-50">
+                                <span id="count-months" class="block font-black text-xl text-gray-700">0</span>
+                                <span class="text-gray-400 text-xs font-bold uppercase">Tháng</span>
+                            </div>
+                            <div class="bg-white p-2 rounded-2xl shadow-md shadow-gray-100 border border-gray-50">
+                                <span id="count-days" class="block font-black text-xl text-gray-700">0</span>
+                                <span class="text-gray-400 text-xs font-bold uppercase">Ngày</span>
                             </div>
                         </div>
-                        <span id="u1-name" class="font-bold mt-3 text-love-600 text-lg text-shadow-lg/30 ">Anh yêu ❤️</span>
                     </div>
 
-                    <div class="flex flex-col items-center justify-center w-1/3 cursor-pointer group pb-8"
-                        onclick="handleHeartClick()">
-                        <div
-                            class="relative transition-transform duration-300 transform group-hover:scale-125 active:scale-90">
+                    <div class="flex items-center justify-between relative px-2">
+
+                        <div class="flex flex-col items-center w-1/3 group relative">
+                            <div id="status-bubble-1"
+                                class="hidden absolute -top-12 bg-white px-3 py-2 rounded-2xl shadow-lg border border-love-100 text-xs text-gray-600 w-32 text-center status-bubble z-10 transition-all">
+                                <span id="status-text-1" class="break-words"></span>
+                            </div>
+                            <div class="relative transition-transform transform group-hover:scale-105">
+                                <img id="u1-avatar"
+                                    src="https://graph.facebook.com/100045640179308/picture?type=large&amp;access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662"
+                                    class="w-24 h-24 rounded-full object-cover avatar-frame bg-blue-50 cursor-pointer"
+                                    onclick="openStatusModal()">
+                                <div class="absolute -bottom-2 -right-1 bg-white rounded-full p-1 shadow-md">
+                                    <i
+                                        class="fas fa-mars text-blue-400 text-sm w-5 h-5 flex items-center justify-center"></i>
+                                </div>
+                            </div>
+                            <span id="u1-name" class="font-bold mt-3 text-love-600 text-lg text-shadow-lg/30 ">Anh yêu
+                                ❤️</span>
+                        </div>
+
+                        <div class="flex flex-col items-center justify-center w-1/3 cursor-pointer group pb-8"
+                            onclick="handleHeartClick()">
                             <div
-                                class="absolute inset-0 bg-love-500 blur-xl opacity-20 group-hover:opacity-40 transition-opacity rounded-full">
-                            </div>
+                                class="relative transition-transform duration-300 transform group-hover:scale-125 active:scale-90">
+                                <div
+                                    class="absolute inset-0 bg-love-500 blur-xl opacity-20 group-hover:opacity-40 transition-opacity rounded-full">
+                                </div>
 
-                            <i id="main-heart-icon"
-                                class="fas fa-heart text-5xl text-love-500 animate-pulse-slow drop-shadow-lg relative z-10 transition-colors duration-500"></i>
-                            <i
-                                class="fas fa-heart text-2xl text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-30 z-10"></i>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col items-center w-1/3 group relative">
-                        <div id="status-bubble-2"
-                            class="hidden absolute -top-12 bg-white px-3 py-2 rounded-2xl shadow-lg border border-love-100 text-xs text-gray-600 w-32 text-center status-bubble z-10 transition-all">
-                            <span id="status-text-2" class="break-words"></span>
-
-                        </div>
-                        <div class="relative transition-transform transform group-hover:scale-105">
-                            <img id="u2-avatar"
-                                src="https://graph.facebook.com/100074217488487/picture?type=large&amp;access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662"
-                                class="w-24 h-24 rounded-full object-cover avatar-frame bg-pink-50 cursor-pointer"
-                                onclick="openStatusModal()">
-                            <div class="absolute -bottom-2 -right-1 bg-white rounded-full p-1 shadow-md">
+                                <i id="main-heart-icon"
+                                    class="fas fa-heart text-5xl text-love-500 animate-pulse-slow drop-shadow-lg relative z-10 transition-colors duration-500"></i>
                                 <i
-                                    class="fas fa-venus text-pink-400 text-sm w-5 h-5 flex items-center justify-center"></i>
+                                    class="fas fa-heart text-2xl text-white absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-30 z-10"></i>
                             </div>
                         </div>
-                        <span id="u2-name" class="font-bold mt-3 text-love-600 text-lg">Em yêu ❤️</span>
-                    </div>
-                </div>
 
-            </div>
-        </div>
+                        <div class="flex flex-col items-center w-1/3 group relative">
+                            <div id="status-bubble-2"
+                                class="hidden absolute -top-12 bg-white px-3 py-2 rounded-2xl shadow-lg border border-love-100 text-xs text-gray-600 w-32 text-center status-bubble z-10 transition-all">
+                                <span id="status-text-2" class="break-words"></span>
 
-        <div id="tab-todo" class="tab-content p-5">
-            <div class="flex justify-between items-center mb-6 px-2">
-                <h2 class="text-2xl font-bold text-gray-800">Mục tiêu chung</h2>
-                <div class="bg-love-100 text-love-500 px-3 py-1 rounded-full text-xs font-bold">
-                    <span id="todo-count">0</span> mục tiêu
-                </div>
-            </div>
-
-            <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-5 mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-gray-700 flex items-center gap-2"><i
-                            class="fas fa-tasks text-love-500"></i> Danh sách</h3>
-                    <button onclick="toggleTodoForm()"
-                        class="bg-gray-100 w-8 h-8 rounded-full text-gray-500 hover:bg-love-50 hover:text-love-500"><i
-                            class="fas fa-plus"></i></button>
-                </div>
-
-                <div id="todo-form" class="hidden mb-4 bg-gray-50 p-3 rounded-xl">
-                    <input type="text" id="todo-input" placeholder="Việc cần làm..."
-                        class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-love-300">
-                    <div class="flex gap-2">
-                        <input type="date" id="todo-deadline"
-                            class="w-2/3 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs">
-                        <button onclick="addTodo()"
-                            class="w-1/3 bg-love-500 text-white rounded-lg font-bold text-xs">Thêm</button>
-                    </div>
-                </div>
-
-                <div id="todo-list" class="space-y-2">
-                </div>
-            </div>
-        </div>
-
-        <div id="status-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
-            <div class="bg-white rounded-3xl p-6 w-full max-w-sm relative">
-                <button onclick="document.getElementById('status-modal').classList.add('hidden')"
-                    class="absolute top-4 right-4 text-gray-400"><i class="fas fa-times"></i></button>
-                <h3 class="font-bold text-lg mb-4 text-center">Bạn đang nghĩ gì?</h3>
-                <textarea id="status-input" class="w-full rounded-xl border border-gray-200 p-3 mb-4 text-sm h-24"
-                    placeholder="Nhập cảm nhận của bạn..."></textarea>
-                <div class="mb-4">
-                    <label class="block text-xs font-bold text-gray-500 mb-2">Tự động xóa sau:</label>
-                    <select id="status-duration" class="w-full rounded-xl border border-gray-200 p-2 text-sm bg-white"
-                        onchange="toggleCustomTime()">
-                        <option value="60">1 Giờ</option>
-                        <option value="1440" selected>24 Giờ</option>
-                        <option value="-1">Vĩnh viễn (Không xóa)</option>
-                        <option value="custom">Tùy chỉnh...</option>
-                    </select>
-                    <div id="custom-time-input" class="hidden mt-2 flex gap-2 items-center">
-                        <input type="number" id="custom-hours" placeholder="Giờ"
-                            class="w-1/2 p-2 border rounded-xl text-sm">
-                        <input type="number" id="custom-minutes" placeholder="Phút"
-                            class="w-1/2 p-2 border rounded-xl text-sm">
-                    </div>
-                </div>
-                <button onclick="saveStatus()"
-                    class="w-full bg-love-500 text-white py-3 rounded-xl font-bold shadow-md">Cập nhật trạng
-                    thái</button>
-            </div>
-        </div>
-
-        <div id="tab-sparks"
-            class="tab-content hidden text-center h-[calc(100vh-100px)] flex flex-col justify-center items-center p-5">
-            <div class="w-full">
-                <div class="mb-2">
-                    <div class="relative w-52 h-52 mx-auto flex items-center justify-center">
-                        <div class="absolute inset-0 bg-orange-50 rounded-full animate-pulse opacity-70"></div>
-                        <div id="fire-glow"
-                            class="absolute inset-4 rounded-full animate-pulse opacity-50 animation-delay-500 bg-orange-100 transition-colors duration-500">
+                            </div>
+                            <div class="relative transition-transform transform group-hover:scale-105">
+                                <img id="u2-avatar"
+                                    src="https://graph.facebook.com/100074217488487/picture?type=large&amp;access_token=6628568379|c1e620fa708a1d5696fb991c1bde5662"
+                                    class="w-24 h-24 rounded-full object-cover avatar-frame bg-pink-50 cursor-pointer"
+                                    onclick="openStatusModal()">
+                                <div class="absolute -bottom-2 -right-1 bg-white rounded-full p-1 shadow-md">
+                                    <i
+                                        class="fas fa-venus text-pink-400 text-sm w-5 h-5 flex items-center justify-center"></i>
+                                </div>
+                            </div>
+                            <span id="u2-name" class="font-bold mt-3 text-love-600 text-lg">Em yêu ❤️</span>
                         </div>
-                        <i id="fire-icon"
-                            class="fas fa-fire text-8xl drop-shadow-2xl relative z-10 animate-float text-orange-500 transition-colors duration-500"></i>
                     </div>
-                    <h2 class="text-2xl font-bold text-gray-800 mt-2">Streak Tình Yêu</h2>
-                    <div class="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-orange-400 to-love-600 my-1"
-                        id="streak-count">0</div>
-                    <p class="text-gray-400 font-bold uppercase tracking-wider text-xs">Ngày liên tiếp giữ lửa</p>
-                    <div id="streak-milestone" class="text-xs font-bold mt-2 text-love-500 h-4"></div>
+
+                </div>
+            </div>
+
+            <div id="page-1" class="page-content w-full flex-shrink-0 h-full overflow-y-auto hide-scrollbar pb-20">
+                <div
+                    class="flex justify-between items-center mb-2 px-2 glass-card-special bg-white/60 rounded-[2rem] p-2 pl-4 text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl ">
+                    <h2 class="text-2xl font-bold text-gray-800">Mục tiêu chung</h2>
+                    <div class="bg-love-100 text-love-500 px-3 py-1 rounded-full text-xs font-bold">
+                        <span id="todo-count">0</span> mục tiêu
+                    </div>
                 </div>
 
                 <div
-                    class="bg-white rounded-[2.5rem] shadow-xl shadow-orange-100/50 p-4 border border-orange-50 w-full max-w-sm mx-auto">
-                    <div class="flex justify-between items-center gap-4">
-                        <div class="flex-1 flex flex-col items-center group">
-                            <img id="spark-u1-img" src=""
-                                class="w-16 h-16 rounded-full mb-3 object-cover border-4 border-transparent">
-                            <button id="btn-checkin-1" onclick="checkIn(1)"
-                                class="w-full py-2.5 rounded-2xl text-xs font-bold transition-all transform active:scale-95 shadow-sm">Điểm
-                                danh</button>
-                        </div>
-                        <div class="h-20 w-px bg-gray-200"></div>
-                        <div class="flex-1 flex flex-col items-center group">
-                            <img id="spark-u2-img" src=""
-                                class="w-16 h-16 rounded-full mb-3 object-cover border-4 border-transparent">
-                            <button id="btn-checkin-2" onclick="checkIn(2)"
-                                class="w-full py-2.5 rounded-2xl text-xs font-bold transition-all transform active:scale-95 shadow-sm">Điểm
-                                danh</button>
+                    class="glass-card-special bg-white/60 rounded-[2rem] p-2 pl-4 text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl  p-5 mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-gray-700 flex items-center gap-2"><i
+                                class="fas fa-tasks text-love-500"></i> Danh sách</h3>
+                        <button onclick="toggleTodoForm()"
+                            class="bg-gray-100 w-8 h-8 rounded-full text-gray-500 hover:bg-love-50 hover:text-love-500"><i
+                                class="fas fa-plus"></i></button>
+                    </div>
+
+                    <div id="todo-form" class="hidden mb-4 bg-gray-50 p-3 rounded-xl">
+                        <input type="text" id="todo-input" placeholder="Việc cần làm..."
+                            class="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-love-300">
+                        <div class="flex gap-2">
+                            <input type="date" id="todo-deadline"
+                                class="w-2/3 bg-white border border-gray-200 rounded-lg px-3 py-2 text-xs">
+                            <button onclick="addTodo()"
+                                class="w-1/3 bg-love-500 text-white rounded-lg font-bold text-xs">Thêm</button>
                         </div>
                     </div>
-                    <div id="streak-message"
-                        class="mt-6 py-3 px-4 bg-orange-50 rounded-4xl text-sm font-bold text-orange-600 hidden border border-orange-100">
-                        <i class="fas fa-fire-alt mr-2"></i>Tuyệt vời! Lửa đã được giữ!
+
+                    <div id="todo-list" class="space-y-2">
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div id="tab-events" class="tab-content p-5">
-            <div class="flex justify-between items-end mb-5 px-1">
-                <h3 class="font-bold text-gray-800 text-2xl">Sự kiện sắp tới</h3>
-                <button onclick="toggleEventForm()"
-                    class="text-white bg-love-500 hover:bg-love-600 px-4 py-2 rounded-full text-xs font-bold shadow-md flex items-center gap-2">
-                    <i class="fas fa-plus"></i> Thêm
-                </button>
-            </div>
-
-            <div id="event-form"
-                class="hidden bg-white p-6 rounded-[2rem] shadow-xl shadow-gray-100 mb-6 border border-gray-100 transition-all relative z-20">
-                <h4 class="font-bold text-gray-700 mb-4" id="event-form-title">Sự kiện mới</h4>
-                <input type="hidden" id="event-id">
-                <input type="text" id="event-title" placeholder="Tên sự kiện"
-                    class="w-full rounded-input mb-3 bg-gray-50 text-sm">
-                <input type="date" id="event-date" class="w-full rounded-input mb-3 bg-gray-50 text-sm">
-
-                <div class="mb-3">
-                    <input type="text" id="event-bg" placeholder="Link ảnh nền (để trống sẽ dùng màu ngẫu nhiên)"
-                        class="w-full rounded-input bg-gray-50 text-xs mb-1">
-                    <label
-                        class="block w-full text-center bg-white border border-dashed border-gray-300 rounded-xl p-2 text-xs text-gray-500 cursor-pointer hover:bg-gray-100">
-                        <i class="fas fa-cloud-upload-alt mr-1"></i> Tải ảnh nền
-                        <input type="file" id="event-bg-file" class="hidden" accept="image/*">
-                    </label>
-                </div>
-
-                <div class="relative mb-4">
-                    <select id="event-recur"
-                        class="w-full rounded-input bg-gray-50 text-sm appearance-none cursor-pointer">
-                        <option value="none">Chỉ một lần</option>
-                        <option value="year">Lặp lại hàng năm</option>
-                        <option value="month">Lặp lại hàng tháng</option>
-                    </select>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="toggleEventForm()"
-                        class="flex-1 bg-gray-200 text-gray-600 py-3 rounded-full text-sm font-bold">Hủy</button>
-                    <button id="btn-save-event" onclick="saveEvent(this)"
-                        class="flex-1 bg-gray-800 text-white py-3 rounded-full text-sm font-bold">Lưu</button>
+            <div id="status-modal" class="fixed inset-0 bg-black/50 z-[60] hidden flex items-center justify-center p-4">
+                <div class="bg-white rounded-3xl p-6 w-full max-w-sm relative">
+                    <button onclick="document.getElementById('status-modal').classList.add('hidden')"
+                        class="absolute top-4 right-4 text-gray-400"><i class="fas fa-times"></i></button>
+                    <h3 class="font-bold text-lg mb-4 text-center">Bạn đang nghĩ gì?</h3>
+                    <textarea id="status-input" class="w-full rounded-xl border border-gray-200 p-3 mb-4 text-sm h-24"
+                        placeholder="Nhập cảm nhận của bạn..."></textarea>
+                    <div class="mb-4">
+                        <label class="block text-xs font-bold text-gray-500 mb-2">Tự động xóa sau:</label>
+                        <select id="status-duration"
+                            class="w-full rounded-xl border border-gray-200 p-2 text-sm bg-white"
+                            onchange="toggleCustomTime()">
+                            <option value="60">1 Giờ</option>
+                            <option value="1440" selected>24 Giờ</option>
+                            <option value="-1">Vĩnh viễn (Không xóa)</option>
+                            <option value="custom">Tùy chỉnh...</option>
+                        </select>
+                        <div id="custom-time-input" class="hidden mt-2 flex gap-2 items-center">
+                            <input type="number" id="custom-hours" placeholder="Giờ"
+                                class="w-1/2 p-2 border rounded-xl text-sm">
+                            <input type="number" id="custom-minutes" placeholder="Phút"
+                                class="w-1/2 p-2 border rounded-xl text-sm">
+                        </div>
+                    </div>
+                    <button onclick="saveStatus()"
+                        class="w-full bg-love-500 text-white py-3 rounded-xl font-bold shadow-md">Cập nhật trạng
+                        thái</button>
                 </div>
             </div>
 
-            <div id="events-list" class="space-y-4 pb-10">
-            </div>
-        </div>
+            <div id="page-2"
+                class="page-content w-full flex-shrink-0 h-full overflow-y-auto hide-scrollbar  text-center h-[calc(100vh-100px)] flex flex-col justify-center items-center p-5 ">
+                <div
+                    class="w-full glass-card-special bg-white/60 rounded-[2.5rem] p-6 text-center shadow-lg shadow-love-100/20 border border-white/40 mb-auto mt-4">
+                    <div class="mb-2">
+                        <div class="relative w-40 h-40 mx-auto flex items-center justify-center">
+                            <div class="absolute inset-0 bg-orange-50 rounded-full animate-pulse opacity-70"></div>
+                            <div id="fire-glow"
+                                class="absolute inset-4 rounded-full animate-pulse opacity-50 animation-delay-500 bg-orange-100 transition-colors duration-500">
+                            </div>
+                            <i id="fire-icon"
+                                class="fas fa-fire text-8xl drop-shadow-2xl relative z-10 animate-float text-orange-500 transition-colors duration-500"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-800 mt-2">Lửa Tình Yêu</h2>
+                        <div class="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-b from-orange-400 to-love-600 my-1"
+                            id="streak-count">0</div>
+                        <p class="text-black-400 font-bold uppercase tracking-wider text-xs">Ngày liên tiếp giữ lửa</p>
+                        <div id="streak-milestone" class="text-xs font-bold mt-2 text-love-500 h-4"></div>
+                    </div>
 
-        <div id="tab-diary"
-            class="tab-content p-5 bg-gray-50 min-h-screen rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-            <div class="flex justify-between items-center mb-6 px-2">
-                <h2 class="text-xl font-bold text-gray-800">Dòng thời gian</h2>
-                <div class="flex gap-2">
-                    <select id="filter-author" onchange="updateDiaryPage()"
-                        class="bg-white border border-gray-200 text-xs rounded-full px-3 py-1.5 focus:outline-none">
-                        <option value="all">Tất cả</option>
-                        <option value="me">Của tôi</option>
-                        <option value="partner">Của người ấy</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="bg-white p-4 rounded-3xl shadow-sm mb-8 border border-gray-100 relative z-10"
-                id="create-post-container">
-                <div class="flex gap-3">
-                    <img id="diary-avatar" src=""
-                        class="w-10 h-10 rounded-full bg-gray-100 border border-white shadow-sm object-cover">
-                    <div class="w-full">
-                        <textarea id="diary-content"
-                            class="w-full h-16 p-2 text-sm bg-gray-50 rounded-xl border-none focus:ring-1 focus:ring-love-200 resize-none transition-all placeholder-gray-400"
-                            placeholder="Lưu giữ khoảnh khắc này..."></textarea>
-                        <input type="hidden" id="edit-post-id">
-
-                        <div class="flex justify-between items-center mt-2">
-                            <label
-                                class="cursor-pointer text-gray-400 hover:text-love-500 transition flex items-center gap-2 text-xs bg-gray-50 px-3 py-1.5 rounded-full hover:bg-gray-100">
-                                <i class="fas fa-images"></i>
-                                <span id="file-count">Thêm ảnh/video</span>
-                                <input type="file" id="diary-files" multiple accept="image/*,video/*" class="hidden"
-                                    onchange="updateFileCount()">
-                            </label>
-
-                            <div class="flex gap-2">
-                                <button id="btn-cancel-edit" onclick="cancelEdit()"
-                                    class="hidden text-gray-400 text-xs hover:text-gray-600 font-bold px-2">Hủy</button>
-                                <button id="btn-post" onclick="postDiary(this)"
-                                    class="bg-love-500 hover:bg-love-600 text-white px-5 py-1.5 rounded-full text-xs font-bold shadow-sm shadow-love-200 transition-all transform active:scale-95">
-                                    Đăng
-                                </button>
+                    <div
+                        class="bg-white rounded-[2.5rem] shadow-xl shadow-orange-100/50 p-4 border border-orange-50 w-full max-w-sm mx-auto">
+                        <div class="flex justify-between items-center gap-4">
+                            <div class="flex-1 flex flex-col items-center group">
+                                <img id="spark-u1-img" src=""
+                                    class="w-16 h-16 rounded-full mb-3 object-cover border-4 border-transparent">
+                                <button id="btn-checkin-1" onclick="checkIn(1)"
+                                    class="w-full py-2.5 rounded-2xl text-xs font-bold transition-all transform active:scale-95 shadow-sm">Điểm
+                                    danh</button>
+                            </div>
+                            <div class="h-20 w-px bg-gray-200"></div>
+                            <div class="flex-1 flex flex-col items-center group">
+                                <img id="spark-u2-img" src=""
+                                    class="w-16 h-16 rounded-full mb-3 object-cover border-4 border-transparent">
+                                <button id="btn-checkin-2" onclick="checkIn(2)"
+                                    class="w-full py-2.5 rounded-2xl text-xs font-bold transition-all transform active:scale-95 shadow-sm">Điểm
+                                    danh</button>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="diary-feed" class="relative pl-2 pb-24">
-            </div>
-        </div>
-
-        <div id="lightbox" class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4">
-            <button onclick="closeLightbox()" class="absolute top-4 right-4 text-white text-3xl z-[101]"><i
-                    class="fas fa-times"></i></button>
-            <div id="lightbox-content" class="max-w-full max-h-full relative"></div>
-        </div>
-
-        <div id="tab-settings" class="tab-content p-5">
-            <h2 class="text-2xl font-bold mb-6 text-gray-800 px-2">Cài đặt</h2>
-
-            <div class="bg-white rounded-[2rem] shadow-lg shadow-gray-100/50 p-6 mb-6 border border-gray-50">
-                <div class="flex items-center gap-3 mb-5 pb-3 border-b border-gray-50">
-                    <div class="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-orange-500"><i
-                            class="fas fa-music"></i></div>
-                    <h3 class="font-bold text-gray-700">Danh sách phát nhạc</h3>
-                </div>
-                <div class="space-y-3 mb-4" id="playlist-container">
-                </div>
-                <div class="flex gap-2 mt-4">
-                    <input type="text" id="new-song-name" placeholder="Tên bài hát"
-                        class="w-1/3 p-2 text-xs border rounded-xl">
-                    <input type="text" id="new-song-url" placeholder="Link Stream (mp3...)"
-                        class="w-2/3 p-2 text-xs border rounded-xl">
-                </div>
-                <button onclick="addSongToPlaylist()"
-                    class="w-full mt-2 bg-orange-500 text-white py-2 rounded-xl text-xs font-bold">Thêm bài hát</button>
-            </div>
-
-            <div class="bg-white rounded-[2rem] shadow-lg shadow-gray-100/50 p-6 mb-6 border border-gray-50">
-                <div class="flex items-center gap-3 mb-5 pb-3 border-b border-gray-50">
-                    <div class="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center text-purple-500"><i
-                            class="fas fa-paint-brush"></i></div>
-                    <h3 class="font-bold text-gray-700">Tùy biến giao diện</h3>
-                </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Màu chủ
-                            đạo</label>
-                        <div class="flex gap-2 overflow-x-auto pb-2">
-                            <button onclick="setThemeColor('pink')"
-                                class="w-8 h-8 rounded-full bg-[#f43f5e] border-2 border-white shadow-md focus:ring-2 ring-offset-2 ring-[#f43f5e]"></button>
-                            <button onclick="setThemeColor('blue')"
-                                class="w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-white shadow-md focus:ring-2 ring-offset-2 ring-[#3b82f6]"></button>
-                            <button onclick="setThemeColor('green')"
-                                class="w-8 h-8 rounded-full bg-[#10b981] border-2 border-white shadow-md focus:ring-2 ring-offset-2 ring-[#10b981]"></button>
-                            <button onclick="setThemeColor('purple')"
-                                class="w-8 h-8 rounded-full bg-[#8b5cf6] border-2 border-white shadow-md focus:ring-2 ring-offset-2 ring-[#8b5cf6]"></button>
-                            <button onclick="setThemeColor('yellow')"
-                                class="w-8 h-8 rounded-full bg-[#f59e0b] border-2 border-white shadow-md focus:ring-2 ring-offset-2 ring-[#f59e0b]"></button>
+                        <div id="streak-message"
+                            class="mt-6 py-3 px-4 bg-orange-50 rounded-4xl text-sm font-bold text-orange-600 hidden border border-orange-100">
+                            <i class="fas fa-fire-alt mr-2"></i>Tuyệt vời! Lửa đã được giữ!
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Phông
-                            chữ</label>
-                        <select id="set-font" class="w-full rounded-input bg-gray-50 text-sm">
-                            <option value="Nunito">Nunito (Tròn trịa)</option>
-                            <option value="Lora">Lora (Có chân - Sang trọng)</option>
-                            <option value="Comfortaa">Comfortaa (Phá cách)</option>
+                </div>
+            </div>
+
+            <div id="page-3" class="page-content w-full flex-shrink-0 h-full overflow-y-auto hide-scrollbar pb-20">
+                <div
+                    class="flex justify-between items-end mb-2 px-1 glass-card-special bg-white/60 rounded-[2rem] p-2 px-3 text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl ">
+                    <h3 class="font-bold text-gray-800 text-2xl">Sự kiện sắp tới</h3>
+                    <button onclick="toggleEventForm()"
+                        class="text-white bg-love-500 hover:bg-love-600 px-4 py-2 rounded-full text-xs font-bold shadow-md flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Thêm
+                    </button>
+                </div>
+
+                <div id="event-form"
+                    class="hidden bg-white p-6 rounded-[2rem] shadow-xl shadow-gray-100 mb-6 border border-gray-100 transition-all relative z-20 glass-card-special bg-white/60 rounded-[2rem] p-2 pl-4 text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl ">
+                    <h4 class="font-bold text-gray-700 mb-4" id="event-form-title">Sự kiện mới</h4>
+                    <input type="hidden" id="event-id">
+                    <input type="text" id="event-title" placeholder="Tên sự kiện"
+                        class="w-full rounded-input mb-3 bg-gray-50 text-sm">
+                    <input type="date" id="event-date" class="w-full rounded-input mb-3 bg-gray-50 text-sm">
+
+                    <div class="mb-3">
+                        <div class="flex gap-2">
+                            <input type="text" id="event-bg" placeholder="Link ảnh nền..."
+                                class="flex-grow rounded-input bg-gray-50 text-xs">
+                            <button
+                                onclick="openFilePicker((url) => { document.getElementById('event-bg').value = url; })"
+                                class="w-10 h-10 rounded-xl bg-gray-200 text-gray-600 flex items-center justify-center">
+                                <i class="fas fa-image"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="relative mb-4">
+                        <select id="event-recur"
+                            class="w-full rounded-input bg-gray-50 text-sm appearance-none cursor-pointer">
+                            <option value="none">Chỉ một lần</option>
+                            <option value="year">Lặp lại hàng năm</option>
+                            <option value="month">Lặp lại hàng tháng</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Hình nền ứng
-                            dụng</label>
-                        <input type="text" id="set-bg-url" placeholder="Link ảnh (hoặc tải lên bên dưới)"
-                            class="w-full rounded-input bg-gray-50 text-xs mb-1">
+                    <div class="flex gap-2">
+                        <button onclick="toggleEventForm()"
+                            class="flex-1 bg-gray-200 text-gray-600 py-3 rounded-full text-sm font-bold">Hủy</button>
+                        <button id="btn-save-event" onclick="saveEvent(this)"
+                            class="flex-1 bg-gray-800 text-white py-3 rounded-full text-sm font-bold">Lưu</button>
+                    </div>
+                </div>
+
+                <div id="events-list"
+                    class="space-y-2 glass-card-special bg-white/60 rounded-[2rem] p-2  text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl">
+                </div>
+            </div>
+
+            <div id="page-4" class="page-content w-full flex-shrink-0 h-full overflow-y-auto hide-scrollbar pb-20">
+                <div
+                    class="flex justify-between items-center mb-6 px-2 glass-card-special bg-white/60 rounded-[2rem] p-2 pl-4 text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl">
+                    <h2 class="text-xl font-bold text-gray-800">Dòng thời gian</h2>
+                    <div class="flex gap-2">
+                        <select id="filter-author" onchange="updateDiaryPage()"
+                            class="bg-white border border-gray-200 text-xs rounded-full px-3 py-1.5 focus:outline-none">
+                            <option value="all">Tất cả</option>
+                            <option value="me">Của tôi</option>
+                            <option value="partner">Của người ấy</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 mb-6">
+                    <textarea id="diary-content" rows="3"
+                        class="w-full bg-gray-50 rounded-2xl p-4 text-sm focus:outline-none focus:ring-2 ring-love-100 transition resize-none"
+                        placeholder="Hôm nay bạn thế nào?"></textarea>
+
+                    <div id="diary-media-preview" class="flex gap-2 flex-wrap mt-3 empty:hidden"></div>
+
+                    <div class="flex justify-between items-center mt-2">
                         <label
-                            class="block w-full text-center bg-white border border-dashed border-gray-300 rounded-xl p-2 text-xs text-gray-500 cursor-pointer hover:bg-gray-100">
-                            <i class="fas fa-cloud-upload-alt mr-1"></i> Tải ảnh nền
-                            <input type="file" id="set-bg-file" class="hidden" accept="image/*">
+                            class="cursor-pointer text-gray-400 hover:text-love-500 transition flex items-center gap-2 text-xs bg-gray-50 px-3 py-1.5 rounded-full hover:bg-gray-100">
+                            <i class="fas fa-images"></i>
+                            <span id="file-count">Thêm ảnh/video</span>
+
+                            <input type="file" id="diary-files" multiple class="hidden" onchange="handleFileSelect(this)">
                         </label>
-                        <button onclick="clearBackground()" class="text-[10px] text-red-400 mt-1 hover:underline">Xóa
-                            hình nền</button>
+
+                        <div class="flex gap-2">
+                            <button id="btn-cancel-edit" onclick="cancelEdit()"
+                                class="hidden text-gray-400 text-xs hover:text-gray-600 font-bold px-2">Hủy</button>
+                            <button id="btn-post-diary" onclick="postDiary()"
+                                class="bg-love-500 hover:bg-love-600 text-white px-5 py-1.5 rounded-full text-xs font-bold shadow-sm shadow-love-200 transition-all transform active:scale-95">
+                                Đăng
+                            </button>
+                        </div>
                     </div>
+                </div>
+
+
+                <div id="diary-feed" class="relative  pb-24">
+
                 </div>
             </div>
 
-            <div class="bg-white rounded-[2rem] shadow-lg shadow-gray-100/50 p-6 mb-6 border border-gray-50">
-                <div class="flex items-center gap-3 mb-5 pb-3 border-b border-gray-50">
-                    <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500"><i
-                            class="fas fa-user-edit"></i></div>
-                    <h3 class="font-bold text-gray-700">Thông tin cặp đôi</h3>
+            <div id="page-5" class="page-content w-full flex-shrink-0 h-full overflow-y-auto hide-scrollbar pb-20">
+                <div
+                    class="flex justify-between items-center mb-2 px-2 glass-card-special bg-white/60 rounded-[2rem] p-2 pl-4 text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl ">
+                    <h2 class="text-2xl font-bold text-gray-800">Kho lưu trữ</h2>
+                    <div class="flex gap-2">
+                        <button id="btn-toggle-select" onclick="toggleGallerySelectMode()"
+                            class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-200 transition">
+                            Chọn
+                        </button>
+
+                        <button onclick="toggleGalleryUpload()"
+                            class="bg-love-500 text-white w-8 h-8 rounded-full shadow-lg shadow-love-200 flex items-center justify-center hover:bg-love-600 transition">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button onclick="loadGallery()"
+                            class="text-gray-400 hover:text-love-500 w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="space-y-5">
-                    <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Ngày bắt đầu
-                            yêu</label>
+                <div id="gallery-upload-form"
+                    class="hidden bg-white p-4 rounded-[2rem] shadow-xl border border-love-100 mb-6 animate-slide-down relative z-20">
+                    <h3 class="font-bold text-gray-700 mb-3 text-sm">Tải lên tập tin mới</h3>
+
+                    <div class="mb-3">
+                        <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Lưu vào thư mục</label>
+                        <select id="upload-target-folder"
+                            class="w-full rounded-xl border border-gray-200 p-2 text-sm bg-gray-50 focus:border-love-300 outline-none">
+                            <option value="files">Chung</option>
+                            <option value="posts">Nhật ký (Posts)</option>
+                            <option value="events">Sự kiện (Events)</option>
+                            <option value="backgrounds">Hình nền (Backgrounds)</option>
+                            <option value="avatars">Ảnh đại diện (Avatars)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label
+                            class="block w-full text-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-6 cursor-pointer hover:bg-love-50 hover:border-love-300 transition group">
+                            <i
+                                class="fas fa-cloud-upload-alt text-2xl text-gray-400 group-hover:text-love-500 mb-2"></i>
+                            <p class="text-xs text-gray-500 group-hover:text-love-500 font-bold">Chạm để chọn ảnh/video
+                            </p>
+                            <input type="file" id="gallery-upload-input" multiple accept="image/*,video/*"
+                                class="hidden" onchange="updateUploadLabel()">
+                        </label>
+                        <p id="upload-file-label" class="text-center text-[10px] text-gray-400 mt-2 h-4 truncate"></p>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button onclick="toggleGalleryUpload()"
+                            class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl text-sm font-bold">Hủy</button>
+                        <button onclick="executeGalleryUpload(this)"
+                            class="flex-1 bg-love-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-md shadow-love-200">Tải
+                            lên ngay</button>
+                    </div>
+                </div>
+
+                <div id="gallery-toolbar"
+                    class="hidden sticky top-0 z-10 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-lg mb-4 flex justify-between items-center border border-love-100 animate-slide-down">
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="select-all-files" onchange="toggleSelectAllFiles()"
+                            class="w-4 h-4 rounded text-love-500 focus:ring-love-500 cursor-pointer">
+                        <span class="text-xs font-bold text-gray-600" id="selected-count">0 đã chọn</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="downloadSelectedFiles()"
+                            class="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100"><i
+                                class="fas fa-download text-xs"></i></button>
+                        <button onclick="deleteSelectedFiles()"
+                            class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100"><i
+                                class="fas fa-trash text-xs"></i></button>
+                    </div>
+                </div>
+
+                <div id="gallery-grid"
+                    class="glass-card-special bg-white/60 rounded-[2rem] p-2 text-center shadow-lg shadow-love-100/20 border border-white/40 mb-auto mt-2 grid grid-cols-3 gap-1 rounded-2xl overflow-hidden">
+                    <div class="col-span-3 text-center py-10 text-gray-400 text-xs italic">Đang tải dữ liệu...</div>
+                </div>
+            </div>
+
+            <div id="page-6" class="page-content w-full flex-shrink-0 h-full overflow-y-auto hide-scrollbar pb-24">
+                <h2
+                    class="text-2xl font-bold mb-5 text-gray-800 px-4 pt-2 glass-card-special bg-white/60 rounded-[2rem] p-2 pl-4 text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl">
+                    Cài đặt</h2>
+
+                <div class="bg-white rounded-[2rem] shadow-xl shadow-gray-100/50 p-5 mb-5 border border-white/60 ">
+                    <div class="flex items-center gap-3 mb-5 pb-3 border-b border-gray-50">
+                        <div
+                            class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 shadow-sm">
+                            <i class="fas fa-user-edit"></i>
+                        </div>
+                        <h3 class="font-bold text-gray-700">Thông tin Love Profile</h3>
+                    </div>
+
+                    <div class="mb-5 relative">
+                        <label
+                            class="z-10 rounded-full absolute -top-2 left-3 bg-white px-2 text-[10px] font-bold text-love-500 uppercase">Ngày
+                            bắt đầu yêu</label>
                         <input type="date" id="set-start-date"
-                            class="w-full rounded-input bg-gray-50 text-sm font-bold text-gray-700">
+                            class="w-full rounded-2xl border-2 border-love-50 p-3 text-sm font-bold text-gray-700 text-center bg-white focus:border-love-300 outline-none">
                     </div>
-                    <div class="bg-gray-50 p-3 rounded-2xl">
-                        <label class="block text-xs text-love-500 font-bold mb-2 uppercase">Người ấy 1</label>
-                        <input type="text" id="set-name-1" placeholder="Tên"
-                            class="w-full p-2 mb-2 bg-white rounded-xl border border-gray-200 text-sm">
-                        <input type="date" id="set-dob-1"
-                            class="w-full p-2 bg-white rounded-xl border border-gray-200 text-xs">
-                        <div class="mt-2">
-                            <input type="text" id="set-ava-1" placeholder="URL Avatar"
-                                class="w-full p-2 bg-white rounded-xl border border-gray-200 text-xs mb-1">
-                            <label
-                                class="block w-full text-center bg-white border border-dashed border-gray-300 rounded-xl p-2 text-xs text-gray-500 cursor-pointer hover:bg-gray-100">
-                                <i class="fas fa-cloud-upload-alt mr-1"></i> Tải ảnh lên
-                                <input type="file" class="hidden" accept="image/*" onchange="uploadAvatar(this, 1)">
-                            </label>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-2">
+                            <div class="text-center">
+                                <span
+                                    class="text-[10px] font-black text-blue-400 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded-md">Bạn
+                                    Nam</span>
+                            </div>
+                            <div class="relative w-20 h-20 mx-auto group cursor-pointer" onclick="openFilePicker((url) => { 
+                                    document.getElementById('preview-ava-1').src = url; 
+                                    document.getElementById('set-ava-1').value = url; 
+                                })">
+                                <img id="preview-ava-1" src="/Asset/logo/iconApps.png"
+                                    class="w-full h-full rounded-full object-cover border-2 border-gray-100 shadow-sm">
+                                <label
+                                    class="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="fas fa-camera text-white"></i>
+                                </label>
+                            </div>
+                            <input type="hidden" id="set-ava-1">
+
+                            <input type="text" id="set-name-1" placeholder="Biệt danh"
+                                class="w-full text-center rounded-lg text-xs font-bold border-b border-gray-200 p-1 focus:border-blue-400 outline-none bg-transparent">
+                            <input type="date" id="set-dob-1"
+                                class="w-full text-[10px] text-gray-500 bg-gray-50 rounded-lg p-1 text-center border-none">
                         </div>
-                    </div>
-                    <div class="bg-gray-50 p-3 rounded-2xl">
-                        <label class="block text-xs text-love-500 font-bold mb-2 uppercase">Người ấy 2</label>
-                        <input type="text" id="set-name-2" placeholder="Tên"
-                            class="w-full p-2 mb-2 bg-white rounded-xl border border-gray-200 text-sm">
-                        <input type="date" id="set-dob-2"
-                            class="w-full p-2 bg-white rounded-xl border border-gray-200 text-xs">
-                        <div class="mt-2">
-                            <input type="text" id="set-ava-2" placeholder="URL Avatar"
-                                class="w-full p-2 bg-white rounded-xl border border-gray-200 text-xs mb-1">
-                            <label
-                                class="block w-full text-center bg-white border border-dashed border-gray-300 rounded-xl p-2 text-xs text-gray-500 cursor-pointer hover:bg-gray-100">
-                                <i class="fas fa-cloud-upload-alt mr-1"></i> Tải ảnh lên
-                                <input type="file" class="hidden" accept="image/*" onchange="uploadAvatar(this, 2)">
-                            </label>
+
+                        <div class="flex flex-col gap-2 border-l border-gray-50 pl-4">
+                            <div class="text-center">
+                                <span
+                                    class="text-[10px] font-black text-pink-400 uppercase tracking-widest bg-pink-50 px-2 py-0.5 rounded-md">Bạn
+                                    Nữ</span>
+                            </div>
+                            <div class="relative w-20 h-20 mx-auto group cursor-pointer" onclick="openFilePicker((url) => { 
+                                    document.getElementById('preview-ava-2').src = url; 
+                                    document.getElementById('set-ava-2').value = url; 
+                                })">
+                                <img id="preview-ava-2" src="/Asset/logo/iconApps.png"
+                                    class="w-full h-full rounded-full object-cover border-2 border-gray-100 shadow-sm">
+                                <label
+                                    class="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <i class="fas fa-camera text-white"></i>
+                                </label>
+                            </div>
+                            <input type="hidden" id="set-ava-2">
+
+                            <input type="text" id="set-name-2" placeholder="Biệt danh"
+                                class="w-full text-center rounded-lg text-xs font-bold border-b border-gray-200 p-1 focus:border-pink-400 outline-none bg-transparent">
+                            <input type="date" id="set-dob-2"
+                                class="w-full text-[10px] text-gray-500 bg-gray-50 rounded-lg p-1 text-center border-none">
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <button id="btn-save-settings" onclick="saveSettings(this)"
-                class="w-full mb-6 bg-gray-800 text-white py-3 rounded-full font-bold text-sm hover:bg-black transition shadow-lg shadow-gray-200">Lưu
-                Thay Đổi</button>
+                <div class="bg-white rounded-[2rem] shadow-xl shadow-gray-100/50 p-5 mb-5 border border-white/60 mx-2">
+
+
+                    <div class="flex items-center gap-3 mb-4">
+                        <div
+                            class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 shadow-sm">
+                            <i class="fas fa-paint-brush text-xs"></i>
+                        </div>
+                        <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wide">Giao diện</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div
+                            class="flex justify-between items-center bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                            <span class="text-xs font-bold text-gray-500">Màu chủ đạo</span>
+                            <div class="flex gap-2">
+                                <button onclick="setThemeColor('pink')"
+                                    class="w-6 h-6 rounded-full bg-[#f43f5e] ring-2 ring-transparent focus:ring-gray-300 shadow-sm transition-transform active:scale-90"></button>
+                                <button onclick="setThemeColor('blue')"
+                                    class="w-6 h-6 rounded-full bg-[#3b82f6] ring-2 ring-transparent focus:ring-gray-300 shadow-sm transition-transform active:scale-90"></button>
+                                <button onclick="setThemeColor('green')"
+                                    class="w-6 h-6 rounded-full bg-[#10b981] ring-2 ring-transparent focus:ring-gray-300 shadow-sm transition-transform active:scale-90"></button>
+                                <button onclick="setThemeColor('purple')"
+                                    class="w-6 h-6 rounded-full bg-[#8b5cf6] ring-2 ring-transparent focus:ring-gray-300 shadow-sm transition-transform active:scale-90"></button>
+                                <button onclick="setThemeColor('yellow')"
+                                    class="w-6 h-6 rounded-full bg-[#f59e0b] ring-2 ring-transparent focus:ring-gray-300 shadow-sm transition-transform active:scale-90"></button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Phông
+                                    chữ</label>
+                                <select id="set-font"
+                                    class="w-full rounded-xl bg-gray-50 border border-gray-100 text-xs p-2.5 focus:border-love-300 outline-none">
+                                    <option value="Nunito">Nunito (Tròn)</option>
+                                    <option value="Lora">Lora (Sang)</option>
+                                    <option value="Comfortaa">Comfortaa (Phá cách)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Độ trong
+                                    suốt: <span id="opacity-value" class="text-love-500">20%</span></label>
+                                <input type="range" id="set-opacity" min="0" max="0.95" step="0.05" value="0.2"
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-love-500 mt-2"
+                                    oninput="updateGlassPreview(this.value)">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1 ml-1">Hình nền
+                                App</label>
+                            <div class="flex gap-2">
+                                <div class="relative flex-grow">
+                                    <input type="text" id="set-bg-url" placeholder="Link ảnh..."
+                                        class="w-full rounded-xl bg-gray-50 border border-gray-100 text-xs p-2.5 pl-8 focus:border-love-300 outline-none"
+                                        onchange="previewBackground(this.value)">
+                                    <i class="fas fa-image absolute left-3 top-3 text-gray-400 text-xs"></i>
+                                </div>
+
+                                <button onclick="openFilePicker((url) => { 
+                    document.getElementById('set-bg-url').value = url; 
+                    previewBackground(url); 
+                })" class="flex-shrink-0 w-10 h-10 bg-love-50 text-love-500 rounded-xl flex items-center justify-center cursor-pointer hover:bg-love-100 transition shadow-sm border border-love-100">
+                                    <i class="fas fa-cloud-upload-alt text-sm"></i>
+                                </button>
+                            </div>
+
+                            <div class="text-right mt-1">
+                                <button onclick="clearBackground()"
+                                    class="text-[10px] text-red-400 hover:text-red-600 font-bold px-2">Xóa nền</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="h-px bg-gray-100 my-2 mx-2"></div>
+
+                    <div class="flex items-center gap-3 mb-4">
+                        <div
+                            class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 shadow-sm">
+                            <i class="fas fa-music text-xs"></i>
+                        </div>
+                        <h3 class="font-bold text-gray-700 text-sm uppercase tracking-wide">Nhạc nền</h3>
+                    </div>
+
+                    <div class="space-y-2 mb-3 max-h-40 overflow-y-auto pr-1 hide-scrollbar" id="playlist-container">
+                    </div>
+
+                    <div class="bg-gray-50 p-2 rounded-xl border border-gray-100 flex flex-col gap-2">
+                        <div class="flex gap-2">
+                            <input type="text" id="new-song-name" placeholder="Tên bài"
+                                class="w-1/3 bg-white p-2 text-xs border border-gray-200 rounded-lg focus:outline-none">
+                            <input type="text" id="new-song-url" placeholder="Link MP3..."
+                                class="w-2/3 bg-white p-2 text-xs border border-gray-200 rounded-lg focus:outline-none">
+                        </div>
+                        <button onclick="addSongToPlaylist()"
+                            class="w-full bg-orange-500 text-white py-1.5 rounded-lg text-xs font-bold hover:bg-orange-600 transition">Thêm
+                            vào List</button>
+                    </div>
+                </div>
+
+
+
+                <div class="mx-2 mb-5">
+                    <button id="btn-save-settings" onclick="saveSettings(this)"
+                        class="w-full bg-gray-800 text-white py-3.5 rounded-2xl font-bold text-sm hover:bg-black transition shadow-lg shadow-gray-300 flex items-center justify-center gap-2">
+                        <i class="fas fa-save"></i> Lưu Thay Đổi
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-[2rem] shadow-lg p-5 mb-2 border border-gray-50 mx-2">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Mã cặp đôi</p>
+                            <div onclick="copyCoupleCode()"
+                                class="text-love-500 font-black text-lg tracking-widest cursor-pointer hover:underline flex items-center gap-2">
+                                <span id="display-couple-code">...</span> <i
+                                    class="far fa-copy text-xs text-gray-300"></i>
+                            </div>
+                        </div>
+                        <button onclick="changeCoupleCode()"
+                            class="bg-gray-50 text-gray-500 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-love-50 hover:text-love-500 transition">
+                            Đổi mã
+                        </button>
+                    </div>
+
+                    <div class="h-px bg-gray-100 my-4"></div>
+
+                    <button onclick="logout()"
+                        class="w-full text-red-500 text-xs font-bold flex items-center justify-center gap-2 py-2 hover:bg-red-50 rounded-xl transition">
+                        <i class="fas fa-sign-out-alt"></i> Đăng xuất khỏi thiết bị
+                    </button>
+                </div>
+
+                <p class="text-center text-gray-300 text-[10px] mt-4 font-mono">Love App v2.0 - Built with ❤️</p>
+            </div>
+        </div>
+
+
+
+
+
+
+        <div id="lightbox"
+            class="fixed inset-0 z-[100] hidden bg-black/95 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-none">
+
+            <button onclick="closeLightbox()"
+                class="absolute top-4 right-4 text-white/70 hover:text-white z-[102] p-3 bg-black/20 rounded-full active:scale-90 transition">
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+
+            <button onclick="event.stopPropagation(); changeLightboxImage(-1)"
+                class="absolute left-2 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white z-[102] p-3 rounded-full bg-black/10 hover:bg-black/40 active:scale-90 transition backdrop-blur-[2px]">
+                <i class="fas fa-chevron-left text-2xl sm:text-3xl"></i>
+            </button>
+
+            <button onclick="event.stopPropagation(); changeLightboxImage(1)"
+                class="absolute right-2 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white z-[102] p-3 rounded-full bg-black/10 hover:bg-black/40 active:scale-90 transition backdrop-blur-[2px]">
+                <i class="fas fa-chevron-right text-2xl sm:text-3xl"></i>
+            </button>
+
+            <div id="lightbox-wrapper" class="w-full h-full flex items-center justify-center relative touch-none">
+                <div id="lightbox-content" class="max-w-full max-h-full transition-transform duration-200 ease-out p-2">
+                </div>
+            </div>
 
             <div
-                class="bg-white rounded-[2rem] shadow-lg shadow-gray-100/50 p-6 mb-6 border border-gray-50 text-center">
-                <p class="text-xs text-gray-400 mb-2">Mã cặp đôi hiện tại</p>
-                <div onclick="copyCoupleCode()"
-                    class="bg-love-50 py-3 rounded-xl text-love-600 font-black text-xl tracking-widest cursor-pointer hover:bg-love-100 transition"
-                    id="display-couple-code">...</div>
-
-                <div class="mt-4 pt-4 border-t border-gray-100">
-                    <button onclick="changeCoupleCode()" class="text-xs text-gray-500 hover:text-love-500 underline">Đổi
-                        mã (Tạo kết nối mới)</button>
-                </div>
-            </div>
-
-
-
-            <button onclick="logout()"
-                class="w-full mt-4 text-red-500 text-sm border border-red-100 bg-red-50 py-3 rounded-full hover:bg-red-100 transition font-bold">Đăng
-                xuất</button>
-            <p class="text-center text-gray-300 text-xs mt-4 mb-20">Phiên bản 1.2.4</p>
-        </div>
-
-        <div id="tab-gallery" class="tab-content p-5 pb-24">
-            <div class="flex justify-between items-center mb-4 px-2">
-                <h2 class="text-2xl font-bold text-gray-800">Kho lưu trữ</h2>
-                <div class="flex gap-3">
-                    <button onclick="toggleGalleryUpload()"
-                        class="bg-love-500 text-white w-8 h-8 rounded-full shadow-lg shadow-love-200 flex items-center justify-center hover:bg-love-600 transition">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                    <button onclick="loadGallery()"
-                        class="text-gray-400 hover:text-love-500 w-8 h-8 flex items-center justify-center bg-gray-100 rounded-full">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div id="gallery-upload-form"
-                class="hidden bg-white p-4 rounded-[2rem] shadow-xl border border-love-100 mb-6 animate-slide-down relative z-20">
-                <h3 class="font-bold text-gray-700 mb-3 text-sm">Tải lên tập tin mới</h3>
-
-                <div class="mb-3">
-                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Lưu vào thư mục</label>
-                    <select id="upload-target-folder"
-                        class="w-full rounded-xl border border-gray-200 p-2 text-sm bg-gray-50 focus:border-love-300 outline-none">
-                        <option value="files">Chung</option>
-                        <option value="posts">Nhật ký (Posts)</option>
-                        <option value="events">Sự kiện (Events)</option>
-                        <option value="backgrounds">Hình nền (Backgrounds)</option>
-                        <option value="avatars">Ảnh đại diện (Avatars)</option>
-                    </select>
-                </div>
-
-                <div class="mb-4">
-                    <label
-                        class="block w-full text-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-6 cursor-pointer hover:bg-love-50 hover:border-love-300 transition group">
-                        <i class="fas fa-cloud-upload-alt text-2xl text-gray-400 group-hover:text-love-500 mb-2"></i>
-                        <p class="text-xs text-gray-500 group-hover:text-love-500 font-bold">Chạm để chọn ảnh/video</p>
-                        <input type="file" id="gallery-upload-input" multiple accept="image/*,video/*" class="hidden"
-                            onchange="updateUploadLabel()">
-                    </label>
-                    <p id="upload-file-label" class="text-center text-[10px] text-gray-400 mt-2 h-4 truncate"></p>
-                </div>
-
-                <div class="flex gap-2">
-                    <button onclick="toggleGalleryUpload()"
-                        class="flex-1 bg-gray-100 text-gray-600 py-2.5 rounded-xl text-sm font-bold">Hủy</button>
-                    <button onclick="executeGalleryUpload(this)"
-                        class="flex-1 bg-love-500 text-white py-2.5 rounded-xl text-sm font-bold shadow-md shadow-love-200">Tải
-                        lên ngay</button>
-                </div>
-            </div>
-
-            <div id="gallery-toolbar"
-                class="hidden sticky top-0 z-10 bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-lg mb-4 flex justify-between items-center border border-love-100 animate-slide-down">
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" id="select-all-files" onchange="toggleSelectAllFiles()"
-                        class="w-4 h-4 rounded text-love-500 focus:ring-love-500 cursor-pointer">
-                    <span class="text-xs font-bold text-gray-600" id="selected-count">0 đã chọn</span>
-                </div>
-                <div class="flex gap-2">
-                    <button onclick="downloadSelectedFiles()"
-                        class="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100"><i
-                            class="fas fa-download text-xs"></i></button>
-                    <button onclick="deleteSelectedFiles()"
-                        class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100"><i
-                            class="fas fa-trash text-xs"></i></button>
-                </div>
-            </div>
-
-            <div id="gallery-grid" class="grid grid-cols-3 gap-1 rounded-2xl overflow-hidden pb-10">
-                <div class="col-span-3 text-center py-10 text-gray-400 text-xs italic">Đang tải dữ liệu...</div>
+                class="absolute bottom-6 left-1/2 transform -translate-x-1/2 text-white/80 text-xs font-bold bg-black/30 px-3 py-1 rounded-full backdrop-blur">
+                <span id="lightbox-current">1</span> / <span id="lightbox-total">1</span>
             </div>
         </div>
-
     </div>
 
-    <nav class="floating-nav">
-        <button onclick="switchTab('home')"
-            class="nav-btn active group flex flex-col items-center justify-center w-12 h-12 rounded-full text-love-500 hover:bg-love-50 transition relative">
-            <i class="fas fa-home text-lg"></i>
-        </button>
-        <button onclick="switchTab('todo')"
-            class="nav-btn group flex flex-col items-center justify-center w-10 h-10 rounded-full text-gray-400 hover:text-love-500 hover:bg-love-50 transition relative">
-            <i class="fas fa-check-square text-lg"></i> </button>
-        <button onclick="switchTab('sparks')"
-            class="nav-btn group flex flex-col items-center justify-center w-12 h-12 rounded-full text-gray-400 hover:text-love-500 hover:bg-love-50 transition relative">
-            <i class="fas fa-fire text-lg"></i>
-        </button>
-        <button onclick="switchTab('events')"
-            class="nav-btn group flex flex-col items-center justify-center w-12 h-12 rounded-full text-gray-400 hover:text-love-500 hover:bg-love-50 transition relative">
-            <i class="fas fa-calendar-alt text-lg"></i>
-        </button>
-        <button onclick="switchTab('diary')"
-            class="nav-btn group flex flex-col items-center justify-center w-12 h-12 rounded-full text-gray-400 hover:text-love-500 hover:bg-love-50 transition relative">
-            <i class="fas fa-book-open text-lg"></i>
-        </button>
-        <button onclick="switchTab('settings')"
-            class="nav-btn group flex flex-col items-center justify-center w-12 h-12 rounded-full text-gray-400 hover:text-love-500 hover:bg-love-50 transition relative">
-            <i class="fas fa-cog text-lg"></i>
-        </button>
-        <button onclick="switchTab('gallery')"
-            class="nav-btn group flex flex-col items-center justify-center w-12 h-12 rounded-full text-gray-400 hover:text-love-500 hover:bg-love-50 transition relative">
-            <i class="fas fa-folder-open text-lg"></i>
-        </button>
-    </nav>
+    <div class="fixed bottom-4 left-0 w-full z-40 flex justify-center pointer-events-none">
+        <div id="pagination-dots"
+            class="flex gap-2 bg-white/80 backdrop-blur-xl px-1 py-1 rounded-full shadow-2xl border border-white/50 pointer-events-auto transition-all hover:scale-105">
+        </div>
+    </div>
+
+    <style>
+        /* Style cho Nút tròn có Icon */
+        .nav-dot {
+            padding: 4px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.05);
+            /* Nền xám nhạt khi chưa chọn */
+            color: #9ca3af;
+            /* Màu icon xám */
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Hiệu ứng nảy */
+            cursor: pointer;
+            position: relative;
+        }
+
+        /* Trạng thái đang chọn */
+        .nav-dot.active {
+            background-color: var(--love-500);
+            width: 30px;
+            border-radius: 20px;
+            /* Nền màu chủ đạo */
+            color: white;
+            /* Icon màu trắng */
+            /* Nổi lên trên và to ra */
+            box-shadow: 0 8px 10px var(--love-200);
+            /* Đổ bóng màu hồng */
+        }
+
+        /* Icon bên trong */
+        .nav-dot i {
+            font-size: 10px;
+            transition: transform 0.3s;
+        }
+    </style>
 
     <div id="sys-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="Modal.close()"></div>
@@ -1100,1687 +1333,162 @@
         class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[300] flex flex-col items-center gap-3 w-full max-w-xs pointer-events-none">
     </div>
 
-    <script>
-        const SUPABASE_URL = 'https://xeenspuseysqaisfcxbo.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlZW5zcHVzZXlzcWFpc2ZjeGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3NzE0NDMsImV4cCI6MjA4MzM0NzQ0M30.uJ52xnUvw2wT_QJEw4Rx_DSB5rddc32_Ie0RY9hqNKw';
+    <div id="file-picker-modal"
+        class="fixed inset-0 z-[100] hidden flex items-end sm:items-center justify-center sm:p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeFilePicker()"></div>
 
-        // Data Schema 6.0
-        const DEFAULT_DATA = {
-            startDate: '2023-01-01',
-            user1: { id: '', name: 'Nam', dob: '2000-01-01', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix', status: { text: '', duration: 1440, timestamp: 0 } },
-            user2: { id: '', name: 'Nữ', dob: '2002-05-20', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka', status: { text: '', duration: 1440, timestamp: 0 } },
-            streak: { count: 0, lastDate1: null, lastDate2: null },
-            events: [
-                { id: 1, title: 'Kỷ niệm 1 năm', date: '2024-01-01', recur: 'year', bg: '' }
-            ],
-            diary: [],
-            todos: [],
-            playlist: [], // Music list {name, url}
-            theme: { color: 'pink', font: 'Nunito', bg: '' },
-            heartTimestamp: { u1: 0, u2: 0 },
-        };
+        <div
+            class="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl relative z-10 overflow-hidden flex flex-col max-h-[85vh] animate-slide-up sm:animate-zoom-in">
 
-        const THEMES = {
-            pink: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48' },
-            blue: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb' },
-            green: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669' },
-            purple: { 50: '#f5f3ff', 100: '#ede9fe', 200: '#ddd6fe', 300: '#c4b5fd', 400: '#a78bfa', 500: '#8b5cf6', 600: '#7c3aed' },
-            yellow: { 50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
-        };
-
-        const GRADIENTS = [
-            'bg-gradient-to-r from-pink-400 to-rose-500',
-            'bg-gradient-to-r from-blue-400 to-cyan-500',
-            'bg-gradient-to-r from-emerald-400 to-teal-500',
-            'bg-gradient-to-r from-violet-400 to-fuchsia-500',
-            'bg-gradient-to-r from-amber-400 to-orange-500',
-            'bg-gradient-to-r from-indigo-400 to-blue-500',
-        ];
-
-        let supabaseClient = null;
-        try { supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error(e); }
-
-        let currentUser = null;
-        let currentCoupleCode = null;
-        let appData = JSON.parse(JSON.stringify(DEFAULT_DATA));
-        let myUserIndex = 0; // 1 or 2
-        let tempThemeColor = 'pink';
-
-
-        /* --- CUSTOM MODAL SYSTEM --- */
-        /* --- NEW NOTIFICATION SYSTEM --- */
-        const Modal = {
-            // Phần Modal to (cho Confirm/Prompt)
-            element: document.getElementById('sys-modal'),
-            title: document.getElementById('sys-modal-title'),
-            msg: document.getElementById('sys-modal-msg'),
-            inputContainer: document.getElementById('sys-modal-input-container'),
-            input: document.getElementById('sys-modal-input'),
-            btnOk: document.getElementById('sys-modal-ok'),
-            btnCancel: document.getElementById('sys-modal-cancel'),
-            icon: document.getElementById('sys-modal-icon'),
-            resolvePromise: null,
-
-            // Phần Toast Container (cho Alert)
-            toastContainer: document.getElementById('toast-container'),
-
-            // --- LOGIC TOAST (Thay thế Alert) ---
-            showToast(message, type = 'info') {
-                // Tạo element
-                const toast = document.createElement('div');
-
-                // Style tùy chỉnh theo type
-                let iconClass = 'fa-info-circle';
-                let colorClass = 'text-love-500 bg-love-50 border-love-100'; // Default styling
-
-                if (message.toLowerCase().includes('lỗi') || message.toLowerCase().includes('error') || message.toLowerCase().includes('thất bại')) {
-                    iconClass = 'fa-exclamation-circle';
-                    colorClass = 'text-red-500 bg-red-50 border-red-100';
-                } else if (message.toLowerCase().includes('thành công') || message.toLowerCase().includes('đã lưu') || message.toLowerCase().includes('copy')) {
-                    iconClass = 'fa-check-circle';
-                    colorClass = 'text-green-500 bg-green-50 border-green-100';
-                }
-
-                toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border backdrop-blur-md min-w-[280px] toast-enter bg-white/95 ${colorClass.replace('bg-', 'border-')}`;
-
-                toast.innerHTML = `
-            <div class="flex-shrink-0 w-8 h-8 rounded-full ${colorClass} flex items-center justify-center">
-                <i class="fas ${iconClass}"></i>
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-20">
+                <h3 class="font-bold text-gray-800 text-lg">Chọn tệp tin</h3>
+                <button onclick="closeFilePicker()"
+                    class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"><i
+                        class="fas fa-times"></i></button>
             </div>
-            <p class="text-sm font-bold text-gray-700 flex-grow pr-2">${message}</p>
-            <button onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
-                <i class="fas fa-times text-xs"></i>
-            </button>
-        `;
 
-                // Thêm vào container
-                this.toastContainer.appendChild(toast);
-
-                // Tự động xóa sau 3 giây
-                setTimeout(() => {
-                    toast.classList.remove('toast-enter');
-                    toast.classList.add('toast-exit');
-                    toast.addEventListener('animationend', () => toast.remove());
-                }, 3000);
-
-                // Trả về promise resolved ngay lập tức để code không bị block
-                return Promise.resolve();
-            },
-
-            // --- LOGIC MODAL (Confirm / Prompt) ---
-            showModal(type, message, defaultValue = '') {
-                return new Promise((resolve) => {
-                    this.resolvePromise = resolve;
-                    this.msg.innerText = message;
-                    this.element.classList.remove('hidden');
-
-                    // Reset UI Modal
-                    this.inputContainer.classList.add('hidden');
-                    this.btnCancel.classList.add('hidden');
-                    this.btnOk.innerText = "Đồng ý";
-                    this.icon.className = "fas fa-question text-love-500 text-xl"; // Mặc định icon hỏi
-
-                    if (type === 'confirm') {
-                        this.title.innerText = "Xác nhận";
-                        this.btnCancel.classList.remove('hidden');
-                        this.btnCancel.onclick = () => this.close(false);
-                        this.btnOk.onclick = () => this.close(true);
-                    }
-                    else if (type === 'prompt') {
-                        this.title.innerText = "Nhập thông tin";
-                        this.icon.className = "fas fa-pen text-blue-500 text-xl";
-                        this.inputContainer.classList.remove('hidden');
-                        this.input.value = defaultValue;
-                        this.input.focus();
-                        this.btnCancel.classList.remove('hidden');
-                        this.btnCancel.onclick = () => this.close(null);
-                        this.btnOk.onclick = () => this.close(this.input.value);
-                    }
-                });
-            },
-
-            close(value) {
-                this.element.classList.add('hidden');
-                if (this.resolvePromise) {
-                    this.resolvePromise(value);
-                    this.resolvePromise = null;
-                }
-            },
-
-            // --- CÁC HÀM GỌI ---
-            // Alert bây giờ dùng Toast
-            alert: (msg) => Modal.showToast(msg),
-
-            // Confirm và Prompt vẫn dùng Modal to
-            confirm: (msg) => Modal.showModal('confirm', msg),
-            prompt: (msg, val) => Modal.showModal('prompt', msg, val)
-        };
-        // Music Player State
-        let currentSongIndex = 0;
-        const audioPlayer = document.getElementById('bg-music');
-        let isPlaying = false;
-
-        /* --- PLAYER LOGIC WITH LIVE FM --- */
-        let isPlayerExpanded = false;
-        let playerTimeout = null;
-        let isLiveMode = false; // Trạng thái Live
-
-        /* --- ADVANCED LIVE FM LOGIC --- */
-
-// Cấu hình: Thời lượng trung bình 1 bài hát (ms)
-// 3 phút 30 giây = 210000ms. Bạn có thể chỉnh số này
-const LIVE_SLOT_DURATION = 210000; 
-
-function toggleLiveMode() {
-    isLiveMode = !isLiveMode;
-    const btn = document.getElementById('btn-live-mode');
-    const dot = document.getElementById('live-dot');
-    const list = appData.playlist || [];
-
-    if(list.length === 0) { isLiveMode = false; return Modal.alert("Playlist trống!"); }
-
-    if (isLiveMode) {
-        // --- BẬT LIVE ---
-        dot.className = "w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"; 
-        btn.classList.add('border', 'border-red-500/30');
-        
-        Modal.showToast("📻 Đang dò sóng FM... Kết nối vệ tinh...");
-        
-        // Gọi đồng bộ ngay lập tức
-        syncLiveMusic(); 
-        
-        // Thiết lập Interval để check lại mỗi 5s (để đảm bảo không bị trôi giờ)
-        if (window.liveInterval) clearInterval(window.liveInterval);
-        window.liveInterval = setInterval(() => {
-            if(isLiveMode && isPlaying) {
-                // Chỉ log nhẹ để debug, không can thiệp nếu lệch ít
-                // console.log("Keeping Sync...");
-            }
-        }, 5000);
-
-    } else {
-        // --- TẮT LIVE ---
-        dot.className = "w-1.5 h-1.5 rounded-full bg-gray-400";
-        btn.classList.remove('border', 'border-red-500/30');
-        if (window.liveInterval) clearInterval(window.liveInterval);
-        Modal.showToast("Đã chuyển sang chế độ nghe cá nhân.");
-    }
-}
-
-// HÀM TÍNH TOÁN VỊ TRÍ CHÍNH XÁC DỰA TRÊN GIỜ HỆ THỐNG
-function syncLiveMusic() {
-    if (!isLiveMode) return;
-    
-    const list = appData.playlist || [];
-    if (list.length === 0) return;
-
-    const now = Date.now(); // Lấy thời gian thực tế (ms)
-    
-    // Tổng thời gian của cả Playlist (giả định theo slot)
-    const totalLoopDuration = list.length * LIVE_SLOT_DURATION;
-    
-    // Tính vị trí hiện tại trong vòng lặp vô tận
-    const currentLoopPosition = now % totalLoopDuration;
-    
-    // Tính ra Index bài hát
-    const targetSongIndex = Math.floor(currentLoopPosition / LIVE_SLOT_DURATION);
-    
-    // Tính ra giây cần tua đến (Seek Time)
-    const targetSeekTime = (currentLoopPosition % LIVE_SLOT_DURATION) / 1000; // Đổi sang giây
-
-    console.log(`📡 LIVE FM: Bài số ${targetSongIndex + 1}/${list.length} - Tại giây: ${targetSeekTime.toFixed(1)}s`);
-
-    // LOGIC ĐỒNG BỘ PLAYER
-    // Trường hợp 1: Đang chơi đúng bài -> Chỉ cần chỉnh lại thời gian nếu lệch quá nhiều (>3s)
-    if (currentSongIndex === targetSongIndex && isPlaying && audioPlayer.src) {
-        const diff = Math.abs(audioPlayer.currentTime - targetSeekTime);
-        if (diff > 3) {
-            // Hiệu ứng Fade nhẹ (nếu muốn xịn hơn) nhưng ở đây set thẳng cho nhanh
-            audioPlayer.currentTime = targetSeekTime;
-            Modal.showToast(`Đồng bộ lại tín hiệu...`);
-        }
-    } 
-    // Trường hợp 2: Đang chơi sai bài hoặc chưa chơi -> Chuyển bài và Tua
-    else {
-        playSongAtIndex(targetSongIndex, true); // true = fromLive
-        
-        // Quan trọng: Phải đợi metadata load xong mới tua được
-        audioPlayer.onloadedmetadata = () => {
-            if (isLiveMode) {
-                // Nếu thời gian tua > độ dài thật của bài hát -> Có thể bài này ngắn quá
-                if (targetSeekTime < audioPlayer.duration) {
-                    audioPlayer.currentTime = targetSeekTime;
-                    console.log("Đã tua đến:", targetSeekTime);
-                } else {
-                    // Nếu đã hết bài (do slot dài hơn bài hát) -> Chờ slot sau hoặc Replay
-                    // Ở đây ta chọn cách im lặng chờ bài sau cho giống Radio thật (Break time)
-                    console.log("Bài hát đã kết thúc trong slot này (Break time)");
-                }
-            }
-        };
-    }
-}
-
-// Cập nhật lại playSongAtIndex để hỗ trợ tham số fromLive
-function playSongAtIndex(index, fromLive = false) {
-    resetCollapseTimer(); // Reset bộ đếm thu nhỏ UI
-    
-    const list = appData.playlist || [];
-    if(list.length === 0) return;
-    
-    // Nếu người dùng tự bấm chọn bài thì tắt chế độ Live đi
-    if (!fromLive && isLiveMode) toggleLiveMode();
-
-    if(index >= list.length) index = 0;
-    if(index < 0) index = list.length - 1;
-    
-    currentSongIndex = index;
-    
-    // Kiểm tra nếu src đã đúng thì không load lại (tránh giật)
-    if (audioPlayer.src !== list[index].url) {
-        audioPlayer.src = list[index].url;
-    }
-    
-    audioPlayer.play().catch(e => console.log("Autoplay blocked:", e));
-    isPlaying = true;
-
-    // UI Updates
-    const titleEl = document.getElementById('player-title');
-    const playIcon = document.getElementById('player-play-icon');
-    
-    if(titleEl) titleEl.innerText = list[index].name;
-    if(playIcon) playIcon.className = 'fas fa-pause text-xs';
-
-    if (!isPlayerExpanded) toggleExpandPlayer();
-}
-
-// Xử lý sự kiện khi hết bài (onended)
-audioPlayer.onended = () => {
-    if (isLiveMode) {
-        // Nếu đang Live, khi hết bài thật sự, 
-        // nó sẽ check lại thời gian xem đã sang slot mới chưa
-        syncLiveMusic();
-    } else {
-        // Chế độ thường: Qua bài tiếp theo
-        nextSong();
-    }
-};
-
-// Khi mở lại tab trình duyệt, đồng bộ lại ngay
-document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === 'visible' && isLiveMode) {
-        syncLiveMusic();
-    }
-});
-        // 3. Cập nhật toggleExpandPlayer (Giữ nguyên logic cũ)
-        function toggleExpandPlayer() {
-            const island = document.getElementById('player-island');
-            const collapsed = document.getElementById('player-collapsed');
-            const expanded = document.getElementById('player-expanded');
-            if (!island || !collapsed || !expanded) return;
-
-            if (!isPlayerExpanded) {
-                isPlayerExpanded = true;
-                island.classList.remove('w-10', 'h-10');
-                island.classList.add('w-60', 'h-10');
-                collapsed.classList.add('opacity-0');
-                setTimeout(() => { if (isPlayerExpanded) expanded.classList.remove('opacity-0', 'pointer-events-none'); }, 200);
-                resetCollapseTimer();
-            } else {
-                collapsePlayerUI();
-            }
-        }
-
-        function collapsePlayerUI() {
-            const island = document.getElementById('player-island');
-            const collapsed = document.getElementById('player-collapsed');
-            const expanded = document.getElementById('player-expanded');
-            if (!island || !collapsed || !expanded) return;
-
-            isPlayerExpanded = false;
-            clearTimeout(playerTimeout);
-            expanded.classList.add('opacity-0', 'pointer-events-none');
-            setTimeout(() => {
-                island.classList.remove('w-60');
-                island.classList.add('w-10', 'h-10');
-                collapsed.classList.remove('opacity-0');
-            }, 100);
-        }
-
-        function resetCollapseTimer() {
-            if (playerTimeout) clearTimeout(playerTimeout);
-            if (isPlayerExpanded) {
-                playerTimeout = setTimeout(() => collapsePlayerUI(), 10000);
-            }
-        }
-
-        // 4. Cập nhật Play/Pause (Tắt Live nếu can thiệp thủ công)
-        function togglePlayMusic() {
-            resetCollapseTimer();
-
-            // Nếu bấm pause thủ công -> Tắt chế độ Live
-            if (isLiveMode) toggleLiveMode();
-
-            const list = appData.playlist || [];
-            if (list.length === 0) return Modal.alert("Playlist trống!");
-
-            const playIcon = document.getElementById('player-play-icon');
-            if (!playIcon) return;
-
-            if (isPlaying) {
-                audioPlayer.pause();
-                isPlaying = false;
-                playIcon.className = 'fas fa-play text-[10px] ml-0.5';
-            } else {
-                if (!audioPlayer.src) playSongAtIndex(0);
-                else audioPlayer.play().catch(e => console.log(e));
-                isPlaying = true;
-                playIcon.className = 'fas fa-pause text-[10px]';
-            }
-        }
-
-        // Wrapper Next/Prev (Cũng tắt Live nếu bấm)
-        function nextSong() {
-            if (isLiveMode) toggleLiveMode();
-            resetCollapseTimer();
-            playSongAtIndex(currentSongIndex + 1);
-        }
-        function prevSong() {
-            if (isLiveMode) toggleLiveMode();
-            resetCollapseTimer();
-            playSongAtIndex(currentSongIndex - 1);
-        }
-
-     
-        // 6. Xử lý khi hết bài
-        // Khi hết bài, nếu đang ở Live Mode thì nó sẽ tự check lại giờ để qua bài mới đúng giờ
-        audioPlayer.onended = () => {
-            if (isLiveMode) {
-                syncLiveMusic();
-            } else {
-                nextSong();
-            }
-        };
-
-        // 7. Timer check Live mỗi khi cửa sổ focus lại (để đồng bộ nếu user tab ra ngoài lâu)
-        window.onfocus = () => {
-            if (isLiveMode) syncLiveMusic();
-        };
-
-        async function initApp() {
-            renderBackground();
-
-            if (!supabaseClient) { Modal.alert("Lỗi kết nối Supabase!"); return; }
-
-            const { data: { session }, error } = await supabaseClient.auth.getSession();
-
-            if (error) { showLoginScreen(); }
-            else if (session) {
-                currentUser = session.user;
-                document.getElementById('auth-msg').innerText = "Đang khôi phục dữ liệu...";
-                try {
-                    await checkPairingStatus();
-                    document.getElementById('auth-screen').classList.add('hidden-screen');
-                } catch (err) {
-                    console.error("Restore error:", err);
-                    document.getElementById('auth-msg').innerText = "Lỗi tải dữ liệu. Vui lòng thử lại.";
-                    document.getElementById('retry-btn').classList.remove('hidden');
-                }
-            } else { showLoginScreen(); }
-
-            supabaseClient.auth.onAuthStateChange(async (event, session) => {
-                if (event === 'SIGNED_IN' && !currentUser && session) {
-                    currentUser = session.user;
-                    try {
-                        await checkPairingStatus();
-                        document.getElementById('auth-screen').classList.add('hidden-screen');
-                    } catch (e) { Modal.alert(e.message); }
-                } else if (event === 'SIGNED_OUT') { showLoginScreen(); }
-            });
-
-            setInterval(updateCountdown, 1000);
-
-            // Audio Listeners
-            audioPlayer.addEventListener('ended', nextSong);
-        }
-
-        function showLoginScreen() {
-            currentUser = null;
-            document.getElementById('auth-screen').classList.remove('hidden-screen');
-            document.getElementById('pairing-screen').classList.add('hidden-screen');
-            document.getElementById('app-container').classList.add('hidden-screen');
-            document.getElementById('auth-msg').innerText = "";
-            document.getElementById('retry-btn').classList.add('hidden');
-        }
-
-        function toggleAuthMode() {
-            document.getElementById('login-form').classList.toggle('hidden');
-            document.getElementById('register-form').classList.toggle('hidden');
-        }
-        async function handleLogin() {
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-            if (error) Modal.alert(error.message);
-        }
-        async function handleRegister() {
-            const email = document.getElementById('reg-email').value;
-            const password = document.getElementById('reg-password').value;
-            const { error } = await supabaseClient.auth.signUp({ email, password });
-            if (error) Modal.alert(error.message);
-            else Modal.alert("Đăng ký thành công! Hãy đăng nhập.");
-        }
-        async function logout() { await supabaseClient.auth.signOut(); location.reload(); }
-
-        async function checkPairingStatus() {
-            if (!currentUser) throw new Error("No user");
-            const { data: profile, error } = await supabaseClient.from('profiles').select('couple_id').eq('id', currentUser.id).single();
-            if (error && error.code !== 'PGRST116') throw error;
-
-            if (!profile || !profile.couple_id) {
-                document.getElementById('pairing-screen').classList.remove('hidden-screen');
-                document.getElementById('app-container').classList.add('hidden-screen');
-            } else {
-                currentCoupleCode = profile.couple_id;
-                document.getElementById('pairing-screen').classList.add('hidden-screen');
-                document.getElementById('app-container').classList.remove('hidden-screen');
-                document.getElementById('display-couple-code').innerText = currentCoupleCode;
-                await loadCloudData();
-            }
-        }
-
-        function determineUserIdentity() {
-            let changed = false;
-            if (!appData.user1.id) { appData.user1.id = currentUser.id; changed = true; }
-            else if (appData.user1.id !== currentUser.id && !appData.user2.id) { appData.user2.id = currentUser.id; changed = true; }
-
-            if (appData.user1.id === currentUser.id) myUserIndex = 1;
-            else if (appData.user2.id === currentUser.id) myUserIndex = 2;
-            else myUserIndex = 0;
-
-            if (changed) saveData();
-        }
-
-        async function createCoupleCode() {
-            const code = 'LOVE-' + Math.floor(100000 + Math.random() * 900000);
-            const { error } = await supabaseClient.from('couples').insert([{ id: code, data: DEFAULT_DATA }]);
-            if (error) return Modal.alert("Lỗi: " + error.message);
-            await supabaseClient.from('profiles').upsert({ id: currentUser.id, couple_id: code });
-            await checkPairingStatus();
-        }
-
-        async function joinCouple() {
-            const code = document.getElementById('join-code-input').value.toUpperCase().trim();
-            if (!code) return Modal.alert("Vui lòng nhập mã!");
-
-            // Thêm hiệu ứng loading visual nếu muốn, ở đây giữ logic cũ
-            const { data } = await supabaseClient.from('couples').select('id').eq('id', code).single();
-            if (!data) return Modal.alert("Mã không tồn tại hoặc sai!");
-
-            await supabaseClient.from('profiles').upsert({ id: currentUser.id, couple_id: code });
-            await checkPairingStatus();
-        }
-
-        // Thay thế hàm changeCoupleCode cũ bằng hàm này
-        async function changeCoupleCode() {
-            // 1. Nhập mã mới qua Modal
-            const newCodeRaw = await Modal.prompt("Nhập mã cặp đôi MỚI mà bạn muốn đặt (Ví dụ: LOVE-FOREVER):", currentCoupleCode);
-
-            // Nếu bấm Hủy hoặc để trống
-            if (newCodeRaw === null || newCodeRaw.trim() === "") return;
-
-            const newCode = newCodeRaw.trim().toUpperCase();
-
-            // Validate cơ bản
-            if (newCode === currentCoupleCode) return Modal.alert("Đây là mã hiện tại rồi!");
-            if (newCode.length < 2) return Modal.alert("Mã quá ngắn! Hãy nhập ít nhất 2 ký tự.");
-
-            try {
-                // 2. Kiểm tra xem mã mới đã có ai dùng chưa
-                const { data: existing, error: checkError } = await supabaseClient
-                    .from('couples')
-                    .select('id')
-                    .eq('id', newCode)
-                    .single();
-
-                // Nếu query không lỗi và tìm thấy dữ liệu => Mã đã tồn tại
-                if (existing) {
-                    return Modal.alert(`Tiếc quá! Mã "${newCode}" đã có cặp đôi khác sử dụng. Vui lòng chọn mã khác.`);
-                }
-
-                // 3. Nếu chưa trùng, bắt đầu quy trình chuyển đổi
-                // A. Tạo phòng mới với dữ liệu hiện tại (Copy Data)
-                const { error: createError } = await supabaseClient
-                    .from('couples')
-                    .insert([{ id: newCode, data: appData }]);
-
-                if (createError) throw new Error("Lỗi tạo mã mới: " + createError.message);
-
-                // B. Cập nhật tất cả thành viên (Bạn và Người ấy) đang ở mã cũ sang mã mới
-                // Logic: Tìm tất cả profile đang có couple_id là mã cũ, đổi thành mã mới
-                const { error: updateProfileError } = await supabaseClient
-                    .from('profiles')
-                    .update({ couple_id: newCode })
-                    .eq('couple_id', currentCoupleCode);
-
-                if (updateProfileError) throw new Error("Lỗi cập nhật thành viên: " + updateProfileError.message);
-
-                // C. (Tùy chọn) Xóa phòng cũ đi cho sạch database
-                await supabaseClient.from('couples').delete().eq('id', currentCoupleCode);
-
-                // 4. Thông báo và tải lại
-                await Modal.alert(`Thành công! Mã cặp đôi của hai bạn đã đổi thành: ${newCode}`);
-                location.reload();
-
-            } catch (err) {
-                console.error(err);
-                Modal.alert("Có lỗi xảy ra: " + err.message);
-            }
-        }
-
-        async function loadCloudData() {
-            const { data } = await supabaseClient.from('couples').select('data').eq('id', currentCoupleCode).single();
-            if (data && data.data) appData = { ...DEFAULT_DATA, ...data.data };
-            determineUserIdentity();
-            applyTheme();
-            refreshUI();
-            initMusicPlayer();
-            setupRealtimeListener();
-        }
-        async function saveData() {
-            if (currentCoupleCode) await supabaseClient.from('couples').update({ data: appData }).eq('id', currentCoupleCode);
-            refreshUI();
-        }
-        function refreshUI() {
-            loadSettingsToUI();
-            updateHomePage();
-            updateSparksPage();
-            updateEventsPage();
-            updateDiaryPage();
-        }
-
-        function applyTheme() {
-            if (!appData.theme) appData.theme = DEFAULT_DATA.theme;
-            const color = appData.theme.color || 'pink';
-            const font = appData.theme.font || 'Nunito';
-            const bg = appData.theme.bg || '';
-            const palette = THEMES[color];
-            const r = document.querySelector(':root');
-            Object.keys(palette).forEach(key => r.style.setProperty(`--love-${key}`, palette[key]));
-            r.style.setProperty('--app-font', font);
-            if (bg) {
-                document.body.style.backgroundImage = `url('${bg}')`;
-                document.getElementById('app-container').classList.add('glass-mode');
-            } else {
-                document.body.style.backgroundImage = 'none';
-                document.getElementById('app-container').classList.remove('glass-mode');
-                r.style.setProperty('--app-bg', palette[50]);
-            }
-        }
-
-        function setThemeColor(color) { tempThemeColor = color; Modal.alert(`Đã chọn màu: ${color}. Bấm Lưu để áp dụng.`); }
-        function clearBackground() { document.getElementById('set-bg-url').value = ''; document.getElementById('set-bg-file').value = ''; if (appData.theme) appData.theme.bg = ''; Modal.alert("Đã xóa hình nền (cần bấm Lưu)."); }
-
-        function updateHomePage() {
-            const now = Date.now();
-            ['1', '2'].forEach(i => {
-                const u = appData[`user${i}`];
-                document.getElementById(`u${i}-name`).innerText = u.name;
-                document.getElementById(`u${i}-avatar`).src = u.avatar;
-                const bubble = document.getElementById(`status-bubble-${i}`);
-                if (u.status && u.status.text && (u.status.duration === -1 || (now - u.status.timestamp <= u.status.duration * 60000))) {
-                    bubble.classList.remove('hidden');
-                    document.getElementById(`status-text-${i}`).innerText = u.status.text;
-                } else { bubble.classList.add('hidden'); }
-            });
-            const start = new Date(appData.startDate);
-            const diffTime = Math.abs(new Date() - start);
-            document.getElementById('total-days').innerText = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-            let years = new Date().getFullYear() - start.getFullYear();
-            let months = new Date().getMonth() - start.getMonth();
-            let days = new Date().getDate() - start.getDate();
-            if (days < 0) { months--; days += new Date(new Date().getFullYear(), new Date().getMonth(), 0).getDate(); }
-            if (months < 0) { years--; months += 12; }
-            document.getElementById('count-years').innerText = years;
-            document.getElementById('count-months').innerText = months;
-            document.getElementById('count-days').innerText = days;
-
-            renderTodos();
-        }
-
-        function toggleCustomTime() { document.getElementById('custom-time-input').classList.toggle('hidden', document.getElementById('status-duration').value !== 'custom'); }
-        function openStatusModal() { document.getElementById('status-modal').classList.remove('hidden'); }
-        function saveStatus() {
-            const text = document.getElementById('status-input').value;
-            let duration = parseInt(document.getElementById('status-duration').value);
-            if (isNaN(duration) || document.getElementById('status-duration').value === 'custom') {
-                const h = parseInt(document.getElementById('custom-hours').value) || 0;
-                const m = parseInt(document.getElementById('custom-minutes').value) || 0;
-                duration = (h * 60) + m;
-            }
-            if (myUserIndex === 0) return Modal.alert("Lỗi xác định người dùng.");
-            appData[`user${myUserIndex}`].status = { text, duration, timestamp: Date.now() };
-            saveData();
-            document.getElementById('status-modal').classList.add('hidden');
-            document.getElementById('status-input').value = '';
-        }
-
-        /* --- TODO LOGIC --- */
-        function toggleTodoForm() { document.getElementById('todo-form').classList.toggle('hidden'); }
-        function renderTodos() {
-            const list = document.getElementById('todo-list');
-            list.innerHTML = '';
-            const todos = appData.todos || [];
-
-            if (todos.length === 0) { list.innerHTML = '<div class="text-center text-xs text-gray-400 italic">Chưa có mục tiêu nào.</div>'; return; }
-
-            todos.forEach((todo, index) => {
-                let timeLeft = '';
-                if (todo.deadline && !todo.completed) {
-                    const diff = Math.ceil((new Date(todo.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-                    if (diff < 0) timeLeft = '<span class="text-red-500 font-bold ml-2 text-[10px]">Quá hạn</span>';
-                    else timeLeft = `<span class="text-love-500 font-bold ml-2 text-[10px]">${diff} ngày nữa</span>`;
-                }
-
-                const html = `
-                    <div class="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100 ${todo.completed ? 'opacity-50' : ''}">
-                        <button onclick="toggleTodo(${index})" class="text-lg ${todo.completed ? 'text-green-500' : 'text-gray-300'} hover:text-green-500">
-                            <i class="${todo.completed ? 'fas fa-check-circle' : 'far fa-circle'}"></i>
-                        </button>
-                        <div class="flex-grow">
-                            <div class="text-sm font-bold text-gray-700 ${todo.completed ? 'line-through' : ''}">${todo.title}</div>
-                            ${timeLeft}
-                        </div>
-                        <button onclick="deleteTodo(${index})" class="text-gray-300 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button>
+            <div class="flex p-2 gap-2 bg-gray-50 mx-4 mt-2 rounded-xl">
+                <button onclick="switchPickerTab('cloud')"
+                    class="picker-tab active flex-1 py-2 text-xs font-bold rounded-lg transition text-love-500 bg-white shadow-sm">Kho
+                    lưu trữ</button>
+                <button onclick="switchPickerTab('upload')"
+                    class="picker-tab flex-1 py-2 text-xs font-bold rounded-lg transition text-gray-500 hover:bg-white/50">Tải
+                    lên</button>
+                <button onclick="switchPickerTab('url')"
+                    class="picker-tab flex-1 py-2 text-xs font-bold rounded-lg transition text-gray-500 hover:bg-white/50">Link
+                    URL</button>
+            </div>
+
+            <div class="p-4 overflow-y-auto hide-scrollbar flex-grow min-h-[300px]">
+
+                <div id="picker-tab-cloud" class="picker-content">
+                    <div class="flex gap-2 mb-3 overflow-x-auto pb-2 hide-scrollbar">
+                        <button onclick="loadMiniGallery('all')"
+                            class="px-3 py-1 rounded-full bg-gray-800 text-white text-[10px] font-bold whitespace-nowrap">Tất
+                            cả</button>
+                        <button onclick="loadMiniGallery('posts')"
+                            class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold whitespace-nowrap">Nhật
+                            ký</button>
+                        <button onclick="loadMiniGallery('events')"
+                            class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold whitespace-nowrap">Sự
+                            kiện</button>
+                        <button onclick="loadMiniGallery('backgrounds')"
+                            class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold whitespace-nowrap">Hình
+                            nền</button>
                     </div>
-                `;
-                list.innerHTML += html;
-            });
-            document.getElementById('todo-count').innerText = todos.length;
-        }
-        function addTodo() {
-            const title = document.getElementById('todo-input').value;
-            const deadline = document.getElementById('todo-deadline').value;
-            if (!title) return;
-            appData.todos = appData.todos || [];
-            appData.todos.push({ title, deadline, completed: false });
-            document.getElementById('todo-input').value = '';
-            document.getElementById('todo-deadline').value = '';
-            toggleTodoForm();
-            saveData();
-        }
-        function toggleTodo(index) { appData.todos[index].completed = !appData.todos[index].completed; saveData(); }
-        async function deleteTodo(index) {
-            if (await Modal.confirm("Bạn có chắc chắn muốn xóa việc này không?")) {
-                appData.todos.splice(index, 1);
-                saveData();
-            }
-        }
-
-        function updateSparksPage() {
-            const count = appData.streak.count;
-            document.getElementById('streak-count').innerText = count;
-            const fireIcon = document.getElementById('fire-icon');
-            const fireGlow = document.getElementById('fire-glow');
-            const milestoneText = document.getElementById('streak-milestone');
-
-            fireIcon.className = "fas fa-fire text-8xl drop-shadow-2xl relative z-10 animate-float transition-colors duration-500";
-            fireGlow.className = "absolute inset-4 rounded-full animate-pulse opacity-50 animation-delay-500 transition-colors duration-500";
-
-            if (count >= 1000) { fireIcon.classList.add('text-purple-600'); fireGlow.classList.add('bg-purple-200'); milestoneText.innerText = "🔥 ĐẲNG CẤP VĨNH CỬU 🔥"; }
-            else if (count >= 365) { fireIcon.classList.add('text-blue-500'); fireGlow.classList.add('bg-blue-200'); milestoneText.innerText = "🔥 1 NĂM RỰC LỬA 🔥"; }
-            else if (count >= 200) { fireIcon.classList.add('text-green-500'); fireGlow.classList.add('bg-green-200'); milestoneText.innerText = "🔥 LỬA XANH HY VỌNG 🔥"; }
-            else if (count >= 100) { fireIcon.classList.add('text-red-600'); fireGlow.classList.add('bg-red-200'); milestoneText.innerText = "🔥 100 NGÀY NỒNG CHÁY 🔥"; }
-            else if (count >= 10) { fireIcon.classList.add('text-yellow-500'); fireGlow.classList.add('bg-yellow-200'); milestoneText.innerText = "🔥 KHỞI ĐẦU ẤM ÁP 🔥"; }
-            else { fireIcon.classList.add('text-orange-500'); fireGlow.classList.add('bg-orange-100'); milestoneText.innerText = ""; }
-
-            ['1', '2'].forEach(i => {
-                const img = document.getElementById(`spark-u${i}-img`);
-                const btn = document.getElementById(`btn-checkin-${i}`);
-                const isChecked = appData.streak[`lastDate${i}`] === new Date().toDateString();
-                const u = appData[`user${i}`];
-                img.src = u.avatar;
-                if (isChecked) {
-                    img.classList.remove('grayscale'); img.classList.add('border-green-500');
-                    btn.innerText = "Đã điểm danh"; btn.disabled = true;
-                    btn.className = "w-full py-2.5 rounded-2xl text-xs font-bold bg-green-100 text-green-600";
-                } else {
-                    img.classList.add('grayscale'); img.classList.remove('border-green-500');
-                    btn.innerText = "Điểm danh";
-                    if (myUserIndex == i) { btn.disabled = false; btn.className = "w-full py-2.5 rounded-2xl text-xs font-bold bg-gray-800 text-white shadow-md active:scale-95"; }
-                    else { btn.disabled = true; btn.className = "w-full py-2.5 rounded-2xl text-xs font-bold bg-gray-200 text-gray-400 cursor-not-allowed"; }
-                }
-            });
-            if (appData.streak.lastDate1 === new Date().toDateString() && appData.streak.lastDate2 === new Date().toDateString()) {
-                document.getElementById('streak-message').classList.remove('hidden');
-            } else { document.getElementById('streak-message').classList.add('hidden'); }
-        }
-
-        function checkIn(i) {
-            const today = new Date().toDateString();
-            appData.streak[`lastDate${i}`] = today;
-            if (appData.streak.lastDate1 === today && appData.streak.lastDate2 === today) appData.streak.count++;
-            saveData();
-        }
-
-        /* --- EVENT MODERNIZATION --- */
-        function getEventColor(id) {
-            return GRADIENTS[id % GRADIENTS.length];
-        }
-
-        function updateEventsPage() {
-            const list = document.getElementById('events-list');
-            list.innerHTML = '';
-
-            // Lọc và sắp xếp sự kiện
-            const processed = appData.events.map(e => {
-                const nextDate = getNextDate(e.date, e.recur);
-                // Tính diff dương (tương lai) ưu tiên, quá khứ (âm) đẩy xuống
-                let diff = nextDate - new Date();
-                // Nếu đã qua trong ngày hôm nay thì coi như là 0 (đang diễn ra)
-                if (diff < 0 && new Date().getDate() == nextDate.getDate()) diff = 0;
-
-                return { ...e, nextDate, diff };
-            }).sort((a, b) => {
-                // Logic sort: Sự kiện sắp tới (diff > 0 và nhỏ nhất) lên đầu
-                if (a.diff >= 0 && b.diff >= 0) return a.diff - b.diff;
-                if (a.diff < 0 && b.diff < 0) return b.diff - a.diff; // Quá khứ mới nhất lên đầu nhóm quá khứ
-                return a.diff >= 0 ? -1 : 1; // Tương lai lên trước quá khứ
-            });
-
-            if (processed.length === 0) {
-                list.innerHTML = '<div class="text-center text-gray-400 mt-10">Chưa có sự kiện nào.</div>';
-                return;
-            }
-
-            // Tách sự kiện Main (Cái đầu tiên) và Sub
-            const mainEvent = processed[0];
-            const subEvents = processed.slice(1);
-
-            // --- RENDER MAIN EVENT ---
-            if (mainEvent) {
-                const e = mainEvent;
-                const dateStr = e.nextDate.toLocaleDateString('vi-VN');
-                const diffMs = e.nextDate - new Date();
-                const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                const isToday = new Date().toDateString() === e.nextDate.toDateString();
-                let timeLeftStr = isToday ? "ĐANG DIỄN RA" : (daysLeft < 0 ? "Đã qua" : `${daysLeft} NGÀY NỮA`);
-
-                let cardStyle = "";
-                let overlay = "";
-                if (e.bg) {
-                    cardStyle = `background: url('${e.bg}'); background-size: cover; background-position: center;`;
-                    overlay = '<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>';
-                } else {
-                    const gradientClass = getEventColor(e.id);
-                    overlay = `<div class="absolute inset-0 ${gradientClass}"></div>`;
-                }
-
-                const mainHtml = `
-                    <div class="mb-6 relative overflow-hidden rounded-[2.5rem] shadow-xl shadow-love-200/50 h-64 w-full group transform transition hover:scale-[1.02] cursor-pointer" onclick="editEvent(${e.id})">
-                        <div class="absolute inset-0" style="${cardStyle}">
-                            ${overlay}
-                        </div>
-                        <div class="absolute top-4 right-4 z-20">
-                             <span class="bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse">${timeLeftStr}</span>
-                        </div>
-                        <div class="absolute bottom-0 left-0 w-full p-6 z-20">
-                            <h2 class="text-3xl font-black text-white font-script mb-1 drop-shadow-md leading-tight">${e.title}</h2>
-                            <p class="text-white/90 text-sm font-bold flex items-center gap-2"><i class="far fa-clock"></i> ${dateStr}</p>
-                        </div>
-                        <div class="absolute top-4 left-4 z-20">
-                             <div class="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center border border-white/40 text-white">
-                                <i class="fas fa-star text-lg"></i>
-                             </div>
-                        </div>
+                    <div id="mini-gallery-grid" class="grid grid-cols-3 gap-1">
+                        <div class="col-span-3 text-center py-10 text-gray-400 text-xs">Đang tải...</div>
                     </div>
-                    <h3 class="font-bold text-gray-800 text-lg mb-3 px-2">Sự kiện khác</h3>
-                `;
-                list.innerHTML += mainHtml;
-            }
+                </div>
 
-            // --- RENDER SUB EVENTS ---
-            subEvents.forEach(e => {
-                const dateStr = e.nextDate.toLocaleDateString('vi-VN');
-                const diffMs = e.nextDate - new Date();
-                const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-                const isToday = new Date().toDateString() === e.nextDate.toDateString();
-
-                let cardStyle = "";
-                let overlay = "";
-                // Logic màu sắc cho sub event (đơn giản hơn)
-                if (e.bg) {
-                    cardStyle = `background: url('${e.bg}'); background-size: cover;`;
-                    overlay = '<div class="absolute inset-0 bg-black/50"></div>';
-                } else {
-                    const gradientClass = getEventColor(e.id);
-                    overlay = `<div class="absolute inset-0 ${gradientClass} opacity-80"></div>`;
-                }
-
-                const html = `
-                    <div class="relative overflow-hidden rounded-3xl shadow-sm h-20 w-full mb-3 flex items-center group touch-pan-x">
-                        <div class="absolute inset-0 z-0" style="${cardStyle}">${overlay}</div>
-                        
-                        <div class="relative z-10 flex justify-between items-center w-full px-5">
-                            <div class="flex flex-col">
-                                <span class="font-bold text-white text-lg leading-none">${e.title}</span>
-                                <span class="text-xs text-white/80 mt-1">${dateStr}</span>
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="text-2xl font-black text-white">${isToday ? '0' : daysLeft}</span>
-                                <div class="flex gap-2">
-                                    <button onclick="editEvent(${e.id})" class="w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur flex items-center justify-center text-white text-xs"><i class="fas fa-pen"></i></button>
-                                    <button onclick="deleteEvent(${e.id})" class="w-8 h-8 rounded-full bg-white/20 hover:bg-red-500/80 backdrop-blur flex items-center justify-center text-white text-xs"><i class="fas fa-trash"></i></button>
-                                </div>
-                            </div>
+                <div id="picker-tab-upload" class="picker-content hidden h-full flex flex-col justify-center">
+                    <label
+                        class="block w-full text-center bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-10 cursor-pointer hover:bg-love-50 hover:border-love-300 transition group">
+                        <div id="picker-upload-ui">
+                            <i
+                                class="fas fa-cloud-upload-alt text-4xl text-gray-300 group-hover:text-love-500 mb-3 transition"></i>
+                            <p class="text-xs text-gray-500 group-hover:text-love-500 font-bold">Chạm để chọn ảnh/video
+                            </p>
                         </div>
-                    </div>
-                `;
-                list.innerHTML += html;
-            });
-        }
-
-        let xDown = null; let yDown = null;
-        function handleTouchStart(evt) { xDown = evt.touches[0].clientX; yDown = evt.touches[0].clientY; }
-        function handleTouchMove(evt) {
-            if (!xDown || !yDown) return;
-            let xDiff = xDown - evt.touches[0].clientX; let yDiff = yDown - evt.touches[0].clientY;
-            if (Math.abs(xDiff) > Math.abs(yDiff)) {
-                const el = evt.currentTarget;
-                if (xDiff > 0) el.style.transform = `translateX(-${Math.min(xDiff, 160)}px)`; else el.style.transform = `translateX(0px)`;
-            }
-        }
-        function handleTouchEnd(evt, el) {
-            let xDiff = xDown - evt.changedTouches[0].clientX;
-            if (xDiff > 60) el.style.transform = `translateX(-160px)`; else el.style.transform = `translateX(0px)`;
-            xDown = null; yDown = null;
-        }
-
-        function toggleEventForm() {
-            const form = document.getElementById('event-form');
-            form.classList.toggle('hidden');
-            if (form.classList.contains('hidden')) {
-                document.getElementById('event-id').value = ''; document.getElementById('event-title').value = ''; document.getElementById('event-date').value = '';
-                document.getElementById('event-bg').value = ''; document.getElementById('event-bg-file').value = '';
-                document.getElementById('event-form-title').innerText = 'Sự kiện mới';
-            }
-        }
-
-        async function saveEvent(btn) {
-            const id = document.getElementById('event-id').value;
-            const title = document.getElementById('event-title').value;
-            const date = document.getElementById('event-date').value;
-            const recur = document.getElementById('event-recur').value;
-            let bg = document.getElementById('event-bg').value;
-            const bgFile = document.getElementById('event-bg-file').files[0];
-
-            if (!title || !date) return Modal.alert("Nhập đủ thông tin");
-            if (bgFile) {
-                btn.disabled = true; btn.innerText = "Đang tải...";
-                try { bg = await uploadToSupabase(bgFile, 'events'); } catch (e) { Modal.alert("Lỗi: " + e.message); btn.disabled = false; btn.innerText = "Lưu"; return; }
-                btn.disabled = false; btn.innerText = "Lưu";
-            }
-
-            if (id) {
-                const idx = appData.events.findIndex(e => e.id == id);
-                if (idx !== -1) appData.events[idx] = { id: parseInt(id), title, date, recur, bg };
-            } else { appData.events.push({ id: Date.now(), title, date, recur, bg }); }
-            saveData(); toggleEventForm();
-        }
-
-        function editEvent(id) {
-            const e = appData.events.find(ev => ev.id == id);
-            if (!e) return;
-            document.getElementById('event-id').value = e.id;
-            document.getElementById('event-title').value = e.title;
-            document.getElementById('event-date').value = e.date;
-            document.getElementById('event-recur').value = e.recur;
-            document.getElementById('event-bg').value = e.bg || '';
-            document.getElementById('event-form-title').innerText = 'Chỉnh sửa sự kiện';
-            document.getElementById('event-form').classList.remove('hidden');
-        }
-        async function deleteEvent(id) {
-            if (await Modal.confirm("Bạn có chắc muốn xóa sự kiện này?")) {
-                appData.events = appData.events.filter(e => e.id != id);
-                saveData();
-            }
-        }
-        /* --- DIARY TIMELINE --- */
-        function updateDiaryPage() {
-            document.getElementById('diary-avatar').src = appData[`user${myUserIndex}`]?.avatar || appData.user1.avatar;
-            const feed = document.getElementById('diary-feed');
-            feed.innerHTML = '';
-
-            const authorFilter = document.getElementById('filter-author').value;
-
-            const posts = (appData.diary || [])
-                .filter(post => {
-                    if (authorFilter === 'me' && post.authorId !== currentUser.id) return false;
-                    if (authorFilter === 'partner' && post.authorId === currentUser.id) return false;
-                    return true;
-                })
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            if (posts.length === 0) { feed.innerHTML = '<div class="text-center text-gray-400 mt-10">Dòng thời gian trống...</div>'; return; }
-
-            posts.forEach(post => {
-                const isMine = post.authorId === currentUser.id;
-                let author = appData.user1.id === post.authorId ? appData.user1 : (appData.user2.id === post.authorId ? appData.user2 : appData.user1);
-                const dateObj = new Date(post.date);
-                const dateStr = dateObj.toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
-                const timeStr = dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-
-                let mediaHtml = '';
-                if (post.media && post.media.length > 0) {
-                    const gridClass = post.media.length === 1 ? 'grid-cols-1' : 'grid-cols-2';
-                    mediaHtml = `<div class="grid ${gridClass} gap-1 mt-3 rounded-2xl overflow-hidden bg-black/5">`;
-                    post.media.forEach(m => {
-                        const style = `max-height: 300px; width: 100%; object-fit: cover;`;
-                        if (m.type === 'video') {
-                            // CẬP NHẬT: Nút luôn hiển thị (xóa class ẩn), Nút Play đổi thành toggleVideo
-                            mediaHtml += `
-                            <div class="relative video-container group rounded-lg overflow-hidden mt-1">
-                                <video id="vid-${post.id}" src="${m.url}" class="w-full bg-black" style="${style}" loop playsinline></video>
-                                
-                                <div class="absolute top-2 right-2 flex gap-2 z-20">
-                                    <button onclick="toggleVideo('vid-${post.id}', this)" class="w-8 h-8 rounded-full bg-black/50 hover:bg-love-500 backdrop-blur-sm text-white text-xs flex items-center justify-center shadow-sm border border-white/20 transition-transform active:scale-95">
-                                        <i class="fas fa-play ml-0.5"></i>
-                                    </button>
-                                    <button onclick="openLightbox('${m.url}', 'video')" class="w-8 h-8 rounded-full bg-black/50 hover:bg-blue-500 backdrop-blur-sm text-white text-xs flex items-center justify-center shadow-sm border border-white/20 transition-transform active:scale-95">
-                                        <i class="fas fa-expand"></i>
-                                    </button>
-                                </div>
-                            </div>`;
-                        } else {
-                            // Phần ảnh giữ nguyên
-                            mediaHtml += `<div class="relative group"><img src="${m.url}" style="${style}" class="cursor-pointer" onclick="openLightbox('${m.url}', 'image')"></div>`;
-                        }
-
-                    });
-                    mediaHtml += `</div>`;
-                }
-
-                const likes = post.likes || [];
-                const isLiked = likes.includes(currentUser.id);
-
-                // Timeline HTML
-                const html = `
-                    <div class="relative pl-8 pb-8 timeline-item">
-                        <div class="timeline-line"></div>
-                        
-                        <div class="absolute left-[13px] top-5 w-3 h-3 bg-love-500 rounded-full border-2 border-white shadow z-10"></div>
-                        
-                        <div class="absolute -left-2 top-0 text-[10px] font-bold text-gray-400 w-12 text-center bg-gray-50 rounded-full py-0.5 border border-gray-100 hidden">
-                            ${dateStr}
+                        <div id="picker-uploading-ui" class="hidden">
+                            <div class="loader mx-auto mb-2"></div>
+                            <p class="text-xs text-love-500 font-bold">Đang tải lên...</p>
                         </div>
+                        <input type="file" id="picker-file-input" class="hidden" accept="image/*,video/*"
+                            onchange="handlePickerUpload(this)">
+                    </label>
+                </div>
 
-                        <div class="bg-white p-4 rounded-3xl rounded-tl-none shadow-sm border border-gray-100 relative">
-                            <div class="flex justify-between items-start mb-2">
-                                <div class="flex items-center">
-                                    <span class="font-bold text-sm text-gray-800 mr-2">${author.name}</span>
-                                    <span class="text-[10px] text-gray-400">${dateStr} lúc ${timeStr}</span>
-                                </div>
-                                ${isMine ? `<div class="flex gap-2"><button onclick="editPost(${post.id})" class="text-gray-300 hover:text-blue-500 text-xs"><i class="fas fa-pen"></i></button><button onclick="deletePost(${post.id})" class="text-gray-300 hover:text-red-500 text-xs"><i class="fas fa-trash"></i></button></div>` : ''}
-                            </div>
-                            
-                            <p class="text-gray-600 text-sm whitespace-pre-wrap leading-relaxed">${post.content}</p>
-                            ${mediaHtml}
-                            
-                            <div class="flex gap-4 mt-3 pt-2 border-t border-gray-50">
-                                <button onclick="toggleLike(${post.id})" class="${isLiked ? 'text-red-500' : 'text-gray-400'} hover:text-red-500 text-xs flex items-center gap-1"><i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${likes.length}</button>
-                                <span class="text-gray-400 text-xs flex items-center gap-1"><i class="far fa-comment"></i> ${post.comments?.length || 0}</span>
-                            </div>
-                            
-                            ${(post.comments || []).length > 0 ? `<div class="mt-2 space-y-1 bg-gray-50 p-2 rounded-xl">${post.comments.map(c => `<div class="text-xs"><span class="font-bold text-gray-700">${c.name}:</span> <span class="text-gray-500">${c.text}</span></div>`).join('')}</div>` : ''}
-                            
-                            <div class="flex gap-2 mt-2">
-                                <input type="text" id="comment-input-${post.id}" class="flex-1 bg-gray-50 rounded-full px-3 py-1 text-xs focus:outline-none focus:border-love-200 border border-transparent" placeholder="Bình luận...">
-                                <button onclick="addComment(${post.id})" class="text-love-500 font-bold text-xs">Gửi</button>
-                            </div>
-                        </div>
+                <div id="picker-tab-url" class="picker-content hidden pt-10">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Dán liên kết ảnh/video</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="picker-url-input" placeholder="https://..."
+                            class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:border-love-300 outline-none">
+                        <button onclick="handlePickerUrl()"
+                            class="bg-gray-800 text-white px-4 rounded-xl font-bold text-xs">Xong</button>
                     </div>
-                `;
-                feed.innerHTML += html;
-            });
-        }
-
-        // Hàm mới: Tự động kiểm tra đang chạy hay dừng để xử lý
-        function toggleVideo(id, btn) {
-            const video = document.getElementById(id);
-            const icon = btn.querySelector('i');
-
-            if (video.paused) {
-                // Nếu đang dừng -> Chạy
-                video.play();
-                // Đổi icon thành Pause (2 vạch)
-                icon.className = 'fas fa-pause';
-                // Xóa margin-left (ml-0.5) vì icon pause nó cân đối sẵn rồi, chỉ icon play mới cần chỉnh
-            } else {
-                // Nếu đang chạy -> Dừng
-                video.pause();
-                // Đổi lại icon Play (Tam giác)
-                icon.className = 'fas fa-play ml-0.5';
-            }
-        }
-
-        // ... [Common utility functions kept same: playVideo(for feed), openLightbox, etc.] ...
-        function playVideo(id) { document.getElementById(id).play(); }
-        function openLightbox(url, type) {
-            const box = document.getElementById('lightbox');
-            const content = document.getElementById('lightbox-content');
-            box.classList.remove('hidden');
-            if (type === 'video') content.innerHTML = `<video src="${url}" controls autoplay class="max-w-[90vw] max-h-[80vh] rounded-lg"></video>`;
-            else content.innerHTML = `<img src="${url}" class="max-w-[90vw] max-h-[80vh] rounded-lg object-contain">`;
-        }
-        function closeLightbox() { document.getElementById('lightbox').classList.add('hidden'); document.getElementById('lightbox-content').innerHTML = ''; }
-
-        function editPost(id) {
-            const post = appData.diary.find(p => p.id === id);
-            document.getElementById('diary-content').value = post.content;
-            document.getElementById('edit-post-id').value = post.id;
-            document.getElementById('btn-post').innerText = "Lưu";
-            document.getElementById('btn-cancel-edit').classList.remove('hidden');
-            document.getElementById('tab-diary').scrollIntoView();
-        }
-        function cancelEdit() {
-            document.getElementById('diary-content').value = '';
-            document.getElementById('edit-post-id').value = '';
-            document.getElementById('btn-post').innerText = "Đăng";
-            document.getElementById('btn-cancel-edit').classList.add('hidden');
-        }
-        async function postDiary(btn) {
-            const content = document.getElementById('diary-content').value;
-            const files = document.getElementById('diary-files').files;
-            const editId = document.getElementById('edit-post-id').value;
-            if (!content && files.length === 0 && !editId) return Modal.alert("Nội dung trống!");
-            btn.innerHTML = '<span class="loader"></span>'; btn.disabled = true;
-            if (editId) {
-                const idx = appData.diary.findIndex(p => p.id == editId);
-                if (idx !== -1) { appData.diary[idx].content = content; await saveData(); }
-                cancelEdit();
-            } else {
-                const media = [];
-                for (let file of files) {
-                    try { const url = await uploadToSupabase(file, 'posts'); media.push({ type: file.type.startsWith('video') ? 'video' : 'image', url }); } catch (e) { console.error(e); }
-                }
-                const newPost = { id: Date.now(), content, media, authorId: currentUser.id, date: new Date().toISOString(), likes: [], comments: [] };
-                appData.diary = appData.diary || []; appData.diary.unshift(newPost); await saveData();
-                document.getElementById('diary-content').value = ''; document.getElementById('diary-files').value = ''; updateFileCount();
-            }
-            btn.innerHTML = 'Đăng'; btn.disabled = false;
-        }
-
-        /* --- MUSIC PLAYER --- */
-        function initMusicPlayer() {
-            renderPlaylist();
-            const player = document.getElementById('mini-player');
-            if (appData.playlist && appData.playlist.length > 0) {
-                player.classList.remove('hidden');
-            } else {
-                player.classList.add('hidden');
-            }
-        }
-
-        function renderPlaylist() {
-            const container = document.getElementById('playlist-container');
-            container.innerHTML = '';
-            const list = appData.playlist || [];
-            if (list.length === 0) { container.innerHTML = '<div class="text-xs text-gray-400 italic">Danh sách trống</div>'; return; }
-
-            list.forEach((song, index) => {
-                container.innerHTML += `
-                    <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg">
-                        <div class="text-xs font-bold text-gray-700 truncate w-3/4">${song.name}</div>
-                        <button onclick="deleteSong(${index})" class="text-red-400"><i class="fas fa-times"></i></button>
-                    </div>
-                `;
-            });
-        }
-
-        function addSongToPlaylist() {
-            const name = document.getElementById('new-song-name').value;
-            const url = document.getElementById('new-song-url').value;
-            if (!name || !url) return Modal.alert("Nhập đủ tên và link");
-            appData.playlist = appData.playlist || [];
-            appData.playlist.push({ name, url });
-            document.getElementById('new-song-name').value = '';
-            document.getElementById('new-song-url').value = '';
-            saveData();
-            initMusicPlayer();
-        }
-        function deleteSong(index) {
-            appData.playlist.splice(index, 1);
-            saveData();
-            initMusicPlayer();
-        }
-
-        function playSongAtIndex(index) {
-            const list = appData.playlist || [];
-
-            // Validate index
-            if (list.length === 0) return;
-            if (index >= list.length) index = 0;
-            if (index < 0) index = list.length - 1;
-
-            currentSongIndex = index;
-            audioPlayer.src = list[index].url;
-            audioPlayer.play().catch(e => console.log("Chưa tương tác nên chưa tự play được")); // Bắt lỗi autoplay
-            isPlaying = true;
-
-            // --- CẬP NHẬT GIAO DIỆN AN TOÀN ---
-
-            // 1. Cập nhật tên bài hát
-            const titleEl = document.getElementById('player-title');
-            if (titleEl) {
-                titleEl.innerText = list[index].name;
-            } else {
-                // Fallback: Nếu dùng code cũ thì nó tên là music-title
-                const oldTitleEl = document.getElementById('music-title');
-                if (oldTitleEl) oldTitleEl.innerText = list[index].name;
-            }
-
-            // 2. Cập nhật icon Play/Pause
-            const playIcon = document.getElementById('player-play-icon');
-            if (playIcon) {
-                playIcon.className = 'fas fa-pause text-xs';
-            } else {
-                // Fallback cho code cũ (nếu có id là play-icon)
-                const oldPlayIcon = document.getElementById('play-icon');
-                if (oldPlayIcon) oldPlayIcon.className = 'fas fa-pause';
-            }
-
-            // Tự động mở rộng khi đổi bài
-            if (typeof isPlayerExpanded !== 'undefined' && !isPlayerExpanded && typeof toggleExpandPlayer === 'function') {
-                toggleExpandPlayer();
-            }
-        }
-
-        function nextSong() { playSongAtIndex(currentSongIndex + 1); }
-        function prevSong() { playSongAtIndex(currentSongIndex - 1); }
-
-        /* --- SETTINGS & HELPERS --- */
-        function loadSettingsToUI() {
-            document.getElementById('set-start-date').value = appData.startDate;
-            ['1', '2'].forEach(i => {
-                document.getElementById(`set-name-${i}`).value = appData[`user${i}`].name;
-                document.getElementById(`set-dob-${i}`).value = appData[`user${i}`].dob;
-                document.getElementById(`set-ava-${i}`).value = appData[`user${i}`].avatar;
-            });
-            if (appData.theme) {
-                document.getElementById('set-font').value = appData.theme.font;
-                document.getElementById('set-bg-url').value = appData.theme.bg;
-            }
-        }
-
-        async function saveSettings(btn) {
-            if (btn) { btn.disabled = true; btn.innerText = "Đang lưu..."; }
-            appData.startDate = document.getElementById('set-start-date').value;
-            ['1', '2'].forEach(i => {
-                appData[`user${i}`].name = document.getElementById(`set-name-${i}`).value;
-                appData[`user${i}`].dob = document.getElementById(`set-dob-${i}`).value;
-                appData[`user${i}`].avatar = document.getElementById(`set-ava-${i}`).value;
-            });
-            appData.theme = { color: tempThemeColor, font: document.getElementById('set-font').value, bg: document.getElementById('set-bg-url').value };
-            const bgFile = document.getElementById('set-bg-file').files[0];
-            if (bgFile) {
-                try {
-                    const url = await uploadToSupabase(bgFile, 'backgrounds');
-                    appData.theme.bg = url;
-                    document.getElementById('set-bg-url').value = url;
-                } catch (e) { Modal.alert("Lỗi upload nền: " + e.message); }
-            }
-            applyTheme(); await saveData();
-            if (btn) { btn.disabled = false; btn.innerText = "Lưu Thay Đổi"; }
-            Modal.alert("Đã lưu cài đặt!");
-        }
-
-        async function uploadAvatar(input, i) {
-            const file = input.files[0];
-            if (!file) return;
-            try { const url = await uploadToSupabase(file, 'avatars'); document.getElementById(`set-ava-${i}`).value = url; } catch (e) { Modal.alert(e.message); }
-        }
-
-        function updateFileCount() { const n = document.getElementById('diary-files').files.length; document.getElementById('file-count').innerText = n > 0 ? `${n} file đã chọn` : "Chọn ảnh/video"; }
-        async function deletePost(id) {
-            if (await Modal.confirm("Bạn muốn xóa bài viết này vĩnh viễn?")) {
-                appData.diary = appData.diary.filter(p => p.id !== id);
-                saveData();
-            }
-        } function toggleLike(id) { const p = appData.diary.find(p => p.id === id); if (p.likes.includes(currentUser.id)) p.likes = p.likes.filter(uid => uid !== currentUser.id); else p.likes.push(currentUser.id); saveData(); }
-        function addComment(id) {
-            const text = document.getElementById(`comment-input-${id}`).value;
-            if (!text) return;
-            const p = appData.diary.find(p => p.id === id);
-            const name = appData.user1.id === currentUser.id ? appData.user1.name : appData.user2.name;
-            p.comments.push({ userId: currentUser.id, name, text, date: new Date().toISOString() });
-            saveData();
-        }
-        async function uploadToSupabase(file, folder) {
-            if (file.size > 10 * 1024 * 1024) throw new Error("File quá lớn! Giới hạn 10MB.");
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-            const { error } = await supabaseClient.storage.from('love_gallery').upload(fileName, file, { cacheControl: '3600', upsert: false });
-            if (error) throw error;
-            const { data: { publicUrl } } = supabaseClient.storage.from('love_gallery').getPublicUrl(fileName);
-            return publicUrl;
-        }
-        function switchTab(id) {
-            document.querySelectorAll('.tab-content').forEach(e => e.classList.remove('active'));
-            document.getElementById(`tab-${id}`).classList.add('active');
-            document.querySelectorAll('.nav-btn').forEach(e => {
-                e.classList.remove('text-love-500', 'active', 'bg-love-50');
-                e.classList.add('text-gray-400');
-            });
-            const activeBtn = document.querySelector(`.nav-btn[onclick="switchTab('${id}')"]`);
-            if (activeBtn) {
-                activeBtn.classList.remove('text-gray-400');
-                activeBtn.classList.add('text-love-500', 'bg-love-50');
-            }
-            window.scrollTo(0, 0);
-        }
-        function getNextDate(dStr, recur) {
-            let d = new Date(dStr); const now = new Date();
-            if (recur === 'none') return d;
-            d.setFullYear(now.getFullYear());
-            if (d < now) { if (recur === 'year') d.setFullYear(now.getFullYear() + 1); if (recur === 'month') d.setMonth(now.getMonth() + 1); }
-            return d;
-        }
-        function updateCountdown() {
-            // Updated logic is handled inside render events now for individual cards
-            // But main counter on dashboard can be added back if needed
-        }
-        function copyCoupleCode() { navigator.clipboard.writeText(currentCoupleCode); Modal.alert("Đã copy: " + currentCoupleCode); }
-        function renderBackground() {
-            const container = document.getElementById('heart-bg');
-            for (let i = 0; i < 15; i++) {
-                const heart = document.createElement('i');
-                heart.className = 'fas fa-heart heart-particle';
-                heart.style.left = Math.random() * 100 + '%';
-                heart.style.top = Math.random() * 100 + '%';
-                heart.style.fontSize = (Math.random() * 20 + 10) + 'px';
-                heart.style.animationDuration = (Math.random() * 5 + 5) + 's';
-                heart.style.opacity = Math.random() * 0.3;
-                container.appendChild(heart);
-            }
-        }
-
-        /* --- GALLERY MANAGER LOGIC --- */
-        let galleryFiles = []; // Chứa danh sách tất cả file
-        let selectedFiles = new Set(); // Chứa các file path đang chọn
-
-        // 1. Hàm Load Gallery (Quét các thư mục trong Storage)
-        async function loadGallery() {
-            const grid = document.getElementById('gallery-grid');
-            grid.innerHTML = '<div class="col-span-3 text-center py-10"><div class="loader"></div><p class="mt-2 text-xs text-gray-400">Đang quét file...</p></div>';
-
-            selectedFiles.clear();
-            updateGalleryToolbar();
-
-            // Các thư mục cần quét trong Bucket 'love_gallery'
-            const folders = ['posts', 'events', 'avatars', 'backgrounds', 'files'];
-            let allFiles = [];
-
-            try {
-                for (const folder of folders) {
-                    const { data, error } = await supabaseClient.storage.from('love_gallery').list(folder, { limit: 100, offset: 0 });
-                    if (data) {
-                        // Map thêm thông tin folder vào file name
-                        const filesWithUrl = data.map(f => ({
-                            name: f.name,
-                            folder: folder,
-                            path: `${folder}/${f.name}`,
-                            type: f.metadata.mimetype,
-                            size: (f.metadata.size / 1024 / 1024).toFixed(2) + ' MB',
-                            url: supabaseClient.storage.from('love_gallery').getPublicUrl(`${folder}/${f.name}`).data.publicUrl
-                        }));
-                        allFiles = [...allFiles, ...filesWithUrl];
-                    }
-                }
-
-                galleryFiles = allFiles.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Mới nhất lên đầu
-                renderGallery();
-
-            } catch (e) {
-                grid.innerHTML = `<div class="col-span-3 text-center text-red-400 text-xs">Lỗi: ${e.message}</div>`;
-            }
-        }
-
-        // 2. Render giao diện Grid
-        function renderGallery() {
-            const grid = document.getElementById('gallery-grid');
-            grid.innerHTML = '';
-
-            if (galleryFiles.length === 0) {
-                grid.innerHTML = '<div class="col-span-3 text-center py-10 text-gray-400 text-xs italic">Chưa có file nào được tải lên.</div>';
-                return;
-            }
-
-            galleryFiles.forEach(file => {
-                const isSelected = selectedFiles.has(file.path);
-                const isVideo = file.type && file.type.startsWith('video');
-
-                const div = document.createElement('div');
-                div.className = `gallery-item relative aspect-square bg-gray-100 overflow-hidden cursor-pointer group ${isSelected ? 'selected' : ''}`;
-                div.onclick = () => toggleSelectFile(file.path);
-
-                let content = '';
-                if (isVideo) {
-                    content = `<video src="${file.url}" class="w-full h-full object-cover transition-transform duration-200"></video>
-                       <div class="absolute inset-0 flex items-center justify-center"><i class="fas fa-play text-white opacity-80 drop-shadow-md"></i></div>`;
-                } else {
-                    content = `<img src="${file.url}" loading="lazy" class="w-full h-full object-cover transition-transform duration-200">`;
-                }
-
-                div.innerHTML = `
-            ${content}
-            <div class="overlay absolute inset-0 bg-black/0 transition-all duration-200 flex items-start justify-end p-2 group-hover:bg-black/10">
-                <div class="w-5 h-5 rounded-full border-2 border-white ${isSelected ? 'bg-love-500 border-love-500' : 'bg-black/30'} flex items-center justify-center transition-colors">
-                    ${isSelected ? '<i class="fas fa-check text-white text-[10px]"></i>' : ''}
+                    <p class="text-[10px] text-gray-400 mt-2 italic">* Hỗ trợ link trực tiếp (đuôi .jpg, .png, .mp4...)
+                    </p>
                 </div>
             </div>
-        `;
-                grid.appendChild(div);
-            });
-        }
+        </div>
+    </div>
 
-        // 3. Xử lý chọn File
-        function toggleSelectFile(path) {
-            if (selectedFiles.has(path)) selectedFiles.delete(path);
-            else selectedFiles.add(path);
-
-            // Re-render class selected (tối ưu hơn re-render cả grid)
-            renderGallery(); // Hoặc update class DOM trực tiếp nếu muốn mượt hơn
-            updateGalleryToolbar();
-        }
-
-        function toggleSelectAllFiles() {
-            const checkbox = document.getElementById('select-all-files');
-            if (checkbox.checked) {
-                galleryFiles.forEach(f => selectedFiles.add(f.path));
-            } else {
-                selectedFiles.clear();
+    <style>
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
             }
-            renderGallery();
-            updateGalleryToolbar();
-        }
 
-        function updateGalleryToolbar() {
-            const toolbar = document.getElementById('gallery-toolbar');
-            const countSpan = document.getElementById('selected-count');
-            const checkbox = document.getElementById('select-all-files');
-
-            countSpan.innerText = `${selectedFiles.size} đã chọn`;
-            checkbox.checked = galleryFiles.length > 0 && selectedFiles.size === galleryFiles.length;
-
-            if (selectedFiles.size > 0) toolbar.classList.remove('hidden');
-            else toolbar.classList.add('hidden');
-        }
-
-        // 4. Xử lý Xóa File
-        async function deleteSelectedFiles() {
-            if (selectedFiles.size === 0) return;
-
-            if (await Modal.confirm(`Bạn có chắc muốn xóa vĩnh viễn ${selectedFiles.size} file này? Dữ liệu bài viết liên quan có thể bị lỗi ảnh.`)) {
-                const paths = Array.from(selectedFiles);
-                const { error } = await supabaseClient.storage.from('love_gallery').remove(paths);
-
-                if (error) Modal.alert("Lỗi xóa: " + error.message);
-                else {
-                    Modal.alert("Đã xóa thành công!");
-                    loadGallery(); // Reload lại
-                }
+            to {
+                transform: translateY(0);
             }
         }
 
-        // 5. Xử lý Tải xuống
-        async function downloadSelectedFiles() {
-            if (selectedFiles.size === 0) return;
-            Modal.alert(`Đang chuẩn bị tải ${selectedFiles.size} file...`);
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
 
-            const paths = Array.from(selectedFiles);
-
-            // Duyệt qua từng file để tải (Browser sẽ chặn nếu popup quá nhiều, đây là cách cơ bản)
-            for (const path of paths) {
-                const { data, error } = await supabaseClient.storage.from('love_gallery').download(path);
-                if (!error) {
-                    const url = URL.createObjectURL(data);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = path.split('/').pop(); // Lấy tên file
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                }
+            to {
+                transform: scale(1);
+                opacity: 1;
             }
         }
 
-        /* --- GALLERY UPLOAD LOGIC --- */
-
-        // 1. Bật/Tắt Form Upload
-        function toggleGalleryUpload() {
-            const form = document.getElementById('gallery-upload-form');
-            form.classList.toggle('hidden');
-
-            // Reset form khi đóng/mở
-            if (!form.classList.contains('hidden')) {
-                document.getElementById('gallery-upload-input').value = '';
-                document.getElementById('upload-file-label').innerText = '';
-            }
+        .animate-slide-up {
+            animation: slideUp 0.3s ease-out;
         }
 
-        // 2. Cập nhật tên file khi chọn
-        function updateUploadLabel() {
-            const input = document.getElementById('gallery-upload-input');
-            const label = document.getElementById('upload-file-label');
-            if (input.files.length > 0) {
-                label.innerText = `${input.files.length} file đã chọn`;
-                label.className = "text-center text-[10px] text-love-500 font-bold mt-2 h-4 truncate";
-            } else {
-                label.innerText = "";
-            }
+        .animate-zoom-in {
+            animation: zoomIn 0.2s ease-out;
         }
+    </style>
 
-        // 3. Thực hiện Upload
-        async function executeGalleryUpload(btn) {
-            const input = document.getElementById('gallery-upload-input');
-            const folder = document.getElementById('upload-target-folder').value;
-            const files = input.files;
+    <div id="comment-options-modal" class="fixed inset-0 z-[110] hidden flex items-end justify-center sm:items-center">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onclick="closeCommentOptions()">
+        </div>
 
-            if (files.length === 0) return Modal.alert("Vui lòng chọn ít nhất 1 file!");
+        <div
+            class="bg-white w-full max-w-md rounded-t-[2rem] sm:rounded-[2rem] shadow-2xl relative z-10 p-5 animate-slide-up mx-2 mb-2 sm:mb-0">
+            <h3 class="text-center font-bold text-gray-400 text-xs uppercase mb-4 tracking-widest">Tùy chọn bình luận
+            </h3>
 
-            // UI Loading
-            btn.disabled = true;
-            btn.innerHTML = '<span class="loader border-white border-t-transparent w-4 h-4"></span> Đang tải...';
+            <div class="space-y-2">
+                <button onclick="triggerEditComment()"
+                    class="w-full py-3.5 rounded-2xl bg-gray-50 text-blue-600 font-bold text-sm hover:bg-blue-50 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-pen"></i> Chỉnh sửa
+                </button>
+                <button onclick="triggerDeleteComment()"
+                    class="w-full py-3.5 rounded-2xl bg-gray-50 text-red-500 font-bold text-sm hover:bg-red-50 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-trash"></i> Xóa bình luận
+                </button>
+            </div>
 
-            let successCount = 0;
-            let errorCount = 0;
+            <button onclick="closeCommentOptions()"
+                class="w-full mt-4 py-3 rounded-xl bg-white border border-gray-100 text-gray-600 font-bold text-sm shadow-sm">
+                Hủy bỏ
+            </button>
+        </div>
+    </div>
 
-            try {
-                // Duyệt qua từng file để upload
-                for (const file of files) {
-                    try {
-                        // Tái sử dụng hàm uploadToSupabase cũ, nhưng cho phép truyền folder tùy ý
-                        // Lưu ý: Hàm cũ uploadToSupabase(file, folder) đã có sẵn logic
-                        await uploadToSupabase(file, folder);
-                        successCount++;
-                    } catch (err) {
-                        console.error(err);
-                        errorCount++;
-                    }
-                }
+    <div id="edit-comment-modal" class="fixed inset-0 z-[120] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeEditCommentModal()"></div>
+        <div class="bg-white w-full max-w-sm rounded-3xl p-5 relative z-10 shadow-2xl animate-zoom-in">
+            <h3 class="font-bold text-gray-800 mb-3">Sửa nội dung</h3>
+            <textarea id="edit-comment-input" rows="3"
+                class="w-full bg-gray-50 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 ring-love-300 border border-gray-100"></textarea>
+            <div class="flex gap-2 mt-4">
+                <button onclick="closeEditCommentModal()"
+                    class="flex-1 py-2 rounded-xl bg-gray-100 text-gray-500 font-bold text-xs">Hủy</button>
+                <button onclick="saveEditedComment()"
+                    class="flex-1 py-2 rounded-xl bg-love-500 text-white font-bold text-xs shadow-lg shadow-love-200">Lưu</button>
+            </div>
+        </div>
+    </div>
 
-                // Kết quả
-                if (successCount > 0) {
-                    Modal.alert(`Đã tải lên thành công ${successCount} file!`);
-                    toggleGalleryUpload(); // Đóng form
-                    loadGallery(); // Reload lại lưới ảnh
-                }
-
-                if (errorCount > 0) {
-                    Modal.alert(`Có ${errorCount} file bị lỗi (có thể do quá lớn).`);
-                }
-
-            } catch (e) {
-                Modal.alert("Lỗi hệ thống: " + e.message);
-            } finally {
-                // Reset button
-                btn.disabled = false;
-                btn.innerText = "Tải lên ngay";
-            }
-        }
-
-        /* --- HEART RAIN EFFECT --- */
-        function triggerHeartRain() {
-            // Rung nhẹ điện thoại (nếu hỗ trợ)
-            if (navigator.vibrate) navigator.vibrate(50);
-
-            const container = document.body;
-            const colors = ['#f43f5e', '#ec4899', '#e11d48', '#ffccd5', '#fb7185']; // Các tông màu hồng/đỏ
-
-            // Tạo 40 trái tim
-            for (let i = 0; i < 40; i++) {
-                const heart = document.createElement('i');
-                heart.classList.add('fas', 'fa-heart', 'heart-rain');
-
-                // Random thuộc tính
-                const left = Math.random() * 100; // Vị trí ngang
-                const size = Math.random() * 20 + 10; // Kích thước 10px - 30px
-                const duration = Math.random() * 3 + 2; // Rơi trong 2s - 5s
-                const color = colors[Math.floor(Math.random() * colors.length)];
-
-                // Style
-                heart.style.left = left + 'vw';
-                heart.style.fontSize = size + 'px';
-                heart.style.color = color;
-                heart.style.animationDuration = duration + 's';
-                heart.style.animationDelay = Math.random() * 2 + 's'; // Delay để không rơi cùng lúc
-
-                container.appendChild(heart);
-
-                // Tự xóa sau khi rơi xong
-                setTimeout(() => {
-                    heart.remove();
-                }, (duration + 2) * 1000);
-            }
-        }
-
-        /* --- REALTIME HEART CONNECTION LOGIC --- */
-
-        // 1. Hàm xử lý khi BẠN bấm vào trái tim
-        async function handleHeartClick() {
-            // Hiệu ứng rung phản hồi ngay lập tức
-            if (navigator.vibrate) navigator.vibrate(100);
-
-            // 1. Cập nhật thời gian bấm của BẠN
-            const now = Date.now();
-            appData.heartTimestamp[`u${myUserIndex}`] = now;
-
-            // 2. Lưu lên Server (Việc này sẽ kích hoạt Realtime ở máy đối phương)
-            await saveData();
-
-            // 3. Tự tạo mưa cho mình xem ngay cho mượt (khỏi chờ server)
-            // Kiểm tra xem có đang bão không để hiện đúng loại
-            checkAndTriggerRain(appData.heartTimestamp.u1, appData.heartTimestamp.u2);
-        }
-
-        // 2. Hàm đăng ký lắng nghe Realtime (Thêm vào cuối hàm initApp)
-        function setupRealtimeListener() {
-            if (!currentCoupleCode) return;
-
-            // Lắng nghe thay đổi trên bảng 'couples' đúng dòng id của mình
-            supabaseClient
-                .channel('public:couples')
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'couples', filter: `id=eq.${currentCoupleCode}` }, payload => {
-                    const newData = payload.new.data;
-
-                    // So sánh xem có ai vừa bấm tim không
-                    const oldT1 = appData.heartTimestamp?.u1 || 0;
-                    const oldT2 = appData.heartTimestamp?.u2 || 0;
-                    const newT1 = newData.heartTimestamp?.u1 || 0;
-                    const newT2 = newData.heartTimestamp?.u2 || 0;
-
-                    // Cập nhật dữ liệu cục bộ
-                    appData = newData;
-                    refreshUI(); // Cập nhật lại giao diện (số ngày, avatar...) nếu có thay đổi khác
-
-                    // Nếu có timestamp mới (lớn hơn cũ) -> Kích hoạt mưa
-                    // (Chỉ kích hoạt nếu thời gian bấm cách hiện tại không quá 5s - tránh mưa khi load trang lại)
-                    const now = Date.now();
-                    if ((newT1 > oldT1 && now - newT1 < 5000) || (newT2 > oldT2 && now - newT2 < 5000)) {
-                        checkAndTriggerRain(newT1, newT2);
-                    }
-                })
-                .subscribe();
-        }
-
-        // 3. Logic kiểm tra BÃO hay MƯA THƯỜNG
-        function checkAndTriggerRain(t1, t2) {
-            // Nếu cả 2 người cùng bấm trong khoảng 10 giây (10000ms)
-            const diff = Math.abs(t1 - t2);
-            const isSuperStorm = diff < 10000 && t1 > 0 && t2 > 0;
-
-            if (isSuperStorm) {
-                createHeartStorm(); // BÃO TO
-            } else {
-                createHeartRain(); // Mưa thường
-            }
-        }
-
-        // 4. Tạo Mưa thường (Nhẹ nhàng)
-        function createHeartRain() {
-            const container = document.body;
-            const colors = ['#f43f5e', '#fb7185', '#fda4af']; // Hồng phấn
-
-            for (let i = 0; i < 30; i++) {
-                setTimeout(() => {
-                    const heart = document.createElement('i');
-                    heart.className = 'fas fa-heart heart-rain text-love-500';
-                    heart.style.left = Math.random() * 100 + 'vw';
-                    heart.style.fontSize = (Math.random() * 20 + 10) + 'px';
-                    heart.style.color = colors[Math.floor(Math.random() * colors.length)];
-                    heart.style.animationDuration = (Math.random() * 2 + 3) + 's'; // Rơi chậm 3-5s
-                    container.appendChild(heart);
-                    setTimeout(() => heart.remove(), 5000);
-                }, i * 100);
-            }
-        }
-
-        // 5. Tạo BÃO TIM (Siêu to, lâu hết)
-        function createHeartStorm() {
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 200]); // Rung mạnh
-
-            const container = document.body;
-            const colors = ['#e11d48', '#be123c', '#9f1239', '#fb7185', '#ffffff']; // Đỏ đậm rực rỡ + trắng
-
-            Modal.alert("💖 CỘNG HƯỞNG TÌNH YÊU! 💖"); // Thông báo Toast
-
-            // Tạo 200 trái tim (Nhiều gấp 6 lần)
-            for (let i = 0; i < 200; i++) {
-                setTimeout(() => {
-                    const heart = document.createElement('i');
-                    heart.className = 'fas fa-heart heart-rain super'; // Class super cho CSS
-
-                    // Random vị trí khắp màn hình
-                    heart.style.left = Math.random() * 100 + 'vw';
-
-                    // Kích thước to hơn (20px - 60px)
-                    heart.style.fontSize = (Math.random() * 40 + 20) + 'px';
-
-                    heart.style.color = colors[Math.floor(Math.random() * colors.length)];
-
-                    // Rơi cực nhanh hoặc cực chậm lộn xộn
-                    heart.style.animationDuration = (Math.random() * 5 + 2) + 's';
-
-                    container.appendChild(heart);
-                    setTimeout(() => heart.remove(), 8000);
-                }, i * 50); // Mật độ dày đặc hơn
-            }
-        }
-
-        window.onload = initApp;
-    </script>
+    <script src="./main.js"></script>
 </body>
 
 </html>
