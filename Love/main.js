@@ -16,6 +16,25 @@ const DEFAULT_DATA = {
     playlist: [], // Music list {name, url}
     theme: { color: 'pink', font: 'Nunito', bg: '' },
     heartTimestamp: { u1: 0, u2: 0 },
+    secretPin: null,
+
+    loveBox: [],
+    lastBoxOpen: { u1: 0, u2: 0 },
+    giftedOpens: { u1: 0, u2: 0 },
+    dailyGiftStats: {
+        u1: { date: '', count: 0 },
+        u2: { date: '', count: 0 }
+    },
+    encryptedDiceData: null,
+    secretPositions: {
+        current: 1,
+        doneList: [],
+        skipDone: false,
+        reviews: {}
+    },
+
+    // 2. Dữ liệu Ghi chú (Mã hóa)
+    secretNotes: []
 };
 
 const THEMES = {
@@ -873,6 +892,7 @@ function updateSparksPage() {
         const btn = document.getElementById(`btn-checkin-${i}`);
         const isChecked = appData.streak[`lastDate${i}`] === new Date().toDateString();
         const u = appData[`user${i}`];
+
         img.src = u.avatar;
         if (isChecked) {
             img.classList.remove('grayscale'); img.classList.add('border-green-500');
@@ -909,12 +929,23 @@ function updateEventsPage() {
 
     if (!appData.events) appData.events = [];
 
-    // --- Xử lý dữ liệu (Sort) ---
+    // --- Xử lý dữ liệu (Giữ nguyên) ---
     const processed = appData.events.map(e => {
+        const originalDate = new Date(e.date);
         const nextDate = getNextDate(e.date, e.recur);
         let diff = nextDate - new Date();
         if (diff < 0 && new Date().getDate() == nextDate.getDate()) diff = 0;
-        return { ...e, nextDate, diff };
+
+        let repeatInfo = "";
+        if (e.recur === 'year') {
+            const years = nextDate.getFullYear() - originalDate.getFullYear();
+            if (years > 0) repeatInfo = `(Lần thứ ${years})`;
+        } else if (e.recur === 'month') {
+            const months = (nextDate.getFullYear() - originalDate.getFullYear()) * 12 + (nextDate.getMonth() - originalDate.getMonth());
+            if (months > 0) repeatInfo = `(Tháng thứ ${months})`;
+        }
+
+        return { ...e, nextDate, diff, repeatInfo };
     }).sort((a, b) => {
         if (a.diff >= 0 && b.diff >= 0) return a.diff - b.diff;
         if (a.diff < 0 && b.diff < 0) return b.diff - a.diff;
@@ -929,7 +960,7 @@ function updateEventsPage() {
     const mainEvent = processed[0];
     const subEvents = processed.slice(1);
 
-    // --- RENDER MAIN EVENT (Giữ nguyên không vuốt, chỉ click để sửa) ---
+    // --- RENDER MAIN EVENT ---
     if (mainEvent) {
         const e = mainEvent;
         const dateStr = e.nextDate.toLocaleDateString('vi-VN');
@@ -948,13 +979,17 @@ function updateEventsPage() {
         }
 
         const mainHtml = `
-            <div class="relative overflow-hidden rounded-[1.5rem] shadow-xl shadow-love-200/50 h-44 w-full group transform transition hover:scale-[1.01] cursor-pointer" onclick="editEvent('${e.id}')">
+            <div class="relative overflow-hidden rounded-[1.5rem] shadow-xl shadow-love-200/50 h-44 w-full group transform transition hover:scale-[1.01] cursor-pointer mb-6" 
+                 onclick="editEvent('${e.id}')">
                 <div class="absolute inset-0" style="${cardStyle}">${overlay}</div>
                 <div class="absolute top-4 right-4 z-20">
                     <span class="bg-white/20 backdrop-blur-md border border-white/30 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse">${timeLeftStr}</span>
                 </div>
                 <div class="absolute bottom-0 left-0 w-full p-6 z-20">
-                    <h2 class="text-3xl font-black text-white font-script mb-1 drop-shadow-md leading-tight">${e.name}</h2>
+                    <h2 class="text-3xl font-black text-white font-script mb-1 drop-shadow-md leading-tight">
+                        ${e.name} 
+                        <span class="text-lg font-normal opacity-80 block sm:inline">${e.repeatInfo}</span>
+                    </h2>
                     <p class="text-white/90 text-sm font-bold flex items-center gap-2"><i class="far fa-clock"></i> ${dateStr}</p>
                 </div>
             </div>
@@ -962,14 +997,13 @@ function updateEventsPage() {
         list.innerHTML += mainHtml;
     }
 
-    // --- RENDER SUB EVENTS (ÁP DỤNG SWIPE) ---
+    // --- RENDER SUB EVENTS (CẬP NHẬT ONCLICK CÓ EVENT) ---
     subEvents.forEach(e => {
         const dateStr = e.nextDate.toLocaleDateString('vi-VN');
         const diffMs = e.nextDate - new Date();
         const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
         const isToday = new Date().toDateString() === e.nextDate.toDateString();
 
-        // Style cho card
         let cardStyle = "";
         let overlay = "";
         if (e.bg) {
@@ -979,37 +1013,39 @@ function updateEventsPage() {
             overlay = `<div class="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 opacity-90"></div>`;
         }
 
-        // HTML CẤU TRÚC SWIPE
-        // 1. event-swipe-container: Bao bọc
-        // 2. event-actions: Nút Sửa/Xóa nằm dưới
-        // 3. event-content: Nội dung nằm trên (có sự kiện touch)
-
         const html = `
-            <div class="event-swipe-container w-full h-20 rounded-2xl shadow-sm">
+            <div class="relative w-full h-20 rounded-[1.5rem] overflow-hidden mb-3 shadow-sm select-none">
                 
-                <div class="event-actions bg-gray-100 rounded-2xl overflow-hidden">
-                    <button onclick="editEvent('${e.id}')" class="w-1/2 h-full bg-blue-50 text-blue-500 font-bold flex flex-col items-center justify-center hover:bg-blue-100 transition">
-                        <i class="fas fa-pen mb-1"></i> <span class="text-[10px]">Sửa</span>
+                <div class="absolute inset-y-0 right-0 w-[120px] flex">
+                    <button onclick="editEvent('${e.id}')" class="w-1/2 h-full bg-blue-50 text-blue-600 flex flex-col items-center justify-center hover:bg-blue-100 active:bg-blue-200 transition border-l border-white/50">
+                        <i class="fas fa-pen mb-1"></i> <span class="text-[10px] font-bold">Sửa</span>
                     </button>
-                    <button onclick="deleteEvent('${e.id}')" class="w-1/2 h-full bg-red-50 text-red-500 font-bold flex flex-col items-center justify-center hover:bg-red-100 transition">
-                        <i class="fas fa-trash mb-1"></i> <span class="text-[10px]">Xóa</span>
+                    <button onclick="deleteEvent('${e.id}')" class="w-1/2 h-full bg-red-50 text-red-500 flex flex-col items-center justify-center hover:bg-red-100 active:bg-red-200 transition border-l border-white/50">
+                        <i class="fas fa-trash mb-1"></i> <span class="text-[10px] font-bold">Xóa</span>
                     </button>
                 </div>
 
-                <div class="event-content h-full rounded-[1.5rem] overflow-hidden relative"
-                     ontouchstart="handleItemTouchStart(event, this)"
-                     ontouchmove="handleItemTouchMove(event, this)"
-                     ontouchend="handleItemTouchEnd(event, this)">
+                <div id="event-content-${e.id}" 
+                     class="event-content-slide absolute inset-0 z-10 w-full h-full cursor-pointer transition-transform duration-300 ease-out"
+                     onclick="toggleEventActions(event, '${e.id}')">
                      
                      <div class="absolute inset-0 z-0" style="${cardStyle}">${overlay}</div>
-                     <div class="relative z-10 flex justify-between items-center w-full h-full px-5">
-                        <div class="flex flex-col items-start">
-                            <span class="font-bold text-white text-base truncate ">${e.name}</span>
-                            <span class="text-xs text-white/80">${dateStr}</span>
+                     
+                     <div class="relative z-10 flex justify-between items-center w-full h-full px-3">
+                        <div class="flex flex-col items-start overflow-hidden w-2/3">
+                            <span class="font-bold text-left text-white text-base truncate w-full">
+                                ${e.name} 
+                            </span>
+                            <span class="text-xs text-white/80">${dateStr} <span class="text-xs opacity-75 font-normal">${e.repeatInfo}</span></span>
+                            
                         </div>
-                        <div class="flex items-center gap-1">
-                            <span class="text-xl font-black text-white">${isToday ? '0' : daysLeft}</span>
-                            <span class="text-[10px] text-white/80 font-medium">ngày</span>
+                        <div class="flex flex-col items-center min-w-[54px]  glass-card-special bg-white/60 rounded-2xl p-2  text-center shadow-lg shadow-love-100/20 border border-white/40  rounded-2xl">
+                            <p class="text-xl font-black text-white h-[20px]">${isToday ? '0' : daysLeft}</p>
+                            <p class="text-[10px] text-white/80 font-medium">ngày</p>
+                        </div>
+                        
+                        <div class="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-30">
+                            <i class="fas fa-ellipsis-v text-white text-xs"></i>
                         </div>
                      </div>
                 </div>
@@ -1019,22 +1055,29 @@ function updateEventsPage() {
     });
 }
 
-let xDown = null; let yDown = null;
-function handleTouchStart(evt) { xDown = evt.touches[0].clientX; yDown = evt.touches[0].clientY; }
-function handleTouchMove(evt) {
-    if (!xDown || !yDown) return;
-    let xDiff = xDown - evt.touches[0].clientX; let yDiff = yDown - evt.touches[0].clientY;
-    if (Math.abs(xDiff) > Math.abs(yDiff)) {
-        const el = evt.currentTarget;
-        if (xDiff > 0) el.style.transform = `translateX(-${Math.min(xDiff, 160)}px)`; else el.style.transform = `translateX(0px)`;
-    }
-}
-function handleTouchEnd(evt, el) {
-    let xDiff = xDown - evt.changedTouches[0].clientX;
-    if (xDiff > 60) el.style.transform = `translateX(-160px)`; else el.style.transform = `translateX(0px)`;
-    xDown = null; yDown = null;
-}
+/* --- LOGIC HIỂN THỊ NÚT SỬA/XÓA (TAP TO REVEAL) --- */
+/* --- HÀM TOGGLE (CẬP NHẬT) --- */
+function toggleEventActions(event, id) {
+    // NGĂN CHẶN SỰ KIỆN NỔI BỌT (Quan trọng)
+    // Để cú click này không kích hoạt sự kiện đóng của document
+    if (event) event.stopPropagation();
 
+    const element = document.getElementById(`event-content-${id}`);
+    if (!element) return;
+
+    // Kiểm tra xem hiện tại nó đang mở hay đóng
+    const isOpened = element.classList.contains('translate-x-[-120px]');
+
+    // Bước 1: Đóng tất cả các cái khác lại cho gọn
+    closeAllEventActions();
+
+    // Bước 2: Nếu cái mình vừa bấm chưa mở -> Thì mở nó ra
+    if (!isOpened) {
+        element.classList.add('translate-x-[-120px]');
+        element.style.transform = 'translateX(-120px)';
+    }
+    // (Nếu nó đang mở rồi thì Bước 1 đã đóng nó lại -> Kết quả là Đóng. Đúng ý muốn)
+}
 function toggleEventForm() {
     const form = document.getElementById('event-form');
     if (!form) return;
@@ -1069,6 +1112,22 @@ function toggleEventForm() {
         if (titleInput) titleInput.focus();
     }
 }
+/* --- LOGIC TỰ ĐỘNG ĐÓNG KHI BẤM RA NGOÀI --- */
+
+// 1. Hàm phụ: Đóng tất cả các sự kiện đang mở
+function closeAllEventActions() {
+    document.querySelectorAll('.event-content-slide').forEach(el => {
+        el.classList.remove('translate-x-[-120px]');
+        el.style.transform = 'translateX(0)';
+    });
+}
+
+// 2. Sự kiện toàn màn hình: Hễ bấm vào đâu cũng gọi hàm đóng
+document.addEventListener('click', function (e) {
+    // Logic: Khi bấm vào màn hình, ta mặc định đóng hết các menu đang mở.
+    // (Trừ khi bấm vào chính cái sự kiện đó - sẽ được xử lý riêng ở hàm toggleEventActions nhờ stopPropagation)
+    closeAllEventActions();
+});
 
 async function saveEvent(btn) {
     // 1. Lấy dữ liệu từ form (Lưu ý: event-bg bây giờ là ô nhập link, không phải file)
@@ -1143,14 +1202,25 @@ async function saveEvent(btn) {
 }
 
 function editEvent(id) {
+    // Tìm sự kiện trong danh sách
     const e = appData.events.find(ev => ev.id == id);
     if (!e) return;
+
+    // Gán dữ liệu vào các ô input trong Modal
     document.getElementById('event-id').value = e.id;
-    document.getElementById('event-title').value = e.title;
+
+    // --- SỬA LỖI Ở ĐÂY: Dùng e.name thay vì e.title ---
+    document.getElementById('event-title').value = e.name;
+
     document.getElementById('event-date').value = e.date;
     document.getElementById('event-recur').value = e.recur;
     document.getElementById('event-bg').value = e.bg || '';
-    document.getElementById('event-form-title').innerText = 'Chỉnh sửa sự kiện';
+
+    // Đổi tiêu đề Modal và hiện Modal
+    const formTitle = document.getElementById('event-form-title');
+    if (formTitle) formTitle.innerText = 'Chỉnh sửa sự kiện';
+
+    // Mở form (Giả sử bạn dùng hàm toggle hoặc classList)
     document.getElementById('event-form').classList.remove('hidden');
 }
 async function deleteEvent(id) {
@@ -2222,7 +2292,7 @@ function initNavigation() {
     dotsContainer.innerHTML = '';
 
     const icons = [
-        'fa-home', 'fa-check-square', 'fa-fire', 
+        'fa-home', 'fa-check-square', 'fa-fire',
         'fa-calendar-alt', 'fa-book-open', 'fa-folder-open', 'fa-cog'
     ];
 
@@ -2230,7 +2300,7 @@ function initNavigation() {
         const dot = document.createElement('div');
         dot.className = `nav-dot ${i === 0 ? 'active' : ''}`;
         dot.innerHTML = `<i class="fas ${icons[i]}"></i>`;
-        
+
         dot.onclick = () => {
             if (navigator.vibrate) navigator.vibrate(30);
             goToPage(i);
@@ -2253,12 +2323,12 @@ function goToPage(index) {
     if (targetPage) {
         // Tạm thời tắt lắng nghe scroll để tránh xung đột icon active
         swipeWrapper.removeEventListener('scroll', handleScrollActive);
-        
+
         // --- KEY FIX: Dùng hàm này để trình duyệt tự tìm vị trí chính xác ---
-        targetPage.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'nearest', 
-            inline: 'start' 
+        targetPage.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'start'
         });
 
         updateActiveDot(index);
@@ -2275,15 +2345,15 @@ function goToPage(index) {
 // 3. Xử lý khi người dùng TỰ VUỐT TAY
 function handleScrollActive() {
     clearTimeout(isScrollingTimeout);
-    
+
     isScrollingTimeout = setTimeout(() => {
         // Tính toán dựa trên chiều rộng thực tế của wrapper
         const pageWidth = swipeWrapper.clientWidth;
         const scrollLeft = swipeWrapper.scrollLeft;
-        
+
         // Tính ra index (làm tròn)
         const activeIndex = Math.round(scrollLeft / pageWidth);
-        
+
         if (activeIndex !== currentPage) {
             currentPage = activeIndex;
             updateActiveDot(activeIndex);
@@ -2314,6 +2384,7 @@ function updatePageData(index) {
     if (index === 4) updateDiaryPage(); // Diary
     if (index === 5) loadGallery(); // Gallery
     if (index === 6) loadSettingsToUI(); // Settings
+    if (index === 7) updateTurnDisplay(); // Settings
 }
 
 // Thêm vào initApp hoặc cuối file
@@ -2357,7 +2428,7 @@ async function loadGallery() {
     updateGalleryToolbar();
 
     // Các thư mục cần quét trong Bucket 'love_gallery'
-    const folders = ['posts', 'events', 'avatars', 'backgrounds', 'files'];
+    const folders = ['posts', 'events', 'avatars', 'backgrounds', 'files', 'general'];
     let allFiles = [];
 
     try {
@@ -2890,7 +2961,7 @@ async function loadMiniGallery(filterFolder = 'all') {
     grid.innerHTML = '<div class="col-span-3 text-center py-10"><div class="loader"></div></div>';
 
     let files = [];
-    const folders = filterFolder === 'all' ? ['avatars', 'backgrounds', 'posts', 'events'] : [filterFolder];
+    const folders = filterFolder === 'all' ? ['avatars', 'backgrounds', 'posts', 'events', 'general'] : [filterFolder];
 
     try {
         for (const folder of folders) {
@@ -3044,6 +3115,1380 @@ function handleItemTouchEnd(e, element) {
     }
 }
 
+/* --- LOGIC SECRET ZONE (DICE & LOVE BOX) --- */
+
+const ENCRYPTED_DEFAULT_DICE = "U2FsdGVkX1+X/Ae1bNijaHbNjXslaFUACzQOHms8gegSBMWGcmOgTeNIPkncvhrlwuqgN2x+4qpKqYfhIDledpm+AOP6nOFa/7nQyYaRWZiXgTghujlZngpwZJd1NkQQEgl5rOt6zCyE2h7ebsMv3RTFho2zITpqAds4MQJ8M/iA99ROrITCiyS+nsKx1l7zAVRdIwEJjrsVPN2mCJAP3/D83cea7ST1OmQ/BuA0DH9wnOSy080Y4ql43kxrcE5eAeyAoK/e/337EWoHOHVa7hzd0KZj3Sno1MPQh3Njg2ctA9j7ecWo4ezs6Un8CWjPhzF9ej6/hpIO4GZhlVYr1dy58CgpG3E0zsuQRo5VcqtH2PuxxqVwfhUJqTn/4m9Bpx3RtjBcPwkhoDHuOnxwDoG9+T3RsQTu1zIKqDfo78XhQv72Tf/PCO2pZDFnwPlRR6YQ5V7RQlMv0sQGabXTJ7ZAAdGp07RKnOFBaIJsYMbFMIgtKCQlcgmvQlGp0ZZMSJUUsvQfCIhdKLAsNqYuEmQt1qYowvLVkB2sZi4mDwP3FvSU2dVyTrc5WPTSHiOiEVj3V+tP0mUEi3TiFczZGN5St8OIYBIjPIW8f74eZutnreIxR9ElbL9phcsl9iAqa3h58sJ8pflqrt9wOT36/pjf/AMGZhusXJ2tgBM1Yt9p/xufi3X0K9Av3gZysI6fC971YGXcom5mw+zrhqdZjgEiM3K3XGUK2i1810mxD0KIARz57H1ioRB5xI4/UFpdhRj4MWv9wfE7h6DK14w825Zn8suJmEuosfFW+/yBBLuOaQZToe98P2W5Cs7JdlyvtsqRVxY4hGNi9ZyWxd3vJHpvsgLsA4eOol5/COpurrCn3ubQOvugJN9w5J3ha/QIwG2gUS/4R2nDy+fdfkkOnSvTo+E7TamU37j4ClI3DB9tkY2hIWlvAnJb+KpA1pSpBpVFApZSfhWN6DElaD0Zq8pbkPVle42NOenIQytSh1RGLYm3u/OwjHh3qEtUm68ZcGgLvXrmOJkcczkYVVAqm5cyn4+LBUeXoyl/osAVsgRpU7c7n8jw903TW4LzxO61zdMjZbo6fRQzUg5uM8tA7d+b3tRsfxvvwPySK2TL+xp5pX0/AejirdqcQhJ37zD4kHkaxJJdueAFyxlhao5Vf+fbXI4ZziCsDgJvq0FyFZi2vOIZSQCSw9OUnntN5dPXGQgh8KPbDRHwF3QrGx+AM5IITr0O0M+OtlOcfwOyaCkpevK5V6NgHdZ1NR+kyUb9A06dQ6swUELb9SNau+QQFwCbSixO9cVA3qemuii02Cke05O6JyD0eP/d3a49UoDqLpuSRU2Ni8mVFy/3xFWkRV6+4ESMVrdT1LJoEAOfP5EMZzlDMwta53/odp/sEq5wndvGZhuCjwx+E+MuOgKhWmC2hFharnTvnM4JryYuAW8nRClTW5G38zZYlEZRBXuRRlWqivMPHXHuFSsgdzIc+Ggy8g2PiA0Wza0ih1QIzxVY63R00l1TnBmr1L5kxvy8fGXEfuLysorGVo0XwHTigApk70sNiKnklpdtuTv2BBjwELYGIPuTDv2p7Zrg5nJjMfUA/5vLEcDbJ6o00sSgAWOC/LctCeucppVatdfD7PQ0swGFZW/qhEiyJx/XZBGPZ4nsk6sIRNVTR9aK7c3i7E7qSETdRw6qLWbqeOonGIKIRC8Ldj8/zjutZY/6Kt6K+G8xsF7NCVxujVuU6x6jfMD/+dKD0HV8UAQQeU7Pn0eWVtoGVGtkGRXXqK2UZ4N7Z+G7IjZSiS8N3TJeoCQle7dvHYlJ4Ahk3leQAl2hgguFGptY0B0KnxmPLGnXdYsM7UzZlFASAS6Ae67bbKnkrQ==";
+
+const SYSTEM_KEY = "SYSTEM_HIDDEN_KEY"; // Khóa tĩnh để giải mã dữ liệu mặc định
+
+// Hàm giải mã dữ liệu mặc định (Helper)
+function getDefaultDiceConfig() {
+    try {
+        const bytes = CryptoJS.AES.decrypt(ENCRYPTED_DEFAULT_DICE, SYSTEM_KEY);
+        const str = bytes.toString(CryptoJS.enc.Utf8);
+        return JSON.parse(str);
+    } catch (e) {
+        console.error("Lỗi giải mã Default Config:", e);
+        return { actions: [], bodyParts: [], times: [], hotActions: [] }; // Fallback rỗng để không crash
+    }
+}
+
+// Biến lưu cấu hình hiện tại (Sau khi đã giải mã từ AppData)
+let currentDiceConfig = null;
+let currentSecretTab = 'dice';
+
+/* --- B. QUẢN LÝ TAB --- */
+function switchSecretTab(tab) {
+    currentSecretTab = tab;
+
+    // Ẩn hiện các view
+    document.getElementById('tab-dice').classList.add('hidden');
+    document.getElementById('tab-box').classList.add('hidden');
+    document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+    // Update style nút bấm (Active/Inactive)
+    const activeClass = "px-4 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow transition";
+    const inactiveClass = "px-4 py-1.5 rounded-md text-xs font-bold text-gray-300 hover:text-white transition";
+
+    const btnDice = document.getElementById('tab-btn-dice');
+    const btnBox = document.getElementById('tab-btn-box');
+
+    if (btnDice) btnDice.className = tab === 'dice' ? activeClass : inactiveClass;
+    if (btnBox) btnBox.className = tab === 'box' ? activeClass : inactiveClass;
+    if (btnBox) updateTurnDisplay();
+}
+
+/* --- C. LOGIC XÚC XẮC (DICE) --- */
+
+// 1. Tải dữ liệu (Tự động giải mã E2EE)
+/* --- CẬP NHẬT HÀM LOAD DỮ LIỆU --- */
+function loadDiceData() {
+    // 1. Trường hợp chưa có dữ liệu cá nhân -> Dùng mặc định (Giải mã từ biến ẩn)
+    if (!appData.encryptedDiceData) {
+        currentDiceConfig = getDefaultDiceConfig();
+        return;
+    }
+
+    // 2. Trường hợp đã có dữ liệu cá nhân -> Giải mã bằng PIN người dùng
+    try {
+        if (!appData.secretPin) throw new Error("No PIN");
+
+        const bytes = CryptoJS.AES.decrypt(appData.encryptedDiceData, appData.secretPin);
+        const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!decryptedStr) throw new Error("Empty decrypt");
+
+        currentDiceConfig = JSON.parse(decryptedStr);
+    } catch (e) {
+        console.error("Lỗi giải mã Dice (User Data):", e);
+
+        // Nếu giải mã dữ liệu cá nhân lỗi, quay về dùng mặc định
+        currentDiceConfig = getDefaultDiceConfig();
+        Modal.showToast("Không thể giải mã dữ liệu cá nhân (Sai PIN?), đang dùng mặc định.");
+    }
+}
+
+// 2. Cập nhật giao diện (Chọn mode)
+function updateDiceMode() {
+    const container = document.getElementById('dice-container');
+    if (!container) return;
+
+    // Tìm nút radio đang check
+    const radioElement = document.querySelector('input[name="dice-mode"]:checked');
+    const mode = radioElement ? radioElement.value : 'combo';
+
+    // Đảm bảo dữ liệu đã load
+    if (!currentDiceConfig) loadDiceData();
+
+    if (mode === 'combo') {
+        container.innerHTML = `
+            <div class="grid grid-cols-1 gap-3 w-full animate-zoom-in">
+                <div class="bg-gray-800 p-4 rounded-xl text-center border border-gray-700">
+                    <p class="text-[10px] text-gray-400 uppercase">Hành động</p>
+                    <h3 class="text-2xl font-bold text-pink-400 mt-1" id="res-action">?</h3>
+                </div>
+                <div class="flex gap-3">
+                    <div class="bg-gray-800 p-4 rounded-xl text-center border border-gray-700 flex-1">
+                        <p class="text-[10px] text-gray-400 uppercase">Vị trí</p>
+                        <h3 class="text-xl font-bold text-blue-400 mt-1" id="res-part">?</h3>
+                    </div>
+                    <div class="bg-gray-800 p-4 rounded-xl text-center border border-gray-700 flex-1">
+                        <p class="text-[10px] text-gray-400 uppercase">Thời gian</p>
+                        <h3 class="text-xl font-bold text-yellow-400 mt-1" id="res-time">?</h3>
+                    </div>
+                </div>
+            </div>`;
+    } else {
+        container.innerHTML = `
+            <div class="bg-red-900/30 p-8 rounded-2xl text-center border border-red-500/50 relative overflow-hidden w-full animate-zoom-in">
+                <div class="absolute inset-0 bg-red-500/10 animate-pulse"></div>
+                <p class="text-xs text-red-300 uppercase tracking-widest mb-3 relative z-10">Thử thách Nóng bỏng</p>
+                <h3 class="text-3xl font-black text-red-500 relative z-10 drop-shadow-lg" id="res-hot">???</h3>
+            </div>`;
+    }
+}
+
+// 3. Hàm Quay Xúc Xắc (FIX LỖI DICE_DATA TẠI ĐÂY)
+function rollDice() {
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    const radioElement = document.querySelector('input[name="dice-mode"]:checked');
+    const mode = radioElement ? radioElement.value : 'combo';
+
+    // QUAN TRỌNG: Load dữ liệu vào biến config trước khi quay
+    if (!currentDiceConfig) loadDiceData();
+    const config = currentDiceConfig; // Dùng biến này thay vì DICE_DATA
+
+    let count = 0;
+    const interval = setInterval(() => {
+        if (mode === 'combo') {
+            // Random từ config (dữ liệu cá nhân hoặc mặc định)
+            if (document.getElementById('res-action'))
+                document.getElementById('res-action').innerText = getRandomItem(config.actions);
+            if (document.getElementById('res-part'))
+                document.getElementById('res-part').innerText = getRandomItem(config.bodyParts);
+            if (document.getElementById('res-time'))
+                document.getElementById('res-time').innerText = getRandomItem(config.times);
+        } else {
+            if (document.getElementById('res-hot'))
+                document.getElementById('res-hot').innerText = getRandomItem(config.hotActions);
+        }
+        count++;
+        if (count > 10) {
+            clearInterval(interval);
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        }
+    }, 80);
+}
+
+// Helper Random
+function getRandomItem(arr) {
+    if (!arr || arr.length === 0) return "...";
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/* --- D. CÀI ĐẶT DỮ LIỆU XÚC XẮC (MODAL) --- */
+
+// Hàm mở bảng cài đặt
+function openDiceSettings() {
+    console.log("Đang cố gắng mở cài đặt...");
+
+    // 1. Kiểm tra xem HTML Modal có tồn tại không
+    const modal = document.getElementById('dice-settings-modal');
+    if (!modal) {
+        return Modal.alert("LỖI: Không tìm thấy HTML của bảng cài đặt!\n\nHãy kiểm tra lại file index.html xem đã dán đoạn code <div id='dice-settings-modal'>...</div> chưa.");
+    }
+
+    // 2. Thử load dữ liệu
+    try {
+        if (!currentDiceConfig) loadDiceData();
+
+        // Kiểm tra xem hàm render có lỗi không
+        renderDiceTags('actions', currentDiceConfig.actions, 'bg-pink-900 text-pink-200');
+        renderDiceTags('bodyParts', currentDiceConfig.bodyParts, 'bg-blue-900 text-blue-200');
+        renderDiceTags('times', currentDiceConfig.times, 'bg-yellow-900 text-yellow-200');
+        renderDiceTags('hotActions', currentDiceConfig.hotActions, 'bg-red-900 text-red-200');
+    } catch (e) {
+        console.error(e);
+        // Dù lỗi dữ liệu vẫn cố mở bảng để người dùng thấy
+        console.log("Có lỗi render nhưng vẫn mở bảng.");
+    }
+
+    // 3. Mở Modal
+    modal.classList.remove('hidden');
+    console.log("Đã xóa class hidden, modal sẽ hiện ra.");
+}
+
+function closeDiceSettings() {
+    document.getElementById('dice-settings-modal').classList.add('hidden');
+}
+
+function renderDiceTags(key, arr, colorClass) {
+    const container = document.getElementById(`list-${key}`);
+    if (!container) return;
+    container.innerHTML = '';
+
+    arr.forEach((item, index) => {
+        const span = document.createElement('span');
+        span.className = `inline-flex items-center px-2 py-1 rounded text-xs ${colorClass} m-1`;
+        span.innerHTML = `
+            ${item} 
+            <button onclick="removeDiceItem('${key}', ${index})" class="ml-2 hover:text-white opacity-70 hover:opacity-100"><i class="fas fa-times"></i></button>
+        `;
+        container.appendChild(span);
+    });
+}
+
+function addDiceItem(key) {
+    const input = document.getElementById(`input-${key}`);
+    const val = input.value.trim();
+    if (val) {
+        currentDiceConfig[key].push(val);
+        input.value = '';
+
+        // Render lại màu sắc
+        const colors = {
+            'actions': 'bg-pink-900 text-pink-200',
+            'bodyParts': 'bg-blue-900 text-blue-200',
+            'times': 'bg-yellow-900 text-yellow-200',
+            'hotActions': 'bg-red-900 text-red-200'
+        };
+        renderDiceTags(key, currentDiceConfig[key], colors[key]);
+    }
+}
+
+function removeDiceItem(key, index) {
+    currentDiceConfig[key].splice(index, 1);
+
+    const colors = {
+        'actions': 'bg-pink-900 text-pink-200',
+        'bodyParts': 'bg-blue-900 text-blue-200',
+        'times': 'bg-yellow-900 text-yellow-200',
+        'hotActions': 'bg-red-900 text-red-200'
+    };
+    renderDiceTags(key, currentDiceConfig[key], colors[key]);
+}
+
+async function saveDiceSettings() {
+    if (!appData.secretPin) return Modal.alert("Lỗi: Không tìm thấy PIN để mã hóa!");
+
+    const jsonStr = JSON.stringify(currentDiceConfig);
+    const encrypted = CryptoJS.AES.encrypt(jsonStr, appData.secretPin).toString();
+
+    appData.encryptedDiceData = encrypted;
+    await saveData();
+
+    closeDiceSettings();
+    Modal.showToast("Đã lưu & mã hóa dữ liệu thành công!");
+
+    // Cập nhật lại giao diện ngay
+    updateDiceMode();
+}
+
+function switchSecretTab(tab) {
+    currentSecretTab = tab;
+    // UI update
+    document.getElementById('tab-dice').classList.add('hidden');
+    document.getElementById('tab-box').classList.add('hidden');
+    document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+    document.getElementById('tab-btn-dice').className = tab === 'dice' ? "px-4 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow" : "px-4 py-1.5 rounded-md text-xs font-bold text-gray-300";
+    document.getElementById('tab-btn-box').className = tab === 'box' ? "px-4 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow" : "px-4 py-1.5 rounded-md text-xs font-bold text-gray-300";
+}
+
+// --- B. LOGIC XÚC XẮC TÌNH YÊU ---
+function updateDiceMode() {
+    const container = document.getElementById('dice-container');
+    if (!container) return; // Nếu chưa có khung chứa thì dừng luôn
+
+    // --- SỬA LỖI Ở ĐÂY: Kiểm tra kỹ trước khi lấy giá trị ---
+    const radioElement = document.querySelector('input[name="dice-mode"]:checked');
+
+    // Nếu không tìm thấy nút nào được check, mặc định chọn 'combo'
+    const mode = radioElement ? radioElement.value : 'combo';
+
+    // --- PHẦN RENDER GIAO DIỆN (GIỮ NGUYÊN) ---
+    if (mode === 'combo') {
+        // Đảm bảo dữ liệu đã load
+        if (!currentDiceConfig) loadDiceData();
+
+        container.innerHTML = `
+            <div class="grid grid-cols-1 gap-3 w-full">
+                <div class="bg-gray-800 p-4 rounded-xl text-center border border-gray-700" id="dice-action-box">
+                    <p class="text-[10px] text-gray-400 uppercase">Hành động</p>
+                    <h3 class="text-2xl font-bold text-pink-400 mt-1" id="res-action">?</h3>
+                </div>
+                <div class="flex gap-3">
+                    <div class="bg-gray-800 p-4 rounded-xl text-center border border-gray-700 flex-1" id="dice-part-box">
+                        <p class="text-[10px] text-gray-400 uppercase">Vị trí</p>
+                        <h3 class="text-xl font-bold text-blue-400 mt-1" id="res-part">?</h3>
+                    </div>
+                    <div class="bg-gray-800 p-4 rounded-xl text-center border border-gray-700 flex-1" id="dice-time-box">
+                        <p class="text-[10px] text-gray-400 uppercase">Thời gian</p>
+                        <h3 class="text-xl font-bold text-yellow-400 mt-1" id="res-time">?</h3>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="bg-red-900/30 p-8 rounded-2xl text-center border border-red-500/50 relative overflow-hidden">
+                <div class="absolute inset-0 bg-red-500/10 animate-pulse"></div>
+                <p class="text-xs text-red-300 uppercase tracking-widest mb-3 relative z-10">Thử thách Nóng bỏng</p>
+                <h3 class="text-3xl font-black text-red-500 relative z-10 drop-shadow-lg" id="res-hot">???</h3>
+            </div>
+        `;
+    }
+}
 
 
+// Hàm Quay Xúc Xắc (Đã sửa lỗi DICE_DATA)
+function rollDice() {
+    // 1. Rung nhẹ (nếu có)
+    if (navigator.vibrate) navigator.vibrate(50);
+
+    // 2. Lấy chế độ chơi hiện tại
+    const radioElement = document.querySelector('input[name="dice-mode"]:checked');
+    const mode = radioElement ? radioElement.value : 'combo';
+
+    // 3. QUAN TRỌNG: Load dữ liệu cấu hình mới nhất
+    // (Thay vì dùng DICE_DATA cũ, ta dùng currentDiceConfig)
+    if (!currentDiceConfig) loadDiceData();
+    const config = currentDiceConfig;
+
+    // Kiểm tra xem config có dữ liệu không, nếu lỗi thì dùng mặc định ngay
+    if (!config) {
+        console.error("Không tìm thấy cấu hình xúc xắc!");
+        return;
+    }
+
+    // 4. Hiệu ứng chạy số (Animation)
+    let count = 0;
+    const interval = setInterval(() => {
+        if (mode === 'combo') {
+            // SỬA LỖI Ở ĐÂY: Dùng config.actions thay vì DICE_DATA.actions
+            if (document.getElementById('res-action'))
+                document.getElementById('res-action').innerText = getRandomItem(config.actions);
+
+            if (document.getElementById('res-part'))
+                document.getElementById('res-part').innerText = getRandomItem(config.bodyParts);
+
+            if (document.getElementById('res-time'))
+                document.getElementById('res-time').innerText = getRandomItem(config.times);
+        } else {
+            // SỬA LỖI Ở ĐÂY: Dùng config.hotActions
+            if (document.getElementById('res-hot'))
+                document.getElementById('res-hot').innerText = getRandomItem(config.hotActions);
+        }
+
+        count++;
+        // Dừng sau 10 lần nhảy số (khoảng 0.8 giây)
+        if (count > 10) {
+            clearInterval(interval);
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        }
+    }, 80);
+}
+
+// Hàm hỗ trợ lấy ngẫu nhiên (nếu chưa có)
+function getRandomItem(arr) {
+    if (!arr || arr.length === 0) return "...";
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getRandomItem(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
+
+// --- C. LOGIC DIGITAL LOVE BOX (MÃ HÓA E2EE) ---
+
+/* --- LOGIC TRANG BÍ MẬT (SECRET PAGE) --- */
+let isSecretUnlocked = false;
+
+// 1. Logic nhập PIN (Bàn phím ảo)
+function typePin(num) {
+    const input = document.getElementById('pin-input');
+    if (input.value.length < 6) {
+        input.value += num;
+        checkAutoPin();
+    }
+}
+function clearPin() {
+    const input = document.getElementById('pin-input');
+    input.value = input.value.slice(0, -1);
+}
+
+// 2. Tự động kiểm tra khi nhập đủ 6 số
+function checkAutoPin() {
+    const input = document.getElementById('pin-input');
+    const msg = document.getElementById('lock-msg');
+
+    if (input.value.length === 6) {
+        const enteredPin = input.value;
+
+        // Trường hợp 1: Chưa cài PIN bao giờ -> Cài mới
+        if (!appData.secretPin) {
+            appData.secretPin = enteredPin;
+            saveData();
+            Modal.showToast("Đã thiết lập mã PIN mới!");
+            unlockSuccess();
+        }
+        // Trường hợp 2: Đã có PIN -> Kiểm tra
+        else {
+            if (enteredPin === appData.secretPin) {
+                unlockSuccess();
+            } else {
+                // Rung + Báo lỗi
+                if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+                input.classList.add('border-red-500', 'text-red-500');
+                msg.innerText = "Sai mã PIN!";
+                msg.classList.add('text-red-500');
+
+                setTimeout(() => {
+                    input.value = '';
+                    input.classList.remove('border-red-500', 'text-red-500');
+                    msg.innerText = "Nhập mã PIN 6 số để truy cập";
+                    msg.classList.remove('text-red-500');
+                }, 500);
+            }
+        }
+    }
+}
+
+
+// 4. Khóa lại
+function lockSecret() {
+    isSecretUnlocked = false;
+    document.getElementById('secret-lock-screen').classList.remove('hidden');
+    document.getElementById('secret-content-area').classList.add('hidden');
+}
+
+
+// 8. Đổi PIN
+async function changeSecretPin() {
+    const newPin = await Modal.prompt("Nhập mã PIN 6 số mới:");
+    if (newPin && newPin.length === 6 && !isNaN(newPin)) {
+        appData.secretPin = newPin;
+        await saveData();
+        Modal.showToast("Đã đổi PIN thành công. Vui lòng đăng nhập lại.");
+        lockSecret();
+    } else {
+        if (newPin !== null) Modal.alert("Mã PIN phải là 6 chữ số!");
+    }
+}
+
+// 9. Quên PIN (Reset bằng cách hỏi mã cặp đôi)
+async function forgotPin() {
+    const confirmCode = await Modal.prompt("Nhập MÃ CẶP ĐÔI để reset PIN:");
+    if (confirmCode && confirmCode.toUpperCase() === currentCoupleCode) {
+        appData.secretPin = null; // Xóa PIN cũ
+        await saveData();
+        Modal.alert("Đã reset! Hãy nhập mã PIN mới để thiết lập lại.");
+        document.getElementById('pin-input').value = '';
+        checkAutoPin(); // Reset trạng thái UI
+    } else {
+        if (confirmCode) Modal.alert("Sai mã cặp đôi!");
+    }
+}
+
+// 1. Hàm Mã hóa / Giải mã (Dùng PIN làm Key)
+function encryptData(text) {
+    if (!appData.secretPin) return text;
+    try {
+        return CryptoJS.AES.encrypt(text, appData.secretPin).toString();
+    } catch (e) { return text; }
+}
+
+// Hàm giải mã (Đã sửa lỗi hiển thị khi nội dung trống)
+function decryptData(cipherText) {
+    if (!appData.secretPin) return cipherText;
+    if (!cipherText) return ""; // Nếu không có dữ liệu thì trả về rỗng ngay
+
+    try {
+        const bytes = CryptoJS.AES.decrypt(cipherText, appData.secretPin);
+        const str = bytes.toString(CryptoJS.enc.Utf8);
+
+        // Cũ: return str || "Lỗi giải mã..."; (Nguyên nhân gây lỗi)
+        // Mới: Trả về chính xác những gì giải mã được
+        return str;
+    } catch (e) {
+        return ""; // Nếu lỗi thật sự thì trả về rỗng cho sạch giao diện
+    }
+}
+
+// 2. Thêm Điều ước vào Hộp
+async function addWishToBox() {
+    const input = document.getElementById('wish-input');
+    const content = input.value.trim();
+
+    if (!content) return Modal.alert("Hãy nhập điều bạn muốn!");
+
+    const currentUser = appData[`user${myUserIndex}`];
+
+    // Mã hóa nội dung trước khi lưu
+    const encryptedContent = encryptData(content);
+
+    const newWish = {
+        id: Date.now().toString(),
+        authorId: currentUser.id, // Ai là người ước
+        content: encryptedContent, // Nội dung mật
+        isOpened: false,
+        openedBy: null,
+        openedDate: null
+    };
+
+    if (!appData.loveBox) appData.loveBox = [];
+    appData.loveBox.push(newWish);
+
+    await saveData();
+    input.value = '';
+    Modal.showToast("Đã gửi yêu cầu bí mật vào hộp! 💌");
+}
+
+// 3. Mở Hộp (Random & Check Limit)
+async function openMysteryBox() {
+    const currentUser = appData[`user${myUserIndex}`];
+    const today = new Date().toDateString();
+
+    // // Kiểm tra giới hạn 1 ngày/lần
+    // if (!appData.lastBoxOpen) appData.lastBoxOpen = { u1: 0, u2: 0 };
+
+    // const lastTime = appData.lastBoxOpen[`u${myUserIndex}`];
+    // if (lastTime && new Date(lastTime).toDateString() === today) {
+    //     return Modal.alert("Hôm nay bạn đã mở hộp rồi! Hãy quay lại vào ngày mai nhé.");
+    // }
+
+    // Lọc ra các điều ước CỦA ĐỐI PHƯƠNG mà CHƯA MỞ
+    // (Logic: Mình mở hộp để xem đối phương muốn mình làm gì)
+    const availableWishes = (appData.loveBox || []).filter(w =>
+        w.authorId !== currentUser.id && !w.isOpened
+    );
+
+    if (availableWishes.length === 0) {
+        return Modal.alert("Hộp đang trống hoặc bạn đã thực hiện hết yêu cầu của người ấy rồi! Hãy bảo người ấy thêm vào nhé.");
+    }
+
+    // Random chọn 1
+    const luckyWish = availableWishes[Math.floor(Math.random() * availableWishes.length)];
+
+    // Giải mã nội dung
+    const decryptedContent = decryptData(luckyWish.content);
+
+    // Hiển thị kết quả
+    document.getElementById('mystery-box').classList.add('hidden');
+    const resultBox = document.getElementById('box-result');
+    const resultText = document.getElementById('box-result-text');
+
+    resultBox.classList.remove('hidden');
+    resultBox.classList.add('animate-zoom-in');
+    resultText.innerText = decryptedContent;
+
+    // Cập nhật trạng thái "Đã mở"
+    luckyWish.isOpened = true;
+    luckyWish.openedBy = currentUser.id;
+    luckyWish.openedDate = new Date().toISOString();
+
+    // Cập nhật timestamp mở hộp của user này
+    appData.lastBoxOpen[`u${myUserIndex}`] = Date.now();
+
+    await saveData();
+
+    // Hiệu ứng pháo hoa nhẹ
+    triggerHeartRain();
+}
+
+// --- D. KẾT NỐI VÀO HÀM UNLOCK SUCCESS ---
+function unlockSuccess() {
+    isSecretUnlocked = true;
+    document.getElementById('secret-lock-screen').classList.add('hidden');
+    document.getElementById('secret-content-area').classList.remove('hidden');
+    document.getElementById('pin-input').value = '';
+
+    switchSecretTab('dice');
+
+    loadDiceData(); // <--- THÊM DÒNG NÀY ĐỂ GIẢI MÃ NGAY KHI MỞ KHÓA
+    updateDiceMode();
+}
+
+/* --- LOGIC LOVE BOX NÂNG CẤP (GIFTING & HISTORY) --- */
+
+// 1. Chuyển đổi giao diện Chơi / Lịch sử
+function switchBoxMode(mode) {
+    const btnPlay = document.getElementById('btn-box-play');
+    const btnHistory = document.getElementById('btn-box-history');
+    const viewPlay = document.getElementById('box-view-play');
+    const viewHistory = document.getElementById('box-view-history');
+
+    if (mode === 'play') {
+        viewPlay.classList.remove('hidden');
+        viewHistory.classList.add('hidden');
+        btnPlay.className = "px-6 py-1.5 rounded-lg text-xs font-bold bg-pink-600 text-white shadow transition";
+        btnHistory.className = "px-6 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition";
+        updateTurnDisplay(); // Cập nhật số lượt hiển thị
+    } else {
+        viewPlay.classList.add('hidden');
+        viewHistory.classList.remove('hidden');
+        btnPlay.className = "px-6 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition";
+        btnHistory.className = "px-6 py-1.5 rounded-lg text-xs font-bold bg-gray-700 text-white shadow transition";
+        renderBoxHistory(); // Tải lịch sử
+    }
+}
+
+// 2. Hiển thị số lượt còn lại
+function updateTurnDisplay() {
+    const badge = document.getElementById('turn-badge');
+    if (!badge) return;
+
+    // Lấy thông tin
+    const today = new Date().toDateString();
+    if (!appData.lastBoxOpen) appData.lastBoxOpen = { u1: 0, u2: 0 };
+    const lastOpen = appData.lastBoxOpen[`u${myUserIndex}`];
+
+    // Check lượt miễn phí
+    const hasFreeTurn = (!lastOpen || new Date(lastOpen).toDateString() !== today);
+
+    // Check lượt được tặng
+    if (!appData.giftedOpens) appData.giftedOpens = { u1: 0, u2: 0 };
+    const giftedCount = appData.giftedOpens[`u${myUserIndex}`] || 0;
+
+    badge.innerHTML = `<i class="fas fa-clock"></i> Hôm nay: ${hasFreeTurn ? '1' : '0'} &nbsp;|&nbsp; <i class="fas fa-gift"></i> Được tặng: ${giftedCount}`;
+}
+
+// 3. Hàm Tặng lượt cho đối phương
+async function sendGift() {
+    const input = document.getElementById('gift-amount');
+    const amount = parseInt(input.value);
+
+    if (!amount || amount <= 0) return Modal.alert("Số lượng không hợp lệ!");
+
+    // Xác định ID đối phương (Nếu mình là u1 thì tặng u2 và ngược lại)
+    const partnerKey = myUserIndex === 1 ? 'u2' : 'u1';
+
+    if (!appData.giftedOpens) appData.giftedOpens = { u1: 0, u2: 0 };
+
+    // Cộng lượt cho đối phương
+    appData.giftedOpens[partnerKey] = (appData.giftedOpens[partnerKey] || 0) + amount;
+
+    await saveData();
+
+    Modal.showToast(`Đã tặng ${amount} lượt mở cho người ấy! ❤️`);
+    input.value = 1;
+}
+
+// 4. Mở Hộp (Logic mới: Ngẫu nhiên + Check lượt)
+async function openMysteryBox() {
+    const currentUser = appData[`user${myUserIndex}`];
+    const today = new Date().toDateString();
+
+    // --- KIỂM TRA LƯỢT ---
+    if (!appData.lastBoxOpen) appData.lastBoxOpen = { u1: 0, u2: 0 };
+    if (!appData.giftedOpens) appData.giftedOpens = { u1: 0, u2: 0 };
+
+    const lastOpen = appData.lastBoxOpen[`u${myUserIndex}`];
+    const hasFreeTurn = (!lastOpen || new Date(lastOpen).toDateString() !== today);
+    let giftedCount = appData.giftedOpens[`u${myUserIndex}`] || 0;
+
+    let useGift = false;
+
+    if (!hasFreeTurn) {
+        if (giftedCount > 0) {
+            useGift = true; // Dùng lượt tặng
+        } else {
+            return Modal.alert("Bạn đã hết lượt hôm nay! Hãy bảo người ấy tặng thêm lượt nhé.");
+        }
+    }
+
+    // --- TÌM ĐIỀU ƯỚC ---
+    // Chỉ lấy điều ước CỦA ĐỐI PHƯƠNG mà CHƯA MỞ
+    const availableWishes = (appData.loveBox || []).filter(w =>
+        w.authorId !== currentUser.id && !w.isOpened
+    );
+
+    if (availableWishes.length === 0) {
+        return Modal.alert("Hộp rỗng! Hãy bảo người ấy gửi thêm yêu cầu đi.");
+    }
+
+    // --- CHỌN NGẪU NHIÊN ---
+    const luckyWish = availableWishes[Math.floor(Math.random() * availableWishes.length)];
+
+    // --- XỬ LÝ KẾT QUẢ ---
+    // 1. Trừ lượt
+    if (useGift) {
+        appData.giftedOpens[`u${myUserIndex}`]--;
+        Modal.showToast("Đã dùng 1 lượt được tặng!");
+    } else {
+        // Đánh dấu đã dùng lượt miễn phí hôm nay
+        appData.lastBoxOpen[`u${myUserIndex}`] = Date.now();
+    }
+
+    // 2. Cập nhật trạng thái Wish
+    luckyWish.isOpened = true;
+    luckyWish.openedBy = currentUser.id;
+    luckyWish.openedDate = new Date().toISOString();
+
+    // 3. Lưu & Hiển thị
+    await saveData();
+    updateTurnDisplay(); // Cập nhật lại UI số lượt
+
+    // Giải mã
+    const decryptedContent = decryptData(luckyWish.content);
+
+    // Hiển thị Popup
+    document.getElementById('box-result').classList.remove('hidden');
+    document.getElementById('box-result-text').innerText = decryptedContent;
+    document.getElementById('mystery-box').classList.add('opacity-50', 'pointer-events-none');
+
+    triggerHeartRain();
+}
+
+function closeBoxResult() {
+    document.getElementById('box-result').classList.add('hidden');
+    document.getElementById('mystery-box').classList.remove('opacity-50', 'pointer-events-none');
+}
+
+// 5. Render Lịch sử
+function renderBoxHistory() {
+    const list = document.getElementById('box-history-list');
+    list.innerHTML = '';
+
+    // Lọc ra những cái ĐÃ MỞ
+    const historyItems = (appData.loveBox || [])
+        .filter(w => w.isOpened)
+        .sort((a, b) => new Date(b.openedDate) - new Date(a.openedDate)); // Mới nhất lên đầu
+
+    if (historyItems.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-500 text-xs mt-10">Chưa có lịch sử mở hộp.</p>';
+        return;
+    }
+
+    historyItems.forEach(item => {
+        // Ai mở?
+        const opener = (item.openedBy === appData.user1.id) ? appData.user1 : appData.user2;
+        const dateStr = new Date(item.openedDate).toLocaleString('vi-VN');
+        const content = decryptData(item.content);
+
+        // Màu sắc khác nhau tùy người mở
+        const isMe = (item.openedBy === appData[`user${myUserIndex}`].id);
+        const bgClass = isMe ? 'bg-gray-800 border-l-4 border-pink-500' : 'bg-gray-800 border-l-4 border-blue-500';
+
+        const html = `
+            <div class="${bgClass} p-4 rounded-r-xl shadow-sm border-y border-r border-gray-700">
+                <div class="flex justify-between items-start mb-2">
+                    <div class="flex items-center gap-2">
+                        <img src="${opener.avatar}" class="w-5 h-5 rounded-full border border-gray-500">
+                        <span class="text-xs font-bold text-gray-300">${isMe ? 'Bạn' : opener.name} đã mở</span>
+                    </div>
+                    <span class="text-[10px] text-gray-500">${dateStr}</span>
+                </div>
+                <p class="text-sm text-white font-medium leading-relaxed">"${content}"</p>
+            </div>
+        `;
+        list.innerHTML += html;
+    });
+}
+
+/* --- NÂNG CẤP SECRET TAB (POSITIONS & NOTES) --- */
+
+// 1. Cập nhật hàm switchSecretTab
+function switchSecretTab(tab) {
+    currentSecretTab = tab;
+
+    // Ẩn tất cả tab content
+    ['dice', 'box', 'positions', 'notes'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (el) el.classList.add('hidden');
+
+        // Style Active/Inactive
+        if (btn) {
+            if (t === tab) {
+                btn.className = "flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow transition";
+            } else {
+                btn.className = "flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition hover:bg-gray-700";
+            }
+        }
+    });
+
+    // Hiện tab được chọn
+    document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+    // Init data cho từng tab
+    if (tab === 'positions') updatePositionUI();
+    if (tab === 'notes') renderSecretNotes();
+}
+
+/* --- LOGIC TAB 3: TƯ THẾ (POSITIONS) --- */
+const TOTAL_POSITIONS = 100;
+const POS_BASE_URL = "https://naughtygrin.com/imgs/ksutra/"; // Thay bằng link thật của bạn
+
+// --- 1. CÁC HÀM ĐIỀU HƯỚNG CƠ BẢN (Cập nhật để tương thích data mới) ---
+function ensurePosData() {
+    if (!appData.secretPositions) {
+        appData.secretPositions = { current: 1, skipDone: false, reviews: {} };
+    }
+    // Migration: Nếu data cũ là mảng doneList, reset về object reviews (Chấp nhận mất data cũ để lên đời)
+    if (Array.isArray(appData.secretPositions.doneList)) {
+        appData.secretPositions.reviews = {};
+        delete appData.secretPositions.doneList;
+    }
+    if (!appData.secretPositions.reviews) appData.secretPositions.reviews = {};
+}
+
+function navPosition(direction) {
+    ensurePosData();
+    let next = appData.secretPositions.current + direction;
+    if (next > TOTAL_POSITIONS) next = 1;
+    if (next < 1) next = TOTAL_POSITIONS;
+    appData.secretPositions.current = next;
+    saveData();
+    updatePositionUI();
+}
+
+function jumpToPosition(val) {
+    ensurePosData();
+    let num = parseInt(val);
+    if (isNaN(num) || num < 1) num = 1;
+    if (num > TOTAL_POSITIONS) num = TOTAL_POSITIONS;
+    appData.secretPositions.current = num;
+    saveData();
+    updatePositionUI();
+}
+
+function randomPosition() {
+    ensurePosData();
+    const { skipDone, reviews } = appData.secretPositions;
+    let available = [];
+    for (let i = 1; i <= TOTAL_POSITIONS; i++) {
+        // Nếu bật Skip Done: Kiểm tra xem tư thế này đã có ai review chưa
+        if (skipDone && reviews[i] && (reviews[i].u1 || reviews[i].u2)) continue;
+        available.push(i);
+    }
+
+    if (available.length === 0) return Modal.alert("Đã hết tư thế mới! Hãy tắt 'Bỏ qua đã làm' để xem lại.");
+
+    const random = available[Math.floor(Math.random() * available.length)];
+    appData.secretPositions.current = random;
+    if (navigator.vibrate) navigator.vibrate(50);
+    saveData();
+    updatePositionUI();
+}
+
+async function toggleSkipDone() {
+    const chk = document.getElementById('chk-skip-done');
+    ensurePosData();
+    appData.secretPositions.skipDone = chk.checked;
+    await saveData();
+}
+
+// --- 2. HÀM CẬP NHẬT GIAO DIỆN (QUAN TRỌNG NHẤT) ---
+function updatePositionUI() {
+    ensurePosData();
+    const posId = appData.secretPositions.current;
+    const reviews = appData.secretPositions.reviews[posId] || { u1: null, u2: null };
+
+    // Basic UI
+    document.getElementById('pos-number').innerText = posId;
+    document.getElementById('pos-image').src = `${POS_BASE_URL}${posId}.jpg`;
+    document.getElementById('pos-input').value = posId;
+    document.getElementById('chk-skip-done').checked = appData.secretPositions.skipDone;
+
+    // --- XỬ LÝ TRẠNG THÁI NÚT & OVERLAY ---
+    const btnDone = document.getElementById('btn-mark-done');
+    const overlay = document.getElementById('pos-done-overlay');
+    const overlayText = document.getElementById('pos-done-text');
+
+    const myKey = `u${myUserIndex}`; // u1 hoặc u2
+    const partnerKey = myKey === 'u1' ? 'u2' : 'u1';
+    const iHaveReviewed = !!reviews[myKey];
+    const partnerHasReviewed = !!reviews[partnerKey];
+
+    if (iHaveReviewed) {
+        // Mình đã review -> Nút chuyển sang trạng thái "Đã đánh giá"
+        btnDone.className = "h-10 px-3 rounded-xl text-xs font-bold active:scale-95 transition flex items-center gap-1 whitespace-nowrap bg-gray-800 text-green-400 border border-green-500/50 shadow-green-500/20 shadow";
+        btnDone.innerHTML = '<i class="fas fa-check-circle"></i> Đã đánh giá (Sửa)';
+    } else {
+        // Mình chưa review -> Nút "Xong" bình thường
+        btnDone.className = "h-10 px-3 rounded-xl text-xs font-bold active:scale-95 transition flex items-center gap-1 whitespace-nowrap bg-gray-700 text-gray-300 hover:text-white";
+        btnDone.innerHTML = '<i class="fas fa-check"></i> Xong';
+    }
+
+    // Hiện Overlay nếu ÍT NHẤT 1 người đã làm
+    if (iHaveReviewed || partnerHasReviewed) {
+        overlay.classList.remove('hidden');
+        if (iHaveReviewed && partnerHasReviewed) overlayText.innerText = "CẢ HAI ĐÃ THỰC HIỆN! ❤️‍🔥";
+        else if (iHaveReviewed) overlayText.innerText = "BẠN ĐÃ THỰC HIỆN!";
+        else overlayText.innerText = "ĐỐI PHƯƠNG ĐÃ THỰC HIỆN!";
+    } else {
+        overlay.classList.add('hidden');
+    }
+
+    // --- HIỂN THỊ REVIEW BÊN DƯỚI (GIẢI MÃ E2EE) ---
+    renderReviewBox('u1', reviews.u1);
+    renderReviewBox('u2', reviews.u2);
+
+    // Ẩn hiện thông báo "Chưa có review"
+    if (!reviews.u1 && !reviews.u2) {
+        document.getElementById('no-review-msg').classList.remove('hidden');
+    } else {
+        document.getElementById('no-review-msg').classList.add('hidden');
+    }
+}
+
+function renderReviewBox(userKey, reviewData) {
+    const box = document.getElementById(`review-${userKey}`);
+    if (!box) return;
+
+    if (!reviewData) {
+        box.classList.add('hidden');
+        return;
+    }
+    box.classList.remove('hidden');
+
+    // Xử lý User Info an toàn
+    const user = appData[userKey] || {
+        name: (userKey === 'u1' ? 'Bạn Nữ' : 'Bạn Nam'),
+        avatar: 'https://cdn-icons-png.flaticon.com/512/149/149071.png'
+    };
+
+    const avatarEl = document.getElementById(`avatar-${userKey}-review`);
+    const nameEl = document.getElementById(`name-${userKey}-review`);
+
+    if (avatarEl) avatarEl.src = user.avatar || 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+    if (nameEl) nameEl.innerText = user.name || 'Người dùng';
+
+    // Hiển thị Rating
+    const emojis = ['😫', '😐', '🤭', '🤤', '🤩'];
+    const ratingEmoji = emojis[reviewData.rating - 1] || '❓';
+    document.getElementById(`rating-${userKey}-display`).innerText = `${ratingEmoji} (Mức ${reviewData.rating})`;
+
+    // --- CẬP NHẬT MỚI Ở ĐÂY ---
+    let decryptedComment = decryptData(reviewData.comment);
+
+    // Nếu nội dung trống -> Hiển thị text mặc định
+    if (!decryptedComment || decryptedComment.trim() === "") {
+        decryptedComment = "Đã thực hiện ✓";
+    }
+
+    document.getElementById(`comment-${userKey}-display`).innerText = decryptedComment;
+}
+
+
+// --- 3. CÁC HÀM XỬ LÝ MODAL ĐÁNH GIÁ ---
+
+// Mở Modal
+// 1. Cập nhật hàm Mở Modal (Để hiện nút xóa)
+function openPositionReviewModal() {
+    ensurePosData();
+    const posId = appData.secretPositions.current;
+    const myKey = `u${myUserIndex}`;
+    const reviews = appData.secretPositions.reviews[posId];
+
+    // Cập nhật số thứ tự trên tiêu đề
+    document.getElementById('modal-pos-num').innerText = posId;
+
+    // Mở Modal
+    const modal = document.getElementById('pos-review-modal');
+    if (modal) modal.classList.remove('hidden');
+
+    // Reset form
+    selectRating(0);
+    document.getElementById('review-comment').value = '';
+
+    const btnDelete = document.getElementById('btn-delete-review');
+
+    if (reviews && reviews[myKey]) {
+        // TRƯỜNG HỢP: ĐÃ ĐÁNH GIÁ (CHẾ ĐỘ SỬA)
+        selectRating(reviews[myKey].rating);
+        document.getElementById('review-comment').value = decryptData(reviews[myKey].comment);
+
+        // Hiện nút xóa
+        if (btnDelete) btnDelete.classList.remove('hidden');
+
+        Modal.showToast("Bạn đang sửa lại đánh giá cũ.");
+    } else {
+        // TRƯỜNG HỢP: MỚI TINH
+        // Ẩn nút xóa
+        if (btnDelete) btnDelete.classList.add('hidden');
+    }
+}
+
+// 2. Hàm Xóa Đánh giá (MỚI)
+async function deletePositionReview() {
+    // Hỏi xác nhận
+    if (!await Modal.confirm("Bạn có chắc muốn xóa cảm nhận và bỏ đánh dấu 'Đã làm' tư thế này không?")) {
+        return;
+    }
+
+    ensurePosData();
+    const posId = appData.secretPositions.current;
+    const myKey = `u${myUserIndex}`;
+
+    // Xóa dữ liệu của user hiện tại
+    if (appData.secretPositions.reviews[posId]) {
+        delete appData.secretPositions.reviews[posId][myKey];
+
+        // Nếu cả 2 đều không còn review nào thì xóa luôn key tư thế đó cho sạch data
+        if (!appData.secretPositions.reviews[posId].u1 && !appData.secretPositions.reviews[posId].u2) {
+            delete appData.secretPositions.reviews[posId];
+        }
+    }
+
+    await saveData();
+    closePositionReviewModal();
+    updatePositionUI(); // Cập nhật lại giao diện (sẽ mất overlay "Đã làm")
+    Modal.showToast("Đã xóa đánh giá thành công!");
+}
+
+// Đóng Modal
+function closePositionReviewModal() {
+    document.getElementById('pos-review-modal').classList.add('hidden');
+}
+
+// Chọn mức độ (Rating) trong Modal
+function selectRating(rating) {
+    document.getElementById('selected-rating').value = rating;
+    document.querySelectorAll('.rating-btn').forEach(btn => {
+        const btnRating = parseInt(btn.getAttribute('data-rating'));
+        if (btnRating === rating) {
+            btn.classList.remove('grayscale', 'opacity-50');
+            btn.classList.add('scale-125'); // Phóng to icon được chọn
+        } else {
+            btn.classList.add('grayscale', 'opacity-50');
+            btn.classList.remove('scale-125');
+        }
+    });
+}
+
+// LƯU ĐÁNH GIÁ (MÃ HÓA E2EE)
+async function savePositionReview() {
+    const rating = parseInt(document.getElementById('selected-rating').value);
+    const comment = document.getElementById('review-comment').value.trim();
+
+    if (rating === 0) return Modal.alert("Vui lòng chọn mức độ khoái cảm!");
+
+    // Mã hóa comment
+    const encryptedComment = encryptData(comment);
+
+    ensurePosData();
+    const posId = appData.secretPositions.current;
+    const myKey = `u${myUserIndex}`;
+
+    // Tạo object review nếu chưa có cho tư thế này
+    if (!appData.secretPositions.reviews[posId]) {
+        appData.secretPositions.reviews[posId] = { u1: null, u2: null };
+    }
+
+    // Lưu dữ liệu của mình vào
+    appData.secretPositions.reviews[posId][myKey] = {
+        rating: rating,
+        comment: encryptedComment,
+        date: new Date().toISOString()
+    };
+
+    await saveData();
+    closePositionReviewModal();
+    updatePositionUI();
+    triggerHeartRain(); // Pháo hoa chúc mừng
+    Modal.showToast("Đã lưu cảm nhận bí mật! 🤫");
+}
+
+/* --- LOGIC TAB 4: GHI CHÚ BÍ MẬT (NOTES - E2EE) --- */
+/* --- LOGIC GHI CHÚ PRO (SEARCH, COLORS, PIN) --- */
+
+// Biến tạm
+let tempNoteFiles = [];
+let editingNoteId = null;
+let currentNoteColor = 'gray';
+let isNotePinned = false;
+
+// 1. Render Ghi chú (Có Tìm kiếm & Masonry)
+function renderSecretNotes() {
+    const list = document.getElementById('secret-notes-list');
+    const searchKeyword = document.getElementById('note-search').value.toLowerCase();
+
+    list.innerHTML = '';
+    const notes = appData.secretNotes || [];
+
+    if (notes.length === 0) {
+        list.innerHTML = `<div class="col-span-2 text-center text-gray-500 mt-10"><i class="fas fa-feather-alt text-4xl mb-3 opacity-50"></i><p class="text-xs">Chưa có ghi chú nào</p></div>`;
+        return;
+    }
+
+    // Xử lý dữ liệu: Giải mã -> Lọc -> Sắp xếp
+    const processedNotes = notes.map(n => {
+        return {
+            ...n,
+            decryptedTitle: decryptData(n.title),
+            decryptedContent: decryptData(n.content),
+            decryptedTags: n.tags ? decryptData(n.tags) : ""
+        };
+    }).filter(n => {
+        // Logic Tìm kiếm
+        if (!searchKeyword) return true;
+        return n.decryptedTitle.toLowerCase().includes(searchKeyword) ||
+            n.decryptedContent.toLowerCase().includes(searchKeyword) ||
+            n.decryptedTags.toLowerCase().includes(searchKeyword);
+    }).sort((a, b) => {
+        // Sắp xếp: Ghim lên đầu -> Mới nhất
+        if (a.pinned && !b.pinned) return -1;
+        if (!a.pinned && b.pinned) return 1;
+        return new Date(b.date) - new Date(a.date);
+    });
+
+    // Render ra HTML
+    processedNotes.forEach(n => {
+        // Map màu sắc sang class Tailwind
+        const colorClasses = {
+            'gray': 'bg-gray-800 border-gray-700',
+            'pink': 'bg-pink-900/40 border-pink-500/30',
+            'blue': 'bg-blue-900/40 border-blue-500/30',
+            'yellow': 'bg-yellow-900/40 border-yellow-500/30'
+        };
+        const bgClass = colorClasses[n.color] || colorClasses['gray'];
+
+        // Xử lý hiển thị
+        const title = n.decryptedTitle || "(Không tiêu đề)";
+// Tạo một thẻ ảo để strip HTML tag, lấy plain text
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = n.decryptedContent;
+        const plainText = tempDiv.innerText || tempDiv.textContent || "";
+        
+        const contentPreview = plainText.slice(0, 100) + (plainText.length > 100 ? '...' : '');        const dateStr = new Date(n.date).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
+        const pinIcon = n.pinned ? '<i class="fas fa-thumbtack text-yellow-500 text-xs absolute top-3 right-3 transform rotate-45"></i>' : '';
+        const fileBadge = (n.files && n.files.length > 0) ? `<span class="bg-black/30 px-2 py-0.5 rounded text-[10px] text-gray-300"><i class="fas fa-paperclip"></i> ${n.files.length}</span>` : '';
+        const tagBadge = n.decryptedTags ? `<span class="text-[10px] text-pink-400 font-bold">#${n.decryptedTags}</span>` : '';
+
+        const html = `
+            <div onclick="openNoteEditor('${n.id}')" class="note-item ${bgClass} p-4 rounded-2xl border active:scale-[0.98] transition cursor-pointer relative overflow-hidden group">
+                ${pinIcon}
+                <h3 class="font-bold text-white text-sm mb-1 leading-tight ${n.pinned ? 'pr-6' : ''}">${title}</h3>
+                <p class="text-gray-300 text-xs leading-relaxed mb-3 break-words whitespace-pre-wrap font-light">${contentPreview}</p>
+                
+                <div class="flex items-center justify-between mt-auto pt-2 border-t border-white/5">
+                    <span class="text-[10px] text-gray-500">${dateStr}</span>
+                    <div class="flex gap-2">
+                        ${tagBadge}
+                        ${fileBadge}
+                    </div>
+                </div>
+                
+                <button onclick="event.stopPropagation(); deleteSecretNote('${n.id}')" class="absolute bottom-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg translate-y-2 group-hover:translate-y-0">
+                    <i class="fas fa-trash text-xs"></i>
+                </button>
+            </div>
+        `;
+        list.innerHTML += html;
+    });
+}
+
+// 2. Mở Editor (Load đầy đủ thông tin)
+/* --- LOGIC RICH TEXT EDITOR --- */
+
+// 1. Hàm xử lý định dạng (Bold, Italic, Color...)
+function formatDoc(cmd, value = null) {
+    if (value) {
+        document.execCommand(cmd, false, value);
+    } else {
+        document.execCommand(cmd);
+    }
+    // Focus lại vào ô soạn thảo để người dùng gõ tiếp
+    document.getElementById('note-content-rich').focus();
+}
+
+// 2. Cập nhật hàm OPEN EDITOR (Để load HTML)
+function openNoteEditor(id = null) {
+    document.getElementById('note-list-view').classList.add('hidden');
+    document.getElementById('note-toolbar').classList.add('hidden');
+    document.getElementById('note-editor-view').classList.remove('hidden');
+
+    editingNoteId = id;
+    tempNoteFiles = [];
+
+    // Reset UI
+    document.getElementById('note-title').value = '';
+
+    // --- KHÁC BIỆT: Dùng innerHTML cho Rich Text ---
+    document.getElementById('note-content-rich').innerHTML = '';
+
+    document.getElementById('note-tags').value = '';
+    document.getElementById('note-date-display').innerText = "Hôm nay " + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+    // Reset Toolbar inputs
+    document.getElementById('text-color-picker').value = '#ffffff';
+
+    isNotePinned = false;
+    updatePinButton();
+
+    if (id) {
+        // Chế độ Sửa
+        const note = appData.secretNotes.find(n => n.id === id);
+        if (note) {
+            document.getElementById('note-title').value = decryptData(note.title);
+
+            // --- KHÁC BIỆT: Load nội dung HTML ---
+            // Lưu ý: Nội dung đã được mã hóa toàn bộ chuỗi HTML
+            document.getElementById('note-content-rich').innerHTML = decryptData(note.content);
+
+            document.getElementById('note-tags').value = note.tags ? decryptData(note.tags) : "";
+            tempNoteFiles = note.files || [];
+            isNotePinned = note.pinned || false;
+            updatePinButton();
+
+            const d = new Date(note.date);
+            document.getElementById('note-date-display').innerText = d.toLocaleDateString('vi-VN') + " lúc " + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        }
+    }
+    renderNoteFilesPreview();
+}
+
+// 3. Cập nhật hàm SAVE NOTE (Để lưu HTML)
+async function saveSecretNote() {
+    const title = document.getElementById('note-title').value.trim();
+
+    // --- KHÁC BIỆT: Lấy innerHTML thay vì value ---
+    const contentHTML = document.getElementById('note-content-rich').innerHTML;
+    const contentText = document.getElementById('note-content-rich').innerText.trim(); // Dùng để check rỗng
+
+    const tags = document.getElementById('note-tags').value.trim();
+
+    // Kiểm tra nếu không có gì thì không lưu
+    if (!title && !contentText && tempNoteFiles.length === 0 && !contentHTML.includes('<img')) return closeNoteEditor();
+
+    if (!appData.secretNotes) appData.secretNotes = [];
+
+    // Mã hóa
+    const encTitle = encryptData(title);
+    // Mã hóa toàn bộ chuỗi HTML (bao gồm các thẻ <b>, <span style="color:...">...)
+    const encContent = encryptData(contentHTML);
+    const encTags = encryptData(tags);
+
+    const noteData = {
+        title: encTitle,
+        content: encContent, // Lưu HTML đã mã hóa
+        tags: encTags,
+        files: tempNoteFiles,
+        pinned: isNotePinned,
+        color: 'gray', // Mặc định gray vì giờ ta chỉnh màu chữ bên trong rồi
+        date: new Date().toISOString()
+    };
+
+    if (editingNoteId) {
+        const index = appData.secretNotes.findIndex(n => n.id === editingNoteId);
+        if (index !== -1) {
+            appData.secretNotes[index] = { ...appData.secretNotes[index], ...noteData };
+        }
+    } else {
+        appData.secretNotes.unshift({ id: Date.now().toString(), ...noteData });
+    }
+
+    await saveData();
+    Modal.showToast("Đã lưu ghi chú!");
+    closeNoteEditor();
+}
+
+
+
+// 3. Đóng Editor
+function closeNoteEditor() {
+    document.getElementById('note-editor-view').classList.add('hidden');
+    document.getElementById('note-list-view').classList.remove('hidden');
+    document.getElementById('note-toolbar').classList.remove('hidden');
+    renderSecretNotes();
+}
+
+// 4. Các hàm chức năng trong Editor
+function setNoteColor(color) {
+    currentNoteColor = color;
+    // Thay đổi màu nền Editor để preview ngay lập tức
+    const editorBody = document.getElementById('editor-body');
+    const colorClasses = {
+        'gray': 'bg-transparent', // Mặc định trong editor là trong suốt (nền đen của cha)
+        'pink': 'bg-pink-900/20',
+        'blue': 'bg-blue-900/20',
+        'yellow': 'bg-yellow-900/20'
+    };
+    // Reset classes cũ
+    editorBody.className = `flex-1 overflow-y-auto p-4 transition-colors duration-500 ${colorClasses[color]}`;
+}
+
+function togglePinNote() {
+    isNotePinned = !isNotePinned;
+    updatePinButton();
+    Modal.showToast(isNotePinned ? "Đã ghim ghi chú" : "Đã bỏ ghim");
+}
+
+function updatePinButton() {
+    const btn = document.getElementById('btn-pin-note');
+    if (isNotePinned) {
+        btn.classList.add('text-yellow-400');
+        btn.classList.remove('text-gray-500');
+    } else {
+        btn.classList.add('text-gray-500');
+        btn.classList.remove('text-yellow-400');
+    }
+}
+
+
+// 6. Xử lý File (Giữ nguyên logic cũ, chỉ cập nhật UI preview)
+// (Bạn dùng lại hàm handleSecretNoteFiles và renderNoteFilesPreview cũ là được, hoặc copy lại nếu cần)
+/* --- CÁC HÀM HỖ TRỢ FILE ĐÍNH KÈM CHO GHI CHÚ --- */
+
+// 1. Xử lý khi chọn file từ máy
+async function handleSecretNoteFiles(input) {
+    const files = input.files;
+    if (!files || files.length === 0) return;
+
+    Modal.showToast("Đang mã hóa & tải lên...");
+    
+    try {
+        for (const file of files) {
+            // Giả sử bạn đã có hàm uploadToSupabase từ các phần trước
+            // Nếu chưa có, file sẽ không upload được. Hãy báo tôi nếu cần hàm này.
+            const url = await uploadToSupabase(file, 'secrets'); 
+            
+            const type = file.type.startsWith('image') ? 'image' : (file.type.startsWith('video') ? 'video' : 'file');
+            
+            // Thêm vào mảng tạm
+            tempNoteFiles.push({ 
+                url: url, 
+                type: type, 
+                name: file.name 
+            });
+        }
+        
+        // Render lại giao diện
+        renderNoteFilesPreview();
+        Modal.showToast("Đã thêm file thành công!");
+    } catch (e) {
+        console.error(e);
+        Modal.alert("Lỗi upload: " + (e.message || "Kiểm tra kết nối mạng"));
+    } finally {
+        input.value = ''; // Reset input để chọn lại file trùng tên được
+    }
+}
+
+// 2. Hiển thị danh sách file (Fix lỗi ReferenceError)
+function renderNoteFilesPreview() {
+    const container = document.getElementById('note-files-preview');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    tempNoteFiles.forEach((f, idx) => {
+        let content = '';
+        
+        // Tùy chỉnh hiển thị theo loại file
+        if (f.type === 'image') {
+            content = `<img src="${f.url}" class="w-full h-full object-cover transition-transform group-hover:scale-110">`;
+        } else if (f.type === 'video') {
+            content = `<div class="bg-gray-800 w-full h-full flex items-center justify-center"><i class="fas fa-video text-pink-500 text-xl"></i></div>`;
+        } else {
+            content = `
+                <div class="bg-gray-800 w-full h-full flex flex-col items-center justify-center p-2 text-center">
+                    <i class="fas fa-file-alt text-gray-400 text-xl mb-1"></i>
+                    <span class="text-[8px] text-gray-400 w-full truncate">${f.name}</span>
+                </div>`;
+        }
+
+        // Tạo thẻ HTML
+        const div = document.createElement('div');
+        div.className = "relative aspect-square rounded-xl overflow-hidden border border-gray-700/50 group bg-gray-800 cursor-pointer shadow-sm";
+        div.innerHTML = `
+            ${content}
+            
+            <button onclick="removeTempFile(${idx})" class="absolute top-1 right-1 w-6 h-6 bg-red-600/90 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition shadow-lg z-10 hover:scale-110">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition pointer-events-none"></div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+// 3. Xóa file khỏi danh sách tạm
+function removeTempFile(index) {
+    tempNoteFiles.splice(index, 1);
+    renderNoteFilesPreview();
+}
 window.onload = initApp;

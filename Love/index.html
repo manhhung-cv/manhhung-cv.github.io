@@ -560,6 +560,27 @@
             transform: translateX(-120px) !important;
             /* Trượt sang trái để lộ nút */
         }
+
+        /* Placeholder cho ContentEditable */
+        .rich-editor:empty::before {
+            content: attr(placeholder);
+            color: #6b7280;
+            /* gray-500 */
+            font-style: italic;
+            pointer-events: none;
+            display: block;
+            /* Fix lỗi hiển thị trên một số trình duyệt */
+        }
+
+        /* Ẩn thanh cuộn nhưng vẫn cuộn được */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
     </style>
 </head>
 
@@ -1014,7 +1035,7 @@
                         <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Lưu vào thư mục</label>
                         <select id="upload-target-folder"
                             class="w-full rounded-xl border border-gray-200 p-2 text-sm bg-gray-50 focus:border-love-300 outline-none">
-                            <option value="files">Chung</option>
+                            <option value="general">Chung</option>
                             <option value="posts">Nhật ký (Posts)</option>
                             <option value="events">Sự kiện (Events)</option>
                             <option value="backgrounds">Hình nền (Backgrounds)</option>
@@ -1279,6 +1300,468 @@
 
                 <p class="text-center text-gray-300 text-[10px] mt-4 font-mono">Love App v2.0 - Built with ❤️</p>
             </div>
+
+            <div id="page-7" class="page-section relative bg-gray-900 text-white overflow-hidden">
+
+                <div id="secret-lock-screen"
+                    class="absolute inset-0 z-50 bg-gray-900 flex flex-col items-center justify-center p-6">
+                    <i class="fas fa-user-secret text-6xl mb-4 text-gray-500 animate-pulse"></i>
+                    <h2 class="text-xl font-bold mb-2">Khu vực Bí mật</h2>
+                    <p id="lock-msg" class="text-xs text-gray-400 mb-6 text-center">Nhập mã PIN 6 số để truy cập</p>
+                    <div class="flex gap-2 mb-6">
+                        <input type="password" id="pin-input" maxlength="6"
+                            class="bg-gray-800 border border-gray-700 text-center text-2xl tracking-[0.5em] text-white rounded-xl w-48 py-3 focus:outline-none focus:border-love-500 transition"
+                            placeholder="******" oninput="checkAutoPin()">
+                    </div>
+                    <div class="grid grid-cols-3 gap-4 w-64">
+                        <button onclick="typePin('1')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">1</button>
+                        <button onclick="typePin('2')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">2</button>
+                        <button onclick="typePin('3')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">3</button>
+                        <button onclick="typePin('4')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">4</button>
+                        <button onclick="typePin('5')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">5</button>
+                        <button onclick="typePin('6')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">6</button>
+                        <button onclick="typePin('7')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">7</button>
+                        <button onclick="typePin('8')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">8</button>
+                        <button onclick="typePin('9')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">9</button>
+                        <button onclick="clearPin()"
+                            class="h-14 bg-transparent text-red-400 font-bold text-sm active:opacity-50">XÓA</button>
+                        <button onclick="typePin('0')"
+                            class="h-14 bg-gray-800 rounded-full font-bold text-xl active:bg-gray-700">0</button>
+                        <button onclick="forgotPin()"
+                            class="h-14 bg-transparent text-gray-400 font-bold text-xs active:opacity-50">QUÊN?</button>
+                    </div>
+                </div>
+
+                <div id="secret-content-area" class="hidden h-full flex flex-col">
+
+                    <div class="p-4 flex flex-col gap-3 bg-gray-800/50 backdrop-blur-md pb-2">
+                        <div class="flex justify-between items-center">
+                            <h2 class="font-bold text-lg text-pink-500"><i class="fas fa-mask mr-2"></i>Secret Zone</h2>
+                            <button onclick="lockSecret()" class="text-gray-400 hover:text-white"><i
+                                    class="fas fa-lock"></i></button>
+                        </div>
+
+                        <div class="flex bg-gray-700 rounded-lg p-1 overflow-x-auto no-scrollbar gap-1">
+                            <button onclick="switchSecretTab('dice')" id="tab-btn-dice"
+                                class="flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold transition">Xúc
+                                xắc</button>
+                            <button onclick="switchSecretTab('box')" id="tab-btn-box"
+                                class="flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold transition">Hộp
+                                Yêu</button>
+                            <button onclick="switchSecretTab('positions')" id="tab-btn-positions"
+                                class="flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold transition">Tư
+                                thế</button>
+                            <button onclick="switchSecretTab('notes')" id="tab-btn-notes"
+                                class="flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold transition">Ghi
+                                chú</button>
+                        </div>
+                    </div>
+
+                    <div id="tab-positions"
+                        class="hidden flex-1 flex flex-col p-4 relative h-full overflow-y-auto pb-24">
+
+                        <div class="flex justify-end mb-2">
+                            <label
+                                class="flex items-center gap-2 cursor-pointer bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
+                                <span class="text-[10px] text-gray-400">Bỏ qua đã làm</span>
+                                <input type="checkbox" id="chk-skip-done" onchange="toggleSkipDone()"
+                                    class="accent-pink-500 w-3 h-3">
+                            </label>
+                        </div>
+
+                        <div class="flex flex-col items-center justify-center min-h-[300px] shrink-0">
+                            <div
+                                class="relative w-full max-w-sm aspect-square rounded-2xl overflow-hidden shadow-2xl border-4 border-gray-800 bg-[#ffffff]">
+                                <div
+                                    class="absolute top-2 left-2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md z-10">
+                                    #<span id="pos-number">1</span>
+                                </div>
+                                <img id="pos-image" src=""
+                                    class="w-full h-full object-contain transition-opacity duration-300"
+                                    onerror="this.src='https://placehold.co/600x600/1f2937/FFF?text=No+Image'">
+
+                                <div id="pos-done-overlay"
+                                    class="absolute inset-0 bg-green-500/30 hidden flex items-center justify-center z-20 backdrop-blur-[2px]">
+                                    <div id="pos-done-text"
+                                        class="bg-white/90 text-green-600 px-4 py-2 rounded-full font-black text-sm shadow-lg transform -rotate-12 border-4 border-green-500 text-center">
+                                        ĐÃ THỰC HIỆN!
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="mt-4 bg-gray-800 p-2 rounded-2xl flex items-center justify-between border border-gray-700 gap-2 shrink-0">
+                            <button onclick="navPosition(-1)"
+                                class="w-10 h-10 flex-shrink-0 rounded-full bg-gray-700 text-white hover:bg-gray-600 shadow active:scale-95 transition"><i
+                                    class="fas fa-chevron-left"></i></button>
+                            <div class="flex items-center gap-2 justify-center flex-1">
+                                <input type="number" id="pos-input" onchange="jumpToPosition(this.value)"
+                                    class="w-12 h-10 bg-gray-900 border border-gray-600 rounded-xl text-center text-white font-bold text-sm focus:border-pink-500 outline-none transition"
+                                    placeholder="#">
+                                <button onclick="randomPosition()"
+                                    class="w-10 h-10 rounded-xl bg-pink-600 text-white shadow hover:bg-pink-500 active:scale-95 transition flex items-center justify-center"><i
+                                        class="fas fa-random"></i></button>
+
+                                <button onclick="openPositionReviewModal()" id="btn-mark-done"
+                                    class="h-10 px-3 rounded-xl bg-gray-700 text-gray-300 text-xs font-bold hover:text-green-400 active:scale-95 transition flex items-center gap-1 whitespace-nowrap overflow-hidden">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                            <button onclick="navPosition(1)"
+                                class="w-10 h-10 flex-shrink-0 rounded-full bg-gray-700 text-white hover:bg-gray-600 shadow active:scale-95 transition"><i
+                                    class="fas fa-chevron-right"></i></button>
+                        </div>
+
+                        <div class="mt-6 space-y-4">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase text-center tracking-wider">Cảm nhận
+                                của cả hai</h3>
+
+                            <div id="review-u1"
+                                class="bg-gray-800/50 p-4 rounded-2xl border-l-4 border-pink-500 relative hidden">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <img id="avatar-u1-review" src=""
+                                            class="w-6 h-6 rounded-full border border-pink-500">
+                                        <span id="name-u1-review" class="text-sm font-bold text-pink-300">Bạn Nữ</span>
+                                    </div>
+                                    <div id="rating-u1-display" class="text-yellow-400 text-xs"></div>
+                                </div>
+                                <p id="comment-u1-display" class="text-gray-200 text-sm italic leading-relaxed"></p>
+                                <i
+                                    class="fas fa-quote-right absolute bottom-2 right-2 text-pink-500/20 text-4xl -z-10"></i>
+                            </div>
+
+                            <div id="review-u2"
+                                class="bg-gray-800/50 p-4 rounded-2xl border-l-4 border-blue-500 relative hidden">
+                                <div class="flex justify-between items-center mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <img id="avatar-u2-review" src=""
+                                            class="w-6 h-6 rounded-full border border-blue-500">
+                                        <span id="name-u2-review" class="text-sm font-bold text-blue-300">Bạn Nam</span>
+                                    </div>
+                                    <div id="rating-u2-display" class="text-yellow-400 text-xs"></div>
+                                </div>
+                                <p id="comment-u2-display" class="text-gray-200 text-sm italic leading-relaxed"></p>
+                                <i
+                                    class="fas fa-quote-right absolute bottom-2 right-2 text-blue-500/20 text-4xl -z-10"></i>
+                            </div>
+
+                            <div id="no-review-msg" class="text-center text-gray-500 text-xs italic py-4">
+                                Chưa có cảm nhận nào cho tư thế này.
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <div id="tab-notes" class="hidden flex-1 flex flex-col h-full relative bg-gray-900">
+
+                        <div id="note-toolbar" class="p-4 pb-2 sticky top-0 bg-gray-900 z-10 border-b border-gray-800">
+                            <div class="relative">
+                                <i class="fas fa-search absolute left-3 top-2.5 text-gray-500 text-sm"></i>
+                                <input type="text" id="note-search" oninput="renderSecretNotes()"
+                                    class="w-full bg-gray-800 border border-gray-700 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-pink-500 transition"
+                                    placeholder="Tìm kiếm trong ghi chú mật...">
+                            </div>
+                        </div>
+
+                        <div id="note-list-view" class="flex-1 overflow-y-auto p-4 pb-24">
+                            <div id="secret-notes-list" class="note-masonry">
+                            </div>
+                        </div>
+
+                        <button onclick="openNoteEditor()"
+                            class="absolute bottom-6 right-6 w-14 h-14 bg-gradient-to-tr from-pink-600 to-purple-600 text-white rounded-2xl shadow-2xl shadow-pink-600/40 flex items-center justify-center text-xl hover:scale-110 transition active:scale-95 z-10">
+                            <i class="fas fa-plus"></i>
+                        </button>
+
+                        <div id="note-editor-view"
+                            class="hidden absolute inset-0 bg-gray-900 z-20 flex flex-col animate-slide-up">
+
+                            <div
+                                class="px-4 py-3 flex justify-between items-center border-b border-gray-800/50 bg-gray-900/90 backdrop-blur-md sticky top-0 z-20">
+                                <button onclick="closeNoteEditor()"
+                                    class="w-8 h-8 rounded-full bg-gray-800 text-gray-400 hover:text-white"><i
+                                        class="fas fa-arrow-left"></i></button>
+
+                                <div class="flex gap-3">
+                                    <button onclick="togglePinNote()" id="btn-pin-note"
+                                        class="text-gray-500 hover:text-yellow-400 transition"><i
+                                            class="fas fa-thumbtack"></i></button>
+                                    <button onclick="saveSecretNote()"
+                                        class="text-pink-500 font-bold text-sm bg-pink-500/10 px-3 py-1.5 rounded-lg hover:bg-pink-500 hover:text-white transition">Lưu</button>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 flex flex-col overflow-hidden" id="editor-body">
+
+                                <div class="px-4 pt-5 pb-2 shrink-0">
+
+                                    <input type="text" id="note-title" style=" background-color: transparent !important;
+            border: none !important;" class=" w-full bg-transparent border-none outline-none focus:ring-0 text-3xl font-bold text-white placeholder-white/20 mb-1 px-0" placeholder="Tiêu đề...">
+
+                                    <div class="flex items-center justify-between text-xs text-gray-400 mt-2">
+                                        <div class="flex items-center gap-3">
+                                            <span id="note-date-display" class="font-medium opacity-60">Hôm nay</span>
+
+                                            <div class="h-3 w-[1px] bg-white/10"></div>
+
+                                            <div class="flex items-center group">
+                                                <i
+                                                    class="fas fa-hashtag text-[10px] text-pink-500/50 mr-1 group-focus-within:text-pink-500 transition"></i>
+                                                <input type="text" id="note-tags" style=" background-color: transparent !important;
+            border: none !important;"
+                                                    class=" bg-transparent border-none outline-none focus:ring-0 text-pink-400 placeholder-pink-500/30 p-0 w-32 transition"
+                                                    placeholder="Thêm thẻ...">
+                                            </div>
+                                        </div>
+
+                                        <label
+                                            class="text-gray-500 hover:text-white cursor-pointer transition p-2 -mr-2 rounded-full hover:bg-white/5">
+                                            <i class="fas fa-paperclip text-sm"></i>
+                                            <input type="file" multiple class="hidden"
+                                                onchange="handleSecretNoteFiles(this)">
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div
+                                    class="mx-4 mb-2 p-2 bg-gray-800/80 backdrop-blur rounded-xl border border-gray-700 flex flex-wrap gap-3 items-center shrink-0 overflow-x-auto no-scrollbar">
+
+                                    <div class="flex gap-1 border-r border-gray-600 pr-3">
+                                        <button onclick="formatDoc('bold')"
+                                            class="w-8 h-8 rounded hover:bg-gray-700 text-white font-bold"><i
+                                                class="fas fa-bold"></i></button>
+                                        <button onclick="formatDoc('italic')"
+                                            class="w-8 h-8 rounded hover:bg-gray-700 text-white italic"><i
+                                                class="fas fa-italic"></i></button>
+                                        <button onclick="formatDoc('underline')"
+                                            class="w-8 h-8 rounded hover:bg-gray-700 text-white underline"><i
+                                                class="fas fa-underline"></i></button>
+                                    </div>
+
+                                    <div class="flex items-center gap-1 border-r border-gray-600 pr-3 relative group">
+                                        <i class="fas fa-palette text-gray-400 text-xs mr-1"></i>
+                                        <input type="color" id="text-color-picker"
+                                            onchange="formatDoc('foreColor', this.value)"
+                                            class="w-6 h-6 rounded-full border-none bg-transparent cursor-pointer"
+                                            value="#ffffff" title="Màu chữ">
+                                    </div>
+
+                                    <div class="flex items-center gap-1">
+                                        <i class="fas fa-text-height text-gray-400 text-xs"></i>
+                                        <select onchange="formatDoc('fontSize', this.value)"
+                                            class="bg-gray-700 text-white text-xs rounded px-1 py-1 outline-none border border-gray-600">
+                                            <option value="3">Vừa</option>
+                                            <option value="1">Nhỏ</option>
+                                            <option value="5">Lớn</option>
+                                            <option value="7">Khổng lồ</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="flex-1 px-4 pb-4 overflow-y-auto relative">
+                                    <div id="note-content-rich" contenteditable="true"
+                                        class="rich-editor w-full min-h-full bg-transparent text-gray-300 text-base leading-relaxed focus:outline-none outline-none break-words whitespace-pre-wrap"
+                                        placeholder="Viết những điều thầm kín (bấm thanh công cụ để sửa chữ)..."></div>
+
+                                    <div id="note-files-preview" class="grid grid-cols-3 gap-2 mt-4 pb-20"></div>
+                                </div>
+                            </div>
+
+                            <div class="p-3 bg-gray-800 border-t border-gray-700 flex items-center justify-between">
+                                <div class="flex gap-4">
+                                    <div class="flex gap-2">
+                                        <button onclick="setNoteColor('gray')"
+                                            class="w-6 h-6 rounded-full bg-gray-700 border border-gray-500 hover:scale-110 transition"></button>
+                                        <button onclick="setNoteColor('pink')"
+                                            class="w-6 h-6 rounded-full bg-pink-900 border border-pink-500 hover:scale-110 transition"></button>
+                                        <button onclick="setNoteColor('blue')"
+                                            class="w-6 h-6 rounded-full bg-blue-900 border border-blue-500 hover:scale-110 transition"></button>
+                                        <button onclick="setNoteColor('yellow')"
+                                            class="w-6 h-6 rounded-full bg-yellow-900 border border-yellow-500 hover:scale-110 transition"></button>
+                                    </div>
+                                </div>
+
+                                <label
+                                    class="w-10 h-10 rounded-full bg-gray-700 text-white flex items-center justify-center cursor-pointer hover:bg-gray-600 transition">
+                                    <i class="fas fa-image"></i>
+                                    <input type="file" multiple class="hidden" onchange="handleSecretNoteFiles(this)">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+                    <div id="tab-dice"
+                        class="flex-1 p-6 flex flex-col items-center justify-center overflow-y-auto relative">
+
+                        <button onclick="openDiceSettings()"
+                            class="absolute top-2 right-2 text-gray-500 hover:text-white bg-gray-800 p-2 rounded-full shadow z-10">
+                            <i class="fas fa-sliders-h"></i>
+                        </button>
+
+                        <div class="flex gap-4 mb-8 mt-4">
+                            <label
+                                class="flex items-center gap-2 cursor-pointer bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700 hover:bg-gray-700 transition">
+                                <input type="radio" name="dice-mode" value="combo" checked onchange="updateDiceMode()"
+                                    class="accent-pink-500 w-4 h-4">
+                                <span class="text-sm font-bold text-gray-300">Kết hợp</span>
+                            </label>
+                            <label
+                                class="flex items-center gap-2 cursor-pointer bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700 hover:bg-gray-700 transition">
+                                <input type="radio" name="dice-mode" value="hot" onchange="updateDiceMode()"
+                                    class="accent-red-600 w-4 h-4">
+                                <span class="text-sm font-bold text-red-400">🔥 Nóng bỏng</span>
+                            </label>
+                        </div>
+
+                        <div id="dice-container"
+                            class="w-full max-w-sm space-y-4 mb-10 min-h-[160px] flex items-center justify-center">
+                            <div class="text-gray-500 text-sm italic">Hãy chọn chế độ và bấm nút quay!</div>
+                        </div>
+
+                        <button onclick="rollDice()"
+                            class="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500 to-red-600 shadow-xl shadow-pink-500/40 flex items-center justify-center active:scale-90 transition-transform group relative overflow-hidden border-4 border-gray-800">
+                            <div class="absolute inset-0 bg-white/20 blur-md rounded-full"></div>
+                            <i
+                                class="fas fa-dice text-4xl text-white relative z-10 group-hover:rotate-180 transition duration-700"></i>
+                        </button>
+                        <p class="mt-4 text-xs text-gray-500 animate-pulse">Chạm để tung xúc xắc</p>
+
+                    </div>
+
+
+
+
+                    <div id="tab-box" class="hidden flex-1 p-4 flex flex-col relative h-full">
+
+                        <div
+                            class="flex justify-center mb-4 bg-gray-800 p-1 rounded-xl w-fit mx-auto border border-gray-700">
+                            <button onclick="switchBoxMode('play')" id="btn-box-play"
+                                class="px-6 py-1.5 rounded-lg text-xs font-bold bg-pink-600 text-white shadow transition">Mở
+                                Hộp</button>
+                            <button onclick="switchBoxMode('history')" id="btn-box-history"
+                                class="px-6 py-1.5 rounded-lg text-xs font-bold text-gray-400 hover:text-white transition">Lịch
+                                sử</button>
+                        </div>
+
+                        <div id="box-view-play" class="flex-1 flex flex-col">
+
+                            <div class="text-center mb-2">
+                                <span id="turn-badge"
+                                    class="bg-gray-800 border border-pink-500/50 text-pink-300 text-[10px] px-3 py-1 rounded-full font-bold shadow shadow-pink-900/20">
+                                </span>
+                            </div>
+
+                            <div class="flex-1 flex flex-col items-center justify-center relative">
+                                <div id="mystery-box" onclick="openMysteryBox()"
+                                    class="relative w-40 h-40 cursor-pointer transition-transform hover:scale-105 active:scale-95 group">
+                                    <img src="./Asset/game.png"
+                                        class="w-full h-full object-contain drop-shadow-2xl z-10 relative animate-bounce-slow">
+                                    <div
+                                        class="absolute inset-0 bg-pink-500/20 blur-3xl rounded-full group-hover:bg-pink-500/40 transition">
+                                    </div>
+                                    <div
+                                        class="absolute -bottom-6 w-full text-center text-xs font-bold text-pink-300 animate-pulse">
+                                        Bấm để mở ngay
+                                    </div>
+                                </div>
+
+                                <div id="box-result"
+                                    class="hidden mt-4 bg-gray-800 border border-pink-500/50 p-6 rounded-2xl max-w-xs shadow-xl shadow-pink-900/30 relative animate-zoom-in">
+                                    <button onclick="closeBoxResult()"
+                                        class="absolute top-2 right-2 text-gray-500 hover:text-white"><i
+                                            class="fas fa-times"></i></button>
+                                    <p class="text-[10px] text-gray-400 uppercase mb-2 text-center tracking-widest">Yêu
+                                        cầu bí mật</p>
+                                    <h3 id="box-result-text"
+                                        class="text-xl font-bold text-white leading-relaxed text-center">...</h3>
+                                    <p class="text-[10px] text-gray-500 mt-3 text-center italic">Hãy thực hiện ngay nhé!
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mt-auto space-y-3">
+
+                                <div
+                                    class="bg-gray-800/80 p-3 rounded-2xl border border-gray-700 flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        <div
+                                            class="w-8 h-8 rounded-full bg-yellow-500/20 text-yellow-500 flex items-center justify-center">
+                                            <i class="fas fa-gift"></i>
+                                        </div>
+                                        <div class="flex flex-col">
+                                            <span class="text-xs font-bold text-gray-300">Tặng lượt mở</span>
+                                            <span class="text-[10px] text-gray-500">Cho đối phương</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <input type="number" id="gift-amount" value="1" min="1" max="10"
+                                            class="w-10 bg-gray-900 border border-gray-600 rounded-lg text-center text-white text-sm py-1 focus:border-yellow-500 outline-none">
+                                        <button onclick="sendGift()"
+                                            class="bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition active:scale-95">Gửi</button>
+                                    </div>
+                                </div>
+
+                                <div class="bg-gray-800 p-3 rounded-2xl border border-gray-700">
+                                    <div class="flex gap-2">
+                                        <input type="text" id="wish-input"
+                                            class="flex-1 bg-gray-900 border border-gray-600 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-pink-500"
+                                            placeholder="Viết điều bạn muốn người ấy làm...">
+                                        <button onclick="addWishToBox()"
+                                            class="bg-pink-600 hover:bg-pink-700 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-lg active:scale-95">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-gray-300 py-2">Dữ liệu được mã hoá bảo mật.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="box-view-history" class="hidden flex-1 flex flex-col h-full">
+
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Lịch sử</h3>
+
+                                <div id="history-controls" class="hidden flex gap-2">
+                                    <button onclick="deleteSelectedHistory()"
+                                        class="text-xs bg-red-600 text-white px-2 py-1 rounded shadow">Xóa mục
+                                        chọn</button>
+                                    <button onclick="cancelHistorySelection()"
+                                        class="text-xs text-gray-400 px-2 py-1">Hủy</button>
+                                </div>
+                                <button id="btn-enable-select" onclick="enableHistorySelection()"
+                                    class="text-xs text-gray-500 hover:text-white"><i class="fas fa-edit"></i> Quản
+                                    lý</button>
+                            </div>
+
+                            <div id="select-all-container" class="hidden mb-2 px-1 flex items-center gap-2">
+                                <input type="checkbox" id="chk-select-all" onchange="toggleSelectAllHistory(this)"
+                                    class="w-4 h-4 rounded accent-pink-500">
+                                <label for="chk-select-all" class="text-xs text-gray-300">Chọn tất cả</label>
+                            </div>
+
+                            <div id="box-history-list" class="flex-1 overflow-y-auto space-y-3 pb-20 pr-1">
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+
         </div>
 
         <div id="lightbox"
@@ -1426,6 +1909,8 @@
                         <button onclick="loadMiniGallery('all')"
                             class="px-3 py-1 rounded-full bg-gray-800 text-white text-[10px] font-bold whitespace-nowrap">Tất
                             cả</button>
+                        <button onclick="loadMiniGallery('general')"
+                            class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold whitespace-nowrap">Chung</button>
                         <button onclick="loadMiniGallery('posts')"
                             class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold whitespace-nowrap">Nhật
                             ký</button>
@@ -1435,6 +1920,7 @@
                         <button onclick="loadMiniGallery('backgrounds')"
                             class="px-3 py-1 rounded-full bg-gray-100 text-gray-600 text-[10px] font-bold whitespace-nowrap">Hình
                             nền</button>
+
                     </div>
                     <div id="mini-gallery-grid" class="grid grid-cols-3 gap-1">
                         <div class="col-span-3 text-center py-10 text-gray-400 text-xs">Đang tải...</div>
@@ -1548,6 +2034,129 @@
         </div>
     </div>
 
+    <div id="dice-settings-modal" style="z-index: 99999 !important;"
+        class="fixed inset-0 hidden bg-black/80 flex items-center justify-center p-4">
+        <div
+            class="bg-gray-900 w-full max-w-sm rounded-2xl border border-gray-700 h-[80vh] flex flex-col shadow-2xl animate-zoom-in">
+
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+                <h3 class="text-white font-bold"><i class="fas fa-lock text-pink-500"></i> Dữ liệu Xúc
+                    xắc (E2EE)</h3>
+                <button onclick="closeDiceSettings()" class="text-gray-400 hover:text-white"><i
+                        class="fas fa-times"></i></button>
+            </div>
+
+            <div class="p-4 flex-1 overflow-y-auto space-y-6">
+                <div>
+                    <h4 class="text-xs text-pink-400 font-bold uppercase mb-2">Hành động</h4>
+                    <div id="list-actions" class="flex flex-wrap gap-2 mb-2"></div>
+                    <div class="flex gap-1">
+                        <input type="text" id="input-actions"
+                            class="bg-gray-800 border border-gray-600 text-xs text-white rounded px-2 py-1 flex-1"
+                            placeholder="Thêm...">
+                        <button onclick="addDiceItem('actions')" class="bg-pink-600 text-white px-3 rounded"><i
+                                class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs text-blue-400 font-bold uppercase mb-2">Vị trí</h4>
+                    <div id="list-bodyParts" class="flex flex-wrap gap-2 mb-2"></div>
+                    <div class="flex gap-1">
+                        <input type="text" id="input-bodyParts"
+                            class="bg-gray-800 border border-gray-600 text-xs text-white rounded px-2 py-1 flex-1"
+                            placeholder="Thêm...">
+                        <button onclick="addDiceItem('bodyParts')" class="bg-blue-600 text-white px-3 rounded"><i
+                                class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs text-yellow-400 font-bold uppercase mb-2">Thời gian</h4>
+                    <div id="list-times" class="flex flex-wrap gap-2 mb-2"></div>
+                    <div class="flex gap-1">
+                        <input type="text" id="input-times"
+                            class="bg-gray-800 border border-gray-600 text-xs text-white rounded px-2 py-1 flex-1"
+                            placeholder="Thêm...">
+                        <button onclick="addDiceItem('times')" class="bg-yellow-600 text-white px-3 rounded"><i
+                                class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs text-red-500 font-bold uppercase mb-2">🔥 Nóng bỏng</h4>
+                    <div id="list-hotActions" class="flex flex-wrap gap-2 mb-2"></div>
+                    <div class="flex gap-1">
+                        <input type="text" id="input-hotActions"
+                            class="bg-gray-800 border border-gray-600 text-xs text-white rounded px-2 py-1 flex-1"
+                            placeholder="Thêm...">
+                        <button onclick="addDiceItem('hotActions')" class="bg-red-600 text-white px-3 rounded"><i
+                                class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-800 bg-gray-900 rounded-b-2xl">
+                <button onclick="saveDiceSettings()"
+                    class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-pink-900/50">Lưu
+                    & Mã hóa</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pos-review-modal"
+        class="fixed inset-0 z-[130] hidden bg-black/80 flex items-end sm:items-center justify-center">
+        <div
+            class="bg-gray-900 w-full max-w-md rounded-t-3xl sm:rounded-3xl border-t sm:border border-gray-700 p-6 animate-slide-up shadow-2xl">
+            <h3 class="text-xl font-bold text-white text-center mb-1">Cảm nhận tư thế #<span id="modal-pos-num"></span>
+            </h3>
+            <p class="text-gray-400 text-xs text-center mb-6">Hãy chia sẻ thật lòng nhé (Được mã hóa bí
+                mật <i class="fas fa-lock text-[10px]"></i>)</p>
+
+            <div class="mb-6 text-center">
+                <p class="text-xs font-bold text-gray-300 mb-3 uppercase">Mức độ khoái cảm</p>
+                <div class="flex justify-center gap-4" id="rating-select-group">
+                    <button onclick="selectRating(1)"
+                        class="rating-btn text-3xl grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition"
+                        data-rating="1">😫</button>
+                    <button onclick="selectRating(2)"
+                        class="rating-btn text-3xl grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition"
+                        data-rating="2">😐</button>
+                    <button onclick="selectRating(3)"
+                        class="rating-btn text-3xl grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition"
+                        data-rating="3">🙂</button>
+                    <button onclick="selectRating(4)"
+                        class="rating-btn text-3xl grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition"
+                        data-rating="4">🤤</button>
+                    <button onclick="selectRating(5)"
+                        class="rating-btn text-3xl grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition"
+                        data-rating="5">😍</button>
+                </div>
+                <input type="hidden" id="selected-rating" value="0">
+            </div>
+
+            <div class="mb-6">
+                <p class="text-xs font-bold text-gray-300 mb-2 uppercase">Lời nhắn nhủ</p>
+                <textarea id="review-comment"
+                    class="w-full h-24 bg-gray-800 border border-gray-700 rounded-xl p-3 text-white text-sm focus:border-pink-500 outline-none resize-none"
+                    placeholder="Em/Anh thích nhất điểm nào? Muốn thay đổi gì không?..."></textarea>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="deletePositionReview()" id="btn-delete-review"
+                    class="hidden w-12 flex-none bg-red-900/50 text-red-500 border border-red-900 rounded-xl font-bold text-lg flex items-center justify-center hover:bg-red-600 hover:text-white transition">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+
+                <button onclick="closePositionReviewModal()"
+                    class="flex-1 py-3 bg-gray-800 text-gray-300 rounded-xl font-bold text-sm">Đóng</button>
+                <button onclick="savePositionReview()"
+                    class="flex-1 py-3 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-xl font-bold text-sm shadow-lg">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="./main.js"></script>
 </body>
 
