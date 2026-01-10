@@ -3827,46 +3827,126 @@ function closeBoxResult() {
 }
 
 // 5. Render Lịch sử
+/* ============================================================
+   LOGIC QUẢN LÝ LỊCH SỬ LOVE BOX (Bị thiếu)
+   ============================================================ */
+
+let isHistoryEditMode = false;
+
+// 1. Hàm Render Lịch sử (Cập nhật: Hỗ trợ chế độ Xóa)
 function renderBoxHistory() {
     const list = document.getElementById('box-history-list');
+    if (!list) return;
+    
     list.innerHTML = '';
 
-    // Lọc ra những cái ĐÃ MỞ
+    // Lọc ra những cái ĐÃ MỞ & Sắp xếp mới nhất lên đầu
     const historyItems = (appData.loveBox || [])
         .filter(w => w.isOpened)
-        .sort((a, b) => new Date(b.openedDate) - new Date(a.openedDate)); // Mới nhất lên đầu
+        .sort((a, b) => new Date(b.openedDate) - new Date(a.openedDate));
 
     if (historyItems.length === 0) {
-        list.innerHTML = '<p class="text-center text-gray-500 text-xs mt-10">Chưa có lịch sử mở hộp.</p>';
+        list.innerHTML = '<div class="text-center text-gray-500 text-xs mt-10 flex flex-col items-center"><i class="fas fa-box-open text-2xl mb-2 opacity-30"></i>Chưa có lịch sử mở hộp.</div>';
         return;
     }
 
     historyItems.forEach(item => {
-        // Ai mở?
+        // Xác định ai là người mở
         const opener = (item.openedBy === appData.user1.id) ? appData.user1 : appData.user2;
         const dateStr = new Date(item.openedDate).toLocaleString('vi-VN');
+        
+        // Giải mã nội dung
         const content = decryptData(item.content);
-
+        
         // Màu sắc khác nhau tùy người mở
         const isMe = (item.openedBy === appData[`user${myUserIndex}`].id);
         const bgClass = isMe ? 'bg-gray-800 border-l-4 border-pink-500' : 'bg-gray-800 border-l-4 border-blue-500';
 
+        // Checkbox HTML (Chỉ hiện khi ở chế độ Edit)
+        // Lưu ý: value là ID của item để biết mà xóa
+        const checkboxHtml = isHistoryEditMode 
+            ? `<div class="mr-3 flex items-center justify-center"><input type="checkbox" class="history-checkbox w-5 h-5 accent-pink-500 rounded cursor-pointer" value="${item.id}"></div>` 
+            : '';
+
         const html = `
-            <div class="${bgClass} p-4 rounded-r-xl shadow-sm border-y border-r border-gray-700">
-                <div class="flex justify-between items-start mb-2">
-                    <div class="flex items-center gap-2">
-                        <img src="${opener.avatar}" class="w-5 h-5 rounded-full border border-gray-500">
-                        <span class="text-xs font-bold text-gray-300">${isMe ? 'Bạn' : opener.name} đã mở</span>
+            <div class="flex items-stretch animate-fade-in-up">
+                ${checkboxHtml}
+                <div class="${bgClass} p-3 rounded-r-xl shadow-sm border-y border-r border-gray-700 flex-1 min-w-0 mb-1">
+                    <div class="flex justify-between items-start mb-1">
+                        <div class="flex items-center gap-2">
+                            <img src="${opener.avatar}" class="w-4 h-4 rounded-full border border-gray-500 object-cover">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">${isMe ? 'Bạn' : opener.name}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-600">${dateStr}</span>
                     </div>
-                    <span class="text-[10px] text-gray-500">${dateStr}</span>
+                    <p class="text-sm text-white font-medium leading-relaxed break-words">"${content}"</p>
                 </div>
-                <p class="text-sm text-white font-medium leading-relaxed">"${content}"</p>
             </div>
         `;
         list.innerHTML += html;
     });
 }
 
+// 2. Chuyển sang chế độ Quản lý (Hiện checkbox)
+function enableHistorySelection() {
+    isHistoryEditMode = true;
+    
+    // Hiện các nút điều khiển
+    document.getElementById('history-controls').classList.remove('hidden');
+    document.getElementById('select-all-container').classList.remove('hidden');
+    
+    // Ẩn nút "Quản lý" đi
+    document.getElementById('btn-enable-select').classList.add('hidden');
+    
+    // Render lại danh sách để hiện checkbox
+    renderBoxHistory();
+}
+
+// 3. Hủy chế độ Quản lý
+function cancelHistorySelection() {
+    isHistoryEditMode = false;
+    
+    // Ẩn các nút điều khiển
+    document.getElementById('history-controls').classList.add('hidden');
+    document.getElementById('select-all-container').classList.add('hidden');
+    
+    // Hiện lại nút "Quản lý"
+    document.getElementById('btn-enable-select').classList.remove('hidden');
+    
+    // Bỏ tick "Chọn tất cả"
+    const chkAll = document.getElementById('chk-select-all');
+    if(chkAll) chkAll.checked = false;
+    
+    renderBoxHistory();
+}
+
+// 4. Chọn tất cả
+function toggleSelectAllHistory(source) {
+    const checkboxes = document.querySelectorAll('.history-checkbox');
+    checkboxes.forEach(chk => chk.checked = source.checked);
+}
+
+// 5. Thực hiện Xóa
+async function deleteSelectedHistory() {
+    // Lấy danh sách các ID được chọn
+    const checkboxes = document.querySelectorAll('.history-checkbox:checked');
+    const idsToDelete = Array.from(checkboxes).map(cb => cb.value);
+
+    if (idsToDelete.length === 0) {
+        return Modal.showToast("Chưa chọn mục nào!");
+    }
+
+    if (await Modal.confirm(`Bạn có chắc muốn xóa vĩnh viễn ${idsToDelete.length} mục lịch sử này?`)) {
+        // Lọc giữ lại những cái KHÔNG nằm trong danh sách xóa
+        appData.loveBox = appData.loveBox.filter(item => !idsToDelete.includes(item.id));
+        
+        await saveData();
+        
+        // Thoát chế độ sửa và thông báo
+        cancelHistorySelection();
+        Modal.showToast("Đã xóa thành công!");
+    }
+}
 /* --- NÂNG CẤP SECRET TAB (POSITIONS & NOTES) --- */
 
 // 1. Cập nhật hàm switchSecretTab
@@ -4275,50 +4355,109 @@ function formatDoc(cmd, value = null) {
     document.getElementById('note-content-rich').focus();
 }
 
-// 2. Cập nhật hàm OPEN EDITOR (Để load HTML)
+/* --- CẬP NHẬT LOGIC XEM / SỬA --- */
+
+let isEditingMode = false;
+
+// 1. Cập nhật hàm Mở Editor
 function openNoteEditor(id = null) {
     document.getElementById('note-list-view').classList.add('hidden');
     document.getElementById('note-toolbar').classList.add('hidden');
     document.getElementById('note-editor-view').classList.remove('hidden');
-
+    
     editingNoteId = id;
     tempNoteFiles = [];
-
-    // Reset UI
+    
+    // Reset Data
     document.getElementById('note-title').value = '';
-
-    // --- KHÁC BIỆT: Dùng innerHTML cho Rich Text ---
     document.getElementById('note-content-rich').innerHTML = '';
-
     document.getElementById('note-tags').value = '';
-    document.getElementById('note-date-display').innerText = "Hôm nay " + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-
-    // Reset Toolbar inputs
+    document.getElementById('note-date-display').innerText = "Hôm nay";
     document.getElementById('text-color-picker').value = '#ffffff';
 
-    isNotePinned = false;
-    updatePinButton();
-
     if (id) {
-        // Chế độ Sửa
+        // TRƯỜNG HỢP: XEM GHI CHÚ CŨ -> Vào chế độ XEM
         const note = appData.secretNotes.find(n => n.id === id);
         if (note) {
             document.getElementById('note-title').value = decryptData(note.title);
-
-            // --- KHÁC BIỆT: Load nội dung HTML ---
-            // Lưu ý: Nội dung đã được mã hóa toàn bộ chuỗi HTML
             document.getElementById('note-content-rich').innerHTML = decryptData(note.content);
-
             document.getElementById('note-tags').value = note.tags ? decryptData(note.tags) : "";
             tempNoteFiles = note.files || [];
             isNotePinned = note.pinned || false;
-            updatePinButton();
-
+            
             const d = new Date(note.date);
-            document.getElementById('note-date-display').innerText = d.toLocaleDateString('vi-VN') + " lúc " + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('note-date-display').innerText = d.toLocaleDateString('vi-VN') + " lúc " + d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
         }
+        // Tắt chế độ sửa
+        setEditMode(false);
+    } else {
+        // TRƯỜNG HỢP: TẠO MỚI -> Vào chế độ SỬA luôn
+        setEditMode(true);
     }
+    
+    updatePinButton();
     renderNoteFilesPreview();
+}
+
+// 2. Hàm chuyển đổi chế độ (Helper)
+function setEditMode(enable) {
+    isEditingMode = enable;
+    
+    const titleInput = document.getElementById('note-title');
+    const contentDiv = document.getElementById('note-content-rich');
+    const tagsInput = document.getElementById('note-tags');
+    const toolbar = document.querySelector('#editor-body .mx-4.mb-2'); // Thanh công cụ
+    const footer = document.querySelector('#note-editor-view > div:last-child'); // Footer upload
+
+    const btnEdit = document.getElementById('btn-edit-note');
+    const btnSave = document.getElementById('btn-save-note');
+    const btnPin = document.getElementById('btn-pin-note');
+
+    if (enable) {
+        // --- CHẾ ĐỘ SỬA ---
+        titleInput.removeAttribute('readonly');
+        tagsInput.removeAttribute('readonly');
+        contentDiv.setAttribute('contenteditable', 'true');
+        
+        // Hiện công cụ
+        toolbar.classList.remove('hidden');
+        footer.classList.remove('hidden');
+        
+        // Nút
+        btnEdit.classList.add('hidden');
+        btnSave.classList.remove('hidden');
+        btnPin.classList.remove('hidden'); // Cho phép ghim khi sửa
+        
+        // Style
+        titleInput.classList.remove('cursor-default');
+    } else {
+        // --- CHẾ ĐỘ XEM ---
+        titleInput.setAttribute('readonly', 'true');
+        tagsInput.setAttribute('readonly', 'true');
+        contentDiv.setAttribute('contenteditable', 'false');
+        
+        // Ẩn công cụ
+        toolbar.classList.add('hidden');
+        footer.classList.add('hidden');
+        
+        // Nút
+        btnEdit.classList.remove('hidden');
+        btnSave.classList.add('hidden');
+        btnPin.classList.add('hidden'); // Ẩn nút ghim khi chỉ xem
+        
+        // Style
+        titleInput.classList.add('cursor-default');
+    }
+    
+    // Render lại file để ẩn/hiện nút Xóa file
+    renderNoteFilesPreview();
+}
+
+// 3. Hàm Toggle khi bấm nút Sửa
+function toggleEditMode() {
+    setEditMode(true);
+    document.getElementById('note-content-rich').focus();
+    Modal.showToast("Đã chuyển sang chế độ chỉnh sửa");
 }
 
 // 3. Cập nhật hàm SAVE NOTE (Để lưu HTML)
@@ -4448,47 +4587,129 @@ async function handleSecretNoteFiles(input) {
 }
 
 // 2. Hiển thị danh sách file (Fix lỗi ReferenceError)
+/* --- CẬP NHẬT QUẢN LÝ FILE (XÓA TRỰC TIẾP & HIỂN THỊ FULL) --- */
+
+// 1. Render File (100% Width + Download + Delete Direct)
 function renderNoteFilesPreview() {
     const container = document.getElementById('note-files-preview');
     if (!container) return;
     
+    // Đổi grid thành 1 cột để hiển thị 100% width
+    container.className = "flex flex-col gap-4 mt-4 pb-20"; 
     container.innerHTML = '';
     
     tempNoteFiles.forEach((f, idx) => {
         let content = '';
         
-        // Tùy chỉnh hiển thị theo loại file
+        // Hiển thị nội dung
         if (f.type === 'image') {
-            content = `<img src="${f.url}" class="w-full h-full object-cover transition-transform group-hover:scale-110">`;
+            content = `<img src="${f.url}" class="w-full h-auto rounded-lg object-contain bg-black/50">`;
         } else if (f.type === 'video') {
-            content = `<div class="bg-gray-800 w-full h-full flex items-center justify-center"><i class="fas fa-video text-pink-500 text-xl"></i></div>`;
+            content = `
+                <video controls class="w-full h-auto rounded-lg bg-black">
+                    <source src="${f.url}">
+                    Trình duyệt không hỗ trợ video.
+                </video>`;
         } else {
             content = `
-                <div class="bg-gray-800 w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                    <i class="fas fa-file-alt text-gray-400 text-xl mb-1"></i>
-                    <span class="text-[8px] text-gray-400 w-full truncate">${f.name}</span>
+                <div class="bg-gray-800 w-full p-4 rounded-lg flex items-center gap-3 border border-gray-700">
+                    <div class="bg-gray-700 p-3 rounded-full"><i class="fas fa-file-alt text-white"></i></div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-white truncate">${f.name}</p>
+                        <p class="text-xs text-gray-400">Tệp đính kèm</p>
+                    </div>
                 </div>`;
         }
 
-        // Tạo thẻ HTML
-        const div = document.createElement('div');
-        div.className = "relative aspect-square rounded-xl overflow-hidden border border-gray-700/50 group bg-gray-800 cursor-pointer shadow-sm";
-        div.innerHTML = `
-            ${content}
-            
-            <button onclick="removeTempFile(${idx})" class="absolute top-1 right-1 w-6 h-6 bg-red-600/90 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition shadow-lg z-10 hover:scale-110">
+        // Logic Nút Xóa (Chỉ hiện khi đang Sửa)
+        const deleteBtn = isEditingMode ? `
+            <button onclick="deleteSecretFile('${f.url}', ${idx})" class="absolute -top-2 -right-2 w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition z-10 border-2 border-gray-900">
                 <i class="fas fa-times"></i>
             </button>
-            
-            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition pointer-events-none"></div>
+        ` : '';
+
+        // Nút Tải xuống (Luôn hiện)
+        const downloadBtn = `
+            <a href="${f.url}" target="_blank" download="${f.name}" class="absolute bottom-2 right-2 bg-gray-900/80 text-white px-3 py-1.5 rounded-lg text-xs font-bold backdrop-blur flex items-center gap-1 hover:bg-pink-600 transition border border-gray-600">
+                <i class="fas fa-download"></i> Tải
+            </a>
         `;
+
+        const div = document.createElement('div');
+        div.className = "relative group w-full"; // w-full để 100% chiều rộng
+        div.innerHTML = `
+            ${content}
+            ${deleteBtn}
+            ${f.type !== 'file' ? downloadBtn : ''} 
+            `;
+        
+        // Với loại file không phải ảnh/video, ta thêm nút download riêng nếu cần
+        if (f.type === 'file') {
+             div.innerHTML = `
+                <div class="relative">
+                    ${content}
+                    ${deleteBtn}
+                     <a href="${f.url}" target="_blank" class="absolute inset-0 z-0"></a> </div>
+             `;
+        }
+
         container.appendChild(div);
     });
 }
 
-// 3. Xóa file khỏi danh sách tạm
-function removeTempFile(index) {
-    tempNoteFiles.splice(index, 1);
-    renderNoteFilesPreview();
+// 2. Hàm Xóa File trực tiếp trên Supabase
+async function deleteSecretFile(fileUrl, index) {
+    if (!confirm("CẢNH BÁO: Hành động này sẽ xóa vĩnh viễn file này khỏi bộ nhớ đám mây ngay lập tức, kể cả khi bạn không Lưu ghi chú.\n\nBạn có chắc chắn không?")) {
+        return;
+    }
+
+    try {
+        Modal.showToast("Đang xóa file...");
+
+        // 1. Trích xuất đường dẫn file từ URL
+        // URL thường dạng: .../storage/v1/object/public/secrets/folder/filename.ext
+        // Cần lấy: secrets/folder/filename.ext hoặc folder/filename.ext tùy bucket
+        
+        // Giả sử bucket là 'secrets'. Ta cần lấy path sau chữ 'secrets/'
+        // Cách đơn giản nhất nếu bạn dùng cơ chế đặt tên file của uploadToSupabase:
+        // Cần biết tên file trên server.
+        
+        // TỐT NHẤT: Ta nên tách path từ URL
+        const urlObj = new URL(fileUrl);
+        const pathParts = urlObj.pathname.split('/secrets/'); 
+        // pathParts[1] sẽ là phần đuôi "filename.jpg" hoặc "folder/filename.jpg"
+        
+        if (pathParts.length < 2) throw new Error("Không xác định được đường dẫn file");
+        const filePath = pathParts[1]; 
+
+        // 2. Gọi Supabase để xóa
+        // Lưu ý: Cần import supabase object hoặc dùng hàm có sẵn
+        const { data, error } = await supabase.storage
+            .from('secrets')
+            .remove([decodeURIComponent(filePath)]); // decode để xử lý tên có dấu cách/%20
+
+        if (error) throw error;
+
+        // 3. Xóa thành công -> Cập nhật giao diện
+        tempNoteFiles.splice(index, 1);
+        
+        // 4. Nếu đang sửa ghi chú cũ, cập nhật luôn vào appData để đồng bộ
+        if (editingNoteId) {
+            const noteIndex = appData.secretNotes.findIndex(n => n.id === editingNoteId);
+            if (noteIndex !== -1) {
+                appData.secretNotes[noteIndex].files = tempNoteFiles;
+                await saveData(); // Lưu AppData ngay lập tức để tránh mất đồng bộ
+            }
+        }
+
+        renderNoteFilesPreview();
+        Modal.showToast("Đã xóa file vĩnh viễn!");
+
+    } catch (e) {
+        console.error("Lỗi xóa file:", e);
+        Modal.alert("Không thể xóa file: " + e.message);
+    }
 }
+
+
 window.onload = initApp;
