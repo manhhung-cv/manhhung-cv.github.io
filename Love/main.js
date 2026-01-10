@@ -32,9 +32,9 @@ const DEFAULT_DATA = {
         skipDone: false,
         reviews: {}
     },
-
-    // 2. Dữ liệu Ghi chú (Mã hóa)
-    secretNotes: []
+    secretNotes: [],
+    loveLog: [], 
+    sLocations: []
 };
 
 const THEMES = {
@@ -3140,22 +3140,38 @@ let currentSecretTab = 'dice';
 /* --- B. QUẢN LÝ TAB --- */
 function switchSecretTab(tab) {
     currentSecretTab = tab;
+    
+    // Danh sách tất cả các tab ID
+    const tabs = ['dice', 'box', 'positions', 'notes', 'tracking', 'locations'];
+    
+    tabs.forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        const btn = document.getElementById(`tab-btn-${t}`);
+        
+        if(el) el.classList.add('hidden');
+        
+        // Update Style Button
+        if(btn) {
+            if(t === tab) {
+                btn.className = "flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow transition whitespace-nowrap";
+            } else {
+                btn.className = "flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition hover:bg-gray-700 whitespace-nowrap";
+            }
+        }
+    });
 
-    // Ẩn hiện các view
-    document.getElementById('tab-dice').classList.add('hidden');
-    document.getElementById('tab-box').classList.add('hidden');
-    document.getElementById(`tab-${tab}`).classList.remove('hidden');
+    // Hiện tab được chọn
+    const activeEl = document.getElementById(`tab-${tab}`);
+    if(activeEl) activeEl.classList.remove('hidden');
 
-    // Update style nút bấm (Active/Inactive)
-    const activeClass = "px-4 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow transition";
-    const inactiveClass = "px-4 py-1.5 rounded-md text-xs font-bold text-gray-300 hover:text-white transition";
-
-    const btnDice = document.getElementById('tab-btn-dice');
-    const btnBox = document.getElementById('tab-btn-box');
-
-    if (btnDice) btnDice.className = tab === 'dice' ? activeClass : inactiveClass;
-    if (btnBox) btnBox.className = tab === 'box' ? activeClass : inactiveClass;
-    if (btnBox) updateTurnDisplay();
+    // Init Logic riêng cho từng tab
+    if (tab === 'dice') { /* logic dice */ }
+    if (tab === 'positions') updatePositionUI();
+    if (tab === 'notes') renderSecretNotes();
+    
+    // --- MỚI ---
+    if (tab === 'tracking') renderTracking();
+    if (tab === 'locations') renderLocations();
 }
 
 /* --- C. LOGIC XÚC XẮC (DICE) --- */
@@ -3363,17 +3379,6 @@ async function saveDiceSettings() {
 
     // Cập nhật lại giao diện ngay
     updateDiceMode();
-}
-
-function switchSecretTab(tab) {
-    currentSecretTab = tab;
-    // UI update
-    document.getElementById('tab-dice').classList.add('hidden');
-    document.getElementById('tab-box').classList.add('hidden');
-    document.getElementById(`tab-${tab}`).classList.remove('hidden');
-
-    document.getElementById('tab-btn-dice').className = tab === 'dice' ? "px-4 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow" : "px-4 py-1.5 rounded-md text-xs font-bold text-gray-300";
-    document.getElementById('tab-btn-box').className = tab === 'box' ? "px-4 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow" : "px-4 py-1.5 rounded-md text-xs font-bold text-gray-300";
 }
 
 // --- B. LOGIC XÚC XẮC TÌNH YÊU ---
@@ -3950,31 +3955,66 @@ async function deleteSelectedHistory() {
 /* --- NÂNG CẤP SECRET TAB (POSITIONS & NOTES) --- */
 
 // 1. Cập nhật hàm switchSecretTab
+// HÀM CHUYỂN TAB (PHIÊN BẢN ĐẦY ĐỦ 6 TÍNH NĂNG)
 function switchSecretTab(tab) {
     currentSecretTab = tab;
 
-    // Ẩn tất cả tab content
-    ['dice', 'box', 'positions', 'notes'].forEach(t => {
+    // 1. Danh sách ID của tất cả các tab
+    const tabs = ['dice', 'box', 'positions', 'notes', 'tracking', 'locations'];
+    
+    // 2. Ẩn tất cả tab và Reset style nút bấm
+    tabs.forEach(t => {
         const el = document.getElementById(`tab-${t}`);
         const btn = document.getElementById(`tab-btn-${t}`);
-        if (el) el.classList.add('hidden');
-
-        // Style Active/Inactive
-        if (btn) {
-            if (t === tab) {
-                btn.className = "flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow transition";
-            } else {
-                btn.className = "flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition hover:bg-gray-700";
-            }
+        
+        // Ẩn nội dung
+        if(el) el.classList.add('hidden');
+        
+        // Reset nút bấm (Inactive)
+        if(btn) {
+            btn.className = "flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold text-gray-400 hover:text-white transition hover:bg-gray-700 whitespace-nowrap";
         }
     });
 
-    // Hiện tab được chọn
-    document.getElementById(`tab-${tab}`).classList.remove('hidden');
+    // 3. Hiện tab được chọn và Active nút bấm
+    const activeEl = document.getElementById(`tab-${tab}`);
+    const activeBtn = document.getElementById(`tab-btn-${tab}`);
 
-    // Init data cho từng tab
-    if (tab === 'positions') updatePositionUI();
-    if (tab === 'notes') renderSecretNotes();
+    if(activeEl) {
+        activeEl.classList.remove('hidden');
+    } else {
+        Modal.alert(`Thiếu HTML cho tab: ${tab}`);
+        return;
+    }
+
+    if(activeBtn) {
+        activeBtn.className = "flex-shrink-0 px-3 py-1.5 rounded-md text-xs font-bold bg-pink-600 text-white shadow transition whitespace-nowrap";
+    }
+
+    // 4. Khởi chạy Logic riêng cho từng tab
+    try {
+        if (tab === 'dice') { 
+            if(typeof updateDiceMode === 'function') updateDiceMode(); 
+        }
+        if (tab === 'positions') { 
+            if(typeof updatePositionUI === 'function') updatePositionUI(); 
+        }
+        if (tab === 'notes') { 
+            if(typeof renderSecretNotes === 'function') renderSecretNotes(); 
+        }
+        if (tab === 'tracking') { 
+            // Khởi tạo data nếu chưa có
+            if(!appData.loveLog) appData.loveLog = [];
+            if(typeof renderTracking === 'function') renderTracking(); 
+        }
+        if (tab === 'locations') { 
+            // Khởi tạo data nếu chưa có
+            if(!appData.sLocations) appData.sLocations = [];
+            if(typeof renderLocations === 'function') renderLocations(); 
+        }
+    } catch (e) {
+        console.error("Lỗi khi render tab:", e);
+    }
 }
 
 /* --- LOGIC TAB 3: TƯ THẾ (POSITIONS) --- */
@@ -4319,7 +4359,7 @@ function renderSecretNotes() {
         const tagBadge = n.decryptedTags ? `<span class="text-[10px] text-pink-400 font-bold">#${n.decryptedTags}</span>` : '';
 
         const html = `
-            <div onclick="openNoteEditor('${n.id}')" class="note-item ${bgClass} p-4 rounded-2xl border active:scale-[0.98] transition cursor-pointer relative overflow-hidden group">
+            <div onclick="openNoteEditor('${n.id}')" class="note-item ${bgClass} p-4 rounded-2xl border active:scale-[0.98] transition cursor-pointer relative overflow-hidden group mb-2">
                 ${pinIcon}
                 <h3 class="font-bold text-white text-sm mb-1 leading-tight ${n.pinned ? 'pr-6' : ''}">${title}</h3>
                 <p class="text-gray-300 text-xs leading-relaxed mb-3 break-words whitespace-pre-wrap font-light">${contentPreview}</p>
@@ -4711,5 +4751,371 @@ async function deleteSecretFile(fileUrl, index) {
     }
 }
 
+/* --- LOGIC TAB 5: LOVE TRACKING --- */
+
+function renderTracking() {
+    const list = document.getElementById('tracking-list');
+    const logs = appData.loveLog || [];
+    
+    // Thống kê
+    document.getElementById('track-total-count').innerText = logs.length;
+    if (logs.length > 0) {
+        // Sort mới nhất lên đầu
+        logs.sort((a, b) => new Date(b.date) - new Date(a.date));
+        const lastDate = new Date(logs[0].date);
+        document.getElementById('track-last-date').innerText = lastDate.toLocaleDateString('vi-VN') + ` (${timeAgo(lastDate)})`;
+    } else {
+        document.getElementById('track-last-date').innerText = "Chưa có";
+    }
+
+    list.innerHTML = '';
+    if (logs.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-500 text-xs mt-10">Chưa có bản ghi nào. Hãy thêm mới!</p>';
+        return;
+    }
+
+    logs.forEach(log => {
+        // Giải mã
+        const note = decryptData(log.note);
+        const dateObj = new Date(log.date);
+        const day = dateObj.getDate();
+        const month = dateObj.toLocaleString('vi-VN', { month: 'short' });
+        const time = dateObj.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+        
+        let stars = "";
+        for(let i=0; i<log.rating; i++) stars += "🔥";
+
+        const html = `
+            <div class="bg-gray-800 rounded-xl p-3 border border-gray-700 flex gap-3 relative group">
+                <div class="flex flex-col items-center justify-center bg-gray-900 rounded-lg w-14 h-14 border border-gray-600 shrink-0">
+                    <span class="text-xs text-gray-400 uppercase">${month}</span>
+                    <span class="text-xl font-bold text-white">${day}</span>
+                </div>
+                
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs text-gray-500">${time} • ${log.duration} phút</span>
+                        <span class="text-xs">${stars}</span>
+                    </div>
+                    <p class="text-sm text-gray-300 mt-1 truncate font-medium">${note || "Không có ghi chú"}</p>
+                </div>
+
+                <button onclick="deleteLog('${log.id}')" class="absolute top-2 right-2 text-gray-600 hover:text-red-500 hidden group-hover:block">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        list.innerHTML += html;
+    });
+}
+
+function openTrackingModal() {
+    document.getElementById('tracking-modal').classList.remove('hidden');
+    // Set default datetime to now
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('track-input-date').value = now.toISOString().slice(0, 16);
+    document.getElementById('track-input-duration').value = '30';
+    document.getElementById('track-input-note').value = '';
+}
+
+async function saveTrackingLog() {
+    const date = document.getElementById('track-input-date').value;
+    const duration = document.getElementById('track-input-duration').value;
+    const rating = document.getElementById('track-input-rating').value;
+    const note = document.getElementById('track-input-note').value;
+
+    if (!date) return Modal.alert("Vui lòng chọn thời gian!");
+
+    if (!appData.loveLog) appData.loveLog = [];
+
+    // Mã hóa ghi chú
+    const encNote = encryptData(note);
+
+    appData.loveLog.push({
+        id: Date.now().toString(),
+        date: date,
+        duration: duration || 0,
+        rating: parseInt(rating),
+        note: encNote,
+        initiator: `u${myUserIndex}`
+    });
+
+    await saveData();
+    document.getElementById('tracking-modal').classList.add('hidden');
+    renderTracking();
+    Modal.showToast("Đã lưu nhật ký! 🔥");
+}
+
+async function deleteLog(id) {
+    if (await Modal.confirm("Xóa bản ghi này?")) {
+        appData.loveLog = appData.loveLog.filter(l => l.id !== id);
+        await saveData();
+        renderTracking();
+    }
+}
+
+// Helper Time Ago
+function timeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " năm trước";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " tháng trước";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " ngày trước";
+    return "Vừa xong";
+}
+
+
+/* --- LOGIC TAB 6: S3X LOCATIONS --- */
+
+let currentLocationFilter = 'all';
+let editingLocationId = null; // Biến lưu ID địa điểm đang sửa
+
+function filterLocation(type) {
+    currentLocationFilter = type;
+    
+    // Update active button style
+    document.querySelectorAll('.loc-filter-btn').forEach(btn => {
+        if (btn.dataset.type === type) {
+            btn.className = "loc-filter-btn px-3 py-1 bg-pink-600 text-white rounded-full text-xs font-bold whitespace-nowrap shadow-lg transition";
+        } else {
+            btn.className = "loc-filter-btn px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-xs font-bold whitespace-nowrap hover:bg-gray-600 transition";
+        }
+    });
+
+    renderLocations();
+}
+
+function renderLocations() {
+    const list = document.getElementById('location-list');
+    if(!list) return;
+    list.innerHTML = '';
+    
+    const locs = appData.sLocations || [];
+    // Nếu biến filter chưa có thì dùng mặc định
+    const filter = (typeof currentLocationFilter !== 'undefined') ? currentLocationFilter : 'all'; 
+
+    const filtered = locs.filter(l => filter === 'all' || l.type === filter);
+
+    if (filtered.length === 0) {
+        list.innerHTML = `<div class="col-span-2 text-center text-gray-500 text-xs mt-10">Không có địa điểm nào.</div>`;
+        return;
+    }
+
+    filtered.forEach(loc => {
+        const name = decryptData(loc.name);
+        const desc = decryptData(loc.desc); // Lấy mô tả để hiện tooltip hoặc preview
+        
+        const typeIcons = { 'Indoor': '🏠', 'Outdoor': '🌲', 'Public': '🫣', 'Special': '✨' };
+        const icon = typeIcons[loc.type] || '📍';
+        
+        const statusClass = loc.status ? "text-green-400 border-green-500/30 bg-green-500/10" : "text-gray-400 border-gray-600 bg-gray-700";
+        const statusText = loc.status ? "Đã thử" : "Chưa thử";
+
+        const html = `
+            <div class="bg-gray-800 rounded-xl p-3 border border-gray-700 flex flex-col gap-2 relative group hover:border-pink-500/50 transition">
+                
+                <div class="flex justify-between items-start">
+                    <span class="text-xl">${icon}</span>
+                    <span class="text-[10px] px-1.5 rounded border ${statusClass}">${statusText}</span>
+                </div>
+                
+                <div>
+                    <h4 class="font-bold text-white text-sm truncate pr-4">${name}</h4>
+                    <p class="text-xs text-gray-400 line-clamp-2 mt-1 h-8">${desc || "Không có mô tả"}</p>
+                </div>
+
+                <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition duration-200">
+                    <button onclick="editLocation('${loc.id}')" class="w-7 h-7 bg-gray-900 rounded-full text-blue-400 hover:text-white hover:bg-blue-600 flex items-center justify-center shadow border border-gray-700">
+                        <i class="fas fa-pen text-[10px]"></i>
+                    </button>
+                    <button onclick="deleteLocation('${loc.id}')" class="w-7 h-7 bg-gray-900 rounded-full text-red-400 hover:text-white hover:bg-red-600 flex items-center justify-center shadow border border-gray-700">
+                        <i class="fas fa-trash text-[10px]"></i>
+                    </button>
+                </div>
+            </div>`;
+        list.innerHTML += html;
+    });
+}
+
+function openLocationModal() {
+    editingLocationId = null; // Reset ID sửa
+    
+    document.getElementById('location-modal').classList.remove('hidden');
+    
+    // Reset Form
+    document.getElementById('loc-input-name').value = '';
+    document.getElementById('loc-input-desc').value = '';
+    document.getElementById('loc-input-status').checked = false;
+    document.getElementById('loc-input-type').value = 'Indoor'; // Mặc định
+    
+    // Đổi tiêu đề modal cho hợp ngữ cảnh
+    const titleEl = document.querySelector('#location-modal h3');
+    if(titleEl) titleEl.innerText = "Thêm địa điểm mới";
+}
+
+// Hàm mở Modal để SỬA (ĐÃ FIX LỖI UNDEFINED)
+// HÀM SỬA (PHIÊN BẢN DEBUG) - Hãy chép đè hàm này
+function editLocation(id) {
+
+    // Tìm địa điểm
+    // Lưu ý: Đảm bảo cả 2 đều là String để so sánh chính xác
+    const loc = appData.sLocations.find(l => String(l.id) === String(id));
+    
+    if (!loc) {
+        Modal.alert("Không tìm thấy địa điểm nào khớp với ID này trong dữ liệu.");
+        return;
+    }
+
+    editingLocationId = id;
+    
+    // Kiểm tra HTML Modal
+    const modal = document.getElementById('location-modal');
+    if (!modal) {
+        Modal.alert("Thiếu HTML Modal! Hãy kiểm tra lại file index.html");
+        return;
+    }
+
+    // Mở modal
+    modal.classList.remove('hidden');
+
+    // Điền dữ liệu
+    try {
+        const nameInput = document.getElementById('loc-input-name');
+        const descInput = document.getElementById('loc-input-desc');
+        const typeInput = document.getElementById('loc-input-type');
+        const statusInput = document.getElementById('loc-input-status');
+
+        if(!nameInput || !descInput) {
+             console.error("5. LỖI: Không tìm thấy các ô input (loc-input-name...) trong Modal");
+             return;
+        }
+
+        nameInput.value = decryptData(loc.name) || "";
+        descInput.value = decryptData(loc.desc) || "";
+        typeInput.value = loc.type || "Indoor";
+        statusInput.checked = loc.status || false;
+
+        // Đổi tiêu đề modal
+        const titleEl = document.querySelector('#location-modal h3');
+        if(titleEl) titleEl.innerText = "Cập nhật địa điểm";
+        
+
+    } catch (e) {
+        console.error("LỖI KHI ĐIỀN DỮ LIỆU:", e);
+    }
+}
+async function saveLocation() {
+    const name = document.getElementById('loc-input-name').value;
+    const type = document.getElementById('loc-input-type').value;
+    const desc = document.getElementById('loc-input-desc').value;
+    const status = document.getElementById('loc-input-status').checked;
+
+    if (!name) return Modal.alert("Vui lòng nhập tên địa điểm!");
+
+    if (!appData.sLocations) appData.sLocations = [];
+
+    // Mã hóa dữ liệu
+    const encName = encryptData(name);
+    const encDesc = encryptData(desc);
+
+    if (editingLocationId) {
+        // --- TRƯỜNG HỢP: ĐANG SỬA ---
+        const index = appData.sLocations.findIndex(l => l.id === editingLocationId);
+        if (index !== -1) {
+            // Giữ nguyên ID, chỉ cập nhật thông tin
+            appData.sLocations[index] = {
+                ...appData.sLocations[index], // Giữ lại các trường khác nếu có
+                name: encName,
+                type: type,
+                desc: encDesc,
+                status: status
+            };
+            Modal.showToast("Đã cập nhật thành công!");
+        }
+    } else {
+        // --- TRƯỜNG HỢP: THÊM MỚI ---
+        appData.sLocations.push({
+            id: Date.now().toString(),
+            name: encName,
+            type: type,
+            desc: encDesc,
+            status: status,
+            rating: 0
+        });
+        Modal.showToast("Đã thêm địa điểm mới!");
+    }
+
+    await saveData();
+    document.getElementById('location-modal').classList.add('hidden');
+    
+    // Nếu đang filter theo loại khác loại vừa sửa, tự chuyển filter về để người dùng thấy kết quả
+    if (typeof filterLocation === 'function') filterLocation(type);
+    else renderLocations();
+}
+
+async function deleteLocation(id) {
+    if (await Modal.confirm("Xóa địa điểm này?")) {
+        appData.sLocations = appData.sLocations.filter(l => l.id !== id);
+        await saveData();
+        renderLocations();
+    }
+}
+
+/* --- CẬP NHẬT LOGIC NHẬP NHANH (HỖ TRỢ TÁCH MÔ TẢ BẰNG DẤU ":") --- */
+
+async function processImportLocations() {
+    const rawText = document.getElementById('import-loc-text').value;
+    const type = document.getElementById('import-loc-type').value;
+
+    if (!rawText.trim()) return Modal.alert("Vui lòng nhập danh sách!");
+
+    const lines = rawText.split(/\r?\n/);
+    let count = 0;
+
+    if (!appData.sLocations) appData.sLocations = [];
+
+    lines.forEach(line => {
+        let rawLine = line.trim();
+        if (rawLine) {
+            let name = rawLine;
+            let desc = "";
+
+            // Kiểm tra xem có dấu hai chấm không để tách mô tả
+            if (rawLine.includes(':')) {
+                const parts = rawLine.split(':');
+                name = parts[0].trim();
+                // Nối lại các phần sau (đề phòng trong mô tả cũng có dấu :)
+                desc = parts.slice(1).join(':').trim();
+            }
+
+            // Mã hóa cả Tên và Mô tả
+            const encName = encryptData(name);
+            const encDesc = encryptData(desc);
+
+            appData.sLocations.push({
+                id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                name: encName,
+                type: type,
+                desc: encDesc, // Lưu mô tả đã tách được
+                status: false,
+                rating: 0
+            });
+            count++;
+        }
+    });
+
+    if (count > 0) {
+        await saveData();
+        document.getElementById('import-loc-text').value = '';
+        document.getElementById('location-import-modal').classList.add('hidden');
+        renderLocations();
+        Modal.showToast(`Đã nhập thành công ${count} địa điểm (kèm mô tả)!`);
+    } else {
+        Modal.alert("Không tìm thấy dữ liệu hợp lệ.");
+    }
+}
 
 window.onload = initApp;
