@@ -450,8 +450,14 @@
     <script>
         // --- STATE & CONFIG ---
         let posts = [];
-        const API_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent('https://hunqd.wordpress.com/feed/');
         
+        // Cấu hình danh sách Proxy theo thứ tự ưu tiên
+        const RSS_TARGET = 'https://hunqd.wordpress.com/feed/';
+        const PROXY_LIST = [
+            'https://api.codetabs.com/v1/proxy?quest=',    // 1. CodeTabs (Nhanh, phổ biến)
+            'https://api.allorigins.win/raw?url=',         // 2. AllOrigins (Dự phòng ổn định)
+            'https://corsproxy.io/?'                       // 3. CorsProxy.io (Dự phòng cuối)
+        ];
         // --- DOM ELEMENTS ---
         const feedList = document.getElementById('feed-list');
         const articleDisplay = document.getElementById('article-display');
@@ -583,39 +589,95 @@
 
         // --- DATA ---
         async function fetchPosts() {
+            let xmlText = null;
+            let success = false;
+
+            // Hiển thị trạng thái đang tải
+            feedList.innerHTML = `
+                <div class="skeleton sk-card"></div>
+                <div class="skeleton sk-card"></div>
+            `;
+
+            // Vòng lặp thử từng Proxy
+            for (const proxy of PROXY_LIST) {
+                try {
+                    const url = proxy + encodeURIComponent(RSS_TARGET);
+                    console.log(`Đang thử tải từ: ${proxy}`); // Log để debug
+                    
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+                    
+                    xmlText = await res.text();
+                    
+                    // Kiểm tra sơ bộ xem có phải XML không (tránh trường hợp proxy trả về lỗi dạng HTML)
+                    if (!xmlText.includes('<rss') && !xmlText.includes('<feed')) {
+                        throw new Error('Dữ liệu không đúng định dạng XML');
+                    }
+
+                    success = true;
+                    console.log('Tải thành công!');
+                    break; // Thoát vòng lặp nếu thành công
+
+                } catch (err) {
+                    console.warn(`Thất bại với proxy ${proxy}:`, err);
+                    // Tiếp tục vòng lặp để thử proxy tiếp theo
+                }
+            }
+
+            // Nếu thử hết danh sách mà vẫn thất bại
+            if (!success || !xmlText) {
+                feedList.innerHTML = `
+                    <div style="text-align:center; padding: 2rem; color: var(--text-muted)">
+                        <i data-lucide="wifi-off" style="width: 32px; height: 32px; margin-bottom: 10px;"></i><br>
+                        Không thể kết nối đến máy chủ.<br>
+                        <button onclick="fetchPosts()" style="margin-top:1rem; padding: 8px 16px; border:1px solid var(--border); background:var(--bg-card); cursor:pointer; border-radius:6px; color:var(--text-main)">Thử lại với máy chủ khác.</button>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            // Xử lý dữ liệu (Parsing XML)
             try {
-                const res = await fetch(API_URL);
-                if (!res.ok) throw new Error("Lỗi mạng");
-                
-                const text = await res.text();
                 const parser = new DOMParser();
-                const xml = parser.parseFromString(text, "text/xml");
+                const xml = parser.parseFromString(xmlText, "text/xml");
                 const items = xml.querySelectorAll("item");
+
+                if (items.length === 0) {
+                    feedList.innerHTML = "<p style='text-align:center'>Chưa có bài viết nào.</p>";
+                    return;
+                }
 
                 posts = Array.from(items).map((item, index) => {
                     const contentRaw = item.getElementsByTagName("content:encoded")[0]?.textContent || "";
                     const descRaw = item.querySelector("description")?.textContent || "";
                     
-                    let img = "/Asset/Banner/Banner.png";
+                    // Xử lý ảnh
+                    let img = "/Asset/Banner/Banner.png"; // Ảnh công nghệ mặc định
                     const imgMatch = contentRaw.match(/<img[^>]+src="([^">]+)"/);
                     if (imgMatch) img = imgMatch[1];
 
-                    const excerpt = descRaw.replace(/<[^>]*>?/gm, '').substring(0, 160) + "...";
+                    // Xử lý đoạn trích (Excerpt)
+                    // Ưu tiên description, nếu không có thì cắt từ content, xóa thẻ HTML
+                    const rawText = descRaw || contentRaw;
+                    const excerpt = rawText.replace(/<[^>]*>?/gm, '').substring(0, 160) + "...";
 
                     return {
                         id: index,
-                        title: item.querySelector("title")?.textContent || "Untitled",
+                        title: item.querySelector("title")?.textContent || "Không tiêu đề",
                         date: new Date(item.querySelector("pubDate")?.textContent).toLocaleDateString('vi-VN'),
                         content: contentRaw,
                         excerpt: excerpt,
                         image: img,
-                        category: item.querySelector("category")?.textContent || "General"
+                        category: item.querySelector("category")?.textContent || "Tech"
                     };
                 });
+
                 renderFeed();
+
             } catch (err) {
-                console.error(err);
-                feedList.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted)">Không thể tải dữ liệu.</div>`;
+                console.error("Lỗi xử lý XML:", err);
+                feedList.innerHTML = `<div style="text-align:center; padding: 2rem;">Lỗi hiển thị dữ liệu.</div>`;
             }
         }
 
