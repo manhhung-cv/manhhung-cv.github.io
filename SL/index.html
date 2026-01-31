@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunq Short Link</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            /* Minimal Palette */
+            --bg-color: #050505;
+            --card-bg: #0a0a0a;
+            --border-color: #262626;
+            --text-main: #e5e5e5;
+            --text-dim: #737373;
+            --accent: #ffffff;
+            /* Trắng tinh khiết làm điểm nhấn */
+            --accent-inv: #000000;
+            --danger: #ef4444;
+            --input-bg: #0a0a0a;
+
+            --radius: 8px;
+            /* Bo góc nhẹ hơn */
+            --modal-z: 3000;
+        }
+
+        [data-theme="light"] {
+            --bg-color: #ffffff;
+            --card-bg: #fafafa;
+            --border-color: #e5e5e5;
+            --text-main: #171717;
+            --text-dim: #a3a3a3;
+            --accent: #000000;
+            --accent-inv: #ffffff;
+            --input-bg: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+            /* Font Inter gọn gàng hơn */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* --- LAYOUTS --- */
+        .app-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            flex: 1;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Minimal Card: No Blur, Just Border */
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: none;
+            transition: border-color 0.2s;
+        }
+
+        .glass-card:focus-within {
+            border-color: var(--text-dim);
+        }
+
+        /* --- HEADER --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 10px;
+        }
+
+        .brand {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand span {
+            background: var(--border-color);
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--text-dim);
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: color 0.2s;
+        }
+
+        .btn-icon:hover {
+            color: var(--text-main);
+        }
+
+        /* --- FORMS --- */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        textarea:focus {
+            border-color: var(--accent);
+        }
+
+        .input-group {
+            display: flex;
+            width: 100%;
+        }
+
+        .input-group input {
+            border-radius: var(--radius) 0 0 var(--radius);
+            border-right: none;
+        }
+
+        .input-group .btn-append {
+            padding: 0 20px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-left: none;
+            border-radius: 0 var(--radius) var(--radius) 0;
+            cursor: pointer;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .input-group .btn-append:hover {
+            color: var(--text-main);
+            background: var(--border-color);
+        }
+
+        /* Minimal Button */
+        .btn-lime {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius);
+            border: 1px solid var(--accent);
+            background: var(--accent);
+            color: var(--accent-inv);
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+
+        .btn-lime:hover {
+            opacity: 0.9;
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            transition: 0.2s;
+        }
+
+        .btn-danger:hover {
+            border-color: var(--danger);
+        }
+
+        /* --- SWITCHES (Minimal) --- */
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 36px;
+            height: 20px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            transition: .3s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: var(--text-dim);
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--accent);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(16px);
+            background-color: var(--accent-inv);
+        }
+
+        /* --- HISTORY LIST --- */
+        .history-container {
+            max-height: 280px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            /* Liền mạch */
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+        }
+
+        .history-card {
+            background: transparent;
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-card:last-child {
+            border-bottom: none;
+        }
+
+        .history-card:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .history-short {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.95rem;
+            text-decoration: none;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .history-long {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            max-width: 250px;
+        }
+
+        .history-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-mini {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            border: none;
+            background: transparent;
+            color: var(--text-dim);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .btn-mini:hover {
+            color: var(--text-main);
+            background: var(--border-color);
+        }
+
+        /* --- MODAL (Minimal) --- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: var(--modal-z);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-box {
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 24px;
+            border-radius: var(--radius);
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-title {
+            color: var(--text-main);
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-body {
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--text-dim);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: var(--radius);
+            cursor: pointer;
+            border: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: 0.2s;
+        }
+
+        .modal-btn.primary {
+            background: var(--accent);
+            color: var(--accent-inv);
+        }
+
+        .modal-btn.secondary {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .modal-btn.danger {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Admin checkbox styles updated for minimal */
+        .adm-link-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .adm-link-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .adm-link-row.selected {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .custom-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 1px solid var(--text-dim);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .adm-link-row.selected .custom-checkbox {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--accent-inv);
+        }
+
+        .adm-short {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .adm-orig {
+            color: var(--text-dim);
+        }
+
+        /* --- REDIRECT PAGE (Minimal) --- */
+        #redirect-overlay {
+            background: var(--bg-color);
+        }
+
+        .spinner {
+            border: 3px solid var(--border-color);
+            border-left-color: var(--accent);
+        }
+
+        /* Tab Nav */
+        .admin-tabs {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            color: var(--text-dim);
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            background: transparent;
+            border-bottom: 2px solid var(--accent);
+            border-radius: 0;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="redirect-overlay" class="hidden"
+        style="position:fixed; inset:0; z-index:1000; flex-direction:column; overflow-y:auto;">
+        <div id="ad-slot-interstitial" class="ad-pos-interstitial hidden"
+            style="position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:2000; display:flex; align-items:center; justify-content:center;">
+            <button class="ad-close-btn" onclick="this.parentElement.classList.add('hidden')"
+                style="position:absolute; top:20px; right:20px; background:white; color:black; border:none; padding:10px 20px;">Đóng
+                [X]</button>
+            <div id="interstitial-content" style="max-width:90%; max-height:90%;"></div>
+        </div>
+
+        <div class="redirect-layout"
+            style="display:grid; grid-template-areas: 'top top top' 'left center right' 'footer footer footer'; min-height:100vh;">
+            <div id="ad-slot-top" class="ad-pos-top hidden" style="grid-area:top; padding:10px; text-align:center;">
+            </div>
+            <div id="ad-slot-left" class="ad-pos-left hidden" style="grid-area:left; padding:20px;"></div>
+            <div id="ad-slot-right" class="ad-pos-right hidden" style="grid-area:right; padding:20px;"></div>
+
+            <div class="redirect-center"
+                style="grid-area:center; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
+                <h2 style="margin-bottom: 10px; font-weight:400;">Đang chuyển hướng...</h2>
+                <div class="spinner"
+                    style="width:40px; height:40px; border-radius:50%; animation:spin 1s linear infinite; margin:20px auto;">
+                </div>
+                <p style="color:var(--text-dim);">Vui lòng chờ <span id="countdown"
+                        style="font-weight:bold; color:var(--text-main);">10</span> giây</p>
+                <div id="ad-slot-content" class="hidden" style="margin:20px 0; max-width:100%;"></div>
+                <p style="font-size:0.8rem; opacity:0.5; margin-top:20px;">Powered by Hunq</p>
+            </div>
+
+            <div id="ad-slot-footer" class="ad-pos-footer hidden"
+                style="grid-area:footer; padding:10px; text-align:center; position:sticky; bottom:0; background:var(--bg-color); border-top:1px solid var(--border-color);">
+            </div>
+        </div>
+    </div>
+
+    <div id="global-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 class="modal-title" id="modal-title">Tiêu đề</h3>
+            <div class="modal-body" id="modal-body">Nội dung...</div>
+            <div class="modal-actions" id="modal-actions"></div>
+        </div>
+    </div>
+
+    <div class="app-wrapper" id="main-app">
+        <div class="container">
+            <header>
+                <div class="brand"><i class="fa-solid fa-link"></i> Hunq <span>Link</span></div>
+                <div class="header-controls">
+                    <button class="btn-icon" onclick="openTokenModal()"><i class="fa-solid fa-key"></i></button>
+                    <button class="btn-icon" onclick="toggleTheme()"><i
+                            class="fa-solid fa-circle-half-stroke"></i></button>
+                    <button class="btn-icon" onclick="toggleAdminPanel()"><i class="fa-solid fa-gear"></i></button>
+                </div>
+            </header>
+
+            <div class="glass-card">
+                <div class="form-group">
+                    <label>Link Gốc</label>
+                    <div class="input-group">
+                        <input type="text" id="long-url" placeholder="https://example.com/...">
+                        <button class="btn-append" onclick="pasteUrl()"><i class="fa-solid fa-paste"></i></button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Bí danh (Tuỳ chọn)</label>
+                    <input type="text" id="alias" maxlength="10" placeholder="vd: my-game">
+                </div>
+
+                <div class="settings-row">
+                    <span>Bật Ads (Ủng hộ Web)</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="ads-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="settings-row">
+                    <span>Tự động Copy</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autocopy-toggle" checked
+                            onchange="localStorage.setItem('hq_autocopy', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <button class="btn-lime" onclick="createShortLink()">Rút Gọn</button>
+            </div>
+
+            <div class="glass-card" style="padding-bottom:0; padding-top:15px;">
+                <h4
+                    style="margin-bottom: 15px; color: var(--text-dim); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">
+                    Lịch sử</h4>
+                <div id="history-list" class="history-container"
+                    style="border:none; border-top:1px solid var(--border-color); border-radius:0;"></div>
+            </div>
+
+            <div id="admin-panel" class="glass-card hidden">
+                <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
+                    <h4 style="color:var(--text-main);">Admin Dashboard</h4>
+                    <button onclick="logout()"
+                        style="background:none; border:none; color:var(--danger); cursor:pointer;">Đăng xuất</button>
+                </div>
+
+                <div id="admin-login-form">
+                    <input type="email" id="adm-email" placeholder="Email Admin" style="margin-bottom:10px;">
+                    <input type="password" id="adm-pass" placeholder="Mật khẩu" style="margin-bottom:10px;">
+                    <button class="btn-lime" onclick="adminLogin()">Đăng nhập</button>
+                </div>
+
+                <div id="admin-content" class="hidden">
+                    <div class="admin-tabs" style="display:flex; gap:15px; margin-bottom:20px;">
+                        <button class="tab-btn active" onclick="switchTab('tab-links')">Links</button>
+                        <button class="tab-btn" onclick="switchTab('tab-ads')">Ads</button>
+                        <button class="tab-btn" onclick="switchTab('tab-black')">Block</button>
+                    </div>
+
+                    <div id="tab-links" class="tab-content active">
+                        <div
+                            style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">
+                            <button class="select-all-btn" onclick="toggleSelectAll()" id="btn-select-all"
+                                style="background:none; border:none; color:var(--text-main); cursor:pointer; font-size:0.9rem;">
+                                Chọn tất cả
+                            </button>
+                            <button class="btn-danger" style="border:none;" onclick="bulkDeleteLinks()">Xoá</button>
+                        </div>
+                        <div id="adm-items-container" style="max-height:300px; overflow-y:auto;"></div>
+                    </div>
+
+                    <div id="tab-ads" class="tab-content hidden">
+                        <div id="ads-config-container"></div>
+                        <button class="btn-lime" onclick="saveAdsConfig()">Lưu Cấu Hình</button>
+                    </div>
+
+                    <div id="tab-black" class="tab-content hidden">
+                        <label>Blacklist Domains</label>
+                        <textarea id="banned-domains" rows="5" placeholder="domain.com, bad.net"></textarea>
+                        <button class="btn-lime" onclick="saveBlacklist()">Lưu Blacklist</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, getDoc, doc, query, where, updateDoc, deleteDoc, setDoc, increment, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB_MUrLjqwC8uSXFsvnFKULbTtyqg7Wo_s",
+            authDomain: "shortlink-4c40e.firebaseapp.com",
+            projectId: "shortlink-4c40e",
+            storageBucket: "shortlink-4c40e.appspot.com",
+            messagingSenderId: "943265709525",
+            appId: "1:943265709525:web:bef219b25ea6d75ebe915c",
+            measurementId: "G-MRM4NZRPK7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        const ADS_POS = [
+            { id: 'top', name: 'Top Banner' },
+            { id: 'content', name: 'Center' },
+            { id: 'sidebar_left', name: 'Left' },
+            { id: 'sidebar_right', name: 'Right' },
+            { id: 'footer', name: 'Sticky Footer' },
+            { id: 'interstitial', name: 'Popup' }
+        ];
+
+        /* --- LOGIC TOKEN THAY ĐỔI: HQ --- */
+        let USER_TOKEN = localStorage.getItem('hq_token'); // Đổi key storage
+
+        // Nếu chưa có, tạo mới bắt đầu bằng HQ
+        if (!USER_TOKEN) {
+            USER_TOKEN = 'HQ' + Math.random().toString(36).substr(2, 9).toUpperCase(); // HQ + Random
+            localStorage.setItem('hq_token', USER_TOKEN);
+        }
+
+        if (localStorage.getItem('hq_autocopy') === 'false') document.getElementById('autocopy-toggle').checked = false;
+
+        /* ================= HELPERS ================= */
+        window.closeModal = () => document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('open'));
+        window.onclick = (event) => { if (event.target.classList.contains('modal-overlay')) window.closeModal(); };
+
+        window.showModal = (title, content, type = 'alert', callback = null) => {
+            document.getElementById('modal-title').innerHTML = `<div style="flex:1">${title}</div><button onclick="closeModal()" style="background:none; border:none; color:var(--text-dim); cursor:pointer;">&times;</button>`;
+            document.getElementById('modal-body').innerHTML = content;
+            const actions = document.getElementById('modal-actions');
+            actions.innerHTML = '';
+
+            if (type === 'confirm') {
+                const btnCancel = document.createElement('button');
+                btnCancel.className = 'modal-btn secondary';
+                btnCancel.innerText = 'Huỷ';
+                btnCancel.onclick = () => { window.closeModal(); if (callback) callback(false); };
+                actions.appendChild(btnCancel);
+            }
+            const btnOk = document.createElement('button');
+            btnOk.className = 'modal-btn primary';
+            btnOk.innerText = type === 'confirm' ? 'Xác nhận' : 'Đóng';
+            btnOk.onclick = () => { window.closeModal(); if (callback) callback(true); };
+            actions.appendChild(btnOk);
+            document.getElementById('global-modal').classList.add('open');
+        };
+
+        /* ================= MAIN ================= */
+        window.openTokenModal = () => {
+            const html = `
+                <div class="form-group">
+                    <label>Device Token</label>
+                    <div class="input-group">
+                        <input type="password" id="tk-input" value="${USER_TOKEN}" readonly style="font-family:monospace">
+                        <button class="btn-append" onclick="toggleTk()"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button class="modal-btn secondary" style="flex:1" onclick="copyTk()">Copy</button>
+                    <button class="modal-btn danger" style="flex:1" onclick="rotateTk()">Reset</button>
+                    <button class="modal-btn secondary" style="flex:1" onclick="inputTk()">Import</button>
+                </div>
+            `;
+            window.showModal('Token Quản Lý', html, 'alert');
+        };
+
+        window.toggleTk = () => { const i = document.getElementById('tk-input'); i.type = i.type === 'password' ? 'text' : 'password'; };
+        window.copyTk = () => { navigator.clipboard.writeText(USER_TOKEN); alert("Đã sao chép Token!"); };
+
+        // ROTATE TOKEN: CHUYỂN SANG HQ MỚI
+        window.rotateTk = () => {
+            window.closeModal();
+            setTimeout(() => {
+                window.showModal('Cảnh báo', 'Tạo token HQ mới? Dữ liệu cũ sẽ được chuyển sang.', 'confirm', async (yes) => {
+                    if (yes) {
+                        const newToken = 'HQ' + Math.random().toString(36).substr(2, 9).toUpperCase();
+                        const batch = writeBatch(db);
+                        const q = query(collection(db, "links"), where("ownerToken", "==", USER_TOKEN));
+                        const snap = await getDocs(q);
+                        snap.forEach(d => batch.update(d.ref, { ownerToken: newToken }));
+                        await batch.commit();
+                        USER_TOKEN = newToken;
+                        localStorage.setItem('hq_token', newToken);
+                        window.showModal('Thành công', 'Đã cấp Token mới: ' + newToken);
+                        loadHistory();
+                    }
+                });
+            }, 200);
+        };
+
+        window.inputTk = () => {
+            window.closeModal();
+            setTimeout(() => {
+                const html = `<input type="text" id="new-tk-val" placeholder="HQ..." style="width:100%; padding:10px; background:var(--input-bg); border:1px solid var(--border-color); color:var(--text-main);">`;
+                window.showModal('Nhập Token', html, 'confirm', (ok) => {
+                    if (ok) {
+                        const val = document.getElementById('new-tk-val').value.trim();
+                        if (val.length > 2) {
+                            USER_TOKEN = val;
+                            localStorage.setItem('hq_token', val);
+                            loadHistory();
+                        }
+                    }
+                });
+            }, 200);
+        };
+
+        window.createShortLink = async () => {
+            let url = document.getElementById('long-url').value.trim();
+            let alias = document.getElementById('alias').value.trim().replace(/[^a-zA-Z0-9-_]/g, '');
+            const hasAds = document.getElementById('ads-toggle').checked;
+
+            if (!url) return window.showModal('Lỗi', 'Nhập Link gốc');
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            if (!url.includes('.')) return window.showModal('Lỗi', 'Link sai định dạng');
+
+            const cfg = await getDoc(doc(db, "settings", "config"));
+            if (cfg.exists() && cfg.data().bannedDomains?.some(d => url.includes(d.trim()) && d.trim()))
+                return window.showModal('Lỗi', 'Tên miền bị cấm');
+
+            if (alias) {
+                const chk = await getDoc(doc(db, "links", alias));
+                if (chk.exists()) return window.showModal('Lỗi', 'Bí danh đã tồn tại');
+            } else {
+                do {
+                    alias = Math.random().toString(36).substring(2, 7);
+                    const chk = await getDoc(doc(db, "links", alias));
+                    if (!chk.exists()) break;
+                } while (true);
+            }
+
+            await setDoc(doc(db, "links", alias), {
+                originalUrl: url,
+                ownerToken: USER_TOKEN,
+                views: 0,
+                hasAds: hasAds,
+                createdAt: new Date()
+            });
+
+            document.getElementById('long-url').value = "";
+            document.getElementById('alias').value = "";
+            loadHistory();
+
+            const baseUrl = location.href.split('?')[0].split('#')[0].replace(/\/index\.html$/, '');
+            const finalLink = (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + '#' + alias;
+
+            if (document.getElementById('autocopy-toggle').checked) {
+                navigator.clipboard.writeText(finalLink);
+                window.showModal('Hoàn tất', `Link (Đã copy):<br><b style="color:var(--text-main)">${finalLink}</b>`);
+            } else {
+                window.showModal('Hoàn tất', `Link:<br><b style="color:var(--text-main)">${finalLink}</b>`);
+            }
+        };
+
+        async function loadHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim)">Đang tải...</div>';
+            const q = query(collection(db, "links"), where("ownerToken", "==", USER_TOKEN));
+            const snap = await getDocs(q);
+            list.innerHTML = '';
+            if (snap.empty) { list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim)">Chưa có link nào</div>'; return; }
+
+            snap.forEach(d => {
+                const data = d.data();
+                const baseUrl = location.href.split('?')[0].split('#')[0].replace(/\/index\.html$/, '');
+                const link = (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + '#' + d.id;
+                const div = document.createElement('div');
+                div.className = 'history-card';
+                div.innerHTML = `
+                    <div style="flex:1; overflow:hidden; padding-right:10px;">
+                        <a href="${link}" target="_blank" class="history-short">/${d.id}</a>
+                        <span class="history-long">${data.originalUrl}</span>
+                    </div>
+                    <div class="history-actions">
+                        <button class="btn-mini" onclick="copyTxt('${link}')"><i class="fa-solid fa-copy"></i></button>
+                        <button class="btn-mini" onclick="editLnk('${d.id}', '${data.originalUrl}', ${data.hasAds})"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn-mini" onclick="delLnk('${d.id}')" style="color:var(--danger)"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        window.copyTxt = (t) => { navigator.clipboard.writeText(t); };
+        window.delLnk = (id) => {
+            window.showModal('Xác nhận', 'Xoá link này?', 'confirm', async (yes) => {
+                if (yes) { await deleteDoc(doc(db, "links", id)); loadHistory(); if (auth.currentUser) loadAdmLinks(); }
+            });
+        };
+        window.editLnk = (id, url, ads) => {
+            const html = `
+                <div class="form-group"><label>Link Gốc</label><input type="text" id="edit-url" value="${url}"></div>
+                <div class="settings-row"><span>Bật Ads</span><label class="toggle-switch"><input type="checkbox" id="edit-ads" ${ads ? 'checked' : ''}><span class="slider"></span></label></div>
+            `;
+            window.showModal('Sửa Link', html, 'confirm', async (yes) => {
+                if (yes) {
+                    const newUrl = document.getElementById('edit-url').value.trim();
+                    const newAds = document.getElementById('edit-ads').checked;
+                    if (newUrl) { await updateDoc(doc(db, "links", id), { originalUrl: newUrl, hasAds: newAds }); loadHistory(); }
+                }
+            });
+        };
+
+        window.toggleAdminPanel = () => document.getElementById('admin-panel').classList.toggle('hidden');
+        onAuthStateChanged(auth, async (u) => {
+            if (u) {
+                const adm = await getDoc(doc(db, "settings", "admins"));
+                if (adm.exists() && adm.data()[u.uid]?.role === 'admin') {
+                    document.getElementById('admin-login-form').classList.add('hidden');
+                    document.getElementById('admin-content').classList.remove('hidden');
+                    loadAdmData();
+                } else { window.showModal('Lỗi', 'Quyền hạn bị từ chối'); signOut(auth); }
+            } else {
+                document.getElementById('admin-login-form').classList.remove('hidden');
+                document.getElementById('admin-content').classList.add('hidden');
+            }
+        });
+
+        window.adminLogin = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById('adm-email').value, document.getElementById('adm-pass').value); } catch (e) { window.showModal('Lỗi', 'Sai thông tin đăng nhập'); } };
+        window.logout = () => signOut(auth);
+
+        async function loadAdmData() {
+            loadAdmLinks();
+            const bl = await getDoc(doc(db, "settings", "config"));
+            if (bl.exists()) document.getElementById('banned-domains').value = (bl.data().bannedDomains || []).join(', ');
+            const ad = await getDoc(doc(db, "settings", "ads"));
+            const adData = ad.exists() ? ad.data() : {};
+            const cont = document.getElementById('ads-config-container');
+            cont.innerHTML = '';
+            ADS_POS.forEach(p => {
+                const d = adData[p.id] || { img: '', url: '', text: '' };
+                cont.innerHTML += `<div style="margin-bottom:15px; border:1px solid var(--border-color); padding:10px; border-radius:8px;"><h5 style="margin-bottom:5px; color:var(--text-dim)">${p.name}</h5><input type="text" id="ad-img-${p.id}" placeholder="Ảnh URL" value="${d.img}" style="margin-bottom:5px"><input type="text" id="ad-url-${p.id}" placeholder="Đích URL" value="${d.url}"></div>`;
+            });
+        }
+
+        async function loadAdmLinks() {
+            const list = document.getElementById('adm-items-container');
+            list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-dim)">Loading...</div>';
+            const s = await getDocs(query(collection(db, "links")));
+            list.innerHTML = '';
+            if (s.empty) { list.innerHTML = '<div style="padding:20px; text-align:center">Empty</div>'; return; }
+            s.forEach(d => {
+                const data = d.data();
+                const row = document.createElement('div');
+                row.className = 'adm-link-row';
+                row.id = `row-${d.id}`;
+                row.onclick = () => toggleSelectRow(d.id);
+                row.innerHTML = `<input type="checkbox" class="adm-chk-input hidden" value="${d.id}" id="chk-${d.id}"><div class="custom-checkbox"><i class="fa-solid fa-check" style="font-size:0.7rem"></i></div><div style="flex:1; overflow:hidden"><div class="adm-short">${d.id}</div><span class="adm-orig" style="font-size:0.8rem">${data.originalUrl}</span></div><div style="font-size:0.8rem; opacity:0.5">${data.views} <i class="fa-solid fa-eye"></i></div>`;
+                list.appendChild(row);
+            });
+        }
+
+        window.toggleSelectRow = (id) => {
+            const chk = document.getElementById(`chk-${id}`);
+            const row = document.getElementById(`row-${id}`);
+            chk.checked = !chk.checked;
+            chk.checked ? row.classList.add('selected') : row.classList.remove('selected');
+        };
+
+        window.toggleSelectAll = () => {
+            const btn = document.getElementById('btn-select-all');
+            const chks = document.querySelectorAll('.adm-chk-input');
+            const rows = document.querySelectorAll('.adm-link-row');
+            const isSel = !btn.classList.contains('active');
+            chks.forEach(c => c.checked = isSel);
+            rows.forEach(r => isSel ? r.classList.add('selected') : r.classList.remove('selected'));
+            isSel ? btn.classList.add('active') : btn.classList.remove('active');
+        };
+
+        window.bulkDeleteLinks = async () => {
+            const inps = document.querySelectorAll('.adm-chk-input:checked');
+            if (inps.length === 0) return;
+            window.showModal('Xác nhận', `Xoá ${inps.length} link?`, 'confirm', async (yes) => {
+                if (yes) { const batch = writeBatch(db); inps.forEach(i => batch.delete(doc(db, "links", i.value))); await batch.commit(); loadAdmLinks(); }
+            });
+        };
+
+        window.saveAdsConfig = async () => {
+            const data = {};
+            ADS_POS.forEach(p => { data[p.id] = { img: document.getElementById(`ad-img-${p.id}`).value.trim(), url: document.getElementById(`ad-url-${p.id}`).value.trim(), text: '' }; });
+            await setDoc(doc(db, "settings", "ads"), data);
+            window.showModal('OK', 'Đã lưu cấu hình');
+        };
+
+        window.saveBlacklist = async () => {
+            const v = document.getElementById('banned-domains').value.split(',').map(x => x.trim()).filter(x => x);
+            await setDoc(doc(db, "settings", "config"), { bannedDomains: v }, { merge: true });
+            window.showModal('OK', 'Đã lưu');
+        };
+
+        window.pasteUrl = async () => { try { document.getElementById('long-url').value = await navigator.clipboard.readText(); } catch (e) { } };
+        window.toggleTheme = () => { const e = document.documentElement; e.setAttribute('data-theme', e.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); };
+        window.switchTab = (id) => {
+            document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById(id).classList.remove('hidden');
+            document.querySelector(`button[onclick="switchTab('${id}')"]`).classList.add('active');
+        };
+
+        /* --- REDIRECT --- */
+        if (location.hash.length > 1) {
+            document.getElementById('main-app').style.display = 'none';
+            document.getElementById('redirect-overlay').classList.remove('hidden');
+            document.getElementById('redirect-overlay').style.display = 'flex';
+
+            const id = location.hash.substring(1);
+            getDoc(doc(db, "links", id)).then(async s => {
+                if (s.exists()) {
+                    updateDoc(s.ref, { views: increment(1) });
+                    const dt = s.data();
+                    if (dt.hasAds) {
+                        const adDoc = await getDoc(doc(db, "settings", "ads"));
+                        if (adDoc.exists()) {
+                            const ads = adDoc.data();
+                            ADS_POS.forEach(p => {
+                                const d = ads[p.id];
+                                if (d && d.img) {
+                                    const slot = document.getElementById(`ad-slot-${p.id}`);
+                                    slot.classList.remove('hidden');
+                                    if (p.id === 'interstitial') {
+                                        document.getElementById('interstitial-content').innerHTML = `<a href="${d.url || '#'}" target="_blank"><img src="${d.img}" style="max-height:80vh; max-width:100%"></a>`;
+                                    } else {
+                                        slot.innerHTML = `<a href="${d.url || '#'}" target="_blank"><img src="${d.img}" style="width:100%; border-radius:8px;"></a>`;
+                                    }
+                                }
+                            });
+                        }
+                        let c = 10;
+                        const t = setInterval(() => { c--; document.getElementById('countdown').innerText = c; if (c <= 0) { clearInterval(t); location.href = dt.originalUrl; } }, 1000);
+                    } else location.href = dt.originalUrl;
+                } else {
+                    alert('Link không tồn tại'); location.hash = ""; document.getElementById('redirect-overlay').style.display = 'none'; document.getElementById('main-app').style.display = 'flex';
+                }
+            });
+        } else {
+            loadHistory();
+        }
+
+        // Export globals
+        window.copyTk = window.copyTk; window.rotateTk = window.rotateTk; window.inputTk = window.inputTk;
+        window.copyTxt = window.copyTxt; window.delLnk = window.delLnk; window.editLnk = window.editLnk;
+        window.bulkDeleteLinks = window.bulkDeleteLinks;
+    </script>
+</body>
+
+</html>
