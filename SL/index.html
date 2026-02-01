@@ -320,6 +320,11 @@
             text-decoration: none;
             display: block;
             margin-bottom: 4px;
+
+            /* Thêm 3 dòng này để link dài tự động có dấu "..." */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .history-long {
@@ -666,6 +671,7 @@
         </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -822,19 +828,68 @@
                 createdAt: new Date()
             });
 
+            // Reset form
             document.getElementById('long-url').value = "";
             document.getElementById('alias').value = "";
             loadHistory();
 
+            // Tính toán Link hoàn chỉnh
             const baseUrl = location.href.split('?')[0].split('#')[0].replace(/\/index\.html$/, '');
             const finalLink = (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + '#' + alias;
 
+            // Tự động copy nếu bật
             if (document.getElementById('autocopy-toggle').checked) {
                 navigator.clipboard.writeText(finalLink);
-                window.showModal('Hoàn tất', `Link (Đã copy):<br><b style="color:var(--text-main)">${finalLink}</b>`);
-            } else {
-                window.showModal('Hoàn tất', `Link:<br><b style="color:var(--text-main)">${finalLink}</b>`);
             }
+
+            // --- HIỂN THỊ KẾT QUẢ + QR CODE ---
+            const html = `
+        <div style="display:flex; flex-direction:column; gap:15px; align-items:center;">
+            <div class="input-group">
+                <input type="text" value="${finalLink}" readonly style="text-align:center;">
+                <button class="btn-append" onclick="navigator.clipboard.writeText('${finalLink}'); alert('Đã copy!')"><i class="fa-solid fa-copy"></i></button>
+            </div>
+            
+            <div id="success-qr" style="background:white; padding:15px; border-radius:8px; border:1px solid var(--border-color);"></div>
+            
+            <button class="btn-lime" onclick="window.downloadSuccessQR()" style="width:auto; padding:8px 20px;">
+                <i class="fa-solid fa-download"></i> Tải QR
+            </button>
+        </div>
+    `;
+
+            window.showModal('Tạo thành công!', html, 'close');
+
+            // Tạo QR Code (Delay nhẹ để DOM render xong)
+            setTimeout(() => {
+                const container = document.getElementById('success-qr');
+                if (container) {
+                    container.innerHTML = "";
+                    new QRCode(container, {
+                        text: finalLink,
+                        width: 160,
+                        height: 160,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+            }, 100);
+        };
+
+        // Hàm hỗ trợ tải QR ở modal thành công
+        window.downloadSuccessQR = () => {
+            const img = document.querySelector('#success-qr img');
+            if (img) {
+                const link = document.createElement('a');
+                link.href = img.src;
+                link.download = 'HunqLink-NewQR.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+            window.createShortLink = window.createShortLink;
+            window.downloadSuccessQR = window.downloadSuccessQR;
         };
 
         async function loadHistory() {
@@ -853,13 +908,14 @@
                 div.className = 'history-card';
                 div.innerHTML = `
                     <div style="flex:1; overflow:hidden; padding-right:10px;">
-                        <a href="${link}" target="_blank" class="history-short">/${d.id}</a>
+                        <a href="${link}" target="_blank" class="history-short">${link}</a>
                         <span class="history-long">${data.originalUrl}</span>
                     </div>
                     <div class="history-actions">
-                        <button class="btn-mini" onclick="copyTxt('${link}')"><i class="fa-solid fa-copy"></i></button>
-                        <button class="btn-mini" onclick="editLnk('${d.id}', '${data.originalUrl}', ${data.hasAds})"><i class="fa-solid fa-pen"></i></button>
-                        <button class="btn-mini" onclick="delLnk('${d.id}')" style="color:var(--danger)"><i class="fa-solid fa-trash"></i></button>
+                        <button class="btn-mini" onclick="copyTxt('${link}')" title="Sao chép"><i class="fa-solid fa-copy"></i></button>
+                        <button class="btn-mini" onclick="viewQR('${link}')" title="Mã QR"><i class="fa-solid fa-qrcode"></i></button> 
+                        <button class="btn-mini" onclick="editLnk('${d.id}', '${data.originalUrl}', ${data.hasAds})" title="Sửa"><i class="fa-solid fa-pen"></i></button>
+                        <button class="btn-mini" onclick="delLnk('${d.id}')" style="color:var(--danger)" title="Xoá"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 `;
                 list.appendChild(div);
@@ -884,6 +940,49 @@
                     if (newUrl) { await updateDoc(doc(db, "links", id), { originalUrl: newUrl, hasAds: newAds }); loadHistory(); }
                 }
             });
+        };
+
+        window.viewQR = (url) => {
+            // Tạo nội dung HTML cho modal
+            const html = `
+        <div style="display:flex; flex-direction:column; align-items:center; gap:15px;">
+            <div id="qr-target" style="background:white; padding:15px; border-radius:8px;"></div>
+            <p style="color:var(--text-dim); font-size:0.85rem; word-break:break-all; text-align:center;">${url}</p>
+            <button class="btn-lime" style="width:auto; padding:8px 20px;" onclick="downloadQR()">
+                <i class="fa-solid fa-download"></i> Tải ảnh về
+            </button>
+        </div>
+    `;
+
+            // Hiển thị Modal
+            window.showModal('Mã QR', html, 'alert');
+
+            // Tạo QR Code (cần delay nhẹ để DOM render xong)
+            setTimeout(() => {
+                const container = document.getElementById('qr-target');
+                container.innerHTML = ""; // Xoá QR cũ nếu có
+                new QRCode(container, {
+                    text: url,
+                    width: 180,
+                    height: 180,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }, 100);
+        };
+
+        // Hàm hỗ trợ tải ảnh QR về máy
+        window.downloadQR = () => {
+            const img = document.querySelector('#qr-target img');
+            if (img) {
+                const link = document.createElement('a');
+                link.href = img.src;
+                link.download = 'HunqLink-QR.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         };
 
         window.toggleAdminPanel = () => document.getElementById('admin-panel').classList.toggle('hidden');
@@ -1025,6 +1124,8 @@
         window.copyTk = window.copyTk; window.rotateTk = window.rotateTk; window.inputTk = window.inputTk;
         window.copyTxt = window.copyTxt; window.delLnk = window.delLnk; window.editLnk = window.editLnk;
         window.bulkDeleteLinks = window.bulkDeleteLinks;
+        // Thêm dòng này:
+        window.viewQR = window.viewQR; window.downloadQR = window.downloadQR;
     </script>
 </body>
 

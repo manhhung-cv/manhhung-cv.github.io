@@ -1,672 +1,1016 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Zen Minimal - Sleep Smart</title>
 
-    <title>Giấc Ngủ Ngon (Zen Ultimate)</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Orbitron:wght@400;700&family=Playfair+Display:ital,wght@0,400;1,400&family=Abril+Fatface&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
 
     <style>
         body {
-            font-family: 'Quicksand', sans-serif;
-            background-color: #0f172a;
-            color: white;
-            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b;
+            /* Zinc 950 */
+            color: #e4e4e7;
+            /* Zinc 200 */
             -webkit-tap-highlight-color: transparent;
-            user-select: none;
         }
 
-        /* Scrollbar & Backgrounds */
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
-        #videoBg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; opacity: 0; transition: opacity 1s ease; }
-        #bgCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; transition: opacity 1s ease; }
-        #particleCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
-
-        /* UI Components */
-        .glass-panel {
-            background: rgba(20, 25, 40, 0.7);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        /* Minimal Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            height: 2px;
+            width: 100%;
+            cursor: pointer;
         }
 
-        .sound-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 2px solid transparent; }
-        .sound-card:active { transform: scale(0.98); }
-        
-        input[type=range] { -webkit-appearance: none; background: transparent; height: 20px; width: 100%; cursor: pointer; }
         input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #fff; margin-top: -6px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            background: #fff;
+            margin-top: -5px;
+            transition: transform 0.1s;
         }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; }
-        .input-dark { background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.1); color: white; }
-        .input-dark:focus { border-color: #a78bfa; outline: none; }
 
-        /* --- CLOCK STYLES --- */
-        .font-digital { font-family: 'Share Tech Mono', monospace; }
-        .font-elegant { font-family: 'Playfair Display', serif; }
-        .font-neon { font-family: 'Orbitron', sans-serif; letter-spacing: 2px; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
-        .font-retro { font-family: 'Abril Fatface', cursive; letter-spacing: 1px; }
+        input[type=range]::-webkit-slider-thumb:active {
+            transform: scale(1.2);
+        }
 
-        /* --- CLOCK ANIMATIONS --- */
-        /* Fade */
-        .anim-fade { animation: fadeTick 1s infinite; }
-        @keyframes fadeTick { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
-        
-        /* Slide Up */
-        .anim-slide { position: relative; overflow: hidden; }
-        .anim-slide span { display: inline-block; animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 2px;
+            background: #3f3f46;
+        }
 
-        /* 3D Flip */
-        .anim-flip { perspective: 1000px; }
-        .anim-flip span { display: inline-block; animation: flipX 0.8s cubic-bezier(0.4, 0, 0.2, 1); transform-origin: center center; }
-        @keyframes flipX { 0% { transform: rotateX(0deg); } 50% { transform: rotateX(90deg); opacity: 0.5; } 100% { transform: rotateX(0deg); } }
+        /* Minimal Time Input Override */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+            cursor: pointer;
+            opacity: 0.6;
+        }
 
-        .ui-hidden { opacity: 0; pointer-events: none; transform: scale(0.95); }
-        .fade-transition { transition: opacity 0.5s ease, transform 0.5s ease; }
+        input[type="time"] {
+            font-family: 'Inter', sans-serif;
+            color-scheme: dark;
+        }
+
+        /* Utilities */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .active-sound {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        .tab-active {
+            background-color: #27272a;
+            color: white;
+            border-color: #52525b;
+        }
+
+        .tab-inactive {
+            color: #71717a;
+            border-color: transparent;
+        }
+
+        /* Animation cho chế độ thở */
+        @keyframes breathe-anim {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.3;
+                border-color: #52525b;
+            }
+
+            /* Thở ra / Nghỉ */
+            50% {
+                transform: scale(1.5);
+                opacity: 1;
+                border-color: #fff;
+            }
+
+            /* Hít vào */
+        }
+
+        .breathing-active {
+            animation: breathe-anim 10s infinite ease-in-out;
+            /* Chu kỳ 10s: 5s hít, 5s thở */
+        }
+
+        /* Trạng thái Hít vào (Vòng tròn to ra) */
+        .breath-in {
+            transform: scale(1.5) !important;
+            border-color: #fff !important;
+            box-shadow: 0 0 50px rgba(255, 255, 255, 0.3) !important;
+        }
+
+        /* Trạng thái Thở ra (Vòng tròn thu nhỏ - Mặc định là scale-50) */
     </style>
 </head>
-<body class="min-h-screen flex flex-col relative">
 
-    <video id="videoBg" loop muted playsinline></video>
-    <canvas id="bgCanvas"></canvas> 
-    <canvas id="particleCanvas"></canvas>
+<body class="min-h-screen flex flex-col justify-between p-6 md:p-12 relative overflow-hidden">
 
-    <div id="zenContainer" class="fixed inset-0 flex flex-col items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-1000 p-6 bg-black/40 cursor-pointer">
-        <div class="flex flex-col items-center justify-between h-full w-full max-w-4xl py-8 pointer-events-none">
-            
-            <div id="zenTopWidget" class="text-center space-y-2 opacity-90 w-full">
-                <div id="zenWeather" class="h-16 flex items-center justify-center transition-all duration-500">
-                    </div>
-                <div id="zenDate" class="text-lg tracking-widest font-light text-purple-100 uppercase opacity-80">...</div>
+    <header class="flex justify-between items-start z-20">
+        <div>
+            <div id="dateDisplay" class="text-xs font-medium tracking-[0.2em] text-zinc-500 uppercase mb-1">...</div>
+            <div id="weatherDisplay" class="text-xs text-zinc-600 flex items-center gap-2">
+                <i data-lucide="loader" class="w-3 h-3 animate-spin"></i> Đang tải...
             </div>
+        </div>
+        <button onclick="toggleMenu()" class="p-2 -mr-2 text-zinc-400 hover:text-white transition-colors">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+    </header>
 
-            <div id="zenClockWidget" class="text-center relative">
-                <div id="digitalClock" class="text-7xl md:text-9xl text-white/95 drop-shadow-2xl transition-all duration-300 select-none">
-                    <span id="clockText">00:00</span>
-                </div>
-                <div id="focusLabel" class="hidden text-pink-300 text-xl tracking-[0.3em] font-bold mt-2 uppercase animate-pulse">Đang Tập Trung</div>
-                <div id="zenQuote" class="mt-12 text-lg md:text-xl italic font-light text-white/80 max-w-2xl mx-auto px-4 leading-relaxed transition-opacity duration-500">"..."</div>
-            </div>
+    <main class="flex-grow flex flex-col items-center justify-center z-10 py-10 relative">
+        <div id="mainClock"
+            class="text-[12vh] md:text-[20vh] font-extralight leading-none tracking-tighter select-none transition-all duration-500">
+            00:00
+        </div>
 
-            <div id="zenBottomWidget" class="text-center space-y-4">
-                <div id="zenNowPlaying" class="hidden glass-panel px-6 py-3 inline-flex items-center gap-3 rounded-full">
-                    <div class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
-                    <span id="nowPlayingText" class="text-xs font-medium tracking-wide text-gray-200">...</span>
-                </div>
-                <p class="text-[10px] text-white/30 uppercase tracking-widest mt-4">Chạm để mở khóa</p>
+        <div id="focusLabel"
+            class="hidden text-xs font-bold tracking-[0.3em] uppercase mt-4 text-zinc-500 animate-pulse">ĐANG TẬP TRUNG
+        </div>
+
+        <button id="btn-stop-main" onclick="stopFocus()"
+            class="hidden mt-8 px-8 py-2 border border-red-900/50 text-red-400 hover:bg-red-900/10 rounded-full text-xs tracking-widest transition-all duration-500 opacity-0 transform translate-y-4">
+            DỪNG LẠI
+        </button>
+
+        <div id="quoteDisplay"
+            class="mt-8 text-sm font-light text-zinc-500 text-center max-w-md italic opacity-0 transition-opacity duration-1000">
+        </div>
+    </main>
+
+    <div id="bottomPanel" class="z-20 transition-all duration-500">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xs font-bold tracking-widest text-zinc-600 uppercase">Âm thanh</h2>
+            <button onclick="stopAllSounds()"
+                class="text-[10px] text-zinc-600 hover:text-red-400 transition-colors uppercase tracking-wide">Dừng tất
+                cả</button>
+        </div>
+
+        <div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 snap-x" id="soundGrid"></div>
+
+        <div id="activeControls" class="h-0 overflow-hidden transition-all duration-300 opacity-0">
+            <div class="bg-zinc-900 rounded-2xl p-4 mt-2 flex items-center gap-4 border border-zinc-800">
+                <span id="controlName" class="text-xs font-medium w-20 truncate">Sound</span>
+                <input type="range" id="globalVolumeControl" min="0" max="1" step="0.05" class="flex-1">
             </div>
         </div>
     </div>
 
-    <div id="settingsModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-md opacity-0 transition-opacity duration-300">
-        <div class="glass-panel w-full max-w-md p-5 m-4 transform scale-95 transition-transform duration-300 relative max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold flex items-center gap-2"><i data-lucide="settings" class="w-5 h-5"></i> Cài Đặt</h2>
-                <button onclick="toggleSettings()" class="text-gray-400 hover:text-white p-2"><i data-lucide="x"></i></button>
-            </div>
-            
-            <div class="space-y-6 overflow-y-auto pr-2 custom-scrollbar flex-1 pb-4">
-                
-                <div class="bg-white/5 p-4 rounded-xl border border-pink-500/20">
-                    <h3 class="text-xs font-bold text-pink-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i data-lucide="zap" class="w-3 h-3"></i> Chế độ Tập trung</h3>
-                    <div class="flex gap-2">
-                        <input type="number" id="focusInput" value="25" class="input-dark w-16 text-center rounded-lg p-2 text-sm" placeholder="Phút">
-                        <button onclick="startFocus()" class="bg-pink-600 hover:bg-pink-500 flex-1 rounded-lg text-sm font-bold shadow-lg shadow-pink-900/20">BẮT ĐẦU FOCUS</button>
-                    </div>
-                    <p class="text-[10px] text-gray-400 mt-2">*Sẽ thay thế đồng hồ Zen bằng bộ đếm ngược.</p>
-                </div>
-
-                <div class="bg-white/5 p-4 rounded-xl">
-                    <h3 class="text-xs font-bold text-blue-300 uppercase tracking-wider mb-2">Thời Tiết</h3>
-                    <div class="flex gap-2 mb-2">
-                        <input type="text" id="cityInput" placeholder="Nhập tên TP (VD: Hanoi)" class="input-dark w-full rounded-lg p-2 text-sm">
-                        <button onclick="addCityFromInput()" class="bg-blue-600 px-3 rounded-lg"><i data-lucide="search" class="w-4 h-4"></i></button>
-                    </div>
-                    <div id="cityList" class="space-y-2 max-h-24 overflow-y-auto"></div>
-                    <p id="weatherError" class="text-xs text-red-300 mt-1"></p>
-                </div>
-
-                <div class="bg-white/5 p-4 rounded-xl space-y-4">
-                    <h3 class="text-xs font-bold text-gray-300 uppercase tracking-wider">Giao diện Zen</h3>
-                    
-                    <div>
-                        <label class="text-[10px] text-gray-400 block mb-1">Phong cách Đồng hồ</label>
-                        <div class="grid grid-cols-4 gap-1">
-                            <button onclick="setClockStyle('digital')" class="p-1 rounded bg-white/5 text-[10px] hover:bg-purple-600 font-digital">Digital</button>
-                            <button onclick="setClockStyle('elegant')" class="p-1 rounded bg-white/5 text-[10px] hover:bg-purple-600 font-elegant">Elegant</button>
-                            <button onclick="setClockStyle('neon')" class="p-1 rounded bg-white/5 text-[10px] hover:bg-purple-600 font-neon">Neon</button>
-                            <button onclick="setClockStyle('retro')" class="p-1 rounded bg-white/5 text-[10px] hover:bg-purple-600 font-retro">Retro</button>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="text-[10px] text-gray-400 block mb-1">Hiệu ứng chuyển số</label>
-                        <div class="grid grid-cols-3 gap-1">
-                            <button onclick="setClockAnim('none')" class="p-1 rounded bg-white/5 text-[10px] hover:bg-purple-600">Tắt</button>
-                            <button onclick="setClockAnim('slide')" class="p-1 rounded bg-white/5 text-[10px] hover:bg-purple-600">Trượt</button>
-                            <button onclick="setClockAnim('flip')" class="p-1 rounded bg-white/5 text-[10px] hover:bg-purple-600">Lật 3D</button>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2 text-sm pt-2">
-                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="optWeather" checked class="accent-purple-500" onchange="updateZenConfig()"> Thời tiết</label>
-                        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="optQuote" checked class="accent-purple-500" onchange="updateZenConfig()"> Trích dẫn</label>
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Tiện ích khác</h3>
-                    <div class="flex gap-2 mb-2">
-                        <input type="number" id="timerInput" placeholder="Hẹn tắt (phút)" class="input-dark w-full rounded-lg p-2 text-center text-sm">
-                        <button onclick="setManualTimer()" class="bg-purple-600 px-4 rounded-lg text-xs font-bold">BẮT ĐẦU</button>
-                        <button onclick="cancelTimer()" class="bg-red-500/20 text-red-300 px-3 rounded-lg"><i data-lucide="x-circle" class="w-4 h-4"></i></button>
-                    </div>
-                    <p id="timerStatus" class="text-xs text-purple-300 text-center h-4 mb-2"></p>
-                    
-                    <div class="input-dark p-2 rounded-lg flex items-center gap-2">
-                        <input type="text" id="mediaUrlInput" placeholder="URL nhạc/video..." class="bg-transparent w-full text-xs outline-none">
-                        <button onclick="loadMediaFromUrl()" class="text-xs bg-green-600 px-2 py-1 rounded">Play</button>
-                    </div>
-                    <div id="customPlayer" class="hidden flex items-center gap-2 bg-black/40 p-2 rounded-lg mt-2">
-                        <button onclick="toggleCustomMedia()" id="customPlayBtn"><i data-lucide="pause" class="w-3 h-3"></i></button>
-                        <input type="range" id="customVolume" max="1" step="0.05" class="flex-1" oninput="event.stopPropagation()" ontouchstart="event.stopPropagation()">
-                        <button onclick="removeCustomMedia()" class="text-red-400"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
-                    </div>
-                </div>
-            </div>
+    <div id="menuOverlay"
+        class="fixed inset-0 bg-black z-50 transform translate-y-full transition-transform duration-500 flex flex-col">
+        <div class="p-6 md:p-12 flex justify-between items-center">
+            <h2 class="text-xl font-light tracking-tight">Công Cụ</h2>
+            <button onclick="toggleMenu()" class="p-2 text-zinc-400 hover:text-white"><i data-lucide="x"
+                    class="w-6 h-6"></i></button>
         </div>
-    </div>
 
-    <div id="mainUI" class="flex-grow flex flex-col fade-transition z-10 w-full h-full pb-8">
-        <header class="p-6 text-center">
-            <div class="flex justify-between items-start max-w-6xl mx-auto w-full relative">
-                <button onclick="toggleSettings()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
-                    <i data-lucide="settings" class="w-5 h-5 text-gray-300"></i>
-                </button>
-                <div class="flex flex-col items-center">
-                    <div class="flex justify-center items-center gap-3 mb-2">
-                        <i data-lucide="moon" class="w-8 h-8 text-purple-300"></i>
-                        <h1 class="text-3xl font-bold tracking-wide">Giấc Ngủ Ngon</h1>
-                    </div>
-                </div>
-                <button onclick="toggleZenMode()" class="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
-                    <i data-lucide="eye-off" class="w-5 h-5 text-gray-300"></i>
-                </button>
-            </div>
-        </header>
+        <div class="flex-1 overflow-y-auto px-6 md:px-12 pb-12 space-y-12">
 
-        <main class="flex-grow container mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-7xl">
-            <section class="lg:col-span-4 glass-panel p-6 h-fit">
-                <div class="flex items-center gap-2 mb-4 border-b border-white/10 pb-2">
-                    <i data-lucide="clock" class="text-purple-400 w-5 h-5"></i>
-                    <h2 class="font-semibold">Tính Giờ Ngủ</h2>
-                </div>
-                <div class="flex bg-black/20 rounded-lg p-1 mb-4">
-                    <button onclick="switchTab('wakeUp')" id="btn-wakeUp" class="flex-1 py-2 text-xs font-medium rounded-md bg-white/10 text-white shadow">Báo Thức</button>
-                    <button onclick="switchTab('sleepNow')" id="btn-sleepNow" class="flex-1 py-2 text-xs font-medium rounded-md text-gray-400 hover:text-white">Ngủ Ngay</button>
-                </div>
-                <div id="tab-wakeUp" class="space-y-3">
-                    <div class="text-sm text-gray-300">Bạn muốn dậy lúc mấy giờ?</div>
-                    <div class="flex gap-2">
-                        <input type="time" id="wakeTimeInput" class="input-dark rounded-lg p-2.5 w-full text-center text-lg">
-                        <button onclick="calculateSleep('wake')" class="bg-purple-600 text-white px-4 rounded-lg"><i data-lucide="calculator" class="w-5 h-5"></i></button>
+            <section>
+                <h3 class="text-xs font-bold text-zinc-600 uppercase tracking-widest mb-4">Máy Tính Giấc Ngủ</h3>
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-1 overflow-hidden">
+                    <div class="grid grid-cols-3 text-xs font-medium mb-4 bg-zinc-950/50 rounded-lg p-1 gap-1">
+                        <button onclick="switchSleepTab('bedtime')" id="tab-bedtime"
+                            class="py-2 rounded transition-all tab-active">Giờ đi ngủ</button>
+                        <button onclick="switchSleepTab('waketime')" id="tab-waketime"
+                            class="py-2 rounded transition-all tab-inactive">Giờ thức dậy</button>
+                        <button onclick="switchSleepTab('duration')" id="tab-duration"
+                            class="py-2 rounded transition-all tab-inactive">Khoảng cách</button>
                     </div>
-                </div>
-                <div id="tab-sleepNow" class="hidden">
-                    <button onclick="calculateSleep('now')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg text-sm font-medium">Xem giờ dậy tốt nhất</button>
-                </div>
-                <div id="sleepResult" class="mt-4 hidden p-3 bg-purple-900/20 rounded-xl border border-purple-500/20">
-                    <div id="timesList" class="grid grid-cols-2 gap-2 text-center"></div>
+
+                    <div class="px-4 pb-4">
+                        <div id="view-bedtime" class="space-y-4">
+                            <p class="text-[10px] text-zinc-500 uppercase tracking-wider">Nếu tôi đi ngủ lúc:</p>
+                            <div
+                                class="flex items-center rounded-lg border border-zinc-700 bg-black overflow-hidden focus-within:border-zinc-500 transition-colors">
+                                <input type="time" id="input-bedtime"
+                                    class="flex-1 bg-transparent text-white p-3 text-center outline-none border-none">
+                                <button onclick="setCurrentTime('input-bedtime')"
+                                    class="self-stretch px-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-l border-zinc-700 transition-colors flex items-center justify-center">
+                                    <i data-lucide="clock" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <button onclick="calcSmartSleep('bedtime')"
+                                class="w-full bg-white text-black py-3 rounded-lg text-sm font-semibold hover:bg-zinc-200">Tìm
+                                giờ thức dậy tốt nhất</button>
+                        </div>
+
+                        <div id="view-waketime" class="space-y-4 hidden">
+                            <p class="text-[10px] text-zinc-500 uppercase tracking-wider">Nếu tôi muốn dậy lúc:</p>
+                            <input type="time" id="input-waketime"
+                                class="w-full bg-black border border-zinc-700 text-white rounded-lg p-3 text-center outline-none focus:border-zinc-500 transition-colors">
+                            <button onclick="calcSmartSleep('waketime')"
+                                class="w-full bg-white text-black py-3 rounded-lg text-sm font-semibold hover:bg-zinc-200">Tìm
+                                giờ đi ngủ</button>
+                        </div>
+
+                        <div id="view-duration" class="space-y-4 hidden">
+                            <div class="grid grid-cols-2 gap-4">
+
+                                <div>
+                                    <label class="text-[10px] text-zinc-500 block mb-1">Bắt đầu</label>
+                                    <div
+                                        class="flex items-center rounded-lg border border-zinc-700 bg-black overflow-hidden focus-within:border-zinc-500 transition-colors">
+                                        <input type="time" id="diff-start"
+                                            class="flex-1 bg-transparent text-white p-2 text-sm text-center outline-none border-none">
+                                        <button onclick="setCurrentTime('diff-start')"
+                                            class="self-stretch px-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-l border-zinc-700 transition-colors flex items-center justify-center">
+                                            <i data-lucide="clock" class="w-3 h-3"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="text-[10px] text-zinc-500 block mb-1">Kết thúc</label>
+                                    <div
+                                        class="flex items-center rounded-lg border border-zinc-700 bg-black overflow-hidden focus-within:border-zinc-500 transition-colors">
+                                        <input type="time" id="diff-end"
+                                            class="flex-1 bg-transparent text-white p-2 text-sm text-center outline-none border-none">
+                                        <button onclick="setCurrentTime('diff-end')"
+                                            class="self-stretch px-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-l border-zinc-700 transition-colors flex items-center justify-center">
+                                            <i data-lucide="clock" class="w-3 h-3"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                            </div>
+                            <button onclick="calcDuration()"
+                                class="w-full bg-zinc-800 text-white py-3 rounded-lg text-sm font-medium hover:bg-zinc-700">Tính
+                                thời gian</button>
+                        </div>
+                    </div>
+
+                    <div id="sleepResultContainer" class="hidden border-t border-zinc-800 p-4 bg-zinc-950/30">
+                        <div id="sleepResultContent" class="grid grid-cols-2 gap-2"></div>
+                        <div id="durationResult" class="text-center text-lg font-light text-white hidden"></div>
+                        <p class="text-[10px] text-zinc-600 text-center mt-3 italic">*Đã bao gồm 14 phút để chìm vào
+                            giấc ngủ (chỉ áp dụng với giờ đi ngủ & giờ thức dậy ).</p>
+                    </div>
                 </div>
             </section>
 
-            <div class="lg:col-span-8 space-y-6">
-                <section class="glass-panel p-6">
-                    <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
-                        <div class="flex items-center gap-2">
-                            <i data-lucide="sliders" class="text-pink-400 w-5 h-5"></i>
-                            <h2 class="font-semibold">Phối Âm Thanh</h2>
-                        </div>
-                        <button onclick="stopAllSounds()" class="text-xs bg-red-500/10 text-red-300 px-3 py-1 rounded-full border border-red-500/20 hover:bg-red-500/20 transition-colors">Dừng tất cả</button>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-[55vh] overflow-y-auto pr-2 custom-scrollbar" id="soundGrid">
-                        </div>
-                </section>
+            <section>
+                <h3 class="text-xs font-bold text-zinc-600 uppercase tracking-widest mb-4">Kể Chuyện Đêm Khuya</h3>
+                <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+                    <span class="text-sm text-zinc-300">Chuyến Tàu Đêm (ASMR)</span>
+                    <button onclick="toggleStory()" id="storyBtn"
+                        class="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-white hover:text-black transition-all">
+                        <i data-lucide="play" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </section>
 
-                <section class="glass-panel p-4 flex items-center justify-between">
-                    <div class="flex items-center gap-3 w-full">
-                        <div class="w-10 h-10 rounded-full bg-amber-900/50 flex items-center justify-center flex-shrink-0">
-                            <i data-lucide="book-open" class="text-amber-400 w-5 h-5"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <h3 class="text-sm font-medium truncate">Kể Chuyện: Chuyến Tàu Đêm</h3>
-                            <input type="range" id="storyVolume" max="1" step="0.05" class="w-full h-1 bg-gray-600 rounded mt-2" 
-                                   oninput="event.stopPropagation();" ontouchstart="event.stopPropagation();">
-                        </div>
-                        <button id="storyBtn" onclick="toggleStory()" class="w-10 h-10 rounded-full bg-amber-600 hover:bg-amber-500 flex items-center justify-center flex-shrink-0 ml-2 shadow-lg shadow-amber-900/50">
-                            <i data-lucide="play" class="w-5 h-5 fill-white text-white"></i>
+
+
+            <section>
+                <h3 class="text-xs font-bold text-zinc-600 uppercase tracking-widest mb-4">Thư Giãn & Nhịp Thở</h3>
+                <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-6 text-center">
+                    <p class="text-sm font-light text-zinc-400 mb-4">Chọn thời gian để bắt đầu thư giãn</p>
+                    <div class="flex gap-3 justify-center">
+                        <button onclick="startBreathing(15)"
+                            class="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-white hover:text-black text-white text-xs font-medium transition-all">15
+                            giây</button>
+                        <button onclick="startBreathing(30)"
+                            class="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-white hover:text-black text-white text-xs font-medium transition-all">30
+                            giây</button>
+                        <button onclick="startBreathing(60)"
+                            class="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-white hover:text-black text-white text-xs font-medium transition-all">1
+                            phút</button>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h3 class="text-xs font-bold text-zinc-600 uppercase tracking-widest mb-4">Tập Trung (Pomodoro)</h3>
+
+                <div
+                    class="flex items-center rounded-lg border border-zinc-700 bg-black overflow-hidden focus-within:border-zinc-500 transition-colors mb-3">
+                    <input type="number" id="customFocusInput" placeholder="Nhập số phút (VD: 25)"
+                        class="flex-1 bg-transparent text-white p-3 text-sm outline-none border-none text-center appearance-none m-0">
+                    <button onclick="startFocusCustom()"
+                        class="self-stretch px-6 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-l border-zinc-700 transition-colors text-xs font-bold tracking-wider">
+                        BẮT ĐẦU
+                    </button>
+                </div>
+
+                <div class="flex gap-2 justify-center">
+                    <button onclick="setInputAndStart(15)"
+                        class="px-3 py-1 rounded bg-zinc-900 text-[10px] text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors">15p</button>
+                    <button onclick="setInputAndStart(25)"
+                        class="px-3 py-1 rounded bg-zinc-900 text-[10px] text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors">25p</button>
+                    <button onclick="setInputAndStart(45)"
+                        class="px-3 py-1 rounded bg-zinc-900 text-[10px] text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors">45p</button>
+                    <button onclick="setInputAndStart(60)"
+                        class="px-3 py-1 rounded bg-zinc-900 text-[10px] text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors">60p</button>
+                </div>
+            </section>
+
+            <section>
+                <h3 class="text-xs font-bold text-zinc-600 uppercase tracking-widest mb-4">Vị trí & Thời tiết</h3>
+                <div class="flex flex-col gap-2">
+                    <label class="text-[10px] text-zinc-500">Nhập tên thành phố (hoặc để trống để dùng GPS)</label>
+                    <div
+                        class="flex items-center rounded-lg border border-zinc-700 bg-black overflow-hidden focus-within:border-zinc-500 transition-colors">
+                        <input type="text" id="manualLocation" placeholder="VD: Hanoi, Ho Chi Minh..."
+                            class="flex-1 bg-transparent text-white p-3 text-sm outline-none border-none">
+                        <button onclick="saveLocation()"
+                            class="self-stretch px-4 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 border-l border-zinc-700 transition-colors font-medium text-xs">
+                            LƯU
                         </button>
                     </div>
-                </section>
-            </div>
-        </main>
+                    <div class="flex justify-between items-center mt-1">
+                        <button onclick="useGPS()"
+                            class="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1">
+                            <i data-lucide="map-pin" class="w-3 h-3"></i> Dùng định vị GPS
+                        </button>
+                        <span id="locStatus" class="text-[10px] text-zinc-500 italic"></span>
+                    </div>
+
+                </div>
+            </section>
+
+
+        </div>
     </div>
 
-    <audio id="bellSound" src="https://actions.google.com/sounds/v1/cartoon/clank_car_crash.ogg"></audio>
+
+    <div id="breathingOverlay"
+        class="fixed inset-0 z-[60] bg-black flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-700">
+
+        <div id="breathCircleContainer" class="relative flex items-center justify-center transition-all duration-500">
+            <div id="breathGhost" class="absolute w-64 h-64 rounded-full border border-zinc-700 opacity-30 scale-50">
+            </div>
+            <div id="breathCircleMain"
+                class="w-64 h-64 rounded-full border-2 border-zinc-500 shadow-[0_0_30px_rgba(255,255,255,0.1)] scale-50 transition-all duration-[5000ms] ease-in-out">
+            </div>
+
+            <div class="absolute text-center">
+                <div id="breathInstruct"
+                    class="text-2xl font-light text-white tracking-widest uppercase transition-opacity duration-500">
+                    Chuẩn bị...</div>
+            </div>
+        </div>
+
+        <div id="breathResult" class="hidden text-center transform transition-all duration-700">
+            <div class="text-4xl md:text-6xl font-thin text-white mb-4 tracking-tighter">Tốt lắm</div>
+            <p class="text-zinc-500 text-sm tracking-widest uppercase">Bạn đã hoàn thành thư giãn</p>
+        </div>
+
+        <div id="breathTimerDisplay"
+            class="mt-16 text-zinc-500 font-mono text-xl tracking-widest transition-opacity duration-500">00:00</div>
+
+        <button id="btnCloseBreath" onclick="closeBreathingOverlay()"
+            class="mt-8 px-8 py-3 border border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-500 rounded-full text-xs uppercase tracking-widest transition-all">
+            THOÁT
+        </button>
+    </div>
 
     <script>
-        // --- 1. CORE SOUND ENGINE (Path: ./Sounds/) ---
-        class SoundNode {
-            constructor(id, config) {
-                this.id = id; this.config = config; this.isPlaying = false;
-                this.audio = new Audio(`./Sounds/${id}.mp3`); 
-                this.audio.loop = true; this.audio.volume = 0.5; this.audio.preload = 'none';
-                this.timer = null;
-                this.audio.onerror = () => { if(this.isPlaying) { this.stop(true); console.warn(`Missing: ./Sounds/${id}.mp3`); } };
-            }
-            play(delay = 0) {
-                if(this.isPlaying) return;
-                this.isPlaying = true; updateVisualState(); updateZenNowPlaying(); updateUI(this.id);
-                if(delay > 0) this.timer = setTimeout(() => this._internalPlay(), delay * 1000);
-                else this._internalPlay();
-            }
-            _internalPlay() { this.audio.play().catch(e => {}); }
-            setVolume(val) { this.audio.volume = val; }
-            stop(force = false) {
-                if(this.timer) clearTimeout(this.timer);
-                this.isPlaying = false; updateVisualState(); updateZenNowPlaying(); updateUI(this.id);
-                if(!force && !this.audio.paused) {
-                    const fade = setInterval(() => {
-                        if(this.audio.volume > 0.05) this.audio.volume -= 0.05;
-                        else { clearInterval(fade); this._hardStop(); }
-                    }, 50);
-                } else this._hardStop();
-            }
-            _hardStop() { this.audio.pause(); this.audio.currentTime=0; this.audio.volume=0.5; }
-        }
+        /* --- CORE DATA --- */
+        const sounds = [
+            { id: 'rain', name: 'Mưa', icon: 'cloud-rain' },
+            { id: 'thunder', name: 'Sấm', icon: 'zap' },
+            { id: 'wind', name: 'Gió', icon: 'wind' },
+            { id: 'fire', name: 'Lửa', icon: 'flame' },
+            { id: 'night', name: 'Đêm', icon: 'moon' },
+            { id: 'waves', name: 'Sóng', icon: 'waves' },
+            { id: 'fan', name: 'Quạt', icon: 'fan' }
+        ];
 
         const soundManager = {};
-        const sounds = [
-            { id: 'rain', name: 'Mưa Nhẹ', icon: 'cloud-rain', color: '#3b82f6' },
-            { id: 'rain_heavy', name: 'Mưa Rào', icon: 'cloud-lightning', color: '#60a5fa' },
-            { id: 'thunder', name: 'Sấm', icon: 'zap', color: '#facc15' },
-            { id: 'fire', name: 'Lửa Trại', icon: 'flame', color: '#f97316' }, 
-            { id: 'wind', name: 'Gió', icon: 'wind', color: '#a8a29e' },
-            { id: 'hail', name: 'Mưa Đá', icon: 'cloud-hail', color: '#94a3b8' },
-            { id: 'blizzard', name: 'Bão Tuyết', icon: 'snowflake', color: '#cbd5e1' },
-            { id: 'fan', name: 'Quạt', icon: 'fan', color: '#78716c' },
-            { id: 'clock', name: 'Đồng Hồ', icon: 'clock', color: '#d6d3d1' },
-            { id: 'insects', name: 'Côn Trùng', icon: 'bug', color: '#bef264' },
-            { id: 'stream', name: 'Suối', icon: 'droplets', color: '#22d3ee' },
-        ];
-        
-        // --- RENDER MIXER (DIV CLICKABLE) ---
-        const soundGrid = document.getElementById('soundGrid');
-        sounds.forEach(sound => {
-            soundManager[sound.id] = new SoundNode(sound.id, sound);
-            soundGrid.innerHTML += `
-                <div id="card-${sound.id}" onclick="toggleCard('${sound.id}')" 
-                     class="sound-card bg-gray-800/40 rounded-xl p-3 cursor-pointer hover:bg-gray-800/60 relative overflow-hidden group">
-                    <div class="flex items-center gap-3 mb-3 relative z-10">
-                        <div class="p-2 rounded-lg bg-black/30 transition-colors" id="icon-bg-${sound.id}">
-                            <i data-lucide="${sound.icon}" class="w-5 h-5" style="color: ${sound.color}"></i>
-                        </div>
-                        <span class="font-medium text-sm text-gray-200 select-none">${sound.name}</span>
-                    </div>
-                    <div class="space-y-2 relative z-10 opacity-40 transition-opacity pointer-events-none" id="controls-${sound.id}">
-                        <div class="flex items-center gap-2">
-                            <i data-lucide="volume-2" class="w-3 h-3 text-gray-400"></i>
-                            <input type="range" min="0" max="1" step="0.05" value="0.5" class="w-full h-1" 
-                                   oninput="changeVolume('${sound.id}', this.value); event.stopPropagation();" 
-                                   onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()">
-                        </div>
-                        <div class="flex items-center justify-between text-[10px] text-gray-400">
-                            <i data-lucide="hourglass" class="w-3 h-3"></i>
-                            <select class="bg-transparent outline-none border border-gray-600 rounded px-1" id="delay-${sound.id}" onclick="event.stopPropagation()">
-                                <option value="0">Ngay</option><option value="5">5s</option><option value="30">30s</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>`;
+        let activeSoundId = null;
+
+        /* --- INITIALIZATION --- */
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSounds();
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // --- THAY ĐỔI Ở ĐÂY ---
+            initWeather(); // Gọi hàm khởi tạo thông minh mới
+            // ---------------------
+
+            // Set giờ mặc định cho các input
+            const nowStr = new Date().toTimeString().substring(0, 5);
+            if (document.getElementById('input-bedtime')) document.getElementById('input-bedtime').value = nowStr;
+            if (document.getElementById('diff-start')) document.getElementById('diff-start').value = nowStr;
+            if (document.getElementById('input-waketime')) document.getElementById('input-waketime').value = "06:30";
+
+            setTimeout(() => {
+                const q = document.getElementById('quoteDisplay');
+                if (q) {
+                    q.innerText = '"Tâm tĩnh lặng, đời an nhiên."';
+                    q.classList.remove('opacity-0');
+                }
+            }, 500);
+            lucide.createIcons();
         });
 
-        function toggleCard(id) {
-            const node = soundManager[id];
-            if (node.isPlaying) node.stop();
+        /* --- SOUND ENGINE --- */
+        class SoundNode {
+            constructor(id) {
+                this.id = id;
+                this.audio = new Audio(`./Sounds/${id}.mp3`); // Ensure files exist
+                this.audio.loop = true;
+                this.audio.volume = 0.5;
+                this.isPlaying = false;
+                this.audio.onerror = () => console.log(`Audio ${id} missing (Demo mode)`);
+            }
+            toggle() {
+                if (this.isPlaying) { this.audio.pause(); this.isPlaying = false; }
+                else { this.audio.play().catch(e => { }); this.isPlaying = true; }
+                updateSoundUI(this.id);
+            }
+            stop() { this.audio.pause(); this.audio.currentTime = 0; this.isPlaying = false; updateSoundUI(this.id); }
+            setVolume(v) { this.audio.volume = v; }
+        }
+
+        function renderSounds() {
+            const grid = document.getElementById('soundGrid');
+            sounds.forEach(s => {
+                soundManager[s.id] = new SoundNode(s.id);
+                grid.innerHTML += `
+                    <button id="btn-${s.id}" onclick="clickSound('${s.id}')" 
+                        class="flex flex-col items-center justify-center min-w-[70px] h-[70px] bg-zinc-900 border border-zinc-800 rounded-2xl transition-all duration-300 hover:border-zinc-600 snap-center group">
+                        <i data-lucide="${s.icon}" class="w-5 h-5 text-zinc-500 mb-1 transition-colors group-hover:text-zinc-300"></i>
+                        <span class="text-[10px] font-medium text-zinc-600 transition-colors group-hover:text-zinc-400">${s.name}</span>
+                    </button>
+                `;
+            });
+        }
+
+        function clickSound(id) {
+            const sound = soundManager[id];
+            sound.toggle();
+            if (sound.isPlaying) { activeSoundId = id; showVolumeControl(id); }
             else {
-                const delay = document.getElementById(`delay-${id}`).value;
-                node.play(parseInt(delay));
+                if (activeSoundId === id) {
+                    const other = Object.values(soundManager).find(s => s.isPlaying);
+                    if (other) showVolumeControl(other.id); else hideVolumeControl();
+                }
             }
         }
 
-        function updateUI(id) {
+        function updateSoundUI(id) {
+            const btn = document.getElementById(`btn-${id}`);
             const node = soundManager[id];
-            const card = document.getElementById(`card-${id}`);
-            const controls = document.getElementById(`controls-${id}`);
-            const iconBg = document.getElementById(`icon-bg-${id}`);
-            
             if (node.isPlaying) {
-                card.style.borderColor = node.config.color;
-                card.style.backgroundColor = 'rgba(255,255,255,0.08)';
-                controls.classList.remove('opacity-40', 'pointer-events-none');
-                iconBg.style.backgroundColor = node.config.color + '33';
+                btn.classList.add('active-sound', 'scale-105');
+                btn.classList.remove('bg-zinc-900', 'border-zinc-800');
             } else {
-                card.style.borderColor = 'transparent';
-                card.style.backgroundColor = '';
-                controls.classList.add('opacity-40', 'pointer-events-none');
-                iconBg.style.backgroundColor = '';
+                btn.classList.remove('active-sound', 'scale-105');
+                btn.classList.add('bg-zinc-900', 'border-zinc-800');
+            }
+            lucide.createIcons();
+        }
+
+        function showVolumeControl(id) {
+            const panel = document.getElementById('activeControls');
+            document.getElementById('controlName').innerText = sounds.find(s => s.id === id).name;
+            const slider = document.getElementById('globalVolumeControl');
+            slider.value = soundManager[id].audio.volume;
+            slider.oninput = (e) => soundManager[id].setVolume(e.target.value);
+            panel.classList.remove('opacity-0'); panel.style.height = '70px';
+        }
+
+        function hideVolumeControl() {
+            const panel = document.getElementById('activeControls');
+            panel.classList.add('opacity-0'); panel.style.height = '0';
+        }
+        function stopAllSounds() { Object.values(soundManager).forEach(s => s.stop()); hideVolumeControl(); }
+
+        /* --- CLOCK & DATE --- */
+        function updateClock() {
+            if (focusActive) updateFocusTimer();
+            else {
+                const now = new Date();
+                document.getElementById('mainClock').innerText = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                document.getElementById('dateDisplay').innerText = now.toLocaleDateString('vi-VN', { weekday: 'long', month: 'long', day: 'numeric' });
             }
         }
-        function changeVolume(id, val) { soundManager[id].setVolume(val); }
 
-        // --- 2. FOCUS MODE (POMODORO) ---
-        let focusActive = false;
-        let focusEndTime = null;
-        let focusInterval = null;
+        // Hàm tính toán và hiển thị thời gian đếm ngược
+function updateFocusTimer() {
+    const diff = focusEnd - Date.now();
+    
+    // Nếu hết giờ
+    if(diff <= 0) {
+        stopFocus();
+        // Phát âm thanh thông báo (nếu muốn)
+        const bell = document.getElementById('bellSound');
+        if(bell) { bell.currentTime=0; bell.play().catch(e=>{}); }
+        return;
+    }
 
-        function startFocus() {
-            const mins = parseInt(document.getElementById('focusInput').value);
-            if (!mins || mins <= 0) return alert("Vui lòng nhập số phút!");
-            
-            focusEndTime = Date.now() + mins * 60000;
+    // Tính phút và giây
+    const m = Math.floor(diff / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    
+    // Cập nhật lên đồng hồ chính
+    document.getElementById('mainClock').innerText = `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+        function fetchWeather() {
+            // Demo static weather
+            document.getElementById('weatherDisplay').innerHTML = '<i data-lucide="cloud" class="w-3 h-3"></i> 24°C • Hà Nội'; lucide.createIcons();
+        }
+
+        /* --- FOCUS MODE --- */
+        /* --- FOCUS MODE (CUSTOM & MAIN BUTTON) --- */
+        let focusActive = false, focusEnd = 0, focusInterval = null;
+
+        // Hàm hỗ trợ chọn nhanh
+        function setInputAndStart(val) {
+            document.getElementById('customFocusInput').value = val;
+            startFocus(val);
+        }
+
+        // Hàm lấy giá trị từ ô input
+        function startFocusCustom() {
+            const val = document.getElementById('customFocusInput').value;
+            if (val && val > 0) {
+                startFocus(val);
+            } else {
+                alert("Vui lòng nhập số phút hợp lệ!");
+            }
+        }
+
+        function startFocus(mins) {
+            if (focusInterval) clearInterval(focusInterval);
+            focusEnd = Date.now() + mins * 60000;
             focusActive = true;
-            toggleSettings(); // Close modal
-            if (!zenMode) toggleZenMode(); // Enter Zen
-            updateClockDisplay();
+
+            // 1. Đóng menu
+            const menu = document.getElementById('menuOverlay');
+            if (!menu.classList.contains('translate-y-full')) toggleMenu();
+
+            // 2. Ẩn các thành phần thừa
+            document.getElementById('quoteDisplay').classList.add('opacity-0'); // Ẩn trích dẫn cho đỡ rối
+            document.getElementById('bottomPanel').style.opacity = '0.1';
+            document.getElementById('bottomPanel').style.pointerEvents = 'none';
+
+            // 3. Hiện nhãn và nút Dừng (với hiệu ứng)
+            document.getElementById('focusLabel').classList.remove('hidden');
+
+            const btnMain = document.getElementById('btn-stop-main');
+            btnMain.classList.remove('hidden');
+            // Timeout nhỏ để kích hoạt transition CSS (fade in + slide up)
+            setTimeout(() => {
+                btnMain.classList.remove('opacity-0', 'translate-y-4');
+            }, 50);
+
+            updateClock();
         }
 
         function stopFocus() {
             focusActive = false;
-            clearInterval(focusInterval);
-            document.getElementById('bellSound').play().catch(()=>{}); // Play notification
-            document.getElementById('focusLabel').textContent = "HOÀN THÀNH!";
-            setTimeout(() => { document.getElementById('focusLabel').classList.add('hidden'); }, 5000);
+            if (focusInterval) clearInterval(focusInterval);
+
+            // 1. Ẩn nhãn và nút dừng
+            document.getElementById('focusLabel').classList.add('hidden');
+
+            const btnMain = document.getElementById('btn-stop-main');
+            btnMain.classList.add('opacity-0', 'translate-y-4'); // Fade out trước
+            setTimeout(() => {
+                btnMain.classList.add('hidden'); // Ẩn hẳn sau khi animation xong
+            }, 500);
+
+            // 2. Hiện lại giao diện cũ
+            document.getElementById('quoteDisplay').classList.remove('opacity-0');
+            document.getElementById('bottomPanel').style.opacity = '1';
+            document.getElementById('bottomPanel').style.pointerEvents = 'auto';
+
+            updateClock();
         }
 
-        // --- 3. SMART WEATHER (Auto GPS + Saved Cities) ---
-        let savedCities = JSON.parse(localStorage.getItem('zenCities')) || [];
-        const weatherCodeMap = {
-            0: {icon:'sun', text:'Quang đãng'}, 1:{icon:'cloud-sun', text:'Ít mây'}, 2:{icon:'cloud', text:'Có mây'}, 3:{icon:'cloud', text:'Nhiều mây'},
-            45:{icon:'cloud-fog', text:'Sương mù'}, 51:{icon:'cloud-drizzle', text:'Mưa phùn'}, 61:{icon:'cloud-rain', text:'Mưa nhỏ'},
-            80:{icon:'cloud-lightning', text:'Mưa rào'}, 95:{icon:'zap', text:'Dông'}
-        };
+        /* --- BREATHING EXERCISE --- */
+        /* --- BREATHING MODE (FULL SCREEN & END SCREEN) --- */
+        let breathTimerInterval = null;
+        let breathCycleInterval = null;
+        let breathTimeLeft = 0;
+        let isBreathFinished = false; // Biến cờ để kiểm soát trạng thái kết thúc
 
-        // Auto Load GPS on Start
-        window.addEventListener('load', () => {
-            if(savedCities.length === 0 && navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(p => {
-                    const gpsCity = { name: "Vị trí của bạn", lat: p.coords.latitude, lon: p.coords.longitude, isGPS: true };
-                    savedCities.unshift(gpsCity); // Add to top temporarily
-                    renderCityList();
-                });
+        function startBreathing(seconds) {
+            // Reset trạng thái
+            isBreathFinished = false;
+            document.getElementById('breathResult').classList.add('hidden'); // Ẩn lời khen
+            document.getElementById('breathTimerDisplay').classList.remove('hidden'); // Hiện đồng hồ
+            document.getElementById('breathCircleContainer').classList.remove('hidden'); // Hiện vòng tròn
+            document.getElementById('btnCloseBreath').innerText = "THOÁT"; // Nút thoát thường
+
+            // 1. Đóng menu & Hiện overlay
+            toggleMenu();
+            const overlay = document.getElementById('breathingOverlay');
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+
+            // 2. Thiết lập thời gian
+            breathTimeLeft = seconds;
+            updateBreathTimerDisplay();
+
+            // 3. Bắt đầu đếm ngược
+            if (breathTimerInterval) clearInterval(breathTimerInterval);
+            breathTimerInterval = setInterval(() => {
+                breathTimeLeft--;
+                updateBreathTimerDisplay();
+
+                if (breathTimeLeft <= 0) {
+                    finishBreathing(); // Chuyển sang hàm kết thúc thay vì stop ngay
+                }
+            }, 1000);
+
+            // 4. Bắt đầu chu kỳ thở
+            const text = document.getElementById('breathInstruct');
+            text.innerText = "Hít vào...";
+
+            setTimeout(() => { runBreathCycle(); }, 100);
+
+            if (breathCycleInterval) clearInterval(breathCycleInterval);
+            breathCycleInterval = setInterval(() => {
+                runBreathCycle();
+            }, 10000);
+        }
+
+        function runBreathCycle() {
+            if (isBreathFinished) return; // Nếu đã xong thì không chạy nữa
+
+            const circle = document.getElementById('breathCircleMain');
+            const text = document.getElementById('breathInstruct');
+
+            // HÍT VÀO
+            circle.classList.add('breath-in');
+            text.innerText = "Hít vào...";
+            text.style.opacity = "1";
+
+            // THỞ RA (Sau 5 giây)
+            setTimeout(() => {
+                if (!isBreathFinished) {
+                    circle.classList.remove('breath-in');
+                    text.innerText = "Thở ra...";
+                    text.style.opacity = "0.7";
+                }
+            }, 5000);
+        }
+
+        // Hàm xử lý khi hết giờ (Màn hình Tốt lắm)
+        function finishBreathing() {
+            isBreathFinished = true;
+            clearInterval(breathTimerInterval);
+            clearInterval(breathCycleInterval);
+
+            // Ẩn vòng tròn và đồng hồ
+            document.getElementById('breathCircleContainer').classList.add('hidden');
+            document.getElementById('breathTimerDisplay').classList.add('hidden');
+
+            // Hiện lời khen
+            const result = document.getElementById('breathResult');
+            result.classList.remove('hidden');
+            result.classList.add('fade-enter'); // Thêm hiệu ứng hiện dần
+
+            // Đổi nút thoát thành Đóng ngay
+            document.getElementById('btnCloseBreath').innerText = "ĐÓNG";
+
+            // Tự động tắt sau 5 giây
+            setTimeout(() => {
+                // Chỉ tắt nếu người dùng vẫn đang ở màn hình này (chưa bấm đóng thủ công)
+                const overlay = document.getElementById('breathingOverlay');
+                if (!overlay.classList.contains('opacity-0')) {
+                    closeBreathingOverlay();
+                }
+            }, 5000);
+        }
+
+        // Hàm đóng hẳn Overlay (Reset về ban đầu)
+        function closeBreathingOverlay() {
+            clearInterval(breathTimerInterval);
+            clearInterval(breathCycleInterval);
+
+            const overlay = document.getElementById('breathingOverlay');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+
+            // Reset giao diện về trạng thái chờ
+            setTimeout(() => {
+                document.getElementById('breathCircleMain').classList.remove('breath-in');
+                document.getElementById('breathInstruct').innerText = "Chuẩn bị...";
+                document.getElementById('breathResult').classList.add('hidden');
+                document.getElementById('breathCircleContainer').classList.remove('hidden');
+            }, 500);
+        }
+
+        function updateBreathTimerDisplay() {
+            if (breathTimeLeft < 0) breathTimeLeft = 0;
+            const m = Math.floor(breathTimeLeft / 60);
+            const s = breathTimeLeft % 60;
+            document.getElementById('breathTimerDisplay').innerText =
+                `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        /* --- WEATHER & LOCATION ENGINE --- */
+        /* --- HỆ THỐNG VỊ TRÍ & THỜI TIẾT (V3 - LƯU TỌA ĐỘ) --- */
+
+        // 1. Khởi tạo: Ưu tiên dùng Tọa độ đã lưu
+        function initWeather() {
+            const savedName = localStorage.getItem('zenLocation');
+            const savedLat = localStorage.getItem('zenLat');
+            const savedLon = localStorage.getItem('zenLon');
+
+            // Nếu có đủ Tên và Tọa độ -> Dùng luôn, không cần tìm kiếm lại
+            if (savedName && savedLat && savedLon) {
+                document.getElementById('manualLocation').value = savedName;
+                document.getElementById('locStatus').innerText = "Đã khôi phục vị trí cũ.";
+                fetchWeatherAPI(savedLat, savedLon, savedName);
             }
-            renderCityList();
-        });
+            // Nếu chỉ có tên (dữ liệu cũ) -> Phải tìm kiếm
+            else if (savedName) {
+                document.getElementById('manualLocation').value = savedName;
+                getWeatherByCity(savedName);
+            }
+            // Chưa có gì -> Dùng GPS
+            else {
+                useGPS();
+            }
+        }
 
-        async function addCityFromInput() {
-            const input = document.getElementById('cityInput').value.trim();
-            const err = document.getElementById('weatherError');
-            if(!input) return;
-            
+        // 2. Nhập tay và Lưu: Tìm tọa độ từ tên rồi lưu lại
+        async function saveLocation() {
+            const city = document.getElementById('manualLocation').value.trim();
+            if (!city) return;
+
+            document.getElementById('locStatus').innerText = "Đang tìm kiếm...";
+            document.getElementById('locStatus').className = "text-[10px] text-blue-400 italic";
+
+            await getWeatherByCity(city);
+        }
+
+        // 3. Tìm kiếm thành phố (Dùng cho nhập tay)
+        async function getWeatherByCity(city) {
             try {
-                const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(input)}&count=1&language=vi&format=json`);
-                const data = await res.json();
-                if(!data.results) { err.textContent = "Không tìm thấy!"; return; }
-                const c = data.results[0];
-                savedCities.push({ name: c.name, lat: c.latitude, lon: c.longitude });
-                localStorage.setItem('zenCities', JSON.stringify(savedCities.filter(c => !c.isGPS))); // Don't save temp GPS
-                document.getElementById('cityInput').value = '';
-                renderCityList();
-            } catch(e) { err.textContent = "Lỗi mạng!"; }
-        }
+                // Tìm tọa độ từ tên thành phố
+                const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=vi&format=json`);
+                const geoData = await geoRes.json();
 
-        function removeCity(i) {
-            savedCities.splice(i, 1);
-            localStorage.setItem('zenCities', JSON.stringify(savedCities.filter(c => !c.isGPS)));
-            renderCityList();
-        }
-
-        function renderCityList() {
-            document.getElementById('cityList').innerHTML = savedCities.map((c, i) => `
-                <div class="flex justify-between items-center bg-black/20 p-2 rounded text-sm">
-                    <span>${c.name} ${c.isGPS ? '(GPS)' : ''}</span>
-                    <button onclick="removeCity(${i})" class="text-red-400 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
-                </div>
-            `).join('');
-        }
-
-        // --- ZEN CLOCK & ANIMATIONS ---
-        let currentClockStyle = 'digital';
-        let currentAnim = 'none';
-
-        function setClockStyle(style) {
-            currentClockStyle = style;
-            const clock = document.getElementById('clockText');
-            clock.className = ''; // Reset
-            if (style === 'digital') clock.classList.add('font-digital');
-            if (style === 'elegant') clock.classList.add('font-elegant');
-            if (style === 'neon') clock.classList.add('font-neon');
-            if (style === 'retro') clock.classList.add('font-retro');
-        }
-
-        function setClockAnim(anim) { currentAnim = anim; }
-
-        function updateClockDisplay() {
-            const clockEl = document.getElementById('clockText');
-            const labelEl = document.getElementById('focusLabel');
-            
-            if (focusActive) {
-                const now = Date.now();
-                const diff = focusEndTime - now;
-                if (diff <= 0) {
-                    stopFocus();
+                if (!geoData.results || geoData.results.length === 0) {
+                    document.getElementById('locStatus').innerText = "Không tìm thấy địa điểm này.";
+                    document.getElementById('locStatus').className = "text-[10px] text-red-400 italic";
                     return;
                 }
-                const m = Math.floor(diff / 60000);
-                const s = Math.floor((diff % 60000) / 1000);
-                clockEl.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-                labelEl.classList.remove('hidden');
-                labelEl.textContent = "ĐANG TẬP TRUNG";
-                clockEl.style.color = '#f472b6'; // Pink for focus
-            } else {
-                const now = new Date();
-                const timeStr = now.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
-                
-                // Animation Logic
-                if (clockEl.textContent !== timeStr) {
-                    if (currentAnim === 'fade') {
-                        clockEl.parentElement.classList.add('anim-fade');
-                        setTimeout(() => clockEl.parentElement.classList.remove('anim-fade'), 1000);
-                    } else if (currentAnim === 'slide') {
-                        clockEl.innerHTML = `<div class="anim-slide"><span>${timeStr}</span></div>`;
-                        return; // HTML structure handled
-                    } else if (currentAnim === 'flip') {
-                        clockEl.parentElement.classList.add('anim-flip');
-                        setTimeout(() => clockEl.parentElement.classList.remove('anim-flip'), 800);
-                    }
-                    clockEl.textContent = timeStr;
-                }
-                labelEl.classList.add('hidden');
-                clockEl.style.color = ''; // Reset color
-                document.getElementById('zenDate').textContent = now.toLocaleDateString('vi-VN', {weekday:'long', day:'numeric', month:'long'});
+
+                const { latitude, longitude, name, admin1 } = geoData.results[0];
+                const displayName = admin1 ? `${name}, ${admin1}` : name;
+
+                // --- LƯU TẤT CẢ VÀO BỘ NHỚ ---
+                localStorage.setItem('zenLocation', displayName);
+                localStorage.setItem('zenLat', latitude);
+                localStorage.setItem('zenLon', longitude);
+                // -----------------------------
+
+                document.getElementById('manualLocation').value = displayName;
+                document.getElementById('locStatus').innerText = "Đã lưu thiết lập.";
+                document.getElementById('locStatus').className = "text-[10px] text-green-400 italic";
+
+                await fetchWeatherAPI(latitude, longitude, displayName);
+
+            } catch (e) {
+                console.error(e);
+                document.getElementById('locStatus').innerText = "Lỗi kết nối mạng.";
             }
         }
-        setInterval(updateClockDisplay, 1000);
 
-        // --- WEATHER WIDGET CAROUSEL ---
-        async function fetchWeatherForZen() {
-            const container = document.getElementById('zenWeather');
-            if (savedCities.length === 0) { container.innerHTML = '<span class="text-xs italic opacity-50">Chưa có thời tiết</span>'; return; }
-            
-            let html = '';
-            for (const city of savedCities) {
-                try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true`);
-                    const data = await res.json();
-                    const w = data.current_weather;
-                    const info = weatherCodeMap[w.weathercode] || {icon:'sun', text:''};
-                    
-                    // Create a slide item
-                    html += `
-                        <div class="flex flex-col items-center animate-fade-in mx-8 min-w-[120px]">
-                            <div class="flex items-center gap-2 text-3xl font-light">
-                                <i data-lucide="${info.icon}"></i>
-                                <span>${Math.round(w.temperature)}°</span>
-                            </div>
-                            <div class="text-[10px] uppercase tracking-widest opacity-70 mt-1">${city.name} • ${info.text}</div>
-                        </div>
-                    `;
-                } catch (e) {}
+        // 4. Dùng GPS (Cập nhật lưu tọa độ)
+        async function useGPS() {
+            const status = document.getElementById('locStatus');
+            status.innerText = "Đang kết nối vệ tinh...";
+            status.className = "text-[10px] text-blue-400 italic";
+
+            if (!navigator.geolocation) {
+                status.innerText = "Thiết bị không hỗ trợ GPS.";
+                return;
             }
-            container.innerHTML = html;
+
+            const options = { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 };
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    let finalName = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
+                    let isSuccess = false;
+
+                    try {
+                        status.innerText = "Đang lấy tên đường...";
+                        // Dùng API BigDataCloud (Ổn định hơn Open-Meteo)
+                        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=vi`);
+
+                        if (res.ok) {
+                            const data = await res.json();
+                            const city = data.city || data.locality || "";
+                            const province = data.principalSubdivision || "";
+
+                            if (city) {
+                                finalName = city;
+                                if (province && !city.includes(province)) finalName += `, ${province}`;
+                                isSuccess = true;
+                            } else if (province) {
+                                finalName = province;
+                                isSuccess = true;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Lỗi lấy tên, dùng tọa độ số.");
+                    }
+
+                    // --- LƯU TỌA ĐỘ QUAN TRỌNG ---
+                    localStorage.setItem('zenLocation', finalName);
+                    localStorage.setItem('zenLat', lat);
+                    localStorage.setItem('zenLon', lon);
+                    // -----------------------------
+
+                    document.getElementById('manualLocation').value = finalName;
+
+                    if (isSuccess) {
+                        status.innerText = "Đã cập nhật vị trí.";
+                        status.className = "text-[10px] text-green-400 italic";
+                    } else {
+                        status.innerText = "Dùng tọa độ GPS.";
+                    }
+
+                    await fetchWeatherAPI(lat, lon, finalName);
+                },
+                (error) => {
+                    status.className = "text-[10px] text-red-400 italic";
+                    status.innerText = "Lỗi định vị hoặc bị chặn.";
+                },
+                options
+            );
+        }
+
+        // Hàm lấy thời tiết (Giữ nguyên logic cũ nhưng đảm bảo gọi đúng)
+        async function fetchWeatherAPI(lat, lon, name) {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
+                const data = await res.json();
+                const w = data.current_weather;
+
+                let weatherIcon = 'cloud';
+                // Map icon đơn giản
+                if (w.weathercode === 0) weatherIcon = 'sun';
+                else if (w.weathercode <= 3) weatherIcon = 'cloud-sun';
+                else if (w.weathercode <= 67) weatherIcon = 'cloud-rain';
+                else if (w.weathercode <= 99) weatherIcon = 'zap';
+
+                document.getElementById('weatherDisplay').innerHTML = `
+            <i data-lucide="${weatherIcon}" class="w-3 h-3"></i> 
+            ${Math.round(w.temperature)}°C • ${name}
+        `;
+                lucide.createIcons();
+            } catch (e) {
+                document.getElementById('weatherDisplay').innerText = "Lỗi thời tiết";
+            }
+        }
+
+        /* --- SMART SLEEP CALCULATOR LOGIC --- */
+        let currentSleepTab = 'bedtime';
+
+        function switchSleepTab(tab) {
+            currentSleepTab = tab;
+            // Update Tab Styles
+            ['bedtime', 'waketime', 'duration'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if (t === tab) { el.classList.replace('tab-inactive', 'tab-active'); el.style.backgroundColor = '#27272a'; }
+                else { el.classList.replace('tab-active', 'tab-inactive'); el.style.backgroundColor = 'transparent'; }
+
+                const view = document.getElementById(`view-${t}`);
+                if (t === tab) view.classList.remove('hidden'); else view.classList.add('hidden');
+            });
+            document.getElementById('sleepResultContainer').classList.add('hidden');
+        }
+
+        function setCurrentTime(inputId) {
+            const now = new Date();
+            document.getElementById(inputId).value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+
+        function calcSmartSleep(mode) {
+            const resultBox = document.getElementById('sleepResultContainer');
+            const list = document.getElementById('sleepResultContent');
+            const durationTxt = document.getElementById('durationResult');
+
+            resultBox.classList.remove('hidden');
+            list.classList.remove('hidden');
+            durationTxt.classList.add('hidden');
+            list.innerHTML = '';
+
+            let baseTime = new Date();
+            const inputId = mode === 'bedtime' ? 'input-bedtime' : 'input-waketime';
+            const timeVal = document.getElementById(inputId).value;
+            if (!timeVal) return;
+
+            const [h, m] = timeVal.split(':');
+            baseTime.setHours(parseInt(h), parseInt(m), 0);
+
+            // Logic: 
+            // If 'bedtime': Calculate wake up times. Add 14mins fall asleep + N * 90mins.
+            // If 'waketime': Calculate bed times. Subtract N * 90mins - 14mins fall asleep.
+
+            // Cycles to show: 3 (4.5h), 4 (6h), 5 (7.5h), 6 (9h)
+            const cycles = mode === 'bedtime' ? [3, 4, 5, 6] : [6, 5, 4, 3];
+
+            cycles.forEach(c => {
+                let calculatedTime = new Date(baseTime.getTime());
+                let minutesToAdd = (c * 90) + 14;
+
+                if (mode === 'bedtime') {
+                    // Bedtime -> Wake time (Move Forward)
+                    // If time is earlier than now, assume tomorrow
+                    if (calculatedTime < new Date()) calculatedTime.setDate(calculatedTime.getDate() + 1);
+                    calculatedTime.setMinutes(calculatedTime.getMinutes() + minutesToAdd);
+                } else {
+                    // Wake time -> Bedtime (Move Backward)
+                    if (calculatedTime < new Date()) calculatedTime.setDate(calculatedTime.getDate() + 1); // Set to next occurrence of wake time
+                    calculatedTime.setMinutes(calculatedTime.getMinutes() - minutesToAdd);
+                }
+
+                const isBest = (c === 5 || c === 6); // 7.5h or 9h is best
+                const timeStr = calculatedTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+                const itemHtml = `
+                    <div class="rounded-lg p-3 border ${isBest ? 'bg-white text-black border-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400'} flex flex-col items-center justify-center relative">
+                        ${isBest ? '<div class="absolute -top-2 -right-2 text-yellow-500"><i data-lucide="star" class="w-4 h-4 fill-current"></i></div>' : ''}
+                        <span class="text-xl font-bold tracking-tight">${timeStr}</span>
+                        <span class="text-[10px] uppercase tracking-wide opacity-80">${c} chu kỳ (${c * 1.5}h)</span>
+                    </div>
+                `;
+                list.innerHTML += itemHtml;
+            });
             lucide.createIcons();
         }
 
-        // --- ZEN TOGGLE & UTILS ---
-        let zenMode = false;
-        function toggleZenMode() {
-            zenMode = !zenMode;
-            const ui = document.getElementById('mainUI'), zen = document.getElementById('zenContainer');
-            if(zenMode) { 
-                ui.classList.add('ui-hidden'); zen.classList.remove('opacity-0', 'pointer-events-none'); 
-                fetchWeatherForZen(); 
-                document.getElementById('zenQuote').innerText = `"${getRandomQuote()}"`;
-            } else { 
-                ui.classList.remove('ui-hidden'); zen.classList.add('opacity-0', 'pointer-events-none'); 
-            }
-        }
-        document.getElementById('zenContainer').addEventListener('click', (e) => {
-            // Prevent accidental close if clicking specific widgets? No, user wants close on tap anywhere usually.
-            if(zenMode) toggleZenMode();
-        });
+        function calcDuration() {
+            const start = document.getElementById('diff-start').value;
+            const end = document.getElementById('diff-end').value;
+            const resultBox = document.getElementById('sleepResultContainer');
+            const list = document.getElementById('sleepResultContent');
+            const durationTxt = document.getElementById('durationResult');
 
-        function toggleSettings() {
-            const m = document.getElementById('settingsModal');
-            if(m.classList.contains('hidden')) { m.classList.remove('hidden'); setTimeout(()=>m.classList.remove('opacity-0'),10); renderCityList(); }
-            else { m.classList.add('opacity-0'); setTimeout(()=>m.classList.add('hidden'),300); }
-        }
+            if (!start || !end) return;
 
-        function updateZenConfig() {
-            document.getElementById('zenWeather').style.display = document.getElementById('optWeather').checked ? 'flex' : 'none';
-            document.getElementById('zenQuote').style.display = document.getElementById('optQuote').checked ? 'block' : 'none';
-        }
+            resultBox.classList.remove('hidden');
+            list.classList.add('hidden');
+            durationTxt.classList.remove('hidden');
 
-        const zenQuotes = ["Hơi thở là chiếc neo giữ tâm trí.", "Tâm an vạn sự an.", "Mỗi hơi thở là cơ hội mới.", "Bình yên đến từ bên trong.", "Giây phút này là tất cả."];
-        function getRandomQuote() { return zenQuotes[Math.floor(Math.random() * zenQuotes.length)]; }
+            const [h1, m1] = start.split(':').map(Number);
+            const [h2, m2] = end.split(':').map(Number);
 
-        // --- VISUALIZERS (LAVA) ---
-        const bgCtx = document.getElementById('bgCanvas').getContext('2d');
-        const pCtx = document.getElementById('particleCanvas').getContext('2d');
-        let w, h, particles = [], blobs = [];
-        function resize() { w=window.innerWidth; h=window.innerHeight; bgCtx.canvas.width=w; bgCtx.canvas.height=h; pCtx.canvas.width=w; pCtx.canvas.height=h; initVisuals(); }
-        window.addEventListener('resize', resize);
-        function initVisuals() {
-            particles = Array(80).fill().map(() => ({x:Math.random()*w, y:Math.random()*h, s:Math.random()*2, v:Math.random()+0.5}));
-            blobs = Array(5).fill().map(() => ({x:Math.random()*w, y:Math.random()*h, r:Math.min(w,h)*0.4, dx:(Math.random()-.5)*.5, dy:(Math.random()-.5)*.5, c:{r:15,g:23,b:42}}));
-        }
-        const hex2rgb = h => ({r:parseInt(h.slice(1,3),16),g:parseInt(h.slice(3,5),16),b:parseInt(h.slice(5,7),16)});
-        function updateVisualState() {} // Colors pulled dynamically in animate loop
-        
-        function animate() {
-            const cols = []; Object.values(soundManager).forEach(s=>{if(s.isPlaying) cols.push(hex2rgb(s.config.color))});
-            if(cols.length===0) cols.push({r:15,g:23,b:42}); // Default
+            let min1 = h1 * 60 + m1;
+            let min2 = h2 * 60 + m2;
 
-            bgCtx.fillStyle='#0f172a'; bgCtx.fillRect(0,0,w,h);
-            blobs.forEach((b,i)=>{
-                b.x+=b.dx; b.y+=b.dy; if(b.x<0||b.x>w) b.dx*=-1; if(b.y<0||b.y>h) b.dy*=-1;
-                const t = cols[i%cols.length];
-                b.c.r+=(t.r-b.c.r)*0.02; b.c.g+=(t.g-b.c.g)*0.02; b.c.b+=(t.b-b.c.b)*0.02;
-                const g=bgCtx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);
-                g.addColorStop(0,`rgba(${b.c.r},${b.c.g},${b.c.b},0.6)`); g.addColorStop(1,'transparent');
-                bgCtx.fillStyle=g; bgCtx.beginPath(); bgCtx.arc(b.x,b.y,b.r,0,Math.PI*2); bgCtx.fill();
-            });
+            if (min2 < min1) min2 += 24 * 60; // Handle overnight
 
-            pCtx.clearRect(0,0,w,h);
-            particles.forEach(p=>{
-                pCtx.fillStyle=`rgba(255,255,255,0.3)`; pCtx.beginPath(); pCtx.arc(p.x,p.y,p.s,0,Math.PI*2); pCtx.fill();
-                p.y+=p.v; if(p.y>h) p.y=0;
-            });
-            requestAnimationFrame(animate);
+            const diff = min2 - min1;
+            const h = Math.floor(diff / 60);
+            const m = diff % 60;
+
+            durationTxt.innerHTML = `
+                <div class="text-xs text-zinc-500 mb-2 uppercase tracking-widest">Tổng thời gian</div>
+                <div class="text-4xl font-light">${h}<span class="text-sm font-normal text-zinc-500">h</span> ${m}<span class="text-sm font-normal text-zinc-500">m</span></div>
+            `;
         }
 
-        // Utils (Standard)
-        function stopAllSounds() { Object.values(soundManager).forEach(s => s.stop()); if(isStoryPlaying) toggleStory(); if(isCustomPlaying) toggleCustomMedia(); }
-        function switchTab(t) {
-            document.getElementById('tab-wakeUp').classList.toggle('hidden', t!=='wakeUp');
-            document.getElementById('tab-sleepNow').classList.toggle('hidden', t!=='sleepNow');
-            document.getElementById('btn-wakeUp').className = t==='wakeUp'?"flex-1 py-2 text-xs font-medium rounded-md bg-white/10 text-white shadow":"flex-1 py-2 text-xs font-medium rounded-md text-gray-400";
-            document.getElementById('btn-sleepNow').className = t==='sleepNow'?"flex-1 py-2 text-xs font-medium rounded-md bg-white/10 text-white shadow":"flex-1 py-2 text-xs font-medium rounded-md text-gray-400";
-        }
-        function calculateSleep(type) {
-            const list = document.getElementById('timesList'); list.innerHTML='';
-            let base = new Date();
-            if(type==='wake') {
-                const val = document.getElementById('wakeTimeInput').value; if(!val) return;
-                const [h,m] = val.split(':'); base.setHours(h,m,0);
-                if(base < new Date()) base.setDate(base.getDate()+1);
-                [6,5,4,3].forEach(c => addTimeCard(new Date(base.getTime() - (c*90+14)*60000), c, list));
-            } else {
-                const sleep = new Date(base.getTime() + 14*60000);
-                [3,4,5,6].forEach(c => addTimeCard(new Date(sleep.getTime() + c*90*60000), c, list));
-            }
-            document.getElementById('sleepResult').classList.remove('hidden');
-        }
-        function addTimeCard(d, c, el) { el.innerHTML += `<div class="bg-black/20 rounded p-2 border border-white/5"><div class="text-lg font-bold ${c>=5?'text-green-300':'text-purple-300'}">${d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</div><div class="text-[10px] text-gray-400">${c} chu kỳ</div></div>`; }
-        function updateZenNowPlaying() {
-            let names = []; if(isCustomPlaying) names.push("Media"); if(isStoryPlaying) names.push("Story");
-            Object.values(soundManager).forEach(s => { if(s.isPlaying) names.push(s.config.name); });
-            document.getElementById('nowPlayingText').innerText = names.length ? "Đang phát: " + names.join(", ") : "...";
-            document.getElementById('zenNowPlaying').classList.toggle('hidden', names.length === 0);
+        /* --- UTILS --- */
+        function toggleMenu() {
+            const menu = document.getElementById('menuOverlay');
+            menu.classList.toggle('translate-y-full');
         }
 
-        // Story & Media
-        let isStoryPlaying=false, isCustomPlaying=false;
-        const storyAudio = new Audio('https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg'); storyAudio.loop=true;
+        let isStoryPlaying = false;
+        const storyAudio = new Audio('https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg');
         function toggleStory() {
             const btn = document.getElementById('storyBtn');
-            if(isStoryPlaying) { storyAudio.pause(); btn.innerHTML='<i data-lucide="play" class="w-5 h-5 fill-white text-white"></i>'; }
-            else { storyAudio.play(); btn.innerHTML='<i data-lucide="pause" class="w-5 h-5 fill-white text-white"></i>'; }
-            isStoryPlaying = !isStoryPlaying; updateZenNowPlaying();
+            if (isStoryPlaying) {
+                storyAudio.pause();
+                btn.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i>';
+                btn.classList.replace('bg-white', 'bg-zinc-800'); btn.classList.replace('text-black', 'text-white');
+            } else {
+                storyAudio.play();
+                btn.innerHTML = '<i data-lucide="pause" class="w-4 h-4"></i>';
+                btn.classList.replace('bg-zinc-800', 'bg-white'); btn.classList.replace('text-white', 'text-black');
+            }
+            isStoryPlaying = !isStoryPlaying; lucide.createIcons();
         }
-        let customMediaEl=null;
-        function loadMediaFromUrl() {
-            const url = document.getElementById('mediaUrlInput').value; if(!url) return;
-            if(customMediaEl) customMediaEl.pause();
-            customMediaEl = new Audio(url); customMediaEl.loop=true; document.getElementById('customPlayer').classList.remove('hidden'); toggleCustomMedia();
-        }
-        function toggleCustomMedia() { if(customMediaEl.paused) {customMediaEl.play(); isCustomPlaying=true;} else {customMediaEl.pause(); isCustomPlaying=false;} updateZenNowPlaying(); }
-        function removeCustomMedia() { if(customMediaEl) customMediaEl.pause(); customMediaEl=null; isCustomPlaying=false; document.getElementById('customPlayer').classList.add('hidden'); }
-        
-        // Timer
-        let tId, cId;
-        function setManualTimer() {
-            cancelTimer(); const min = parseInt(document.getElementById('timerInput').value); if(!min) return;
-            const end = Date.now() + min*60000;
-            cId = setInterval(() => {
-                const rem = Math.ceil((end - Date.now())/1000);
-                if(rem<=0) { cancelTimer(); stopAllSounds(); return; }
-                document.getElementById('timerStatus').innerText = `Tắt sau: ${Math.floor(rem/60)}:${(rem%60).toString().padStart(2,'0')}`;
-            }, 1000);
-            tId = setTimeout(() => { stopAllSounds(); cancelTimer(); }, min*60000);
-        }
-        function cancelTimer() { clearTimeout(tId); clearInterval(cId); document.getElementById('timerStatus').innerText=""; }
-
-        // Start
-        lucide.createIcons(); resize(); animate(); 
-        setClockStyle('digital'); // Default
     </script>
 </body>
+
 </html>
