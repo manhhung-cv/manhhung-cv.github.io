@@ -3,694 +3,772 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PIP Master Pro</title>
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" href="/Asset/logo/logo.png" />
+    <link rel="apple-touch-icon" href="/Asset/logo/iconApps.png" sizes="150x150" />
+
+    <meta property="og:image" content="/Asset/Banner/Banner.png" />
+    <meta property="og:title" content="Hunq" />
+    <meta property="og:description" content="Thiết kế và lập trình Đinh Mạnh Hùng" />
+    <title>PIP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         :root {
-            --bg-body: #121212;
-            --bg-card: #1e1e1e;
-            --bg-input: #2c2c2c;
-            --accent: #0A84FF;
-            --accent-gradient: linear-gradient(135deg, #0A84FF, #0056b3);
-            --text-main: #ffffff;
-            --text-sub: #a0a0a0;
-            --border-radius: 16px;
-            --danger: #FF453A;
-            --success: #30D158;
+            --bg-body: #0f172a;
+            --bg-panel: #1e293b;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --danger: #ef4444;
+            --lock: #fbbf24;
         }
 
-        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        /* RESET & BASE */
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; user-select: none; font-family: 'Inter', sans-serif; }
+        body { margin: 0; background: var(--bg-body); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-body);
-            color: var(--text-main);
-            margin: 0;
-            padding: 0;
-            padding-bottom: 100px; /* Space for bottom bar */
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+        /* --- LAYOUT --- */
+        .app-shell { display: flex; flex: 1; height: 100%; width: 100%; }
+
+        /* SIDEBAR (CONTROLS) */
+        .sidebar {
+            width: 350px; min-width: 350px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            z-index: 50;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.3);
         }
 
-        /* Header */
-        header {
+        /* PREVIEW AREA */
+        .viewport {
+            flex: 1;
+            background-color: #000;
+            background-image: radial-gradient(#333 1px, transparent 1px);
+            background-size: 20px 20px;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
             padding: 20px;
-            text-align: center;
-            background: rgba(30, 30, 30, 0.8);
-            backdrop-filter: blur(10px);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            border-bottom: 1px solid #333;
         }
-        header h1 { margin: 0; font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px; }
-        header span { color: var(--accent); }
 
-        /* Preview Area */
-        .preview-container {
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            background: var(--bg-body);
-        }
         canvas {
-            width: 100%;
-            max-width: 500px;
-            aspect-ratio: 16/9;
             background: #000;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            box-shadow: 0 0 50px rgba(0,0,0,0.6);
             border: 1px solid #333;
+            border-radius: 4px;
+            max-width: 100%; max-height: 100%;
+            cursor: grab;
+        }
+        canvas:active { cursor: grabbing; }
+
+        /* RESPONSIVE MOBILE */
+        @media (max-width: 768px) {
+            .app-shell { flex-direction: column; }
+            .sidebar { 
+                width: 100%; min-width: 0; height: 55%; 
+                order: 2; border-right: none; border-top: 1px solid var(--border);
+            }
+            .viewport { height: 45%; order: 1; padding: 10px; }
         }
 
-        /* Modules */
-        .modules { padding: 0 16px; max-width: 600px; margin: 0 auto; }
-        
-        .card {
-            background: var(--bg-card);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            margin-bottom: 16px;
+        /* --- UI COMPONENTS --- */
+        /* TABS */
+        .tabs { display: flex; background: #0f172a; border-bottom: 1px solid var(--border); }
+        .tab-btn {
+            flex: 1; text-align: center; padding: 16px 0; color: var(--text-muted);
+            cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.2s;
+            border-bottom: 2px solid transparent;
         }
-        
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .card-title { font-weight: 600; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
-        .icon { font-size: 1.2rem; }
+        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.02); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--bg-panel); }
+        .tab-btn i { font-size: 16px; margin-bottom: 4px; display: block; }
 
-        /* Controls */
-        .control-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            gap: 10px;
-        }
-        .control-label { color: var(--text-sub); font-size: 0.9rem; }
-        
-        /* Inputs */
-        input[type="text"], input[type="number"], select {
-            background: var(--bg-input);
-            border: none;
-            color: white;
-            padding: 10px 12px;
-            border-radius: 8px;
-            width: 100%;
-            font-size: 0.95rem;
-            /* appearance: none; */
+        /* PANELS */
+        .panel { flex: 1; overflow-y: auto; padding: 20px; display: none; }
+        .panel.active { display: block; animation: slideIn 0.2s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CONTROLS */
+        .group { margin-bottom: 24px; }
+        .label { 
+            font-size: 11px; font-weight: 700; color: var(--text-muted); 
+            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
         }
         
-        /* Color Picker Custom */
-        .color-wrapper {
-            position: relative;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            overflow: hidden;
-            border: 2px solid #444;
-        }
-        input[type="color"] {
-            position: absolute;
-            top: -50%; left: -50%;
-            width: 200%; height: 200%;
-            cursor: pointer;
-            border: none; padding: 0;
-        }
+        .row { display: flex; gap: 8px; align-items: center; }
+        .col { flex: 1; }
 
-        /* Toggle Switch */
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 50px;
-            height: 28px;
+        /* INPUTS & BUTTONS */
+        input[type="text"], input[type="number"], input[type="datetime-local"], select {
+            width: 100%; background: #334155; border: 1px solid var(--border);
+            color: #fff; padding: 10px; border-radius: 6px; font-size: 13px;
         }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #444;
-            transition: .4s;
-            border-radius: 34px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 20px;
-            width: 20px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider { background-color: var(--accent); }
-        input:checked + .slider:before { transform: translateX(22px); }
+        input:focus, select:focus { border-color: var(--primary); }
 
-        /* Buttons & Chips */
-        .btn-group { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; }
-        .chip {
-            background: var(--bg-input);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            white-space: nowrap;
-            cursor: pointer;
-            transition: 0.2s;
-            border: 1px solid transparent;
+        button {
+            width: 100%; padding: 10px; border-radius: 6px; border: none;
+            font-weight: 600; cursor: pointer; font-size: 13px;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: 0.2s; background: #334155; color: #fff;
         }
-        .chip.active {
-            background: rgba(10, 132, 255, 0.2);
-            color: var(--accent);
-            border-color: var(--accent);
-            font-weight: 600;
-        }
+        button:hover { background: #475569; }
+        button:active { transform: translateY(1px); }
 
-        .btn-action {
-            background: var(--bg-input);
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-        .btn-action.primary { background: var(--accent); }
-        .btn-action.danger { background: rgba(255, 69, 58, 0.2); color: var(--danger); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        
+        .btn-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
 
-        /* Bottom Floating Bar */
-        .bottom-bar {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 500px;
-            background: rgba(40, 40, 40, 0.9);
-            backdrop-filter: blur(15px);
-            padding: 12px;
-            border-radius: 24px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            display: flex;
-            gap: 10px;
-            border: 1px solid #444;
-            z-index: 1000;
-        }
-        .btn-pip {
-            background: var(--accent-gradient);
-            color: white;
-            border: none;
-            border-radius: 16px;
-            font-size: 1rem;
-            font-weight: 700;
-            flex: 1;
-            height: 50px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.4);
-        }
-        .btn-pip:active { transform: scale(0.98); }
+        .btn-lock { background: rgba(251, 191, 36, 0.15); color: var(--lock); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .btn-lock:hover { background: rgba(251, 191, 36, 0.25); }
+        .btn-lock.active { background: var(--lock); color: #000; }
 
-        /* Hidden helpers */
-        .hidden { display: none; }
-        input[type="range"] { width: 100%; accent-color: var(--accent); }
+        /* CUSTOM INPUTS */
+        input[type="color"] { padding: 0; height: 38px; cursor: pointer; -webkit-appearance: none; }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
+        
+        input[type="range"] { height: 4px; background: #475569; border-radius: 2px; appearance: none; padding: 0; }
+        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: var(--primary); border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+
+        /* EMPTY STATE */
+        .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; border: 2px dashed var(--border); border-radius: 8px; }
+        .empty-state i { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+
+        .hidden { display: none !important; }
+        #hidden-media, #pip-video-output { position: absolute; top: -9999px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>PIP <span>MASTER</span> PRO</h1>
-</header>
+<div class="app-shell">
+    
+    <div class="sidebar">
+        <div class="tabs">
+            <div class="tab-btn active" onclick="switchTab('settings')"><i class="fa-solid fa-sliders"></i> Cài đặt</div>
+            <div class="tab-btn" onclick="switchTab('layers')"><i class="fa-solid fa-layer-group"></i> Layer</div>
+            <div class="tab-btn" onclick="switchTab('add')"><i class="fa-solid fa-plus"></i> Thêm</div>
+        </div>
 
-<div class="preview-container">
-    <canvas id="canvas" width="1280" height="720"></canvas>
+        <div id="tab-settings" class="panel active">
+            <div class="group">
+                <div class="label">Tỉ lệ khung hình</div>
+                <div class="row">
+                    <button onclick="resizeCanvas('16:9')">16:9</button>
+                    <button onclick="resizeCanvas('9:16')">9:16</button>
+                    <button onclick="resizeCanvas('1:1')">1:1</button>
+                </div>
+            </div>
+
+            <div class="group">
+                <div class="label">Nền Canvas</div>
+                <select id="bgMode" onchange="updateBgMode()" style="margin-bottom: 10px;">
+                    <option value="solid">Màu đơn sắc</option>
+                    <option value="gradient">Gradient (Chuyển màu)</option>
+                    <option value="image">Hình ảnh (Từ tab Thêm)</option>
+                </select>
+                <div class="row">
+                    <input type="color" id="bgC1" value="#0f172a" oninput="updateBg()">
+                    <input type="color" id="bgC2" value="#3b82f6" class="hidden" oninput="updateBg()">
+                </div>
+            </div>
+
+            <div style="margin-top: auto;">
+                <button class="btn-primary" style="padding: 15px; font-size: 15px;" onclick="startPIP()">
+                    <i class="fa-solid fa-up-right-from-square"></i> BẮT ĐẦU PIP
+                </button>
+                <p style="text-align: center; font-size: 11px; color: #64748b; margin-top: 10px;">
+                    Hỗ trợ: Chrome, Edge, Safari (iOS/macOS)
+                </p>
+            </div>
+        </div>
+
+        <div id="tab-layers" class="panel">
+            <div id="empty-msg" class="empty-state">
+                <i class="fa-solid fa-arrow-pointer"></i>
+                <p>Chọn đối tượng trên màn hình để sửa</p>
+            </div>
+
+            <div id="editor-ui" class="hidden">
+                <div class="group">
+                    <div class="row">
+                        <button class="btn-lock" id="btn-lock" onclick="toggleLock()">
+                            <i class="fa-solid fa-lock"></i>
+                        </button>
+                        <button class="btn-danger" onclick="deleteItem()">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                        <button onclick="moveItem('up')" title="Lên trên"><i class="fa-solid fa-arrow-up"></i></button>
+                        <button onclick="moveItem('down')" title="Xuống dưới"><i class="fa-solid fa-arrow-down"></i></button>
+                    </div>
+                </div>
+
+                <div id="props-text">
+                    <div class="group">
+                        <div class="label">Nội dung</div>
+                        <input type="text" id="inp-content" oninput="updateProp('content', this.value)">
+                    </div>
+                    <div class="group">
+                        <div class="label">Giao diện</div>
+                        <div class="row">
+                            <input type="color" id="inp-color" style="flex: 0 0 50px;" oninput="updateProp('color', this.value)">
+                            <input type="range" id="inp-size" min="10" max="250" oninput="updateProp('size', parseInt(this.value))">
+                        </div>
+                    </div>
+                    <div class="group">
+                        <div class="label">Hiệu ứng (Animation)</div>
+                        <select id="inp-anim" onchange="updateProp('anim', this.value)">
+                            <option value="none">Không</option>
+                            <option value="blink">Nhấp nháy (Blink)</option>
+                            <option value="pulse">Nhịp tim (Pulse)</option>
+                            <option value="shake">Rung lắc (Shake)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="props-clock" class="hidden">
+                    <div class="group">
+                        <div class="label">Chế độ đồng hồ</div>
+                        <select id="inp-clock-type" onchange="changeClockType(this.value)">
+                            <option value="real">Giờ hiện tại (Real-time)</option>
+                            <option value="timer">Bộ đếm (Timer)</option>
+                            <option value="countdown">Đếm ngược đến Ngày (Countdown)</option>
+                        </select>
+                    </div>
+
+                    <div id="clock-timer-inputs" class="group hidden">
+                        <div class="label">Thời gian (H : M : S)</div>
+                        <div class="row">
+                            <input type="number" id="t-h" placeholder="H" value="0" min="0">
+                            <input type="number" id="t-m" placeholder="M" value="5" min="0">
+                            <input type="number" id="t-s" placeholder="S" value="0" min="0">
+                        </div>
+                        <button class="btn-primary" style="margin-top: 10px;" onclick="startClock('timer')">
+                            <i class="fa-solid fa-play"></i> BẮT ĐẦU ĐẾM
+                        </button>
+                    </div>
+
+                    <div id="clock-date-inputs" class="group hidden">
+                        <div class="label">Đến ngày giờ</div>
+                        <input type="datetime-local" id="t-date" style="color-scheme: dark;">
+                        <button class="btn-primary" style="margin-top: 10px;" onclick="startClock('date')">
+                            <i class="fa-solid fa-play"></i> BẮT ĐẦU ĐẾM
+                        </button>
+                    </div>
+                </div>
+
+                <div id="props-media" class="hidden">
+                    <div class="group">
+                        <div class="label">Kích thước (Scale)</div>
+                        <input type="range" id="inp-scale" min="0.1" max="3" step="0.1" oninput="updateProp('scale', parseFloat(this.value))">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="tab-add" class="panel">
+            <div class="group">
+                <div class="label">Cơ bản</div>
+                <div class="row" style="flex-direction: column;">
+                    <button onclick="addItem('text')"><i class="fa-solid fa-font"></i> Thêm Chữ</button>
+                    <button onclick="addItem('clock')"><i class="fa-regular fa-clock"></i> Thêm Đồng Hồ</button>
+                </div>
+            </div>
+
+            <div class="group">
+                <div class="label">Media (Ảnh / Video)</div>
+                <div style="background: #334155; padding: 15px; border-radius: 8px; text-align: center; border: 1px dashed var(--border);">
+                    <input type="file" id="file-input" class="hidden" accept="image/*,video/*" onchange="handleFileSelect(this)">
+                    <button class="btn-primary" onclick="document.getElementById('file-input').click()">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Tải file lên
+                    </button>
+                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">Hỗ trợ .jpg, .png, .mp4</p>
+                </div>
+            </div>
+
+            <div id="file-actions" class="group hidden" style="margin-top: 20px; animation: slideIn 0.2s;">
+                <div class="label" style="color: var(--primary)">Đã chọn file! Bạn muốn làm gì?</div>
+                <div class="row">
+                    <button onclick="applyFile('bg')">Làm Nền</button>
+                    <button onclick="applyFile('layer')">Thêm Layer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="viewport">
+        <canvas id="canvas"></canvas>
+    </div>
+
 </div>
 
-<div class="modules">
-
-    <!-- 1. BACKGROUND -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><span class="icon">🖼️</span> Nền (Background)</div>
-        </div>
-        <div class="btn-group">
-            <div class="chip active" onclick="setBgMode('color', this)">Màu</div>
-            <div class="chip" onclick="triggerFile('image', this)">Ảnh</div>
-            <div class="chip" onclick="triggerFile('video', this)">Video</div>
-            <div class="chip" onclick="startScreenShare(this)">Màn hình</div>
-        </div>
-        
-        <div class="control-row" style="margin-top: 15px;">
-            <span class="control-label">Màu nền</span>
-            <div class="color-wrapper"><input type="color" id="bgColor" value="#000000"></div>
-        </div>
-        <small id="mediaStatus" style="color: var(--text-sub); display:block; margin-top:5px;">Đang dùng: Màu đơn sắc</small>
-        <input type="file" id="fileInput" class="hidden">
-    </div>
-
-    <!-- 2. TIME SUITE -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><span class="icon">⏱️</span> Thời gian</div>
-            <label class="toggle-switch">
-                <input type="checkbox" id="showTimeWidget" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
-        
-        <div class="btn-group">
-            <div class="chip active" onclick="setTimeMode('clock', this)">Đồng hồ</div>
-            <div class="chip" onclick="setTimeMode('timer', this)">Bấm giờ</div>
-            <div class="chip" onclick="setTimeMode('pomodoro', this)">Pomodoro</div>
-        </div>
-
-        <div id="timerControls" class="control-row hidden" style="margin-top: 15px;">
-            <button class="btn-action primary" onclick="toggleTimer()">Start / Stop</button>
-            <button class="btn-action danger" onclick="resetTimer()">Reset</button>
-        </div>
-
-        <!-- NEW: Position Selector -->
-        <div class="control-row" style="margin-top: 15px;">
-            <span class="control-label">Vị trí</span>
-            <select id="timePosition" style="text-align: right;">
-                <option value="top-left">Góc trái trên</option>
-                <option value="top-right">Góc phải trên</option>
-                <option value="bottom-left">Góc trái dưới</option>
-                <option value="bottom-right">Góc phải dưới</option>
-                <option value="center">Giữa màn hình</option>
-            </select>
-        </div>
-
-        <div class="control-row">
-            <span class="control-label">Hiển thị ngày</span>
-            <label class="toggle-switch">
-                <input type="checkbox" id="showDate">
-                <span class="slider"></span>
-            </label>
-        </div>
-        
-        <div class="control-row">
-            <span class="control-label">Hiển thị Mili giây</span>
-            <label class="toggle-switch">
-                <input type="checkbox" id="showMs">
-                <span class="slider"></span>
-            </label>
-        </div>
-    </div>
-
-    <!-- 3. TEXT & MARQUEE -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><span class="icon">💬</span> Văn bản & Thông báo</div>
-            <label class="toggle-switch">
-                <input type="checkbox" id="showTextWidget" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
-        
-        <input type="text" id="textContent" placeholder="Nhập nội dung..." value="PIP Master">
-        
-        <!-- NEW: Position Selector -->
-        <div class="control-row" style="margin-top: 15px;">
-            <span class="control-label">Vị trí</span>
-            <select id="textPosition" style="text-align: right;">
-                <option value="bottom">Dưới cùng</option>
-                <option value="top">Trên cùng</option>
-                <option value="middle">Giữa (Đè lên)</option>
-            </select>
-        </div>
-
-        <div class="control-row">
-            <span class="control-label">Cỡ chữ</span>
-            <input type="number" id="textSize" value="60" style="width: 60px; text-align: center;">
-            <div class="color-wrapper"><input type="color" id="textColor" value="#ffffff"></div>
-        </div>
-
-        <div class="control-row">
-            <span class="control-label">Chạy chữ (Marquee)</span>
-            <label class="toggle-switch">
-                <input type="checkbox" id="textMarquee" checked>
-                <span class="slider"></span>
-            </label>
-        </div>
-    </div>
-
-    <!-- 4. EXTRAS -->
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title"><span class="icon">🎮</span> Tiện ích Gamer</div>
-        </div>
-        
-        <div class="control-row">
-            <span class="control-label">FPS Giả lập (60-144)</span>
-            <label class="toggle-switch">
-                <input type="checkbox" id="showFPS">
-                <span class="slider"></span>
-            </label>
-        </div>
-
-        <div class="control-row">
-            <span class="control-label">Thêm Logo/Sticker</span>
-            <button class="btn-action" onclick="document.getElementById('logoInput').click()" style="width: auto; flex: none;">Chọn ảnh</button>
-            <input type="file" id="logoInput" accept="image/*" class="hidden">
-        </div>
-    </div>
-
-</div>
-
-<!-- BOTTOM BAR -->
-<div class="bottom-bar">
-    <button class="btn-pip" onclick="startPIP()">
-        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h6v6M14 10l6.1-6.1M9 21H3v-6M10 14l-6.1 6.1"/></svg>
-        BẮT ĐẦU PIP
-    </button>
-</div>
-
-<!-- HIDDEN RESOURCES -->
-<video id="sourceVideo" loop playsinline muted class="hidden"></video>
-<img id="sourceImage" class="hidden">
-<img id="sourceLogo" class="hidden">
-<video id="pipVideo" controls playsinline class="hidden"></video>
+<div id="hidden-media"></div>
+<video id="pip-video-output" autoplay muted playsinline></video>
 
 <script>
-    /**
-     * CORE PIP ENGINE
-     */
+    /** --- ENGINE CONFIG --- **/
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     
-    // State Management
-    const state = {
-        bgMode: 'color', // color, image, video, screen
-        timeMode: 'clock', // clock, timer, pomodoro
-        timerState: { running: false, start: 0, elapsed: 0, duration: 25 * 60 * 1000 },
-        textX: canvas.width
+    const app = {
+        w: 1280, h: 720,
+        bg: { mode: 'solid', c1: '#0f172a', c2: '#3b82f6', img: null },
+        items: [],
+        selId: null,
+        drag: null,
+        tempFile: null
     };
 
-    // DOM Elements
-    const els = {
-        bgColor: document.getElementById('bgColor'),
-        mediaStatus: document.getElementById('mediaStatus'),
-        sourceVideo: document.getElementById('sourceVideo'),
-        sourceImage: document.getElementById('sourceImage'),
-        sourceLogo: document.getElementById('sourceLogo'),
-        pipVideo: document.getElementById('pipVideo'),
-        timerControls: document.getElementById('timerControls')
-    };
-
-    // --- 1. BACKGROUND HANDLERS ---
-    function setBgMode(mode, el) {
-        state.bgMode = mode;
-        updateChips(el);
-        els.mediaStatus.innerText = "Đang dùng: Màu đơn sắc";
+    /** --- INITIALIZATION --- **/
+    function init() {
+        resizeCanvas('16:9');
+        requestAnimationFrame(renderLoop);
     }
 
-    function updateChips(el) {
-        if(!el || !el.parentElement) return;
-        Array.from(el.parentElement.children).forEach(c => c.classList.remove('active'));
-        el.classList.add('active');
-    }
+    /** --- RENDER LOOP --- **/
+    function renderLoop() {
+        // 1. DRAW BACKGROUND
+        if (app.bg.mode === 'image' && app.bg.img) {
+            drawImageCover(ctx, app.bg.img, app.w, app.h);
+        } else if (app.bg.mode === 'gradient') {
+            const g = ctx.createLinearGradient(0, 0, app.w, app.h);
+            g.addColorStop(0, app.bg.c1);
+            g.addColorStop(1, app.bg.c2);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, app.w, app.h);
+        } else {
+            ctx.fillStyle = app.bg.c1;
+            ctx.fillRect(0, 0, app.w, app.h);
+        }
 
-    function triggerFile(type, el) {
-        const input = document.getElementById('fileInput');
-        input.accept = type === 'video' ? 'video/*' : 'image/*';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if(!file) return;
-            const url = URL.createObjectURL(file);
-            
-            state.bgMode = type;
-            if(type === 'video') {
-                els.sourceVideo.srcObject = null;
-                els.sourceVideo.src = url;
-                els.sourceVideo.play();
-                els.mediaStatus.innerText = `Video: ${file.name}`;
-            } else {
-                els.sourceImage.src = url;
-                els.mediaStatus.innerText = `Ảnh: ${file.name}`;
+        // 2. DRAW ITEMS
+        const now = Date.now();
+        
+        app.items.forEach(item => {
+            ctx.save();
+
+            // ANIMATION TRANSFORMS
+            if (item.anim === 'pulse') {
+                const s = 1 + Math.sin(now / 200) * 0.02;
+                ctx.translate(item.x, item.y); ctx.scale(s, s); ctx.translate(-item.x, -item.y);
+            } else if (item.anim === 'shake') {
+                ctx.translate(Math.random()*2-1, Math.random()*2-1);
             }
-            updateChips(el);
+            if (item.anim === 'blink') {
+                ctx.globalAlpha = 0.6 + Math.sin(now / 300) * 0.4;
+            }
+
+            // DRAW CONTENT
+            if (item.type === 'text' || item.type === 'clock') {
+                drawTextItem(item);
+            } else if (item.type === 'image' || item.type === 'video') {
+                drawMediaItem(item);
+            }
+
+            // DRAW SELECTION & LOCK UI
+            if (app.selId === item.id) {
+                const pad = 10;
+                ctx.strokeStyle = item.locked ? '#fbbf24' : '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(item.x - item.w/2 - pad, item.y - item.h/2 - pad, item.w + pad*2, item.h + pad*2);
+                
+                // Draw Lock Icon on Canvas
+                if(item.locked) {
+                    ctx.fillStyle = '#fbbf24';
+                    ctx.beginPath();
+                    ctx.arc(item.x + item.w/2 + pad, item.y - item.h/2 - pad, 8, 0, Math.PI*2);
+                    ctx.fill();
+                    // Simple lock symbol
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(item.x + item.w/2 + pad - 2, item.y - item.h/2 - pad - 2, 4, 4);
+                }
+            }
+
+            ctx.restore();
+        });
+
+        requestAnimationFrame(renderLoop);
+    }
+
+    /* --- DRAWING HELPERS --- */
+    function drawTextItem(item) {
+        let content = item.content;
+        if (item.type === 'clock') content = getClockString(item);
+
+        ctx.font = `bold ${item.size}px 'Inter', sans-serif`;
+        ctx.fillStyle = item.color;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // Shadow
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetY = 2;
+
+        ctx.fillText(content, item.x, item.y);
+        
+        // Update Hit Box
+        const m = ctx.measureText(content);
+        item.w = m.width; 
+        item.h = item.size; // Approx height
+    }
+
+    function drawMediaItem(item) {
+        if (!item.source) return;
+        const s = item.scale || 1;
+        // Use videoWidth for video, width for image
+        const nw = (item.source.videoWidth || item.source.width) * s;
+        const nh = (item.source.videoHeight || item.source.height) * s;
+        
+        item.w = nw; 
+        item.h = nh;
+        
+        ctx.drawImage(item.source, item.x - nw/2, item.y - nh/2, nw, nh);
+    }
+
+    function drawImageCover(ctx, img, w, h) {
+        // Algorithm to "Cover" the canvas with image
+        const ratio = w / h;
+        const imgRatio = img.width / img.height;
+        let nw, nh, cx, cy;
+
+        if (imgRatio > ratio) {
+            nh = h; nw = h * imgRatio;
+            cx = (w - nw) / 2; cy = 0;
+        } else {
+            nw = w; nh = w / imgRatio;
+            cx = 0; cy = (h - nh) / 2;
+        }
+        ctx.drawImage(img, cx, cy, nw, nh);
+    }
+
+    /* --- CLOCK LOGIC --- */
+    function getClockString(item) {
+        if (item.subtype === 'real') {
+            return new Date().toLocaleTimeString('vi-VN');
+        }
+        
+        const now = Date.now();
+        let ms = 0;
+
+        if (item.subtype === 'timer') {
+            // Timer logic: Duration - (Now - Start)
+            const elapsed = item.running ? (now - item.start) : 0;
+            ms = item.duration - elapsed;
+        } else if (item.subtype === 'countdown') {
+            // Countdown logic: Target - Now
+            ms = item.target - now;
+        }
+
+        if (ms < 0) ms = 0;
+        return formatTime(ms);
+    }
+
+    function formatTime(ms) {
+        const totalSec = Math.floor(ms / 1000);
+        const s = totalSec % 60;
+        const m = Math.floor((totalSec / 60) % 60);
+        const h = Math.floor(totalSec / 3600);
+        const d = Math.floor(h / 24);
+
+        if (d > 0) return `${d} ngày ${h%24}h`; // Short format for days
+        return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    }
+    function pad(n) { return n.toString().padStart(2, '0'); }
+
+    /* --- INTERACTION: DRAG & DROP & BOUNDARY --- */
+    function getEventPos(e) {
+        const r = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return {
+            x: (clientX - r.left) * (app.w / r.width),
+            y: (clientY - r.top) * (app.h / r.height)
         };
-        input.click();
     }
 
-    async function startScreenShare(el) {
-        try {
-            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-            state.bgMode = 'video'; // Treat screen as video source
-            els.sourceVideo.srcObject = stream;
-            els.sourceVideo.play();
-            els.mediaStatus.innerText = "Đang quay màn hình";
-            updateChips(el);
-        } catch(e) {
-            console.error(e);
-            alert("Không thể chia sẻ màn hình.");
-        }
-    }
+    canvas.addEventListener('mousedown', handleStart);
+    canvas.addEventListener('touchstart', handleStart, {passive: false});
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchend', handleEnd);
 
-    // --- 2. TIME LOGIC ---
-    function setTimeMode(mode, el) {
-        state.timeMode = mode;
-        updateChips(el);
+    function handleStart(e) {
+        e.preventDefault(); // Prevent scroll on mobile
+        const pos = getEventPos(e);
         
-        if(mode === 'timer') {
-            state.timerState = { running: false, start: 0, elapsed: 0 };
-            els.timerControls.classList.remove('hidden');
-        } else if (mode === 'pomodoro') {
-            state.timerState = { running: false, start: 0, elapsed: 0, duration: 25 * 60 * 1000 };
-            els.timerControls.classList.remove('hidden');
-        } else {
-            els.timerControls.classList.add('hidden');
-        }
-    }
+        // Hit Test (Top item first)
+        const hit = [...app.items].reverse().find(i => 
+            Math.abs(pos.x - i.x) < i.w/2 + 10 && 
+            Math.abs(pos.y - i.y) < i.h/2 + 10
+        );
 
-    function toggleTimer() {
-        if(state.timerState.running) {
-            state.timerState.running = false;
-            state.timerState.elapsed += Date.now() - state.timerState.start;
-        } else {
-            state.timerState.running = true;
-            state.timerState.start = Date.now();
-        }
-    }
-
-    function resetTimer() {
-        state.timerState.running = false;
-        state.timerState.elapsed = 0;
-    }
-
-    // --- 3. EXTRA LOGIC ---
-    document.getElementById('logoInput').onchange = (e) => {
-        const file = e.target.files[0];
-        if(file) els.sourceLogo.src = URL.createObjectURL(file);
-    };
-
-    // --- RENDER LOOP ---
-    function draw() {
-        // A. Clear & Background
-        ctx.fillStyle = els.bgColor.value;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (state.bgMode === 'video' || state.bgMode === 'screen') {
-            drawImageProp(ctx, els.sourceVideo);
-        } else if (state.bgMode === 'image') {
-            drawImageProp(ctx, els.sourceImage);
-        }
-
-        // B. Draw Time Widget
-        if(document.getElementById('showTimeWidget').checked) {
-            drawTime();
-        }
-
-        // C. Draw Text Widget
-        if(document.getElementById('showTextWidget').checked) {
-            drawText();
-        }
-
-        // D. Gamer Extras
-        if(document.getElementById('showFPS').checked) drawFPS();
-        
-        // E. Logo
-        if(els.sourceLogo.src && els.sourceLogo.src !== window.location.href) {
-            ctx.drawImage(els.sourceLogo, canvas.width - 150, 20, 130, 130);
-        }
-
-        requestAnimationFrame(draw);
-    }
-
-    function drawTime() {
-        let text = "";
-        
-        // --- 1. Get Time String ---
-        if (state.timeMode === 'clock') {
-            const now = new Date();
-            text = now.toLocaleTimeString('vi-VN', {hour12: false});
-            if(document.getElementById('showMs').checked) {
-                const ms = String(now.getMilliseconds()).padStart(3, '0');
-                text += `.${ms}`;
+        if (hit) {
+            selectItem(hit.id);
+            if (!hit.locked) {
+                app.drag = { id: hit.id, ox: pos.x - hit.x, oy: pos.y - hit.y };
             }
         } else {
-            // Timer & Pomodoro Logic
-            let time = state.timerState.elapsed;
-            if (state.timerState.running) time += Date.now() - state.timerState.start;
-            
-            if (state.timeMode === 'pomodoro') {
-                let remain = state.timerState.duration - time;
-                if(remain < 0) remain = 0;
-                time = remain;
-            }
+            selectItem(null);
+        }
+    }
 
-            const m = Math.floor(time / 60000);
-            const s = Math.floor((time % 60000) / 1000);
-            const ms = Math.floor((time % 1000) / 10);
-            text = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}:${String(ms).padStart(2,'0')}`;
+    function handleMove(e) {
+        if (!app.drag) return;
+        e.preventDefault();
+        const pos = getEventPos(e);
+        const item = app.items.find(i => i.id === app.drag.id);
+        
+        if (item) {
+            let nx = pos.x - app.drag.ox;
+            let ny = pos.y - app.drag.oy;
+
+            // --- BOUNDARY CONSTRAINT (100% REQUIREMENT) ---
+            // Keep center point within bounds relative to size
+            const halfW = item.w / 2;
+            const halfH = item.h / 2;
+            
+            // Limit X
+            if (nx < halfW) nx = halfW;
+            if (nx > app.w - halfW) nx = app.w - halfW;
+            
+            // Limit Y
+            if (ny < halfH) ny = halfH;
+            if (ny > app.h - halfH) ny = app.h - halfH;
+
+            item.x = nx;
+            item.y = ny;
+        }
+    }
+
+    function handleEnd() { app.drag = null; }
+
+    /* --- STATE MANAGEMENT --- */
+    function addItem(type, source = null) {
+        const id = Date.now();
+        const item = {
+            id, type, x: app.w/2, y: app.h/2,
+            content: 'Văn bản mới', size: 60, color: '#ffffff', anim: 'none',
+            subtype: 'real', duration: 0, target: 0, start: 0, running: false,
+            source: source, scale: 0.5,
+            locked: false
+        };
+        app.items.push(item);
+        selectItem(id);
+        switchTab('layers');
+    }
+
+    function selectItem(id) {
+        app.selId = id;
+        const empty = document.getElementById('empty-msg');
+        const ui = document.getElementById('editor-ui');
+
+        if (!id) {
+            empty.classList.remove('hidden');
+            ui.classList.add('hidden');
+            return;
         }
 
-        // --- 2. Calculate Position ---
-        const pos = document.getElementById('timePosition').value;
-        const padding = 40;
-        let x, y;
+        empty.classList.add('hidden');
+        ui.classList.remove('hidden');
 
-        ctx.font = "bold 100px sans-serif";
-        ctx.fillStyle = state.timeMode === 'pomodoro' && state.timerState.running ? "#FF453A" : "#0A84FF";
-        ctx.shadowColor = "rgba(0,0,0,0.8)";
-        ctx.shadowBlur = 10;
+        const item = app.items.find(i => i.id === id);
         
-        if (pos === 'top-left') {
-            ctx.textAlign = 'left';
-            x = padding; 
-            y = 100;
-        } else if (pos === 'top-right') {
-            ctx.textAlign = 'right';
-            x = canvas.width - padding;
-            y = 100;
-        } else if (pos === 'bottom-left') {
-            ctx.textAlign = 'left';
-            x = padding;
-            y = canvas.height - padding;
-        } else if (pos === 'bottom-right') {
-            ctx.textAlign = 'right';
-            x = canvas.width - padding;
-            y = canvas.height - padding;
-        } else if (pos === 'center') {
-            ctx.textAlign = 'center';
-            x = canvas.width / 2;
-            y = canvas.height / 2 + 30; // offset slightly to be visual center
+        // 1. UPDATE LOCK BUTTON UI (Fix bug)
+        const btnLock = document.getElementById('btn-lock');
+        if (item.locked) {
+            btnLock.classList.add('active');
+            btnLock.innerHTML = '<i class="fa-solid fa-lock"></i>';
+        } else {
+            btnLock.classList.remove('active');
+            btnLock.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
         }
 
-        // Draw Time
-        ctx.fillText(text, x, y);
+        // 2. SHOW RELEVANT TOOLS
+        const isMedia = item.type === 'image' || item.type === 'video';
+        const isClock = item.type === 'clock';
+
+        document.getElementById('props-text').classList.toggle('hidden', isMedia);
+        document.getElementById('props-media').classList.toggle('hidden', !isMedia);
+        document.getElementById('props-clock').classList.toggle('hidden', !isClock);
+
+        // 3. FILL DATA
+        if (!isMedia) {
+            document.getElementById('inp-content').value = item.content;
+            document.getElementById('inp-color').value = item.color;
+            document.getElementById('inp-size').value = item.size;
+            document.getElementById('inp-anim').value = item.anim;
+        } else {
+            document.getElementById('inp-scale').value = item.scale;
+        }
+
+        if (isClock) {
+            document.getElementById('inp-clock-type').value = item.subtype;
+            changeClockType(item.subtype);
+        }
+    }
+
+    function updateProp(key, val) {
+        const item = app.items.find(i => i.id === app.selId);
+        if (item) item[key] = val;
+    }
+
+    function toggleLock() {
+        const item = app.items.find(i => i.id === app.selId);
+        if (item) {
+            item.locked = !item.locked;
+            selectItem(item.id); // Refresh UI
+        }
+    }
+
+    function deleteItem() {
+        if (app.selId) {
+            app.items = app.items.filter(i => i.id !== app.selId);
+            selectItem(null);
+        }
+    }
+
+    function moveItem(dir) {
+        const i = app.items.findIndex(x => x.id === app.selId);
+        if (i < 0) return;
+        const item = app.items[i];
+        app.items.splice(i, 1);
+        if (dir === 'up') app.items.push(item);
+        else app.items.unshift(item);
+    }
+
+    /* --- CLOCK SETTINGS --- */
+    function changeClockType(type) {
+        const item = app.items.find(i => i.id === app.selId);
+        if(item) item.subtype = type;
+
+        document.getElementById('clock-timer-inputs').classList.toggle('hidden', type !== 'timer');
+        document.getElementById('clock-date-inputs').classList.toggle('hidden', type !== 'countdown');
+    }
+
+    function startClock(mode) {
+        const item = app.items.find(i => i.id === app.selId);
+        if (!item) return;
+
+        if (mode === 'timer') {
+            const h = parseInt(document.getElementById('t-h').value) || 0;
+            const m = parseInt(document.getElementById('t-m').value) || 0;
+            const s = parseInt(document.getElementById('t-s').value) || 0;
+            item.duration = (h * 3600 + m * 60 + s) * 1000;
+            item.start = Date.now();
+            item.running = true;
+        } else if (mode === 'date') {
+            const val = document.getElementById('t-date').value;
+            if (val) item.target = new Date(val).getTime();
+        }
+    }
+
+    /* --- FILE & BACKGROUND --- */
+    function handleFileSelect(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
         
-        // --- 3. Draw Date ---
-        if(document.getElementById('showDate').checked) {
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('vi-VN');
-            
-            ctx.font = "bold 40px sans-serif";
-            ctx.fillStyle = "#ddd";
-            
-            // Smart positioning for date (Above time if Bottom, Below time if Top)
-            let dateY;
-            if (pos.includes('bottom')) {
-                dateY = y - 90; // Place above
+        // Preload based on type
+        if (file.type.startsWith('video')) {
+            const v = document.createElement('video');
+            v.src = url; v.loop = true; v.muted = true; v.play();
+            app.tempFile = { type: 'video', src: v };
+        } else {
+            const img = new Image();
+            img.src = url;
+            app.tempFile = { type: 'image', src: img };
+        }
+
+        // Show Actions
+        document.getElementById('file-actions').classList.remove('hidden');
+    }
+
+    function applyFile(mode) {
+        if (!app.tempFile) return;
+
+        if (mode === 'bg') {
+            app.bg.mode = 'image';
+            if (app.tempFile.type === 'video') {
+                // If user forces video as BG, trick it by adding as bottom layer full size
+                alert("Video sẽ được thêm dưới dạng Layer Nền.");
+                addItem('video', app.tempFile.src);
+                // Move to bottom & Scale up approx
+                const item = app.items.pop();
+                item.scale = 2; // rough fill
+                app.items.unshift(item);
             } else {
-                dateY = y + 45; // Place below
+                app.bg.img = app.tempFile.src;
             }
-            
-            ctx.fillText(dateStr, x, dateY);
-        }
-
-        ctx.shadowBlur = 0;
-        ctx.textAlign = 'start'; // Reset alignment
-    }
-
-    function drawText() {
-        const content = document.getElementById('textContent').value;
-        if(!content) return;
-        
-        const size = document.getElementById('textSize').value;
-        const color = document.getElementById('textColor').value;
-        const isMarquee = document.getElementById('textMarquee').checked;
-        const posMode = document.getElementById('textPosition').value;
-
-        ctx.font = `bold ${size}px sans-serif`;
-        ctx.fillStyle = color;
-        ctx.textBaseline = 'bottom';
-        
-        // --- Calculate Y Position ---
-        let y;
-        if (posMode === 'top') {
-            y = parseInt(size) + 20;
-        } else if (posMode === 'middle') {
-            y = (canvas.height / 2) + (parseInt(size) / 2);
         } else {
-            y = canvas.height - 30; // bottom default
+            addItem(app.tempFile.type, app.tempFile.src);
         }
 
-        // Background strip
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
-        // Rect: x=0, y=top of text, w=width, h=height+padding
-        ctx.fillRect(0, y - size - 10, canvas.width, parseInt(size) + 20);
-        
-        ctx.fillStyle = color;
-        
-        if(isMarquee) {
-            state.textX -= 3;
-            const w = ctx.measureText(content).width;
-            if(state.textX < -w) state.textX = canvas.width;
-            ctx.fillText(content, state.textX, y);
-        } else {
-            ctx.textAlign = 'center';
-            ctx.fillText(content, canvas.width/2, y);
-            ctx.textAlign = 'start'; // reset
-        }
+        // Reset UI
+        document.getElementById('file-actions').classList.add('hidden');
+        document.getElementById('file-input').value = '';
     }
 
-    function drawFPS() {
-        const fps = Math.floor(Math.random() * (144 - 140) + 140); 
-        ctx.fillStyle = "#00ff00";
-        ctx.font = "20px Monospace";
-        ctx.textAlign = "left";
-        ctx.fillText(`FPS: ${fps}`, 10, 30);
+    function updateBgMode() {
+        app.bg.mode = document.getElementById('bgMode').value;
+        document.getElementById('bgC2').classList.toggle('hidden', app.bg.mode !== 'gradient');
+    }
+    function updateBg() {
+        app.bg.c1 = document.getElementById('bgC1').value;
+        app.bg.c2 = document.getElementById('bgC2').value;
     }
 
-    // Helper: Contain Image/Video keeping aspect ratio
-    function drawImageProp(ctx, img) {
-        if(!img) return;
-        const w = img.videoWidth || img.naturalWidth;
-        const h = img.videoHeight || img.naturalHeight;
-        if(!w) return;
+    /* --- GLOBAL HELPERS --- */
+    function switchTab(name) {
+        document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
         
-        const scale = Math.min(canvas.width/w, canvas.height/h);
-        const nw = w * scale;
-        const nh = h * scale;
-        ctx.drawImage(img, (canvas.width-nw)/2, (canvas.height-nh)/2, nw, nh);
+        // Simple index mapping
+        const idx = name === 'settings' ? 0 : name === 'layers' ? 1 : 2;
+        document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+        document.getElementById('tab-' + name).classList.add('active');
     }
 
-    // --- PIP TRIGGER ---
+    function resizeCanvas(ratio) {
+        if (ratio === '16:9') { app.w = 1280; app.h = 720; }
+        else if (ratio === '9:16') { app.w = 405; app.h = 720; }
+        else { app.w = 720; app.h = 720; }
+        canvas.width = app.w; canvas.height = app.h;
+    }
+
     async function startPIP() {
-        const stream = canvas.captureStream(60);
-        els.pipVideo.srcObject = stream;
-        try {
-            await els.pipVideo.play();
-            if (document.pictureInPictureElement) await document.exitPictureInPicture();
-            await els.pipVideo.requestPictureInPicture();
-        } catch (error) {
-            alert("Lỗi: " + error.message);
+        const v = document.getElementById('pip-video-output');
+        if (document.pictureInPictureElement) {
+            document.exitPictureInPicture();
+        } else {
+            v.srcObject = canvas.captureStream(60);
+            try {
+                await v.play();
+                await v.requestPictureInPicture();
+            } catch (e) {
+                alert("Không thể mở PIP. Vui lòng đảm bảo bạn đang dùng Chrome/Safari mới nhất.");
+            }
         }
     }
 
-    // Init
-    draw();
+    // START
+    init();
 
 </script>
 </body>

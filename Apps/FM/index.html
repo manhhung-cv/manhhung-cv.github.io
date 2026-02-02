@@ -1,455 +1,575 @@
 <!DOCTYPE html>
 <html lang="vi">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình phát Radio FM - Giao diện Nâng cao</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zen Radio Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;500;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-deep: #09090b;
+            --drawer-bg: #18181b;
+            --text-main: #f4f4f5;
+            --text-dim: #71717a;
+        }
+
         body {
-            font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: none; /* Prevent browser bounce */
         }
 
-        .glass-panel {
-            background-color: rgba(28, 28, 30, 0.7);
-            backdrop-filter: blur(20px) saturate(180%);
-            -webkit-backdrop-filter: blur(20px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        /* --- VISUALS --- */
+        .zen-shadow {
+            box-shadow: 0 0 50px -12px rgba(0, 0, 0, 0.7);
+        }
+        
+        .album-art {
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            filter: grayscale(100%) brightness(0.8);
+            transform: scale(0.92);
+        }
+        .album-art.playing {
+            filter: grayscale(0%) brightness(1);
+            transform: scale(1);
+            box-shadow: 0 20px 40px -10px rgba(255,255,255,0.1);
         }
 
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+        /* --- DRAWER (BOTTOM SHEET) --- */
+        .drawer-container {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 85vh; /* Max height */
+            background: var(--drawer-bg);
+            border-top-left-radius: 32px;
+            border-top-right-radius: 32px;
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+            transform: translateY(calc(100% - 80px)); /* Default: Show 80px peek */
+            transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
         }
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
+        .drawer-container.dragging {
+            transition: none; /* Remove transition during drag for 1:1 movement */
         }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: rgba(255, 255, 255, 0.3);
-            border-radius: 20px;
-        }
-
-        input[type=range].volume-slider {
-            -webkit-appearance: none;
-            appearance: none;
+        .drawer-handle-area {
+            height: 80px; /* Peek height */
             width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 6px;
-            outline: none;
-            transition: background .3s;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            cursor: grab;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        .drawer-handle-bar {
+            width: 40px;
+            height: 4px;
+            background: #3f3f46;
+            border-radius: 10px;
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
         }
 
-        input[type=range].volume-slider:hover {
-            background: rgba(255, 255, 255, 0.3);
+        /* --- CATEGORY HEADERS --- */
+        .cat-header {
+            position: sticky;
+            top: 0;
+            background: var(--drawer-bg);
+            padding: 12px 0 8px 0;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            z-index: 10;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
-        input[type=range].volume-slider::-webkit-slider-thumb {
+        /* --- SLIDER --- */
+        input[type=range] {
             -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            background: #fff;
+            background: transparent;
+            height: 30px; /* Touch target */
             cursor: pointer;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            background: #27272a;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px;
+            width: 12px;
             border-radius: 50%;
+            background: #fff;
+            margin-top: -4px;
+            transition: transform 0.1s;
+        }
+        input[type=range]:active::-webkit-slider-thumb {
+            transform: scale(1.5);
         }
 
-        .station-item.playing,
-        .noise-btn.active {
-            background-color: rgba(0, 122, 255, 0.8);
-        }
-
-        .station-item.playing .station-name,
-        .station-item.playing .station-desc {
-            color: white;
-        }
-
-        .play-pause-btn {
-            background: linear-gradient(145deg, #e6e6e6, #ffffff);
-            box-shadow: 4px 4px 10px #c7c7c7, -4px -4px 10px #ffffff;
-        }
-
-        .play-pause-btn:active {
-            background: #e0e0e0;
-            box-shadow: inset 4px 4px 10px #c7c7c7, inset -4px -4px 10px #ffffff;
-        }
+        /* --- SCROLLBAR --- */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* --- UTILS --- */
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
     </style>
 </head>
+<body class="h-screen w-full flex flex-col items-center relative">
 
-<body class="bg-black text-gray-200">
+    <div class="w-full max-w-md px-6 pt-10 flex justify-between items-center z-10">
+        <button onclick="toggleModal('timer-modal')" class="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 active:scale-95 transition-all">
+            <i id="timer-icon" class="fa-regular fa-clock text-xs text-neutral-400 group-hover:text-white"></i>
+            <span id="timer-display" class="text-[10px] font-bold uppercase tracking-wider text-neutral-400 group-hover:text-white">Hẹn giờ</span>
+        </button>
+        
+        <button onclick="toggleModal('add-modal')" class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 active:scale-95 transition-all">
+            <i class="fa-solid fa-plus text-xs text-neutral-400"></i>
+        </button>
+    </div>
 
-    <!-- Dynamic Blurred Background -->
-    <div id="background-art"
-        class="fixed inset-0 z-0 bg-cover bg-center transition-all duration-1000 scale-110 blur-3xl opacity-50"></div>
-
-    <main class="relative z-10 flex items-center justify-center min-h-screen w-full p-4">
-        <div
-            class="w-full max-w-6xl h-auto max-h-[95vh] lg:h-[90vh] lg:max-h-[700px] glass-panel rounded-3xl shadow-2xl flex flex-col lg:flex-row overflow-hidden">
-
-            <!-- Player Section (Left on Desktop) -->
-            <div
-                class="w-full lg:w-2/5 flex-shrink-0 flex flex-col justify-between items-center text-center p-6 md:p-8">
-                <div class="w-full">
-                    <img id="station-logo" src="https://placehold.co/400x400/1c1c1e/444444?text=FM+Radio"
-                        alt="Bìa album"
-                        class="w-40 h-40 sm:w-48 sm:h-48 lg:w-64 lg:h-64 rounded-2xl shadow-lg object-cover mx-auto transition-all duration-500">
-                    <h3 id="station-name" class="text-2xl lg:text-3xl font-bold mt-6 text-white truncate w-full">Chọn
-                        một kênh</h3>
-                    <p id="station-genre" class="text-gray-400 text-base mt-1">Để bắt đầu nghe</p>
-                </div>
-
-                <!-- Controls Section -->
-                <div class="w-full max-w-xs mt-4 relative">
-                    <audio id="audio-player" class="w-full hidden" crossOrigin="anonymous"></audio>
-                    <!-- Player Controls -->
-                    <div class="flex items-center justify-center space-x-8 my-4">
-                        <button id="prev-btn" class="text-gray-400 hover:text-white transition-colors">
-                            <i class="fas fa-backward-step fa-2x"></i>
-                        </button>
-                        <button id="play-pause-btn"
-                            class="play-pause-btn hover:scale-105 w-16 h-16 lg:w-20 lg:h-20 rounded-full flex items-center justify-center text-black transition-transform">
-                            <i id="play-pause-icon" class="fas fa-play text-xl lg:text-2xl ml-1"></i>
-                        </button>
-                        <button id="next-btn" class="text-gray-400 hover:text-white transition-colors">
-                            <i class="fas fa-forward-step fa-2x"></i>
-                        </button>
-                    </div>
-                    <!-- Volume and Noise Control -->
-                    <div class="flex items-center space-x-3 text-gray-400 text-sm">
-                        <i class="fas fa-volume-off"></i>
-                        <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="0.8"
-                            class="volume-slider" title="Âm lượng Radio">
-                        <i class="fas fa-volume-high"></i>
-                        <button id="noise-toggle-btn"
-                            class="text-gray-400 hover:text-white transition-colors ml-2 p-2 rounded-full hover:bg-white/10">
-                            <i class="fas fa-sliders"></i>
-                        </button>
-                    </div>
-                    <!-- Noise Options Panel -->
-                    <div id="noise-panel"
-                        class="hidden absolute bottom-full mb-4 w-full glass-panel p-3 rounded-xl shadow-lg">
-                        <p class="text-white font-bold text-center mb-2">Tiếng Ồn Giả</p>
-                        <div class="grid grid-cols-2 gap-2 text-sm">
-                            <button data-noise="off"
-                                class="noise-btn p-2 rounded-lg bg-red-500/80 text-white col-span-2">Tắt</button>
-                            <button data-noise="white" class="noise-btn p-2 rounded-lg bg-white/10 hover:bg-white/20">Ồn
-                                Trắng</button>
-                            <button data-noise="static-low"
-                                class="noise-btn p-2 rounded-lg bg-white/10 hover:bg-white/20">Rè Ít</button>
-                            <button data-noise="static-mid"
-                                class="noise-btn p-2 rounded-lg bg-white/10 hover:bg-white/20">Rè Vừa</button>
-                            <button data-noise="static-high"
-                                class="noise-btn p-2 rounded-lg bg-white/10 hover:bg-white/20">Rè Nhiều</button>
-                        </div>
-                        <div class="flex items-center space-x-2 text-gray-400 text-xs mt-3">
-                            <i class="fas fa-sliders"></i>
-                            <input id="noise-volume-slider" type="range" min="0" max="1" step="0.01" value="0.2"
-                                class="volume-slider" title="Âm lượng Tiếng ồn">
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                class="w-full lg:w-3/5 flex flex-col bg-black/10 border-t lg:border-t-0 lg:border-l border-white/5 min-h-0">
-                <div class="p-4 border-b border-white/5 flex-shrink-0">
-                    <h2 class="text-xl font-bold text-center text-white">Danh sách kênh</h2>
-                </div>
-                <div id="station-list" class="flex-grow overflow-y-auto custom-scrollbar p-2">
-                    <!-- Stations will be injected here by JavaScript -->
-                </div>
+    <div class="flex-1 w-full max-w-md flex flex-col items-center justify-center px-8 pb-32">
+        
+        <div class="relative w-64 h-64 md:w-72 md:h-72 mb-10">
+            <img id="art" src="https://placehold.co/400x400/111/333" class="album-art w-full h-full object-cover rounded-[32px] zen-shadow border border-white/5">
+            <div id="loading" class="absolute inset-0 flex items-center justify-center bg-black/50 rounded-[32px] hidden">
+                <i class="fa-solid fa-circle-notch fa-spin text-2xl text-white"></i>
             </div>
         </div>
-    </main>
+
+        <div class="w-full text-center mb-8">
+            <h1 id="title" class="text-2xl font-semibold text-white truncate px-2">Zen Radio</h1>
+            <p id="genre" class="text-xs font-medium text-neutral-500 uppercase tracking-widest mt-2">Chọn kênh để phát</p>
+        </div>
+
+        <div class="w-full mb-8 relative group">
+            <div class="flex justify-between text-[10px] text-neutral-500 mb-1 font-bold tracking-wider">
+                <span>VOL</span>
+                <span id="vol-percent">80%</span>
+            </div>
+            <div class="relative h-1 w-full bg-neutral-800 rounded-full overflow-hidden pointer-events-none">
+                <div id="vol-bar" class="absolute top-0 left-0 h-full bg-white w-[80%]"></div>
+            </div>
+            <input id="vol-slider" type="range" min="0" max="1" step="0.01" value="0.8" class="absolute top-[-13px] left-0 w-full opacity-0">
+        </div>
+
+        <div class="flex items-center justify-center gap-8">
+            <button onclick="toggleMode()" class="w-10 h-10 flex items-center justify-center text-neutral-500 hover:text-white transition-colors relative">
+                <i id="mode-icon" class="fa-solid fa-repeat"></i>
+                <div id="mode-dot" class="absolute bottom-1 w-1 h-1 bg-white rounded-full opacity-0"></div>
+            </button>
+
+            <button onclick="changeStation(-1)" class="w-12 h-12 flex items-center justify-center text-neutral-400 hover:text-white active:scale-90 transition-transform">
+                <i class="fa-solid fa-backward-step fa-xl"></i>
+            </button>
+            
+            <button onclick="togglePlay()" class="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                <i id="play-btn" class="fa-solid fa-play text-xl ml-1"></i>
+            </button>
+
+            <button onclick="changeStation(1)" class="w-12 h-12 flex items-center justify-center text-neutral-400 hover:text-white active:scale-90 transition-transform">
+                <i class="fa-solid fa-forward-step fa-xl"></i>
+            </button>
+
+            <button onclick="setMode(1)" class="w-10 h-10 flex items-center justify-center text-neutral-500 hover:text-white transition-colors">
+                <i class="fa-solid fa-shuffle"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="drawer" class="drawer-container">
+        <div id="drawer-handle" class="drawer-handle-area">
+            <div class="drawer-handle-bar"></div>
+            <div class="flex items-center gap-4 w-full">
+                <div class="w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <i class="fa-solid fa-list-ul text-neutral-500 text-sm"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="text-xs font-bold text-neutral-400 uppercase tracking-wider">Danh sách kênh</p>
+                    <p class="text-sm text-white font-medium truncate">Vuốt lên để xem toàn bộ</p>
+                </div>
+                <i id="drawer-arrow" class="fa-solid fa-chevron-up text-neutral-500 transition-transform duration-300"></i>
+            </div>
+        </div>
+
+        <div id="playlist-scroll" class="flex-1 overflow-y-auto no-scrollbar px-6 pb-6">
+            <div id="playlist-content" class="pt-2">
+                </div>
+        </div>
+    </div>
+
+    <div id="timer-modal" class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+        <div class="bg-[#18181b] w-full max-w-xs p-6 rounded-3xl border border-white/10 transform transition-all modal-enter" id="timer-box">
+            <h3 class="text-center text-white font-bold mb-6">Hẹn giờ tắt nhạc</h3>
+            <div class="flex justify-center items-center gap-2 mb-8">
+                <input type="number" id="timer-input" class="bg-transparent border-b border-neutral-600 text-center text-2xl text-white w-20 focus:outline-none focus:border-white py-1" value="30">
+                <span class="text-neutral-500">phút</span>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="toggleModal('timer-modal')" class="flex-1 py-3 rounded-xl bg-neutral-800 text-neutral-400 text-xs font-bold">Hủy</button>
+                <button onclick="startTimer()" class="flex-1 py-3 rounded-xl bg-white text-black text-xs font-bold">Bắt đầu</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="add-modal" class="hidden fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+        <div class="bg-[#18181b] w-full max-w-sm p-6 rounded-3xl border border-white/10 transform transition-all modal-enter" id="add-box">
+            <h3 class="text-center text-white font-bold mb-6">Thêm kênh mới</h3>
+            <input type="text" id="add-name" class="w-full bg-neutral-800 rounded-xl p-3 text-sm text-white mb-3 focus:outline-none focus:ring-1 focus:ring-white" placeholder="Tên kênh">
+            <input type="text" id="add-url" class="w-full bg-neutral-800 rounded-xl p-3 text-sm text-white mb-6 focus:outline-none focus:ring-1 focus:ring-white" placeholder="URL (.m3u8, .mp3)">
+            
+            <div class="flex gap-3">
+                <button onclick="toggleModal('add-modal')" class="flex-1 py-3 rounded-xl bg-neutral-800 text-neutral-400 text-xs font-bold">Đóng</button>
+                <button onclick="addCustomStation()" class="flex-1 py-3 rounded-xl bg-white text-black text-xs font-bold">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audio" crossorigin="anonymous"></audio>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM ELEMENTS ---
-            const audioPlayer = document.getElementById('audio-player');
-            const stationListEl = document.getElementById('station-list');
-            const stationLogo = document.getElementById('station-logo');
-            const stationName = document.getElementById('station-name');
-            const stationGenre = document.getElementById('station-genre');
-            const playPauseBtn = document.getElementById('play-pause-btn');
-            const playPauseIcon = document.getElementById('play-pause-icon');
-            const nextBtn = document.getElementById('next-btn');
-            const prevBtn = document.getElementById('prev-btn');
-            const volumeSlider = document.getElementById('volume-slider');
-            const backgroundArt = document.getElementById('background-art');
-            const noiseToggleBtn = document.getElementById('noise-toggle-btn');
-            const noisePanel = document.getElementById('noise-panel');
-            const noiseVolumeSlider = document.getElementById('noise-volume-slider');
+        // --- DATASET: CATEGORIZED ---
+        const initialData = [
+            {
+                category: "Việt Nam - Đài Tiếng Nói",
+                items: [
+                    { name: "VOV Giao Thông HN", logo: "https://placehold.co/400?text=VOV+HN", url: "http://stream.vov.vn:8080/vovgt_mb_hls.m3u8" }, // Proxied or Http allowed
+                    { name: "VOV Giao Thông HCM", logo: "https://placehold.co/400?text=VOV+HCM", url: "http://stream.vov.vn:8080/vovgt_mn_hls.m3u8" },
+                    { name: "VOV1 - Thời sự", logo: "https://placehold.co/400?text=VOV1", url: "http://stream.vov.vn:8080/vov1_hls.m3u8" },
+                    { name: "VOV3 - Âm nhạc", logo: "https://placehold.co/400?text=VOV3", url: "http://stream.vov.vn:8080/vov3_hls.m3u8" },
+                    { name: "VOH - AM 610", logo: "https://placehold.co/400?text=VOH", url: "http://radio.voh.com.vn:8000/am610.mp3" }
+                ]
+            },
+            {
+                category: "Quốc Tế - Top Hits",
+                items: [
+                    { name: "100Hitz - Top 40", logo: "https://placehold.co/400/b91c1c/fff?text=Top40", url: "http://206.217.213.236:9200" },
+                    { name: ".977 Today's Hits", logo: "https://placehold.co/400/2563eb/fff?text=Hits", url: "https://playerservices.streamtheworld.com/api/livestream-redirect/977_HITS_SC" },
+                    { name: "Hot 108 Jamz", logo: "https://placehold.co/400/db2777/fff?text=Jamz", url: "http://sc-rly.181.fm:80/stream/1094" }
+                ]
+            },
+            {
+                category: "Chill & Relax",
+                items: [
+                    { name: "Lofi HipHop", logo: "https://placehold.co/400/4c1d95/fff?text=Lofi", url: "http://hyades.shoutca.st:8043/stream" },
+                    { name: "Smooth Jazz", logo: "https://placehold.co/400/78350f/fff?text=Jazz", url: "http://sc-rly.181.fm:80/stream/1006" },
+                    { name: "Classical Piano", logo: "https://placehold.co/400/1e293b/fff?text=Piano", url: "https://p.scdn.co/mp3-preview/2f37da1d4221f40b9d1a98cd191f4d6f1646ad17" } // Demo placeholder for structure
+                ]
+            },
+            {
+                category: "Nhạc Điện Tử (EDM)",
+                items: [
+                    { name: "Vinahouse FM", logo: "https://placehold.co/400/064e3b/fff?text=Vina", url: "https://pixeldrain.com/api/file/FNcRLhYd" },
+                    { name: "Prada Deep House", logo: "https://placehold.co/400/0f172a/fff?text=Deep", url: "https://pixeldrain.com/api/file/71qHW5FH" }
+                ]
+            }
+        ];
 
-            // --- DATA (Kênh Việt Nam) ---
-            const stations = [
-                { name: 'VOV Giao thông Hà Nội', genre: 'Tin tức Giao thông', logo: 'https://placehold.co/400x400/1c1c1e/444444?text=VOV+GT-HN', streamUrl: 'https://play.vovgiaothong.vn/live/gthn/playlist.m3u8' },
-                { name: 'VOV Giao thông TPHCM', genre: 'Tin tức Giao thông', logo: 'https://placehold.co/400x400/1c1c1e/444444?text=VOV+GT-TPHCM', streamUrl: 'https://play.vovgiaothong.vn/live/gthcm/playlist.m3u8' },
-                { name: 'Romantic Vibes', genre: 'Tin tức Giao thông', logo: 'https://placehold.co/400x400/1c1c1e/444444?text=Romatic+Vibe', streamUrl: 'https://romantic.streeemer.com/listen/romantic/radio.mp3' },
-                {
-                    "name": "100Hitz",
-                    "genre": "Hit Hot",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=100Hitz",
-                    "streamUrl": "https://pureplay.cdnstream1.com/6027_128.mp3"
-                },
-                {
-                    "name": "977 HITS",
-                    "genre": "Hit Hot",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=977%2BHITS",
-                    "streamUrl": "https://playerservices.streamtheworld.com/api/livestream-redirect/977_HITS_SC"
-                },
-                {
-                    "name": "J1HITS",
-                    "genre": "JP",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=J1HITS",
-                    "streamUrl": "https://jenny.torontocast.com:2000/stream/J1HITS"
-                },
-                {
-                    "name": "Radio Veritas Asia",
-                    "genre": "Công giáo",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=Radio%2BVeritas%2BAsia",
-                    "streamUrl": "https://livestream.rvasia.org:8443/Vietnamese.mp3"
-                },
-                {
-                    "name": "R.SH",
-                    "genre": "Nhạc",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=R.SH",
-                    "streamUrl": "http://rsh.streamabc.net/regc-rshlive-mp3-192-6238539"
-                },
-                {
-                    "name": "100Hitz - Top 40",
-                    "genre": "Âm nhạc",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=100Hitz%2B-%2BTop%2B40",
-                    "streamUrl": "http://206.217.213.236:9200"
-                },
-                {
-                    "name": "Vinahouse FM1",
-                    "genre": "Vinahouse",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=Vinahouse%2BFM1",
-                    "streamUrl": "https://pixeldrain.com/api/file/FNcRLhYd"
-                },
-                {
-                    "name": "PRADA - THEARY ALEX REMIX",
-                    "genre": "Vinahouse",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=PRADA%2B-%2BTHEARY%2BALEX%2BREMIX",
-                    "streamUrl": "https://pixeldrain.com/api/file/71qHW5FH"
-                },
-                {
-                    "name": "Chiều lên bản thượng remix",
-                    "genre": "Vinahouse",
-                    "logo": "https://placehold.co/400x400/1c1c1e/444444?text=Chie%CC%82%CC%80u%2Ble%CC%82n%2Bba%CC%89n%2Bthu%CC%9Bo%CC%9B%CC%A3ng%2Bremix",
-                    "streamUrl": "https://pixeldrain.com/api/file/rMHAseBB"
-                }
-            ];
+        // --- STATE ---
+        let flatList = []; // Flattened list for playback logic
+        let currentState = {
+            idx: 0,
+            playing: false,
+            mode: 0, // 0: LoopAll, 1: Shuffle, 2: One
+            hls: null,
+            timer: null
+        };
 
-            // --- STATE ---
-            let currentStationIndex = -1;
-            let isPlaying = false;
-            let hls = null;
-            let audioCtx, noiseNode, gainNode, filterNode;
-            let currentNoiseType = 'off';
+        // --- DOM ---
+        const $ = (id) => document.getElementById(id);
+        const els = {
+            drawer: $('drawer'),
+            handle: $('drawer-handle'),
+            content: $('playlist-content'),
+            scroll: $('playlist-scroll'),
+            arrow: $('drawer-arrow'),
+            audio: $('audio'),
+            art: $('art'),
+            title: $('title'),
+            genre: $('genre'),
+            playBtn: $('play-btn'),
+            volBar: $('vol-bar'),
+            volSlider: $('vol-slider'),
+            volPercent: $('vol-percent'),
+            loading: $('loading')
+        };
 
-            // --- FUNCTIONS ---
-            function renderStationList() {
-                stationListEl.innerHTML = '';
-                stations.forEach((station, index) => {
-                    const stationDiv = document.createElement('div');
-                    stationDiv.className = `station-item flex items-center p-3 m-2 rounded-lg cursor-pointer transition-all duration-300 ${currentStationIndex === index && isPlaying ? 'playing' : 'hover:bg-white/10'}`;
-                    stationDiv.dataset.index = index;
-                    stationDiv.innerHTML = `<img src="${station.logo}" alt="${station.name}" onerror="this.src='https://placehold.co/100x100/333/fff?text=Error'" class="w-12 h-12 rounded-lg object-cover mr-4"><div class="flex-grow"><p class="station-name font-semibold text-white">${station.name}</p><p class="station-desc text-sm text-gray-400">${station.genre}</p></div><div class="play-indicator text-white text-lg pr-2 opacity-0 transition-opacity ${currentStationIndex === index && isPlaying ? 'opacity-100' : ''}"><i class="fas fa-wave-square"></i></div>`;
-                    stationListEl.appendChild(stationDiv);
+        // --- INIT ---
+        function init() {
+            // Merge User Custom Stations
+            const custom = JSON.parse(localStorage.getItem('zen_custom_stations') || '[]');
+            if(custom.length > 0) {
+                initialData.unshift({ category: "Kênh Của Bạn", items: custom });
+            }
+
+            // Flatten data for player navigation
+            initialData.forEach(cat => {
+                cat.items.forEach(item => {
+                    flatList.push({ ...item, category: cat.category });
                 });
+            });
+
+            renderPlaylist();
+            loadStation(0, false);
+            setupDrawer();
+            
+            // Audio Events
+            els.audio.onplaying = () => updateUI(true);
+            els.audio.onpause = () => updateUI(false);
+            els.audio.onwaiting = () => els.loading.classList.remove('hidden');
+            els.audio.oncanplay = () => els.loading.classList.add('hidden');
+            els.audio.onended = handleEnd;
+            els.audio.onerror = () => { console.log('Err'); changeStation(1); };
+
+            // Volume
+            els.volSlider.addEventListener('input', (e) => {
+                els.audio.volume = e.target.value;
+                updateVol(e.target.value);
+            });
+        }
+
+        // --- PLAYER LOGIC ---
+        function loadStation(idx, autoPlay = true) {
+            if(idx < 0) idx = flatList.length - 1;
+            if(idx >= flatList.length) idx = 0;
+            
+            currentState.idx = idx;
+            const s = flatList[idx];
+
+            els.title.innerText = s.name;
+            els.genre.innerText = s.category;
+            els.art.src = s.logo;
+
+            if(currentState.hls) { currentState.hls.destroy(); currentState.hls = null; }
+
+            // Mixed Content Handling (Note: Real deployment needs HTTPS streams or meta tag)
+            if(s.url.includes('.m3u8') && Hls.isSupported()) {
+                currentState.hls = new Hls();
+                currentState.hls.loadSource(s.url);
+                currentState.hls.attachMedia(els.audio);
+                currentState.hls.on(Hls.Events.MANIFEST_PARSED, () => { if(autoPlay) els.audio.play(); });
+            } else {
+                els.audio.src = s.url;
+                if(autoPlay) els.audio.play();
             }
+            
+            highlightPlaylist();
+        }
 
-            function updatePlayerUI(station) {
-                stationLogo.src = station.logo;
-                stationName.textContent = station.name;
-                stationGenre.textContent = station.genre;
-                backgroundArt.style.backgroundImage = `url(${station.logo})`;
+        function togglePlay() {
+            if(els.audio.paused) els.audio.play();
+            else els.audio.pause();
+        }
+
+        function updateUI(playing) {
+            currentState.playing = playing;
+            els.playBtn.className = playing ? 'fa-solid fa-pause text-xl' : 'fa-solid fa-play text-xl ml-1';
+            els.art.classList.toggle('playing', playing);
+            els.loading.classList.add('hidden');
+        }
+
+        function changeStation(dir) {
+            if(currentState.mode === 1) { // Shuffle
+                let r;
+                do { r = Math.floor(Math.random() * flatList.length); } while(r === currentState.idx);
+                loadStation(r);
+            } else {
+                loadStation(currentState.idx + dir);
             }
+        }
 
-            function playStation(index) {
-                if (index < 0 || index >= stations.length) return;
+        function handleEnd() {
+            if(currentState.mode === 2) { els.audio.currentTime = 0; els.audio.play(); } // Loop 1
+            else changeStation(1);
+        }
 
-                const station = stations[index];
-                currentStationIndex = index;
-                updatePlayerUI(station);
+        function toggleMode() {
+            currentState.mode = (currentState.mode + 1) % 3;
+            const icons = ['fa-repeat', 'fa-shuffle', 'fa-1'];
+            $('mode-icon').className = `fa-solid ${icons[currentState.mode]}`;
+            $('mode-dot').style.opacity = currentState.mode !== 0 ? '1' : '0';
+        }
+        
+        function setMode(m) { currentState.mode = m; toggleMode(); } // Helper
 
-                if (hls) { hls.destroy(); hls = null; }
-                audioPlayer.pause();
-                audioPlayer.src = '';
+        function updateVol(val) {
+            els.volBar.style.width = (val * 100) + '%';
+            els.volPercent.innerText = Math.round(val * 100) + '%';
+        }
 
-                if (station.streamUrl.endsWith('.m3u8')) {
-                    if (Hls.isSupported()) {
-                        hls = new Hls();
-                        hls.loadSource(station.streamUrl);
-                        hls.attachMedia(audioPlayer);
-                        hls.on(Hls.Events.MANIFEST_PARSED, () => audioPlayer.play().catch(e => console.error("Autoplay bị chặn:", e)));
-                    } else if (audioPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-                        audioPlayer.src = station.streamUrl;
-                        audioPlayer.play().catch(e => console.error("Autoplay bị chặn:", e));
-                    }
+        // --- DRAWER LOGIC (SWIPE/DRAG) ---
+        function setupDrawer() {
+            let startY = 0;
+            let currentY = 0;
+            let isDragging = false;
+            let isOpen = false;
+            const threshold = 100; // px to snap
+            const maxTranslate = 0; // Top position
+            const hiddenTranslate = window.innerHeight - 80; // Bottom position
+
+            // Touch Start
+            els.handle.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].clientY;
+                isDragging = true;
+                els.drawer.classList.add('dragging');
+            }, { passive: true });
+
+            // Touch Move
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                currentY = e.touches[0].clientY;
+                const delta = currentY - startY;
+                
+                // Calculate new position based on current state
+                let newY = isOpen ? delta : hiddenTranslate + delta;
+                
+                // Boundaries
+                if (newY < 0) newY = 0; // Top limit
+                if (newY > hiddenTranslate) newY = hiddenTranslate; // Bottom limit
+
+                els.drawer.style.transform = `translateY(${newY}px)`;
+            }, { passive: true });
+
+            // Touch End
+            document.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                els.drawer.classList.remove('dragging');
+                els.drawer.style.transform = ''; // Clear inline style to let CSS class take over
+
+                const moved = currentY - startY;
+                
+                if (isOpen) {
+                    if (moved > threshold) closeDrawer(); // Dragged down enough
+                    else openDrawer(); // Snap back up
                 } else {
-                    audioPlayer.src = station.streamUrl;
-                    audioPlayer.play().catch(error => console.error("Lỗi khi phát audio:", error));
+                    if (moved < -threshold) openDrawer(); // Dragged up enough
+                    else closeDrawer(); // Snap back down
                 }
+            });
+
+            // Click Toggle
+            els.handle.addEventListener('click', () => {
+                if(!isDragging) isOpen ? closeDrawer() : openDrawer();
+            });
+
+            function openDrawer() {
+                isOpen = true;
+                els.drawer.style.transform = 'translateY(0)';
+                els.arrow.style.transform = 'rotate(180deg)';
+                els.scroll.scrollTop = 0;
             }
 
-            function togglePlayPause() {
-                if (currentStationIndex === -1) {
-                    playStation(0);
-                    return;
-                }
-                if (isPlaying) audioPlayer.pause();
-                else audioPlayer.play();
+            function closeDrawer() {
+                isOpen = false;
+                els.drawer.style.transform = `translateY(calc(100% - 80px))`;
+                els.arrow.style.transform = 'rotate(0deg)';
             }
+        }
 
-            function updatePlayPauseButton() {
-                if (isPlaying) {
-                    playPauseIcon.classList.remove('fa-play', 'ml-1');
-                    playPauseIcon.classList.add('fa-pause');
-                } else {
-                    playPauseIcon.classList.remove('fa-pause');
-                    playPauseIcon.classList.add('fa-play', 'ml-1');
-                }
-            }
+        // --- PLAYLIST RENDERING ---
+        function renderPlaylist() {
+            let html = '';
+            let globalIndex = 0;
 
-            // --- NOISE GENERATOR FUNCTIONS ---
-            function initAudioContext() {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            }
-
-            function createNoise() {
-                initAudioContext();
-                if (noiseNode) { // Stop existing noise before creating a new one
-                    noiseNode.stop(0);
-                    noiseNode.disconnect();
-                }
-
-                const bufferSize = audioCtx.sampleRate * 2;
-                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-                const output = buffer.getChannelData(0);
-                for (let i = 0; i < bufferSize; i++) {
-                    output[i] = Math.random() * 2 - 1;
-                }
-
-                noiseNode = audioCtx.createBufferSource();
-                noiseNode.buffer = buffer;
-                noiseNode.loop = true;
-
-                gainNode = audioCtx.createGain();
-                gainNode.gain.setValueAtTime(noiseVolumeSlider.value, audioCtx.currentTime);
-
-                filterNode = audioCtx.createBiquadFilter();
-                noiseNode.connect(filterNode).connect(gainNode).connect(audioCtx.destination);
-            }
-
-            function playNoise(type) {
-                if (currentNoiseType === type) return; // Do nothing if already playing this type
-
-                currentNoiseType = type;
-                createNoise();
-
-                switch (type) {
-                    case 'white':
-                        filterNode.type = 'allpass';
-                        break;
-                    case 'static-low':
-                        filterNode.type = 'lowpass';
-                        filterNode.frequency.setValueAtTime(1000, audioCtx.currentTime);
-                        break;
-                    case 'static-mid':
-                        filterNode.type = 'bandpass';
-                        filterNode.frequency.setValueAtTime(3000, audioCtx.currentTime);
-                        filterNode.Q.setValueAtTime(5, audioCtx.currentTime);
-                        break;
-                    case 'static-high':
-                        filterNode.type = 'highpass';
-                        filterNode.frequency.setValueAtTime(2000, audioCtx.currentTime);
-                        break;
-                }
-
-                noiseNode.start(0);
-                updateUIForNoise();
-            }
-
-            function stopNoise() {
-                if (noiseNode) {
-                    noiseNode.stop(0);
-                    noiseNode.disconnect();
-                    noiseNode = null;
-                }
-                currentNoiseType = 'off';
-                updateUIForNoise();
-            }
-
-            function updateUIForNoise() {
-                document.querySelectorAll('.noise-btn').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.noise === currentNoiseType);
+            initialData.forEach(group => {
+                html += `<div class="cat-header">${group.category}</div>`;
+                group.items.forEach(item => {
+                    // Find index in flatList
+                    const realIndex = flatList.findIndex(x => x.url === item.url);
+                    
+                    html += `
+                        <div class="flex items-center p-3 mb-1 rounded-xl cursor-pointer hover:bg-white/5 transition-colors station-item" onclick="loadStation(${realIndex})">
+                            <img src="${item.logo}" class="w-10 h-10 rounded-lg object-cover mr-4 bg-neutral-800">
+                            <div class="flex-1 overflow-hidden">
+                                <p class="text-sm font-bold text-white truncate item-name">${item.name}</p>
+                            </div>
+                            <div class="w-2 h-2 rounded-full bg-white hidden playing-dot"></div>
+                            ${group.category === "Kênh Của Bạn" ? `<button class="ml-4 p-2 text-neutral-600 hover:text-red-500" onclick="deleteCustom(event, '${item.url}')"><i class="fa-solid fa-trash text-xs"></i></button>` : ''}
+                        </div>
+                    `;
                 });
+            });
+            els.content.innerHTML = html;
+        }
+
+        function highlightPlaylist() {
+            const items = document.querySelectorAll('.station-item');
+            items.forEach((el, i) => {
+                const isMatch = i === currentState.idx;
+                el.classList.toggle('bg-white/10', isMatch);
+                el.querySelector('.item-name').classList.toggle('text-emerald-400', isMatch);
+                el.querySelector('.playing-dot').classList.toggle('hidden', !isMatch);
+            });
+        }
+
+        // --- UTILS & MODALS ---
+        function toggleModal(id) {
+            const el = $(id);
+            if(el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                setTimeout(() => el.querySelector('div').classList.add('modal-enter-active'), 10);
+            } else {
+                el.querySelector('div').classList.remove('modal-enter-active');
+                setTimeout(() => el.classList.add('hidden'), 200);
             }
+        }
 
-            // --- EVENT LISTENERS ---
-            stationListEl.addEventListener('click', (e) => {
-                const stationItem = e.target.closest('.station-item');
-                if (stationItem) {
-                    playStation(parseInt(stationItem.dataset.index, 10));
-                }
-            });
+        function addCustomStation() {
+            const name = $('add-name').value;
+            const url = $('add-url').value;
+            if(!name || !url) return;
 
-            playPauseBtn.addEventListener('click', togglePlayPause);
-            nextBtn.addEventListener('click', () => { playStation((currentStationIndex + 1) % stations.length); });
-            prevBtn.addEventListener('click', () => { playStation((currentStationIndex - 1 + stations.length) % stations.length); });
+            const custom = JSON.parse(localStorage.getItem('zen_custom_stations') || '[]');
+            custom.push({ name, url, logo: 'https://placehold.co/400?text=USER' });
+            localStorage.setItem('zen_custom_stations', JSON.stringify(custom));
+            
+            location.reload(); // Simple reload to re-init structure
+        }
 
-            volumeSlider.addEventListener('input', (e) => {
-                audioPlayer.volume = e.target.value;
-            });
+        function deleteCustom(e, url) {
+            e.stopPropagation();
+            if(!confirm('Xóa kênh này?')) return;
+            
+            let custom = JSON.parse(localStorage.getItem('zen_custom_stations') || '[]');
+            custom = custom.filter(c => c.url !== url);
+            localStorage.setItem('zen_custom_stations', JSON.stringify(custom));
+            location.reload();
+        }
 
-            noiseVolumeSlider.addEventListener('input', (e) => {
-                if (gainNode && audioCtx) {
-                    gainNode.gain.setValueAtTime(e.target.value, audioCtx.currentTime);
-                }
-            });
+        function startTimer() {
+            const min = parseInt($('timer-input').value);
+            toggleModal('timer-modal');
+            $('timer-icon').classList.replace('fa-regular', 'fa-solid');
+            $('timer-display').innerText = min + 'm';
+            
+            if(currentState.timer) clearTimeout(currentState.timer);
+            currentState.timer = setTimeout(() => {
+                els.audio.pause();
+                $('timer-display').innerText = 'Hẹn giờ';
+                $('timer-icon').classList.replace('fa-solid', 'fa-regular');
+            }, min * 60000);
+        }
 
-            audioPlayer.onplaying = () => { isPlaying = true; updatePlayPauseButton(); renderStationList(); };
-            audioPlayer.onpause = () => { isPlaying = false; updatePlayPauseButton(); renderStationList(); };
-
-            noiseToggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                noisePanel.classList.toggle('hidden');
-            });
-
-            document.addEventListener('click', () => noisePanel.classList.add('hidden'));
-            noisePanel.addEventListener('click', (e) => e.stopPropagation());
-
-            noisePanel.addEventListener('click', (e) => {
-                const target = e.target.closest('.noise-btn');
-                if (target) {
-                    const noiseType = target.dataset.noise;
-                    if (noiseType === 'off') {
-                        stopNoise();
-                    } else {
-                        playNoise(noiseType);
-                    }
-                }
-            });
-
-            // --- INITIALIZATION ---
-            renderStationList();
-            audioPlayer.volume = volumeSlider.value;
-        });
+        init();
     </script>
-
 </body>
-
 </html>
