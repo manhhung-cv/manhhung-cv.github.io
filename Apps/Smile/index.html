@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="system">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smiles Remit Pro - Real Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* --- THEME VARIABLES --- */
+        :root {
+            --bg-body: #F2F2F7;
+            --bg-card: #FFFFFF;
+            --bg-input: #F2F2F7;
+            --text-main: #000000;
+            --text-sub: #8E8E93;
+            --border-color: #E5E5EA;
+            --primary: #FFB700;
+            --success: #34C759;
+            --error: #FF3B30;
+            --info: #007AFF;
+            --radius: 24px;
+            --radius-sm: 12px;
+            --chart-grid: #E5E5EA;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #000000;
+            --bg-card: #1C1C1E;
+            --bg-input: #2C2C2E;
+            --text-main: #FFFFFF;
+            --text-sub: #98989F;
+            --border-color: #38383A;
+            --chart-grid: #38383A;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg-body: #000000; --bg-card: #1C1C1E; --bg-input: #2C2C2E;
+                --text-main: #FFFFFF; --text-sub: #98989F; --border-color: #38383A;
+                --chart-grid: #38383A;
+            }
+        }
+
+        /* --- GLOBAL --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Roboto, sans-serif;
+            background-color: var(--bg-body); color: var(--text-main);
+            margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 20px;
+        }
+
+        .app-container {
+            background-color: var(--bg-card); width: 100%; max-width: 440px;
+            border-radius: var(--radius); box-shadow: 0 4px 20px rgba(0,0,0,0.05); padding: 24px;
+            overflow: hidden;
+        }
+
+        /* --- HEADER --- */
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .app-title { font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.5px; }
+
+        .theme-switcher { background: var(--bg-input); padding: 4px; border-radius: 99px; display: flex; gap: 4px; }
+        .theme-btn {
+            border: none; background: transparent; color: var(--text-sub); padding: 6px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .theme-btn.active { background-color: var(--bg-card); color: var(--text-main); box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        .theme-btn svg { width: 16px; height: 16px; stroke-width: 2.5px; }
+
+        /* --- TABS --- */
+        .nav-tabs { display: flex; background: var(--bg-input); border-radius: 14px; padding: 4px; margin-bottom: 24px; }
+        .nav-item {
+            flex: 1; text-align: center; padding: 10px; font-size: 0.9rem; font-weight: 600;
+            color: var(--text-sub); cursor: pointer; border-radius: 10px; transition: all 0.2s;
+        }
+        .nav-item.active { background: var(--bg-card); color: var(--text-main); box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- CALCULATOR UI --- */
+        .rate-badge {
+            background: var(--bg-input); border-radius: var(--radius-sm); padding: 16px;
+            margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .rate-value { font-size: 1.3rem; font-weight: 800; color: var(--success); display: block; }
+        .rate-time { font-size: 0.75rem; color: var(--text-sub); margin-top: 2px; }
+        
+        .btn-refresh-mini {
+            width: 36px; height: 36px; border-radius: 50%; border: none;
+            background: var(--bg-card); color: var(--primary);
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: transform 0.2s;
+        }
+        .btn-refresh-mini:active { transform: scale(0.9); }
+        .spinner {
+            width: 16px; height: 16px; border: 2px solid rgba(0,0,0,0.1); border-top-color: currentColor;
+            border-radius: 50%; animation: spin 0.8s linear infinite; display: none;
+        }
+        .btn-refresh-mini.loading .spinner { display: block; }
+        .btn-refresh-mini.loading svg { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* INPUTS */
+        .input-group { margin-bottom: 16px; }
+        .input-box {
+            background-color: var(--bg-input); border-radius: var(--radius-sm); padding: 12px 16px;
+            border: 2px solid transparent; transition: 0.2s;
+        }
+        .input-box:focus-within { border-color: var(--primary); }
+        .input-box.highlight { border-color: var(--success); background-color: rgba(52, 199, 89, 0.05); }
+
+        .label-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .input-label { font-size: 0.75rem; font-weight: 600; color: var(--text-sub); text-transform: uppercase; }
+        .field-row { display: flex; align-items: baseline; }
+        .input-field {
+            flex: 1; background: transparent; border: none; font-size: 1.5rem; font-weight: 700;
+            color: var(--text-main); outline: none; width: 100%; font-family: inherit;
+        }
+        .currency-tag { font-size: 1rem; font-weight: 600; color: var(--text-sub); margin-left: 8px; }
+
+        /* ANALYTICS UI */
+        .analytics-card { background: var(--bg-input); border-radius: var(--radius-sm); padding: 20px 15px; margin-bottom: 20px; min-height: 250px; display: flex; align-items: center; justify-content: center;}
+        .chart-container { position: relative; height: 220px; width: 100%; }
+        
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+        .stat-item { background: var(--bg-input); padding: 12px; border-radius: 12px; text-align: center; }
+        .stat-label { display: block; font-size: 0.7rem; color: var(--text-sub); margin-bottom: 4px; text-transform: uppercase; }
+        .stat-val { font-size: 1rem; font-weight: 700; color: var(--text-main); }
+        .stat-val.high { color: var(--success); }
+        .stat-val.low { color: var(--error); }
+
+        .prediction-badge {
+            background: rgba(0, 122, 255, 0.1); color: var(--info);
+            font-size: 0.8rem; font-weight: 600; padding: 12px; border-radius: 8px;
+            margin-bottom: 15px; display: flex; align-items: center; gap: 8px;
+        }
+        .prediction-badge svg { min-width: 16px; }
+
+        /* MODE TOGGLE */
+        .mode-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 0 4px; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--border-color); transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        input:checked + .slider { background-color: var(--success); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* RESULTS */
+        .details-box { border-top: 1px solid var(--border-color); margin-top: 24px; padding-top: 20px; }
+        .points-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .points-input {
+            width: 90px; text-align: right; border: 1px solid var(--border-color);
+            border-radius: 8px; padding: 6px 8px; font-size: 0.9rem; font-weight: 600;
+            color: var(--text-main); background: var(--bg-card); transition: border-color 0.2s;
+        }
+        .points-input.maxed { border-color: var(--error); color: var(--error); }
+        
+        .info-line { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .val-fee { color: var(--error); }
+        .val-pts { color: var(--success); background: rgba(52, 199, 89, 0.1); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
+        
+        .total-container {
+            margin-top: 20px; padding-top: 20px; border-top: 1px dashed var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .total-amount { font-size: 1.6rem; font-weight: 800; color: var(--primary); margin-right: 8px; }
+        
+        .btn-copy { background: var(--bg-input); border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; color: var(--text-main); position: relative; }
+        .tooltip { position: absolute; top: -30px; right: 0; background: var(--text-main); color: var(--bg-card); padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; pointer-events: none; opacity: 0; transition: 0.2s; }
+        .tooltip.show { opacity: 1; transform: translateY(-5px); }
+
+        .empty-state { text-align: center; color: var(--text-sub); font-size: 0.9rem; padding: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="header">
+            <h1 class="app-title">Smiles Remit</h1>
+            <div class="theme-switcher">
+                <button class="theme-btn" onclick="setTheme('light')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg></button>
+                <button class="theme-btn" onclick="setTheme('system')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12" y2="18"></line></svg></button>
+                <button class="theme-btn" onclick="setTheme('dark')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></button>
+            </div>
+        </div>
+
+        <div class="nav-tabs">
+            <div class="nav-item active" onclick="switchTab('calc')">Tính toán</div>
+            <div class="nav-item" onclick="switchTab('history')">Thị trường</div>
+        </div>
+
+        <div id="tab-calc" class="tab-content active">
+            
+            <div class="rate-badge">
+                <div>
+                    <span id="rateDisplay" class="rate-value">Loading...</span>
+                    <div id="lastUpdatedTime" class="rate-time">--:--</div>
+                </div>
+                <button class="btn-refresh-mini" id="btnRefresh" onclick="forceUpdateRate()" title="Cập nhật tỷ giá ngay">
+                    <div class="spinner"></div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                </button>
+            </div>
+
+            <div class="mode-container">
+                <div class="mode-info">
+                    <h4 id="modeLabel">Chế độ Thường (Cộng phí)</h4>
+                    <span id="modeSub">Nhập số tiền muốn gửi</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="modeToggle" onchange="toggleMode()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="input-group">
+                <div class="input-box" id="containerJPY">
+                    <div class="label-row"><label class="input-label" id="labelJPY">Bạn gửi đi (Gốc)</label></div>
+                    <div class="field-row">
+                        <input type="text" id="inputJPY" class="input-field" placeholder="0" inputmode="numeric" oninput="formatNumberInput(this)">
+                        <span class="currency-tag">JPY</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="input-box">
+                    <div class="label-row"><label class="input-label">Người nhận được</label></div>
+                    <div class="field-row">
+                        <input type="text" id="inputVND" class="input-field" placeholder="0" inputmode="numeric" oninput="formatNumberInput(this)">
+                        <span class="currency-tag">VND</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-box">
+                <div class="points-row">
+                    <span class="info-label" style="display:flex; flex-direction:column;">
+                        <span>Dùng điểm Smiles (-):</span>
+                        <span style="font-size:0.7rem; color:var(--text-sub)">(Tối đa bằng phí gửi)</span>
+                    </span>
+                    <input type="text" id="inputPoints" class="points-input" placeholder="0" inputmode="numeric" oninput="formatNumberInput(this)">
+                </div>
+
+                <div class="info-line">
+                    <span class="info-label">Phí chuyển tiền (+):</span>
+                    <span class="info-val val-fee" id="feeDisplay">0 ¥</span>
+                </div>
+                <div class="info-line">
+                    <span class="info-label">Điểm thưởng nhận:</span>
+                    <span class="info-val val-pts" id="pointDisplay">+0 pts</span>
+                </div>
+
+                <div class="total-container">
+                    <span class="total-label" id="labelTotal">Tổng thanh toán</span>
+                    <div style="display:flex; align-items:center; gap:10px">
+                        <span class="total-amount" id="totalPayDisplay">0 ¥</span>
+                        <button class="btn-copy" onclick="copyContent('totalPayDisplay', 'tooltipTotal')">
+                            <div class="tooltip" id="tooltipTotal">Copied</div>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-history" class="tab-content">
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Trung bình</span>
+                    <span class="stat-val" id="statAvg">--</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Cao nhất</span>
+                    <span class="stat-val high" id="statMax">--</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Thấp nhất</span>
+                    <span class="stat-val low" id="statMin">--</span>
+                </div>
+            </div>
+
+            <div class="analytics-card" id="chartWrapper">
+                <canvas id="rateChart" height="220"></canvas>
+            </div>
+
+            <div class="prediction-badge" id="trendBadge">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <span id="trendText">Chưa đủ dữ liệu để phân tích xu hướng.</span>
+            </div>
+
+            <div id="historyListSimple" style="margin-top:20px; font-size:0.9rem;"></div>
+        </div>
+
+    </div>
+
+<script>
+    /* --- CONFIG --- */
+    const SCRAPINGBEE_KEYS = ["YFH8ZPMDE27ABK3HAVVALLVZLVAF4PNMDYE12GSH2ILVSQ5AVLTGMTUZCDNG2SAGCII7PKXLZWJI7GD7"];
+    const LOCAL_KEY = 'smiles_rate_data';
+    const HISTORY_KEY = 'smiles_rate_history';
+    
+    let currentRate = 0;
+    let isReverseMode = false;
+    let rateChart = null;
+
+    /* --- THEME --- */
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('smiles_theme', theme);
+        document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+        if(theme === 'light') document.querySelector('.theme-btn:nth-child(1)').classList.add('active');
+        if(theme === 'system') document.querySelector('.theme-btn:nth-child(2)').classList.add('active');
+        if(theme === 'dark') document.querySelector('.theme-btn:nth-child(3)').classList.add('active');
+        if(rateChart) updateChartConfig();
+    }
+    (function initTheme() {
+        const savedTheme = localStorage.getItem('smiles_theme') || 'system';
+        setTheme(savedTheme);
+    })();
+
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(`tab-${tab}`).classList.add('active');
+        if(tab === 'calc') document.querySelector('.nav-item:nth-child(1)').classList.add('active');
+        else {
+            document.querySelector('.nav-item:nth-child(2)').classList.add('active');
+            renderAnalytics(); 
+        }
+    }
+
+    /* --- DATA & CHART --- */
+    function getChartColors() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
+                       (document.documentElement.getAttribute('data-theme') === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        return {
+            grid: isDark ? '#38383A' : '#E5E5EA',
+            text: isDark ? '#98989F' : '#8E8E93',
+            line: '#FFB700',
+            fill: isDark ? 'rgba(255, 183, 0, 0.1)' : 'rgba(255, 183, 0, 0.2)'
+        };
+    }
+
+    function updateChartConfig() {
+        if(!rateChart) return;
+        const colors = getChartColors();
+        rateChart.options.scales.x.grid.color = 'transparent';
+        rateChart.options.scales.y.grid.color = colors.grid;
+        rateChart.options.scales.x.ticks.color = colors.text;
+        rateChart.options.scales.y.ticks.color = colors.text;
+        rateChart.update();
+    }
+
+    function renderAnalytics() {
+        const chartWrapper = document.getElementById('chartWrapper');
+        const trendText = document.getElementById('trendText');
+        const rawHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+
+        // 1. Xử lý khi KHÔNG CÓ hoặc ÍT dữ liệu ( < 2 điểm)
+        if (rawHistory.length < 2) {
+            chartWrapper.innerHTML = `<div class="empty-state">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.5; margin-bottom:10px;"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path><line x1="21" y1="5" x2="21" y2="5"></line></svg>
+                <br>Cần cập nhật tỷ giá ít nhất 2 lần để hiển thị biểu đồ.
+            </div>`;
+            document.getElementById('statAvg').innerText = "--";
+            document.getElementById('statMax').innerText = "--";
+            document.getElementById('statMin').innerText = "--";
+            trendText.innerText = "Chưa đủ dữ liệu lịch sử để phân tích.";
+            
+            // Show list if available
+            renderHistoryList(rawHistory);
+            return;
+        }
+
+        // 2. Có dữ liệu -> Vẽ biểu đồ
+        // Reset Wrapper nếu trước đó là empty state
+        if(!document.getElementById('rateChart')) {
+            chartWrapper.innerHTML = '<canvas id="rateChart" height="220"></canvas>';
+        }
+
+        const recent = rawHistory.slice(0, 15).reverse(); // Lấy 15 điểm gần nhất, đảo ngược để vẽ từ cũ -> mới
+        const dataPoints = recent.map(i => i.rate);
+        const labels = recent.map(i => i.time ? i.time.split(' ')[1] || i.time : '');
+
+        // Stats
+        const max = Math.max(...dataPoints);
+        const min = Math.min(...dataPoints);
+        const avg = (dataPoints.reduce((a, b) => a + b, 0) / dataPoints.length).toFixed(2);
+        
+        document.getElementById('statAvg').innerText = avg;
+        document.getElementById('statMax').innerText = max;
+        document.getElementById('statMin').innerText = min;
+
+        // Trend Analysis (So sánh điểm cuối cùng và điểm áp chót)
+        const current = dataPoints[dataPoints.length - 1];
+        const prev = dataPoints[dataPoints.length - 2];
+        let trendHtml = "";
+        
+        if (current > prev) {
+            trendHtml = `<span style="color:var(--success)">Xu hướng: Đang tăng ↗</span> (so với lần cập nhật trước)`;
+        } else if (current < prev) {
+            trendHtml = `<span style="color:var(--error)">Xu hướng: Đang giảm ↘</span> (so với lần cập nhật trước)`;
+        } else {
+            trendHtml = `<span style="color:var(--text-sub)">Xu hướng: Đi ngang ➡</span> (Ổn định)`;
+        }
+        trendText.innerHTML = trendHtml;
+
+        // Draw Chart
+        const ctx = document.getElementById('rateChart').getContext('2d');
+        const colors = getChartColors();
+
+        if (rateChart) rateChart.destroy();
+
+        rateChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Tỷ giá thực tế',
+                    data: dataPoints,
+                    borderColor: colors.line,
+                    backgroundColor: colors.fill,
+                    borderWidth: 3,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        callbacks: {
+                            label: function(context) { return `Tỷ giá: ${context.parsed.y}`; }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: colors.text, font: {size: 10} }
+                    },
+                    y: {
+                        grid: { color: colors.grid, borderDash: [2, 4] },
+                        ticks: { color: colors.text, font: {size: 10} }
+                    }
+                }
+            }
+        });
+
+        renderHistoryList(rawHistory);
+    }
+
+    function renderHistoryList(history) {
+        let listHtml = '';
+        history.slice(0, 10).forEach(item => {
+            listHtml += `<div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dashed var(--border-color); color:var(--text-sub);">
+                <span>${item.time}</span>
+                <span style="color:var(--text-main); font-weight:600;">${item.rate}</span>
+            </div>`;
+        });
+        document.getElementById('historyListSimple').innerHTML = listHtml;
+    }
+
+    /* --- CALCULATOR LOGIC --- */
+    function formatNumber(num) { return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+    function getRawValue(id) { 
+        const val = document.getElementById(id).value.replace(/,/g, '');
+        return val ? parseInt(val) : 0; 
+    }
+    function formatNumberInput(input) {
+        let value = input.value.replace(/,/g, '');
+        if (!value) { input.value = ''; calculate(input.id === 'inputPoints' ? 'inputJPY' : input.id); return; }
+        input.value = parseInt(value).toLocaleString('en-US');
+        calculate(input.id === 'inputPoints' ? 'inputJPY' : input.id);
+    }
+
+    function saveRate(rate) {
+        const timeStr = new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+        localStorage.setItem(LOCAL_KEY, JSON.stringify({ rate: rate, time: timeStr }));
+
+        let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+        // Chỉ lưu nếu giá trị khác lần gần nhất hoặc list trống
+        if (history.length === 0 || history[0].rate !== rate) {
+            history.unshift({ rate: rate, time: timeStr });
+            if (history.length > 50) history = history.slice(0, 50); // Lưu max 50 điểm thực
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        }
+    }
+
+    function getFee(amount) {
+        if (amount <= 0) return 0;
+        if (amount <= 10000) return 380;
+        if (amount <= 50000) return 450;
+        if (amount <= 100000) return 760;
+        if (amount <= 300000) return 980;
+        if (amount <= 1000000) return 1700;
+        return 0;
+    }
+
+    function getPoints(amount) {
+        if (amount <= 0) return 0;
+        if (amount <= 10000) return 10;
+        if (amount <= 50000) return 20;
+        if (amount <= 100000) return 50;
+        if (amount <= 300000) return 100;
+        return 150;
+    }
+
+    function calculate(source) {
+        if (currentRate === 0) return;
+        const elJPY = document.getElementById('inputJPY');
+        const elVND = document.getElementById('inputVND');
+        const elPoints = document.getElementById('inputPoints');
+        
+        let valJPY = getRawValue('inputJPY'); 
+        let valPoints = getRawValue('inputPoints');
+        let realSend = 0, fee = 0, totalPay = 0;
+
+        if (isReverseMode) {
+            if (source === 'inputVND') {
+                realSend = Math.ceil(getRawValue('inputVND') / currentRate);
+            } else {
+                let budget = valJPY; 
+                let tempFee = 0;
+                if (budget >= 301700) tempFee = 1700;
+                else if (budget >= 100980) tempFee = 980;
+                else if (budget >= 50760) tempFee = 760;
+                else if (budget >= 10450) tempFee = 450;
+                else if (budget >= 680) tempFee = 380;
+                realSend = budget - tempFee + valPoints; 
+                let exactFee = getFee(realSend);
+                realSend = valJPY + valPoints - exactFee;
+                if (realSend < 0) realSend = 0;
+            }
+        } else {
+            if (source === 'inputVND') valJPY = Math.ceil(getRawValue('inputVND') / currentRate);
+            realSend = valJPY;
+            if(source === 'inputVND') elJPY.value = formatNumber(valJPY);
+        }
+
+        fee = getFee(realSend);
+
+        // Constraint: Points <= Fee
+        let appliedPoints = valPoints;
+        if (valPoints > fee) {
+            appliedPoints = fee;
+            elPoints.value = formatNumber(appliedPoints);
+            elPoints.classList.add('maxed');
+        } else {
+            elPoints.classList.remove('maxed');
+        }
+
+        if (isReverseMode) {
+             if (source === 'inputVND') totalPay = realSend + fee - appliedPoints;
+             else {
+                 totalPay = valJPY;
+                 if(source !== 'inputVND') elVND.value = formatNumber(Math.floor(realSend * currentRate));
+             }
+        } else {
+            totalPay = realSend + fee - appliedPoints;
+            if (source !== 'inputVND') elVND.value = formatNumber(Math.floor(realSend * currentRate));
+        }
+        if (totalPay < 0) totalPay = 0;
+
+        document.getElementById('feeDisplay').innerText = `¥${formatNumber(fee)}`;
+        document.getElementById('pointDisplay').innerText = `+${getPoints(realSend)} pts`;
+        document.getElementById('totalPayDisplay').innerText = `¥${formatNumber(totalPay)}`;
+    }
+
+    function toggleMode() {
+        isReverseMode = document.getElementById('modeToggle').checked;
+        const lblMode = document.getElementById('modeLabel');
+        const lblSub = document.getElementById('modeSub');
+        const lblJPY = document.getElementById('labelJPY');
+        const containerJPY = document.getElementById('containerJPY');
+
+        if (isReverseMode) {
+            lblMode.innerText = "Chế độ: Đã bao gồm phí";
+            lblMode.style.color = "var(--success)";
+            lblSub.innerText = "Bạn có tổng bao nhiêu tiền?";
+            lblJPY.innerText = "Tổng tiền bạn có (JPY)";
+            lblJPY.style.color = "var(--success)";
+            containerJPY.classList.add('highlight');
+        } else {
+            lblMode.innerText = "Chế độ: Thường (Cộng phí)";
+            lblMode.style.color = "var(--text-main)";
+            lblSub.innerText = "Nhập số tiền muốn gửi đi";
+            lblJPY.innerText = "Bạn gửi đi (Gốc)";
+            lblJPY.style.color = "var(--text-sub)";
+            containerJPY.classList.remove('highlight');
+        }
+        calculate('inputJPY');
+    }
+
+    async function forceUpdateRate() {
+        const btn = document.getElementById('btnRefresh');
+        const elRate = document.getElementById('rateDisplay');
+        btn.classList.add('loading');
+        elRate.style.opacity = '0.5';
+
+        const targetUrl = 'https://www.smileswallet.com/japan/vi/ty-gia/';
+        const rules = { "currencies": { "selector": ".currency", "type": "list", "output": { "country": ".country_name", "rate": ".exchange_rate" } } };
+        
+        let newRate = 0;
+        for (let key of SCRAPINGBEE_KEYS) {
+            if (!key) continue;
+            try {
+                const url = `https://app.scrapingbee.com/api/v1/?api_key=${key}&url=${encodeURIComponent(targetUrl)}&extract_rules=${encodeURIComponent(JSON.stringify(rules))}&render_js=false`;
+                const res = await fetch(url);
+                if (res.ok) {
+                    const data = await res.json();
+                    const vnData = data.currencies?.find(c => c.country.includes("Vietnam") || c.country.includes("Việt Nam"));
+                    if (vnData) {
+                        const match = vnData.rate.match(/([\d,.]+)/);
+                        if (match) { newRate = parseFloat(match[0].replace(/,/g, '')); break; }
+                    }
+                }
+            } catch (e) { console.warn("API Error", e); }
+        }
+
+        btn.classList.remove('loading');
+        elRate.style.opacity = '1';
+        
+        if (newRate > 0) {
+            saveRate(newRate);
+            updateStatus(newRate, new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }));
+        } else {
+            alert("Lỗi cập nhật tỷ giá. Vui lòng thử lại.");
+        }
+    }
+
+    function updateStatus(rate, timeStr) {
+        document.getElementById('rateDisplay').innerText = `1 JPY = ${rate} VND`;
+        document.getElementById('lastUpdatedTime').innerText = `Cập nhật: ${timeStr}`;
+        currentRate = rate;
+        calculate('inputJPY');
+    }
+
+    async function copyContent(elementId, tooltipId) {
+        const text = document.getElementById(elementId).innerText;
+        const raw = text.replace(/[^\d]/g, ''); 
+        try {
+            await navigator.clipboard.writeText(raw);
+            const tooltip = document.getElementById(tooltipId);
+            tooltip.classList.add('show');
+            setTimeout(() => tooltip.classList.remove('show'), 1500);
+        } catch (err) { console.error('Lỗi copy', err); }
+    }
+
+    (function init() {
+        const cache = localStorage.getItem(LOCAL_KEY) ? JSON.parse(localStorage.getItem(LOCAL_KEY)) : null;
+        if (cache && cache.rate) updateStatus(cache.rate, cache.time);
+        else forceUpdateRate();
+    })();
+
+</script>
+</body>
+</html>
