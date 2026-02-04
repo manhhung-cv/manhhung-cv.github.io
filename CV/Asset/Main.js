@@ -8,7 +8,7 @@ const translations = {
         BtnHireMe: "Tuyển dụng",
         BtnDownloadCV: "Tải CV",
         Location: "Việt Nam 🇻🇳",
-        
+
 
         QualificationsText: "Bằng cấp",
         SkillsText: "Kĩ năng",
@@ -245,181 +245,73 @@ const translations = {
 };
 
 
-// ======= UPDATE FLAG IMAGE BASED ON LANGUAGE =======
-function updateFlag(language) {
-    const flagMap = {
+// === CORE FUNCTIONS ===
+// === LOGIC ===
+function setLanguage(lang) {
+    localStorage.setItem('language', lang);
+    applyLanguage(lang);
+    const flags = {
         'vi': './Asset/icon/flag/Vietnam.png',
         'en': './Asset/icon/flag/US.png',
-        'de': './Asset/icon/flag/germany.png',
         'ja': './Asset/icon/flag/Japan.png',
-        'zh': './Asset/icon/flag/china.png',
+        'de': './Asset/icon/flag/germany.png',
+        'zh': './Asset/icon/flag/china.png'
     };
-    document.getElementById('currentFlag').src = flagMap[language];
+    const flagEl = document.getElementById('currentFlag');
+    if (flagEl && flags[lang]) flagEl.src = flags[lang];
+    document.getElementById('languageDropdown').classList.add('hidden');
 }
 
-// ======= APPLY LANGUAGE =======
-function applyLanguage(language) {
-    const body = document.body.classList;
-    body.remove('en', 'vi', 'ja', 'zh', 'de');
-    body.add(language);
+function applyLanguage(lang) {
+    if (!translations[lang]) lang = 'vi';
+    const t = translations[lang];
     document.querySelectorAll('[data-translate]').forEach(el => {
         const key = el.getAttribute('data-translate');
-        el.innerHTML = translations[language][key] || el.innerHTML;
+        if (t[key]) el.innerHTML = t[key];
     });
 }
 
-// ======= SET LANGUAGE =======
-function setLanguage(language, flagSrc) {
-    localStorage.setItem('language', language);
-    applyLanguage(language);
-    document.getElementById('currentFlag').src = flagSrc;
-    document.getElementById('languageDropdown').classList.remove('show');
-}
-
-// ======= TOGGLE DROPDOWN =======
 function toggleDropdown() {
-    document.getElementById('languageDropdown').classList.toggle('show');
+    document.getElementById('languageDropdown').classList.toggle('hidden');
 }
 
-
-// ======= INIT ON PAGE LOAD =======
-document.addEventListener('DOMContentLoaded', async () => {
-    const hashLang = window.location.hash.toUpperCase();
-    const langFromHash = {
-        '#JA': 'ja',
-        '#VI': 'vi',
-        '#EN': 'en',
-        '#ZH': 'zh',
-        '#DE': 'de' //
-    };
-
-    const flagMap = {
-        'vi': './Asset/icon/flag/Vietnam.png',
-        'en': './Asset/icon/flag/US.png',
-        'ja': './Asset/icon/flag/Japan.png',
-        'zh': './Asset/icon/flag/china.png',
-        'de': './Asset/icon/flag/germany.png' 
-    };
-
-    // Function to detect language from IP using ip-api.com
-    async function detectLanguageFromIP() {
-        try {
-            const yourIpInfoToken = '8c35ace05458e6'; // Đây là token bạn đã cung cấp
-            const response = await fetch(`https://ipinfo.io/json?token=${yourIpInfoToken}`);
-            const data = await response.json();
-            // console.log("Dữ liệu từ IPinfo.io:", data); // Ghi log để debug
-    
-            // ipinfo.io trả về mã quốc gia trong trường 'country'
-            // ví dụ: { "ip": "...", "country": "VN", ... }
-            if (data && data.country) {
-                const countryCode = data.country.toLowerCase(); // Lấy mã quốc gia và chuyển thành chữ thường
-    
-                const countryLangMap = {
-                    'vn': 'vi', // Vietnam
-                    'us': 'en', // United States
-                    'gb': 'en', // United Kingdom
-                    'jp': 'ja', // Japan
-                    'cn': 'zh', // China
-                    'de': 'de'  // Germany
-                    // Thêm các mapping khác nếu cần
-                };
-    
-                
-                return countryLangMap[countryCode] || null; // Trả về ngôn ngữ hoặc null nếu không có mapping
-            } else {
-                console.error("IPinfo.io API request failed or no country data:", data ? data.error : "No data");
-                return null;
-            }
-        } catch (error) {
-            console.error("Error detecting language from IP (IPinfo.io):", error);
-            return null;
-        }
-    }
-    // Giả sử bạn có các hàm này đã được định nghĩa ở nơi khác
-    // function applyLanguage(lang) { /* ... logic áp dụng ngôn ngữ ... */ }
-    // function updateFlag(lang) { /* ... logic cập nhật cờ ... */ }
-
-    let language = langFromHash[hashLang];
-
-    if (!language) {
-        language = localStorage.getItem('language');
-    }
-
-    if (!language) {
-        // Await the IP detection if language is not found from hash or local storage
-        language = await detectLanguageFromIP();
-    }
-
-    if (!language) {
-        language = 'vi'; // Fallback to 'vi' if no language is determined from any source
-    }
-
-    // Bạn cần đảm bảo rằng hàm applyLanguage và updateFlag đã được định nghĩa
-    // Ví dụ:
-    applyLanguage(language);
-    updateFlag(language);
-    // console.log(`Final language determined: ${language}`);
-    // Gọi các hàm thực tế của bạn ở đây, ví dụ:
-    window.applyLanguage(language); // Nếu chúng là global
-    window.updateFlag(language);
-});
-
-
-
-
-
-// ======= THEME DARK / LIGHT =======
-const themeToggle = document.getElementById('themeToggle');
-const themeIcon = document.getElementById('themeIcon');
-const currentTheme = localStorage.getItem('theme') || 'light';
-document.body.classList.add(currentTheme + '-theme');
-themeIcon.src = currentTheme === 'light' ? './Asset/icon/theme/sun.png' : './Asset/icon/theme/moon.png';
-
-themeToggle.addEventListener('click', () => {
-    const isLight = document.body.classList.contains('light-theme');
-    const newTheme = isLight ? 'dark' : 'light';
-    document.body.classList.toggle('light-theme');
+// Theme
+const themeBtn = document.getElementById('themeToggle');
+themeBtn.addEventListener('click', () => {
     document.body.classList.toggle('dark-theme');
-    themeIcon.src = newTheme === 'light' ? './Asset/icon/theme/sun.png' : './Asset/icon/theme/moon.png';
-    localStorage.setItem('theme', newTheme);
+    const isDark = document.body.classList.contains('dark-theme');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    themeBtn.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
 });
 
-// ======= PROGRESS BARS =======
-document.querySelectorAll('.progress').forEach(progress => {
-    const percentage = progress.getAttribute('data-percentage');
-    const container = document.createElement('div');
-    container.classList.add('progress-container');
+if (localStorage.getItem('theme') === 'dark') {
+    document.body.classList.add('dark-theme');
+    themeBtn.querySelector('i').className = 'fas fa-sun';
+}
 
-    const barWrapper = document.createElement('div');
-    barWrapper.classList.add('progress-bar-wrapper');
+// Modal
+function closeModal(e) {
+    if (!e || e.target.id === 'modalOverlay' || e.target.closest('.btn-text')) {
+        document.getElementById('modalOverlay').classList.add('hidden');
+    }
+}
+function showModal(title, content) {
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalContent').innerHTML = content;
+    document.getElementById('modalOverlay').classList.remove('hidden');
+}
 
-    const bar = document.createElement('div');
-    bar.classList.add('progress-bar');
-    bar.style.width = percentage + '%';
-
-    barWrapper.appendChild(bar);
-    container.appendChild(barWrapper);
-    progress.appendChild(container);
-});
-
-// ======= DOWNLOAD CV WITH RECRUITMENT CODE =======
 function DownloadCV() {
-    // Tạo một thẻ <a> ẩn
     const link = document.createElement('a');
-    link.style.display = 'none';
-  
-    // Thiết lập đường dẫn đến file CV của bạn
     link.href = './Asset/DINHMANHHUNG-CV.pdf';
-  
-    // Đặt tên file sẽ được tải về (trình duyệt sẽ gợi ý tên này)
-    link.download = 'CV.pdf';
-  
-    // Thêm thẻ <a> vào DOM (cần thiết cho Firefox)
+    link.download = 'DINHMANHHUNG-CV.pdf';
     document.body.appendChild(link);
-  
-    // Kích hoạt sự kiện click trên thẻ <a> để bắt đầu tải file
     link.click();
-  
-    // Xóa thẻ <a> khỏi DOM sau khi đã click
     document.body.removeChild(link);
-  }
+    showModal("Thông báo", "Đang tải xuống CV...");
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    setLanguage(localStorage.getItem('language') || 'vi');
+});
