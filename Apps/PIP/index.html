@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -14,762 +15,1163 @@
     <meta property="og:title" content="Hunq" />
     <meta property="og:description" content="Thiết kế và lập trình Đinh Mạnh Hùng" />
     <title>PIP</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
         :root {
-            --bg-body: #0f172a;
-            --bg-panel: #1e293b;
-            --primary: #3b82f6;
-            --primary-hover: #2563eb;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
-            --border: #334155;
+            /* PALETTE: Zinc / Neutral Dark */
+            --bg-body: #000000;
+            /* Đen tuyệt đối */
+            --bg-sidebar: #09090b;
+            /* Xám rất đậm */
+            --bg-card: #18181b;
+            /* Xám đậm cho input/group */
+            --bg-hover: #27272a;
+            /* Xám vừa cho hover */
+
+            --border: #27272a;
+            /* Viền tinh tế */
+
+            --text-main: #fafafa;
+            /* Trắng sáng */
+            --text-muted: #71717a;
+            /* Xám nhạt cho label */
+
+            --accent: #ffffff;
+            /* Màu nhấn là Trắng */
+            --accent-fg: #000000;
+            /* Chữ trên nền nhấn là Đen */
+
             --danger: #ef4444;
-            --lock: #fbbf24;
+            --radius: 12px;
+            /* Bo góc mềm mại hơn */
         }
 
         /* RESET & BASE */
-        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; user-select: none; font-family: 'Inter', sans-serif; }
-        body { margin: 0; background: var(--bg-body); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-body); }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
-
-        /* --- LAYOUT --- */
-        .app-shell { display: flex; flex: 1; height: 100%; width: 100%; }
-
-        /* SIDEBAR (CONTROLS) */
-        .sidebar {
-            width: 350px; min-width: 350px;
-            background: var(--bg-panel);
-            border-right: 1px solid var(--border);
-            display: flex; flex-direction: column;
-            z-index: 50;
-            box-shadow: 4px 0 20px rgba(0,0,0,0.3);
+        * {
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            font-family: 'Inter', sans-serif;
         }
 
-        /* PREVIEW AREA */
+        body {
+            margin: 0;
+            background: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* SCROLLBAR TINH TẾ */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 2px;
+        }
+
+        /* --- LAYOUT --- */
+        .app-shell {
+            display: flex;
+            flex: 1;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: 360px;
+            min-width: 360px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 50;
+        }
+
+        /* VIEWPORT (CANVAS AREA) */
         .viewport {
             flex: 1;
-            background-color: #000;
-            background-image: radial-gradient(#333 1px, transparent 1px);
-            background-size: 20px 20px;
-            display: flex; align-items: center; justify-content: center;
-            position: relative; overflow: hidden;
-            padding: 20px;
+            background-color: var(--bg-body);
+            /* Họa tiết chấm bi cực mờ thay vì lưới caro */
+            background-image: radial-gradient(#27272a 1px, transparent 1px);
+            background-size: 24px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
         }
 
         canvas {
             background: #000;
-            box-shadow: 0 0 50px rgba(0,0,0,0.6);
-            border: 1px solid #333;
+            border: 1px solid var(--border);
+            box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.5);
+            /* Shadow mềm hơn */
             border-radius: 4px;
-            max-width: 100%; max-height: 100%;
+            max-width: 100%;
+            max-height: 100%;
             cursor: grab;
         }
-        canvas:active { cursor: grabbing; }
 
-        /* RESPONSIVE MOBILE */
-        @media (max-width: 768px) {
-            .app-shell { flex-direction: column; }
-            .sidebar { 
-                width: 100%; min-width: 0; height: 55%; 
-                order: 2; border-right: none; border-top: 1px solid var(--border);
-            }
-            .viewport { height: 45%; order: 1; padding: 10px; }
+        canvas:active {
+            cursor: grabbing;
         }
 
         /* --- UI COMPONENTS --- */
-        /* TABS */
-        .tabs { display: flex; background: #0f172a; border-bottom: 1px solid var(--border); }
-        .tab-btn {
-            flex: 1; text-align: center; padding: 16px 0; color: var(--text-muted);
-            cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.2s;
-            border-bottom: 2px solid transparent;
+
+        /* TABS - Minimal Style */
+        .tabs {
+            display: flex;
+            padding: 16px 16px 0 16px;
+            gap: 20px;
+            border-bottom: 1px solid var(--border);
         }
-        .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.02); }
-        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--bg-panel); }
-        .tab-btn i { font-size: 16px; margin-bottom: 4px; display: block; }
+
+        .tab-btn {
+            padding-bottom: 16px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: 0.2s;
+            border-bottom: 2px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tab-btn i {
+            font-size: 14px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            color: var(--text-main);
+            border-bottom-color: var(--text-main);
+        }
 
         /* PANELS */
-        .panel { flex: 1; overflow-y: auto; padding: 20px; display: none; }
-        .panel.active { display: block; animation: slideIn 0.2s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* CONTROLS */
-        .group { margin-bottom: 24px; }
-        .label { 
-            font-size: 11px; font-weight: 700; color: var(--text-muted); 
-            text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
-            display: flex; justify-content: space-between; align-items: center;
+        .panel {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: none;
         }
-        
-        .row { display: flex; gap: 8px; align-items: center; }
-        .col { flex: 1; }
 
-        /* INPUTS & BUTTONS */
-        input[type="text"], input[type="number"], input[type="datetime-local"], select {
-            width: 100%; background: #334155; border: 1px solid var(--border);
-            color: #fff; padding: 10px; border-radius: 6px; font-size: 13px;
+        .panel.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
         }
-        input:focus, select:focus { border-color: var(--primary); }
 
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* GROUPS & LABELS */
+        .group {
+            margin-bottom: 32px;
+        }
+
+        .label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .col {
+            flex: 1;
+        }
+
+        /* INPUTS & BUTTONS - FLAT DESIGN */
+        input[type="text"],
+        input[type="number"],
+        input[type="datetime-local"],
+        select {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 12px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            transition: 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            border-color: var(--text-muted);
+            background: var(--bg-hover);
+        }
+
+        /* BUTTONS */
         button {
-            width: 100%; padding: 10px; border-radius: 6px; border: none;
-            font-weight: 600; cursor: pointer; font-size: 13px;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            transition: 0.2s; background: #334155; color: #fff;
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.2s;
+            background: var(--bg-card);
+            color: var(--text-main);
         }
-        button:hover { background: #475569; }
-        button:active { transform: translateY(1px); }
 
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-hover); }
-        
-        .btn-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
-        .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+        button:hover {
+            background: var(--bg-hover);
+            border-color: var(--text-muted);
+        }
 
-        .btn-lock { background: rgba(251, 191, 36, 0.15); color: var(--lock); border: 1px solid rgba(251, 191, 36, 0.2); }
-        .btn-lock:hover { background: rgba(251, 191, 36, 0.25); }
-        .btn-lock.active { background: var(--lock); color: #000; }
+        button:active {
+            transform: scale(0.98);
+        }
 
-        /* CUSTOM INPUTS */
-        input[type="color"] { padding: 0; height: 38px; cursor: pointer; -webkit-appearance: none; }
-        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 5px; }
-        
-        input[type="range"] { height: 4px; background: #475569; border-radius: 2px; appearance: none; padding: 0; }
-        input[type="range"]::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; background: var(--primary); border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        /* PRIMARY BUTTON (White on Black) */
+        .btn-primary {
+            background: var(--accent);
+            color: var(--accent-fg);
+            border-color: var(--accent);
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #e4e4e7;
+            /* Trắng ngà */
+            border-color: #e4e4e7;
+        }
+
+        /* UTILITY BUTTONS */
+        .btn-danger {
+            color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.2);
+            background: transparent;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: var(--danger);
+        }
+
+        .btn-lock {
+            color: #fbbf24;
+            border-color: rgba(251, 191, 36, 0.2);
+            background: transparent;
+        }
+
+        .btn-lock:hover {
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .btn-lock.active {
+            background: #fbbf24;
+            color: #000;
+            border-color: #fbbf24;
+        }
+
+        /* CUSTOM CONTROLS */
+        /* Color Picker dạng tròn */
+        input[type="color"] {
+            padding: 0;
+            height: 40px;
+            width: 40px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            border: none;
+            background: none;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid var(--border);
+            border-radius: 50%;
+        }
+
+        /* Slider Range */
+        input[type="range"] {
+            height: 4px;
+            background: var(--bg-hover);
+            border-radius: 2px;
+            appearance: none;
+            padding: 0;
+            border: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--text-main);
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid var(--bg-sidebar);
+            /* Tạo hiệu ứng viền */
+        }
+
+        /* Checkbox tùy biến */
+        input[type="checkbox"] {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        input[type="checkbox"]:checked {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        input[type="checkbox"]:checked::after {
+            content: '\2713';
+            font-size: 12px;
+            color: var(--accent-fg);
+            font-weight: bold;
+        }
 
         /* EMPTY STATE */
-        .empty-state { text-align: center; color: var(--text-muted); padding: 40px 0; border: 2px dashed var(--border); border-radius: 8px; }
-        .empty-state i { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 60px 0;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.01);
+        }
 
-        .hidden { display: none !important; }
-        #hidden-media, #pip-video-output { position: absolute; top: -9999px; opacity: 0; pointer-events: none; }
+        .empty-state i {
+            font-size: 24px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .app-shell {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                min-width: 0;
+                height: 60%;
+                order: 2;
+                border-right: none;
+                border-top: 1px solid var(--border);
+            }
+
+            .viewport {
+                height: 40%;
+                order: 1;
+                padding: 10px;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #hidden-media,
+        #pip-video-output {
+            position: absolute;
+            top: -9999px;
+            opacity: 0;
+            pointer-events: none;
+        }
     </style>
 </head>
+
 <body>
 
-<div class="app-shell">
-    
-    <div class="sidebar">
-        <div class="tabs">
-            <div class="tab-btn active" onclick="switchTab('settings')"><i class="fa-solid fa-sliders"></i> Cài đặt</div>
-            <div class="tab-btn" onclick="switchTab('layers')"><i class="fa-solid fa-layer-group"></i> Layer</div>
-            <div class="tab-btn" onclick="switchTab('add')"><i class="fa-solid fa-plus"></i> Thêm</div>
-        </div>
+    <div class="app-shell">
 
-        <div id="tab-settings" class="panel active">
-            <div class="group">
-                <div class="label">Tỉ lệ khung hình</div>
-                <div class="row">
-                    <button onclick="resizeCanvas('16:9')">16:9</button>
-                    <button onclick="resizeCanvas('9:16')">9:16</button>
-                    <button onclick="resizeCanvas('1:1')">1:1</button>
+        <div class="sidebar">
+            <div class="tabs">
+                <div class="tab-btn active" onclick="switchTab('settings')"><i class="fa-solid fa-sliders"></i> Cài đặt
                 </div>
+                <div class="tab-btn" onclick="switchTab('layers')"><i class="fa-solid fa-layer-group"></i> Layer</div>
+                <div class="tab-btn" onclick="switchTab('add')"><i class="fa-solid fa-plus"></i> Thêm</div>
             </div>
 
-            <div class="group">
-                <div class="label">Nền Canvas</div>
-                <select id="bgMode" onchange="updateBgMode()" style="margin-bottom: 10px;">
-                    <option value="solid">Màu đơn sắc</option>
-                    <option value="gradient">Gradient (Chuyển màu)</option>
-                    <option value="image">Hình ảnh (Từ tab Thêm)</option>
-                </select>
-                <div class="row">
-                    <input type="color" id="bgC1" value="#0f172a" oninput="updateBg()">
-                    <input type="color" id="bgC2" value="#3b82f6" class="hidden" oninput="updateBg()">
-                </div>
-            </div>
-
-            <div style="margin-top: auto;">
-                <button class="btn-primary" style="padding: 15px; font-size: 15px;" onclick="startPIP()">
-                    <i class="fa-solid fa-up-right-from-square"></i> BẮT ĐẦU PIP
-                </button>
-                <p style="text-align: center; font-size: 11px; color: #64748b; margin-top: 10px;">
-                    Hỗ trợ: Chrome, Edge, Safari (iOS/macOS)
-                </p>
-            </div>
-        </div>
-
-        <div id="tab-layers" class="panel">
-            <div id="empty-msg" class="empty-state">
-                <i class="fa-solid fa-arrow-pointer"></i>
-                <p>Chọn đối tượng trên màn hình để sửa</p>
-            </div>
-
-            <div id="editor-ui" class="hidden">
+            <div id="tab-settings" class="panel active">
                 <div class="group">
+                    <div class="label">Tỉ lệ khung hình</div>
                     <div class="row">
-                        <button class="btn-lock" id="btn-lock" onclick="toggleLock()">
-                            <i class="fa-solid fa-lock"></i>
-                        </button>
-                        <button class="btn-danger" onclick="deleteItem()">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                        <button onclick="moveItem('up')" title="Lên trên"><i class="fa-solid fa-arrow-up"></i></button>
-                        <button onclick="moveItem('down')" title="Xuống dưới"><i class="fa-solid fa-arrow-down"></i></button>
+                        <button onclick="resizeCanvas('16:9')">16:9</button>
+                        <button onclick="resizeCanvas('9:16')">9:16</button>
+                        <button onclick="resizeCanvas('1:1')">1:1</button>
                     </div>
                 </div>
 
-                <div id="props-text">
-                    <div class="group">
-                        <div class="label">Nội dung</div>
-                        <input type="text" id="inp-content" oninput="updateProp('content', this.value)">
-                    </div>
-                    <div class="group">
-                        <div class="label">Giao diện</div>
-                        <div class="row">
-                            <input type="color" id="inp-color" style="flex: 0 0 50px;" oninput="updateProp('color', this.value)">
-                            <input type="range" id="inp-size" min="10" max="250" oninput="updateProp('size', parseInt(this.value))">
-                        </div>
-                    </div>
-                    <div class="group">
-                        <div class="label">Hiệu ứng (Animation)</div>
-                        <select id="inp-anim" onchange="updateProp('anim', this.value)">
-                            <option value="none">Không</option>
-                            <option value="blink">Nhấp nháy (Blink)</option>
-                            <option value="pulse">Nhịp tim (Pulse)</option>
-                            <option value="shake">Rung lắc (Shake)</option>
-                        </select>
+                <div class="group">
+                    <div class="label">Nền Canvas</div>
+                    <select id="bgMode" onchange="updateBgMode()" style="margin-bottom: 10px;">
+                        <option value="solid">Màu đơn sắc</option>
+                        <option value="gradient">Gradient (Chuyển màu)</option>
+                        <option value="image">Hình ảnh (Từ tab Thêm)</option>
+                    </select>
+                    <div class="row">
+                        <input type="color" id="bgC1" value="#0f172a" oninput="updateBg()">
+                        <input type="color" id="bgC2" value="#3b82f6" class="hidden" oninput="updateBg()">
                     </div>
                 </div>
 
-                <div id="props-clock" class="hidden">
-                    <div class="group">
-                        <div class="label">Chế độ đồng hồ</div>
-                        <select id="inp-clock-type" onchange="changeClockType(this.value)">
-                            <option value="real">Giờ hiện tại (Real-time)</option>
-                            <option value="timer">Bộ đếm (Timer)</option>
-                            <option value="countdown">Đếm ngược đến Ngày (Countdown)</option>
-                        </select>
-                    </div>
-
-                    <div id="clock-timer-inputs" class="group hidden">
-                        <div class="label">Thời gian (H : M : S)</div>
-                        <div class="row">
-                            <input type="number" id="t-h" placeholder="H" value="0" min="0">
-                            <input type="number" id="t-m" placeholder="M" value="5" min="0">
-                            <input type="number" id="t-s" placeholder="S" value="0" min="0">
-                        </div>
-                        <button class="btn-primary" style="margin-top: 10px;" onclick="startClock('timer')">
-                            <i class="fa-solid fa-play"></i> BẮT ĐẦU ĐẾM
-                        </button>
-                    </div>
-
-                    <div id="clock-date-inputs" class="group hidden">
-                        <div class="label">Đến ngày giờ</div>
-                        <input type="datetime-local" id="t-date" style="color-scheme: dark;">
-                        <button class="btn-primary" style="margin-top: 10px;" onclick="startClock('date')">
-                            <i class="fa-solid fa-play"></i> BẮT ĐẦU ĐẾM
-                        </button>
-                    </div>
-                </div>
-
-                <div id="props-media" class="hidden">
-                    <div class="group">
-                        <div class="label">Kích thước (Scale)</div>
-                        <input type="range" id="inp-scale" min="0.1" max="3" step="0.1" oninput="updateProp('scale', parseFloat(this.value))">
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <div id="tab-add" class="panel">
-            <div class="group">
-                <div class="label">Cơ bản</div>
-                <div class="row" style="flex-direction: column;">
-                    <button onclick="addItem('text')"><i class="fa-solid fa-font"></i> Thêm Chữ</button>
-                    <button onclick="addItem('clock')"><i class="fa-regular fa-clock"></i> Thêm Đồng Hồ</button>
-                </div>
-            </div>
-
-            <div class="group">
-                <div class="label">Media (Ảnh / Video)</div>
-                <div style="background: #334155; padding: 15px; border-radius: 8px; text-align: center; border: 1px dashed var(--border);">
-                    <input type="file" id="file-input" class="hidden" accept="image/*,video/*" onchange="handleFileSelect(this)">
-                    <button class="btn-primary" onclick="document.getElementById('file-input').click()">
-                        <i class="fa-solid fa-cloud-arrow-up"></i> Tải file lên
+                <div style="margin-top: auto;">
+                    <button class="btn-primary" style="padding: 15px; font-size: 15px;" onclick="startPIP()">
+                        <i class="fa-solid fa-up-right-from-square"></i> BẮT ĐẦU PIP
                     </button>
-                    <p style="font-size: 11px; color: var(--text-muted); margin-top: 10px;">Hỗ trợ .jpg, .png, .mp4</p>
+                    <p style="text-align: center; font-size: 11px; color: #64748b; margin-top: 10px;">
+                        Hỗ trợ: Chrome, Edge, Safari (iOS/macOS)
+                    </p>
                 </div>
             </div>
 
-            <div id="file-actions" class="group hidden" style="margin-top: 20px; animation: slideIn 0.2s;">
-                <div class="label" style="color: var(--primary)">Đã chọn file! Bạn muốn làm gì?</div>
-                <div class="row">
-                    <button onclick="applyFile('bg')">Làm Nền</button>
-                    <button onclick="applyFile('layer')">Thêm Layer</button>
+            <div id="tab-layers" class="panel">
+                <div id="empty-msg" class="empty-state">
+                    <i class="fa-solid fa-arrow-pointer"></i>
+                    <p>Chọn đối tượng trên màn hình để sửa</p>
+                </div>
+
+                <div id="editor-ui" class="hidden">
+                    <div class="group">
+                        <div class="row">
+                            <button class="btn-lock" id="btn-lock" onclick="toggleLock()">
+                                <i class="fa-solid fa-lock"></i>
+                            </button>
+                            <button class="btn-danger" onclick="deleteItem()">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                            <button onclick="moveItem('up')" title="Lên trên"><i
+                                    class="fa-solid fa-arrow-up"></i></button>
+                            <button onclick="moveItem('down')" title="Xuống dưới"><i
+                                    class="fa-solid fa-arrow-down"></i></button>
+                        </div>
+                    </div>
+
+                    <div id="props-text">
+                        <div class="group">
+                            <div class="label">Nội dung</div>
+                            <input type="text" id="inp-content" oninput="updateProp('content', this.value)">
+                        </div>
+                        <div class="group">
+                            <div class="label">Giao diện</div>
+                            <div class="row">
+                                <input type="color" id="inp-color" style="flex: 0 0 50px;"
+                                    oninput="updateProp('color', this.value)">
+                                <input type="range" id="inp-size" min="10" max="250"
+                                    oninput="updateProp('size', parseInt(this.value))">
+                            </div>
+                        </div>
+                        <div class="group">
+                            <div class="label">Hiệu ứng (Animation)</div>
+                            <select id="inp-anim" onchange="updateProp('anim', this.value)">
+                                <option value="none">Không</option>
+                                <option value="blink">Nhấp nháy (Blink)</option>
+                                <option value="pulse">Nhịp tim (Pulse)</option>
+                                <option value="shake">Rung lắc (Shake)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="props-clock" class="hidden">
+                        <div class="group">
+                            <div class="label">Chế độ đồng hồ</div>
+                            <select id="inp-clock-type" onchange="changeClockType(this.value)">
+                                <option value="real">Giờ hiện tại (Real-time)</option>
+                                <option value="timer">Bộ đếm (Timer)</option>
+                                <option value="countdown">Đếm ngược (Countdown)</option>
+                            </select>
+                        </div>
+
+                        <div class="group">
+                            <div class="row" style="justify-content: start;">
+                                <input type="checkbox" id="inp-clock-ms" style="width: auto; margin-right: 8px;"
+                                    onchange="updateProp('showMs', this.checked)">
+                                <label for="inp-clock-ms" style="font-size: 13px; cursor: pointer;">Hiện mili giây
+                                    (.000)</label>
+                            </div>
+                        </div>
+
+                        <div class="group" id="grp-timezone">
+                            <div class="label">Múi giờ (Quốc tế)</div>
+                            <select id="inp-timezone" onchange="updateProp('timezone', this.value)">
+                                <option value="local">Giờ thiết bị (Mặc định)</option>
+                                <option value="Asia/Ho_Chi_Minh">Việt Nam (GMT+7)</option>
+                                <option value="Asia/Tokyo">Nhật Bản (GMT+9)</option>
+                                <option value="Asia/Seoul">Hàn Quốc (GMT+9)</option>
+                                <option value="Europe/London">London (GMT+0)</option>
+                                <option value="America/New_York">New York (GMT-5)</option>
+                                <option value="UTC">Giờ chuẩn (UTC)</option>
+                            </select>
+                        </div>
+
+                        <div id="clock-timer-inputs" class="group hidden">
+                            <div class="label">Thời gian (H : M : S)</div>
+                            <div class="row">
+                                <input type="number" id="t-h" placeholder="H" value="0" min="0">
+                                <input type="number" id="t-m" placeholder="M" value="5" min="0">
+                                <input type="number" id="t-s" placeholder="S" value="0" min="0">
+                            </div>
+                            <button class="btn-primary" style="margin-top: 10px;" onclick="startClock('timer')">
+                                <i class="fa-solid fa-play"></i> BẮT ĐẦU ĐẾM
+                            </button>
+                        </div>
+
+                        <div id="clock-date-inputs" class="group hidden">
+                            <div class="label">Đến ngày giờ</div>
+                            <input type="datetime-local" id="t-date" style="color-scheme: dark;">
+                            <button class="btn-primary" style="margin-top: 10px;" onclick="startClock('date')">
+                                <i class="fa-solid fa-play"></i> BẮT ĐẦU ĐẾM
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="props-media" class="hidden">
+                        <div class="group">
+                            <div class="label">Kích thước (Scale)</div>
+                            <input type="range" id="inp-scale" min="0.1" max="3" step="0.1"
+                                oninput="updateProp('scale', parseFloat(this.value))">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="tab-add" class="panel">
+                <div class="group">
+                    <div class="label">Cơ bản</div>
+                    <div class="row" style="flex-direction: column;">
+                        <button onclick="addItem('text')"><i class="fa-solid fa-font"></i> Thêm Chữ</button>
+                        <button onclick="addItem('clock')"><i class="fa-regular fa-clock"></i> Thêm Đồng Hồ</button>
+                    </div>
+                </div>
+
+                <div class="group">
+                    <div class="label">Media (Ảnh / Video)</div>
+
+                    <div
+                        style="padding: 24px; border-radius: var(--radius); text-align: center; border: 1px dashed var(--border); background: var(--bg-card);">
+
+                        <input type="file" id="file-input" class="hidden" accept="image/*,video/*"
+                            onchange="handleFileSelect(this)">
+
+                        <button class="btn-primary" onclick="document.getElementById('file-input').click()">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Tải file lên
+                        </button>
+
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 12px;">Hỗ trợ .jpg, .png, .mp4
+                        </p>
+                    </div>
+                </div>
+
+                <div id="file-actions" class="group hidden" style="margin-top: 20px; animation: slideIn 0.2s;">
+                    <div class="label" style="color: var(--primary)">Đã chọn file! Bạn muốn làm gì?</div>
+                    <div class="row">
+                        <button onclick="applyFile('bg')">Làm Nền</button>
+                        <button onclick="applyFile('layer')">Thêm Layer</button>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <div class="viewport">
+            <canvas id="canvas"></canvas>
+        </div>
+
     </div>
 
-    <div class="viewport">
-        <canvas id="canvas"></canvas>
-    </div>
+    <div id="hidden-media"></div>
+    <video id="pip-video-output" autoplay muted playsinline></video>
 
-</div>
+    <script>
+        /** --- ENGINE CONFIG --- **/
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
 
-<div id="hidden-media"></div>
-<video id="pip-video-output" autoplay muted playsinline></video>
-
-<script>
-    /** --- ENGINE CONFIG --- **/
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    
-    const app = {
-        w: 1280, h: 720,
-        bg: { mode: 'solid', c1: '#0f172a', c2: '#3b82f6', img: null },
-        items: [],
-        selId: null,
-        drag: null,
-        tempFile: null
-    };
-
-    /** --- INITIALIZATION --- **/
-    function init() {
-        resizeCanvas('16:9');
-        requestAnimationFrame(renderLoop);
-    }
-
-    /** --- RENDER LOOP --- **/
-    function renderLoop() {
-        // 1. DRAW BACKGROUND
-        if (app.bg.mode === 'image' && app.bg.img) {
-            drawImageCover(ctx, app.bg.img, app.w, app.h);
-        } else if (app.bg.mode === 'gradient') {
-            const g = ctx.createLinearGradient(0, 0, app.w, app.h);
-            g.addColorStop(0, app.bg.c1);
-            g.addColorStop(1, app.bg.c2);
-            ctx.fillStyle = g;
-            ctx.fillRect(0, 0, app.w, app.h);
-        } else {
-            ctx.fillStyle = app.bg.c1;
-            ctx.fillRect(0, 0, app.w, app.h);
-        }
-
-        // 2. DRAW ITEMS
-        const now = Date.now();
-        
-        app.items.forEach(item => {
-            ctx.save();
-
-            // ANIMATION TRANSFORMS
-            if (item.anim === 'pulse') {
-                const s = 1 + Math.sin(now / 200) * 0.02;
-                ctx.translate(item.x, item.y); ctx.scale(s, s); ctx.translate(-item.x, -item.y);
-            } else if (item.anim === 'shake') {
-                ctx.translate(Math.random()*2-1, Math.random()*2-1);
-            }
-            if (item.anim === 'blink') {
-                ctx.globalAlpha = 0.6 + Math.sin(now / 300) * 0.4;
-            }
-
-            // DRAW CONTENT
-            if (item.type === 'text' || item.type === 'clock') {
-                drawTextItem(item);
-            } else if (item.type === 'image' || item.type === 'video') {
-                drawMediaItem(item);
-            }
-
-            // DRAW SELECTION & LOCK UI
-            if (app.selId === item.id) {
-                const pad = 10;
-                ctx.strokeStyle = item.locked ? '#fbbf24' : '#3b82f6';
-                ctx.lineWidth = 2;
-                ctx.strokeRect(item.x - item.w/2 - pad, item.y - item.h/2 - pad, item.w + pad*2, item.h + pad*2);
-                
-                // Draw Lock Icon on Canvas
-                if(item.locked) {
-                    ctx.fillStyle = '#fbbf24';
-                    ctx.beginPath();
-                    ctx.arc(item.x + item.w/2 + pad, item.y - item.h/2 - pad, 8, 0, Math.PI*2);
-                    ctx.fill();
-                    // Simple lock symbol
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(item.x + item.w/2 + pad - 2, item.y - item.h/2 - pad - 2, 4, 4);
-                }
-            }
-
-            ctx.restore();
-        });
-
-        requestAnimationFrame(renderLoop);
-    }
-
-    /* --- DRAWING HELPERS --- */
-    function drawTextItem(item) {
-        let content = item.content;
-        if (item.type === 'clock') content = getClockString(item);
-
-        ctx.font = `bold ${item.size}px 'Inter', sans-serif`;
-        ctx.fillStyle = item.color;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        
-        // Shadow
-        ctx.shadowColor = "rgba(0,0,0,0.5)";
-        ctx.shadowBlur = 4;
-        ctx.shadowOffsetY = 2;
-
-        ctx.fillText(content, item.x, item.y);
-        
-        // Update Hit Box
-        const m = ctx.measureText(content);
-        item.w = m.width; 
-        item.h = item.size; // Approx height
-    }
-
-    function drawMediaItem(item) {
-        if (!item.source) return;
-        const s = item.scale || 1;
-        // Use videoWidth for video, width for image
-        const nw = (item.source.videoWidth || item.source.width) * s;
-        const nh = (item.source.videoHeight || item.source.height) * s;
-        
-        item.w = nw; 
-        item.h = nh;
-        
-        ctx.drawImage(item.source, item.x - nw/2, item.y - nh/2, nw, nh);
-    }
-
-    function drawImageCover(ctx, img, w, h) {
-        // Algorithm to "Cover" the canvas with image
-        const ratio = w / h;
-        const imgRatio = img.width / img.height;
-        let nw, nh, cx, cy;
-
-        if (imgRatio > ratio) {
-            nh = h; nw = h * imgRatio;
-            cx = (w - nw) / 2; cy = 0;
-        } else {
-            nw = w; nh = w / imgRatio;
-            cx = 0; cy = (h - nh) / 2;
-        }
-        ctx.drawImage(img, cx, cy, nw, nh);
-    }
-
-    /* --- CLOCK LOGIC --- */
-    function getClockString(item) {
-        if (item.subtype === 'real') {
-            return new Date().toLocaleTimeString('vi-VN');
-        }
-        
-        const now = Date.now();
-        let ms = 0;
-
-        if (item.subtype === 'timer') {
-            // Timer logic: Duration - (Now - Start)
-            const elapsed = item.running ? (now - item.start) : 0;
-            ms = item.duration - elapsed;
-        } else if (item.subtype === 'countdown') {
-            // Countdown logic: Target - Now
-            ms = item.target - now;
-        }
-
-        if (ms < 0) ms = 0;
-        return formatTime(ms);
-    }
-
-    function formatTime(ms) {
-        const totalSec = Math.floor(ms / 1000);
-        const s = totalSec % 60;
-        const m = Math.floor((totalSec / 60) % 60);
-        const h = Math.floor(totalSec / 3600);
-        const d = Math.floor(h / 24);
-
-        if (d > 0) return `${d} ngày ${h%24}h`; // Short format for days
-        return `${pad(h)}:${pad(m)}:${pad(s)}`;
-    }
-    function pad(n) { return n.toString().padStart(2, '0'); }
-
-    /* --- INTERACTION: DRAG & DROP & BOUNDARY --- */
-    function getEventPos(e) {
-        const r = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return {
-            x: (clientX - r.left) * (app.w / r.width),
-            y: (clientY - r.top) * (app.h / r.height)
+        const app = {
+            w: 1280, h: 720,
+            bg: { mode: 'solid', c1: '#0f172a', c2: '#3b82f6', img: null },
+            items: [],
+            selId: null,
+            drag: null,
+            tempFile: null
         };
-    }
 
-    canvas.addEventListener('mousedown', handleStart);
-    canvas.addEventListener('touchstart', handleStart, {passive: false});
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('touchmove', handleMove, {passive: false});
-    window.addEventListener('mouseup', handleEnd);
-    window.addEventListener('touchend', handleEnd);
-
-    function handleStart(e) {
-        e.preventDefault(); // Prevent scroll on mobile
-        const pos = getEventPos(e);
-        
-        // Hit Test (Top item first)
-        const hit = [...app.items].reverse().find(i => 
-            Math.abs(pos.x - i.x) < i.w/2 + 10 && 
-            Math.abs(pos.y - i.y) < i.h/2 + 10
-        );
-
-        if (hit) {
-            selectItem(hit.id);
-            if (!hit.locked) {
-                app.drag = { id: hit.id, ox: pos.x - hit.x, oy: pos.y - hit.y };
-            }
-        } else {
-            selectItem(null);
-        }
-    }
-
-    function handleMove(e) {
-        if (!app.drag) return;
-        e.preventDefault();
-        const pos = getEventPos(e);
-        const item = app.items.find(i => i.id === app.drag.id);
-        
-        if (item) {
-            let nx = pos.x - app.drag.ox;
-            let ny = pos.y - app.drag.oy;
-
-            // --- BOUNDARY CONSTRAINT (100% REQUIREMENT) ---
-            // Keep center point within bounds relative to size
-            const halfW = item.w / 2;
-            const halfH = item.h / 2;
-            
-            // Limit X
-            if (nx < halfW) nx = halfW;
-            if (nx > app.w - halfW) nx = app.w - halfW;
-            
-            // Limit Y
-            if (ny < halfH) ny = halfH;
-            if (ny > app.h - halfH) ny = app.h - halfH;
-
-            item.x = nx;
-            item.y = ny;
-        }
-    }
-
-    function handleEnd() { app.drag = null; }
-
-    /* --- STATE MANAGEMENT --- */
-    function addItem(type, source = null) {
-        const id = Date.now();
-        const item = {
-            id, type, x: app.w/2, y: app.h/2,
-            content: 'Văn bản mới', size: 60, color: '#ffffff', anim: 'none',
-            subtype: 'real', duration: 0, target: 0, start: 0, running: false,
-            source: source, scale: 0.5,
-            locked: false
-        };
-        app.items.push(item);
-        selectItem(id);
-        switchTab('layers');
-    }
-
-    function selectItem(id) {
-        app.selId = id;
-        const empty = document.getElementById('empty-msg');
-        const ui = document.getElementById('editor-ui');
-
-        if (!id) {
-            empty.classList.remove('hidden');
-            ui.classList.add('hidden');
-            return;
+        /** --- INITIALIZATION --- **/
+        function init() {
+            resizeCanvas('16:9');
+            requestAnimationFrame(renderLoop);
         }
 
-        empty.classList.add('hidden');
-        ui.classList.remove('hidden');
-
-        const item = app.items.find(i => i.id === id);
-        
-        // 1. UPDATE LOCK BUTTON UI (Fix bug)
-        const btnLock = document.getElementById('btn-lock');
-        if (item.locked) {
-            btnLock.classList.add('active');
-            btnLock.innerHTML = '<i class="fa-solid fa-lock"></i>';
-        } else {
-            btnLock.classList.remove('active');
-            btnLock.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
-        }
-
-        // 2. SHOW RELEVANT TOOLS
-        const isMedia = item.type === 'image' || item.type === 'video';
-        const isClock = item.type === 'clock';
-
-        document.getElementById('props-text').classList.toggle('hidden', isMedia);
-        document.getElementById('props-media').classList.toggle('hidden', !isMedia);
-        document.getElementById('props-clock').classList.toggle('hidden', !isClock);
-
-        // 3. FILL DATA
-        if (!isMedia) {
-            document.getElementById('inp-content').value = item.content;
-            document.getElementById('inp-color').value = item.color;
-            document.getElementById('inp-size').value = item.size;
-            document.getElementById('inp-anim').value = item.anim;
-        } else {
-            document.getElementById('inp-scale').value = item.scale;
-        }
-
-        if (isClock) {
-            document.getElementById('inp-clock-type').value = item.subtype;
-            changeClockType(item.subtype);
-        }
-    }
-
-    function updateProp(key, val) {
-        const item = app.items.find(i => i.id === app.selId);
-        if (item) item[key] = val;
-    }
-
-    function toggleLock() {
-        const item = app.items.find(i => i.id === app.selId);
-        if (item) {
-            item.locked = !item.locked;
-            selectItem(item.id); // Refresh UI
-        }
-    }
-
-    function deleteItem() {
-        if (app.selId) {
-            app.items = app.items.filter(i => i.id !== app.selId);
-            selectItem(null);
-        }
-    }
-
-    function moveItem(dir) {
-        const i = app.items.findIndex(x => x.id === app.selId);
-        if (i < 0) return;
-        const item = app.items[i];
-        app.items.splice(i, 1);
-        if (dir === 'up') app.items.push(item);
-        else app.items.unshift(item);
-    }
-
-    /* --- CLOCK SETTINGS --- */
-    function changeClockType(type) {
-        const item = app.items.find(i => i.id === app.selId);
-        if(item) item.subtype = type;
-
-        document.getElementById('clock-timer-inputs').classList.toggle('hidden', type !== 'timer');
-        document.getElementById('clock-date-inputs').classList.toggle('hidden', type !== 'countdown');
-    }
-
-    function startClock(mode) {
-        const item = app.items.find(i => i.id === app.selId);
-        if (!item) return;
-
-        if (mode === 'timer') {
-            const h = parseInt(document.getElementById('t-h').value) || 0;
-            const m = parseInt(document.getElementById('t-m').value) || 0;
-            const s = parseInt(document.getElementById('t-s').value) || 0;
-            item.duration = (h * 3600 + m * 60 + s) * 1000;
-            item.start = Date.now();
-            item.running = true;
-        } else if (mode === 'date') {
-            const val = document.getElementById('t-date').value;
-            if (val) item.target = new Date(val).getTime();
-        }
-    }
-
-    /* --- FILE & BACKGROUND --- */
-    function handleFileSelect(input) {
-        const file = input.files[0];
-        if (!file) return;
-        const url = URL.createObjectURL(file);
-        
-        // Preload based on type
-        if (file.type.startsWith('video')) {
-            const v = document.createElement('video');
-            v.src = url; v.loop = true; v.muted = true; v.play();
-            app.tempFile = { type: 'video', src: v };
-        } else {
-            const img = new Image();
-            img.src = url;
-            app.tempFile = { type: 'image', src: img };
-        }
-
-        // Show Actions
-        document.getElementById('file-actions').classList.remove('hidden');
-    }
-
-    function applyFile(mode) {
-        if (!app.tempFile) return;
-
-        if (mode === 'bg') {
-            app.bg.mode = 'image';
-            if (app.tempFile.type === 'video') {
-                // If user forces video as BG, trick it by adding as bottom layer full size
-                alert("Video sẽ được thêm dưới dạng Layer Nền.");
-                addItem('video', app.tempFile.src);
-                // Move to bottom & Scale up approx
-                const item = app.items.pop();
-                item.scale = 2; // rough fill
-                app.items.unshift(item);
+        /** --- RENDER LOOP --- **/
+        function renderLoop() {
+            // 1. DRAW BACKGROUND
+            if (app.bg.mode === 'image' && app.bg.img) {
+                drawImageCover(ctx, app.bg.img, app.w, app.h);
+            } else if (app.bg.mode === 'gradient') {
+                const g = ctx.createLinearGradient(0, 0, app.w, app.h);
+                g.addColorStop(0, app.bg.c1);
+                g.addColorStop(1, app.bg.c2);
+                ctx.fillStyle = g;
+                ctx.fillRect(0, 0, app.w, app.h);
             } else {
-                app.bg.img = app.tempFile.src;
+                ctx.fillStyle = app.bg.c1;
+                ctx.fillRect(0, 0, app.w, app.h);
             }
-        } else {
-            addItem(app.tempFile.type, app.tempFile.src);
+
+            // 2. DRAW ITEMS
+            const now = Date.now();
+
+            app.items.forEach(item => {
+                ctx.save();
+
+                // ANIMATION TRANSFORMS
+                if (item.anim === 'pulse') {
+                    const s = 1 + Math.sin(now / 200) * 0.02;
+                    ctx.translate(item.x, item.y); ctx.scale(s, s); ctx.translate(-item.x, -item.y);
+                } else if (item.anim === 'shake') {
+                    ctx.translate(Math.random() * 2 - 1, Math.random() * 2 - 1);
+                }
+                if (item.anim === 'blink') {
+                    ctx.globalAlpha = 0.6 + Math.sin(now / 300) * 0.4;
+                }
+
+                // DRAW CONTENT
+                if (item.type === 'text' || item.type === 'clock') {
+                    drawTextItem(item);
+                } else if (item.type === 'image' || item.type === 'video') {
+                    drawMediaItem(item);
+                }
+
+                // DRAW SELECTION & LOCK UI
+                if (app.selId === item.id) {
+                    const pad = 10;
+                    ctx.strokeStyle = item.locked ? '#fbbf24' : '#3b82f6';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x - item.w / 2 - pad, item.y - item.h / 2 - pad, item.w + pad * 2, item.h + pad * 2);
+
+                    // Draw Lock Icon on Canvas
+                    if (item.locked) {
+                        ctx.fillStyle = '#fbbf24';
+                        ctx.beginPath();
+                        ctx.arc(item.x + item.w / 2 + pad, item.y - item.h / 2 - pad, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                        // Simple lock symbol
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(item.x + item.w / 2 + pad - 2, item.y - item.h / 2 - pad - 2, 4, 4);
+                    }
+                }
+
+                ctx.restore();
+            });
+
+            requestAnimationFrame(renderLoop);
         }
 
-        // Reset UI
-        document.getElementById('file-actions').classList.add('hidden');
-        document.getElementById('file-input').value = '';
-    }
+        /* --- DRAWING HELPERS --- */
+        function drawTextItem(item) {
+            let content = item.content;
+            if (item.type === 'clock') content = getClockString(item);
 
-    function updateBgMode() {
-        app.bg.mode = document.getElementById('bgMode').value;
-        document.getElementById('bgC2').classList.toggle('hidden', app.bg.mode !== 'gradient');
-    }
-    function updateBg() {
-        app.bg.c1 = document.getElementById('bgC1').value;
-        app.bg.c2 = document.getElementById('bgC2').value;
-    }
+            ctx.font = `bold ${item.size}px 'Inter', sans-serif`;
+            ctx.fillStyle = item.color;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
-    /* --- GLOBAL HELPERS --- */
-    function switchTab(name) {
-        document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-        
-        // Simple index mapping
-        const idx = name === 'settings' ? 0 : name === 'layers' ? 1 : 2;
-        document.querySelectorAll('.tab-btn')[idx].classList.add('active');
-        document.getElementById('tab-' + name).classList.add('active');
-    }
+            // Shadow
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetY = 2;
 
-    function resizeCanvas(ratio) {
-        if (ratio === '16:9') { app.w = 1280; app.h = 720; }
-        else if (ratio === '9:16') { app.w = 405; app.h = 720; }
-        else { app.w = 720; app.h = 720; }
-        canvas.width = app.w; canvas.height = app.h;
-    }
+            ctx.fillText(content, item.x, item.y);
 
-    async function startPIP() {
-        const v = document.getElementById('pip-video-output');
-        if (document.pictureInPictureElement) {
-            document.exitPictureInPicture();
-        } else {
-            v.srcObject = canvas.captureStream(60);
+            // Update Hit Box
+            const m = ctx.measureText(content);
+            item.w = m.width;
+            item.h = item.size; // Approx height
+        }
+
+        function drawMediaItem(item) {
+            if (!item.source) return;
+            const s = item.scale || 1;
+            // Use videoWidth for video, width for image
+            const nw = (item.source.videoWidth || item.source.width) * s;
+            const nh = (item.source.videoHeight || item.source.height) * s;
+
+            item.w = nw;
+            item.h = nh;
+
+            ctx.drawImage(item.source, item.x - nw / 2, item.y - nh / 2, nw, nh);
+        }
+
+        function drawImageCover(ctx, img, w, h) {
+            // Algorithm to "Cover" the canvas with image
+            const ratio = w / h;
+            const imgRatio = img.width / img.height;
+            let nw, nh, cx, cy;
+
+            if (imgRatio > ratio) {
+                nh = h; nw = h * imgRatio;
+                cx = (w - nw) / 2; cy = 0;
+            } else {
+                nw = w; nh = w / imgRatio;
+                cx = 0; cy = (h - nh) / 2;
+            }
+            ctx.drawImage(img, cx, cy, nw, nh);
+        }
+
+        /* --- CLOCK LOGIC --- */
+        function getClockString(item) {
+            // Xử lý Đồng hồ thực (Real-time)
+            if (item.subtype === 'real') {
+                const now = new Date();
+
+                // Cấu hình format thời gian
+                const options = {
+                    hour12: false,
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                };
+
+                // Áp dụng múi giờ nếu không phải local
+                if (item.timezone && item.timezone !== 'local') {
+                    options.timeZone = item.timezone;
+                }
+
+                let timeStr = now.toLocaleTimeString('vi-VN', options);
+
+                // Thêm mili giây thủ công để đồng bộ
+                if (item.showMs) {
+                    // Lưu ý: Ms của Realtime sẽ giật rất nhanh
+                    const ms = now.getMilliseconds().toString().padStart(3, '0');
+                    timeStr += `.${ms}`;
+                }
+                return timeStr;
+            }
+
+            // Xử lý Timer / Countdown
+            const now = Date.now();
+            let ms = 0;
+
+            if (item.subtype === 'timer') {
+                const elapsed = item.running ? (now - item.start) : 0;
+                ms = item.duration - elapsed;
+            } else if (item.subtype === 'countdown') {
+                ms = item.target - now;
+            }
+
+            if (ms < 0) ms = 0;
+
+            // Truyền thêm cờ showMs vào formatTime
+            return formatTime(ms, item.showMs);
+        }
+
+        function formatTime(ms, showMs) {
+            const totalSec = Math.floor(ms / 1000);
+            const s = totalSec % 60;
+            const m = Math.floor((totalSec / 60) % 60);
+            const h = Math.floor(totalSec / 3600);
+            const d = Math.floor(h / 24);
+
+            // Lấy phần lẻ mili giây
+            const msPart = (ms % 1000).toString().padStart(3, '0');
+
+            let result = "";
+            if (d > 0) {
+                result = `${d} ngày ${h % 24}h`;
+            } else {
+                result = `${pad(h)}:${pad(m)}:${pad(s)}`;
+            }
+
+            // Nếu bật chế độ hiện Ms
+            if (showMs) {
+                result += `.${msPart}`;
+            }
+
+            return result;
+        }
+
+
+        function pad(n) { return n.toString().padStart(2, '0'); }
+
+        /* --- INTERACTION: DRAG & DROP & BOUNDARY --- */
+        function getEventPos(e) {
+            const r = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: (clientX - r.left) * (app.w / r.width),
+                y: (clientY - r.top) * (app.h / r.height)
+            };
+        }
+
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('touchstart', handleStart, { passive: false });
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchmove', handleMove, { passive: false });
+        window.addEventListener('mouseup', handleEnd);
+        window.addEventListener('touchend', handleEnd);
+
+        function handleStart(e) {
+            e.preventDefault(); // Prevent scroll on mobile
+            const pos = getEventPos(e);
+
+            // Hit Test (Top item first)
+            const hit = [...app.items].reverse().find(i =>
+                Math.abs(pos.x - i.x) < i.w / 2 + 10 &&
+                Math.abs(pos.y - i.y) < i.h / 2 + 10
+            );
+
+            if (hit) {
+                selectItem(hit.id);
+                if (!hit.locked) {
+                    app.drag = { id: hit.id, ox: pos.x - hit.x, oy: pos.y - hit.y };
+                }
+            } else {
+                selectItem(null);
+            }
+        }
+
+        function handleMove(e) {
+            if (!app.drag) return;
+            e.preventDefault();
+            const pos = getEventPos(e);
+            const item = app.items.find(i => i.id === app.drag.id);
+
+            if (item) {
+                let nx = pos.x - app.drag.ox;
+                let ny = pos.y - app.drag.oy;
+
+                // --- BOUNDARY CONSTRAINT (100% REQUIREMENT) ---
+                // Keep center point within bounds relative to size
+                const halfW = item.w / 2;
+                const halfH = item.h / 2;
+
+                // Limit X
+                if (nx < halfW) nx = halfW;
+                if (nx > app.w - halfW) nx = app.w - halfW;
+
+                // Limit Y
+                if (ny < halfH) ny = halfH;
+                if (ny > app.h - halfH) ny = app.h - halfH;
+
+                item.x = nx;
+                item.y = ny;
+            }
+        }
+
+        function handleEnd() { app.drag = null; }
+
+        /* --- STATE MANAGEMENT --- */
+        function addItem(type, source = null) {
+            const id = Date.now();
+            const item = {
+                id, type, x: app.w / 2, y: app.h / 2,
+                content: 'Văn bản mới', size: 60, color: '#ffffff', anim: 'none',
+                // --- CẬP NHẬT DÒNG DƯỚI ĐÂY ---
+                subtype: 'real', duration: 0, target: 0, start: 0, running: false,
+                showMs: false, timezone: 'local', // <--- MỚI
+                source: source, scale: 0.5,
+                locked: false
+            };
+            app.items.push(item);
+            selectItem(id);
+            switchTab('layers');
+        }
+
+        function selectItem(id) {
+            app.selId = id;
+            const empty = document.getElementById('empty-msg');
+            const ui = document.getElementById('editor-ui');
+
+            if (!id) {
+                empty.classList.remove('hidden');
+                ui.classList.add('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            ui.classList.remove('hidden');
+
+            const item = app.items.find(i => i.id === id);
+
+            // LOCK UI
+            const btnLock = document.getElementById('btn-lock');
+            if (item.locked) {
+                btnLock.classList.add('active');
+                btnLock.innerHTML = '<i class="fa-solid fa-lock"></i>';
+            } else {
+                btnLock.classList.remove('active');
+                btnLock.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
+            }
+
+            // SHOW TOOLS
+            const isMedia = item.type === 'image' || item.type === 'video';
+            const isClock = item.type === 'clock';
+
+            document.getElementById('props-text').classList.toggle('hidden', isMedia);
+            document.getElementById('props-media').classList.toggle('hidden', !isMedia);
+            document.getElementById('props-clock').classList.toggle('hidden', !isClock);
+
+            // FILL DATA
+            if (!isMedia) {
+                document.getElementById('inp-content').value = item.content;
+                document.getElementById('inp-color').value = item.color;
+                document.getElementById('inp-size').value = item.size;
+                document.getElementById('inp-anim').value = item.anim;
+            } else {
+                document.getElementById('inp-scale').value = item.scale;
+            }
+
+            if (isClock) {
+                document.getElementById('inp-clock-type').value = item.subtype;
+
+                // --- MỚI: Load dữ liệu clock nâng cao ---
+                document.getElementById('inp-clock-ms').checked = item.showMs || false;
+                document.getElementById('inp-timezone').value = item.timezone || 'local';
+
+                changeClockType(item.subtype);
+            }
+        }
+        function updateProp(key, val) {
+            const item = app.items.find(i => i.id === app.selId);
+            if (item) item[key] = val;
+        }
+
+        function toggleLock() {
+            const item = app.items.find(i => i.id === app.selId);
+            if (item) {
+                item.locked = !item.locked;
+                selectItem(item.id); // Refresh UI
+            }
+        }
+
+        function deleteItem() {
+            if (app.selId) {
+                app.items = app.items.filter(i => i.id !== app.selId);
+                selectItem(null);
+            }
+        }
+
+        function moveItem(dir) {
+            const i = app.items.findIndex(x => x.id === app.selId);
+            if (i < 0) return;
+            const item = app.items[i];
+            app.items.splice(i, 1);
+            if (dir === 'up') app.items.push(item);
+            else app.items.unshift(item);
+        }
+
+        /* --- CLOCK SETTINGS --- */
+        function changeClockType(type) {
+            const item = app.items.find(i => i.id === app.selId);
+            if (item) item.subtype = type;
+
+            document.getElementById('clock-timer-inputs').classList.toggle('hidden', type !== 'timer');
+            document.getElementById('clock-date-inputs').classList.toggle('hidden', type !== 'countdown');
+
+            // --- MỚI: Ẩn hiện múi giờ ---
+            document.getElementById('grp-timezone').classList.toggle('hidden', type !== 'real');
+        }
+
+        function startClock(mode) {
+            const item = app.items.find(i => i.id === app.selId);
+            if (!item) return;
+
+            if (mode === 'timer') {
+                const h = parseInt(document.getElementById('t-h').value) || 0;
+                const m = parseInt(document.getElementById('t-m').value) || 0;
+                const s = parseInt(document.getElementById('t-s').value) || 0;
+                item.duration = (h * 3600 + m * 60 + s) * 1000;
+                item.start = Date.now();
+                item.running = true;
+            } else if (mode === 'date') {
+                const val = document.getElementById('t-date').value;
+                if (val) item.target = new Date(val).getTime();
+            }
+        }
+
+        /* --- FILE & BACKGROUND --- */
+        function handleFileSelect(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const url = URL.createObjectURL(file);
+
+            // Preload based on type
+            if (file.type.startsWith('video')) {
+                const v = document.createElement('video');
+                v.src = url; v.loop = true; v.muted = true; v.play();
+                app.tempFile = { type: 'video', src: v };
+            } else {
+                const img = new Image();
+                img.src = url;
+                app.tempFile = { type: 'image', src: img };
+            }
+
+            // Show Actions
+            document.getElementById('file-actions').classList.remove('hidden');
+        }
+
+        function applyFile(mode) {
+            if (!app.tempFile) return;
+
+            if (mode === 'bg') {
+                app.bg.mode = 'image';
+                if (app.tempFile.type === 'video') {
+                    // If user forces video as BG, trick it by adding as bottom layer full size
+                    alert("Video sẽ được thêm dưới dạng Layer Nền.");
+                    addItem('video', app.tempFile.src);
+                    // Move to bottom & Scale up approx
+                    const item = app.items.pop();
+                    item.scale = 2; // rough fill
+                    app.items.unshift(item);
+                } else {
+                    app.bg.img = app.tempFile.src;
+                }
+            } else {
+                addItem(app.tempFile.type, app.tempFile.src);
+            }
+
+            // Reset UI
+            document.getElementById('file-actions').classList.add('hidden');
+            document.getElementById('file-input').value = '';
+        }
+
+        function updateBgMode() {
+            app.bg.mode = document.getElementById('bgMode').value;
+            document.getElementById('bgC2').classList.toggle('hidden', app.bg.mode !== 'gradient');
+        }
+        function updateBg() {
+            app.bg.c1 = document.getElementById('bgC1').value;
+            app.bg.c2 = document.getElementById('bgC2').value;
+        }
+
+        /* --- GLOBAL HELPERS --- */
+        function switchTab(name) {
+            document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            // Simple index mapping
+            const idx = name === 'settings' ? 0 : name === 'layers' ? 1 : 2;
+            document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+        }
+
+        function resizeCanvas(ratio) {
+            if (ratio === '16:9') { app.w = 1280; app.h = 720; }
+            else if (ratio === '9:16') { app.w = 405; app.h = 720; }
+            else { app.w = 720; app.h = 720; }
+            canvas.width = app.w; canvas.height = app.h;
+        }
+
+        async function startPIP() {
+            const v = document.getElementById('pip-video-output');
+
+            // 1. Nếu đang bật PIP thì tắt đi
+            if (document.pictureInPictureElement || (v.webkitPresentationMode && v.webkitPresentationMode === 'picture-in-picture')) {
+                if (document.exitPictureInPicture) {
+                    await document.exitPictureInPicture();
+                } else if (v.webkitSetPresentationMode) {
+                    v.webkitSetPresentationMode('inline');
+                }
+                return;
+            }
+
+            // 2. Lấy Stream từ Canvas (Hỗ trợ Safari cũ với webkitCaptureStream)
+            // Lưu ý: call(canvas) để đảm bảo context 'this' đúng
+            const streamFn = canvas.captureStream || canvas.webkitCaptureStream || canvas.mozCaptureStream;
+
+            if (!streamFn) {
+                alert("Trình duyệt của bạn không hỗ trợ tính năng này (Canvas Capture).");
+                return;
+            }
+
             try {
-                await v.play();
-                await v.requestPictureInPicture();
+                const stream = streamFn.call(canvas, 60); // 60 FPS
+                v.srcObject = stream;
+
+                // 3. Quan trọng: Safari cần đợi video load metadata xong mới được gọi play/PIP
+                v.onloadedmetadata = async () => {
+                    try {
+                        await v.play();
+
+                        // Kiểm tra và gọi API phù hợp
+                        if (v.requestPictureInPicture) {
+                            await v.requestPictureInPicture();
+                        } else if (v.webkitSetPresentationMode) {
+                            // Fallback cho iOS/Safari cũ
+                            await v.webkitSetPresentationMode('picture-in-picture');
+                        } else {
+                            throw new Error("Trình duyệt không hỗ trợ PIP API.");
+                        }
+                    } catch (err) {
+                        console.error("Lỗi kích hoạt PIP:", err);
+                        // Một số trường hợp Safari chặn nếu không phải user gesture trực tiếp
+                        // Alert để user biết nếu thất bại
+                        if (err.name === 'NotAllowedError') {
+                            alert("Vui lòng click lại nút Bắt đầu PIP một lần nữa (Safari yêu cầu tương tác trực tiếp).");
+                        }
+                    }
+                };
             } catch (e) {
-                alert("Không thể mở PIP. Vui lòng đảm bảo bạn đang dùng Chrome/Safari mới nhất.");
+                console.error(e);
+                alert("Không thể tạo luồng video: " + e.message);
             }
-        }
-    }
+        } 
 
-    // START
-    init();
+        // START
+        init();
 
-</script>
+    </script>
 </body>
+
 </html>
