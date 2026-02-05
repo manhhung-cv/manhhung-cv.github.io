@@ -1120,68 +1120,76 @@
         }
 
         async function startPIP() {
-    const v = document.getElementById('pip-video-output');
-    
-    // --- 1. XỬ LÝ TẮT PIP NẾU ĐANG BẬT ---
-    // Kiểm tra chuẩn W3C hoặc chuẩn Apple (Webkit)
-    if (document.pictureInPictureElement || (v.webkitPresentationMode && v.webkitPresentationMode === 'picture-in-picture')) {
-        try {
-            if (document.exitPictureInPicture) {
-                await document.exitPictureInPicture();
-            } else if (v.webkitSetPresentationMode) {
-                v.webkitSetPresentationMode('inline');
+            const v = document.getElementById('pip-video-output');
+            const canvas = document.getElementById('canvas');
+
+            // --- 1. KIỂM TRA & CHẶN IOS (iPhone/iPad) ---
+            // Lý do: iOS WebKit hiện tại KHÔNG hỗ trợ canvas.captureStream().
+            // Nếu cố chạy, nó sẽ trả về stream rỗng và gây lỗi "User Gesture" hoặc màn hình đen.
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+            if (isIOS) {
+                alert("Rất tiếc, Apple chưa hỗ trợ tính năng PIP cho Canvas trên iPhone/iPad.");
+                return;
             }
-        } catch (e) { console.log("Lỗi tắt PIP:", e); }
-        return;
-    }
 
-    // --- 2. TẠO STREAM TỪ CANVAS ---
-    const streamFn = canvas.captureStream || canvas.webkitCaptureStream || canvas.mozCaptureStream;
-    if (!streamFn) {
-        alert("Trình duyệt này không hỗ trợ truyền hình ảnh từ Canvas.");
-        return;
-    }
-
-    try {
-        // Tạo stream 60fps
-        const stream = streamFn.call(canvas, 60);
-        v.srcObject = stream;
-
-        // --- 3. KÍCH HOẠT VIDEO (QUAN TRỌNG CHO IOS) ---
-        // Trên iOS, chúng ta phải đợi play() xong mới được gọi PIP.
-        // Phải dùng await trực tiếp, KHÔNG được dùng event listener (onloadedmetadata)
-        // vì sẽ làm mất "quyền tương tác người dùng" (User Gesture).
-        await v.play();
-
-        // --- 4. GỌI API PIP ---
-        
-        // Cách 1: Chuẩn W3C (Chrome, Edge, Safari Desktop mới)
-        if (document.pictureInPictureEnabled && v.requestPictureInPicture) {
-            await v.requestPictureInPicture();
-        } 
-        // Cách 2: Chuẩn iOS Webkit (Dành riêng cho iPhone/iPad)
-        else if (v.webkitSupportsPresentationMode && typeof v.webkitSetPresentationMode === "function") {
-            // Kiểm tra xem chế độ PIP có được hỗ trợ không
-            if (v.webkitSupportsPresentationMode('picture-in-picture')) {
-                await v.webkitSetPresentationMode('picture-in-picture');
-            } else {
-                alert("Thiết bị này không hỗ trợ chế độ Picture-in-Picture.");
+            // --- 2. XỬ LÝ TẮT PIP NẾU ĐANG BẬT ---
+            if (document.pictureInPictureElement || (v.webkitPresentationMode && v.webkitPresentationMode === 'picture-in-picture')) {
+                try {
+                    if (document.exitPictureInPicture) {
+                        await document.exitPictureInPicture();
+                    } else if (v.webkitSetPresentationMode) {
+                        v.webkitSetPresentationMode('inline');
+                    }
+                } catch (e) {
+                    console.log("Lỗi khi tắt PIP:", e);
+                }
+                return;
             }
-        } else {
-            alert("Trình duyệt không hỗ trợ tính năng PIP.");
+
+            // --- 3. KIỂM TRA HỖ TRỢ CAPTURE STREAM ---
+            const streamFn = canvas.captureStream || canvas.webkitCaptureStream || canvas.mozCaptureStream;
+            if (!streamFn) {
+                alert("Trình duyệt này không hỗ trợ truyền hình ảnh từ Canvas.");
+                return;
+            }
+
+            // --- 4. KHỞI TẠO STREAM VÀ BẬT PIP ---
+            try {
+                // Tạo stream 60fps từ canvas
+                // Lưu ý: Nếu canvas chưa vẽ gì, stream có thể bị đen.
+                const stream = streamFn.call(canvas, 60);
+                v.srcObject = stream;
+
+                // Bắt buộc phải play() video trước khi yêu cầu PIP
+                await v.play();
+
+                // Gọi API PIP tùy theo trình duyệt
+                if (document.pictureInPictureEnabled && v.requestPictureInPicture) {
+                    // Chuẩn W3C (Chrome, Edge, Safari Desktop 13.1+)
+                    await v.requestPictureInPicture();
+                }
+                else if (v.webkitSupportsPresentationMode && typeof v.webkitSetPresentationMode === "function") {
+                    // Chuẩn WebKit cũ (Safari Desktop cũ)
+                    await v.webkitSetPresentationMode('picture-in-picture');
+                } else {
+                    alert("Trình duyệt không hỗ trợ PIP.");
+                }
+
+            } catch (err) {
+                console.error("Lỗi PIP:", err);
+                // Xử lý các lỗi phổ biến
+                if (err.name === 'NotAllowedError') {
+                    alert("Vui lòng thử lại. Trình duyệt yêu cầu thao tác người dùng trực tiếp.");
+                } else if (err.name === 'InvalidStateError') {
+                    alert("Video chưa sẵn sàng. Hãy đảm bảo Canvas đang hiển thị nội dung.");
+                } else {
+                    alert("Không thể mở PIP: " + err.message);
+                }
+            }
         }
 
-    } catch (err) {
-        console.error("Lỗi PIP:", err);
-        // Lỗi NotAllowedError thường do Safari chặn vì nghĩ không phải người dùng bấm
-        if (err.name === 'NotAllowedError') {
-            alert("Vui lòng chạm vào nút Bắt đầu PIP một lần nữa.");
-        } else {
-            alert("Lỗi: " + err.message);
-        }
-    }
-}
-        // START
         init();
 
     </script>
