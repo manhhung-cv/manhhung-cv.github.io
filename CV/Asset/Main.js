@@ -274,20 +274,108 @@ function applyLanguage(lang) {
 function toggleDropdown() {
     document.getElementById('languageDropdown').classList.toggle('hidden');
 }
-
-// Theme
+// === 2. THEME LOGIC (3 CHẾ ĐỘ: SYSTEM -> LIGHT -> DARK) ===
 const themeBtn = document.getElementById('themeToggle');
+const themeIcon = themeBtn.querySelector('i');
+
+// Danh sách các chế độ
+const themeModes = ['system', 'light', 'dark'];
+let currentThemeIndex = 0;
+
+// Hàm kiểm tra thiết bị đang để chế độ tối hay không
+function isSystemDark() {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+// Hàm áp dụng giao diện
+function applyTheme(mode) {
+    // Xóa class dark-theme trước
+    document.body.classList.remove('dark-theme');
+
+    let isDark = false;
+
+    if (mode === 'system') {
+        isDark = isSystemDark();
+        themeIcon.className = 'fas fa-desktop'; // Icon Máy tính
+        themeBtn.title = "Chế độ: Theo thiết bị";
+    } else if (mode === 'light') {
+        isDark = false;
+        themeIcon.className = 'fas fa-sun'; // Icon Mặt trời
+        themeBtn.title = "Chế độ: Sáng";
+    } else if (mode === 'dark') {
+        isDark = true;
+        themeIcon.className = 'fas fa-moon'; // Icon Mặt trăng
+        themeBtn.title = "Chế độ: Tối";
+    }
+
+    // Nếu cần tối, thêm class
+    if (isDark) {
+        document.body.classList.add('dark-theme');
+    }
+
+    localStorage.setItem('themeMode', mode);
+}
+
+// Sự kiện click nút Theme
 themeBtn.addEventListener('click', () => {
-    document.body.classList.toggle('dark-theme');
-    const isDark = document.body.classList.contains('dark-theme');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    themeBtn.querySelector('i').className = isDark ? 'fas fa-sun' : 'fas fa-moon';
+    // Chuyển sang index tiếp theo (0 -> 1 -> 2 -> 0)
+    currentThemeIndex = (currentThemeIndex + 1) % themeModes.length;
+    applyTheme(themeModes[currentThemeIndex]);
 });
 
-if (localStorage.getItem('theme') === 'dark') {
-    document.body.classList.add('dark-theme');
-    themeBtn.querySelector('i').className = 'fas fa-sun';
+// Lắng nghe sự thay đổi của hệ thống (nếu đang ở chế độ system)
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+    if (themeModes[currentThemeIndex] === 'system') {
+        if (e.matches) document.body.classList.add('dark-theme');
+        else document.body.classList.remove('dark-theme');
+    }
+});
+
+
+// === 3. GLASS MODE LOGIC (MỚI) ===
+const glassBtn = document.getElementById('glassToggle');
+const glassIcon = glassBtn.querySelector('i');
+
+function toggleGlass() {
+    document.body.classList.toggle('no-glass');
+    const isNoGlass = document.body.classList.contains('no-glass');
+
+    // Lưu trạng thái
+    localStorage.setItem('glassMode', isNoGlass ? 'off' : 'on');
+
+    // Đổi icon và title
+    if (isNoGlass) {
+        glassIcon.className = 'fa-solid fa-droplet-slash'; // Icon khối đặc
+        glassBtn.title = "Bật hiệu ứng kính";
+    } else {
+        glassIcon.className = 'fa-solid fa-droplet '; // Icon khối 3D/Kính
+        glassBtn.title = "Tắt hiệu ứng kính";
+    }
 }
+
+glassBtn.addEventListener('click', toggleGlass);
+
+
+// === INIT (KHỞI TẠO) ===
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Load Language
+    const savedLang = localStorage.getItem('language') || 'vi';
+    setLanguage(savedLang);
+
+    // 2. Load Theme
+    const savedThemeMode = localStorage.getItem('themeMode') || 'system';
+    currentThemeIndex = themeModes.indexOf(savedThemeMode);
+    if (currentThemeIndex === -1) currentThemeIndex = 0; // Fallback
+    applyTheme(themeModes[currentThemeIndex]);
+
+    // 3. Load Glass Mode
+    const savedGlass = localStorage.getItem('glassMode');
+    if (savedGlass === 'off') {
+        toggleGlass(); // Tắt nếu đã lưu là tắt
+        // Fix logic: toggleGlass sẽ đảo ngược trạng thái hiện tại (mặc định là có glass)
+        // nên gọi 1 lần sẽ thành no-glass.
+    }
+});
 
 // Modal
 function closeModal(e) {
@@ -310,6 +398,27 @@ function DownloadCV() {
     document.body.removeChild(link);
     showModal("Thông báo", "Đang tải xuống CV...");
 }
+
+// === VIEW MODE LOGIC (NEW) ===
+const viewBtn = document.getElementById('viewModeBtn');
+const viewIcon = viewBtn.querySelector('i');
+
+viewBtn.addEventListener('click', () => {
+    document.body.classList.toggle('a4-mode');
+
+    // Đổi icon để phản hồi trạng thái
+    const isA4 = document.body.classList.contains('a4-mode');
+    if (isA4) {
+        viewIcon.className = 'fas fa-th-large'; // Icon Dashboard
+        viewBtn.title = "Chuyển về Dashboard";
+
+        // Hiển thị thông báo nhỏ
+        // showModal("Chế độ xem A4", "Bạn đang xem CV dưới dạng khổ giấy in.");
+    } else {
+        viewIcon.className = 'fas fa-file-alt'; // Icon Giấy
+        viewBtn.title = "Chuyển sang khổ A4";
+    }
+});
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
