@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="vi" class="antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Toolbox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        zinc: {
+                            850: '#1f1f22',
+                            950: '#0c0c0e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for minimal look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d4d4d8;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1aa;
+        }
+        
+        .tool-view {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        .tool-view.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        /* Keyboard shortcut badge style */
+        .kbd-shortcut {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.375rem;
+            border-width: 1px;
+        }
+
+        /* Category Header Line */
+        .category-header {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 1rem;
+            margin-top: 1rem; /* Reduced top margin since filters separate them */
+        }
+        .category-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background-color: #e4e4e7; /* zinc-200 */
+            margin-left: 1rem;
+        }
+        .dark .category-header::after {
+            background-color: #27272a; /* zinc-800 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 transition-colors duration-300 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-zinc-950/80 border-b border-zinc-200 dark:border-zinc-800">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            <!-- Logo & Nav -->
+            <div class="flex items-center gap-6 flex-shrink-0">
+                <a href="#" onclick="showHome(); return false;" class="flex items-center gap-2">
+                    <div class="w-8 h-8 bg-black dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black font-bold text-lg">
+                        T
+                    </div>
+                    <span class="font-semibold text-lg tracking-tight hidden sm:block">Toolbox</span>
+                </a>
+                
+                <!-- Nav Links -->
+                <nav class="hidden md:flex items-center gap-1 text-sm font-medium">
+                    <button onclick="showHome()" class="px-3 py-1.5 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Công cụ</button>
+                    <button onclick="openUiKit()" class="px-3 py-1.5 rounded-md text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">UI Kit</button>
+                </nav>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="flex-1 max-w-md relative group">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 group-focus-within:text-zinc-800 dark:group-focus-within:text-zinc-200 transition-colors"></i>
+                <input type="text" id="searchInput" placeholder="Tìm kiếm công cụ..." 
+                    class="w-full bg-zinc-100 dark:bg-zinc-900 border-none rounded-full py-2 pl-10 pr-12 text-sm focus:ring-2 focus:ring-zinc-300 dark:focus:ring-zinc-700 transition-all placeholder:text-zinc-400">
+                <div class="absolute right-2 top-1/2 -translate-y-1/2 hidden sm:flex gap-1 pointer-events-none select-none">
+                    <span class="kbd-shortcut bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-400">⌘/</span>
+                </div>
+            </div>
+
+            <!-- Right Actions -->
+            <div class="flex items-center gap-2">
+                <!-- Mobile Menu Button (visible on small screens for UI Kit access) -->
+                <button onclick="openUiKit()" class="md:hidden p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-500" title="UI Kit">
+                    <i data-lucide="palette" class="w-5 h-5"></i>
+                </button>
+
+                <!-- View Toggle -->
+                <button id="viewToggleBtn" onclick="toggleViewMode()" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none text-zinc-500 hover:text-black dark:hover:text-white" aria-label="Đổi kiểu xem" title="Đổi kiểu xem (Lưới/Danh sách)">
+                    <i data-lucide="layout-grid" class="w-5 h-5" id="viewIcon"></i>
+                </button>
+
+                <!-- Theme Toggle -->
+                <div class="relative">
+                    <button id="themeBtn" class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors focus:outline-none" aria-label="Đổi giao diện">
+                        <i data-lucide="monitor" class="w-5 h-5" id="themeIcon"></i>
+                    </button>
+                    <!-- Theme Dropdown -->
+                    <div id="themeMenu" class="hidden absolute right-0 mt-2 w-36 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-zinc-100 dark:border-zinc-800 overflow-hidden py-1 z-50">
+                        <button onclick="setTheme('light')" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <i data-lucide="sun" class="w-4 h-4"></i> Sáng
+                        </button>
+                        <button onclick="setTheme('dark')" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <i data-lucide="moon" class="w-4 h-4"></i> Tối
+                        </button>
+                        <button onclick="setTheme('system')" class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-2">
+                            <i data-lucide="monitor" class="w-4 h-4"></i> Hệ thống
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full">
+        
+        <!-- Dashboard Grid (Home) -->
+        <div id="dashboard" class="tool-view active">
+            <div class="mb-6 flex items-end justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight mb-1">Công cụ</h1>
+                    <p class="text-sm text-zinc-500 dark:text-zinc-400">Bộ sưu tập các tiện ích nhỏ gọn.</p>
+                </div>
+                <div class="text-xs text-zinc-400 hidden sm:block">
+                    Ấn <span class="font-mono bg-zinc-100 dark:bg-zinc-800 px-1 rounded">Cmd / hoặc Ctrl + K</span> để tìm nhanh
+                </div>
+            </div>
+
+            <!-- NEW: Category Filters -->
+            <div class="flex flex-wrap gap-2 mb-8" id="categoryFilters">
+                <!-- Filters injected by JS -->
+            </div>
+
+            <!-- Container for tools -->
+            <div id="toolsContainer">
+                <!-- Sections and Cards will be injected here by JS -->
+            </div>
+            
+            <div id="noResults" class="hidden text-center py-12">
+                <i data-lucide="frown" class="w-12 h-12 mx-auto text-zinc-300 mb-3"></i>
+                <p class="text-zinc-500">Không tìm thấy công cụ phù hợp.</p>
+            </div>
+        </div>
+
+        <!-- UI Kit View (New Tab) -->
+        <div id="ui-kit" class="tool-view">
+            <div class="mb-6">
+                <button onclick="showHome()" class="mb-4 flex items-center text-sm text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i> Quay lại
+                </button>
+                <h1 class="text-3xl font-bold tracking-tight mb-2">UI Component Kit</h1>
+                <p class="text-zinc-500 dark:text-zinc-400">Hệ thống Design System sử dụng cho dự án này.</p>
+            </div>
+
+            <div class="space-y-12">
+                <!-- Colors -->
+                <section>
+                    <h3 class="text-lg font-semibold mb-4 pb-2 border-b border-zinc-200 dark:border-zinc-800">Colors</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+                        <div class="space-y-2">
+                            <div class="h-16 rounded-lg bg-black shadow-sm"></div>
+                            <p class="text-xs text-center font-mono">Black</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="h-16 rounded-lg bg-white border border-zinc-200 shadow-sm"></div>
+                            <p class="text-xs text-center font-mono">White</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="h-16 rounded-lg bg-zinc-100"></div>
+                            <p class="text-xs text-center font-mono">Zinc-100</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="h-16 rounded-lg bg-zinc-500"></div>
+                            <p class="text-xs text-center font-mono">Zinc-500</p>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="h-16 rounded-lg bg-zinc-900"></div>
+                            <p class="text-xs text-center font-mono">Zinc-900</p>
+                        </div>
+                         <div class="space-y-2">
+                            <div class="h-16 rounded-lg bg-zinc-950"></div>
+                            <p class="text-xs text-center font-mono">Zinc-950</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Typography -->
+                <section>
+                    <h3 class="text-lg font-semibold mb-4 pb-2 border-b border-zinc-200 dark:border-zinc-800">Typography</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <h1 class="text-4xl font-bold">Heading 1</h1>
+                            <p class="text-xs text-zinc-400 font-mono">text-4xl font-bold</p>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold">Heading 2</h2>
+                            <p class="text-xs text-zinc-400 font-mono">text-2xl font-bold</p>
+                        </div>
+                         <div>
+                            <h3 class="text-lg font-semibold">Heading 3</h3>
+                            <p class="text-xs text-zinc-400 font-mono">text-lg font-semibold</p>
+                        </div>
+                        <div>
+                            <p class="text-base">Body text standard. The quick brown fox jumps over the lazy dog.</p>
+                            <p class="text-xs text-zinc-400 font-mono">text-base</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-zinc-500">Caption text or secondary information.</p>
+                            <p class="text-xs text-zinc-400 font-mono">text-sm text-zinc-500</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Buttons -->
+                <section>
+                    <h3 class="text-lg font-semibold mb-4 pb-2 border-b border-zinc-200 dark:border-zinc-800">Buttons</h3>
+                    <div class="flex flex-wrap gap-4">
+                        <button class="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg font-medium hover:opacity-80 transition-opacity">
+                            Primary Action
+                        </button>
+                        <button class="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white rounded-lg font-medium hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors">
+                            Secondary Action
+                        </button>
+                        <button class="px-4 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
+                            Danger / Clear
+                        </button>
+                        <button class="p-2 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                            <i data-lucide="settings" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                </section>
+
+                 <!-- Form Elements -->
+                <section>
+                    <h3 class="text-lg font-semibold mb-4 pb-2 border-b border-zinc-200 dark:border-zinc-800">Form Inputs</h3>
+                    <div class="max-w-md space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1">Text Input</label>
+                            <input type="text" placeholder="Type something..." class="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2 focus:ring-2 focus:ring-zinc-500 outline-none">
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium mb-1">Range Slider</label>
+                            <input type="range" class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white">
+                        </div>
+                         <div class="flex items-center space-x-3">
+                            <input type="checkbox" checked class="w-5 h-5 rounded border-zinc-300 text-black focus:ring-black dark:bg-zinc-700 dark:border-zinc-600">
+                            <label class="text-sm">Checkbox Option</label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- TOOL 1: Word Counter -->
+        <div id="tool-word-counter" class="tool-view">
+            <div class="max-w-3xl mx-auto">
+                <button onclick="showHome()" class="mb-6 flex items-center text-sm text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i> Quay lại
+                </button>
+                <h2 class="text-2xl font-bold mb-6">Đếm Từ & Ký Tự</h2>
+                
+                <textarea id="wc-input" class="w-full h-64 p-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white focus:outline-none resize-none transition-all shadow-sm text-base" placeholder="Nhập hoặc dán văn bản của bạn vào đây..."></textarea>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                    <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
+                        <span class="block text-3xl font-bold" id="wc-words">0</span>
+                        <span class="text-xs text-zinc-500 uppercase tracking-wider">Từ</span>
+                    </div>
+                    <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
+                        <span class="block text-3xl font-bold" id="wc-chars">0</span>
+                        <span class="text-xs text-zinc-500 uppercase tracking-wider">Ký tự</span>
+                    </div>
+                    <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
+                        <span class="block text-3xl font-bold" id="wc-sentences">0</span>
+                        <span class="text-xs text-zinc-500 uppercase tracking-wider">Câu</span>
+                    </div>
+                    <div class="bg-white dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 text-center">
+                        <span class="block text-3xl font-bold" id="wc-paragraphs">0</span>
+                        <span class="text-xs text-zinc-500 uppercase tracking-wider">Đoạn</span>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex gap-2 justify-end">
+                    <button onclick="document.getElementById('wc-input').value = ''; updateWordCount();" class="px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">Xóa hết</button>
+                    <button onclick="copyText('wc-input')" class="px-4 py-2 text-sm bg-black dark:bg-white text-white dark:text-black rounded-lg hover:opacity-80 transition-opacity font-medium">Sao chép</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOOL 2: Password Generator -->
+        <div id="tool-password" class="tool-view">
+            <div class="max-w-2xl mx-auto">
+                <button onclick="showHome()" class="mb-6 flex items-center text-sm text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i> Quay lại
+                </button>
+                <h2 class="text-2xl font-bold mb-6">Tạo Mật Khẩu An Toàn</h2>
+
+                <div class="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+                    <div class="relative mb-6">
+                        <input type="text" id="pass-result" readonly class="w-full bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl text-xl font-mono text-center border border-zinc-200 dark:border-zinc-800 focus:outline-none" value="Bấm nút để tạo">
+                        <button onclick="copyValue('pass-result')" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-zinc-400 hover:text-black dark:hover:text-white transition-colors" title="Copy">
+                            <i data-lucide="copy" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <label class="text-sm font-medium">Độ dài: <span id="pass-len-val">12</span></label>
+                            </div>
+                            <input type="range" id="pass-length" min="6" max="32" value="12" class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-black dark:accent-white">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <label class="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                                <input type="checkbox" id="pass-upper" checked class="w-5 h-5 rounded border-zinc-300 text-black focus:ring-black dark:bg-zinc-700 dark:border-zinc-600">
+                                <span class="text-sm">Chữ hoa (A-Z)</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                                <input type="checkbox" id="pass-lower" checked class="w-5 h-5 rounded border-zinc-300 text-black focus:ring-black dark:bg-zinc-700 dark:border-zinc-600">
+                                <span class="text-sm">Chữ thường (a-z)</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                                <input type="checkbox" id="pass-number" checked class="w-5 h-5 rounded border-zinc-300 text-black focus:ring-black dark:bg-zinc-700 dark:border-zinc-600">
+                                <span class="text-sm">Số (0-9)</span>
+                            </label>
+                            <label class="flex items-center space-x-3 cursor-pointer p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                                <input type="checkbox" id="pass-symbol" class="w-5 h-5 rounded border-zinc-300 text-black focus:ring-black dark:bg-zinc-700 dark:border-zinc-600">
+                                <span class="text-sm">Ký tự (!@#)</span>
+                            </label>
+                        </div>
+
+                        <button onclick="generatePassword()" class="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-opacity text-lg shadow-lg">
+                            Tạo Mật Khẩu Mới
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOOL 3: PX to REM Converter -->
+        <div id="tool-px-rem" class="tool-view">
+            <div class="max-w-2xl mx-auto">
+                <button onclick="showHome()" class="mb-6 flex items-center text-sm text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i> Quay lại
+                </button>
+                <h2 class="text-2xl font-bold mb-6">Chuyển đổi PX ↔ REM</h2>
+
+                <div class="bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm text-center">
+                    <div class="flex flex-col sm:flex-row items-center gap-4 justify-center">
+                        <div class="w-full">
+                            <label class="block text-sm font-medium mb-2 text-zinc-500">Pixels (px)</label>
+                            <input type="number" id="px-input" placeholder="16" class="w-full p-4 text-center text-2xl font-bold bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white focus:outline-none">
+                        </div>
+                        <i data-lucide="arrow-right-left" class="w-6 h-6 text-zinc-400 sm:rotate-0 rotate-90"></i>
+                        <div class="w-full">
+                            <label class="block text-sm font-medium mb-2 text-zinc-500">REM</label>
+                            <input type="number" id="rem-input" placeholder="1" class="w-full p-4 text-center text-2xl font-bold bg-zinc-50 dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 focus:ring-2 focus:ring-black dark:focus:ring-white focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex justify-center items-center gap-4">
+                        <label class="text-sm text-zinc-500">Base Font Size:</label>
+                        <input type="number" id="base-size" value="16" class="w-16 p-2 text-center text-sm border border-zinc-200 dark:border-zinc-700 rounded-md bg-transparent">
+                        <span class="text-sm text-zinc-500">px</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TOOL 4: Base64 Converter -->
+        <div id="tool-base64" class="tool-view">
+            <div class="max-w-3xl mx-auto">
+                <button onclick="showHome()" class="mb-6 flex items-center text-sm text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
+                    <i data-lucide="arrow-left" class="w-4 h-4 mr-1"></i> Quay lại
+                </button>
+                <h2 class="text-2xl font-bold mb-6">Mã hóa / Giải mã Base64</h2>
+
+                <div class="grid gap-6">
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-medium">Văn bản gốc</label>
+                            <button onclick="document.getElementById('b64-text').value=''; b64Encode()" class="text-xs text-red-500">Xóa</button>
+                        </div>
+                        <textarea id="b64-text" class="w-full h-32 p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:ring-1 focus:ring-black dark:focus:ring-white focus:outline-none font-mono text-sm" placeholder="Nhập văn bản thường..."></textarea>
+                    </div>
+
+                    <div class="flex justify-center gap-4">
+                        <button onclick="b64Encode()" class="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg text-sm font-medium hover:opacity-80 transition-opacity flex items-center gap-2">
+                            <i data-lucide="arrow-down" class="w-4 h-4"></i> Mã hóa
+                        </button>
+                        <button onclick="b64Decode()" class="px-6 py-2 bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white rounded-lg text-sm font-medium hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2">
+                            <i data-lucide="arrow-up" class="w-4 h-4"></i> Giải mã
+                        </button>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between mb-2">
+                            <label class="text-sm font-medium">Chuỗi Base64</label>
+                            <button onclick="copyText('b64-result')" class="text-xs text-blue-500 font-medium">Sao chép</button>
+                        </div>
+                        <textarea id="b64-result" class="w-full h-32 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:ring-1 focus:ring-black dark:focus:ring-white focus:outline-none font-mono text-sm" placeholder="Kết quả xuất hiện ở đây..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-zinc-200 dark:border-zinc-800 mt-12">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-zinc-500 dark:text-zinc-500 text-sm">© 2024 Minimal Toolbox. Đơn giản & Hiệu quả.</p>
+            <div class="flex gap-4">
+                <a href="#" class="text-zinc-400 hover:text-black dark:hover:text-white transition-colors"><i data-lucide="github" class="w-5 h-5"></i></a>
+                <a href="#" class="text-zinc-400 hover:text-black dark:hover:text-white transition-colors"><i data-lucide="twitter" class="w-5 h-5"></i></a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 translate-y-20 opacity-0 transition-all duration-300 bg-black dark:bg-white text-white dark:text-black px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50">
+        <i data-lucide="check-circle" class="w-5 h-5 text-green-500 dark:text-green-600"></i>
+        <span class="text-sm font-medium" id="toast-msg">Đã sao chép!</span>
+    </div>
+
+    <script>
+        // --- 1. CONFIG & DATA ---
+        // Added 'category' field
+        const tools = [
+            { id: 'word-counter', category: 'text', title: 'Đếm Từ', desc: 'Phân tích số từ, ký tự, câu và đoạn văn.', icon: 'text-cursor-input' },
+            { id: 'password', category: 'security', title: 'Tạo Mật Khẩu', desc: 'Tạo mật khẩu ngẫu nhiên mạnh và an toàn.', icon: 'lock' },
+            { id: 'px-rem', category: 'dev', title: 'PX sang REM', desc: 'Chuyển đổi đơn vị CSS nhanh chóng cho Dev.', icon: 'arrow-right-left' },
+            { id: 'base64', category: 'dev', title: 'Base64 Tool', desc: 'Mã hóa và giải mã chuỗi Base64.', icon: 'code-2' },
+            { id: 'json-fmt', category: 'dev', title: 'JSON Format', desc: 'Làm đẹp (Prettify) dữ liệu JSON (Coming soon).', icon: 'file-json', disabled: true },
+            { id: 'stopwatch', category: 'utils', title: 'Bấm Giờ', desc: 'Đồng hồ bấm giờ đơn giản (Coming soon).', icon: 'timer', disabled: true },
+        ];
+        
+        const categories = {
+            'text': 'Văn bản',
+            'security': 'Bảo mật',
+            'dev': 'Lập trình',
+            'utils': 'Tiện ích'
+        };
+        
+        let currentView = 'grid'; // 'grid' or 'list'
+        let currentCategory = 'all'; // Default to show all
+
+        // --- 2. INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initViewMode();
+            lucide.createIcons();
+            setupSearch();
+            setupKeyboardShortcuts();
+            
+            // Handle Route/Deep Linking
+            handleRoute();
+            window.addEventListener('hashchange', handleRoute);
+            
+            // Render category filters
+            renderCategoryFilters();
+            
+            // Password gen init
+            document.getElementById('pass-length').addEventListener('input', (e) => {
+                document.getElementById('pass-len-val').innerText = e.target.value;
+                generatePassword();
+            });
+            generatePassword();
+
+            // Word counter init
+            document.getElementById('wc-input').addEventListener('input', updateWordCount);
+
+            // PX-REM init
+            document.getElementById('px-input').addEventListener('input', (e) => convertPxRem('px', e.target.value));
+            document.getElementById('rem-input').addEventListener('input', (e) => convertPxRem('rem', e.target.value));
+            document.getElementById('base-size').addEventListener('input', () => convertPxRem('px', document.getElementById('px-input').value));
+
+            // Base64 init
+            document.getElementById('b64-text').addEventListener('input', b64Encode);
+        });
+
+        // --- 3. CATEGORY FILTERS ---
+        function renderCategoryFilters() {
+            const container = document.getElementById('categoryFilters');
+            container.innerHTML = '';
+            
+            // 'All' button
+            const allBtn = document.createElement('button');
+            const isActive = currentCategory === 'all';
+            allBtn.className = `px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                isActive 
+                ? 'bg-black text-white dark:bg-white dark:text-black' 
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
+            }`;
+            allBtn.innerText = 'Tất cả';
+            allBtn.onclick = () => setCategory('all');
+            container.appendChild(allBtn);
+            
+            // Other categories
+            Object.keys(categories).forEach(key => {
+                const btn = document.createElement('button');
+                const isCatActive = currentCategory === key;
+                btn.className = `px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    isCatActive 
+                    ? 'bg-black text-white dark:bg-white dark:text-black' 
+                    : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700'
+                }`;
+                btn.innerText = categories[key];
+                btn.onclick = () => setCategory(key);
+                container.appendChild(btn);
+            });
+        }
+
+        function setCategory(cat) {
+            currentCategory = cat;
+            renderCategoryFilters(); // Re-render to update active state
+            renderTools(document.getElementById('searchInput').value);
+        }
+
+        // --- 4. ROUTING & DEEP LINKING ---
+        function handleRoute() {
+            const hash = window.location.hash.substring(1); // Remove '#'
+            if (!hash) {
+                showHome(false); // false = don't push state
+                return;
+            }
+
+            if (hash === 'ui-kit') {
+                openUiKit(false);
+                return;
+            }
+
+            // Check if it's a tool
+            const tool = tools.find(t => t.id === hash);
+            if (tool && !tool.disabled) {
+                openTool(hash, false);
+            } else {
+                showHome(false);
+            }
+        }
+
+        // --- 5. UI RENDERING & VIEW MODES ---
+        function initViewMode() {
+            const savedView = localStorage.getItem('viewMode');
+            if (savedView) {
+                currentView = savedView;
+            }
+            updateViewIcon();
+            renderTools();
+        }
+
+        function toggleViewMode() {
+            currentView = currentView === 'grid' ? 'list' : 'grid';
+            localStorage.setItem('viewMode', currentView);
+            updateViewIcon();
+            renderTools(document.getElementById('searchInput').value);
+        }
+
+        function updateViewIcon() {
+            const icon = document.getElementById('viewIcon');
+            if (currentView === 'grid') {
+                icon.setAttribute('data-lucide', 'layout-grid');
+            } else {
+                icon.setAttribute('data-lucide', 'list');
+            }
+            lucide.createIcons();
+        }
+
+        function renderTools(filter = '') {
+            const container = document.getElementById('toolsContainer');
+            const noRes = document.getElementById('noResults');
+            container.innerHTML = '';
+            
+            const term = filter.toLowerCase().trim();
+            let totalCount = 0;
+
+            // Determine which categories to process
+            // If specific category selected, only show that one.
+            const catsToRender = currentCategory === 'all' 
+                ? Object.keys(categories) 
+                : [currentCategory];
+            
+            catsToRender.forEach(catKey => {
+                // Find tools in this category that match filter
+                const categoryTools = tools.filter(t => 
+                    t.category === catKey && 
+                    (t.title.toLowerCase().includes(term) || t.desc.toLowerCase().includes(term))
+                );
+
+                if (categoryTools.length > 0) {
+                    totalCount += categoryTools.length;
+                    
+                    // Create Category Header (Always show header for clarity in 'all' mode, 
+                    // optional in specific mode but good for consistency)
+                    const header = document.createElement('div');
+                    header.className = 'category-header text-sm font-semibold text-zinc-500 uppercase tracking-wider';
+                    header.innerText = categories[catKey];
+                    container.appendChild(header);
+
+                    // Create Grid/List Container for this category
+                    const grid = document.createElement('div');
+                    if (currentView === 'grid') {
+                        grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8';
+                    } else {
+                        grid.className = 'flex flex-col gap-3 mb-8';
+                    }
+
+                    // Render Cards
+                    categoryTools.forEach(tool => {
+                        const card = document.createElement('div');
+                        const isDis = tool.disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-md';
+                        
+                        if (currentView === 'grid') {
+                            card.className = `bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-xl transition-all duration-300 group ${isDis}`;
+                            card.innerHTML = `
+                                <div class="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-lg flex items-center justify-center mb-4 text-zinc-700 dark:text-zinc-200 group-hover:scale-110 transition-transform duration-300">
+                                    <i data-lucide="${tool.icon}" class="w-5 h-5"></i>
+                                </div>
+                                <h3 class="text-lg font-semibold mb-2">${tool.title}</h3>
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">${tool.desc}</p>
+                            `;
+                        } else {
+                            card.className = `bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl transition-all duration-300 group ${isDis} flex items-center gap-4`;
+                            card.innerHTML = `
+                                <div class="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-lg flex-shrink-0 flex items-center justify-center text-zinc-700 dark:text-zinc-200">
+                                    <i data-lucide="${tool.icon}" class="w-5 h-5"></i>
+                                </div>
+                                <div class="flex-grow min-w-0">
+                                    <h3 class="text-base font-semibold truncate">${tool.title}</h3>
+                                    <p class="text-sm text-zinc-500 dark:text-zinc-400 truncate">${tool.desc}</p>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-zinc-300 group-hover:text-zinc-600 dark:group-hover:text-zinc-400 transition-colors flex-shrink-0"></i>
+                            `;
+                        }
+
+                        if(!tool.disabled) {
+                            card.addEventListener('click', () => openTool(tool.id));
+                        }
+                        grid.appendChild(card);
+                    });
+
+                    container.appendChild(grid);
+                }
+            });
+            
+            lucide.createIcons();
+            
+            if (totalCount === 0) {
+                noRes.classList.remove('hidden');
+            } else {
+                noRes.classList.add('hidden');
+            }
+        }
+
+        // --- 6. NAVIGATION & SEARCH ---
+        function openTool(id, updateHistory = true) {
+            document.querySelectorAll('.tool-view').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`tool-${id}`);
+            if (target) {
+                target.classList.add('active');
+                window.scrollTo(0, 0);
+                if (updateHistory) {
+                    try {
+                        history.pushState(null, null, `#${id}`);
+                    } catch (e) {
+                        // Ignore history errors in sandbox environments
+                        console.warn("Navigation history update failed:", e);
+                    }
+                }
+            }
+        }
+
+        function showHome(updateHistory = true) {
+            document.querySelectorAll('.tool-view').forEach(el => el.classList.remove('active'));
+            document.getElementById('dashboard').classList.add('active');
+            window.scrollTo(0, 0);
+            if (updateHistory) {
+                try {
+                    // Use pathname + search instead of empty string or space to avoid security errors
+                    history.pushState(null, null, window.location.pathname + window.location.search);
+                } catch (e) {
+                    // Ignore history errors in sandbox environments
+                     console.warn("Navigation history update failed:", e);
+                }
+            }
+        }
+
+        function openUiKit(updateHistory = true) {
+            document.querySelectorAll('.tool-view').forEach(el => el.classList.remove('active'));
+            document.getElementById('ui-kit').classList.add('active');
+            window.scrollTo(0, 0);
+            if (updateHistory) {
+                try {
+                    history.pushState(null, null, '#ui-kit');
+                } catch (e) {
+                    // Ignore history errors in sandbox environments
+                     console.warn("Navigation history update failed:", e);
+                }
+            }
+        }
+
+        function setupSearch() {
+            const input = document.getElementById('searchInput');
+            input.addEventListener('input', (e) => {
+                const term = e.target.value.trim();
+                // If search is happening, make sure we are on dashboard
+                if (!document.getElementById('dashboard').classList.contains('active')) {
+                    showHome(true);
+                }
+                renderTools(term);
+            });
+        }
+
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Check for Ctrl+/ or Cmd+/
+                if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+                    e.preventDefault(); 
+                    const searchInput = document.getElementById('searchInput');
+                    searchInput.focus();
+                }
+
+                // Check for Ctrl+F or Cmd+F
+                if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                    e.preventDefault(); 
+                    const searchInput = document.getElementById('searchInput');
+                    searchInput.focus();
+                    searchInput.select(); 
+                    
+                    if (!document.getElementById('dashboard').classList.contains('active')) {
+                        showHome();
+                    }
+                }
+            });
+        }
+
+        // --- 7. THEME LOGIC (3 Modes) ---
+        function initTheme() {
+            const btn = document.getElementById('themeBtn');
+            const menu = document.getElementById('themeMenu');
+            
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', () => {
+                menu.classList.add('hidden');
+            });
+
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            setTheme(savedTheme);
+        }
+
+        function setTheme(mode) {
+            const root = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            
+            localStorage.setItem('theme', mode);
+            
+            if (mode === 'dark') {
+                root.classList.add('dark');
+                icon.setAttribute('data-lucide', 'moon');
+            } else if (mode === 'light') {
+                root.classList.remove('dark');
+                icon.setAttribute('data-lucide', 'sun');
+            } else {
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    root.classList.add('dark');
+                } else {
+                    root.classList.remove('dark');
+                }
+                icon.setAttribute('data-lucide', 'monitor');
+            }
+            lucide.createIcons();
+        }
+
+        // --- 8. TOOL LOGICS (Existing) ---
+        // Word Counter
+        function updateWordCount() {
+            const text = document.getElementById('wc-input').value;
+            const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+            const chars = text.length;
+            const sentences = text.split(/[.!?]+/).filter(Boolean).length;
+            const paragraphs = text.split(/\n\n+/).filter(Boolean).length || (text.length > 0 ? 1 : 0);
+
+            document.getElementById('wc-words').innerText = words;
+            document.getElementById('wc-chars').innerText = chars;
+            document.getElementById('wc-sentences').innerText = sentences;
+            document.getElementById('wc-paragraphs').innerText = paragraphs;
+        }
+
+        // Password Generator
+        function generatePassword() {
+            const length = document.getElementById('pass-length').value;
+            const hasUpper = document.getElementById('pass-upper').checked;
+            const hasLower = document.getElementById('pass-lower').checked;
+            const hasNumber = document.getElementById('pass-number').checked;
+            const hasSymbol = document.getElementById('pass-symbol').checked;
+            const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            const lower = 'abcdefghijklmnopqrstuvwxyz';
+            const numbers = '0123456789';
+            const symbols = '!@#$%^&*()_+~`|}{[]:;?><,./-=';
+
+            let chars = '';
+            if (hasUpper) chars += upper;
+            if (hasLower) chars += lower;
+            if (hasNumber) chars += numbers;
+            if (hasSymbol) chars += symbols;
+
+            if (chars === '') {
+                document.getElementById('pass-result').value = 'Chọn ít nhất 1 loại ký tự!';
+                return;
+            }
+
+            let password = '';
+            for (let i = 0; i < length; i++) {
+                password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('pass-result').value = password;
+        }
+
+        // PX to REM
+        function convertPxRem(type, value) {
+            const base = parseFloat(document.getElementById('base-size').value) || 16;
+            if (value === '') {
+                document.getElementById('px-input').value = '';
+                document.getElementById('rem-input').value = '';
+                return;
+            }
+            if (type === 'px') {
+                const rem = (parseFloat(value) / base);
+                document.getElementById('rem-input').value = Number.isInteger(rem) ? rem : rem.toFixed(4);
+            } else {
+                const px = (parseFloat(value) * base);
+                document.getElementById('px-input').value = Number.isInteger(px) ? px : px.toFixed(2);
+            }
+        }
+
+        // Base64
+        function b64Encode() {
+            const input = document.getElementById('b64-text').value;
+            try {
+                document.getElementById('b64-result').value = btoa(unescape(encodeURIComponent(input)));
+            } catch (e) { }
+        }
+
+        function b64Decode() {
+            const input = document.getElementById('b64-result').value;
+            try {
+                document.getElementById('b64-text').value = decodeURIComponent(escape(atob(input)));
+            } catch (e) { showToast('Chuỗi Base64 không hợp lệ!', true); }
+        }
+
+        // Utilities
+        function copyText(elementId) {
+            const el = document.getElementById(elementId);
+            el.select();
+            document.execCommand('copy');
+            showToast('Đã sao chép vào clipboard!');
+        }
+
+        function copyValue(elementId) {
+            const val = document.getElementById(elementId).value;
+            navigator.clipboard.writeText(val).then(() => {
+                showToast('Đã sao chép mật khẩu!');
+            });
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            toastMsg.innerText = msg;
+            if (isError) {
+                toast.firstElementChild.setAttribute('data-lucide', 'alert-circle');
+                toast.firstElementChild.classList.replace('text-green-500', 'text-red-500');
+            } else {
+                toast.firstElementChild.setAttribute('data-lucide', 'check-circle');
+                if (toast.firstElementChild.classList.contains('text-red-500')) {
+                    toast.firstElementChild.classList.replace('text-red-500', 'text-green-500');
+                }
+            }
+            lucide.createIcons();
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
