@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="vi" class="antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sổ Tay Sinh Tồn - Survivalist Wiki</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Leaflet CSS (Map) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Config Tailwind Theme -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        zinc: {
+                            850: '#1f2023',
+                            950: '#09090b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Utilities */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Hide Scrollbar but keep functionality */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Compass Animation */
+        .compass-ring {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Smooth appearance */
+        .fade-in {
+            animation: fadeIn 0.2s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Map Styles */
+        #leafletMap {
+            width: 100%;
+            height: 100%;
+            background-color: #e5e7eb; /* Fallback color */
+            z-index: 0;
+        }
+        .dark #leafletMap {
+            background-color: #1f2937;
+        }
+    </style>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-zinc-950 dark:text-gray-100 transition-colors duration-300 h-screen flex flex-col overflow-hidden">
+
+    <!-- HEADER & SEARCH -->
+    <header class="flex-none p-4 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 z-50 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-xl font-bold tracking-tight uppercase flex items-center gap-2">
+                <i class="fa-solid fa-mountain-sun text-emerald-600 dark:text-emerald-500"></i>
+                Survival<span class="text-gray-400 dark:text-zinc-600">Wiki</span>
+            </h1>
+            <button id="themeToggle" class="p-2 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 w-10 h-10 flex items-center justify-center transition-all active:scale-95">
+                <i class="fa-solid fa-circle-half-stroke"></i>
+            </button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input type="text" id="searchInput" placeholder="Tìm kiếm (VD: Rắn cắn, nước, lửa...)" 
+                class="w-full pl-11 pr-10 py-3 rounded-xl bg-gray-100 dark:bg-zinc-800 border-none focus:ring-2 focus:ring-emerald-500 dark:text-white placeholder-gray-500 text-base shadow-inner transition-all">
+            <button id="clearSearch" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
+                <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Filter Chips -->
+        <div class="flex gap-2 mt-4 overflow-x-auto no-scrollbar pb-1" id="categoryFilters">
+            <!-- Injected via JS -->
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4 scroll-smooth relative">
+        
+        <!-- Welcome / Dashboard View -->
+        <div id="dashboardView" class="fade-in">
+            <!-- Quick Tools Section -->
+            <div class="grid grid-cols-3 gap-2 mb-6">
+                <div onclick="app.openTool('compass')" class="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800 active:scale-95 transition-transform cursor-pointer flex flex-col items-center justify-center gap-2 h-24">
+                    <i class="fa-regular fa-compass text-xl text-blue-500"></i>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">La Bàn</span>
+                </div>
+                <div onclick="app.openTool('morse')" class="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800 active:scale-95 transition-transform cursor-pointer flex flex-col items-center justify-center gap-2 h-24">
+                    <i class="fa-solid fa-tower-broadcast text-xl text-orange-500"></i>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">SOS Morse</span>
+                </div>
+                 <div onclick="app.openTool('map')" class="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-zinc-800 active:scale-95 transition-transform cursor-pointer flex flex-col items-center justify-center gap-2 h-24">
+                    <i class="fa-solid fa-map-location-dot text-xl text-emerald-500"></i>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Bản Đồ</span>
+                </div>
+            </div>
+
+            <h2 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">Mục lục sinh tồn</h2>
+            <div id="articleGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pb-20">
+                <!-- Content Cards Injected via JS -->
+            </div>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 text-center opacity-60">
+                <i class="fa-solid fa-wind text-4xl mb-3 text-gray-400"></i>
+                <p>Không tìm thấy dữ liệu phù hợp.</p>
+            </div>
+        </div>
+
+        <!-- Detail View (Article) -->
+        <div id="detailView" class="hidden absolute inset-0 bg-gray-50 dark:bg-zinc-950 z-20 min-h-full overflow-y-auto">
+            <div class="sticky top-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md p-4 border-b border-gray-200 dark:border-zinc-800 flex items-center gap-4 z-30">
+                <button onclick="app.goBack()" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors">
+                    <i class="fa-solid fa-arrow-left text-lg"></i>
+                </button>
+                <h2 id="detailTitle" class="text-lg font-bold truncate flex-1">Chi tiết</h2>
+                <button onclick="app.toggleBookmark()" id="bookmarkBtn" class="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-yellow-500">
+                    <i class="fa-regular fa-star text-lg"></i>
+                </button>
+            </div>
+            <div class="p-5 max-w-3xl mx-auto pb-24">
+                <div id="detailCategory" class="inline-block px-2 py-1 rounded text-xs font-bold uppercase tracking-wider mb-4 bg-gray-200 dark:bg-zinc-800 text-gray-600 dark:text-gray-300">Category</div>
+                <div id="detailContent" class="prose prose-zinc dark:prose-invert max-w-none text-base leading-relaxed">
+                    <!-- Content injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Tool View: Compass -->
+        <div id="compassView" class="hidden absolute inset-0 bg-zinc-900 text-white z-40 flex flex-col">
+            <div class="p-4 flex items-center">
+                <button onclick="app.goBack()" class="text-white p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
+                <h2 class="ml-4 font-bold uppercase tracking-widest">La Bàn Số</h2>
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center relative">
+                <div class="relative w-64 h-64 flex items-center justify-center">
+                    <div class="absolute inset-0 border-4 border-zinc-700 rounded-full"></div>
+                    <!-- Compass Dial -->
+                    <div id="compassDial" class="w-full h-full relative transition-transform duration-300 ease-out">
+                        <span class="absolute top-2 left-1/2 -translate-x-1/2 font-bold text-red-500 text-xl">N</span>
+                        <span class="absolute bottom-2 left-1/2 -translate-x-1/2 font-bold text-gray-400 text-xl">S</span>
+                        <span class="absolute left-2 top-1/2 -translate-y-1/2 font-bold text-gray-400 text-xl">W</span>
+                        <span class="absolute right-2 top-1/2 -translate-y-1/2 font-bold text-gray-400 text-xl">E</span>
+                        
+                        <!-- Ticks -->
+                        <div class="absolute top-0 left-1/2 w-0.5 h-3 bg-red-500 -translate-x-1/2"></div>
+                        <div class="absolute bottom-0 left-1/2 w-0.5 h-3 bg-gray-600 -translate-x-1/2"></div>
+                        <div class="absolute left-0 top-1/2 w-3 h-0.5 bg-gray-600 -translate-y-1/2"></div>
+                        <div class="absolute right-0 top-1/2 w-3 h-0.5 bg-gray-600 -translate-y-1/2"></div>
+                    </div>
+                    <!-- Indicator -->
+                    <div class="absolute w-0.5 h-16 bg-white top-8 z-10"></div> 
+                    <div class="absolute w-2 h-2 bg-red-500 rounded-full z-20"></div>
+                </div>
+                <div class="mt-10 text-center">
+                    <div id="compassDegree" class="text-5xl font-mono font-bold">0°</div>
+                    <div id="compassDirection" class="text-xl text-zinc-400 mt-2">BẮC</div>
+                    <p class="text-xs text-zinc-600 mt-8 max-w-xs mx-auto px-4">Lưu ý: Yêu cầu thiết bị có cảm biến từ trường.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tool View: Morse -->
+        <div id="morseView" class="hidden absolute inset-0 bg-gray-900 text-white z-40 flex flex-col">
+            <div class="p-4 flex items-center bg-gray-800">
+                <button onclick="app.goBack()" class="text-white p-2"><i class="fa-solid fa-xmark text-2xl"></i></button>
+                <h2 class="ml-4 font-bold uppercase tracking-widest">Dịch Mã Morse</h2>
+            </div>
+            <div class="flex-1 p-6 flex flex-col gap-4 overflow-y-auto pb-24">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase font-bold">Văn bản</label>
+                    <textarea id="morseInput" class="w-full h-20 bg-gray-800 rounded-lg p-3 text-lg mt-2 focus:ring-2 focus:ring-orange-500 outline-none resize-none" placeholder="Nhập tin nhắn SOS..."></textarea>
+                </div>
+                <div class="flex justify-center">
+                    <i class="fa-solid fa-arrow-down text-gray-600"></i>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase font-bold">Mã Morse</label>
+                    <div id="morseOutput" class="w-full min-h-16 bg-black rounded-lg p-4 text-xl font-mono text-orange-400 break-words mt-2 border border-gray-700">... --- ...</div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-1 gap-3 mt-2">
+                    <div class="flex gap-2">
+                         <button onclick="app.playMorse()" id="btnPlayMorse" class="flex-1 py-3 bg-orange-600 hover:bg-orange-700 active:bg-orange-800 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-volume-high"></i> Phát
+                        </button>
+                        <button onclick="app.stopMorse()" id="btnStopMorse" class="w-24 py-3 bg-red-600 hover:bg-red-700 rounded-xl font-bold uppercase tracking-widest shadow-lg hidden items-center justify-center">
+                            <i class="fa-solid fa-stop"></i>
+                        </button>
+                    </div>
+
+                     <button onclick="app.flashScreen()" class="w-full py-3 bg-white text-black hover:bg-gray-200 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-mobile-screen"></i> Nháy Màn Hình
+                    </button>
+                    <button onclick="app.toggleTorch()" id="torchBtn" class="w-full py-3 bg-zinc-700 text-white hover:bg-zinc-600 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center gap-3">
+                        <i class="fa-solid fa-lightbulb"></i> Đèn Flash (Beta)
+                    </button>
+                    <p class="text-[10px] text-center text-gray-500">*Đèn Flash yêu cầu quyền Camera & không hỗ trợ mọi thiết bị.</p>
+                </div>
+
+                <!-- Flash Screen Overlay -->
+                <div id="flashOverlay" class="fixed inset-0 bg-white z-[100] hidden flex flex-col items-center justify-center cursor-pointer" onclick="app.stopFlashScreen()">
+                    <div class="text-black font-bold text-2xl uppercase tracking-widest animate-pulse">CHẠM ĐỂ DỪNG</div>
+                    <div class="mt-4 px-6 py-2 bg-black text-white rounded-full text-sm">Thoát</div>
+                </div>
+
+                <div class="mt-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+                    <h3 class="font-bold mb-3 text-sm text-gray-400 uppercase tracking-widest border-b border-gray-700 pb-2">Bảng mã cứu hộ</h3>
+                    <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-xs font-mono text-gray-300">
+                        <div class="flex justify-between"><span>A</span> <span class="text-orange-400">.-</span></div>
+                        <div class="flex justify-between"><span>B</span> <span class="text-orange-400">-...</span></div>
+                        <div class="flex justify-between"><span>C</span> <span class="text-orange-400">-.-.</span></div>
+                        <div class="flex justify-between"><span>D</span> <span class="text-orange-400">-..</span></div>
+                        <div class="flex justify-between"><span>E</span> <span class="text-orange-400">.</span></div>
+                        <div class="flex justify-between"><span>F</span> <span class="text-orange-400">..-.</span></div>
+                        <div class="flex justify-between"><span>G</span> <span class="text-orange-400">--.</span></div>
+                        <div class="flex justify-between"><span>H</span> <span class="text-orange-400">....</span></div>
+                        <div class="flex justify-between"><span>I</span> <span class="text-orange-400">..</span></div>
+                        <div class="flex justify-between"><span>J</span> <span class="text-orange-400">.---</span></div>
+                        <div class="flex justify-between"><span>K</span> <span class="text-orange-400">-.-</span></div>
+                        <div class="flex justify-between"><span>L</span> <span class="text-orange-400">.-..</span></div>
+                        <div class="flex justify-between"><span>M</span> <span class="text-orange-400">--</span></div>
+                        <div class="flex justify-between"><span>N</span> <span class="text-orange-400">-.</span></div>
+                        <div class="flex justify-between"><span>O</span> <span class="text-orange-400">---</span></div>
+                        <div class="flex justify-between"><span>P</span> <span class="text-orange-400">.--.</span></div>
+                        <div class="flex justify-between"><span>Q</span> <span class="text-orange-400">--.-</span></div>
+                        <div class="flex justify-between"><span>R</span> <span class="text-orange-400">.-.</span></div>
+                        <div class="flex justify-between"><span>S</span> <span class="text-orange-400">...</span></div>
+                        <div class="flex justify-between"><span>T</span> <span class="text-orange-400">-</span></div>
+                        <div class="flex justify-between"><span>U</span> <span class="text-orange-400">..-</span></div>
+                        <div class="flex justify-between"><span>V</span> <span class="text-orange-400">...-</span></div>
+                        <div class="flex justify-between"><span>W</span> <span class="text-orange-400">.--</span></div>
+                        <div class="flex justify-between"><span>X</span> <span class="text-orange-400">-..-</span></div>
+                        <div class="flex justify-between"><span>Y</span> <span class="text-orange-400">-.--</span></div>
+                        <div class="flex justify-between"><span>Z</span> <span class="text-orange-400">--..</span></div>
+                        <div class="flex justify-between font-bold text-red-400"><span>SOS</span> <span>...---...</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tool View: OpenStreetMap (Leaflet) -->
+        <div id="mapView" class="hidden absolute inset-0 bg-blue-50 dark:bg-zinc-950 z-40 flex flex-col overflow-hidden">
+            <!-- Map Controls Header -->
+            <div class="p-3 flex items-center gap-2 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 shadow-sm z-10">
+                <button onclick="app.goBack()" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 flex items-center justify-center shrink-0"><i class="fa-solid fa-arrow-left"></i></button>
+                <div class="flex-1 text-sm font-bold truncate">OpenStreetMap & Data</div>
+                
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <button onclick="app.map.locateUser()" id="btnLocate" class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 flex items-center justify-center active:bg-blue-200"><i class="fa-solid fa-crosshairs"></i></button>
+                    <button onclick="document.getElementById('mapDataModal').classList.remove('hidden')" class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 flex items-center justify-center active:bg-emerald-200"><i class="fa-solid fa-database"></i></button>
+                </div>
+            </div>
+
+            <!-- Map Container -->
+            <div class="flex-1 relative z-0">
+                <div id="leafletMap"></div>
+            </div>
+            
+            <!-- Map Data Modal (Offline Tools) -->
+            <div id="mapDataModal" class="absolute inset-0 z-50 bg-black/50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+                <div class="bg-white dark:bg-zinc-900 rounded-xl w-full max-w-sm p-6 shadow-2xl border border-gray-200 dark:border-zinc-700">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-lg">Quản lý Dữ liệu Offline</h3>
+                        <button onclick="document.getElementById('mapDataModal').classList.add('hidden')" class="text-gray-500 hover:text-gray-700"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- Markers Export/Import -->
+                        <div class="p-4 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">1. Điểm đánh dấu (Markers)</h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="app.map.exportMarkers()" class="flex items-center justify-center gap-2 py-2 bg-white dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm font-medium hover:bg-gray-50">
+                                    <i class="fa-solid fa-download text-blue-500"></i> Tải về máy
+                                </button>
+                                <label class="flex items-center justify-center gap-2 py-2 bg-white dark:bg-zinc-700 border border-gray-300 dark:border-zinc-600 rounded text-sm font-medium hover:bg-gray-50 cursor-pointer">
+                                    <i class="fa-solid fa-upload text-green-500"></i> Tải lên
+                                    <input type="file" id="importMarkers" class="hidden" accept=".json" onchange="app.map.importMarkers(this)">
+                                </label>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-2">Lưu vị trí các điểm đã ghim.</p>
+                        </div>
+
+                        <!-- Tiles Export/Import -->
+                        <div class="p-4 bg-gray-50 dark:bg-zinc-800 rounded-lg">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">2. Bản đồ nền (Tiles)</h4>
+                            <div class="space-y-2">
+                                <button onclick="app.map.exportMapTiles()" id="btnDownloadTiles" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-sm shadow-sm flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-layer-group"></i> Tải bản đồ khu vực này
+                                </button>
+                                <p class="text-[10px] text-gray-400 text-center">Tải dữ liệu hình ảnh bản đồ đang xem về máy để dùng offline.</p>
+                                
+                                <div class="relative py-2 flex items-center">
+                                    <div class="flex-grow border-t border-gray-300 dark:border-zinc-600"></div>
+                                    <span class="flex-shrink-0 mx-4 text-gray-400 text-xs">OFFLINE MODE</span>
+                                    <div class="flex-grow border-t border-gray-300 dark:border-zinc-600"></div>
+                                </div>
+
+                                <label class="w-full py-3 bg-white dark:bg-zinc-700 border-2 border-dashed border-gray-300 dark:border-zinc-600 hover:border-blue-500 rounded-lg text-center cursor-pointer flex flex-col items-center justify-center transition-colors">
+                                    <div class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-300">
+                                        <i class="fa-solid fa-file-import"></i> Tải lên file bản đồ (.json)
+                                    </div>
+                                    <input type="file" id="importTiles" class="hidden" accept=".json" onchange="app.map.importMapTiles(this)">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- DATA SOURCE (The Wiki) ---
+        const survivalData = [
+            {
+                id: 'snake_bite',
+                category: 'firstaid',
+                title: 'Sơ cứu Rắn cắn (Nơi hoang dã)',
+                tags: ['ran', 'doc', 'rung', 'dao hoang', 'cap cuu'],
+                icon: 'fa-staff-snake',
+                color: 'text-emerald-600',
+                content: `
+                    <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg border-l-4 border-red-500 mb-6">
+                        <strong class="text-red-600 dark:text-red-400 uppercase tracking-wider block mb-1">Tình huống khẩn cấp</strong>
+                        <p class="text-sm">Hướng dẫn này dành cho trường hợp <strong>không có bệnh viện/hạ tầng y tế</strong> (Lạc đảo hoang, rừng sâu). Mục tiêu: Làm chậm nọc độc & duy trì sự sống.</p>
+                    </div>
+
+                    <h3 class="text-xl font-bold mb-3 flex items-center gap-2">
+                        <span class="bg-zinc-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">1</span>
+                        Nhận diện nhanh
+                    </h3>
+                    <ul class="list-disc pl-5 space-y-2 mb-4 text-sm">
+                        <li><strong>Rắn độc:</strong> Thường có 2 vết răng nanh sâu, cách nhau khoảng 1cm. Vùng da bị cắn sưng nhanh, đau buốt.</li>
+                        <li><strong>Rắn thường:</strong> Vết cắn hình vòng cung, nhiều răng nhỏ li ti.</li>
+                    </ul>
+
+                    <h3 class="text-xl font-bold mb-3 flex items-center gap-2">
+                        <span class="bg-zinc-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">2</span>
+                        Phương án Sơ Cứu
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div class="border border-gray-200 dark:border-zinc-700 rounded-lg p-4">
+                            <strong class="text-lg block mb-2 text-indigo-600 dark:text-indigo-400">Bước A: Bất động tức thì</strong>
+                            <p>Tuyệt đối không để nạn nhân đi lại. Vận động làm tim đập nhanh -> nọc độc lan nhanh hơn.</p>
+                            <p class="mt-2 text-sm italic text-gray-500">Đặt chi bị cắn thấp hơn tim.</p>
+                        </div>
+
+                        <div class="border border-gray-200 dark:border-zinc-700 rounded-lg p-4">
+                            <strong class="text-lg block mb-2 text-indigo-600 dark:text-indigo-400">Bước B: Vệ sinh & Băng ép</strong>
+                            <p><strong>1. Rửa:</strong> Dùng nước sạch/nước suối rửa nhẹ vết thương. Không chà xát.</p>
+                            <p><strong>2. Băng ép (Quan trọng):</strong> Dùng vải xé từ áo/dây leo mềm.</p>
+                            <ul class="list-disc pl-5 mt-2 text-sm">
+                                <li>Băng từ vết cắn lên phía gốc chi (về phía tim).</li>
+                                <li>Độ chặt: Như băng bong gân (nhét được 1 ngón tay vào). Không băng quá chặt làm hoại tử (chặn máu động mạch).</li>
+                                <li>Mục đích: Chặn hệ bạch huyết lưu thông nọc độc, KHÔNG chặn máu nuôi chi.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <h3 class="text-xl font-bold mt-6 mb-3 flex items-center gap-2">
+                        <span class="bg-red-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">!</span>
+                        Những điều CẤM (Sai lầm chết người)
+                    </h3>
+                    <ul class="list-disc pl-5 space-y-2 mb-4 text-red-600 dark:text-red-400 font-medium">
+                        <li>KHÔNG rạch vết thương để hút máu (Gây nhiễm trùng, chảy máu không cầm).</li>
+                        <li>KHÔNG dùng miệng hút nọc (Nọc thấm qua niêm mạc miệng).</li>
+                        <li>KHÔNG đắp lá thuốc lung tung (trừ khi là chuyên gia thực vật).</li>
+                        <li>KHÔNG garo chặt (chặn hoàn toàn máu) trừ khi biết chắc chắn rắn cực độc (như hổ mang chúa) và chấp nhận khả năng phải cắt bỏ chi để giữ mạng sống.</li>
+                    </ul>
+
+                    <div class="mt-6 bg-gray-100 dark:bg-zinc-800 p-4 rounded text-sm">
+                        <strong>Theo dõi sinh tồn:</strong> Cho nạn nhân uống nhiều nước. Nếu khó thở, hỗ trợ hô hấp nhân tạo. Đánh dấu mép sưng đỏ bằng than/bút để theo dõi tiến triển mỗi 15p.
+                    </div>
+                `
+            },
+            {
+                id: 'cpr',
+                category: 'firstaid',
+                title: 'Hồi sức tim phổi (CPR)',
+                tags: ['tim', 'thở', 'ngưng tim', 'cap cuu', 'sơ cứu'],
+                icon: 'fa-heart-pulse',
+                color: 'text-red-500',
+                content: `
+                    <h3 class="text-xl font-bold mb-2">Nguyên tắc DR-C-A-B</h3>
+                    <ul class="list-disc pl-5 space-y-2 mb-4">
+                        <li><strong>D (Danger):</strong> Kiểm tra an toàn hiện trường.</li>
+                        <li><strong>R (Response):</strong> Kiểm tra phản ứng nạn nhân (vỗ vai, gọi to).</li>
+                        <li><strong>C (Compression):</strong> Ép tim ngoài lồng ngực.</li>
+                        <li><strong>A (Airway):</strong> Khai thông đường thở.</li>
+                        <li><strong>B (Breathing):</strong> Hà hơi thổi ngạt.</li>
+                    </ul>
+                    <div class="bg-red-100 dark:bg-red-900/30 p-4 rounded-lg border-l-4 border-red-500 mb-4">
+                        <strong class="block text-red-700 dark:text-red-400 mb-1">Tỷ lệ vàng: 30:2</strong>
+                        30 lần ép tim - 2 lần thổi ngạt. Tần số ép: 100-120 lần/phút.
+                    </div>
+                    <p>Tiếp tục cho đến khi nạn nhân thở lại hoặc y tế đến.</p>
+                `
+            },
+            {
+                id: 'bleeding',
+                category: 'firstaid',
+                title: 'Cầm máu vết thương hở',
+                tags: ['máu', 'vet thuong', 'bang bo', 'garo'],
+                icon: 'fa-droplet',
+                color: 'text-rose-600',
+                content: `
+                    <p class="mb-2">Mất máu là nguyên nhân tử vong nhanh nhất. Cần hành động ngay.</p>
+                    <ol class="list-decimal pl-5 space-y-2">
+                        <li><strong>Ép trực tiếp:</strong> Dùng gạc hoặc vải sạch ép mạnh trực tiếp lên vết thương. Giữ yên ít nhất 10-15 phút. Không mở ra xem.</li>
+                        <li><strong>Nâng cao:</strong> Nếu vết thương ở tay/chân, nâng cao hơn tim.</li>
+                        <li><strong>Băng ép:</strong> Quấn băng chặt lên gạc (không quá chặt làm tím tái đầu chi).</li>
+                        <li><strong>Garo (Chỉ khi nguy kịch):</strong> Nếu máu phun thành tia hoặc đứt lìa chi. Đặt garo cách vết thương 5-7cm về phía tim. Ghi lại giờ đặt garo.</li>
+                    </ol>
+                `
+            },
+            {
+                id: 'water_filter',
+                category: 'water',
+                title: 'Lọc & Xử lý nước',
+                tags: ['uong', 'khu khuan', 'loc nuoc', 'sinh ton'],
+                icon: 'fa-glass-water',
+                color: 'text-blue-500',
+                content: `
+                    <h3 class="font-bold text-lg mb-2">1. Đun sôi</h3>
+                    <p class="mb-2">Cách an toàn nhất. Đun sôi sùng sục ít nhất <strong>1 phút</strong> (hoặc 3 phút ở độ cao >2000m).</p>
+                    
+                    <h3 class="font-bold text-lg mb-2">2. Bộ lọc sinh tồn tự chế</h3>
+                    <div class="bg-zinc-100 dark:bg-zinc-800 p-4 rounded-lg mb-4 text-sm font-mono">
+                        Lớp trên cùng: Sỏi/Cỏ (Lọc rác lớn)<br>
+                        Lớp 2: Cát (Lọc cặn)<br>
+                        Lớp 3: Than củi (Hấp thụ độc tố/hóa chất)<br>
+                        Lớp 4: Vải sạch (Lọc cuối)
+                    </div>
+                    <p><em>Lưu ý: Bộ lọc này không diệt được vi khuẩn, cần đun sôi sau khi lọc.</em></p>
+                `
+            },
+            {
+                id: 'fire_start',
+                category: 'fire',
+                title: 'Tạo lửa (Cơ bản)',
+                tags: ['lua', 'dot', 'am', 'nau an'],
+                icon: 'fa-fire',
+                color: 'text-orange-500',
+                content: `
+                    <h3 class="font-bold">Tam giác lửa: Nhiệt - Oxy - Nhiên liệu</h3>
+                    <p class="mt-2 mb-2">Chuẩn bị 3 loại bổi:</p>
+                    <ul class="list-disc pl-5 mb-4">
+                        <li><strong>Bổi mồi (Tinder):</strong> Rơm khô, bông gòn, xơ dừa, vỏ cây khô bào mỏng. Bắt lửa ngay lập tức.</li>
+                        <li><strong>Củi nhỏ (Kindling):</strong> Cành cây nhỏ bằng que diêm/ngón tay.</li>
+                        <li><strong>Củi chính (Fuel):</strong> Cành to, cháy lâu.</li>
+                    </ul>
+                    <p><strong>Cấu trúc bếp:</strong> Xếp kiểu kim tự tháp hoặc kiểu nhà sàn để không khí lưu thông.</p>
+                `
+            },
+            {
+                id: 'knots',
+                category: 'craft',
+                title: 'Các nút dây thiết yếu',
+                tags: ['day', 'buoc', 'leu', 'bay'],
+                icon: 'fa-infinity',
+                color: 'text-indigo-400',
+                content: `
+                    <div class="space-y-4">
+                        <div class="border-b border-gray-200 dark:border-gray-700 pb-2">
+                            <strong class="text-lg">1. Nút Thuyền Chài (Clove Hitch)</strong>
+                            <p class="text-sm mt-1">Dùng để buộc dây vào cọc, làm khởi đầu cho các nút ráp cây.</p>
+                        </div>
+                        <div class="border-b border-gray-200 dark:border-gray-700 pb-2">
+                            <strong class="text-lg">2. Nút Ghế Đơn (Bowline)</strong>
+                            <p class="text-sm mt-1">"Vua của các nút dây". Tạo vòng tròn cố định không thắt lại. Dùng để cứu hộ kéo người.</p>
+                        </div>
+                        <div>
+                            <strong class="text-lg">3. Nút Dẹt (Reef Knot)</strong>
+                            <p class="text-sm mt-1">Nối hai đầu dây có cùng kích thước. Dùng trong sơ cứu băng bó.</p>
+                        </div>
+                    </div>
+                `
+            },
+            {
+                id: 'edible_plants',
+                category: 'food',
+                title: 'Quy tắc thử thực vật (Test Edibility)',
+                tags: ['an', 'cay', 'doc', 'nam'],
+                icon: 'fa-leaf',
+                color: 'text-green-500',
+                content: `
+                    <div class="bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded text-yellow-800 dark:text-yellow-200 text-sm mb-4 border border-yellow-400">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> KHÔNG bao giờ ăn nấm lạ hoặc cây có nhựa trắng đục, mùi hạnh nhân, hoặc quả chia 3 múi nếu không chắc chắn.
+                    </div>
+                    <h3 class="font-bold">Quy trình thử phổ quát (Universal Edibility Test):</h3>
+                    <ol class="list-decimal pl-5 space-y-3 mt-2">
+                        <li><strong>Khứu giác:</strong> Ngửi mạnh. Nếu mùi hắc, thối, hoặc giống hạnh nhân -> Bỏ.</li>
+                        <li><strong>Tiếp xúc da:</strong> Chà nhẹ lên vùng da mỏng (trong cổ tay) 15 phút. Đợi 8h xem có ngứa/đỏ không.</li>
+                        <li><strong>Tiếp xúc môi:</strong> Chạm vào môi 3 phút. Nếu bỏng rát -> Bỏ.</li>
+                        <li><strong>Nếm (Không nuốt):</strong> Đặt một mẩu nhỏ lên lưỡi 15 phút.</li>
+                        <li><strong>Nuốt thử:</strong> Nuốt mẫu nhỏ, đợi 8h. Nếu không đau bụng, ăn thêm một ít.</li>
+                    </ol>
+                `
+            },
+            {
+                id: 'shelter',
+                category: 'shelter',
+                title: 'Dựng trú ẩn khẩn cấp',
+                tags: ['leu', 'ngu', 'mua', 'lanh'],
+                icon: 'fa-tents',
+                color: 'text-stone-500',
+                content: `
+                    <p class="mb-2"><strong>Quy tắc 3 lớp:</strong> Giường (cách nhiệt đất), Mái (che mưa/nắng), Tường (chắn gió).</p>
+                    <h3 class="font-bold mt-3">Kiểu Lean-to (Mái nghiêng):</h3>
+                    <ul class="list-disc pl-5 mt-1">
+                        <li>Dễ làm nhất. Cần 1 thanh xà ngang gác lên 2 cây.</li>
+                        <li>Xếp cành cây tạo góc 45 độ làm mái.</li>
+                        <li>Phủ lá, rêu, bạt lên mái (lớp dưới cùng hướng lên, lớp trên đè lớp dưới như ngói).</li>
+                    </ul>
+                    <p class="mt-2 text-sm italic">Lưu ý: Không dựng nơi trũng (lũ quét), dưới cây khô (gãy đổ), đường thú đi.</p>
+                `
+            },
+            {
+                id: 'direction_sun',
+                category: 'nav',
+                title: 'Xác định phương hướng bằng Mặt trời',
+                tags: ['phuong huong', 'lac duong', 'la ban'],
+                icon: 'fa-location-arrow',
+                color: 'text-sky-500',
+                content: `
+                    <h3 class="font-bold">Phương pháp Gậy và Bóng nắng (Shadow Stick):</h3>
+                    <ol class="list-decimal pl-5 space-y-2 mt-2">
+                        <li>Cắm một cây gậy thẳng đứng xuống đất bằng phẳng.</li>
+                        <li>Đánh dấu đỉnh bóng nắng lần 1 (Điểm Tây).</li>
+                        <li>Đợi khoảng 15-20 phút. Bóng sẽ di chuyển.</li>
+                        <li>Đánh dấu đỉnh bóng nắng lần 2 (Điểm Đông).</li>
+                        <li>Nối 2 điểm lại: Đây là trục Đông-Tây.</li>
+                        <li>Đứng vuông góc với trục này: Mặt trời mọc hướng Đông, lặn hướng Tây.</li>
+                    </ol>
+                `
+            }
+        ];
+
+        const categories = [
+            { id: 'all', name: 'Tất cả', icon: 'fa-layer-group' },
+            { id: 'firstaid', name: 'Sơ cứu', icon: 'fa-kit-medical' },
+            { id: 'fire', name: 'Lửa', icon: 'fa-fire' },
+            { id: 'water', name: 'Nước', icon: 'fa-droplet' },
+            { id: 'food', name: 'Thực phẩm', icon: 'fa-utensils' },
+            { id: 'shelter', name: 'Trú ẩn', icon: 'fa-tents' },
+            { id: 'craft', name: 'Chế tạo', icon: 'fa-hammer' },
+            { id: 'nav', name: 'Định vị', icon: 'fa-map' },
+        ];
+
+        const morseCodeMap = {
+            'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
+            'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
+            'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
+            'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
+            'Y': '-.--', 'Z': '--..', '1': '.----', '2': '..---', '3': '...--',
+            '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..',
+            '9': '----.', '0': '-----', 'SOS': '... --- ...'
+        };
+
+        // --- APP LOGIC ---
+        const app = {
+            state: {
+                currentFilter: 'all',
+                searchQuery: '',
+                theme: 'system', // system, light, dark
+                bookmarks: JSON.parse(localStorage.getItem('survival_bookmarks') || '[]'),
+                isFlashing: false,
+                isTorchOn: false,
+                isMorsePlaying: false,
+                mediaStreamTrack: null,
+                mapInstance: null,
+                userMarkers: [], // Store markers data
+                offlineTiles: {}, // Store base64 tiles: { "z_x_y": "data:image..." }
+            },
+            
+            // Map Functionality (Leaflet)
+            map: {
+                init() {
+                     if (app.state.mapInstance) return;
+
+                     setTimeout(() => {
+                        // Custom TileLayer to support Offline
+                        const OfflineTileLayer = L.TileLayer.extend({
+                            createTile: function(coords, done) {
+                                const tile = document.createElement('img');
+                                L.DomEvent.on(tile, 'load', L.Util.bind(this._tileOnLoad, this, done, tile));
+                                L.DomEvent.on(tile, 'error', L.Util.bind(this._tileOnError, this, done, tile));
+                                
+                                if (this.options.crossOrigin) {
+                                    tile.crossOrigin = '';
+                                }
+                                
+                                tile.alt = '';
+                                tile.setAttribute('role', 'presentation');
+
+                                // Check offline cache first
+                                const key = `${coords.z}_${coords.x}_${coords.y}`;
+                                if (app.state.offlineTiles && app.state.offlineTiles[key]) {
+                                    tile.src = app.state.offlineTiles[key];
+                                    console.log('Serving offline tile:', key);
+                                } else {
+                                    // Fallback to online
+                                    tile.src = this.getTileUrl(coords);
+                                }
+
+                                return tile;
+                            }
+                        });
+
+                        const map = L.map('leafletMap').setView([21.0285, 105.8542], 6); // Vietnam center default
+                        
+                        // Use Custom Layer
+                        new OfflineTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                            attribution: '© OpenStreetMap contributors',
+                            maxZoom: 19,
+                            crossOrigin: true
+                        }).addTo(map);
+
+                        app.state.mapInstance = map;
+
+                        map.on('click', function(e) {
+                             const title = prompt("Tên địa điểm (ví dụ: Trại, Nước):");
+                             if (title) {
+                                 app.map.addMarker(e.latlng.lat, e.latlng.lng, title);
+                             }
+                        });
+
+                     }, 100); 
+                },
+
+                addMarker(lat, lng, title) {
+                    const marker = L.marker([lat, lng]).addTo(app.state.mapInstance)
+                        .bindPopup(title)
+                        .openPopup();
+                    app.state.userMarkers.push({ lat, lng, title });
+                },
+                
+                locateUser() {
+                    if (!navigator.geolocation) {
+                        alert("Trình duyệt không hỗ trợ GPS.");
+                        return;
+                    }
+                    const btn = document.getElementById('btnLocate');
+                    btn.classList.add('animate-pulse');
+
+                    navigator.geolocation.getCurrentPosition((pos) => {
+                        btn.classList.remove('animate-pulse');
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        
+                        app.state.mapInstance.setView([lat, lng], 15);
+                        
+                        L.marker([lat, lng]).addTo(app.state.mapInstance)
+                            .bindPopup("Vị trí của bạn").openPopup();
+                            
+                        L.circle([lat, lng], { radius: pos.coords.accuracy }).addTo(app.state.mapInstance);
+
+                    }, (err) => {
+                        btn.classList.remove('animate-pulse');
+                        alert("Không thể lấy vị trí. Kiểm tra quyền GPS.");
+                    });
+                },
+
+                // 1. Export Markers
+                exportMarkers() {
+                    const data = JSON.stringify(app.state.userMarkers);
+                    const blob = new Blob([data], {type: "application/json"});
+                    this.triggerDownload(blob, `survival_markers_${new Date().toISOString().slice(0,10)}.json`);
+                },
+
+                importMarkers(input) {
+                    const file = input.files[0];
+                    if(!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const markers = JSON.parse(e.target.result);
+                            markers.forEach(m => {
+                                app.map.addMarker(m.lat, m.lng, m.title);
+                            });
+                            alert(`Đã nhập ${markers.length} địa điểm.`);
+                        } catch(err) {
+                            alert("File lỗi!");
+                        }
+                    };
+                    reader.readAsText(file);
+                },
+
+                // 2. Export Map Tiles (The Core Logic)
+                async exportMapTiles() {
+                    const map = app.state.mapInstance;
+                    if(!map) return;
+
+                    const btn = document.getElementById('btnDownloadTiles');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tải dữ liệu...';
+                    btn.disabled = true;
+
+                    try {
+                        const bounds = map.getBounds();
+                        const zoom = map.getZoom();
+                        
+                        // Limit zoom to avoid massive downloads
+                        if (zoom < 10) {
+                            if(!confirm("Mức zoom hiện tại quá xa, lượng dữ liệu sẽ rất lớn. Bạn có chắc muốn tải không?")) {
+                                throw new Error("Cancelled by user");
+                            }
+                        }
+
+                        // Calculate tile range
+                        // Formulas from OSM Wiki: https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
+                        const long2tile = (lon, zoom) => (Math.floor((lon + 180) / 360 * Math.pow(2, zoom)));
+                        const lat2tile = (lat, zoom) => (Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom)));
+
+                        const minX = long2tile(bounds.getWest(), zoom);
+                        const maxX = long2tile(bounds.getEast(), zoom);
+                        const minY = lat2tile(bounds.getNorth(), zoom);
+                        const maxY = lat2tile(bounds.getSouth(), zoom);
+
+                        const tiles = {};
+                        let count = 0;
+                        const maxTiles = 200; // Hard limit for browser performance
+
+                        const total = (maxX - minX + 1) * (maxY - minY + 1);
+                        if (total > maxTiles) {
+                             if(!confirm(`Khu vực này chứa khoảng ${total} mảnh bản đồ. Chỉ cho phép tải tối đa ${maxTiles} mảnh mỗi lần. Tiếp tục với phần cắt ngắn?`)) {
+                                 throw new Error("Cancelled");
+                             }
+                        }
+
+                        for (let x = minX; x <= maxX; x++) {
+                            for (let y = minY; y <= maxY; y++) {
+                                if (count >= maxTiles) break;
+                                
+                                const url = `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+                                try {
+                                    const base64 = await this.fetchImageAsBase64(url);
+                                    tiles[`${zoom}_${x}_${y}`] = base64;
+                                    count++;
+                                } catch (e) {
+                                    console.warn("Failed tile", url);
+                                }
+                            }
+                        }
+
+                        // Create download
+                        const json = JSON.stringify(tiles);
+                        const blob = new Blob([json], {type: "application/json"});
+                        this.triggerDownload(blob, `survival_map_tiles_z${zoom}_${new Date().toISOString().slice(0,10)}.json`);
+                        
+                        alert(`Đã tải xong ${count} mảnh bản đồ. Hãy lưu file này vào máy!`);
+
+                    } catch (err) {
+                        if(err.message !== "Cancelled" && err.message !== "Cancelled by user") {
+                             alert("Lỗi tải bản đồ: " + err.message + ". Lưu ý: Trình duyệt có thể chặn tải ảnh từ OSM trực tiếp do bảo mật CORS. Hãy thử trên trình duyệt khác hoặc dùng extension.");
+                        }
+                    } finally {
+                        btn.innerHTML = originalText;
+                        btn.disabled = false;
+                    }
+                },
+
+                importMapTiles(input) {
+                    const file = input.files[0];
+                    if(!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const tiles = JSON.parse(e.target.result);
+                            const count = Object.keys(tiles).length;
+                            
+                            // Merge into current state
+                            app.state.offlineTiles = { ...app.state.offlineTiles, ...tiles };
+                            
+                            // Refresh layer
+                            if(app.state.mapInstance) {
+                                app.state.mapInstance.eachLayer(layer => {
+                                    if(layer instanceof L.TileLayer) {
+                                        layer.redraw();
+                                    }
+                                });
+                            }
+                            
+                            alert(`Đã nhập thành công ${count} mảnh bản đồ Offline!`);
+                        } catch(err) {
+                            alert("File lỗi hoặc không đúng định dạng!");
+                        }
+                    };
+                    reader.readAsText(file);
+                },
+
+                // Helper: Fetch image & convert to Base64
+                fetchImageAsBase64(url) {
+                    return new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.crossOrigin = 'Anonymous';
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            resolve(canvas.toDataURL('image/png'));
+                        };
+                        img.onerror = reject;
+                        img.src = url;
+                    });
+                },
+
+                triggerDownload(blob, filename) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                }
+            },
+
+            init() {
+                this.loadTheme();
+                this.renderCategories();
+                this.renderArticles();
+                this.setupEventListeners();
+                this.setupCompass();
+                // Map is lazy loaded when opened
+            },
+
+            // --- Theme Handling ---
+            loadTheme() {
+                const storedTheme = localStorage.getItem('theme');
+                const themeToggle = document.getElementById('themeToggle');
+                
+                if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    this.state.theme = 'dark';
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    this.state.theme = 'light';
+                }
+                this.updateThemeIcon();
+            },
+
+            toggleTheme() {
+                const html = document.documentElement;
+                if (html.classList.contains('dark')) {
+                    html.classList.remove('dark');
+                    localStorage.setItem('theme', 'light');
+                    this.state.theme = 'light';
+                } else {
+                    html.classList.add('dark');
+                    localStorage.setItem('theme', 'dark');
+                    this.state.theme = 'dark';
+                }
+                this.updateThemeIcon();
+            },
+
+            updateThemeIcon() {
+                const btn = document.getElementById('themeToggle');
+                if (this.state.theme === 'dark') {
+                    btn.innerHTML = '<i class="fa-solid fa-moon text-yellow-300"></i>';
+                } else {
+                    btn.innerHTML = '<i class="fa-solid fa-sun text-orange-500"></i>';
+                }
+            },
+
+            // --- Rendering ---
+            renderCategories() {
+                const container = document.getElementById('categoryFilters');
+                container.innerHTML = categories.map(cat => `
+                    <button onclick="app.setFilter('${cat.id}')" 
+                        class="whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium transition-all
+                        ${this.state.currentFilter === cat.id 
+                            ? 'bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 shadow-md' 
+                            : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-zinc-700 hover:bg-gray-100'}">
+                        <i class="fa-solid ${cat.icon} mr-1"></i> ${cat.name}
+                    </button>
+                `).join('');
+            },
+
+            renderArticles() {
+                const grid = document.getElementById('articleGrid');
+                const empty = document.getElementById('emptyState');
+                
+                // Filter logic
+                const filtered = survivalData.filter(item => {
+                    const matchesCategory = this.state.currentFilter === 'all' || item.category === this.state.currentFilter;
+                    
+                    // Normalize for search (remove accents)
+                    const normSearch = this.normalizeStr(this.state.searchQuery);
+                    const normTitle = this.normalizeStr(item.title);
+                    const normTags = item.tags.map(t => this.normalizeStr(t)).join(' ');
+                    
+                    const matchesSearch = !this.state.searchQuery || normTitle.includes(normSearch) || normTags.includes(normSearch);
+
+                    return matchesCategory && matchesSearch;
+                });
+
+                if (filtered.length === 0) {
+                    grid.innerHTML = '';
+                    empty.classList.remove('hidden');
+                } else {
+                    empty.classList.add('hidden');
+                    grid.innerHTML = filtered.map(item => `
+                        <div onclick="app.openDetail('${item.id}')" 
+                            class="group bg-white dark:bg-zinc-900 p-4 rounded-xl border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-gray-50 dark:bg-zinc-800 flex items-center justify-center shrink-0 group-hover:bg-gray-100 dark:group-hover:bg-zinc-700 transition-colors">
+                                <i class="fa-solid ${item.icon} text-xl ${item.color}"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-bold text-gray-800 dark:text-gray-100 truncate">${item.title}</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate">
+                                    ${item.tags.slice(0, 3).join(' • ')}
+                                </p>
+                            </div>
+                            <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+                        </div>
+                    `).join('');
+                }
+            },
+
+            // --- Navigation & Actions ---
+            setFilter(id) {
+                this.state.currentFilter = id;
+                this.renderCategories();
+                this.renderArticles();
+            },
+
+            openDetail(id) {
+                const item = survivalData.find(i => i.id === id);
+                if (!item) return;
+
+                document.getElementById('detailTitle').innerText = item.title;
+                document.getElementById('detailCategory').innerText = categories.find(c => c.id === item.category)?.name || 'General';
+                document.getElementById('detailContent').innerHTML = item.content;
+
+                // Toggle views
+                document.getElementById('dashboardView').classList.add('hidden');
+                const detailView = document.getElementById('detailView');
+                detailView.classList.remove('hidden');
+                detailView.scrollTop = 0; // Reset scroll
+                
+                // Bookmark check
+                this.currentDetailId = id;
+                this.updateBookmarkIcon();
+            },
+
+            goBack() {
+                // Ensure torch is off when leaving tool
+                if (this.state.isTorchOn) this.toggleTorch();
+                // Ensure audio is stopped
+                if (this.state.isMorsePlaying) this.stopMorse();
+                
+                document.getElementById('detailView').classList.add('hidden');
+                document.getElementById('compassView').classList.add('hidden');
+                document.getElementById('morseView').classList.add('hidden');
+                document.getElementById('mapView').classList.add('hidden');
+                document.getElementById('dashboardView').classList.remove('hidden');
+            },
+
+            // --- Tool: Switcher ---
+            openTool(toolName) {
+                // Hide all first
+                document.getElementById('dashboardView').classList.add('hidden');
+                
+                if (toolName === 'compass') {
+                    document.getElementById('compassView').classList.remove('hidden');
+                } else if (toolName === 'morse') {
+                    document.getElementById('morseView').classList.remove('hidden');
+                } else if (toolName === 'map') {
+                    document.getElementById('mapView').classList.remove('hidden');
+                    // Initialize Leaflet only when requested to save resources
+                    app.map.init();
+                }
+            },
+
+            setupCompass() {
+                // Warning: This API requires HTTPS and Mobile. 
+                // We implement a fallback/visual handler.
+                if (window.DeviceOrientationEvent) {
+                    window.addEventListener('deviceorientation', (event) => {
+                        let heading = event.alpha; // Compass direction (0-360)
+                        
+                        // Webkit compass heading fix (iOS)
+                        if(event.webkitCompassHeading) {
+                            heading = event.webkitCompassHeading;
+                        }
+
+                        if (heading != null) {
+                            this.updateCompassUI(heading);
+                        }
+                    }, true);
+                }
+            },
+
+            updateCompassUI(degrees) {
+                const dial = document.getElementById('compassDial');
+                const text = document.getElementById('compassDegree');
+                const dirText = document.getElementById('compassDirection');
+
+                // Rotate dial opposite to direction
+                dial.style.transform = `rotate(${-degrees}deg)`;
+                
+                // Format text
+                const d = Math.round(degrees);
+                text.innerText = `${d}°`;
+
+                let direction = 'BẮC';
+                if (d >= 23 && d < 68) direction = 'ĐÔNG BẮC';
+                else if (d >= 68 && d < 113) direction = 'ĐÔNG';
+                else if (d >= 113 && d < 158) direction = 'ĐÔNG NAM';
+                else if (d >= 158 && d < 203) direction = 'NAM';
+                else if (d >= 203 && d < 248) direction = 'TÂY NAM';
+                else if (d >= 248 && d < 293) direction = 'TÂY';
+                else if (d >= 293 && d < 338) direction = 'TÂY BẮC';
+
+                dirText.innerText = direction;
+            },
+
+            // --- Tool: Morse ---
+            translateToMorse(text) {
+                return text.toUpperCase().split('').map(char => {
+                    return morseCodeMap[char] || char; // Keep space or unknown chars
+                }).join(' ');
+            },
+
+            setupEventListeners() {
+                // Search
+                const searchInput = document.getElementById('searchInput');
+                const clearBtn = document.getElementById('clearSearch');
+
+                searchInput.addEventListener('input', (e) => {
+                    this.state.searchQuery = e.target.value;
+                    clearBtn.style.display = e.target.value ? 'block' : 'none';
+                    this.renderArticles();
+                });
+
+                clearBtn.addEventListener('click', () => {
+                    searchInput.value = '';
+                    this.state.searchQuery = '';
+                    clearBtn.style.display = 'none';
+                    this.renderArticles();
+                    searchInput.focus();
+                });
+
+                // Theme
+                document.getElementById('themeToggle').addEventListener('click', () => this.toggleTheme());
+
+                // Morse Input
+                document.getElementById('morseInput').addEventListener('input', (e) => {
+                    const morse = this.translateToMorse(e.target.value);
+                    document.getElementById('morseOutput').innerText = morse;
+                });
+            },
+            
+            // Morse Audio/Flash Logic
+            async playMorse() {
+                if (this.state.isMorsePlaying) return;
+                
+                const code = document.getElementById('morseOutput').innerText;
+                const dotDuration = 100; // ms
+                
+                // Audio Context
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) { alert("Trình duyệt không hỗ trợ âm thanh."); return; }
+                const ctx = new AudioContext();
+
+                // Set state
+                this.state.isMorsePlaying = true;
+                document.getElementById('btnPlayMorse').classList.add('opacity-50', 'cursor-not-allowed');
+                document.getElementById('btnStopMorse').classList.remove('hidden');
+                document.getElementById('btnStopMorse').classList.add('flex');
+
+                const playTone = (duration) => {
+                    return new Promise(resolve => {
+                        if (!this.state.isMorsePlaying) { resolve(); return; }
+                        
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.value = 600; // Hz
+                        osc.connect(gain);
+                        gain.connect(ctx.destination);
+                        osc.start();
+                        
+                        setTimeout(() => {
+                            osc.stop();
+                            resolve();
+                        }, duration);
+                    });
+                };
+
+                const wait = (duration) => new Promise(resolve => setTimeout(resolve, duration));
+
+                for (let char of code) {
+                    if (!this.state.isMorsePlaying) break;
+
+                    if (char === '.') {
+                        await playTone(dotDuration);
+                    } else if (char === '-') {
+                        await playTone(dotDuration * 3);
+                    } else if (char === ' ') {
+                        await wait(dotDuration * 3); 
+                        continue;
+                    }
+                    await wait(dotDuration); 
+                }
+
+                // Finish
+                this.stopMorse();
+            },
+            
+            stopMorse() {
+                this.state.isMorsePlaying = false;
+                document.getElementById('btnPlayMorse').classList.remove('opacity-50', 'cursor-not-allowed');
+                document.getElementById('btnStopMorse').classList.add('hidden');
+                document.getElementById('btnStopMorse').classList.remove('flex');
+            },
+            
+            async flashScreen() {
+                 this.state.isFlashing = true;
+                 const code = document.getElementById('morseOutput').innerText;
+                 const dotDuration = 200; // ms
+                 const overlay = document.getElementById('flashOverlay');
+                 
+                 const flashOn = () => overlay.classList.remove('hidden');
+                 const flashOff = () => overlay.classList.add('hidden');
+                 const wait = (ms) => new Promise(r => setTimeout(r, ms));
+                 
+                 // Initial UI state
+                 overlay.classList.remove('hidden');
+
+                 // Loop until stopped
+                 while(this.state.isFlashing) {
+                     for (let char of code) {
+                        if (!this.state.isFlashing) break;
+
+                        if (char === '.') {
+                            overlay.style.backgroundColor = 'white';
+                            await wait(dotDuration);
+                            overlay.style.backgroundColor = 'black';
+                            await wait(dotDuration);
+                        } else if (char === '-') {
+                            overlay.style.backgroundColor = 'white';
+                            await wait(dotDuration * 3);
+                            overlay.style.backgroundColor = 'black';
+                            await wait(dotDuration);
+                        } else if (char === ' ') {
+                            await wait(dotDuration * 3);
+                            continue;
+                        }
+                    }
+                    // Pause between loops
+                    await wait(1000);
+                 }
+                 // Reset
+                 overlay.classList.add('hidden');
+                 overlay.style.backgroundColor = 'white';
+            },
+
+            stopFlashScreen() {
+                this.state.isFlashing = false;
+                document.getElementById('flashOverlay').classList.add('hidden');
+            },
+
+            async toggleTorch() {
+                const btn = document.getElementById('torchBtn');
+                
+                // If on, turn off
+                if (this.state.isTorchOn) {
+                    if (this.state.mediaStreamTrack) {
+                        this.state.mediaStreamTrack.stop();
+                        this.state.mediaStreamTrack = null;
+                    }
+                    this.state.isTorchOn = false;
+                    btn.classList.remove('bg-yellow-500', 'text-black');
+                    btn.classList.add('bg-zinc-700', 'text-white');
+                    btn.innerHTML = '<i class="fa-solid fa-lightbulb"></i> Đèn Flash (Beta)';
+                    return;
+                }
+
+                // Turn on
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: 'environment',
+                            advanced: [{ torch: true }] 
+                        }
+                    });
+                    
+                    const track = stream.getVideoTracks()[0];
+                    this.state.mediaStreamTrack = track;
+
+                    // Try to apply torch constraint
+                    // Note: This API is still experimental on some browsers
+                    try {
+                        await track.applyConstraints({
+                            advanced: [{ torch: true }]
+                        });
+                    } catch (err) {
+                        console.warn("Torch constraint failed", err);
+                         // Fallback attempt for some devices
+                    }
+
+                    this.state.isTorchOn = true;
+                    btn.classList.remove('bg-zinc-700', 'text-white');
+                    btn.classList.add('bg-yellow-500', 'text-black');
+                    btn.innerHTML = '<i class="fa-solid fa-lightbulb"></i> ĐANG BẬT';
+
+                } catch (err) {
+                    console.error(err);
+                    alert("Không thể bật đèn Flash. Hãy đảm bảo bạn đã cấp quyền Camera và thiết bị có hỗ trợ.");
+                }
+            },
+
+            // Utilities
+            normalizeStr(str) {
+                return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            },
+
+            toggleBookmark() {
+                // Implementation for bookmark toggle (simple visual for now)
+                const btn = document.getElementById('bookmarkBtn');
+                if (btn.classList.contains('text-yellow-500')) {
+                    btn.classList.remove('text-yellow-500');
+                    btn.classList.add('text-gray-400');
+                    btn.innerHTML = '<i class="fa-regular fa-star text-lg"></i>';
+                } else {
+                    btn.classList.add('text-yellow-500');
+                    btn.classList.remove('text-gray-400');
+                    btn.innerHTML = '<i class="fa-solid fa-star text-lg"></i>';
+                }
+            },
+            
+            updateBookmarkIcon() {
+                const btn = document.getElementById('bookmarkBtn');
+                btn.classList.remove('text-yellow-500');
+                btn.classList.add('text-gray-400');
+                btn.innerHTML = '<i class="fa-regular fa-star text-lg"></i>';
+            }
+        };
+
+        // Start App
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+
+    </script>
+</body>
+</html>
