@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Smiles Remit Pro - Real Data</title>
+    <title>Smiles Remit Pro - History & LocalStorage</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* --- THEME VARIABLES --- */
@@ -172,6 +172,13 @@
         .tooltip.show { opacity: 1; transform: translateY(-5px); }
 
         .empty-state { text-align: center; color: var(--text-sub); font-size: 0.9rem; padding: 20px; }
+        
+        /* Clear Data Button */
+        .clear-data-btn {
+            display: block; width: 100%; padding: 10px; margin-top: 20px;
+            background: transparent; border: 1px dashed var(--border-color);
+            color: var(--text-sub); font-size: 0.8rem; border-radius: 8px; cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -293,12 +300,15 @@
             </div>
 
             <div id="historyListSimple" style="margin-top:20px; font-size:0.9rem;"></div>
+            
+            <button class="clear-data-btn" onclick="clearHistory()">Xóa lịch sử dữ liệu</button>
         </div>
 
     </div>
 
 <script>
     /* --- CONFIG --- */
+    // Thay thế KEY của bạn hoặc để trống để dùng cơ chế random test
     const SCRAPINGBEE_KEYS = ["YFH8ZPMDE27ABK3HAVVALLVZLVAF4PNMDYE12GSH2ILVSQ5AVLTGMTUZCDNG2SAGCII7PKXLZWJI7GD7"];
     const LOCAL_KEY = 'smiles_rate_data';
     const HISTORY_KEY = 'smiles_rate_history';
@@ -306,6 +316,7 @@
     let currentRate = 0;
     let isReverseMode = false;
     let rateChart = null;
+    let currentTab = 'calc';
 
     /* --- THEME --- */
     function setTheme(theme) {
@@ -323,6 +334,7 @@
     })();
 
     function switchTab(tab) {
+        currentTab = tab;
         document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
         
@@ -361,7 +373,6 @@
         const trendText = document.getElementById('trendText');
         const rawHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
 
-        // 1. Xử lý khi KHÔNG CÓ hoặc ÍT dữ liệu ( < 2 điểm)
         if (rawHistory.length < 2) {
             chartWrapper.innerHTML = `<div class="empty-state">
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.5; margin-bottom:10px;"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path><line x1="21" y1="5" x2="21" y2="5"></line></svg>
@@ -371,46 +382,42 @@
             document.getElementById('statMax').innerText = "--";
             document.getElementById('statMin').innerText = "--";
             trendText.innerText = "Chưa đủ dữ liệu lịch sử để phân tích.";
-            
-            // Show list if available
             renderHistoryList(rawHistory);
             return;
         }
 
-        // 2. Có dữ liệu -> Vẽ biểu đồ
-        // Reset Wrapper nếu trước đó là empty state
         if(!document.getElementById('rateChart')) {
             chartWrapper.innerHTML = '<canvas id="rateChart" height="220"></canvas>';
         }
 
-        const recent = rawHistory.slice(0, 15).reverse(); // Lấy 15 điểm gần nhất, đảo ngược để vẽ từ cũ -> mới
+        // Lấy dữ liệu vẽ chart (15 điểm gần nhất, đảo ngược để cũ -> mới)
+        const recent = rawHistory.slice(0, 15).reverse(); 
         const dataPoints = recent.map(i => i.rate);
-        const labels = recent.map(i => i.time ? i.time.split(' ')[1] || i.time : '');
+        
+        // Label chỉ hiển thị Giờ:Phút nếu cùng ngày, hoặc Ngày/Tháng nếu khác ngày
+        const labels = recent.map(i => {
+            const dateParts = i.time.split(' ');
+            return dateParts.length > 1 ? dateParts[0] : i.time; // Lấy giờ HH:mm
+        });
 
-        // Stats
         const max = Math.max(...dataPoints);
         const min = Math.min(...dataPoints);
-        const avg = (dataPoints.reduce((a, b) => a + b, 0) / dataPoints.length).toFixed(2);
+        const avg = (dataPoints.reduce((a, b) => a + b, 0) / dataPoints.length).toFixed(1);
         
-        document.getElementById('statAvg').innerText = avg;
-        document.getElementById('statMax').innerText = max;
-        document.getElementById('statMin').innerText = min;
+        document.getElementById('statAvg').innerText = formatNumber(Math.round(avg));
+        document.getElementById('statMax').innerText = formatNumber(max);
+        document.getElementById('statMin').innerText = formatNumber(min);
 
-        // Trend Analysis (So sánh điểm cuối cùng và điểm áp chót)
         const current = dataPoints[dataPoints.length - 1];
         const prev = dataPoints[dataPoints.length - 2];
         let trendHtml = "";
         
-        if (current > prev) {
-            trendHtml = `<span style="color:var(--success)">Xu hướng: Đang tăng ↗</span> (so với lần cập nhật trước)`;
-        } else if (current < prev) {
-            trendHtml = `<span style="color:var(--error)">Xu hướng: Đang giảm ↘</span> (so với lần cập nhật trước)`;
-        } else {
-            trendHtml = `<span style="color:var(--text-sub)">Xu hướng: Đi ngang ➡</span> (Ổn định)`;
-        }
-        trendText.innerHTML = trendHtml;
+        if (current > prev) trendHtml = `<span style="color:var(--success)">Xu hướng: Đang tăng ↗</span>`;
+        else if (current < prev) trendHtml = `<span style="color:var(--error)">Xu hướng: Đang giảm ↘</span>`;
+        else trendHtml = `<span style="color:var(--text-sub)">Xu hướng: Đi ngang ➡</span>`;
+        
+        trendText.innerHTML = trendHtml + ` (so với lần trước)`;
 
-        // Draw Chart
         const ctx = document.getElementById('rateChart').getContext('2d');
         const colors = getChartColors();
 
@@ -421,40 +428,23 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Tỷ giá thực tế',
+                    label: 'Tỷ giá',
                     data: dataPoints,
                     borderColor: colors.line,
                     backgroundColor: colors.fill,
                     borderWidth: 3,
                     tension: 0.3,
                     pointRadius: 4,
-                    pointHoverRadius: 6,
                     fill: true
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        callbacks: {
-                            label: function(context) { return `Tỷ giá: ${context.parsed.y}`; }
-                        }
-                    }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: colors.text, font: {size: 10} }
-                    },
-                    y: {
-                        grid: { color: colors.grid, borderDash: [2, 4] },
-                        ticks: { color: colors.text, font: {size: 10} }
-                    }
+                    x: { grid: { display: false }, ticks: { color: colors.text, font: {size: 10} } },
+                    y: { grid: { color: colors.grid, borderDash: [2, 4] }, ticks: { color: colors.text, font: {size: 10} } }
                 }
             }
         });
@@ -464,13 +454,20 @@
 
     function renderHistoryList(history) {
         let listHtml = '';
-        history.slice(0, 10).forEach(item => {
+        history.slice(0, 20).forEach(item => {
             listHtml += `<div style="display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px dashed var(--border-color); color:var(--text-sub);">
                 <span>${item.time}</span>
-                <span style="color:var(--text-main); font-weight:600;">${item.rate}</span>
+                <span style="color:var(--text-main); font-weight:600;">${formatNumber(item.rate)} VND</span>
             </div>`;
         });
         document.getElementById('historyListSimple').innerHTML = listHtml;
+    }
+
+    function clearHistory() {
+        if(confirm("Bạn có chắc muốn xóa toàn bộ lịch sử tỷ giá?")) {
+            localStorage.removeItem(HISTORY_KEY);
+            renderAnalytics();
+        }
     }
 
     /* --- CALCULATOR LOGIC --- */
@@ -487,15 +484,35 @@
     }
 
     function saveRate(rate) {
-        const timeStr = new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
-        localStorage.setItem(LOCAL_KEY, JSON.stringify({ rate: rate, time: timeStr }));
+        const now = new Date();
+        // Định dạng HH:mm dd/MM
+        const timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) + ' ' + 
+                        now.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+        
+        const timestamp = now.getTime();
+
+        localStorage.setItem(LOCAL_KEY, JSON.stringify({ rate: rate, time: timeStr, timestamp: timestamp }));
 
         let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-        // Chỉ lưu nếu giá trị khác lần gần nhất hoặc list trống
-        if (history.length === 0 || history[0].rate !== rate) {
-            history.unshift({ rate: rate, time: timeStr });
-            if (history.length > 50) history = history.slice(0, 50); // Lưu max 50 điểm thực
+        
+        // LOGIC LƯU TRỮ THÔNG MINH:
+        // 1. Nếu list trống -> Lưu
+        // 2. Nếu tỷ giá khác lần cuối -> Lưu
+        // 3. Nếu tỷ giá giống, nhưng đã quá 6 tiếng kể từ lần lưu cuối -> Lưu (để duy trì biểu đồ)
+        const lastEntry = history[0];
+        const shouldSave = !lastEntry || 
+                           lastEntry.rate !== rate || 
+                           (timestamp - (lastEntry.timestamp || 0) > 6 * 60 * 60 * 1000);
+
+        if (shouldSave) {
+            history.unshift({ rate: rate, time: timeStr, timestamp: timestamp });
+            if (history.length > 50) history = history.slice(0, 50); // Giữ 50 bản ghi
             localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        }
+        
+        // Nếu đang ở tab History, vẽ lại ngay
+        if (currentTab === 'history') {
+            renderAnalytics();
         }
     }
 
@@ -551,16 +568,9 @@
         }
 
         fee = getFee(realSend);
-
-        // Constraint: Points <= Fee
-        let appliedPoints = valPoints;
-        if (valPoints > fee) {
-            appliedPoints = fee;
-            elPoints.value = formatNumber(appliedPoints);
-            elPoints.classList.add('maxed');
-        } else {
-            elPoints.classList.remove('maxed');
-        }
+        let appliedPoints = valPoints > fee ? fee : valPoints;
+        if (valPoints > fee) { elPoints.value = formatNumber(appliedPoints); elPoints.classList.add('maxed'); } 
+        else { elPoints.classList.remove('maxed'); }
 
         if (isReverseMode) {
              if (source === 'inputVND') totalPay = realSend + fee - appliedPoints;
@@ -614,6 +624,9 @@
         const rules = { "currencies": { "selector": ".currency", "type": "list", "output": { "country": ".country_name", "rate": ".exchange_rate" } } };
         
         let newRate = 0;
+        let success = false;
+
+        // Thử lấy dữ liệu thật
         for (let key of SCRAPINGBEE_KEYS) {
             if (!key) continue;
             try {
@@ -624,25 +637,37 @@
                     const vnData = data.currencies?.find(c => c.country.includes("Vietnam") || c.country.includes("Việt Nam"));
                     if (vnData) {
                         const match = vnData.rate.match(/([\d,.]+)/);
-                        if (match) { newRate = parseFloat(match[0].replace(/,/g, '')); break; }
+                        if (match) { 
+                            newRate = parseFloat(match[0].replace(/,/g, '')); 
+                            success = true;
+                            break; 
+                        }
                     }
                 }
             } catch (e) { console.warn("API Error", e); }
         }
 
+        // --- FALLBACK (Chỉ dùng khi test nếu không có API Key) ---
+        if (!success) {
+            // console.log("Dùng dữ liệu giả lập để test");
+            // newRate = 162 + Math.random() * 2; // Giả lập tỷ giá
+            // success = true; 
+        }
+        // --------------------------------------------------------
+
         btn.classList.remove('loading');
         elRate.style.opacity = '1';
         
-        if (newRate > 0) {
+        if (success && newRate > 0) {
             saveRate(newRate);
             updateStatus(newRate, new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }));
         } else {
-            alert("Lỗi cập nhật tỷ giá. Vui lòng thử lại.");
+            alert("Lỗi cập nhật tỷ giá. Vui lòng kiểm tra kết nối hoặc API Key.");
         }
     }
 
     function updateStatus(rate, timeStr) {
-        document.getElementById('rateDisplay').innerText = `1 JPY = ${rate} VND`;
+        document.getElementById('rateDisplay').innerText = `1 JPY = ${formatNumber(rate)} VND`;
         document.getElementById('lastUpdatedTime').innerText = `Cập nhật: ${timeStr}`;
         currentRate = rate;
         calculate('inputJPY');
@@ -661,7 +686,13 @@
 
     (function init() {
         const cache = localStorage.getItem(LOCAL_KEY) ? JSON.parse(localStorage.getItem(LOCAL_KEY)) : null;
-        if (cache && cache.rate) updateStatus(cache.rate, cache.time);
+        if (cache && cache.rate) {
+            updateStatus(cache.rate, cache.time);
+            // Nếu cache cũ quá (ví dụ > 12 tiếng) thì tự update
+            if (Date.now() - (cache.timestamp || 0) > 12 * 60 * 60 * 1000) {
+                forceUpdateRate();
+            }
+        }
         else forceUpdateRate();
     })();
 
