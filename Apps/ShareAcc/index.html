@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ZenShare - Kho Tài Khoản Cộng Đồng</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    animation: { 'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root { --bg-color: #ffffff; --surface-color: #f4f4f5; }
+        .dark { --bg-color: #09090b; --surface-color: #18181b; }
+        body { background-color: var(--bg-color); color: #18181b; -webkit-tap-highlight-color: transparent; }
+        .dark body { color: #ffffff; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #3f3f46; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; opacity: 0; transform: translateY(10px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        .loader { width: 24px; height: 24px; border: 2px solid currentColor; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        mark.highlight { background-color: #fde047; color: black; padding: 0 2px; border-radius: 2px; font-weight: 600; }
+        .dark mark.highlight { background-color: #facc15; color: black; }
+        
+        /* Compact Mode Tweaks */
+        .compact-card input { font-size: 11px; padding: 4px 8px; height: 26px; }
+        .compact-card .btn-copy { padding: 4px; }
+
+        /* Slideshow Controls */
+        .slide-btn { background: rgba(0,0,0,0.5); color: white; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; transition: background 0.2s; }
+        .slide-btn:hover { background: rgba(0,0,0,0.8); }
+    </style>
+</head>
+<body class="antialiased transition-colors duration-300 min-h-screen flex flex-col">
+
+    <nav class="fixed top-0 w-full z-40 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md border-b border-zinc-100 dark:border-zinc-800">
+        <div class="max-w-[1400px] mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3 cursor-pointer group" onclick="window.location.reload()">
+                <div class="w-9 h-9 bg-black dark:bg-white text-white dark:text-black rounded-xl flex items-center justify-center font-bold text-lg shadow-sm">
+                    <i class="fa-brands fa-apple"></i>
+                </div>
+                <span class="font-bold text-xl tracking-tight hidden sm:block">ZenShare</span>
+            </div>
+            
+            <div class="hidden md:flex flex-1 max-w-md mx-6">
+                <div class="relative w-full group">
+                    <span class="absolute inset-y-0 left-3 flex items-center text-zinc-400"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="desktopSearch" placeholder="Tìm kiếm tài khoản..." class="w-full pl-10 pr-4 py-2 rounded-full bg-zinc-100 dark:bg-zinc-900 border-none focus:ring-2 focus:ring-black dark:focus:ring-white transition-all text-sm font-medium">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 md:gap-3">
+                <button onclick="toggleViewMode()" id="viewModeBtn" class="w-9 h-9 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors text-zinc-600 dark:text-zinc-400" title="Đổi chế độ xem">
+                    <i class="fa-solid fa-border-all"></i>
+                </button>
+
+                <button onclick="requestUnlockAll()" class="w-9 h-9 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors text-red-500 hover:text-red-600" title="Mở khóa toàn bộ Apple ID">
+                    <i class="fa-solid fa-unlock-keyhole"></i>
+                </button>
+
+                <button onclick="openModal('infoModal')" class="w-9 h-9 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors text-zinc-600 dark:text-zinc-400" title="Hướng dẫn & Pháp lý">
+                    <i class="fa-solid fa-circle-info"></i>
+                </button>
+                <button onclick="toggleTheme()" class="w-9 h-9 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-circle-half-stroke text-zinc-600 dark:text-zinc-400"></i>
+                </button>
+                
+                <div id="adminControls" class="hidden flex items-center gap-2 pl-2 border-l border-zinc-200 dark:border-zinc-800">
+                    <button onclick="openModal('accountModal')" class="bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 rounded-lg text-xs font-bold hover:opacity-80 transition-opacity flex items-center gap-2">
+                        <i class="fa-solid fa-plus"></i> <span class="hidden sm:inline">Thêm</span>
+                    </button>
+                    <button onclick="openScanModal()" class="bg-yellow-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-yellow-600 transition-colors flex items-center gap-2" title="Quét trùng lặp">
+                        <i class="fa-solid fa-broom"></i> <span class="hidden sm:inline">Quét</span>
+                    </button>
+                    <button onclick="handleLogout()" class="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-2 rounded-lg transition-colors"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+                <button id="loginTrigger" onclick="openModal('loginModal')" class="text-sm font-bold hover:underline">Admin</button>
+            </div>
+        </div>
+        <div class="md:hidden px-4 pb-3 border-b border-zinc-100 dark:border-zinc-800">
+            <input type="text" id="mobileSearch" placeholder="Tìm kiếm nhanh..." class="w-full px-4 py-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border-none text-sm focus:ring-1 focus:ring-black dark:focus:ring-white transition-all">
+        </div>
+    </nav>
+
+    <main class="flex-grow pt-32 md:pt-28 pb-12 px-4 max-w-[1400px] mx-auto w-full">
+        <div class="flex flex-col md:flex-row justify-between items-end md:items-center mb-8 gap-4 fade-in">
+            <h1 class="text-2xl font-extrabold tracking-tight">Kho Tài Khoản</h1>
+            <div class="flex overflow-x-auto gap-2 pb-2 w-full md:w-auto scrollbar-hide" id="filterContainer"></div>
+        </div>
+        
+        <div id="loading" class="flex justify-center py-20"><span class="loader text-zinc-400"></span></div>
+        <div id="grid" class="grid gap-6 hidden"></div>
+        <div id="empty" class="hidden flex-col items-center justify-center py-20 text-center fade-in">
+            <div class="w-16 h-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4 text-zinc-400"><i class="fa-regular fa-folder-open text-2xl"></i></div>
+            <p class="text-zinc-500 font-medium">Không tìm thấy tài khoản nào.</p>
+        </div>
+    </main>
+
+    <footer class="border-t border-zinc-100 dark:border-zinc-800 py-8 text-center text-xs text-zinc-400 bg-white dark:bg-zinc-950">
+        <p class="cursor-pointer hover:underline" onclick="openModal('infoModal')">Điều khoản & Miễn trừ trách nhiệm</p>
+        <p class="mt-2">&copy; 2024 ZenShare. Sử dụng có ý thức.</p>
+    </footer>
+
+    <div id="scanModal" class="fixed inset-0 z-[70] flex items-center justify-center px-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-white/90 dark:bg-black/90 backdrop-blur-sm" onclick="closeModal('scanModal')"></div>
+        <div class="relative bg-white dark:bg-zinc-900 w-full max-w-3xl h-[700px] rounded-2xl shadow-2xl flex flex-col border border-zinc-200 dark:border-zinc-800 transform scale-95 transition-all duration-300">
+            <div class="flex justify-between items-center p-5 border-b border-zinc-100 dark:border-zinc-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-900/30 flex items-center justify-center text-yellow-600 dark:text-yellow-500">
+                        <i class="fa-solid fa-broom"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold">Quét & Xử lý Trùng lặp</h3>
+                        <p class="text-xs text-zinc-500" id="scanStatus">Đang kiểm tra...</p>
+                    </div>
+                </div>
+                <button onclick="closeModal('scanModal')" class="text-zinc-400 hover:text-black dark:hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-5 bg-zinc-50 dark:bg-zinc-950/50" id="scanResults"></div>
+            <div class="p-4 border-t border-zinc-100 dark:border-zinc-800 text-center text-xs text-zinc-400">
+                Gộp sẽ tự động: Gom tất cả ảnh thành Slideshow, Nối mô tả và nguồn.
+            </div>
+        </div>
+    </div>
+
+    <div id="mediaModal" class="fixed inset-0 z-[70] flex items-center justify-center px-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-white/90 dark:bg-black/90 backdrop-blur-sm" onclick="closeModal('mediaModal')"></div>
+        <div class="relative bg-white dark:bg-zinc-900 w-full max-w-2xl h-[500px] rounded-2xl shadow-2xl flex flex-col border border-zinc-200 dark:border-zinc-800 transform scale-95 transition-all duration-300">
+            <div class="flex justify-between items-center p-5 border-b border-zinc-100 dark:border-zinc-800">
+                <h3 class="text-lg font-bold">Thư viện ảnh</h3>
+                <button onclick="closeModal('mediaModal')" class="text-zinc-400 hover:text-black dark:hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="flex border-b border-zinc-100 dark:border-zinc-800">
+                <button onclick="switchMediaTab('upload')" id="tabUpload" class="flex-1 py-3 text-sm font-bold border-b-2 border-black dark:border-white">Tải lên</button>
+                <button onclick="switchMediaTab('library')" id="tabLibrary" class="flex-1 py-3 text-sm font-bold text-zinc-400 border-b-2 border-transparent">Thư viện có sẵn</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-5 bg-zinc-50 dark:bg-zinc-950/50">
+                <div id="viewUpload" class="h-full flex flex-col items-center justify-center text-center">
+                    <div class="w-full max-w-sm border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-8 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                        <i class="fa-solid fa-cloud-arrow-up text-3xl text-zinc-400 mb-3"></i>
+                        <p class="text-sm font-medium">Chọn ảnh từ thiết bị</p>
+                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="previewUpload(this)">
+                    </div>
+                    <div id="uploadPreviewContainer" class="hidden mt-4 w-full max-w-xs">
+                        <img id="uploadPreviewImg" class="w-full h-40 object-cover rounded-lg mb-3 shadow-md">
+                        <button onclick="doUpload()" id="btnDoUpload" class="w-full py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg font-bold text-sm">Xác nhận tải lên</button>
+                    </div>
+                </div>
+                <div id="viewLibrary" class="hidden">
+                    <div id="libLoader" class="text-center py-10 hidden"><span class="loader"></span></div>
+                    <div id="libGrid" class="grid grid-cols-3 sm:grid-cols-4 gap-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="appleWarningModal" class="fixed inset-0 z-[60] flex items-center justify-center px-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-red-900/20 backdrop-blur-md" onclick="closeModal('appleWarningModal')"></div>
+        <div class="relative bg-white dark:bg-zinc-900 w-full max-w-md rounded-2xl shadow-2xl p-6 border-2 border-red-500 transform scale-95 transition-all duration-300">
+            <div class="flex flex-col items-center text-center mb-4">
+                <div class="w-14 h-14 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-full flex items-center justify-center mb-3 text-2xl animate-pulse"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <h3 class="text-xl font-bold text-red-600 dark:text-red-500">CẢNH BÁO TUYỆT ĐỐI</h3>
+            </div>
+            <div class="space-y-4 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-red-50 dark:bg-red-900/10 p-4 rounded-xl border border-red-100 dark:border-red-900/30">
+                <p class="flex gap-3"><i class="fa-solid fa-circle-xmark text-red-500 mt-1"></i><span><strong>KHÔNG</strong> đăng nhập iCloud (Cài đặt).</span></p>
+                <p class="flex gap-3"><i class="fa-solid fa-circle-check text-green-600 mt-1"></i><span><strong>CHỈ</strong> đăng nhập App Store để tải App.</span></p>
+                <p class="flex gap-3"><i class="fa-solid fa-circle-xmark text-red-600 mt-1"></i><span><strong>ADMIN MIỄN TRỪ TOÀN BỘ TRÁCH NHIỆM.</strong> </span></p>
+            </div>
+            <div class="mt-6 flex gap-3">
+                <button onclick="closeModal('appleWarningModal')" class="flex-1 py-3 rounded-xl font-bold text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">Hủy bỏ</button>
+                <button onclick="confirmUnlockApple()" class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-500/30 transition-all" id="btnConfirmUnlock">Tôi đã hiểu & Mở khóa</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="infoModal" class="fixed inset-0 z-[70] flex items-center justify-center px-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-white/90 dark:bg-black/90 backdrop-blur-sm" onclick="closeModal('infoModal')"></div>
+        <div class="relative bg-white dark:bg-zinc-900 w-full max-w-2xl h-[600px] rounded-2xl shadow-2xl flex flex-col border border-zinc-200 dark:border-zinc-800 transform scale-95 transition-all duration-300">
+            <div class="flex justify-between items-center p-5 border-b border-zinc-100 dark:border-zinc-800">
+                <h3 class="text-lg font-bold">Thông tin quan trọng</h3>
+                <button onclick="closeModal('infoModal')" class="text-zinc-400 hover:text-black dark:hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="flex border-b border-zinc-100 dark:border-zinc-800">
+                <button onclick="switchInfoTab('guide')" id="tabGuide" class="flex-1 py-3 text-sm font-bold border-b-2 border-black dark:border-white">Hướng dẫn</button>
+                <button onclick="switchInfoTab('legal')" id="tabLegal" class="flex-1 py-3 text-sm font-bold text-zinc-400 border-b-2 border-transparent">Pháp lý & Miễn trừ</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-6 bg-zinc-50 dark:bg-zinc-950/50 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">
+                <div id="viewGuide" class="space-y-6">
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+                        <h4 class="font-bold text-blue-700 dark:text-blue-400 text-base mb-2"><i class="fa-solid fa-book-open mr-2"></i>Quy tắc chung</h4>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li>Không đổi mật khẩu tài khoản.</li>
+                            <li>Không thêm số điện thoại xác minh 2 bước.</li>
+                            <li>Sử dụng văn minh, logout khi không dùng (đối với web).</li>
+                        </ul>
+                    </div>
+                </div>
+                <div id="viewLegal" class="hidden space-y-6">
+                    <div class="bg-zinc-100 dark:bg-zinc-800 p-4 rounded-xl">
+                        <h4 class="font-bold text-base mb-2 uppercase">Miễn trừ trách nhiệm</h4>
+                        <p class="mb-2">Website này (ZenShare) là một dự án phi lợi nhuận...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="accountModal" class="fixed inset-0 z-50 flex items-center justify-center px-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-white/90 dark:bg-black/90 backdrop-blur-sm" onclick="closeModal('accountModal')"></div>
+        <div class="relative bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl p-6 md:p-8 border border-zinc-200 dark:border-zinc-800 transform scale-95 transition-all duration-300 overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold" id="accModalTitle">Thêm Tài Khoản</h3>
+                <button onclick="closeModal('accountModal')" class="text-zinc-400 hover:text-black dark:hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <form id="accForm" class="space-y-4">
+                <input type="hidden" id="accId">
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Dịch vụ</label>
+                    <input type="text" id="accService" placeholder="Ứng dụng..." class="w-full p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 focus:ring-black dark:focus:ring-white" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Danh mục</label>
+                        <div id="catSelectWrapper">
+                            <select id="accCategorySelect" onchange="checkNewCat(this)" class="w-full p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 focus:ring-black dark:focus:ring-white appearance-none"></select>
+                        </div>
+                        <div id="catInputWrapper" class="hidden flex gap-2">
+                            <input type="text" id="accCategoryInput" placeholder="Danh mục mới..." class="w-full p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 focus:ring-black dark:focus:ring-white">
+                            <button type="button" onclick="cancelNewCat()" class="px-3 bg-zinc-200 dark:bg-zinc-800 rounded-xl hover:bg-zinc-300 dark:hover:bg-zinc-700"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Ảnh bìa (Nhiều ảnh = Mỗi dòng 1 link)</label>
+                        <div class="relative">
+                            <textarea id="accImage" rows="1" placeholder="URL..." class="w-full p-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 focus:ring-black dark:focus:ring-white text-xs"></textarea>
+                            <button type="button" onclick="openMediaModal()" class="absolute right-2 top-2 px-2 py-1 bg-zinc-200 dark:bg-zinc-700 rounded text-xs hover:bg-zinc-300" title="Chọn ảnh"><i class="fa-regular fa-image"></i></button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">User / Email</label>
+                    <div class="relative">
+                        <input type="text" id="accUser" oninput="checkDuplicate(this)" class="w-full p-3 pr-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 focus:ring-black dark:focus:ring-white font-mono" required>
+                        <button type="button" onclick="pasteFromClipboard('accUser')" class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white p-1.5 rounded transition-colors" title="Dán"><i class="fa-regular fa-paste"></i></button>
+                    </div>
+                    <div id="duplicateWarning" class="hidden mt-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded-lg text-xs flex items-center justify-between border border-yellow-100 dark:border-yellow-900/30">
+                        <span class="font-bold"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Trùng tài khoản!</span>
+                        <button type="button" id="btnMerge" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded font-bold transition-colors">Sửa tài khoản cũ</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Password</label>
+                    <div class="relative">
+                        <input type="text" id="accPass" class="w-full p-3 pr-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 focus:ring-black dark:focus:ring-white font-mono" required>
+                        <button type="button" onclick="pasteFromClipboard('accPass')" class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white p-1.5 rounded transition-colors" title="Dán"><i class="fa-regular fa-paste"></i></button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Nguồn (Chỉ Admin Thấy)</label>
+                    <div class="relative">
+                        <input type="text" id="accSource" placeholder="Link web hoặc tên người bán..." class="w-full p-3 pr-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 focus:ring-blue-500 border border-transparent focus:border-blue-500 transition-colors">
+                        <button type="button" onclick="pasteFromClipboard('accSource')" class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white p-1.5 rounded transition-colors" title="Dán"><i class="fa-regular fa-paste"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-zinc-500 uppercase mb-1">Ghi chú</label>
+                    <div class="relative">
+                        <textarea id="accDesc" rows="3" class="w-full p-3 pr-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"></textarea>
+                        <button type="button" onclick="pasteFromClipboard('accDesc')" class="absolute right-2 top-3 text-zinc-400 hover:text-black dark:hover:text-white p-1.5 rounded transition-colors" title="Dán"><i class="fa-regular fa-paste"></i></button>
+                    </div>
+                </div>
+                <button type="submit" id="saveBtn" class="w-full py-3.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90 mt-2 transition-opacity">Lưu thông tin</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center px-4 opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute inset-0 bg-white/90 dark:bg-black/90 backdrop-blur-sm" onclick="closeModal('loginModal')"></div>
+        <div class="relative bg-white dark:bg-zinc-900 w-full max-w-sm rounded-2xl shadow-2xl p-8 border border-zinc-200 dark:border-zinc-800 transform scale-95 transition-all duration-300">
+            <h3 class="text-2xl font-bold mb-6 text-center">Admin Access</h3>
+            <input type="email" id="loginEmail" placeholder="Email" class="w-full p-3 mb-3 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none">
+            <input type="password" id="loginPass" placeholder="Password" class="w-full p-3 mb-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl border-none outline-none">
+            <button onclick="doLogin()" class="w-full py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:opacity-90">Đăng nhập</button>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed bottom-6 right-6 z-[80] pointer-events-none transition-all duration-300 translate-y-20 opacity-0">
+        <div class="bg-black dark:bg-white text-white dark:text-black px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-zinc-800 dark:border-zinc-200">
+            <i class="fa-solid fa-check-circle"></i>
+            <span id="toastMsg" class="text-sm font-bold">Thành công</span>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG
+        const SUPABASE_URL = 'https://buvttxdzotubugauhccm.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ1dnR0eGR6b3R1YnVnYXVoY2NtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwMDQ3NTQsImV4cCI6MjA4NjU4MDc1NH0.WD37Q2qAB9DIne4_ZGiB0lX_Gxzz12jZjLF575MJ2as';
+        const BUCKET_NAME = 'images'; 
+
+        let sb;
+        let accounts = [];
+        let currentFilter = 'all';
+        let currentUser = null;
+        let unlockedCards = new Set(); 
+        let pendingUnlockId = null;
+        let viewMode = localStorage.getItem('viewMode') || 'grid';
+        let slideStates = {}; // Track slide index for each card
+
+        try {
+            sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            initApp();
+        } catch (e) { console.error("Supabase Error", e); }
+
+        async function initApp() {
+            const { data: { session } } = await sb.auth.getSession();
+            updateAuthUI(session?.user);
+            await fetchAccounts();
+            sb.auth.onAuthStateChange((_event, session) => updateAuthUI(session?.user));
+            updateViewModeIcon(); // <-- Đã được định nghĩa ở dưới
+        }
+
+        function updateAuthUI(user) {
+            currentUser = user;
+            const adminControls = document.getElementById('adminControls');
+            const loginTrigger = document.getElementById('loginTrigger');
+            if (user) { adminControls.classList.remove('hidden'); loginTrigger.classList.add('hidden'); }
+            else { adminControls.classList.add('hidden'); loginTrigger.classList.remove('hidden'); }
+            renderGrid();
+        }
+
+        // ================= HELPER FUNCTIONS =================
+        function timeAgo(dateString) {
+            if (!dateString) return 'Mới';
+            const date = new Date(dateString);
+            const now = new Date();
+            const seconds = Math.floor((now - date) / 1000);
+            
+            let interval = seconds / 31536000;
+            if (interval > 1) return Math.floor(interval) + " năm trước";
+            interval = seconds / 2592000;
+            if (interval > 1) return Math.floor(interval) + " tháng trước";
+            interval = seconds / 86400;
+            if (interval > 1) return Math.floor(interval) + " ngày trước";
+            interval = seconds / 3600;
+            if (interval > 1) return Math.floor(interval) + " giờ trước";
+            interval = seconds / 60;
+            if (interval > 1) return Math.floor(interval) + " phút trước";
+            return "Vừa xong";
+        }
+
+        async function pasteFromClipboard(targetId) {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    const el = document.getElementById(targetId);
+                    if (targetId === 'accImage') {
+                        el.value = el.value ? el.value + '\n' + text : text;
+                    } else {
+                        el.value = text;
+                    }
+                    el.focus(); 
+                    if(targetId === 'accUser' && typeof checkDuplicate === 'function') checkDuplicate(el); 
+                    showToast('Đã dán từ clipboard');
+                } else {
+                    showToast('Clipboard trống');
+                }
+            } catch (err) {
+                showToast('Không thể truy cập clipboard');
+            }
+        }
+
+        function checkDuplicate(input) {
+            const val = input.value.trim();
+            const warning = document.getElementById('duplicateWarning');
+            const btnMerge = document.getElementById('btnMerge');
+            const currentId = document.getElementById('accId').value;
+
+            if (!val) { warning.classList.add('hidden'); return; }
+
+            const duplicate = accounts.find(a => a.user_name.toLowerCase() === val.toLowerCase() && a.id.toString() !== currentId);
+
+            if (duplicate) {
+                warning.classList.remove('hidden');
+                btnMerge.onclick = () => {
+                    editAcc(duplicate.id);
+                    warning.classList.add('hidden');
+                    showToast('Đã chuyển sang sửa tài khoản cũ');
+                };
+            } else {
+                warning.classList.add('hidden');
+            }
+        }
+
+        function toggleViewMode() {
+            viewMode = viewMode === 'grid' ? 'compact' : 'grid';
+            localStorage.setItem('viewMode', viewMode);
+            updateViewModeIcon();
+            renderGrid();
+        }
+
+        function updateViewModeIcon() {
+            const btn = document.getElementById('viewModeBtn');
+            btn.innerHTML = viewMode === 'grid' ? '<i class="fa-solid fa-list"></i>' : '<i class="fa-solid fa-border-all"></i>';
+            btn.title = viewMode === 'grid' ? "Chuyển sang thu gọn" : "Chuyển sang lưới";
+        }
+
+        // ================= IMAGE HANDLING & SLIDESHOW =================
+        function parseImages(imgString) {
+            if (!imgString) return [];
+            try {
+                if (imgString.trim().startsWith('[')) {
+                    return JSON.parse(imgString);
+                }
+                if (imgString.includes('\n')) {
+                    return imgString.split('\n').map(s => s.trim()).filter(s => s);
+                }
+                return [imgString.trim()];
+            } catch (e) {
+                return [imgString.trim()];
+            }
+        }
+
+        function nextSlide(id, total, e) {
+            e.stopPropagation();
+            if (!slideStates[id]) slideStates[id] = 0;
+            slideStates[id] = (slideStates[id] + 1) % total;
+            updateSlideUI(id);
+        }
+
+        function prevSlide(id, total, e) {
+            e.stopPropagation();
+            if (!slideStates[id]) slideStates[id] = 0;
+            slideStates[id] = (slideStates[id] - 1 + total) % total;
+            updateSlideUI(id);
+        }
+
+        function updateSlideUI(id) {
+            const acc = accounts.find(a => a.id === id);
+            if (!acc) return;
+            const imgs = parseImages(acc.image);
+            const idx = slideStates[id] || 0;
+            const imgEl = document.getElementById(`img-main-${id}`);
+            if (imgEl) imgEl.src = imgs[idx];
+        }
+
+        // ================= SCAN DUPLICATES & MERGE LOGIC =================
+        function openScanModal() {
+            openModal('scanModal');
+            runScan();
+        }
+
+        function runScan() {
+            const statusEl = document.getElementById('scanStatus');
+            const resultsEl = document.getElementById('scanResults');
+            statusEl.innerText = "Đang quét dữ liệu...";
+            resultsEl.innerHTML = '<div class="text-center py-10"><span class="loader text-zinc-400"></span></div>';
+
+            const groups = {};
+            accounts.forEach(acc => {
+                const key = acc.user_name.trim().toLowerCase();
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(acc);
+            });
+
+            const duplicates = Object.entries(groups).filter(([key, list]) => list.length > 1);
+
+            statusEl.innerText = `Tìm thấy ${duplicates.length} nhóm trùng lặp.`;
+
+            if (duplicates.length === 0) {
+                resultsEl.innerHTML = `
+                    <div class="h-full flex flex-col items-center justify-center text-center text-zinc-400">
+                        <i class="fa-solid fa-check-circle text-4xl mb-3 text-green-500"></i>
+                        <p class="font-bold">Tuyệt vời!</p>
+                        <p class="text-sm">Không tìm thấy tài khoản trùng lặp nào.</p>
+                    </div>`;
+                return;
+            }
+
+            resultsEl.innerHTML = duplicates.map(([key, list]) => {
+                list.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+
+                const itemsHtml = list.map((acc, idx) => {
+                    const time = timeAgo(acc.updated_at || acc.created_at);
+                    const isNewest = idx === 0;
+                    const imgs = parseImages(acc.image);
+                    return `
+                        <div class="flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl mb-2 last:mb-0">
+                            <img src="${imgs[0] || ''}" class="w-10 h-10 rounded-lg object-cover bg-zinc-100">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-bold truncate">${acc.service}</span>
+                                    ${isNewest ? '<span class="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-bold">Mới nhất</span>' : ''}
+                                </div>
+                                <div class="text-xs text-zinc-500">ID: ${acc.id} • ${time} • ${imgs.length} Ảnh</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="keepAndMerge(${acc.id}, '${key}')" class="text-xs bg-black dark:bg-white text-white dark:text-black px-3 py-1.5 rounded-lg font-bold hover:opacity-80 shadow-md">Gộp tất cả vào đây</button>
+                                <button onclick="deleteFromScan(${acc.id})" class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center hover:bg-red-100"><i class="fa-solid fa-trash text-xs"></i></button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="mb-6 bg-zinc-50 dark:bg-zinc-950/50 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                        <div class="flex items-center gap-2 mb-3 px-1">
+                            <i class="fa-regular fa-user text-zinc-400"></i>
+                            <span class="font-mono font-bold text-sm text-zinc-700 dark:text-zinc-300">${key}</span>
+                            <span class="text-xs text-zinc-400">(${list.length} bản ghi)</span>
+                        </div>
+                        <div>${itemsHtml}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function deleteFromScan(id) {
+            if (!confirm('Bạn chắc chắn muốn xóa?')) return;
+            const { error } = await sb.from('accounts').delete().eq('id', id);
+            if (!error) {
+                showToast('Đã xóa');
+                accounts = accounts.filter(a => a.id !== id);
+                runScan();
+                renderGrid();
+            } else {
+                showToast('Lỗi xóa: ' + error.message);
+            }
+        }
+
+        async function keepAndMerge(keepId, userKey) {
+            if (!confirm('Hệ thống sẽ GỘP ẢNH, MÔ TẢ và NGUỒN của tất cả tài khoản trùng lặp vào tài khoản này, sau đó xóa các tài khoản kia. Tiếp tục?')) return;
+            
+            const group = accounts.filter(a => a.user_name.trim().toLowerCase() === userKey);
+            const target = group.find(a => a.id === keepId);
+            const others = group.filter(a => a.id !== keepId);
+            
+            if (!target) return;
+
+            let mergedImages = new Set(parseImages(target.image));
+            others.forEach(o => parseImages(o.image).forEach(img => mergedImages.add(img)));
+            const finalImages = JSON.stringify([...mergedImages]);
+
+            let mergedDesc = target.description || "";
+            others.forEach(o => {
+                if (o.description && !mergedDesc.includes(o.description)) {
+                    mergedDesc += `\n\n--- [Gộp ID ${o.id}] ---\n${o.description}`;
+                }
+            });
+
+            let mergedSource = target.source || "";
+            others.forEach(o => {
+                if (o.source && !mergedSource.includes(o.source)) {
+                    mergedSource += ` | ${o.source}`;
+                }
+            });
+
+            const { error: updateError } = await sb.from('accounts').update({
+                image: finalImages,
+                description: mergedDesc,
+                source: mergedSource,
+                updated_at: new Date().toISOString()
+            }).eq('id', keepId);
+
+            if (updateError) {
+                showToast('Lỗi cập nhật: ' + updateError.message);
+                return;
+            }
+
+            const idsToDelete = others.map(o => o.id);
+            if (idsToDelete.length > 0) {
+                await sb.from('accounts').delete().in('id', idsToDelete);
+            }
+
+            showToast(`Đã gộp thành công! (ID ${keepId} hiện có ${mergedImages.size} ảnh)`);
+            
+            await fetchAccounts();
+            runScan();
+        }
+
+        // ================= SEARCH & RENDER =================
+        async function fetchAccounts() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('grid').classList.add('hidden');
+            const { data, error } = await sb.from('accounts').select('*').order('updated_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
+            if (!error && data) { accounts = data; renderFilters(); renderGrid(); }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function highlightText(text, query) {
+            if (!query || !text) return text;
+            const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); 
+            const regex = new RegExp(`(${escapedQuery})`, 'gi');
+            return text.toString().replace(regex, '<mark class="highlight">$1</mark>');
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('grid');
+            const empty = document.getElementById('empty');
+            const searchVal = (document.getElementById('desktopSearch').value || document.getElementById('mobileSearch').value).toLowerCase().trim();
+
+            const filtered = accounts.filter(acc => {
+                const matchCat = currentFilter === 'all' || acc.category === currentFilter;
+                const matchSearch = (acc.service + ' ' + acc.description + ' ' + acc.category + ' ' + acc.user_name).toLowerCase().includes(searchVal);
+                return matchCat && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.classList.add('hidden'); empty.classList.remove('hidden'); empty.classList.add('flex'); return;
+            }
+
+            grid.classList.remove('hidden'); empty.classList.add('hidden'); empty.classList.remove('flex');
+
+            if (viewMode === 'compact') {
+                grid.className = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3";
+            } else {
+                grid.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6";
+            }
+
+            grid.innerHTML = filtered.map((acc, index) => {
+                const images = parseImages(acc.image);
+                const hasSlideshow = images.length > 1;
+                const currentImgIdx = slideStates[acc.id] || 0;
+                const fallbackImg = `https://placehold.co/600x340/18181b/FFF?text=${acc.service.charAt(0)}`;
+                const displayImg = images[currentImgIdx] || fallbackImg;
+
+                const isApple = acc.category === 'ID Apple';
+                const isLocked = isApple && !unlockedCards.has(acc.id);
+                const displayTime = acc.updated_at ? acc.updated_at : acc.created_at;
+                const updatedTime = timeAgo(displayTime);
+                
+                const hlService = highlightText(acc.service, searchVal);
+                const hlDesc = highlightText(acc.description || 'Không có mô tả chi tiết.', searchVal);
+                const hlUser = highlightText(acc.user_name, searchVal);
+
+                if (viewMode === 'compact') {
+                    if (isLocked) {
+                        return `
+                        <div class="relative bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 fade-in flex flex-col items-center justify-center p-4 text-center h-48 opacity-75">
+                            <i class="fa-solid fa-lock text-red-500 text-2xl mb-2"></i>
+                            <div class="text-xs font-bold truncate w-full mb-2">${hlService}</div>
+                            <button onclick="openAppleWarning(${acc.id})" class="text-[10px] bg-red-600 text-white px-3 py-1.5 rounded-lg font-bold">Mở khóa</button>
+                            ${currentUser ? `<button onclick="editAcc(${acc.id})" class="absolute top-2 right-2 text-zinc-400 hover:text-black dark:hover:text-white"><i class="fa-solid fa-pen text-xs"></i></button>` : ''}
+                        </div>`;
+                    }
+                    return `
+                    <div class="group relative bg-white dark:bg-zinc-900 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all duration-300 shadow-sm hover:shadow-md fade-in flex flex-col compact-card">
+                        <div class="h-30 shrink-0 bg-zinc-100 dark:bg-zinc-800 relative">
+                            <img src="${displayImg}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity">
+                            ${currentUser ? `<button onclick="editAcc(${acc.id})" class="absolute top-1 right-1 bg-black/50 text-white w-6 h-6 rounded flex items-center justify-center hover:bg-black"><i class="fa-solid fa-pen text-[10px]"></i></button>` : ''}
+                            ${hasSlideshow ? `<div class="absolute bottom-1 right-1 text-[8px] bg-black/50 text-white px-1 rounded">${images.length} ảnh</div>` : ''}
+                        </div>
+                        <div class="p-3 flex-grow flex flex-col gap-2">
+                            <h3 class="text-xs font-bold truncate text-zinc-900 dark:text-white" title="${acc.service}">${hlService}</h3>
+                            <div class="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 rounded border border-zinc-100 dark:border-zinc-800">
+                                <input type="text" value="${acc.user_name}" readonly class="bg-transparent flex-1 outline-none text-zinc-600 dark:text-zinc-400 font-mono">
+                                <button onclick="copy('${acc.user_name}')" class="text-zinc-400 hover:text-black dark:hover:text-white btn-copy"><i class="fa-regular fa-copy text-[10px]"></i></button>
+                            </div>
+                            <div class="flex items-center gap-1 bg-zinc-50 dark:bg-zinc-950 rounded border border-zinc-100 dark:border-zinc-800">
+                                <input type="password" value="${acc.password}" readonly class="bg-transparent flex-1 outline-none text-zinc-600 dark:text-zinc-400 font-mono" id="pass-c-${acc.id}">
+                                <button onclick="togglePass('c-${acc.id}')" class="text-zinc-400 hover:text-black dark:hover:text-white btn-copy"><i class="fa-regular fa-eye text-[10px]" id="eye-c-${acc.id}"></i></button>
+                                <button onclick="copy('${acc.password}')" class="text-zinc-400 hover:text-black dark:hover:text-white btn-copy"><i class="fa-regular fa-copy text-[10px]"></i></button>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
+                let sourceBadge = '';
+                if (currentUser && acc.source) {
+                    const isUrl = /^(http|https):\/\/[^ "]+$/.test(acc.source);
+                    const sourceContent = isUrl 
+                        ? `<a href="${acc.source}" target="_blank" class="hover:underline hover:text-blue-700 font-bold break-all">${acc.source}</a>`
+                        : `<span class="font-bold">${acc.source}</span>`;
+                    
+                    sourceBadge = `<div class="mt-2 text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 p-1.5 rounded border border-blue-100 dark:border-blue-900/30">
+                        <i class="fa-solid fa-parachute-box mr-1"></i>Nguồn: ${sourceContent}
+                    </div>`;
+                }
+
+                const workingCount = acc.status_working || 0;
+                const lockedCount = acc.status_locked || 0;
+                const hasVoted = localStorage.getItem(`reported_${acc.id}`);
+                const btnDisabledClass = hasVoted ? "opacity-50 pointer-events-none" : "hover:scale-105 active:scale-95";
+
+                return `
+                <div class="group relative bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all duration-300 hover:shadow-xl fade-in flex flex-col" style="animation-delay: ${index * 0.05}s">
+                    <div class="relative h-44 shrink-0 overflow-hidden bg-zinc-100 dark:bg-zinc-800 group/img">
+                        <img src="${displayImg}" id="img-main-${acc.id}" class="w-full h-full object-cover transition-transform duration-700 transform group-hover:scale-105">
+                        
+                        ${hasSlideshow ? `
+                            <div class="absolute inset-0 flex items-center justify-between px-2 opacity-0 group-hover/img:opacity-100 transition-opacity z-10">
+                                <div onclick="prevSlide(${acc.id}, ${images.length}, event)" class="slide-btn"><i class="fa-solid fa-chevron-left text-xs"></i></div>
+                                <div onclick="nextSlide(${acc.id}, ${images.length}, event)" class="slide-btn"><i class="fa-solid fa-chevron-right text-xs"></i></div>
+                            </div>
+                            <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                                ${images.map((_, i) => `<div class="w-1.5 h-1.5 rounded-full ${i === currentImgIdx ? 'bg-white' : 'bg-white/50'}"></div>`).join('')}
+                            </div>
+                        ` : ''}
+
+                        <div class="absolute top-3 left-3 bg-white/90 dark:bg-black/80 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider backdrop-blur shadow-sm ${isApple ? 'text-red-600' : ''} z-20">
+                            ${isApple ? '<i class="fa-brands fa-apple mr-1"></i>' : ''}${acc.category}
+                        </div>
+                        ${currentUser ? `<div class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20"><button onclick="editAcc(${acc.id})" class="bg-white text-black w-8 h-8 rounded-full flex items-center justify-center shadow hover:bg-zinc-200"><i class="fa-solid fa-pen text-xs"></i></button><button onclick="deleteAcc(${acc.id})" class="bg-black text-white w-8 h-8 rounded-full flex items-center justify-center shadow hover:bg-zinc-800"><i class="fa-solid fa-trash text-xs"></i></button></div>` : ''}
+                    </div>
+                    <div class="p-5 flex-grow flex flex-col min-h-0">
+                        <div class="mb-4">
+                            <h3 class="text-lg font-bold mb-2 truncate text-zinc-900 dark:text-white">${hlService}</h3>
+                            <div class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed max-h-32 overflow-y-auto pr-1">${hlDesc}</div>
+                            ${sourceBadge}
+                        </div>
+                        <div class="mt-auto relative">
+                            ${isLocked ? `
+                                <div class="bg-red-50 dark:bg-red-900/10 rounded-xl p-4 border border-red-100 dark:border-red-900/30 text-center">
+                                    <i class="fa-solid fa-lock text-red-500 text-xl mb-2"></i>
+                                    <p class="text-xs font-bold text-red-600 dark:text-red-400 mb-3">Đã khóa để bảo vệ</p>
+                                    <button onclick="openAppleWarning(${acc.id})" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shadow-md shadow-red-500/20">Mở khóa xem</button>
+                                </div>
+                            ` : `
+                                <div class="space-y-2 animate-in fade-in zoom-in duration-300">
+                                    <div class="flex items-center bg-zinc-50 dark:bg-zinc-950 rounded-lg p-2.5 border border-transparent group-hover:border-zinc-200 dark:group-hover:border-zinc-800 transition-colors">
+                                        <div class="w-6 flex justify-center text-zinc-400 text-xs"><i class="fa-regular fa-user"></i></div>
+                                        <span class="text-xs font-mono font-medium flex-1 truncate select-all mx-2 text-zinc-700 dark:text-zinc-300">${hlUser}</span>
+                                        <button onclick="copy('${acc.user_name}')" class="text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1"><i class="fa-regular fa-copy"></i></button>
+                                    </div>
+                                    <div class="flex items-center bg-zinc-50 dark:bg-zinc-950 rounded-lg p-2.5 border border-transparent group-hover:border-zinc-200 dark:group-hover:border-zinc-800 transition-colors">
+                                        <div class="w-6 flex justify-center text-zinc-400 text-xs"><i class="fa-solid fa-key"></i></div>
+                                        <input type="password" value="${acc.password}" readonly class="bg-transparent text-xs font-mono font-medium flex-1 w-full outline-none text-zinc-700 dark:text-zinc-300 mx-2" id="pass-${acc.id}">
+                                        <div class="flex gap-1">
+                                            <button onclick="togglePass(${acc.id})" class="text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1"><i class="fa-regular fa-eye" id="eye-${acc.id}"></i></button>
+                                            <button onclick="copy('${acc.password}')" class="text-zinc-400 hover:text-black dark:hover:text-white transition-colors p-1"><i class="fa-regular fa-copy"></i></button>
+                                        </div>
+                                    </div>
+                                    ${isApple ? `<div class="text-[10px] text-center text-red-500 font-bold mt-2"><i class="fa-solid fa-circle-exclamation mr-1"></i>Chỉ đăng nhập AppStore</div>` : ''}
+                                </div>
+                            `}
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Cập nhật?</span>
+                                <span class="text-[10px] text-zinc-400"><i class="fa-regular fa-clock mr-1"></i>${updatedTime}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button id="btn-report-working-${acc.id}" onclick="reportStatus(${acc.id}, 'working')" class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-xs font-bold border border-green-100 dark:border-green-900/30 transition-transform ${btnDisabledClass}">
+                                    <i class="fa-solid fa-circle-check"></i> <span id="working-count-${acc.id}">${workingCount}</span>
+                                </button>
+                                <button id="btn-report-locked-${acc.id}" onclick="reportStatus(${acc.id}, 'locked')" class="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-xs font-bold border border-red-100 dark:border-red-900/30 transition-transform ${btnDisabledClass}">
+                                    <i class="fa-solid fa-triangle-exclamation"></i> <span id="locked-count-${acc.id}">${lockedCount}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function renderFilters() {
+            const existingCats = accounts.map(a => a.category);
+            const defaultCats = ['ID Apple', 'Giải trí', 'Học tập', 'Công việc'];
+            const uniqueCats = ['Tất cả', ...new Set([...defaultCats, ...existingCats])].filter(Boolean);
+            document.getElementById('filterContainer').innerHTML = uniqueCats.map(cat => {
+                const val = cat === 'Tất cả' ? 'all' : cat;
+                const isActive = currentFilter === val;
+                let activeStyle = isActive ? "bg-black text-white dark:bg-white dark:text-black shadow-lg" : "bg-white dark:bg-zinc-900 text-zinc-500 hover:text-black dark:hover:text-white border border-zinc-200 dark:border-zinc-800";
+                if (cat === 'ID Apple' && !isActive) activeStyle += " text-red-500 dark:text-red-400 border-red-200 dark:border-red-900/30";
+                return `<button onclick="setFilter('${val}')" class="whitespace-nowrap px-5 py-2 rounded-full text-sm font-bold transition-all duration-300 ${activeStyle}">${cat}</button>`;
+            }).join('');
+        }
+
+        function setFilter(val) { currentFilter = val; renderFilters(); renderGrid(); }
+        
+        function populateCategorySelect(selectedVal = null) {
+            const select = document.getElementById('accCategorySelect');
+            const uniqueCats = [...new Set(['ID Apple', 'Giải trí', 'Học tập', 'Công việc', 'Khác', ...accounts.map(a => a.category)])].filter(Boolean);
+            select.innerHTML = uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('') + `<option value="NEW_CAT_OPTION">➕ Thêm danh mục mới...</option>`;
+            if (selectedVal) select.value = selectedVal;
+        }
+        function checkNewCat(select) {
+            if (select.value === 'NEW_CAT_OPTION') {
+                document.getElementById('catSelectWrapper').classList.add('hidden');
+                document.getElementById('catInputWrapper').classList.remove('hidden');
+                document.getElementById('catInputWrapper').classList.add('flex');
+                document.getElementById('accCategoryInput').focus(); document.getElementById('accCategoryInput').value = '';
+            }
+        }
+        function cancelNewCat() {
+            document.getElementById('catInputWrapper').classList.add('hidden'); document.getElementById('catInputWrapper').classList.remove('flex');
+            document.getElementById('catSelectWrapper').classList.remove('hidden'); document.getElementById('accCategorySelect').value = 'ID Apple';
+        }
+
+        document.getElementById('accForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('saveBtn'); const originalText = btn.innerText; btn.innerText = 'Đang xử lý...'; btn.disabled = true;
+            let finalCategory = !document.getElementById('catInputWrapper').classList.contains('hidden') ? document.getElementById('accCategoryInput').value.trim() || 'Khác' : document.getElementById('accCategorySelect').value;
+            const id = document.getElementById('accId').value;
+            
+            // Format Image to JSON Array
+            const rawImg = document.getElementById('accImage').value;
+            const imgArray = parseImages(rawImg);
+            const finalImageStr = JSON.stringify(imgArray);
+
+            const data = { 
+                service: document.getElementById('accService').value, 
+                category: finalCategory, 
+                image: finalImageStr, // Save as JSON string
+                user_name: document.getElementById('accUser').value, 
+                password: document.getElementById('accPass').value, 
+                description: document.getElementById('accDesc').value,
+                source: document.getElementById('accSource').value,
+                updated_at: new Date().toISOString()
+            };
+            
+            let res;
+            if (id) res = await sb.from('accounts').update(data).eq('id', id);
+            else res = await sb.from('accounts').insert([data]);
+            
+            if (res.error) showToast('Lỗi: ' + res.error.message); else { showToast('Thành công'); closeModal('accountModal'); fetchAccounts(); }
+            btn.innerText = originalText; btn.disabled = false;
+        });
+
+        function openModal(id) {
+            const m = document.getElementById(id); m.classList.remove('pointer-events-none', 'opacity-0'); m.querySelector('div.relative').classList.remove('scale-95'); m.querySelector('div.relative').classList.add('scale-100');
+            if (id === 'accountModal' && !document.getElementById('accId').value) { 
+                document.getElementById('accForm').reset(); 
+                document.getElementById('accModalTitle').innerText = 'Thêm Tài Khoản'; 
+                document.getElementById('duplicateWarning').classList.add('hidden'); 
+                populateCategorySelect('Giải trí'); 
+                cancelNewCat(); 
+            }
+            if (id === 'infoModal') switchInfoTab('guide');
+        }
+        function closeModal(id) { const m = document.getElementById(id); m.querySelector('div.relative').classList.remove('scale-100'); m.querySelector('div.relative').classList.add('scale-95'); setTimeout(() => { m.classList.add('pointer-events-none', 'opacity-0'); if (id === 'accountModal') document.getElementById('accId').value = ''; }, 200); }
+        
+        function editAcc(id) {
+            const acc = accounts.find(a => a.id === id); if (!acc) return;
+            document.getElementById('accId').value = acc.id; 
+            document.getElementById('accService').value = acc.service; 
+            
+            // Show image as lines in textarea
+            const imgs = parseImages(acc.image);
+            document.getElementById('accImage').value = imgs.join('\n'); 
+
+            document.getElementById('accUser').value = acc.user_name; 
+            document.getElementById('accPass').value = acc.password; 
+            document.getElementById('accDesc').value = acc.description;
+            document.getElementById('accSource').value = acc.source || ''; 
+            
+            document.getElementById('duplicateWarning').classList.add('hidden');
+
+            document.getElementById('accModalTitle').innerText = 'Sửa Tài Khoản'; cancelNewCat(); populateCategorySelect(acc.category); openModal('accountModal');
+        }
+
+        function requestUnlockAll() {
+            pendingUnlockId = 'ALL';
+            document.getElementById('btnConfirmUnlock').innerText = 'Tôi đã hiểu & Mở khóa tất cả';
+            openModal('appleWarningModal');
+        }
+
+        function openAppleWarning(id) { 
+            pendingUnlockId = id; 
+            document.getElementById('btnConfirmUnlock').innerText = 'Tôi đã hiểu & Mở khóa';
+            openModal('appleWarningModal'); 
+        }
+
+        function confirmUnlockApple() { 
+            if (pendingUnlockId === 'ALL') {
+                accounts.forEach(acc => { if (acc.category === 'ID Apple') unlockedCards.add(acc.id); });
+                showToast('Đã mở khóa toàn bộ ID Apple!');
+            } else if (pendingUnlockId) { 
+                unlockedCards.add(pendingUnlockId); 
+                showToast('Đã mở khóa. Hãy làm đúng hướng dẫn!'); 
+            }
+            pendingUnlockId = null; closeModal('appleWarningModal'); renderGrid(); 
+        }
+
+        function copy(text) { navigator.clipboard.writeText(text).then(() => showToast('Đã sao chép!')); }
+        function togglePass(id) { const i = document.getElementById(`pass-${id}`); const c = document.getElementById(`eye-${id}`); i.type = i.type === "password" ? "text" : "password"; c.classList.toggle('fa-eye'); c.classList.toggle('fa-eye-slash'); }
+        async function doLogin() { const e = document.getElementById('loginEmail').value; const p = document.getElementById('loginPass').value; const { error } = await sb.auth.signInWithPassword({ email: e, password: p }); if (!error) { showToast('Chào mừng Admin'); closeModal('loginModal'); } else showToast('Đăng nhập thất bại'); }
+        async function handleLogout() { await sb.auth.signOut(); showToast('Đã đăng xuất'); }
+        async function deleteAcc(id) { if (!confirm('Xóa?')) return; const { error } = await sb.from('accounts').delete().eq('id', id); if (!error) { showToast('Đã xóa'); fetchAccounts(); } }
+        function showToast(msg) { const t = document.getElementById('toast'); document.getElementById('toastMsg').innerText = msg; t.classList.remove('translate-y-20', 'opacity-0'); setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 2500); }
+        function toggleTheme() { document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); }
+        if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+        document.getElementById('desktopSearch').addEventListener('input', (e) => { document.getElementById('mobileSearch').value = e.target.value; renderGrid(); });
+        document.getElementById('mobileSearch').addEventListener('input', (e) => { document.getElementById('desktopSearch').value = e.target.value; renderGrid(); });
+        
+        // Media Modal Integration
+        function openMediaModal() {
+            openModal('mediaModal');
+            switchMediaTab('upload');
+            document.getElementById('fileInput').value = '';
+            document.getElementById('uploadPreviewContainer').classList.add('hidden');
+        }
+        function switchMediaTab(tab) {
+            const tabUpload = document.getElementById('tabUpload');
+            const tabLibrary = document.getElementById('tabLibrary');
+            const viewUpload = document.getElementById('viewUpload');
+            const viewLibrary = document.getElementById('viewLibrary');
+            const activeClass = "border-black dark:border-white text-black dark:text-white";
+            const inactiveClass = "border-transparent text-zinc-400";
+            if (tab === 'upload') {
+                tabUpload.className = `flex-1 py-3 text-sm font-bold border-b-2 ${activeClass}`;
+                tabLibrary.className = `flex-1 py-3 text-sm font-bold border-b-2 ${inactiveClass}`;
+                viewUpload.classList.remove('hidden'); viewLibrary.classList.add('hidden');
+            } else {
+                tabLibrary.className = `flex-1 py-3 text-sm font-bold border-b-2 ${activeClass}`;
+                tabUpload.className = `flex-1 py-3 text-sm font-bold border-b-2 ${inactiveClass}`;
+                viewLibrary.classList.remove('hidden'); viewUpload.classList.add('hidden');
+                loadLibrary();
+            }
+        }
+        function previewUpload(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('uploadPreviewImg').src = e.target.result;
+                    document.getElementById('uploadPreviewContainer').classList.remove('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        async function doUpload() {
+            const file = document.getElementById('fileInput').files[0];
+            if (!file) return;
+            const btn = document.getElementById('btnDoUpload');
+            btn.innerText = 'Đang tải lên...'; btn.disabled = true;
+            const fileName = Date.now() + '_' + file.name.replace(/\s/g, '_');
+            const { data, error } = await sb.storage.from(BUCKET_NAME).upload(fileName, file);
+            if (error) { showToast('Lỗi: ' + error.message); } else {
+                const { data: { publicUrl } } = sb.storage.from(BUCKET_NAME).getPublicUrl(fileName);
+                const el = document.getElementById('accImage');
+                el.value = el.value ? el.value + '\n' + publicUrl : publicUrl;
+                showToast('Tải ảnh thành công');
+                closeModal('mediaModal');
+            }
+            btn.innerText = 'Xác nhận tải lên'; btn.disabled = false;
+        }
+        async function loadLibrary() {
+            const grid = document.getElementById('libGrid');
+            const loader = document.getElementById('libLoader');
+            grid.innerHTML = ''; loader.classList.remove('hidden');
+            const { data, error } = await sb.storage.from(BUCKET_NAME).list('', { limit: 50, sortBy: { column: 'created_at', order: 'desc' } });
+            loader.classList.add('hidden');
+            if (error) { grid.innerHTML = '<p class="text-zinc-500 col-span-3">Lỗi tải thư viện</p>'; return; }
+            if (!data || data.length === 0) { grid.innerHTML = '<p class="text-zinc-500 col-span-3">Chưa có ảnh nào.</p>'; return; }
+            data.forEach(item => {
+                if (item.name === '.emptyFolderPlaceholder') return;
+                const { data: { publicUrl } } = sb.storage.from(BUCKET_NAME).getPublicUrl(item.name);
+                const div = document.createElement('div');
+                div.className = "aspect-square rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 cursor-pointer hover:ring-2 ring-black dark:ring-white relative group";
+                div.innerHTML = `<img src="${publicUrl}" class="w-full h-full object-cover">`;
+                div.onclick = () => {
+                    const el = document.getElementById('accImage');
+                    el.value = el.value ? el.value + '\n' + publicUrl : publicUrl;
+                    closeModal('mediaModal');
+                    showToast('Đã chọn ảnh');
+                };
+                grid.appendChild(div);
+            });
+        }
+        
+        async function reportStatus(id, type) {
+            const key = `reported_${id}`;
+            if (localStorage.getItem(key)) { showToast('Bạn đã báo cáo tài khoản này rồi.'); return; }
+            const { error } = await sb.rpc('report_account', { row_id: id, status_type: type });
+            if (error) { console.error(error); showToast('Lỗi báo cáo'); } else {
+                localStorage.setItem(key, 'true'); showToast('Cảm ơn đóng góp của bạn!');
+                const countElem = document.getElementById(`${type}-count-${id}`);
+                if(countElem) { countElem.innerText = parseInt(countElem.innerText) + 1; document.getElementById(`btn-report-working-${id}`).classList.add('opacity-50', 'pointer-events-none'); document.getElementById(`btn-report-locked-${id}`).classList.add('opacity-50', 'pointer-events-none'); }
+            }
+        }
+        
+        function switchInfoTab(tab) {
+            const tabGuide = document.getElementById('tabGuide');
+            const tabLegal = document.getElementById('tabLegal');
+            const viewGuide = document.getElementById('viewGuide');
+            const viewLegal = document.getElementById('viewLegal');
+            
+            const activeClass = "border-black dark:border-white text-black dark:text-white";
+            const inactiveClass = "border-transparent text-zinc-400";
+
+            if (tab === 'guide') {
+                tabGuide.className = `flex-1 py-3 text-sm font-bold border-b-2 ${activeClass}`;
+                tabLegal.className = `flex-1 py-3 text-sm font-bold border-b-2 ${inactiveClass}`;
+                viewGuide.classList.remove('hidden'); viewLegal.classList.add('hidden');
+            } else {
+                tabLegal.className = `flex-1 py-3 text-sm font-bold border-b-2 ${activeClass}`;
+                tabGuide.className = `flex-1 py-3 text-sm font-bold border-b-2 ${inactiveClass}`;
+                viewLegal.classList.remove('hidden'); viewGuide.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

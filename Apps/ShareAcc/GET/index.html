@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="vi" class="antialiased">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Scraper Minimal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        zinc: {
+                            850: '#1f1f22',
+                            900: '#18181b',
+                            950: '#0c0c0e',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.3s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(5px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #e4e4e7;
+            border-radius: 3px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #d4d4d8;
+        }
+
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #52525b;
+        }
+    </style>
+
+    <script>
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        initTheme();
+    </script>
+</head>
+
+<body
+    class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen p-4 md:p-8 flex justify-center items-start transition-colors duration-300">
+
+    <div
+        class="w-full max-w-3xl bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
+
+        <div
+            class="px-6 py-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-white dark:bg-zinc-900 z-10">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-lg flex items-center justify-center font-bold text-lg">
+                    <i class="fa-solid fa-cube"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base leading-tight">Web Scraper</h1>
+                    <p class="text-xs text-zinc-500 dark:text-zinc-400">Minimal Edition</p>
+                </div>
+            </div>
+
+            <div class="flex bg-zinc-100 dark:bg-zinc-800 rounded-lg p-1">
+                <button onclick="setTheme('light')" id="btn-light"
+                    class="w-8 h-8 rounded-md flex items-center justify-center text-xs transition-all duration-200"><i
+                        class="fa-solid fa-sun"></i></button>
+                <button onclick="setTheme('system')" id="btn-system"
+                    class="w-8 h-8 rounded-md flex items-center justify-center text-xs transition-all duration-200"><i
+                        class="fa-solid fa-desktop"></i></button>
+                <button onclick="setTheme('dark')" id="btn-dark"
+                    class="w-8 h-8 rounded-md flex items-center justify-center text-xs transition-all duration-200"><i
+                        class="fa-solid fa-moon"></i></button>
+            </div>
+        </div>
+
+        <div class="px-6 pt-6 pb-0">
+            <div class="flex p-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+                <button onclick="switchTab('scraper')" id="tab-btn-scraper"
+                    class="flex-1 py-1.5 text-sm font-medium rounded-md shadow-sm bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white transition-all">
+                    <i class="fa-solid fa-magnifying-glass mr-2"></i>Scraper
+                </button>
+                <button onclick="switchTab('generator')" id="tab-btn-generator"
+                    class="flex-1 py-1.5 text-sm font-medium rounded-md text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-all">
+                    <i class="fa-solid fa-link mr-2"></i>Tạo Link Auto
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 space-y-6 overflow-y-auto flex-grow custom-scrollbar relative">
+
+            <div id="tab-content-scraper" class="space-y-6 animate-fade-in">
+                <div class="space-y-2">
+                    <label
+                        class="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">URL
+                        Mục Tiêu</label>
+
+                    <div class="flex gap-2">
+                        <div class="relative group flex-grow">
+                            <input type="text" id="targetUrl"
+                                class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-500 transition-all font-mono"
+                                placeholder="https://example.com/...">
+                            <div
+                                class="absolute right-3 top-3 text-zinc-400 dark:text-zinc-600 group-hover:text-zinc-600 dark:group-hover:text-zinc-400 transition-colors">
+                                <i class="fa-solid fa-link"></i>
+                            </div>
+                        </div>
+
+                        <button onclick="pasteAndScrape()" title="Dán từ Clipboard & Quét ngay"
+                            class="shrink-0 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg px-4 flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-paste mr-2"></i> Paste
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onclick="startSmartScraping()"
+                        class="col-span-1 sm:col-span-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 px-4 py-3 rounded-lg text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2 group">
+                        <i class="fa-solid fa-wand-magic-sparkles group-hover:rotate-12 transition-transform"></i>
+                        Quét Full (Link + Ảnh + Acc)
+                    </button>
+                    <button onclick="applyPreset('button')"
+                        class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-500 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-download text-zinc-400"></i> Link Download
+                    </button>
+                    <button onclick="applyPreset('image')"
+                        class="bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:border-zinc-400 dark:hover:border-zinc-500 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2">
+                        <i class="fa-regular fa-image text-zinc-400"></i> Ảnh Bài Viết
+                    </button>
+                </div>
+
+                <div class="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                    <details class="group">
+                        <summary
+                            class="list-none cursor-pointer flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300 transition-colors mb-2">
+                            <span>Cấu hình nâng cao</span>
+                            <span class="transition group-open:rotate-180"><i
+                                    class="fa-solid fa-chevron-down"></i></span>
+                        </summary>
+                        <div class="grid grid-cols-2 gap-4 mt-3 animate-fade-in">
+                            <input type="text" id="selector" placeholder="CSS Selector (e.g. .btn)"
+                                class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm rounded-lg px-3 py-2 font-mono focus:outline-none focus:border-zinc-500">
+                            <select id="attribute"
+                                class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-zinc-500">
+                                <option value="href">href (Link)</option>
+                                <option value="src">src (Media)</option>
+                                <option value="text">Text Content</option>
+                                <option value="html">Inner HTML</option>
+                            </select>
+                            <button onclick="startScraping()"
+                                class="col-span-2 w-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+                                <span>Chạy Selector Thủ Công</span> <i class="fa-solid fa-play text-xs"></i>
+                            </button>
+                        </div>
+                    </details>
+                </div>
+
+                <div id="resultArea" class="hidden">
+                    <div class="flex justify-between items-end mb-4 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                        <div>
+                            <h3 class="text-sm font-semibold text-zinc-900 dark:text-white">Kết quả</h3>
+                            <p class="text-xs text-zinc-500 mt-0.5">Tìm thấy <span id="resultCount"
+                                    class="font-mono font-bold">0</span> mục</p>
+                        </div>
+                        <button onclick="copyAll()"
+                            class="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800">
+                            <i class="fa-regular fa-copy"></i> Copy tất cả
+                        </button>
+                    </div>
+                    <div id="resultsList" class="space-y-2"></div>
+                </div>
+
+                <div id="errorArea"
+                    class="hidden p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-lg">
+                    <div class="flex items-start gap-3">
+                        <i class="fa-solid fa-circle-exclamation text-red-500 mt-0.5 text-sm"></i>
+                        <span id="errorMsg" class="text-sm text-red-600 dark:text-red-400 font-medium"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-content-generator" class="hidden space-y-6 animate-fade-in">
+                <div class="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
+                    <p class="text-sm text-blue-800 dark:text-blue-300">
+                        <i class="fa-solid fa-info-circle mr-1"></i>
+                        Tạo link chia sẻ. Khi người khác mở link này, công cụ sẽ tự động quét URL bạn chỉ định.
+                    </p>
+                </div>
+
+                <div class="space-y-2">
+                    <label
+                        class="block text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-500">URL
+                        cần Share</label>
+                    <input type="text" id="genInputUrl" placeholder="https://example.com/..."
+                        class="w-full bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-sm rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-zinc-500 font-mono">
+                </div>
+
+                <button onclick="generateLink()"
+                    class="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition-all shadow-sm">
+                    <i class="fa-solid fa-bolt mr-2"></i> Tạo Link Auto-Run
+                </button>
+
+                <div id="genResultGroup" class="hidden space-y-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                    <label
+                        class="block text-xs font-semibold uppercase tracking-wider text-green-600 dark:text-green-400">Link
+                        của bạn:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="genOutputLink" readonly
+                            class="w-full bg-zinc-100 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-xs rounded-lg px-3 py-2 font-mono select-all focus:outline-none">
+                        <button onclick="copyGenLink()"
+                            class="shrink-0 w-10 h-9 flex items-center justify-center bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-zinc-600 dark:text-zinc-400">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                        <button onclick="testGenLink()"
+                            class="shrink-0 w-10 h-9 flex items-center justify-center bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors text-blue-500">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="loadingOverlay"
+                class="hidden absolute inset-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-xl">
+                <div
+                    class="w-10 h-10 border-4 border-zinc-200 dark:border-zinc-700 border-t-zinc-900 dark:border-t-white rounded-full animate-spin mb-3">
+                </div>
+                <p id="loadingText" class="text-sm font-medium text-zinc-600 dark:text-zinc-300">Đang xử lý...</p>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Theme Management ---
+        function setTheme(theme) {
+            const btns = ['btn-light', 'btn-system', 'btn-dark'];
+            btns.forEach(id => {
+                document.getElementById(id).className = "w-8 h-8 rounded-md flex items-center justify-center text-xs transition-all duration-200 hover:bg-white dark:hover:bg-zinc-700 text-zinc-400";
+            });
+            const activeBtn = document.getElementById(`btn-${theme}`);
+            activeBtn.className = "w-8 h-8 rounded-md flex items-center justify-center text-xs transition-all duration-200 bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm font-bold ring-1 ring-zinc-200 dark:ring-zinc-600";
+
+            if (theme === 'system') {
+                localStorage.removeItem('theme');
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            } else {
+                localStorage.setItem('theme', theme);
+                if (theme === 'dark') document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+            }
+        }
+        setTheme(localStorage.getItem('theme') || 'system');
+
+        // --- 2. Tab Management ---
+        function switchTab(tabName) {
+            const activeClass = "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm";
+            const inactiveClass = "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white";
+            document.getElementById('tab-btn-scraper').className = `flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${tabName === 'scraper' ? activeClass : inactiveClass}`;
+            document.getElementById('tab-btn-generator').className = `flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${tabName === 'generator' ? activeClass : inactiveClass}`;
+            if (tabName === 'scraper') {
+                document.getElementById('tab-content-scraper').classList.remove('hidden');
+                document.getElementById('tab-content-generator').classList.add('hidden');
+            } else {
+                document.getElementById('tab-content-scraper').classList.add('hidden');
+                document.getElementById('tab-content-generator').classList.remove('hidden');
+            }
+        }
+
+        // --- 3. Logic Generator (Tab 2) ---
+        function generateLink() {
+            const inputUrl = document.getElementById('genInputUrl').value.trim();
+            if (!inputUrl) return alert("Vui lòng nhập URL!");
+            const baseUrl = window.location.href.split('#')[0];
+            document.getElementById('genOutputLink').value = `${baseUrl}#GET=${inputUrl}`;
+            document.getElementById('genResultGroup').classList.remove('hidden');
+        }
+
+        function copyGenLink() {
+            const copyText = document.getElementById("genOutputLink");
+            copyText.select();
+            document.execCommand("copy");
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-check text-green-500"></i>';
+            setTimeout(() => btn.innerHTML = originalHtml, 1500);
+        }
+
+        function testGenLink() {
+            const link = document.getElementById('genOutputLink').value;
+            if (link) window.open(link, '_blank');
+        }
+
+        // --- 4. Logic Auto Run ---
+        function checkAutoRun() {
+            const hash = window.location.hash;
+            if (hash && hash.startsWith('#GET=')) {
+                let targetUrl = decodeURIComponent(hash.substring(5)).replace(/^"|"$/g, '');
+                if (targetUrl) {
+                    switchTab('scraper');
+                    document.getElementById('targetUrl').value = targetUrl;
+                    console.log("Auto Run Detected:", targetUrl);
+                    setTimeout(() => startSmartScraping(), 500);
+                }
+            }
+        }
+        window.addEventListener('DOMContentLoaded', checkAutoRun);
+
+        // --- 5. Core Scraper Logic ---
+        function applyPreset(type) {
+            const selectorInput = document.getElementById('selector');
+            const attributeSelect = document.getElementById('attribute');
+            if (type === 'button') { selectorInput.value = '.btnSave'; attributeSelect.value = 'href'; }
+            else if (type === 'image') { selectorInput.value = '.separator a'; attributeSelect.value = 'href'; }
+        }
+
+        async function fetchHtml(url) {
+            const proxies = [
+                { name: 'AllOrigins', url: `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, type: 'json' },
+                { name: 'CorsProxy', url: `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'text' },
+                { name: 'CodeTabs', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, type: 'text' }
+            ];
+            let lastError = null;
+            for (const proxy of proxies) {
+                try {
+                    console.log(`Thử Proxy: ${proxy.name}`);
+                    const response = await fetch(proxy.url);
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    if (proxy.type === 'json') {
+                        const data = await response.json();
+                        if (data.contents) return data.contents;
+                        throw new Error('JSON invalid');
+                    } else {
+                        const text = await response.text();
+                        if (text && text.length > 100) return text;
+                        throw new Error('Empty response');
+                    }
+                } catch (error) { lastError = error; }
+            }
+            throw lastError || new Error('Không thể kết nối qua mọi Proxy.');
+        }
+
+        function setUiLoading(isLoading, text = "Đang xử lý...") {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            if (isLoading) {
+                document.getElementById('resultArea').classList.add('hidden');
+                document.getElementById('errorArea').classList.add('hidden');
+                document.getElementById('loadingText').innerText = text;
+                loadingOverlay.classList.remove('hidden');
+                document.getElementById('resultsList').innerHTML = '';
+            } else {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        function resolveUrl(relativeUrl, baseUrl) {
+            if (relativeUrl && !relativeUrl.startsWith('http') && !relativeUrl.startsWith('//')) {
+                try { return new URL(relativeUrl, new URL(baseUrl).origin).href; } catch (e) { return relativeUrl; }
+            }
+            return relativeUrl;
+        }
+
+        function displayResults(results) {
+            const resultsList = document.getElementById('resultsList');
+            document.getElementById('resultCount').innerText = results.length;
+            resultsList.innerHTML = '';
+
+            results.forEach((item, index) => {
+                const isImage = item.type === 'image' || (typeof item.value === 'string' && item.value.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i) != null);
+
+                const div = document.createElement('div');
+                div.className = "group flex items-center gap-3 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-600 transition-all";
+
+                let iconArea = '';
+                if (item.type === 'share') {
+                    iconArea = `<div class="shrink-0 w-10 h-10 flex items-center justify-center rounded-md bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"><i class="fa-solid fa-share-nodes text-sm"></i></div>`;
+                } else if (item.type === 'credential') {
+                    iconArea = `<div class="shrink-0 w-10 h-10 flex items-center justify-center rounded-md bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400"><i class="fa-solid fa-key text-sm"></i></div>`;
+                } else if (item.type === 'btn') {
+                    iconArea = `<div class="shrink-0 w-10 h-10 flex items-center justify-center rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"><i class="fa-solid fa-download text-sm"></i></div>`;
+                } else if (isImage) {
+                    iconArea = `<div class="shrink-0 w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-md overflow-hidden border border-zinc-200 dark:border-zinc-700 relative"><img src="${item.value}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/64?text=ERR'"><div class="absolute inset-0 bg-black/5 dark:bg-white/5"></div></div>`;
+                } else {
+                    iconArea = `<div class="shrink-0 w-8 h-8 flex items-center justify-center rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-xs font-mono">${index + 1}</div>`;
+                }
+
+                // Nút Download (Chỉ hiện nếu là ảnh)
+                let downloadBtn = '';
+                if (isImage) {
+                    downloadBtn = `
+                    <button onclick="downloadImage('${item.value}')" class="shrink-0 w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 transition opacity-0 group-hover:opacity-100" title="Tải ảnh">
+                        <i class="fa-solid fa-download text-sm"></i>
+                    </button>
+                    `;
+                }
+
+                div.innerHTML = `
+                    ${iconArea}
+                    <div class="flex-grow min-w-0">
+                        ${item.label ? `<div class="text-[10px] font-bold tracking-wider uppercase text-zinc-400 dark:text-zinc-500 mb-0.5">${item.label}</div>` : ''}
+                        <div class="font-mono text-xs text-zinc-700 dark:text-zinc-300 break-all line-clamp-2 select-all">${item.value}</div>
+                    </div>
+                    
+                    <div class="flex gap-1">
+                        ${downloadBtn}
+                        <button onclick="navigator.clipboard.writeText('${item.value}')" class="shrink-0 w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 transition opacity-0 group-hover:opacity-100" title="Copy Link">
+                            <i class="fa-regular fa-copy text-sm"></i>
+                        </button>
+                    </div>
+                `;
+                resultsList.appendChild(div);
+            });
+            document.getElementById('resultArea').classList.remove('hidden');
+        }
+
+        async function startSmartScraping() {
+            const url = document.getElementById('targetUrl').value;
+            setUiLoading(true, "Đang phân tích...");
+            try {
+                if (!url) throw new Error('Vui lòng nhập URL.');
+                const htmlContent = await fetchHtml(url);
+                const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
+                const results = [];
+
+                // 1. TẠO LINK SHARE (Mới thêm)
+                const currentToolUrl = window.location.href.split('#')[0];
+                results.push({
+                    type: 'share',
+                    value: `${currentToolUrl}#GET=${url}`,
+                    label: 'Auto-Run Share Link'
+                });
+
+                // 2. Get Images
+                doc.querySelectorAll('.separator a').forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href && href.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i)) {
+                        results.push({ type: 'image', value: resolveUrl(href, url), label: 'Image' });
+                    }
+                });
+                if (results.filter(r => r.type === 'image').length === 0) {
+                    doc.querySelectorAll('.separator img').forEach(img => {
+                        const src = img.getAttribute('src');
+                        if (src) results.push({ type: 'image', value: resolveUrl(src, url), label: 'Image Preview' });
+                    });
+                }
+
+                // 3. Get Buttons & Deep Scan
+                const buttons = doc.querySelectorAll('.btnSave');
+                for (const btn of buttons) {
+                    const href = btn.getAttribute('href');
+                    if (href) {
+                        const fullLink = resolveUrl(href, url);
+                        results.push({ type: 'btn', value: fullLink, label: 'Download Link' });
+                        try {
+                            setUiLoading(true, `Đang quét tài khoản...`);
+                            const subHtml = await fetchHtml(fullLink);
+                            const subDoc = new DOMParser().parseFromString(subHtml, 'text/html');
+                            const inputE = subDoc.getElementById('e');
+                            const inputP = subDoc.getElementById('p');
+                            if (inputE) results.push({ type: 'credential', value: inputE.value, label: 'Account ID' });
+                            if (inputP) results.push({ type: 'credential', value: inputP.value, label: 'Password' });
+                        } catch (e) { console.warn("Deep Scan Skip", e); }
+                    }
+                }
+
+                if (results.length > 0) displayResults(results);
+                else throw new Error('Không tìm thấy dữ liệu phù hợp.');
+
+            } catch (error) {
+                document.getElementById('errorMsg').innerText = error.message;
+                document.getElementById('errorArea').classList.remove('hidden');
+            } finally { setUiLoading(false); }
+        }
+
+        // Logic Custom Selector
+        async function startScraping() {
+            const url = document.getElementById('targetUrl').value;
+            const selector = document.getElementById('selector').value;
+            const attribute = document.getElementById('attribute').value;
+            setUiLoading(true);
+            try {
+                if (!url) throw new Error('Vui lòng nhập URL.');
+                if (!selector) throw new Error('Vui lòng nhập Selector.');
+                const htmlContent = await fetchHtml(url);
+                const doc = new DOMParser().parseFromString(htmlContent, 'text/html');
+                const elements = doc.querySelectorAll(selector);
+
+                if (elements.length > 0) {
+                    const results = [];
+                    // Cũng thêm link share vào đây nếu muốn
+                    const currentToolUrl = window.location.href.split('#')[0];
+                    results.push({ type: 'share', value: `${currentToolUrl}#GET=${url}`, label: 'Auto-Run Share Link' });
+
+                    elements.forEach(el => {
+                        let res = "";
+                        if (attribute === 'href') res = resolveUrl(el.getAttribute('href'), url);
+                        else if (attribute === 'text') res = el.innerText.trim();
+                        else if (attribute === 'html') res = el.outerHTML;
+                        else res = el.getAttribute(attribute);
+                        if (res) results.push({ type: 'generic', value: res });
+                    });
+                    displayResults(results);
+                } else throw new Error(`Không tìm thấy phần tử "${selector}"`);
+            } catch (error) {
+                document.getElementById('errorMsg').innerText = error.message;
+                document.getElementById('errorArea').classList.remove('hidden');
+            } finally { setUiLoading(false); }
+        }
+
+        function copyAll() {
+            const items = document.querySelectorAll('#resultsList .font-mono');
+            const texts = Array.from(items).map(item => item.innerText).join('\n');
+            const ta = document.createElement("textarea");
+            ta.value = texts; document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+            alert('Đã copy danh sách!');
+        }
+        // --- 6. Logic Download Ảnh ---
+        // --- 6. Logic Download Ảnh (Force Download) ---
+        async function downloadImage(url) {
+            // Lấy nút đang bấm để tạo hiệu ứng
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+
+            // Ngăn người dùng bấm liên tục
+            if (btn.disabled) return;
+
+            try {
+                // 1. Hiệu ứng đang tải
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-blue-500"></i>';
+                btn.disabled = true;
+
+                // 2. Logic tải file
+                let blob = null;
+
+                try {
+                    // Thử tải trực tiếp trước (nhanh nhất)
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        blob = await response.blob();
+                    } else {
+                        throw new Error('Direct fetch failed');
+                    }
+                } catch (e) {
+                    // Nếu lỗi CORS (chặn bảo mật), dùng Proxy để tải
+                    console.log("Đang tải qua Proxy...");
+                    // Sử dụng corsproxy.io để vượt qua chặn CORS
+                    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                    const proxyResponse = await fetch(proxyUrl);
+
+                    if (!proxyResponse.ok) throw new Error("Không thể tải ảnh này.");
+                    blob = await proxyResponse.blob();
+                }
+
+                // 3. Tạo link ảo để tải xuống
+                if (blob) {
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+
+                    // Lấy tên file từ URL (hoặc đặt mặc định nếu không lấy được)
+                    let fileName = url.substring(url.lastIndexOf('/') + 1).split('?')[0];
+                    if (!fileName || fileName.length > 20) fileName = `image-${Date.now()}.jpg`;
+
+                    link.download = fileName;
+                    document.body.appendChild(link);
+                    link.click(); // Giả lập cú click
+
+                    // Dọn dẹp
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(blobUrl);
+
+                    // 4. Báo thành công (Dấu tích xanh)
+                    btn.innerHTML = '<i class="fa-solid fa-check text-green-500"></i>';
+                }
+
+            } catch (error) {
+                console.error(error);
+                // Báo lỗi (Dấu X đỏ)
+                btn.innerHTML = '<i class="fa-solid fa-xmark text-red-500"></i>';
+                alert("Ảnh này bị chặn bảo mật quá cao, không thể tải tự động.");
+            } finally {
+                // Trả lại nút bình thường sau 2 giây
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+
+        async function pasteAndScrape() {
+            try {
+                // Đọc nội dung từ clipboard
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    // Gán vào input
+                    const input = document.getElementById('targetUrl');
+                    input.value = text;
+
+                    // Hiệu ứng visual một chút để biết đã paste
+                    input.focus();
+                    input.classList.add('ring-2', 'ring-green-500');
+                    setTimeout(() => input.classList.remove('ring-2', 'ring-green-500'), 500);
+
+                    // Gọi hàm quét
+                    startSmartScraping();
+                } else {
+                    alert("Clipboard trống!");
+                }
+            } catch (err) {
+                console.error('Lỗi đọc clipboard:', err);
+                alert('Trình duyệt chặn quyền truy cập Clipboard. Vui lòng dán thủ công (Ctrl+V).');
+            }
+        }
+    </script>
+</body>
+
+</html>
