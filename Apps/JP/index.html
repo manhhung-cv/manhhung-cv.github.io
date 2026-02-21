@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra cứu bưu phẩm JP Post</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .copy-feedback { position: absolute; background: rgba(0,0,0,0.7); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; top: -25px; left: 50%; transform: translateX(-50%); pointer-events: none; opacity: 0; transition: opacity 0.2s; white-space: nowrap; }
+        .loading-dots:after { content: ' .'; animation: dots 1s steps(5, end) infinite; }
+        @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' ..'; } 60% { content: ' ...'; } 80%, 100% { content: ''; } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen p-4 md:p-8">
+
+    <div class="max-w-3xl mx-auto space-y-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="w-12 h-12 bg-red-50 rounded-xl text-red-600 flex items-center justify-center">
+                    <i class="fa-solid fa-box text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Tra cứu JP Post</h1>
+                    <p class="text-sm text-gray-500">Dịch trạng thái & địa điểm trực tiếp</p>
+                </div>
+            </div>
+
+            <form id="trackForm" class="space-y-5">
+                <div class="relative flex items-center">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 text-gray-400"></i>
+                    <input type="text" id="trackingCode" placeholder="Nhập mã vận đơn..." class="w-full pl-12 pr-14 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none text-lg font-medium" />
+                    <button type="button" id="pasteBtn" class="absolute right-3 p-2 text-gray-400 hover:text-red-600 bg-white rounded-lg border border-gray-100 shadow-sm transition-colors">
+                        <i class="fa-solid fa-paste"></i>
+                    </button>
+                </div>
+                
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                        <label class="cursor-pointer"><input type="radio" name="serverMode" value="auto" class="peer sr-only server-radio" checked><div class="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-50 border border-gray-200 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition-all">Tự động</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="serverMode" value="0" class="peer sr-only server-radio"><div class="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-50 border border-gray-200 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition-all">S1</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="serverMode" value="1" class="peer sr-only server-radio"><div class="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-50 border border-gray-200 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition-all">S2</div></label>
+                        <label class="cursor-pointer"><input type="radio" name="serverMode" value="2" class="peer sr-only server-radio"><div class="px-4 py-2.5 rounded-xl text-sm font-semibold text-gray-500 bg-gray-50 border border-gray-200 peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 transition-all">S3</div></label>
+                    </div>
+                    <button type="submit" id="submitBtn" class="w-full md:w-auto px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl flex items-center justify-center space-x-2 shrink-0 h-[46px]">
+                        <span id="btnText">Tra cứu</span><i id="btnIcon" class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+
+            <div id="loadingInfo" class="hidden mt-4 text-sm text-blue-600 flex items-center"><i class="fa-solid fa-arrows-rotate fa-spin mr-2"></i><span>Đang kết nối: <strong id="activeProxyText">...</strong></span></div>
+            <div id="errorInfo" class="hidden mt-6 p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl flex items-start space-x-3"><i class="fa-solid fa-circle-exclamation shrink-0 mt-0.5"></i><p id="errorText"></p></div>
+            <div id="historySection" class="hidden mt-8 pt-6 border-t border-gray-100">
+                <div class="flex justify-between items-center mb-3"><h3 class="text-sm font-semibold text-gray-700">Lịch sử tra cứu</h3><button onclick="clearHistory()" class="text-xs text-red-500 hover:text-red-700"><i class="fa-solid fa-trash-can mr-1"></i> Xóa tất cả</button></div>
+                <div id="historyList" class="flex flex-col gap-2"></div>
+            </div>
+        </div>
+
+        <div id="resultsContainer" class="hidden space-y-6 fade-in"></div>
+    </div>
+
+    <script>
+        window.currentTrackingData = null;
+        
+        // Cache lưu trữ các địa điểm đã dịch để tránh gọi API nhiều lần
+        const translationCache = JSON.parse(localStorage.getItem('jpLocationCache') || '{}');
+
+        const translateDict = {
+            "引受": "Đã nhận hàng (Chấp nhận)", "到着": "Đã đến bưu cục", "中継": "Đang trung chuyển", "持ち出し中": "Đang đi giao",
+            "お届け先にお届け済み": "Giao hàng thành công", "ご不在のため持ち戻り": "Vắng nhà, mang về bưu cục", "保管": "Đang lưu kho",
+            "差出人に返送": "Hoàn trả người gửi", "転送": "Đã chuyển tiếp", "国際交換局に到着": "Đến bưu cục quốc tế",
+            "国際交換局から発送": "Rời bưu cục quốc tế", "通関手続中": "Đang làm thủ tục hải quan", "窓口でお渡し": "Đã giao tại quầy",
+            "調査中": "Đang điều tra", "発送": "Đã gửi đi", "あて所不明のため返送": "Hoàn trả do sai địa chỉ",
+            "ゆうパック": "Yu-Pack", "レターパックプラス": "Letter Pack Plus", "レターパックライト": "Letter Pack Light",
+            "ゆうパケット": "Yu-Packet", "EMS": "EMS"
+        };
+
+        const t = (text) => {
+            if (!text) return ""; const trimmed = text.trim(); if (translateDict[trimmed]) return translateDict[trimmed];
+            let res = trimmed; for (const [k, v] of Object.entries(translateDict)) { if (res.includes(k)) res = res.replace(k, v); }
+            return res;
+        };
+
+        // --- HÀM TỰ ĐỘNG DỊCH API ---
+        window.autoTranslateLocation = async (elementId, text, historyIdx) => {
+            const el = document.getElementById(elementId);
+            if (!el || !text) return;
+            
+            const cleanText = text.trim();
+            
+            // Xử lý cập nhật giao diện và dữ liệu copy
+            const applyTranslation = (translated) => {
+                el.innerHTML = `<span class="text-blue-600 font-medium">${translated}</span> <span class="text-[10px] text-gray-400">(${cleanText})</span>`;
+                if (window.currentTrackingData && window.currentTrackingData.history[historyIdx]) {
+                    window.currentTrackingData.history[historyIdx].translatedOffice = translated;
+                }
+            };
+
+            // Ưu tiên dùng Cache nếu đã từng dịch
+            if (translationCache[cleanText]) {
+                applyTranslation(translationCache[cleanText]);
+                return;
+            }
+
+            try {
+                // Gọi API MyMemory
+                const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(cleanText)}&langpair=ja|vi`);
+                const data = await response.json();
+                
+                if (data.responseData && data.responseData.translatedText) {
+                    const translated = data.responseData.translatedText;
+                    // Lưu vào cache
+                    translationCache[cleanText] = translated;
+                    localStorage.setItem('jpLocationCache', JSON.stringify(translationCache));
+                    
+                    applyTranslation(translated);
+                } else {
+                    el.innerHTML = `<span class="text-gray-700">${cleanText}</span> <span class="text-[10px] text-gray-400">(Không dịch được)</span>`;
+                }
+            } catch (err) {
+                console.error("Lỗi dịch:", err);
+                el.innerHTML = `<span class="text-gray-700">${cleanText}</span> <span class="text-[10px] text-red-400">(Lỗi mạng)</span>`;
+            }
+        };
+
+        const trackForm = document.getElementById('trackForm');
+        const trackingCodeInput = document.getElementById('trackingCode');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const activeProxyText = document.getElementById('activeProxyText');
+        const errorInfo = document.getElementById('errorInfo');
+        const errorText = document.getElementById('errorText');
+
+        // --- CÁC HÀM CƠ BẢN GIỮ NGUYÊN ---
+        document.getElementById('pasteBtn').addEventListener('click', async () => {
+            const text = await navigator.clipboard.readText();
+            if (text) trackingCodeInput.value = text.trim();
+        });
+
+        const loadHistory = () => {
+            const history = JSON.parse(localStorage.getItem('jpPostHistory') || '[]');
+            if (history.length === 0) { document.getElementById('historySection').classList.add('hidden'); return; }
+            document.getElementById('historySection').classList.remove('hidden');
+            document.getElementById('historyList').innerHTML = history.map(item => `
+                <div class="group bg-gray-50 hover:bg-red-50 border border-gray-100 p-3 rounded-xl flex items-center justify-between transition-colors">
+                    <div onclick="reTrack('${item.code}')" class="cursor-pointer flex-1">
+                        <p class="font-mono font-bold text-gray-800 group-hover:text-red-600 transition-colors">${item.code}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">${item.type} • ${item.status}</p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <span class="text-xs text-gray-400 group-hover:hidden">${item.date}</span>
+                        <div class="hidden group-hover:flex items-center gap-1">
+                            <button onclick="copyHistoryCode('${item.code}', this)" class="p-1.5 text-gray-400 hover:text-blue-600"><i class="fa-regular fa-copy"></i></button>
+                            <button onclick="deleteHistoryItem('${item.code}')" class="p-1.5 text-gray-400 hover:text-red-600"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        const saveHistory = (code, type, status) => {
+            let history = JSON.parse(localStorage.getItem('jpPostHistory') || '[]');
+            history = history.filter(item => item.code !== code);
+            history.unshift({ code, type, status, date: new Date().toLocaleDateString('vi-VN') });
+            if (history.length > 10) history.pop();
+            localStorage.setItem('jpPostHistory', JSON.stringify(history));
+            loadHistory();
+        };
+
+        window.deleteHistoryItem = (code) => {
+            let history = JSON.parse(localStorage.getItem('jpPostHistory') || '[]');
+            localStorage.setItem('jpPostHistory', JSON.stringify(history.filter(i => i.code !== code)));
+            loadHistory();
+        };
+
+        window.copyHistoryCode = (code, btn) => {
+            navigator.clipboard.writeText(code).then(() => {
+                btn.innerHTML = '<i class="fa-solid fa-check text-green-600"></i>';
+                setTimeout(() => btn.innerHTML = '<i class="fa-regular fa-copy"></i>', 1500);
+            });
+        };
+
+        window.reTrack = (code) => { trackingCodeInput.value = code; trackForm.dispatchEvent(new Event('submit')); };
+        window.clearHistory = () => { localStorage.removeItem('jpPostHistory'); loadHistory(); };
+
+        window.copyText = (text, element) => {
+            navigator.clipboard.writeText(text).then(() => {
+                const fb = element.querySelector('.copy-feedback');
+                if (fb) { fb.style.opacity = '1'; setTimeout(() => fb.style.opacity = '0', 2000); }
+            });
+        };
+
+        window.copyFullHistory = () => {
+            const d = window.currentTrackingData;
+            let text = `Mã: ${d.summary.code}\nTrạng thái: ${d.history[d.history.length-1].status}\n\nLịch trình:\n`;
+            d.history.forEach(h => {
+                // Sử dụng bản dịch nếu có, nếu không thì dùng bản gốc
+                const locationDisplay = h.translatedOffice ? `${h.translatedOffice} (${h.office})` : h.office;
+                text += `• ${h.date}: ${h.status} - ${locationDisplay}\n`;
+            });
+            navigator.clipboard.writeText(text).then(() => alert('Đã sao chép lịch trình!'));
+        };
+
+        // --- FETCH & PARSE ---
+        const proxiesConfig = [
+            { id: '0', name: 'Server 1', getUrl: (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
+            { id: '1', name: 'Server 2', getUrl: (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}` },
+            { id: '2', name: 'Server 3', getUrl: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}` }
+        ];
+
+        const fetchHtml = async (targetUrl, mode) => {
+            let tries = (mode === 'auto') ? proxiesConfig : [proxiesConfig.find(p => p.id === mode)];
+            for (let p of tries) {
+                try {
+                    activeProxyText.textContent = p.name;
+                    const res = await fetch(p.getUrl(targetUrl));
+                    if (res.ok) { const html = await res.text(); if (html.includes('<html')) return html; }
+                } catch (e) {}
+            }
+            throw new Error("Lỗi kết nối máy chủ.");
+        };
+
+        const parseHtml = (html) => {
+            const parser = new DOMParser(); const doc = parser.parseFromString(html, 'text/html');
+            if (doc.querySelector('.req_error')) throw new Error("Mã vận đơn không tồn tại.");
+            const tables = doc.querySelectorAll('table.tableType01');
+            let summary = {}, history = [];
+            tables.forEach(tNode => {
+                const head = tNode.querySelector('th')?.innerText;
+                if (head?.includes('お問い合わせ番号')) {
+                    const tds = tNode.querySelectorAll('tr')[1].querySelectorAll('td');
+                    summary = { code: tds[0].innerText.trim(), type: t(tds[1].innerText) };
+                }
+                if (head?.includes('状態発生日')) {
+                    tNode.querySelectorAll('tr').forEach((r, idx) => {
+                        if (idx === 0) return; const c = r.querySelectorAll('td');
+                        if (c.length >= 5) history.push({ date: c[0].innerText.trim(), status: t(c[1].innerText), rawStatus: c[1].innerText.trim(), office: c[3].innerText.trim(), translatedOffice: null });
+                    });
+                }
+            });
+            return { summary, history };
+        };
+
+        const render = (data) => {
+            const last = data.history[data.history.length-1].status;
+            resultsContainer.innerHTML = `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="relative group cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded-xl transition-colors" onclick="copyText('${data.summary.code}', this)">
+                        <span class="copy-feedback">Đã sao chép!</span><p class="text-sm text-gray-500 mb-1">Mã vận đơn</p>
+                        <p class="text-xl font-bold font-mono text-gray-900 group-hover:text-red-600">${data.summary.code}</p>
+                    </div>
+                    <div class="relative group cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded-xl transition-colors" onclick="copyText('${data.summary.type}', this)">
+                        <span class="copy-feedback">Đã sao chép!</span><p class="text-sm text-gray-500 mb-1">Loại</p>
+                        <p class="text-lg font-semibold text-gray-800 group-hover:text-red-600">${data.summary.type}</p>
+                    </div>
+                    <div class="relative group cursor-pointer hover:bg-gray-50 p-2 -m-2 rounded-xl transition-colors" onclick="copyText('${last}', this)">
+                        <span class="copy-feedback">Đã sao chép!</span><p class="text-sm text-gray-500 mb-1">Hiện tại</p>
+                        <p class="text-lg font-bold text-red-600">${last}</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-lg font-bold text-gray-900">Lịch sử</h2>
+                        <div class="flex gap-2">
+                            <button onclick="copyFullHistory()" class="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs flex items-center gap-2"><i class="fa-regular fa-copy"></i> Sao chép</button>
+                        </div>
+                    </div>
+                    <div class="relative border-l-2 border-gray-100 ml-3 space-y-8">
+                        ${data.history.map((h, idx) => `
+                            <div class="relative pl-8">
+                                <div class="absolute -left-[17px] top-1 w-[34px] h-[34px] flex items-center justify-center rounded-full bg-white border-2 ${idx === data.history.length-1 ? 'border-red-500' : 'border-gray-200'}">
+                                    <i class="fa-solid ${h.rawStatus.includes('お届け済み') ? 'fa-check text-green-500' : 'fa-clock text-gray-400'} text-sm"></i>
+                                </div>
+                                <div class="flex flex-col md:flex-row md:items-start justify-between gap-2">
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-bold text-gray-800">${h.status}</h3>
+                                        <div class="flex items-center gap-2 text-sm text-gray-600 mt-2">
+                                            <i class="fa-solid fa-location-dot text-gray-400"></i>
+                                            <span id="loc-${data.summary.code}-${idx}">
+                                                ${h.office ? `<span class="text-blue-500"><i class="fa-solid fa-circle-notch fa-spin"></i> Đang dịch...</span> <span class="text-[10px] text-gray-400">(${h.office})</span>` : '<span class="text-gray-400">-</span>'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-lg">${h.date}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            resultsContainer.classList.remove('hidden');
+            saveHistory(data.summary.code, data.summary.type, last);
+
+            // Kích hoạt dịch tự động cho tất cả các địa điểm vừa render
+            data.history.forEach((h, idx) => {
+                if(h.office) {
+                    autoTranslateLocation(`loc-${data.summary.code}-${idx}`, h.office, idx);
+                }
+            });
+        };
+
+        trackForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const code = trackingCodeInput.value.replace(/[^a-zA-Z0-9]/g, '');
+            if (code.length < 11) return;
+            
+            submitBtn.disabled = true; resultsContainer.classList.add('hidden'); errorInfo.classList.add('hidden');
+            document.getElementById('loadingInfo').classList.remove('hidden');
+
+            try {
+                const html = await fetchHtml(`https://trackings.post.japanpost.jp/services/srv/search/direct?searchKind=S002&locale=ja&reqCodeNo1=${code}`, document.querySelector('input[name="serverMode"]:checked').value);
+                const data = parseHtml(html);
+                window.currentTrackingData = data;
+                render(data);
+            } catch (err) { errorText.textContent = err.message; errorInfo.classList.remove('hidden'); }
+            finally { submitBtn.disabled = false; document.getElementById('loadingInfo').classList.add('hidden'); }
+        });
+
+        loadHistory();
+        const savedS = localStorage.getItem('jpPostServerMode') || 'auto';
+        const rad = document.querySelector(`input[value="${savedS}"]`); if(rad) rad.checked = true;
+        document.querySelectorAll('.server-radio').forEach(r => r.addEventListener('change', e => localStorage.setItem('jpPostServerMode', e.target.value)));
+    </script>
+</body>
+</html>

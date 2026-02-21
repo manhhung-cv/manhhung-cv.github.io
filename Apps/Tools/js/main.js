@@ -1,8 +1,28 @@
-import { CATEGORIES, TOOLS } from './config.js';
+import { CATEGORIES as CONFIG_CATEGORIES, TOOLS } from './config.js';
 import { UI } from './ui.js';
 
 const appContent = document.getElementById('app-content');
 const breadcrumbsNav = document.getElementById('breadcrumbs');
+
+// ==========================================
+// 0. TỰ ĐỘNG KHỞI TẠO DANH MỤC TỪ TOOLS
+// ==========================================
+// Clone mảng CATEGORIES từ config để có thể tự động bổ sung
+const CATEGORIES = [...CONFIG_CATEGORIES];
+const existingCatIds = CATEGORIES.map(c => c.id);
+
+// Duyệt qua tất cả công cụ, nếu thấy catId mới thì tự động tạo danh mục
+TOOLS.forEach(tool => {
+    if (!existingCatIds.includes(tool.catId)) {
+        CATEGORIES.push({
+            id: tool.catId,
+            name: tool.catId.charAt(0).toUpperCase() + tool.catId.slice(1), // Viết hoa chữ đầu (vd: 'finance' -> 'Finance')
+            icon: 'fas fa-folder', // Icon mặc định cho danh mục mới
+            desc: 'Danh mục tự động sinh'
+        });
+        existingCatIds.push(tool.catId);
+    }
+});
 
 // ==========================================
 // 1. QUẢN LÝ GIAO DIỆN (THEME SÁNG/TỐI)
@@ -48,7 +68,7 @@ async function handleRoute() {
    try {
         if (!type || hash === 'home') {
             renderBreadcrumbs([]);
-            renderHome(); // Đổi tên hàm ở đây
+            renderHome(); 
         } else if (type === 'c') {
             const category = CATEGORIES.find(c => c.id === id);
             if (!category) throw new Error('Không tìm thấy danh mục');
@@ -71,7 +91,7 @@ async function handleRoute() {
             if (module.init) module.init();
         }
     } catch (error) {
-        // CẬP NHẬT: Giữ lại Breadcrumbs để người dùng không bị mất phương hướng
+        // Giữ lại Breadcrumbs để người dùng không bị mất phương hướng
         renderBreadcrumbs([{ name: 'Lỗi 404', link: null }]);
         
         appContent.innerHTML = `
@@ -97,7 +117,6 @@ function renderBreadcrumbs(pathArray) {
     breadcrumbsNav.innerHTML = html;
 }
 
-// Render Bento Grid Trang chủ
 // Render Giao diện Trang chủ (Danh mục & Tất cả công cụ)
 function renderHome() {
     let html = `
@@ -112,7 +131,7 @@ function renderHome() {
             <div class="bento-grid">
     `;
 
-    // Render Danh mục (Tab 1)
+    // Render Danh mục (Tab 1) - Bây giờ CATEGORIES đã bao gồm cả các mục tự sinh
     CATEGORIES.forEach(cat => {
         const toolCount = TOOLS.filter(t => t.catId === cat.id).length;
         html += `
@@ -140,7 +159,7 @@ function renderHome() {
     const sortedTools = [...TOOLS].sort((a, b) => {
         const aFav = favs.includes(a.id) ? 1 : 0;
         const bFav = favs.includes(b.id) ? 1 : 0;
-        return bFav - aFav; // Nếu bFav > aFav thì b xếp trước a
+        return bFav - aFav; 
     });
 
     // 3. Render Tất cả công cụ đã sắp xếp (Tab 2)
@@ -167,18 +186,15 @@ function renderHome() {
         </div>
     `;
 
-    // Đổ HTML vào vùng chứa nội dung
     appContent.innerHTML = html;
 
     // Logic xử lý khi click chuyển Tab
     const tabBtns = document.querySelectorAll('#home-tabs .tab-btn');
     tabBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            // Xóa class active ở tất cả tab và nội dung
             document.querySelectorAll('#home-tabs .tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('#app-content .tab-pane').forEach(p => p.classList.remove('active'));
 
-            // Thêm class active cho tab được click và nội dung tương ứng
             const targetId = e.target.getAttribute('data-target');
             e.target.classList.add('active');
             document.getElementById(targetId).classList.add('active');
@@ -201,7 +217,6 @@ function renderCategoryTools(catId, catName) {
     } else {
         const favs = JSON.parse(localStorage.getItem('favTools') || '[]');
         
-        // Sắp xếp yêu thích lên đầu luôn trong danh mục
         const sortedCatTools = [...catTools].sort((a, b) => {
             const aFav = favs.includes(a.id) ? 1 : 0;
             const bFav = favs.includes(b.id) ? 1 : 0;
@@ -236,9 +251,9 @@ function renderCategoryTools(catId, catName) {
 const cmdPalette = document.getElementById('cmd-palette');
 const cmdInput = document.getElementById('cmd-input');
 const cmdResults = document.getElementById('cmd-results');
-const shortcutHint = document.getElementById('shortcut-hint'); // Nắm lấy thẻ kbd
+const shortcutHint = document.getElementById('shortcut-hint');
 
-// TÍNH NĂNG MỚI: Nhận diện hệ điều hành để hiển thị phím tắt
+// Nhận diện hệ điều hành để hiển thị phím tắt
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0 || navigator.userAgent.includes('Mac');
 if (shortcutHint) {
     shortcutHint.textContent = isMac ? '⌘/' : 'Ctrl F';
@@ -249,7 +264,7 @@ function toggleCmd() {
     if (!cmdPalette.classList.contains('hidden')) {
         cmdInput.focus();
         cmdInput.value = '';
-        renderCmdResults(TOOLS); // Mặc định hiện tất cả
+        renderCmdResults(TOOLS); 
     }
 }
 
@@ -282,29 +297,22 @@ cmdPalette.addEventListener('click', (e) => {
     }
 });
 
-// Xử lý phím tắt (Chặn Chrome mặc định)
+// Xử lý phím tắt
 document.addEventListener('keydown', (e) => {
-    // Kiểm tra phím Ctrl (Win) hoặc Cmd (Mac)
     const isModifier = e.ctrlKey || e.metaKey;
-    // Kiểm tra phím F hoặc dấu /
     const isKeyMatch = e.key.toLowerCase() === 'f' || e.key === '/';
 
-    // Xử lý bật Cmd Palette (Ctrl + F hoặc Cmd + /)
     if (isModifier && isKeyMatch) {
-        e.preventDefault(); // Chặn thanh tìm kiếm của Chrome
+        e.preventDefault(); 
         toggleCmd();
     }
 
-    // Đóng bằng phím Escape
     if (e.key === 'Escape' && !cmdPalette.classList.contains('hidden')) {
         toggleCmd();
     }
 });
 
-// Nút bấm mở Cmd Palette trên giao diện (Topbar)
 document.getElementById('open-cmd').addEventListener('click', toggleCmd);
-
-// Nút bấm đóng Cmd Palette (Chữ ESC bên trong thanh tìm kiếm)
 document.getElementById('close-cmd').addEventListener('click', toggleCmd);
 
 // Khởi chạy Router lần đầu khi load trang và lắng nghe thay đổi URL
@@ -315,39 +323,30 @@ handleRoute();
 // QUẢN LÝ YÊU THÍCH (FAVORITES)
 // ==========================================
 window.toggleFavorite = function(e, toolId) {
-    e.preventDefault();   // Chặn hành động chuyển trang của thẻ <a>
-    e.stopPropagation();  // Chặn sự kiện click bị "lan" ra thẻ <a> bên ngoài
+    e.preventDefault();   
+    e.stopPropagation();  
 
-    // Lấy danh sách yêu thích từ LocalStorage
     let favs = JSON.parse(localStorage.getItem('favTools') || '[]');
     let isAdded = false;
     
-    // Tìm tên công cụ để hiện trong thông báo
     const tool = TOOLS.find(t => t.id === toolId);
     const toolName = tool ? tool.name : 'Công cụ';
 
     if (favs.includes(toolId)) {
-        // Nếu đã có -> Bỏ yêu thích
         favs = favs.filter(id => id !== toolId);
         isAdded = false;
     } else {
-        // Nếu chưa có -> Thêm vào yêu thích
         favs.push(toolId);
         isAdded = true;
     }
     
-    // Lưu lại vào trình duyệt
     localStorage.setItem('favTools', JSON.stringify(favs));
     
-    // --------------------------------------------------
-    // HIỂN THỊ THÔNG BÁO (TOAST ALERT)
-    // --------------------------------------------------
     if (isAdded) {
         UI.showAlert('Đã yêu thích', `Đã thêm <b>${toolName}</b> lên đầu danh sách.`, 'success');
     } else {
         UI.showAlert('Bỏ yêu thích', `Đã xóa <b>${toolName}</b> khỏi danh sách yêu thích.`, 'info');
     }
 
-    // Tự động render lại giao diện trang chủ để đẩy sao lên đầu
     handleRoute(); 
 };
