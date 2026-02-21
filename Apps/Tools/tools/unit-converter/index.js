@@ -147,7 +147,7 @@ export function template() {
 
 export function init() {
     // --- TỪ ĐIỂN ĐƠN VỊ ---
-    const UNIT_DATA = {
+  const UNIT_DATA = {
         length: {
             base: 'm',
             units: {
@@ -184,7 +184,9 @@ export function init() {
                 'mg': { name: 'Miligram (mg)', factor: 0.000001 },
                 't': { name: 'Tấn (t)', factor: 1000 },
                 'lb': { name: 'Pound (lb)', factor: 0.45359237 },
-                'oz': { name: 'Ounce (oz)', factor: 0.02834952 }
+                'oz': { name: 'Ounce (oz)', factor: 0.02834952 },
+                'jin': { name: 'Cân Trung Quốc (Jin/市斤)', factor: 0.5 },    // Đã thêm Cân Trung Quốc
+                'liang': { name: 'Lạng Trung Quốc (Liang/市两)', factor: 0.05 } // Đã thêm Lạng Trung Quốc
             },
             default1: 'kg', default2: 'g'
         },

@@ -130,7 +130,7 @@ export const TOOLS = [
     },
     {
         id: 'random-generator',
-        catId: 'system', 
+        catId: 'system',
         name: 'Quay Số / Bốc Thăm',
         icon: 'fas fa-dice',
         desc: 'Công cụ quay số, chọn tên ngẫu nhiên tích hợp thuật toán Crypto chống thiên vị.',
@@ -154,7 +154,7 @@ export const TOOLS = [
     },
     {
         id: 'password-generator',
-        catId: 'system', 
+        catId: 'system',
         name: 'Tạo Mật Khẩu',
         icon: 'fas fa-key',
         desc: 'Tạo mật khẩu siêu bảo mật với Crypto API và kiểm tra độ mạnh của mật khẩu theo thời gian thực.',
@@ -178,7 +178,7 @@ export const TOOLS = [
     },
     {
         id: 'device-info',
-        catId: 'system', 
+        catId: 'system',
         name: 'Thông tin Thiết bị',
         icon: 'fas fa-info-circle',
         desc: 'Truy xuất các thông số ẩn của thiết bị: Hệ điều hành, màn hình, RAM, CPU, User Agent và Mạng.',
@@ -186,10 +186,26 @@ export const TOOLS = [
     },
     {
         id: 'ip-checker',
-        catId: 'system', 
+        catId: 'system',
         name: 'Địa chỉ IP của tôi',
         icon: 'fas fa-network-wired',
         desc: 'Xem ngay Public IP, vị trí địa lý, nhà mạng (ISP) và bản đồ tương tác OpenStreetMap.',
         tags: ['ip', 'địa chỉ ip', 'mạng', 'vị trí', 'bản đồ', 'network', 'isp']
+    },
+    {
+        id: 'email-signature',
+        catId: 'system', // Bạn có thể thay đổi catId này cho phù hợp với danh mục trong hệ thống của bạn (ví dụ: 'office', 'tools'...)
+        name: 'Tạo chữ ký Email',
+        icon: 'fas fa-envelope-open-text',
+        desc: 'Thiết kế chữ ký email chuyên nghiệp, tương thích tốt với Gmail, Outlook, Apple Mail và dán trực tiếp dễ dàng.',
+        tags: ['email', 'chữ ký', 'signature', 'gmail', 'outlook', 'mail', 'thiết kế', 'văn phòng']
+    },
+    {
+        id: 'reverse-image-search',
+        catId: 'system', 
+        name: 'Tìm kiếm bằng hình ảnh',
+        icon: 'fas fa-image',
+        desc: 'Truy tìm nguồn gốc, ảnh gốc và ảnh tương tự bằng cách upload lên Google Lens, Yandex, Bing.',
+        tags: ['image', 'search', 'ảnh', 'tìm kiếm', 'google lens', 'yandex', 'bing', 'reverse image']
     },
 ];
