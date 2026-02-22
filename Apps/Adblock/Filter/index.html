@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" href="/Asset/logo/logo.png" />
+    <link rel="apple-touch-icon" href="/Asset/logo/logo.png" sizes="150x150" />
+
+    <meta property="og:image" content="/Asset/Banner/Banner.png" />
+    <meta property="og:title" content="HunqStore" />
+    <meta property="og:description" content="Thiết kế và lập trình Đinh Mạnh Hùng" />
+    <title>Filter Adblock Manager</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { bg: '#09090b', surface: '#18181b', border: '#27272a', primary: '#3b82f6', text: '#e4e4e7', muted: '#a1a1aa', danger: '#ef4444' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: theme('colors.bg');
+            color: theme('colors.text');
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.border');
+            border-radius: 3px;
+        }
+
+        .loader {
+            border: 2px solid #333;
+            border-top: 2px solid #fff;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .sidebar-transition {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-content {
+            transition: all 0.2s ease-out;
+        }
+
+        .fab-active {
+            transform: scale(0.95);
+            background-color: theme('colors.primary');
+            color: white;
+        }
+
+        /* Secured Elements Control */
+        .secured-hidden {
+            display: none !important;
+        }
+
+        .secured-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            filter: grayscale(1);
+        }
+    </style>
+</head>
+
+<body class="h-[100dvh] flex overflow-hidden text-sm">
+
+    <div id="mobileBackdrop" onclick="toggleSidebar(false)"
+        class="fixed inset-0 bg-black/80 backdrop-blur-[2px] z-40 hidden md:hidden opacity-0 transition-opacity duration-300">
+    </div>
+
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-50 w-72 bg-surface border-r border-border flex flex-col transform -translate-x-full md:translate-x-0 md:static sidebar-transition shadow-2xl md:shadow-none">
+        <div class="h-14 flex items-center justify-between px-4 border-b border-border">
+            <div class="flex items-center gap-2 font-semibold text-white tracking-tight">
+                <div id="statusDot" class="w-2 h-2 rounded-full bg-yellow-500 transition-colors"></div> Filter Adblock
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openCreateModal()"
+                    class="action-sensitive text-muted hover:text-white p-2 rounded hover:bg-white/5 transition secured-disabled"
+                    title="Tạo mới">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+                <button onclick="toggleSidebar(false)" class="md:hidden text-muted hover:text-white p-2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="p-3">
+            <div class="relative">
+                <svg class="absolute left-3 top-2.5 text-zinc-500" width="14" height="14" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="searchInput" onkeyup="filterFileList()" placeholder="Lọc danh sách..."
+                    class="w-full bg-bg border border-border rounded-md py-2 pl-9 pr-3 text-xs focus:outline-none focus:border-zinc-600 transition text-white placeholder-zinc-600">
+            </div>
+        </div>
+        <div class="flex-1 overflow-y-auto px-2 space-y-1" id="fileList">
+            <div class="p-4 text-center text-xs text-muted italic">Đang tải danh sách...</div>
+        </div>
+        <div class="p-3 border-t border-border grid grid-cols-2 gap-2 bg-surface safe-area-bottom">
+            <button onclick="triggerImport()"
+                class="action-sensitive flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium text-muted hover:text-white bg-bg border border-border rounded hover:bg-zinc-800 transition secured-disabled">Nhập</button>
+            <button onclick="exportCurrentFile()"
+                class="flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium text-muted hover:text-white bg-bg border border-border rounded hover:bg-zinc-800 transition">Xuất</button>
+            <input type="file" id="importFile" hidden onchange="handleImport(this)">
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-bg transition-all duration-300 relative">
+        <header
+            class="h-14 border-b border-border flex items-center justify-between px-4 bg-bg/80 backdrop-blur-md sticky top-0 z-10">
+            <div class="flex items-center gap-3 min-w-0 overflow-hidden">
+                <button onclick="toggleSidebar(true)" class="md:hidden text-muted hover:text-white p-1 -ml-1"><svg
+                        width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg></button>
+                <div class="flex flex-col min-w-0">
+                    <div class="flex items-center gap-2">
+                        <h1 id="currentFileName" class="text-sm font-semibold text-white truncate">Chọn file...</h1>
+                        <button onclick="renameCurrentFile()" id="renameBtn"
+                            class="action-sensitive hidden text-muted hover:text-white secured-hidden"
+                            title="Đổi tên"><svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg></button>
+                        <button onclick="deleteCurrentFile()" id="deleteBtn"
+                            class="action-sensitive hidden text-muted hover:text-red-500 secured-hidden ml-1"
+                            title="Xóa file này">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                    <span id="saveStatus" class="hidden text-[10px] text-yellow-500 font-medium tracking-wide">● Chưa
+                        lưu</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="toggleAuth()" id="authBtn"
+                    class="p-2 text-muted hover:text-white transition rounded border border-transparent hover:border-border"
+                    title="Khóa/Mở khóa">
+                    <svg id="lockIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <svg id="unlockIcon" class="hidden text-green-500" width="16" height="16" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                    </svg>
+                </button>
+                <div class="h-4 w-[1px] bg-border mx-1"></div>
+
+                <button onclick="toggleSearchBar()" class="p-2 text-muted hover:text-white transition"
+                    title="Tìm kiếm (Cmd+K)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg></button>
+
+                <button onclick="copyLink()" class="lg:hidden p-2 text-muted hover:text-white transition"
+                    title="Copy Link"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg></button>
+
+                <div
+                    class="hidden lg:flex items-center bg-surface border border-border rounded px-2 py-1 max-w-xs transition hover:border-zinc-600 ml-2">
+                    <span class="text-[10px] text-muted mr-2 select-none">URL</span>
+                    <input id="rawUrl" readonly
+                        class="bg-transparent text-[11px] text-blue-400 focus:outline-none w-24 truncate cursor-pointer"
+                        onclick="this.select()">
+                    <button onclick="copyLink()" class="ml-2 text-muted hover:text-white"><svg width="10" height="10"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg></button>
+                </div>
+
+                <button onclick="saveFilter()" id="saveBtn"
+                    class="action-sensitive bg-white text-black hover:bg-gray-200 px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-2 disabled:opacity-50 h-8 ml-2 secured-disabled"><span
+                        id="saveText">Lưu</span></button>
+            </div>
+        </header>
+
+        <div id="searchBar"
+            class="hidden absolute top-16 left-1/2 transform -translate-x-1/2 w-[90%] max-w-md bg-surface border border-border rounded-lg shadow-2xl p-2 z-30 flex gap-2">
+            <div class="flex-1 relative">
+                <input type="text" id="searchInputEditor" placeholder="Tìm kiếm hoặc :số-dòng"
+                    class="w-full bg-bg border border-border rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-primary pl-8 font-mono">
+                <span class="absolute left-2.5 top-2 text-muted text-xs">/</span>
+            </div>
+            <button onclick="findNext()"
+                class="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-xs">Next</button>
+            <button onclick="toggleSearchBar()"
+                class="px-3 py-1 hover:bg-zinc-800 text-muted rounded text-xs">✕</button>
+        </div>
+
+        <div class="flex-1 relative flex flex-col group">
+            <div id="readOnlyBadge"
+                class="absolute top-4 right-6 px-2 py-1 bg-zinc-800/80 border border-zinc-700 text-[10px] text-zinc-400 rounded pointer-events-none z-10 flex items-center gap-1">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg> Read Only
+            </div>
+
+            <textarea id="editor" disabled
+                class="flex-1 w-full h-full bg-bg p-4 md:p-6 font-mono text-sm leading-6 text-gray-300 resize-none outline-none focus:bg-[#0c0c0f] transition-colors disabled:cursor-not-allowed disabled:opacity-80"
+                spellcheck="false" placeholder="Chọn file để xem..." oninput="handleInput()"></textarea>
+
+            <button id="smartNavBtn"
+                class="absolute right-6 bottom-12 w-10 h-10 bg-surface border border-border rounded-full shadow-lg flex items-center justify-center text-muted hover:text-white hover:border-primary transition z-20">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="7 13 12 18 17 13"></polyline>
+                    <polyline points="7 6 12 11 17 6"></polyline>
+                </svg>
+            </button>
+
+            <div
+                class="h-8 bg-surface border-t border-border flex items-center px-4 justify-between text-[10px] text-muted font-mono select-none safe-area-bottom">
+                <div class="flex gap-3"><span id="statLines">L:0</span><span id="statRules"
+                        class="text-blue-400">R:0</span></div>
+                <div id="lastUpdateLabel" class="opacity-75 italic truncate max-w-[120px]"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="toast"
+        class="fixed bottom-4 left-4 right-4 md:left-auto md:right-10 md:bottom-10 md:w-auto translate-y-20 opacity-0 transition-all duration-300 bg-surface border border-border text-white px-4 py-3 rounded shadow-2xl flex items-center gap-3 z-[70]">
+        <div id="toastIcon"></div>
+        <div id="toastMsg" class="text-sm font-medium"></div>
+    </div>
+
+    <div id="pinModal"
+        class="fixed inset-0 bg-black/90 backdrop-blur-sm hidden z-[90] flex items-center justify-center px-4">
+        <div
+            class="bg-surface border border-border rounded-lg w-full max-w-xs p-6 shadow-2xl modal-content text-center">
+            <div class="mx-auto w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center mb-4 text-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg></div>
+            <h3 class="text-lg font-semibold mb-1 text-white">Xác thực</h3>
+            <p class="text-xs text-muted mb-4">Nhập mã PIN để vào chế độ chỉnh sửa</p><input type="password"
+                id="pinInput" placeholder="••••" maxlength="10"
+                class="w-full bg-bg border border-border rounded px-3 py-2 text-center text-lg text-white mb-4 focus:outline-none focus:border-primary tracking-widest font-mono">
+            <div class="flex justify-between gap-2"><button onclick="closeModal('pinModal')"
+                    class="flex-1 px-3 py-2 text-xs text-muted hover:text-white border border-border rounded">Hủy</button><button
+                    onclick="submitPin()"
+                    class="flex-1 px-3 py-2 text-xs bg-primary text-white rounded font-semibold hover:bg-blue-600 transition">Mở
+                    khóa</button></div>
+        </div>
+    </div>
+
+    <div id="jumpModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[65] flex items-center justify-center px-4">
+        <div class="bg-surface border border-border rounded-lg w-full max-w-sm p-6 shadow-2xl modal-content">
+            <h3 class="text-lg font-semibold mb-4 text-white">Đi đến dòng</h3><input type="number" id="jumpInput"
+                placeholder="Nhập số dòng..."
+                class="w-full bg-bg border border-border rounded px-3 py-2 text-sm text-white mb-4 focus:outline-none focus:border-primary">
+            <div class="flex justify-end gap-2"><button onclick="closeModal('jumpModal')"
+                    class="px-3 py-2 text-xs text-muted hover:text-white">Hủy</button><button onclick="submitJump()"
+                    class="px-3 py-2 text-xs bg-primary text-white rounded">Đi tới</button></div>
+        </div>
+    </div>
+
+    <div id="createModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[60] flex items-center justify-center px-4">
+        <div class="bg-surface border border-border rounded-lg w-full max-w-sm p-6 shadow-2xl modal-content">
+            <h3 class="text-lg font-semibold mb-4 text-white">Tạo Filter</h3><input type="text" id="newFileName"
+                placeholder="Tên file"
+                class="w-full bg-bg border border-border rounded px-3 py-2 text-sm text-white mb-4 focus:outline-none focus:border-primary">
+            <div class="flex justify-end gap-2"><button onclick="closeModal('createModal')"
+                    class="px-3 py-2 text-xs text-muted hover:text-white">Hủy</button><button onclick="submitNewFile()"
+                    class="px-3 py-2 text-xs bg-primary text-white rounded">Tạo</button></div>
+        </div>
+    </div>
+
+    <div id="renameModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[60] flex items-center justify-center px-4">
+        <div class="bg-surface border border-border rounded-lg w-full max-w-sm p-6 shadow-2xl modal-content">
+            <h3 class="text-lg font-semibold mb-4 text-white">Đổi tên</h3><input type="text" id="renameInput"
+                class="w-full bg-bg border border-border rounded px-3 py-2 text-sm text-white mb-4 focus:outline-none focus:border-primary">
+            <div class="flex justify-end gap-2"><button onclick="closeModal('renameModal')"
+                    class="px-3 py-2 text-xs text-muted hover:text-white">Hủy</button><button onclick="submitRename()"
+                    class="px-3 py-2 text-xs bg-primary text-white rounded">Lưu</button></div>
+        </div>
+    </div>
+
+    <div id="confirmModal"
+        class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-[60] flex items-center justify-center px-4">
+        <div class="bg-surface border border-border rounded-lg w-full max-w-sm p-6 shadow-2xl modal-content">
+            <h3 id="confirmTitle" class="text-lg font-semibold mb-2 text-white">Xác nhận</h3>
+            <p id="confirmMsg" class="text-sm text-gray-400 mb-6">?</p>
+            <div class="flex justify-end gap-2"><button id="btnConfirmCancel"
+                    class="px-3 py-2 text-xs text-muted hover:text-white">Hủy</button><button id="btnConfirmOk"
+                    class="px-3 py-2 text-xs bg-red-600 text-white rounded">Đồng ý</button></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://mehpnuxvxongkdtgaeob.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1laHBudXh2eG9uZ2tkdGdhZW9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2MjgxMzIsImV4cCI6MjA4MTIwNDEzMn0.5XaDtVfw6t5ipKXUJ6f-BtusJLJdfiJ-TSUCvBAkZCw';
+        const { createClient } = supabase;
+        const client = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let state = { currentFile: null, isDirty: false, files: [], contentCache: '', lastSearchIndex: -1, isUnlocked: false };
+        let confirmResolver = null, longPressTimer = null;
+
+        const els = {
+            editor: document.getElementById('editor'),
+            fileList: document.getElementById('fileList'),
+            fileName: document.getElementById('currentFileName'),
+            rawUrl: document.getElementById('rawUrl'),
+            saveStatus: document.getElementById('saveStatus'),
+            renameBtn: document.getElementById('renameBtn'),
+            deleteBtn: document.getElementById('deleteBtn'),
+            updateLabel: document.getElementById('lastUpdateLabel'),
+            sidebar: document.getElementById('sidebar'),
+            backdrop: document.getElementById('mobileBackdrop'),
+            searchBar: document.getElementById('searchBar'),
+            searchInput: document.getElementById('searchInputEditor'),
+            smartNavBtn: document.getElementById('smartNavBtn'),
+            stats: { lines: document.getElementById('statLines'), rules: document.getElementById('statRules') },
+            lockIcon: document.getElementById('lockIcon'),
+            unlockIcon: document.getElementById('unlockIcon'),
+            statusDot: document.getElementById('statusDot'),
+            readOnlyBadge: document.getElementById('readOnlyBadge'),
+            sensitiveBtns: document.querySelectorAll('.action-sensitive')
+        };
+
+        // --- INITIALIZATION ---
+        async function init() {
+            showToast('loading', 'Đang kết nối...');
+
+            // Timeout fail-safe (tự tắt sau 10 giây nếu mạng lag)
+            const timeout = setTimeout(() => {
+                if (document.getElementById('toastMsg').innerText === 'Đang kết nối...') {
+                    showToast('error', 'Kết nối quá lâu');
+                }
+            }, 10000);
+
+            try {
+                await loadFileList();
+                clearTimeout(timeout);
+
+                if (state.files.length > 0) {
+                    const defaultFile = state.files.find(f => f.name === 'AdbFilter.txt') || state.files[0];
+                    await loadFileData(defaultFile.name);
+                } else {
+                    hideToast();
+                    els.fileList.innerHTML = '<div class="p-4 text-center text-xs text-muted">Danh sách trống</div>';
+                    els.fileName.innerText = 'Chưa có file';
+                    els.editor.value = '';
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('error', 'Lỗi khởi tạo');
+            }
+
+            setupSmartNav();
+            setAuthMode(false);
+        }
+
+        // --- AUTH & PIN LOGIC ---
+        function toggleAuth() {
+            if (state.isUnlocked) {
+                if (confirm('Bạn muốn khóa chế độ chỉnh sửa?')) setAuthMode(false);
+            } else {
+                openModal('pinModal', 'pinInput');
+            }
+        }
+
+        async function submitPin() {
+            const pin = document.getElementById('pinInput').value;
+            if (!pin) return;
+            const btn = document.querySelector('#pinModal button:last-child');
+            const originalText = btn.innerText;
+            btn.innerText = "Kiểm tra..."; btn.disabled = true;
+
+            const { data, error } = await client.rpc('verify_pin', { attempt: pin });
+
+            btn.innerText = originalText; btn.disabled = false;
+            document.getElementById('pinInput').value = '';
+
+            if (error) {
+                console.error(error);
+                showToast('error', 'Lỗi kết nối server');
+                return;
+            }
+
+            if (data === true) {
+                closeModal('pinModal');
+                showToast('success', 'Đã mở khóa quyền Admin');
+                setAuthMode(true);
+            } else {
+                showToast('error', 'Mã PIN không đúng');
+                document.getElementById('pinInput').focus();
+            }
+        }
+
+        function setAuthMode(unlocked) {
+            state.isUnlocked = unlocked;
+            if (unlocked) {
+                els.lockIcon.classList.add('hidden');
+                els.unlockIcon.classList.remove('hidden');
+                els.statusDot.className = "w-2 h-2 rounded-full bg-green-500 transition-colors shadow-[0_0_8px_rgba(34,197,94,0.6)]";
+                els.readOnlyBadge.classList.add('hidden');
+                els.editor.disabled = false;
+
+                // Mở khóa các nút chức năng
+                els.sensitiveBtns.forEach(b => {
+                    b.classList.remove('secured-disabled');
+                    if ((b.id === 'renameBtn' || b.id === 'deleteBtn') && state.currentFile) {
+                        b.classList.remove('secured-hidden');
+                    }
+                });
+            } else {
+                els.lockIcon.classList.remove('hidden');
+                els.unlockIcon.classList.add('hidden');
+                els.statusDot.className = "w-2 h-2 rounded-full bg-yellow-500 transition-colors";
+                els.readOnlyBadge.classList.remove('hidden');
+                els.editor.disabled = true;
+
+                // Khóa các nút chức năng
+                els.sensitiveBtns.forEach(b => {
+                    b.classList.add('secured-disabled');
+                    if (b.id === 'renameBtn' || b.id === 'deleteBtn') b.classList.add('secured-hidden');
+                });
+            }
+        }
+
+        document.getElementById('pinInput').addEventListener('keydown', e => { if (e.key === 'Enter') submitPin(); });
+
+        // --- CORE FUNCTIONS ---
+        async function loadFileList() {
+            const { data, error } = await client.from('adblock_filters').select('name, created_at, updated_at').order('name');
+            if (error) { showToast('error', 'Lỗi tải danh sách'); return; }
+            state.files = data.map(f => ({ ...f, displayTime: f.updated_at || f.created_at }));
+            renderFileList();
+        }
+
+        function renderFileList(filterText = '') {
+            const list = state.files.filter(f => f.name.toLowerCase().includes(filterText.toLowerCase()));
+            els.fileList.innerHTML = list.map(f => `
+                <div onclick="switchFile('${f.name}')" class="group flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer transition mb-1 border border-transparent ${state.currentFile === f.name ? 'bg-primary/10 border-primary/20' : 'hover:bg-white/5'}">
+                    <div class="flex-1 min-w-0"><div class="flex items-center gap-2"><span class="text-xs font-medium truncate ${state.currentFile === f.name ? 'text-primary' : 'text-zinc-300'}">${f.name}</span></div><div class="text-[10px] text-muted truncate mt-0.5">${timeAgo(f.displayTime)}</div></div>
+                    <button onclick="deleteFile(event, '${f.name}')" class="action-sensitive p-2 -mr-2 text-muted hover:text-red-500 transition ${!state.isUnlocked ? 'hidden' : ''}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg></button>
+                </div>`).join('');
+        }
+
+        async function loadFileData(name) {
+            if (state.isDirty) { if (!await showConfirmDialog("Chưa lưu", `Chuyển file?`, false)) return; }
+            toggleSidebar(false);
+            state.currentFile = name; els.fileName.innerText = name;
+
+            // Hiển thị nút rename/delete nếu đã unlock
+            if (state.isUnlocked) {
+                els.renameBtn.classList.remove('secured-hidden');
+                els.deleteBtn.classList.remove('secured-hidden');
+            }
+
+            setDirty(false);
+            const fileInfo = state.files.find(f => f.name === name); els.updateLabel.innerText = fileInfo ? timeAgo(fileInfo.displayTime) : '';
+            renderFileList(document.getElementById('searchInput').value);
+            els.editor.value = "Loading..."; els.editor.disabled = true;
+
+            const { data, error } = await client.from('adblock_filters').select('content').eq('name', name).single();
+            els.editor.disabled = !state.isUnlocked;
+            if (error) {
+                els.editor.value = "";
+                showToast('error', 'Lỗi đọc file');
+            } else {
+                els.editor.value = data.content;
+                state.contentCache = data.content;
+                analyzeContent();
+                hideToast();
+            }
+
+            const { data: urlData } = client.storage.from('public-filters').getPublicUrl(name);
+            els.rawUrl.value = urlData.publicUrl;
+        }
+
+        async function saveFilter() {
+            if (!state.currentFile || !state.isUnlocked) return;
+            const content = els.editor.value; const btn = document.getElementById('saveBtn'); const now = new Date().toISOString();
+            btn.disabled = true; document.getElementById('saveText').innerText = "Lưu...";
+            const [dbRes, stRes] = await Promise.all([client.from('adblock_filters').update({ content, updated_at: now }).eq('name', state.currentFile), client.storage.from('public-filters').upload(state.currentFile, new Blob([content]), { upsert: true })]);
+            btn.disabled = false; document.getElementById('saveText').innerText = "Lưu";
+            if (dbRes.error) { showToast('error', 'Lỗi lưu DB!'); } else { state.contentCache = content; setDirty(false); const fIndex = state.files.findIndex(f => f.name === state.currentFile); if (fIndex !== -1) { state.files[fIndex].displayTime = now; renderFileList(document.getElementById('searchInput').value); els.updateLabel.innerText = "Vừa cập nhật"; } showToast('success', 'Đã lưu!'); }
+        }
+
+        // --- UTILS & SEARCH ---
+        function toggleSearchBar() { els.searchBar.classList.toggle('hidden'); if (!els.searchBar.classList.contains('hidden')) { els.searchInput.focus(); els.searchInput.select(); } }
+        function findNext() {
+            const query = els.searchInput.value;
+            if (!query) return;
+            if (query.startsWith(':')) { jumpToLine(parseInt(query.substring(1))); return; }
+            const text = els.editor.value;
+            let index = text.toLowerCase().indexOf(query.toLowerCase(), state.lastSearchIndex + 1);
+            if (index === -1) index = text.toLowerCase().indexOf(query.toLowerCase(), 0);
+            if (index !== -1) {
+                state.lastSearchIndex = index; els.editor.focus(); els.editor.setSelectionRange(index, index + query.length);
+                const textLines = text.substring(0, index).split('\n').length;
+                els.editor.scrollTop = (textLines * 24) - (els.editor.clientHeight / 2);
+            } else showToast('error', 'Không tìm thấy');
+        }
+        function jumpToLine(lineNum) {
+            if (isNaN(lineNum)) return;
+            const lines = els.editor.value.split('\n');
+            if (lineNum < 1) lineNum = 1; if (lineNum > lines.length) lineNum = lines.length;
+            let charIndex = 0; for (let i = 0; i < lineNum - 1; i++) charIndex += lines[i].length + 1;
+            els.editor.focus(); els.editor.setSelectionRange(charIndex, charIndex);
+            els.editor.scrollTop = (lineNum * 24) - (els.editor.clientHeight / 2);
+            showToast('success', `Đến dòng ${lineNum}`);
+        }
+        function openJumpModal() { openModal('jumpModal', 'jumpInput'); }
+        function submitJump() { const val = document.getElementById('jumpInput').value; if (val && !isNaN(parseInt(val))) jumpToLine(parseInt(val)); closeModal('jumpModal'); }
+        function setupSmartNav() {
+            const btn = els.smartNavBtn;
+            const startHandler = (e) => { btn.classList.add('fab-active'); longPressTimer = setTimeout(() => { els.editor.scrollTop = els.editor.scrollHeight; showToast('success', 'Xuống cuối trang'); longPressTimer = null; if (navigator.vibrate) navigator.vibrate(50); }, 500); };
+            const endHandler = (e) => { btn.classList.remove('fab-active'); if (longPressTimer) { clearTimeout(longPressTimer); openJumpModal(); } };
+            btn.addEventListener('mousedown', startHandler); btn.addEventListener('mouseup', endHandler);
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); startHandler(e); }); btn.addEventListener('touchend', (e) => { e.preventDefault(); endHandler(e); });
+            btn.addEventListener('mouseleave', () => { clearTimeout(longPressTimer); btn.classList.remove('fab-active'); });
+        }
+
+        function switchFile(name) { if (state.currentFile === name) { toggleSidebar(false); return; } loadFileData(name); }
+        function timeAgo(d) { if (!d) return 'Mới'; const s = Math.floor((new Date() - new Date(d)) / 1000); if (s > 86400) return Math.floor(s / 86400) + "d trước"; if (s > 3600) return Math.floor(s / 3600) + "h trước"; return "Vừa xong"; }
+        function toggleSidebar(show) { if (show) { els.sidebar.classList.remove('-translate-x-full'); els.backdrop.classList.remove('hidden'); setTimeout(() => els.backdrop.classList.remove('opacity-0'), 10); } else { els.sidebar.classList.add('-translate-x-full'); els.backdrop.classList.add('opacity-0'); setTimeout(() => els.backdrop.classList.add('hidden'), 300); } }
+        function showConfirmDialog(title, msg, isDanger) { return new Promise((resolve) => { const m = document.getElementById('confirmModal'); document.getElementById('confirmTitle').innerText = title; document.getElementById('confirmMsg').innerText = msg; document.getElementById('btnConfirmOk').className = isDanger ? "px-3 py-2 text-xs bg-red-600 text-white rounded" : "px-3 py-2 text-xs bg-primary text-white rounded"; m.classList.remove('hidden'); confirmResolver = (r) => { m.classList.add('hidden'); resolve(r); }; }); }
+        document.getElementById('btnConfirmOk').onclick = () => confirmResolver && confirmResolver(true); document.getElementById('btnConfirmCancel').onclick = () => confirmResolver && confirmResolver(false);
+        function openModal(id, focus) { const m = document.getElementById(id); m.classList.remove('hidden'); setTimeout(() => { m.classList.remove('opacity-0'); m.querySelector('.modal-content').classList.remove('scale-95'); }, 10); if (focus) document.getElementById(focus).focus(); }
+        function closeModal(id) { const m = document.getElementById(id); m.classList.add('opacity-0'); m.querySelector('.modal-content').classList.add('scale-95'); setTimeout(() => m.classList.add('hidden'), 200); }
+        function handleInput() { setDirty(els.editor.value !== state.contentCache); analyzeContent(); }
+        function setDirty(d) { state.isDirty = d; els.saveStatus.className = d ? "text-[10px] text-yellow-500 font-medium tracking-wide" : "hidden"; }
+        function analyzeContent() { const lines = els.editor.value.split('\n'); let rules = 0; lines.forEach(l => { if (l.trim() && !l.trim().startsWith('!')) rules++; }); els.stats.lines.innerText = `L:${lines.length}`; els.stats.rules.innerText = `R:${rules}`; }
+
+        function showToast(type, msg) {
+            const t = document.getElementById('toast');
+            t.classList.remove('translate-y-20', 'opacity-0');
+            t.style.borderColor = type === 'success' ? '#22c55e' : (type === 'error' ? '#ef4444' : '#3b82f6');
+            document.getElementById('toastIcon').innerHTML = type === 'loading' ? '<div class="loader"></div>' : (type === 'success' ? '✔' : '✖');
+            document.getElementById('toastMsg').innerText = msg;
+            if (type !== 'loading') setTimeout(() => hideToast(), 2500);
+        }
+
+        function hideToast() { document.getElementById('toast').classList.add('translate-y-20', 'opacity-0'); }
+
+        function copyLink() {
+            if (els.rawUrl.value) { navigator.clipboard.writeText(els.rawUrl.value); showToast('success', 'Đã copy link'); }
+            else { showToast('error', 'Chưa có link'); }
+        }
+
+        function triggerImport() { if (state.isUnlocked) document.getElementById('importFile').click(); }
+        async function handleImport(input) { const file = input.files[0]; if (!file) return; if (state.isDirty && !await showConfirmDialog('Ghi đè?', 'Mất dữ liệu chưa lưu?', true)) return; const r = new FileReader(); r.onload = e => { els.editor.value = e.target.result; handleInput(); showToast('success', 'Đã nhập'); }; r.readAsText(file); input.value = ''; }
+        function exportCurrentFile() { if (!state.currentFile) return showToast('error', 'Chọn file'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([els.editor.value])); a.download = state.currentFile; a.click(); }
+
+        // --- FILE OPERATIONS ---
+
+        function renameCurrentFile() { if (state.isUnlocked) { openModal('renameModal', 'renameInput'); document.getElementById('renameInput').value = state.currentFile.replace('.txt', ''); } }
+        async function submitRename() { let n = document.getElementById('renameInput').value.trim(); if (!n) return closeModal('renameModal'); if (!n.endsWith('.txt')) n += '.txt'; closeModal('renameModal'); showToast('loading', 'Đổi tên...'); const { error } = await client.from('adblock_filters').update({ name: n }).eq('name', state.currentFile); if (error) return showToast('error', error.message); await client.storage.from('public-filters').move(state.currentFile, n); state.currentFile = n; els.fileName.innerText = n; await loadFileList(); showToast('success', 'Xong'); }
+
+        function openCreateModal() { if (state.isUnlocked) openModal('createModal', 'newFileName'); }
+
+        // [UPDATED] Create with Header
+        async function submitNewFile() {
+            let n = document.getElementById('newFileName').value.trim();
+            if (!n) return;
+            if (!n.endsWith('.txt')) n += '.txt';
+            closeModal('createModal');
+            showToast('loading', 'Tạo...');
+            const now = new Date().toISOString();
+            const { error } = await client.from('adblock_filters').insert({
+                name: n,
+                content: `[Adblock Plus 2.0]\n! ${n}\n! Created: ${now}\n`,
+                created_at: now,
+                updated_at: now
+            });
+            if (error) showToast('error', error.message);
+            else {
+                await loadFileList();
+                await loadFileData(n);
+                showToast('success', 'Xong');
+            }
+        }
+
+        // [UPDATED] Delete Logic (Single & List)
+        async function deleteCurrentFile() {
+            if (!state.currentFile) return;
+            await deleteFile(null, state.currentFile);
+        }
+
+        async function deleteFile(e, n) {
+            if (e) e.stopPropagation();
+            if (!state.isUnlocked) return;
+            if (!await showConfirmDialog("Xóa?", `Xóa vĩnh viễn ${n}?`, true)) return;
+
+            showToast('loading', 'Đang xóa...');
+            const old = [...state.files];
+
+            // Optimistic UI update
+            state.files = state.files.filter(f => f.name !== n);
+            renderFileList(document.getElementById('searchInputEditor').value); // Re-render list
+
+            // If deleting currently open file
+            if (state.currentFile === n) {
+                state.currentFile = null;
+                els.editor.value = '';
+                els.fileName.innerText = 'Chọn file...';
+                els.renameBtn.classList.add('secured-hidden');
+                els.deleteBtn.classList.add('secured-hidden');
+                setDirty(false);
+            }
+
+            try {
+                const { error: stErr } = await client.storage.from('public-filters').remove([n]);
+                const { error: dbErr } = await client.from('adblock_filters').delete({ count: 'exact' }).eq('name', n);
+
+                if (stErr || dbErr) throw new Error(dbErr?.message || stErr?.message);
+
+                showToast('success', 'Đã xóa');
+                if (state.files.length === 0) els.fileList.innerHTML = '<div class="p-4 text-center text-xs text-muted">Danh sách trống</div>';
+            } catch (err) {
+                state.files = old;
+                renderFileList();
+                showToast('error', err.message);
+            }
+        }
+
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveFilter(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); toggleSearchBar(); }
+            if (e.key === 'Escape') { closeModal('createModal'); closeModal('renameModal'); closeModal('confirmModal'); closeModal('jumpModal'); closeModal('pinModal'); els.searchBar.classList.add('hidden'); toggleSidebar(false); }
+        });
+
+        init();
+    </script>
+</body>
+
+</html>

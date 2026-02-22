@@ -32,7 +32,7 @@ export function template() {
                 color: var(--text-main); font-size: 0.95rem; outline: none; 
             }
 
-            /* Checkbox Grid (Giữ lại layout Grid) */
+            /* Checkbox Grid */
             .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
 
             /* Tabs */
@@ -48,7 +48,7 @@ export function template() {
             .tab-content.active { display: block; animation: fadeIn 0.3s; }
             @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-            /* Preview Wrapper hiển thị cả 4 */
+            /* Preview Wrapper */
             .preview-container {
                 display: flex; flex-direction: column; gap: 24px;
                 padding: 20px; background: var(--bg-sec); 
@@ -59,7 +59,7 @@ export function template() {
             /* Google Preview */
             .gg-preview { font-family: Arial, sans-serif; background: var(--bg-main); padding: 16px; border-radius: 8px; border: 1px solid var(--border); }
             .gg-url { font-size: 0.85rem; color: var(--text-main); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-            .gg-url img { width: 16px; height: 16px; border-radius: 50%; background: #ccc; }
+            .gg-url img { width: 16px; height: 16px; border-radius: 50%; background: var(--border); object-fit: cover; }
             .gg-title { font-size: 1.25rem; color: #1a0dab; text-decoration: none; margin-bottom: 4px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .gg-desc { font-size: 0.85rem; color: var(--text-mut); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
             :root[data-theme="dark"] .gg-title { color: #8ab4f8; }
@@ -88,7 +88,7 @@ export function template() {
         <div class="flex-between" style="margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
             <div>
                 <h1 class="h1">Meta Tag Generator</h1>
-                <p class="text-mut">Tạo thẻ Meta chuẩn SEO. Lưu trữ và xem trước mạnh mẽ.</p>
+                <p class="text-mut">Tạo thẻ Meta chuẩn SEO. Lưu trữ và tạo khung HTML Boilerplate mạnh mẽ.</p>
             </div>
             
             <div class="flex-row" style="gap: 8px; flex-wrap: wrap;">
@@ -109,6 +109,7 @@ export function template() {
                     <button class="mini-tab-btn" data-target="form-og">Open Graph (FB)</button>
                     <button class="mini-tab-btn" data-target="form-tw">Twitter</button>
                     <button class="mini-tab-btn" data-target="form-misc">Nâng cao</button>
+                    <button class="mini-tab-btn" data-target="form-cdn"><i class="fas fa-layer-group"></i> Tài nguyên & Khung</button>
                 </div>
 
                 <form id="meta-form">
@@ -124,11 +125,20 @@ export function template() {
                             <label class="form-label">Mô tả (Description) <span class="text-mut" style="font-weight:normal; float:right;" id="cnt-desc">0/160</span></label>
                             <textarea class="form-control-alone meta-input" id="in-desc" rows="3" placeholder="Mô tả ngắn gọn về trang web của bạn (Nên dưới 160 ký tự)..."></textarea>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">URL Trang web (Canonical)</label>
-                            <div class="ig">
-                                <input type="url" class="form-control meta-input" id="in-url" placeholder="https://example.com/page">
-                                <button type="button" class="btn-paste" data-target="in-url" title="Dán"><i class="fas fa-paste"></i></button>
+                        <div class="grid-2" style="gap: 16px;">
+                            <div class="form-group">
+                                <label class="form-label">URL Trang web (Canonical)</label>
+                                <div class="ig">
+                                    <input type="url" class="form-control meta-input" id="in-url" placeholder="https://example.com">
+                                    <button type="button" class="btn-paste" data-target="in-url" title="Dán"><i class="fas fa-paste"></i></button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Favicon URL (Icon Website)</label>
+                                <div class="ig">
+                                    <input type="url" class="form-control meta-input" id="in-favicon" placeholder="https://example.com/favicon.ico">
+                                    <button type="button" class="btn-paste" data-target="in-favicon" title="Dán"><i class="fas fa-paste"></i></button>
+                                </div>
                             </div>
                         </div>
                         <div class="grid-2" style="gap: 16px;">
@@ -262,7 +272,7 @@ export function template() {
                         </div>
 
                         <div style="border-top: 1px solid var(--border); padding-top: 16px;">
-                            <label class="form-label" style="color: #3b82f6;"><i class="fab fa-apple"></i> Apple Web App (PWA)</label>
+                            <label class="form-label" style="color: #3b82f6;"><i class="fab fa-apple"></i> Apple Web App</label>
                             <div class="form-group">
                                 <label class="form-label">Apple Touch Icon URL</label>
                                 <div class="ig">
@@ -289,6 +299,46 @@ export function template() {
                             </div>
                         </div>
                     </div>
+
+                    <div class="tab-content" id="form-cdn">
+                        <div class="grid-2" style="gap: 16px;">
+                            <div class="form-group">
+                                <label class="form-label">Ngôn ngữ trang (Language)</label>
+                                <input type="text" class="form-control-alone meta-input" id="in-lang" value="vi" placeholder="vi, en, fr...">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Web Manifest (PWA)</label>
+                                <div class="ig">
+                                    <input type="url" class="form-control meta-input" id="in-manifest" placeholder="/manifest.json">
+                                    <button type="button" class="btn-paste" data-target="in-manifest"><i class="fas fa-paste"></i></button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+                            <label class="form-label">Tích hợp thư viện nhanh (CDN)</label>
+                            <div class="check-grid">
+                                <label class="check-label"><input type="checkbox" class="checkbox meta-input" id="in-cdn-tailwind"> Tailwind CSS (Script)</label>
+                                <label class="check-label"><input type="checkbox" class="checkbox meta-input" id="in-cdn-bootstrap"> Bootstrap 5 (CSS/JS)</label>
+                                <label class="check-label"><input type="checkbox" class="checkbox meta-input" id="in-cdn-fa"> FontAwesome 6.4</label>
+                                <label class="check-label"><input type="checkbox" class="checkbox meta-input" id="in-cdn-jquery"> jQuery 3.6</label>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 16px;">
+                            <label class="form-label">Thẻ tùy chỉnh (Google Fonts, Custom CSS/JS...)</label>
+                            <textarea class="form-control-alone meta-input" id="in-custom-head" rows="4" placeholder="Dán các thẻ <link> hoặc <script> của bạn vào đây..."></textarea>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
+                            <label class="check-label" style="font-weight: 600; color: #3b82f6; display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" class="checkbox meta-input" id="in-full-html" checked> 
+                                Tạo khung HTML5 hoàn chỉnh (Boilerplate)
+                            </label>
+                            <p style="font-size: 0.8rem; color: var(--text-mut); margin: 4px 0 0 24px;">Tắt tùy chọn này nếu bạn chỉ muốn copy riêng phần nội dung thẻ cho vào thẻ &lt;head&gt; đã có sẵn.</p>
+                        </div>
+                    </div>
+
                 </form>
 
                 <button class="btn btn-primary" id="btn-mt-copy-main" style="width: 100%; margin-top: 24px; justify-content: center; padding: 12px; font-size: 1.05rem;">
@@ -302,15 +352,18 @@ export function template() {
                     
                     <div>
                         <div class="preview-heading" style="color: #3b82f6;"><i class="fas fa-file-code"></i> Xem trước mã HTML</div>
-                        <textarea id="mt-code-output" class="textarea" rows="10" 
-                            style="border: 1px solid var(--border); border-radius: 8px; width: 100%; padding: 16px; background: var(--bg-main); font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #3b82f6; resize: vertical;" 
+                        <textarea id="mt-code-output" class="textarea" rows="18" 
+                            style="border: 1px solid var(--border); border-radius: 8px; width: 100%; padding: 16px; background: var(--bg-main); font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #3b82f6; resize: vertical; white-space: pre;" 
                             readonly></textarea>
                     </div>
 
                     <div>
                         <div class="preview-heading"><i class="fab fa-google" style="color: #ea4335;"></i> Google Search</div>
                         <div class="gg-preview">
-                            <div class="gg-url"><img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23888'/></svg>" alt="icon"> <span id="pv-gg-url">example.com</span></div>
+                            <div class="gg-url">
+                                <img id="pv-gg-favicon" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23888'/></svg>" alt="icon"> 
+                                <span id="pv-gg-url">example.com</span>
+                            </div>
                             <div class="gg-title" id="pv-gg-title">Tiêu đề trang web của bạn</div>
                             <div class="gg-desc" id="pv-gg-desc">Mô tả tóm tắt nội dung trang web hiển thị trên kết quả tìm kiếm Google...</div>
                         </div>
@@ -374,7 +427,7 @@ export function init() {
                 const targetId = btn.getAttribute('data-target');
                 const targetInput = document.getElementById(targetId);
                 targetInput.value = text;
-                targetInput.dispatchEvent(new Event('input')); // Cập nhật lại HTML preview
+                targetInput.dispatchEvent(new Event('input')); 
             } catch (err) {
                 UI.showAlert('Lỗi', 'Trình duyệt chặn lấy dữ liệu Clipboard. Hãy dán thủ công.', 'error');
             }
@@ -385,7 +438,7 @@ export function init() {
     const inputs = document.querySelectorAll('.meta-input');
     const outCode = document.getElementById('mt-code-output');
     
-    const pGgTitle = document.getElementById('pv-gg-title'); const pGgDesc = document.getElementById('pv-gg-desc'); const pGgUrl = document.getElementById('pv-gg-url');
+    const pGgTitle = document.getElementById('pv-gg-title'); const pGgDesc = document.getElementById('pv-gg-desc'); const pGgUrl = document.getElementById('pv-gg-url'); const pGgFavicon = document.getElementById('pv-gg-favicon');
     const pFbTitle = document.getElementById('pv-fb-title'); const pFbDesc = document.getElementById('pv-fb-desc'); const pFbDomain = document.getElementById('pv-fb-domain'); const pFbImgWrap = document.getElementById('pv-fb-img-wrap');
     const pTwTitle = document.getElementById('pv-tw-title'); const pTwDesc = document.getElementById('pv-tw-desc'); const pTwDomain = document.getElementById('pv-tw-domain'); const pTwImgWrap = document.getElementById('pv-tw-img-wrap');
     
@@ -394,12 +447,12 @@ export function init() {
     const escapeHTML = (str) => str.replace(/"/g, '&quot;');
     const getDomain = (urlStr) => { try { return new URL(urlStr).hostname.replace('www.', ''); } catch (e) { return urlStr ? urlStr : 'example.com'; } };
 
-    // Lấy toàn bộ dữ liệu form (Dùng cho cả generate và Save/Export)
     const getAllData = () => {
         return {
             title: document.getElementById('in-title').value.trim(),
             desc: document.getElementById('in-desc').value.trim(),
             url: document.getElementById('in-url').value.trim(),
+            favicon: document.getElementById('in-favicon').value.trim(),
             kw: document.getElementById('in-keywords').value.trim(),
             author: document.getElementById('in-author').value.trim(),
             ogTitle: document.getElementById('in-og-title').value.trim(),
@@ -418,21 +471,29 @@ export function init() {
             appleCapable: document.getElementById('in-apple-capable').value,
             appleStatus: document.getElementById('in-apple-status').value,
             vpChecks: Array.from(document.querySelectorAll('.vp-check:checked')).map(cb => cb.value),
-            fdChecks: Array.from(document.querySelectorAll('.fd-check:checked')).map(cb => cb.value)
+            fdChecks: Array.from(document.querySelectorAll('.fd-check:checked')).map(cb => cb.value),
+            
+            // New Features
+            lang: document.getElementById('in-lang').value.trim() || 'vi',
+            manifest: document.getElementById('in-manifest').value.trim(),
+            cdnTw: document.getElementById('in-cdn-tailwind').checked,
+            cdnBs: document.getElementById('in-cdn-bootstrap').checked,
+            cdnFa: document.getElementById('in-cdn-fa').checked,
+            cdnJq: document.getElementById('in-cdn-jquery').checked,
+            customHead: document.getElementById('in-custom-head').value,
+            fullHtml: document.getElementById('in-full-html').checked,
         };
     };
 
     const generateMeta = () => {
         const d = getAllData();
 
-        // Fallback
         const ogTitle = d.ogTitle || d.title;
         const ogDesc = d.ogDesc || d.desc;
         const twTitle = d.twTitle || ogTitle;
         const twDesc = d.twDesc || ogDesc;
         const twImg = d.twImg || d.ogImg;
 
-        // UI Counters
         cntTitle.textContent = `${d.title.length}/60`;
         cntTitle.style.color = d.title.length > 60 ? '#ef4444' : 'var(--text-mut)';
         cntDesc.textContent = `${d.desc.length}/160`;
@@ -440,10 +501,11 @@ export function init() {
 
         const domainStr = getDomain(d.url);
 
-        // Preview Render
+        // Update UI Preview
         pGgTitle.textContent = d.title || 'Tiêu đề trang web của bạn';
         pGgDesc.textContent = d.desc || 'Đây là phần mô tả tóm tắt nội dung trang web hiển thị trên Google.';
         pGgUrl.textContent = d.url || 'example.com';
+        pGgFavicon.src = d.favicon ? d.favicon : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23888'/></svg>";
 
         pFbTitle.textContent = ogTitle || 'Tiêu đề trang web hiển thị trên Facebook';
         pFbDesc.textContent = ogDesc || 'Mô tả ngắn gọn hấp dẫn người dùng...';
@@ -455,56 +517,87 @@ export function init() {
         pTwDomain.textContent = domainStr;
         pTwImgWrap.innerHTML = twImg ? `<img src="${twImg}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<i class=\\'fas fa-image\\'></i>'">` : `<i class="fas fa-image"></i>`;
 
-        // Generate HTML
-        let html = `\n`;
-        html += `<meta charset="${d.charset}">\n`;
+        // ==========================================
+        // Sinh mã HTML
+        // ==========================================
+        let html = '';
+        const ind = d.fullHtml ? '    ' : ''; // Biến indent (Lùi đầu dòng nếu bật HTML hoàn chỉnh)
         
-        // Viewport
-        if (d.vpChecks.length > 0) html += `<meta name="viewport" content="${d.vpChecks.join(', ')}">\n`;
+        if (d.fullHtml) {
+            html += `<!DOCTYPE html>\n<html lang="${d.lang}">\n<head>\n`;
+        }
+
+        html += `${ind}<meta charset="${d.charset}">\n`;
         
-        if (d.title) html += `<title>${escapeHTML(d.title)}</title>\n`;
-        if (d.desc) html += `<meta name="description" content="${escapeHTML(d.desc)}">\n`;
-        if (d.kw) html += `<meta name="keywords" content="${escapeHTML(d.kw)}">\n`;
-        if (d.author) html += `<meta name="author" content="${escapeHTML(d.author)}">\n`;
-        if (d.theme) html += `<meta name="theme-color" content="${d.theme}">\n`;
+        if (d.vpChecks.length > 0) html += `${ind}<meta name="viewport" content="${d.vpChecks.join(', ')}">\n`;
         
-        // Format Detection
-        if (d.fdChecks.length > 0) html += `<meta name="format-detection" content="${d.fdChecks.join(', ')}">\n`;
+        if (d.title) html += `${ind}<title>${escapeHTML(d.title)}</title>\n`;
+        if (d.desc) html += `${ind}<meta name="description" content="${escapeHTML(d.desc)}">\n`;
+        if (d.kw) html += `${ind}<meta name="keywords" content="${escapeHTML(d.kw)}">\n`;
+        if (d.author) html += `${ind}<meta name="author" content="${escapeHTML(d.author)}">\n`;
+        if (d.theme) html += `${ind}<meta name="theme-color" content="${d.theme}">\n`;
         
-        html += `<meta name="robots" content="${d.robots}">\n`;
-        if (d.url) html += `<link rel="canonical" href="${d.url}">\n`;
+        if (d.fdChecks.length > 0) html += `${ind}<meta name="format-detection" content="${d.fdChecks.join(', ')}">\n`;
+        
+        html += `${ind}<meta name="robots" content="${d.robots}">\n`;
+        if (d.url) html += `${ind}<link rel="canonical" href="${d.url}">\n`;
+        if (d.favicon) html += `${ind}<link rel="icon" href="${d.favicon}">\n`;
+        if (d.manifest) html += `${ind}<link rel="manifest" href="${d.manifest}">\n`;
         
         if (ogTitle || ogDesc || d.ogImg || d.url) {
-            html += `\n\n`;
-            if (d.url) html += `<meta property="og:url" content="${d.url}">\n`;
-            html += `<meta property="og:type" content="${d.ogType}">\n`;
-            if (ogTitle) html += `<meta property="og:title" content="${escapeHTML(ogTitle)}">\n`;
-            if (ogDesc) html += `<meta property="og:description" content="${escapeHTML(ogDesc)}">\n`;
-            if (d.ogImg) html += `<meta property="og:image" content="${d.ogImg}">\n`;
+            html += `\n`;
+            if (d.url) html += `${ind}<meta property="og:url" content="${d.url}">\n`;
+            html += `${ind}<meta property="og:type" content="${d.ogType}">\n`;
+            if (ogTitle) html += `${ind}<meta property="og:title" content="${escapeHTML(ogTitle)}">\n`;
+            if (ogDesc) html += `${ind}<meta property="og:description" content="${escapeHTML(ogDesc)}">\n`;
+            if (d.ogImg) html += `${ind}<meta property="og:image" content="${d.ogImg}">\n`;
         }
 
         if (twTitle || twDesc || twImg || d.twSite) {
-            html += `\n\n`;
-            html += `<meta name="twitter:card" content="${d.twCard}">\n`;
-            if (d.url) html += `<meta property="twitter:domain" content="${domainStr}">\n`;
-            if (d.url) html += `<meta property="twitter:url" content="${d.url}">\n`;
-            if (d.twSite) html += `<meta name="twitter:site" content="${escapeHTML(d.twSite)}">\n`;
-            if (twTitle) html += `<meta name="twitter:title" content="${escapeHTML(twTitle)}">\n`;
-            if (twDesc) html += `<meta name="twitter:description" content="${escapeHTML(twDesc)}">\n`;
-            if (twImg) html += `<meta name="twitter:image" content="${twImg}">\n`;
+            html += `\n`;
+            html += `${ind}<meta name="twitter:card" content="${d.twCard}">\n`;
+            if (d.url) html += `${ind}<meta property="twitter:domain" content="${domainStr}">\n`;
+            if (d.url) html += `${ind}<meta property="twitter:url" content="${d.url}">\n`;
+            if (d.twSite) html += `${ind}<meta name="twitter:site" content="${escapeHTML(d.twSite)}">\n`;
+            if (twTitle) html += `${ind}<meta name="twitter:title" content="${escapeHTML(twTitle)}">\n`;
+            if (twDesc) html += `${ind}<meta name="twitter:description" content="${escapeHTML(twDesc)}">\n`;
+            if (twImg) html += `${ind}<meta name="twitter:image" content="${twImg}">\n`;
         }
 
         if (d.appleIcon || d.appleCapable === 'yes') {
-            html += `\n\n`;
+            html += `\n`;
             if (d.appleCapable === 'yes') {
-                html += `<meta name="apple-mobile-web-app-capable" content="yes">\n`;
-                html += `<meta name="apple-mobile-web-app-status-bar-style" content="${d.appleStatus}">\n`;
-                if (d.title) html += `<meta name="apple-mobile-web-app-title" content="${escapeHTML(d.title)}">\n`;
+                html += `${ind}<meta name="apple-mobile-web-app-capable" content="yes">\n`;
+                html += `${ind}<meta name="apple-mobile-web-app-status-bar-style" content="${d.appleStatus}">\n`;
+                if (d.title) html += `${ind}<meta name="apple-mobile-web-app-title" content="${escapeHTML(d.title)}">\n`;
             }
-            if (d.appleIcon) html += `<link rel="apple-touch-icon" href="${d.appleIcon}">\n`;
+            if (d.appleIcon) html += `${ind}<link rel="apple-touch-icon" href="${d.appleIcon}">\n`;
         }
 
-        outCode.value = html;
+        // Tài nguyên CDN
+        if (d.cdnTw || d.cdnBs || d.cdnFa || d.cdnJq || d.customHead) {
+            html += `\n${ind}\n`;
+            if (d.cdnTw) html += `${ind}<script src="https://cdn.tailwindcss.com"></script>\n`;
+            if (d.cdnBs) {
+                html += `${ind}<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">\n`;
+                html += `${ind}<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>\n`;
+            }
+            if (d.cdnFa) html += `${ind}<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">\n`;
+            if (d.cdnJq) html += `${ind}<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>\n`;
+            
+            if (d.customHead) {
+                const customLines = d.customHead.split('\n');
+                customLines.forEach(line => {
+                    if (line.trim() !== '') html += `${ind}${line}\n`;
+                });
+            }
+        }
+
+        if (d.fullHtml) {
+            html += `</head>\n<body>\n${ind}\n\n</body>\n</html>`;
+        }
+
+        outCode.value = html.trim();
     };
 
     inputs.forEach(inp => inp.addEventListener('input', generateMeta));
@@ -528,12 +621,13 @@ export function init() {
     const applyDataToForm = (data) => {
         if(!data) return;
         const mapping = {
-            'in-title': data.title, 'in-desc': data.desc, 'in-url': data.url,
+            'in-title': data.title, 'in-desc': data.desc, 'in-url': data.url, 'in-favicon': data.favicon, 
             'in-keywords': data.kw, 'in-author': data.author,
             'in-og-title': data.ogTitle, 'in-og-desc': data.ogDesc, 'in-og-img': data.ogImg, 'in-og-type': data.ogType,
             'in-tw-card': data.twCard, 'in-tw-site': data.twSite, 'in-tw-title': data.twTitle, 'in-tw-desc': data.twDesc, 'in-tw-img': data.twImg,
             'in-charset': data.charset, 'in-robots': data.robots, 'in-theme-color': data.theme,
-            'in-apple-icon': data.appleIcon, 'in-apple-capable': data.appleCapable, 'in-apple-status': data.appleStatus
+            'in-apple-icon': data.appleIcon, 'in-apple-capable': data.appleCapable, 'in-apple-status': data.appleStatus,
+            'in-lang': data.lang, 'in-manifest': data.manifest, 'in-custom-head': data.customHead
         };
         for (let id in mapping) {
             if (mapping[id] !== undefined && document.getElementById(id)) {
@@ -541,17 +635,15 @@ export function init() {
             }
         }
         
-        // Cập nhật state Checkbox
-        if (data.vpChecks) {
-            document.querySelectorAll('.vp-check').forEach(cb => {
-                cb.checked = data.vpChecks.includes(cb.value);
-            });
-        }
-        if (data.fdChecks) {
-            document.querySelectorAll('.fd-check').forEach(cb => {
-                cb.checked = data.fdChecks.includes(cb.value);
-            });
-        }
+        if (data.vpChecks) document.querySelectorAll('.vp-check').forEach(cb => cb.checked = data.vpChecks.includes(cb.value));
+        if (data.fdChecks) document.querySelectorAll('.fd-check').forEach(cb => cb.checked = data.fdChecks.includes(cb.value));
+        
+        if (data.cdnTw !== undefined) document.getElementById('in-cdn-tailwind').checked = data.cdnTw;
+        if (data.cdnBs !== undefined) document.getElementById('in-cdn-bootstrap').checked = data.cdnBs;
+        if (data.cdnFa !== undefined) document.getElementById('in-cdn-fa').checked = data.cdnFa;
+        if (data.cdnJq !== undefined) document.getElementById('in-cdn-jquery').checked = data.cdnJq;
+        if (data.fullHtml !== undefined) document.getElementById('in-full-html').checked = data.fullHtml;
+
         generateMeta();
     };
 
@@ -605,6 +697,13 @@ export function init() {
             document.getElementById('in-theme-color').value = "#ffffff";
             document.querySelectorAll('.vp-check').forEach(cb => cb.checked = (cb.value === 'width=device-width' || cb.value === 'initial-scale=1.0'));
             document.querySelectorAll('.fd-check').forEach(cb => cb.checked = false);
+            
+            document.getElementById('in-cdn-tailwind').checked = false;
+            document.getElementById('in-cdn-bootstrap').checked = false;
+            document.getElementById('in-cdn-fa').checked = false;
+            document.getElementById('in-cdn-jquery').checked = false;
+            document.getElementById('in-full-html').checked = true;
+
             generateMeta();
             document.querySelector('[data-target="form-basic"]').click();
         });

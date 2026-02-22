@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects Manager Pro Max</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .sortable-ghost { opacity: 0.4; background-color: #374151; }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+        /* Tùy chỉnh textarea code không có viền khi focus */
+        textarea:focus { outline: none; box-shadow: none; border-color: transparent; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-white flex items-center gap-3">
+                <i class="fa-solid fa-layer-group text-blue-500"></i> Quản Lý Projects Code
+            </h1>
+            <button onclick="resetData()" class="text-sm text-red-400 hover:text-red-300 transition flex items-center gap-2">
+                <i class="fa-solid fa-rotate-left"></i> Reset về mặc định
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-5 space-y-6">
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg relative">
+                    <h2 id="formTitle" class="text-xl font-semibold mb-4 text-white flex justify-between items-center">
+                        Thêm App Mới
+                    </h2>
+                    <form id="appForm" class="space-y-4">
+                        <div class="grid grid-cols-4 gap-4">
+                            <div class="col-span-1">
+                                <label class="block text-sm text-gray-400 mb-1">ID (Tùy chọn)</label>
+                                <input type="number" id="appId" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500">
+                            </div>
+                            <div class="col-span-3">
+                                <label class="block text-sm text-gray-400 mb-1">Tên App (Title)</label>
+                                <input type="text" id="title" required class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Mô tả (Description)</label>
+                            <input type="text" id="description" required class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Danh mục (Category)</label>
+                                <input type="text" id="category" list="categoryList" required class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500">
+                                <datalist id="categoryList">
+                                    <option value="Quản lý"></option>
+                                    <option value="Tiện ích"></option>
+                                    <option value="Tài chính"></option>
+                                    <option value="Automation"></option>
+                                    <option value="Giải trí"></option>
+                                    <option value="Sức khỏe"></option>
+                                    <option value="Store"></option>
+                                    <option value="Blog"></option>
+                                    <option value="Profile"></option>
+                                </datalist>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-gray-400 mb-1">Link</label>
+                                <input type="text" id="link" required class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500" placeholder="/Apps/...">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Icon (FontAwesome Class)</label>
+                            <input type="text" id="icon" required class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white focus:border-blue-500" placeholder="fa-solid fa-star">
+                        </div>
+                        
+                        <div class="flex gap-2 mt-2">
+                            <button type="submit" id="submitBtn" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold py-2.5 rounded-lg transition-colors flex justify-center items-center gap-2">
+                                <i class="fa-solid fa-plus"></i> <span>Thêm Project</span>
+                            </button>
+                            <button type="button" id="cancelBtn" onclick="cancelEdit()" class="hidden bg-gray-600 hover:bg-gray-500 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors">
+                                Hủy
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg h-[450px] flex flex-col">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xl font-semibold text-white">Danh sách <span class="text-sm font-normal text-gray-400 ml-1">(Kéo thả)</span></h2>
+                        <select id="sortSelect" onchange="handleSort()" class="bg-gray-700 text-sm text-white border border-gray-600 rounded px-2 py-1.5 focus:border-blue-500 cursor-pointer outline-none">
+                            <option value="custom">-- Sắp xếp nhanh --</option>
+                            <option value="id_asc">Theo ID (Tăng dần)</option>
+                            <option value="id_desc">Theo ID (Giảm dần)</option>
+                            <option value="name_asc">Theo Tên (A - Z)</option>
+                            <option value="name_desc">Theo Tên (Z - A)</option>
+                        </select>
+                    </div>
+                    <div id="projectList" class="space-y-3 overflow-y-auto flex-1 pr-2 pb-2">
+                        </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 bg-gray-800 rounded-xl border border-gray-700 shadow-lg flex flex-col overflow-hidden h-full min-h-[600px]">
+                <div class="flex justify-between items-center p-4 border-b border-gray-700 bg-gray-800/50">
+                    <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-code text-green-400"></i> Code Output (Có thể sửa trực tiếp)
+                    </h2>
+                    <div class="flex gap-2">
+                        <button onclick="applyCodeChanges()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2" title="Đồng bộ Code bạn vừa sửa ngược lại Giao diện">
+                            <i class="fa-solid fa-arrows-rotate"></i> Cập nhật từ Code
+                        </button>
+                        <button onclick="copyCode()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
+                            <i class="fa-regular fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                <div class="flex-1 bg-[#1e1e1e] relative">
+                    <textarea id="codeOutput" spellcheck="false" class="absolute inset-0 w-full h-full bg-transparent text-sm font-mono text-green-400 leading-relaxed resize-none p-4 border-none"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DEFAULT_PROJECTS = [
+            { id: 13, title: "ERP Mini", description: "Giải pháp quản lý F&B nhỏ gọn, tối ưu quy trình phục vụ.", category: "Quản lý", icon: "fa-solid fa-utensils", link: "/Apps/ERP" },
+            { id: 7, title: "Work Tracker", description: "Ứng dụng chấm công và quản lý thời gian làm việc thông minh.", category: "Quản lý", icon: "fa-solid fa-briefcase", link: "/So-Cham-Cong" },
+            { id: 16, title: "Order Tracking", description: "Công cụ kiểm soát và theo dõi trạng thái đơn hàng.", category: "Quản lý", icon: "fa-solid fa-clipboard-check", link: "/Apps/Order" },
+            { id: 1, title: "Adblock Manager", description: "Hệ thống lọc và chặn quảng cáo tối ưu hóa trải nghiệm duyệt web.", category: "Tiện ích", icon: "fa-solid fa-shield-cat", link: "/Apps/Adblock" },
+            { id: 4, title: "All-in-One Tools", description: "Tập hợp các tiện ích xử lý dữ liệu trực tuyến đa năng.", category: "Tiện ích", icon: "fa-solid fa-screwdriver-wrench", link: "/Tools" },
+            { id: 5, title: "URL Shortener", description: "Hệ thống rút gọn liên kết tích hợp thống kê truy cập.", category: "Tiện ích", icon: "fa-solid fa-link", link: "/SL" },
+            { id: 15, title: "iCheck Info", description: "Tra cứu thông tin cấu hình và kiểm tra thiết bị Apple.", category: "Tiện ích", icon: "fa-brands fa-apple", link: "/Apps/iPhone" },
+            { id: 17, title: "Scam Database", description: "Hệ thống cảnh báo và tra cứu thông tin tín nhiệm.", category: "Tiện ích", icon: "fa-solid fa-user-shield", link: "/Apps/Order" }
+        ];
+
+        let projects = JSON.parse(localStorage.getItem('my_projects_data')) || DEFAULT_PROJECTS;
+        let editingId = null;
+
+        function init() {
+            renderList();
+            renderCode();
+            initSortable();
+        }
+
+        function saveData() {
+            localStorage.setItem('my_projects_data', JSON.stringify(projects));
+        }
+
+        function resetData() {
+            if(confirm("Xóa toàn bộ dữ liệu hiện tại và khôi phục về danh sách gốc?")) {
+                projects = [...DEFAULT_PROJECTS];
+                cancelEdit();
+                saveData();
+                renderList();
+                renderCode();
+            }
+        }
+
+        function initSortable() {
+            const listEl = document.getElementById('projectList');
+            new Sortable(listEl, {
+                handle: '.drag-handle',
+                animation: 150,
+                onEnd: function () {
+                    const newOrder = [];
+                    listEl.querySelectorAll('[data-id]').forEach(el => {
+                        const id = parseInt(el.getAttribute('data-id'));
+                        const item = projects.find(p => p.id === id);
+                        if(item) newOrder.push(item);
+                    });
+                    projects = newOrder;
+                    saveData();
+                    renderCode();
+                }
+            });
+        }
+
+        function handleSort() {
+            const sortType = document.getElementById('sortSelect').value;
+            if (sortType === 'custom') return;
+
+            if (sortType === 'id_asc') projects.sort((a, b) => a.id - b.id);
+            else if (sortType === 'id_desc') projects.sort((a, b) => b.id - a.id);
+            else if (sortType === 'name_asc') projects.sort((a, b) => a.title.localeCompare(b.title));
+            else if (sortType === 'name_desc') projects.sort((a, b) => b.title.localeCompare(a.title));
+
+            saveData();
+            renderList();
+            renderCode();
+            document.getElementById('sortSelect').value = 'custom';
+        }
+
+        function renderList() {
+            const listEl = document.getElementById('projectList');
+            listEl.innerHTML = '';
+            
+            projects.forEach(p => {
+                const item = document.createElement('div');
+                const isEditing = editingId === p.id;
+                item.className = `flex justify-between items-center p-3 border rounded-lg group transition-colors ${isEditing ? 'bg-gray-700 border-blue-500' : 'bg-gray-900 border-gray-700'}`;
+                item.setAttribute('data-id', p.id);
+                item.innerHTML = `
+                    <div class="flex items-center gap-3 truncate">
+                        <i class="fa-solid fa-grip-vertical text-gray-500 hover:text-white drag-handle px-1 py-2 text-lg transition-colors"></i>
+                        <div class="truncate pl-2">
+                            <p class="text-sm font-semibold text-white truncate">
+                                <span class="text-blue-400 text-xs mr-1">[ID:${p.id}]</span>
+                                <i class="${p.icon} text-gray-400 text-xs mx-1"></i> ${p.title} 
+                                <span class="text-xs text-gray-500 font-normal ml-1">(${p.category})</span>
+                            </p>
+                            <p class="text-xs text-gray-400 truncate mt-0.5">${p.description}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="editProject(${p.id})" class="text-gray-500 hover:text-blue-400 transition-colors p-2" title="Sửa">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteProject(${p.id})" class="text-gray-500 hover:text-red-500 transition-colors p-2" title="Xóa">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+        }
+
+        function renderCode() {
+            const grouped = projects.reduce((acc, curr) => {
+                if (!acc[curr.category]) acc[curr.category] = [];
+                acc[curr.category].push(curr);
+                return acc;
+            }, {});
+
+            let codeStr = "const projects = [\n";
+            let categoryCount = 0;
+            const totalCategories = Object.keys(grouped).length;
+
+            for (const [category, items] of Object.entries(grouped)) {
+                codeStr += `            // --- NHÓM ${category.toUpperCase()} ---\n`;
+                items.forEach((item, index) => {
+                    codeStr += `            {\n`;
+                    codeStr += `                id: ${item.id},\n`;
+                    codeStr += `                title: "${item.title}",\n`;
+                    codeStr += `                description: "${item.description}",\n`;
+                    codeStr += `                category: "${item.category}",\n`;
+                    codeStr += `                icon: "${item.icon}",\n`;
+                    codeStr += `                link: "${item.link}"\n`;
+                    
+                    const isLastItemOfCategory = index === items.length - 1;
+                    const isLastCategory = categoryCount === totalCategories - 1;
+                    
+                    if (isLastItemOfCategory && isLastCategory) codeStr += `            }\n`;
+                    else codeStr += `            },\n`;
+                });
+                
+                if (categoryCount !== totalCategories - 1) codeStr += `\n`;
+                categoryCount++;
+            }
+            codeStr += "        ];";
+
+            document.getElementById('codeOutput').value = codeStr;
+        }
+
+        // Kích hoạt chế độ sửa App
+        function editProject(id) {
+            editingId = id;
+            const project = projects.find(p => p.id === id);
+            if (!project) return;
+
+            document.getElementById('appId').value = project.id;
+            document.getElementById('appId').disabled = true; // Không cho sửa ID khi đang update
+            document.getElementById('title').value = project.title;
+            document.getElementById('description').value = project.description;
+            document.getElementById('category').value = project.category;
+            document.getElementById('link').value = project.link;
+            document.getElementById('icon').value = project.icon;
+
+            document.getElementById('formTitle').innerHTML = 'Cập nhật App <span class="text-blue-400 text-sm">#' + id + '</span>';
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Lưu thay đổi</span>';
+            submitBtn.classList.replace('bg-blue-600', 'bg-green-600');
+            submitBtn.classList.replace('hover:bg-blue-500', 'hover:bg-green-500');
+            document.getElementById('cancelBtn').classList.remove('hidden');
+
+            renderList(); // Render lại để highlight item đang sửa
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            document.getElementById('appForm').reset();
+            document.getElementById('appId').disabled = false;
+            
+            document.getElementById('formTitle').innerHTML = 'Thêm App Mới';
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = '<i class="fa-solid fa-plus"></i> <span>Thêm Project</span>';
+            submitBtn.classList.replace('bg-green-600', 'bg-blue-600');
+            submitBtn.classList.replace('hover:bg-green-500', 'hover:bg-blue-500');
+            document.getElementById('cancelBtn').classList.add('hidden');
+            
+            renderList();
+        }
+
+        // Xử lý Form Submit (Thêm mới HOẶC Cập nhật)
+        document.getElementById('appForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (editingId) {
+                // ĐANG UPDATE
+                const index = projects.findIndex(p => p.id === editingId);
+                if (index !== -1) {
+                    projects[index].title = document.getElementById('title').value;
+                    projects[index].description = document.getElementById('description').value;
+                    projects[index].category = document.getElementById('category').value;
+                    projects[index].icon = document.getElementById('icon').value;
+                    projects[index].link = document.getElementById('link').value;
+                }
+                cancelEdit();
+            } else {
+                // ĐANG THÊM MỚI
+                const inputId = document.getElementById('appId').value;
+                let newId;
+                
+                if(inputId && inputId.trim() !== "") {
+                    newId = parseInt(inputId);
+                    if(projects.some(p => p.id === newId)) {
+                        alert("ID này đã tồn tại! Vui lòng nhập ID khác hoặc để trống.");
+                        return;
+                    }
+                } else {
+                    newId = projects.length > 0 ? Math.max(...projects.map(p => p.id)) + 1 : 1;
+                }
+                
+                const newProject = {
+                    id: newId,
+                    title: document.getElementById('title').value,
+                    description: document.getElementById('description').value,
+                    category: document.getElementById('category').value,
+                    icon: document.getElementById('icon').value,
+                    link: document.getElementById('link').value
+                };
+                projects.push(newProject);
+                this.reset();
+            }
+
+            saveData();
+            renderList();
+            renderCode();
+        });
+
+        function deleteProject(id) {
+            if(confirm('Bạn có chắc chắn muốn xóa project này?')) {
+                projects = projects.filter(p => p.id !== id);
+                if(editingId === id) cancelEdit();
+                saveData();
+                renderList();
+                renderCode();
+            }
+        }
+
+        // Đọc Code từ Textarea để chuyển ngược thành Mảng Object (Two-way binding)
+        function applyCodeChanges() {
+            try {
+                const codeText = document.getElementById('codeOutput').value;
+                // Dùng Regex lấy phần mảng bên trong `const projects = [...]`
+                const match = codeText.match(/const\s+projects\s*=\s*(\[[\s\S]*\]);?/);
+                
+                if (match && match[1]) {
+                    // Chuyển chuỗi JS thành Array thông qua Function
+                    // Khá an toàn vì code này chạy trực tiếp trên máy người dùng (Local)
+                    const parsedProjects = new Function("return " + match[1])();
+                    
+                    if (Array.isArray(parsedProjects)) {
+                        projects = parsedProjects;
+                        saveData();
+                        renderList();
+                        renderCode(); // Render lại code để format cho chuẩn đẹp
+                        
+                        // Hiệu ứng nút bấm thành công
+                        const btn = document.querySelector('button[onclick="applyCodeChanges()"]');
+                        const originalHtml = btn.innerHTML;
+                        btn.innerHTML = '<i class="fa-solid fa-check"></i> Đã cập nhật!';
+                        btn.classList.replace('bg-blue-600', 'bg-green-600');
+                        setTimeout(() => {
+                            btn.innerHTML = originalHtml;
+                            btn.classList.replace('bg-green-600', 'bg-blue-600');
+                        }, 2000);
+                    } else {
+                        throw new Error("Dữ liệu không phải là một mảng (Array).");
+                    }
+                } else {
+                    throw new Error("Không tìm thấy cấu trúc 'const projects = [...];'");
+                }
+            } catch (error) {
+                alert("Lỗi khi đọc Code: " + error.message + "\n\nVui lòng kiểm tra lại dấu ngoặc phẩy, nháy kép trong đoạn code bạn vừa sửa.");
+            }
+        }
+
+        function copyCode() {
+            const codeText = document.getElementById('codeOutput').value;
+            navigator.clipboard.writeText(codeText).then(() => {
+                const btn = document.querySelector('button[onclick="copyCode()"]');
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                btn.classList.add('bg-green-600');
+                btn.classList.remove('bg-gray-700');
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.classList.remove('bg-green-600');
+                    btn.classList.add('bg-gray-700');
+                }, 2000);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
