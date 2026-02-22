@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra Cứu & Quản Lý Dịch Vụ App</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        base: '#f4f4f5', surface: '#ffffff', primary: '#18181b', accent: '#2563eb',
+                        yt: '#fee2e2', yt_text: '#dc2626',
+                        sp: '#dcfce7', sp_text: '#16a34a',
+                        nf: '#f3f4f6', nf_text: '#e11d48',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body { background-color: #f4f4f5; color: #18181b; -webkit-font-smoothing: antialiased; }
+        
+        /* Flat UI Styles */
+        .flat-card { background-color: #ffffff; border: 2px solid #e4e4e7; transition: all 0.2s ease; }
+        .flat-card:hover { border-color: #18181b; }
+        .flat-input { background-color: #f4f4f5; border: 2px solid transparent; transition: all 0.2s ease; }
+        .flat-input:focus { background-color: #ffffff; border-color: #2563eb; outline: none; }
+        .flat-button { transition: transform 0.1s ease, background-color 0.2s ease; }
+        .flat-button:active { transform: scale(0.96); }
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Toast */
+        #toast {
+            visibility: hidden; min-width: 300px; background-color: #18181b; color: #fff;
+            text-align: center; padding: 16px 24px; position: fixed; z-index: 100;
+            left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 15px;
+            font-weight: 600; border-radius: 9999px;
+        }
+        #toast.show { visibility: visible; animation: fadein 0.4s, fadeout 0.4s 2.5s; }
+        @keyframes fadein { from {bottom: 0; opacity: 0;} to {bottom: 30px; opacity: 1;} }
+        @keyframes fadeout { from {bottom: 30px; opacity: 1;} to {bottom: 0; opacity: 0;} }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-surface border-b-2 border-gray-200 sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="window.showHome()">
+                    <div class="w-10 h-10 bg-accent text-white rounded-xl flex items-center justify-center rotate-3 hover:rotate-0 transition-transform">
+                        <i class="fa-solid fa-bolt text-xl"></i>
+                    </div>
+                    <span class="font-extrabold text-2xl tracking-tight text-primary">SubSpace</span>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button id="logoutBtn" onclick="window.showHome()" class="hidden bg-gray-100 hover:bg-gray-200 text-primary px-5 py-2.5 rounded-full font-bold text-sm transition-colors flat-button flex items-center gap-2">
+                        <i class="fa-solid fa-arrow-left"></i> Quay lại
+                    </button>
+                    <!-- Admin Button -->
+                    <button id="adminBtn" onclick="window.showAdmin()" class="bg-primary text-white px-5 py-2.5 rounded-full font-bold text-sm transition-colors flat-button flex items-center gap-2">
+                        <i class="fa-solid fa-user-shield"></i> Admin
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow flex items-start justify-center p-4 sm:p-6 lg:p-8 relative">
+        <div class="max-w-5xl w-full mx-auto">
+
+            <!-- SECTION 1: SEARCH (Khách hàng) -->
+            <div id="searchSection" class="max-w-xl mx-auto mt-10 sm:mt-20 fade-in">
+                <div class="text-center mb-10">
+                    <h1 class="text-4xl sm:text-5xl font-extrabold text-primary mb-4 tracking-tight">Tra cứu dịch vụ</h1>
+                    <p class="text-gray-500 text-lg font-medium">Nhập thông tin để quản lý các gói Premium của bạn.</p>
+                </div>
+
+                <div class="flat-card rounded-3xl p-3 sm:p-4">
+                    <form onsubmit="window.handleSearch(event)" class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-grow">
+                            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <i class="fa-solid fa-magnifying-glass text-gray-400 text-lg"></i>
+                            </div>
+                            <input type="text" id="searchInput" class="block w-full pl-12 pr-4 py-4 rounded-2xl text-primary font-medium text-lg placeholder-gray-400 flat-input" placeholder="Username, Email hoặc SĐT..." required autocomplete="off">
+                        </div>
+                        <button id="searchBtnSubmit" type="submit" class="bg-primary hover:bg-gray-800 text-white font-bold py-4 px-8 rounded-2xl flat-button whitespace-nowrap text-lg">
+                            Kiểm tra
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- SECTION 2: DASHBOARD (Kết quả Khách hàng) -->
+            <div id="dashboardSection" class="hidden fade-in mt-4 sm:mt-8">
+                <!-- Profile Block -->
+                <div class="bg-primary rounded-[2rem] p-8 mb-8 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                    <div class="flex items-center gap-5">
+                        <div class="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center text-2xl font-bold backdrop-blur-sm" id="userAvatar">A</div>
+                        <div>
+                            <p class="text-gray-400 font-semibold mb-1 uppercase tracking-wider text-xs">Khách hàng</p>
+                            <h2 class="text-2xl sm:text-3xl font-extrabold" id="userName">Tên</h2>
+                            <p class="text-gray-300 font-medium mt-1 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-envelope"></i> <span id="userInfo">Email • SĐT</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="bg-white text-primary px-6 py-4 rounded-2xl flex flex-col items-center min-w-[120px]">
+                        <span class="text-3xl font-extrabold leading-none mb-1" id="totalOrders">0</span>
+                        <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Dịch vụ</span>
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-extrabold text-primary mb-6 px-2">Gói đang sử dụng</h3>
+                <div id="ordersContainer" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+                
+                <div id="emptyState" class="hidden text-center py-20 flat-card rounded-[2rem]">
+                    <div class="w-20 h-20 bg-gray-100 text-gray-400 rounded-3xl flex items-center justify-center mx-auto mb-5">
+                        <i class="fa-solid fa-ghost text-4xl"></i>
+                    </div>
+                    <h3 class="text-xl font-extrabold text-primary mb-2">Chưa có gói dịch vụ nào</h3>
+                    <p class="text-gray-500 font-medium">Tài khoản này chưa đăng ký bất kỳ dịch vụ nào.</p>
+                </div>
+            </div>
+
+            <!-- SECTION 3: ADMIN LOGIN FORM -->
+            <div id="adminLoginSection" class="hidden fade-in max-w-md mx-auto mt-10 sm:mt-20">
+                <div class="flat-card rounded-[2rem] p-8">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                            <i class="fa-solid fa-lock"></i>
+                        </div>
+                        <h2 class="text-2xl font-extrabold text-primary">Đăng nhập Admin</h2>
+                        <p class="text-gray-500 font-medium text-sm mt-1">Vui lòng đăng nhập để quản lý hệ thống</p>
+                    </div>
+                    <form onsubmit="window.handleAdminLogin(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold text-gray-600 mb-1">Email</label>
+                            <input type="email" id="loginEmail" required class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-600 mb-1">Mật khẩu</label>
+                            <input type="password" id="loginPass" required class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                        </div>
+                        <button type="submit" id="btnLoginSubmit" class="w-full bg-primary hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl flat-button mt-4">
+                            Đăng nhập
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- SECTION 4: ADMIN PANEL (Quản lý) -->
+            <div id="adminSection" class="hidden fade-in">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-primary">Quản trị Hệ thống</h2>
+                        <p class="text-gray-500 font-medium">Quản lý khách hàng và lên đơn dịch vụ.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="window.seedMockData()" class="bg-gray-200 hover:bg-gray-300 text-primary font-bold py-3 px-5 rounded-xl flat-button text-sm">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Tạo Data Mẫu
+                        </button>
+                        <button onclick="window.openUserModal()" class="bg-accent hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-xl flat-button text-sm">
+                            <i class="fa-solid fa-plus mr-1"></i> Thêm Khách Hàng
+                        </button>
+                        <button onclick="window.handleAdminLogout()" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold py-3 px-5 rounded-xl flat-button text-sm border border-red-100">
+                            <i class="fa-solid fa-right-from-bracket mr-1"></i> Đăng xuất
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Danh sách KH -->
+                    <div class="lg:col-span-1 bg-white rounded-[2rem] border-2 border-gray-200 p-4 h-[600px] overflow-y-auto no-scrollbar">
+                        <h3 class="font-extrabold text-lg text-primary mb-4 px-2">Danh sách Khách</h3>
+                        <div id="adminUserList" class="space-y-2">
+                            <!-- Render users here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Chi tiết KH & Lên đơn -->
+                    <div class="lg:col-span-2 bg-white rounded-[2rem] border-2 border-gray-200 p-6 sm:p-8 h-[600px] overflow-y-auto no-scrollbar relative flex flex-col">
+                        <div id="adminUserDetailEmpty" class="flex-grow flex flex-col items-center justify-center text-gray-400">
+                            <i class="fa-solid fa-hand-pointer text-4xl mb-3"></i>
+                            <p class="font-medium">Chọn một khách hàng để xem chi tiết & lên đơn</p>
+                        </div>
+
+                        <div id="adminUserDetailContent" class="hidden flex-grow flex flex-col">
+                            <div class="flex justify-between items-start mb-6 border-b-2 border-gray-100 pb-6">
+                                <div>
+                                    <h3 class="text-2xl font-extrabold text-primary" id="adDetailName">Tên KH</h3>
+                                    <p class="text-gray-500 font-medium mt-1 text-sm"><span id="adDetailEmail"></span> • <span id="adDetailPhone"></span></p>
+                                    <p class="text-gray-400 font-bold mt-1 text-xs uppercase">Username: <span id="adDetailUser"></span></p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="window.openServiceModal()" class="bg-primary hover:bg-gray-800 text-white px-4 py-2 rounded-xl font-bold text-sm flat-button">
+                                        <i class="fa-solid fa-cart-plus"></i> Lên Đơn
+                                    </button>
+                                    <button onclick="window.deleteUser()" class="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-xl font-bold text-sm flat-button">
+                                        <i class="fa-solid fa-trash"></i> Xóa
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <h4 class="font-extrabold text-primary mb-4">Các gói đã mua</h4>
+                            <div id="adServiceList" class="space-y-3">
+                                <!-- Render services -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal: Thêm Khách Hàng -->
+    <div id="modalUser" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] w-full max-w-md p-8 border-2 border-primary shadow-2xl relative fade-in">
+            <button onclick="window.closeModals()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">
+                <i class="fa-solid fa-times"></i>
+            </button>
+            <h3 class="text-2xl font-extrabold text-primary mb-6">Thêm Khách Hàng</h3>
+            <form onsubmit="window.submitAddUser(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-600 mb-1">Họ Tên</label>
+                    <input type="text" id="muName" required class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-600 mb-1">Email</label>
+                    <input type="email" id="muEmail" required class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-600 mb-1">Số điện thoại</label>
+                    <input type="tel" id="muPhone" required class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-600 mb-1">Username (Tùy chọn)</label>
+                    <input type="text" id="muUsername" class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                </div>
+                <button type="submit" class="w-full bg-accent hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl flat-button mt-4">Lưu Khách Hàng</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Thêm Gói Dịch Vụ -->
+    <div id="modalService" class="fixed inset-0 z-50 hidden modal-overlay flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] w-full max-w-md p-8 border-2 border-primary shadow-2xl relative fade-in">
+            <button onclick="window.closeModals()" class="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">
+                <i class="fa-solid fa-times"></i>
+            </button>
+            <h3 class="text-2xl font-extrabold text-primary mb-6">Lên Đơn Dịch Vụ</h3>
+            <form onsubmit="window.submitAddService(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-600 mb-1">Chọn Dịch Vụ</label>
+                    <select id="msType" class="w-full p-3 rounded-xl flat-input bg-gray-50 font-bold text-primary">
+                        <option value="youtube">YouTube Premium</option>
+                        <option value="spotify">Spotify Premium</option>
+                        <option value="netflix">Netflix 4K</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-600 mb-1">Tên Gói (VD: Gói 6 tháng, Gói 1 năm...)</label>
+                    <input type="text" id="msPlan" required class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-600 mb-1">Ngày mua</label>
+                        <input type="text" id="msPurchase" placeholder="DD/MM/YYYY" required class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-gray-600 mb-1">Ngày hết hạn</label>
+                        <input type="text" id="msExpiry" placeholder="DD/MM/YYYY" required class="w-full p-3 rounded-xl flat-input bg-gray-50">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-primary hover:bg-gray-800 text-white font-bold py-3.5 rounded-xl flat-button mt-4">Thêm Gói</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast">Thông báo</div>
+
+    <!-- Firebase & Logic (Type Module) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- FIREBASE INIT ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyATk8l02r44KE2c_PPytEg1Zv43rZZRcN8",
+            authDomain: "store-hunq.firebaseapp.com",
+            databaseURL: "https://store-hunq-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "store-hunq",
+            storageBucket: "store-hunq.firebasestorage.app",
+            messagingSenderId: "879933378644",
+            appId: "1:879933378644:web:41911950a1872b31df1dc1",
+            measurementId: "G-D8TNFCSHQD"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        const usersCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'service_users');
+
+        let currentFbUser = null;
+        let dbUsers = []; 
+        let selectedUserId = null; 
+
+        // --- AUTH & DATA SYNC ---
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                window.showToast("Lỗi xác thực!");
+            }
+        };
+
+        initAuth();
+
+        onAuthStateChanged(auth, (user) => {
+            currentFbUser = user;
+            if (user) {
+                // Fetch data
+                onSnapshot(usersCollectionRef, (snapshot) => {
+                    dbUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    // Update UI nếu đang ở Admin
+                    if(!document.getElementById('adminSection').classList.contains('hidden')) {
+                        renderAdminUserList();
+                        if(selectedUserId) window.selectAdminUser(selectedUserId);
+                    }
+                }, (error) => {
+                    console.log("Lỗi tải dữ liệu", error);
+                });
+            }
+        });
+
+        // --- HELPERS ---
+        window.showToast = (msg) => {
+            const t = document.getElementById("toast");
+            t.innerText = msg; t.className = "show";
+            setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+        };
+
+        const calculateDaysLeft = (expiryDateStr) => {
+            const parts = expiryDateStr.split('/'); 
+            if(parts.length < 3) return 0;
+            const expiry = new Date(parts[2], parts[1] - 1, parts[0]);
+            const today = new Date(); 
+            today.setHours(0, 0, 0, 0); 
+            return Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+        };
+
+        const generateId = () => Math.random().toString(36).substr(2, 6).toUpperCase();
+
+        const todayStr = () => {
+            const d = new Date();
+            return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+        };
+
+        // --- NAVIGATION UI ---
+        window.showHome = () => {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('searchSection').classList.remove('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('adminLoginSection').classList.add('hidden');
+            document.getElementById('adminSection').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.add('hidden');
+            document.getElementById('adminBtn').classList.remove('hidden');
+        };
+
+        window.showAdmin = () => {
+            if(!currentFbUser) return window.showToast("Đang kết nối server, vui lòng đợi...");
+            
+            document.getElementById('searchSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('adminBtn').classList.add('hidden');
+
+            // Kiểm tra xem User hiện tại có phải là Admin (Đăng nhập bằng Email) hay không
+            if (currentFbUser.email) {
+                document.getElementById('adminLoginSection').classList.add('hidden');
+                document.getElementById('adminSection').classList.remove('hidden');
+                renderAdminUserList();
+            } else {
+                // Hiển thị form đăng nhập nếu chỉ là user Ẩn danh
+                document.getElementById('adminSection').classList.add('hidden');
+                document.getElementById('adminLoginSection').classList.remove('hidden');
+            }
+        };
+
+        // --- ADMIN LOGIN LOGIC ---
+        window.handleAdminLogin = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btnLoginSubmit');
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>'; btn.disabled = true;
+
+            const email = document.getElementById('loginEmail').value.trim();
+            const pass = document.getElementById('loginPass').value.trim();
+
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                window.showToast("Đăng nhập Admin thành công!");
+                window.showAdmin(); // Load lại Admin Dashboard
+                e.target.reset();
+            } catch (err) {
+                window.showToast("Sai email hoặc mật khẩu!");
+            } finally {
+                btn.innerHTML = origHTML; btn.disabled = false;
+            }
+        };
+
+        window.handleAdminLogout = async () => {
+            try {
+                await signOut(auth);
+                window.showToast("Đã đăng xuất khỏi Admin!");
+                // Trả về kết nối Ẩn danh để khách có thể tiếp tục tra cứu public
+                await signInAnonymously(auth);
+                window.showHome();
+            } catch (err) {
+                window.showToast("Lỗi đăng xuất!");
+            }
+        };
+
+        // --- KHÁCH HÀNG: TRA CỨU ---
+        window.handleSearch = (e) => {
+            e.preventDefault();
+            if(!currentFbUser) return window.showToast("Đang kết nối server...");
+            
+            const searchVal = document.getElementById('searchInput').value.trim().toLowerCase();
+            const btn = document.getElementById('searchBtnSubmit');
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>'; btn.disabled = true;
+
+            setTimeout(() => {
+                const found = dbUsers.find(u => 
+                    u.email?.toLowerCase() === searchVal || 
+                    u.phone === searchVal || 
+                    u.username?.toLowerCase() === searchVal
+                );
+
+                if (found) {
+                    renderDashboard(found);
+                } else {
+                    window.showToast("Không tìm thấy thông tin!");
+                }
+                btn.innerHTML = origHTML; btn.disabled = false;
+            }, 500);
+        };
+
+        const renderDashboard = (data) => {
+            document.getElementById('searchSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.remove('hidden');
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            document.getElementById('adminBtn').classList.add('hidden');
+
+            document.getElementById('userName').innerText = data.name;
+            document.getElementById('userInfo').innerText = `${data.email} • ${data.phone}`;
+            document.getElementById('userAvatar').innerText = data.name.charAt(0).toUpperCase();
+            
+            const services = data.services || [];
+            document.getElementById('totalOrders').innerText = services.length;
+
+            const container = document.getElementById('ordersContainer');
+            const emptyState = document.getElementById('emptyState');
+            container.innerHTML = ''; 
+
+            if (services.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                services.forEach(renderServiceCard);
+            }
+        };
+
+        const renderServiceCard = (service) => {
+            const container = document.getElementById('ordersContainer');
+            const daysLeft = calculateDaysLeft(service.expiryDate);
+            let sc = { bg: 'bg-gray-200', text: 'text-gray-600', icon: 'fa-ban', label: 'Hết hạn', color: 'text-red-500' };
+            if (daysLeft > 7) sc = { bg: 'bg-green-100', text: 'text-green-800', icon: 'fa-check', label: 'Active', color: 'text-primary' };
+            else if (daysLeft > 0) sc = { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: 'fa-bolt', label: 'Sắp hết', color: 'text-yellow-600' };
+
+            const html = `
+                <div class="flat-card rounded-3xl p-6 flex flex-col justify-between relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 w-24 h-24 rounded-bl-full ${service.themeBg} -z-10 transition-transform group-hover:scale-110"></div>
+                    <div class="z-10">
+                        <div class="flex justify-between items-start mb-6">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-2xl ${service.themeBg} ${service.themeIcon} flex items-center justify-center text-3xl border border-white">
+                                    <i class="${service.iconClass}"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-xl font-bold text-primary">${service.serviceName}</h4>
+                                    <p class="text-sm font-bold text-gray-400 mt-0.5">${service.id}</p>
+                                </div>
+                            </div>
+                            <div class="${sc.bg} ${sc.text} px-3 py-1 rounded-lg font-bold text-xs flex items-center gap-1.5 whitespace-nowrap">
+                                <i class="fa-solid ${sc.icon}"></i> ${sc.label}
+                            </div>
+                        </div>
+                        <div class="bg-base rounded-2xl p-4 grid grid-cols-2 gap-4">
+                            <div><p class="text-xs font-bold text-gray-500 mb-1">GÓI</p><p class="font-bold text-primary">${service.plan}</p></div>
+                            <div><p class="text-xs font-bold text-gray-500 mb-1">HẾT HẠN</p><p class="font-bold text-primary">${service.expiryDate}</p></div>
+                        </div>
+                    </div>
+                    <div class="mt-5 pt-5 border-t-2 border-dashed border-gray-200 flex justify-between items-center z-10">
+                        <span class="text-sm font-bold text-gray-500">Còn lại</span>
+                        <span class="text-2xl font-extrabold ${sc.color}">${daysLeft > 0 ? daysLeft + ' ngày' : '0 ngày'}</span>
+                    </div>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        };
+
+        // --- ADMIN: HIỂN THỊ ---
+        const renderAdminUserList = () => {
+            const list = document.getElementById('adminUserList');
+            list.innerHTML = '';
+            if(dbUsers.length === 0) {
+                list.innerHTML = `<p class="text-sm text-gray-500 italic p-2">Chưa có khách hàng nào.</p>`;
+                return;
+            }
+            dbUsers.forEach(u => {
+                const isSel = u.id === selectedUserId;
+                const html = `
+                    <div onclick="window.selectAdminUser('${u.id}')" class="p-3 rounded-2xl cursor-pointer border-2 transition-colors flex justify-between items-center ${isSel ? 'border-primary bg-gray-50' : 'border-transparent hover:border-gray-200'}">
+                        <div>
+                            <p class="font-bold text-primary text-sm">${u.name}</p>
+                            <p class="text-xs font-medium text-gray-500">${u.email || u.phone}</p>
+                        </div>
+                        <div class="bg-gray-200 text-gray-600 text-xs font-bold px-2 py-1 rounded-lg">${(u.services||[]).length} gói</div>
+                    </div>
+                `;
+                list.insertAdjacentHTML('beforeend', html);
+            });
+        };
+
+        window.selectAdminUser = (id) => {
+            selectedUserId = id;
+            renderAdminUserList(); // update active state
+            const user = dbUsers.find(u => u.id === id);
+            
+            document.getElementById('adminUserDetailEmpty').classList.add('hidden');
+            document.getElementById('adminUserDetailContent').classList.remove('hidden');
+            
+            document.getElementById('adDetailName').innerText = user.name;
+            document.getElementById('adDetailEmail').innerText = user.email || 'N/A';
+            document.getElementById('adDetailPhone').innerText = user.phone || 'N/A';
+            document.getElementById('adDetailUser').innerText = user.username || 'N/A';
+
+            const svList = document.getElementById('adServiceList');
+            svList.innerHTML = '';
+            const services = user.services || [];
+            
+            if(services.length === 0) {
+                svList.innerHTML = `<div class="p-6 bg-gray-50 rounded-2xl text-center text-gray-400 font-medium border-2 border-dashed border-gray-200">Chưa có đơn hàng nào</div>`;
+            } else {
+                services.forEach(s => {
+                    const html = `
+                        <div class="border-2 border-gray-100 rounded-xl p-4 flex justify-between items-center bg-white hover:border-gray-300 transition-colors">
+                            <div class="flex items-center gap-4">
+                                <div class="w-10 h-10 rounded-lg ${s.themeBg} ${s.themeIcon} flex items-center justify-center text-xl">
+                                    <i class="${s.iconClass}"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-primary text-sm">${s.serviceName} <span class="text-gray-400 font-medium">(${s.plan})</span></p>
+                                    <p class="text-xs text-gray-500 font-medium">HSD: ${s.expiryDate}</p>
+                                </div>
+                            </div>
+                            <button onclick="window.deleteService('${s.id}')" class="text-gray-300 hover:text-red-500 transition-colors px-2">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                    svList.insertAdjacentHTML('beforeend', html);
+                });
+            }
+        };
+
+        // --- ADMIN: THÊM XÓA SỬA (FIRESTORE) ---
+        window.closeModals = () => {
+            document.getElementById('modalUser').classList.add('hidden');
+            document.getElementById('modalService').classList.add('hidden');
+        };
+
+        window.openUserModal = () => document.getElementById('modalUser').classList.remove('hidden');
+        
+        window.openServiceModal = () => {
+            if(!selectedUserId) return window.showToast("Vui lòng chọn khách hàng trước!");
+            document.getElementById('msPurchase').value = todayStr();
+            document.getElementById('modalService').classList.remove('hidden');
+        };
+
+        window.submitAddUser = async (e) => {
+            e.preventDefault();
+            if(!currentFbUser || !currentFbUser.email) return window.showToast("Bạn không có quyền này!");
+            try {
+                const data = {
+                    name: document.getElementById('muName').value.trim(),
+                    email: document.getElementById('muEmail').value.trim().toLowerCase(),
+                    phone: document.getElementById('muPhone').value.trim(),
+                    username: document.getElementById('muUsername').value.trim().toLowerCase(),
+                    services: [],
+                    createdAt: new Date().toISOString()
+                };
+                await addDoc(usersCollectionRef, data);
+                window.closeModals();
+                window.showToast("Đã thêm khách hàng!");
+                e.target.reset();
+            } catch(err) { window.showToast("Lỗi khi thêm!"); }
+        };
+
+        window.deleteUser = async () => {
+            if(!currentFbUser || !currentFbUser.email || !selectedUserId) return window.showToast("Bạn không có quyền này!");
+            try {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'service_users', selectedUserId));
+                selectedUserId = null;
+                document.getElementById('adminUserDetailEmpty').classList.remove('hidden');
+                document.getElementById('adminUserDetailContent').classList.add('hidden');
+                window.showToast("Đã xóa khách hàng!");
+            } catch(err) { window.showToast("Lỗi khi xóa!"); }
+        };
+
+        window.submitAddService = async (e) => {
+            e.preventDefault();
+            if(!currentFbUser || !currentFbUser.email || !selectedUserId) return window.showToast("Bạn không có quyền này!");
+            try {
+                const type = document.getElementById('msType').value;
+                let sName = "Dịch Vụ", iCls = "fa-box", tBg = "bg-gray-100", tIc = "text-gray-500";
+                
+                if(type === 'youtube') { sName = "YouTube Premium"; iCls = "fa-brands fa-youtube"; tBg = "bg-red-50"; tIc = "text-red-600"; }
+                if(type === 'spotify') { sName = "Spotify Premium"; iCls = "fa-brands fa-spotify"; tBg = "bg-green-50"; tIc = "text-green-600"; }
+                if(type === 'netflix') { sName = "Netflix 4K"; iCls = "fa-solid fa-film"; tBg = "bg-gray-100"; tIc = "text-rose-600"; }
+
+                const newSrv = {
+                    id: type.substring(0,2).toUpperCase() + "-" + generateId(),
+                    serviceName: sName,
+                    iconClass: iCls, themeBg: tBg, themeIcon: tIc,
+                    plan: document.getElementById('msPlan').value.trim(),
+                    purchaseDate: document.getElementById('msPurchase').value.trim(),
+                    expiryDate: document.getElementById('msExpiry').value.trim()
+                };
+
+                const userDoc = doc(db, 'artifacts', appId, 'public', 'data', 'service_users', selectedUserId);
+                const user = dbUsers.find(u => u.id === selectedUserId);
+                const updatedServices = [...(user.services || []), newSrv];
+                
+                await updateDoc(userDoc, { services: updatedServices });
+                window.closeModals();
+                window.showToast("Đã lên đơn thành công!");
+                e.target.reset();
+            } catch(err) { window.showToast("Lỗi khi lên đơn!"); }
+        };
+
+        window.deleteService = async (serviceId) => {
+            if(!currentFbUser || !currentFbUser.email || !selectedUserId) return window.showToast("Bạn không có quyền này!");
+            try {
+                const userDoc = doc(db, 'artifacts', appId, 'public', 'data', 'service_users', selectedUserId);
+                const user = dbUsers.find(u => u.id === selectedUserId);
+                const updatedServices = user.services.filter(s => s.id !== serviceId);
+                await updateDoc(userDoc, { services: updatedServices });
+                window.showToast("Đã xóa đơn hàng!");
+            } catch(err) { window.showToast("Lỗi khi xóa!"); }
+        };
+
+        window.seedMockData = async () => {
+            if(!currentFbUser || !currentFbUser.email) return window.showToast("Chỉ Admin mới có quyền này!");
+            try {
+                await addDoc(usersCollectionRef, {
+                    name: "Nguyễn Văn Anh", email: "vananh@gmail.com", phone: "0901234567", username: "vananh123",
+                    services: [
+                        { id: "YT-MOCK1", serviceName: "YouTube Premium", plan: "6 tháng", purchaseDate: "15/01/2026", expiryDate: "15/07/2026", iconClass: "fa-brands fa-youtube", themeBg: "bg-red-50", themeIcon: "text-red-600" },
+                        { id: "NF-MOCK2", serviceName: "Netflix 4K", plan: "1 tháng", purchaseDate: "01/02/2026", expiryDate: "01/03/2026", iconClass: "fa-solid fa-film", themeBg: "bg-gray-100", themeIcon: "text-rose-600" }
+                    ]
+                });
+                window.showToast("Đã tạo khách mẫu!");
+            } catch(e) { window.showToast("Lỗi tạo data!"); }
+        };
+    </script>
+</body>
+</html>
