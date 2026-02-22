@@ -1385,6 +1385,67 @@
         transform: translateY(0);
       }
     }
+
+    /* --- Lọc nâng cao (Advanced Filter) --- */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px dashed var(--border);
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filter-select {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-family: var(--font-sans);
+      outline: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-select:hover,
+    .filter-select:focus {
+      border-color: var(--accent);
+    }
+
+    /* --- Multi-tags trong Post Card --- */
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 0.8rem;
+    }
+
+    .post-tag {
+      font-size: 0.7rem;
+      background: var(--bg-sidebar);
+      color: var(--text-muted);
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      font-weight: 500;
+      transition: 0.2s;
+    }
+
+    .post-tag:hover {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
   </style>
 </head>
 
@@ -1477,6 +1538,21 @@
             <button class="refresh-btn" onclick="forceReload()" title="Làm mới">
               <i class="fa-solid fa-rotate" style="font-size: 14px;"></i>
             </button>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-group">
+              <i class="fa-solid fa-filter" style="color: var(--text-muted); font-size: 0.9rem;"></i>
+              <select class="filter-select" id="filter-tag" onchange="applyFilters()">
+                <option value="all">Tất cả Hashtag</option>
+              </select>
+
+              <select class="filter-select" id="sort-time" onchange="applyFilters()">
+                <option value="newest">Mới nhất</option>
+                <option value="oldest">Cũ nhất</option>
+              </select>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);" id="filter-count"></div>
           </div>
         </div>
 
@@ -2240,7 +2316,8 @@
       hasMore: true,       // Còn dữ liệu để tải không
       currentProxyIdx: 0,  // Index của Server đang chọn (0=S1, 1=S2...)
       observer: null,     // IntersectionObserver cho cuộn vô tận
-      controller: null
+      controller: null,
+      allTags: new Set()
     };
 
     // DOM Elements Cache (Để truy xuất nhanh)
@@ -2334,7 +2411,8 @@
       state.posts = [];
       state.currentPage = 1;
       state.hasMore = true;
-      DOM.feedList.innerHTML = ''; // Xóa sạch list cũ
+      DOM.feedList.innerHTML = '';
+      state.allTags.clear();
 
       // Hiệu ứng xoay nút refresh
       const btn = document.querySelector('.refresh-btn');
@@ -2405,34 +2483,41 @@
 
         // Trường hợp 2: Có bài viết -> Map dữ liệu
         const newPosts = Array.from(items).map(item => {
-          // Lấy nội dung gốc
           const contentRaw = item.getElementsByTagName("content:encoded")[0]?.textContent || "";
 
-          // Trích xuất ảnh đầu tiên trong bài (nếu không có thì dùng ảnh mặc định)
           let img = "/Asset/Banner/Banner.png";
           const imgMatch = contentRaw.match(/<img[^>]+src="([^">]+)"/);
           if (imgMatch) img = imgMatch[1];
 
-          // Lấy ID bài viết (ưu tiên post_id, nếu không có thì dùng timestamp)
           const guidRaw = item.querySelector("guid")?.textContent || "";
           const idMatch = guidRaw.match(/[?&]p=(\d+)/);
-          const realId = idMatch ? idMatch[1] : new Date(item.querySelector("pubDate")?.textContent).getTime();
+          const rawDate = new Date(item.querySelector("pubDate")?.textContent);
+          const realId = idMatch ? idMatch[1] : rawDate.getTime();
 
-          // Tạo đoạn trích dẫn (Excerpt) ngắn gọn
           const descRaw = item.querySelector("description")?.textContent || "";
           const rawText = descRaw || contentRaw;
           const excerpt = rawText.replace(/<[^>]*>?/gm, '').substring(0, 160) + "...";
 
+          // --- SỬA LẠI PHẦN LẤY CATEGORY THÀNH MẢNG ---
+          const categories = Array.from(item.querySelectorAll("category")).map(cat => cat.textContent);
+
+          // Thêm các category này vào danh sách tổng
+          categories.forEach(cat => state.allTags.add(cat));
+
           return {
             id: realId,
             title: item.querySelector("title")?.textContent || "No Title",
-            date: new Date(item.querySelector("pubDate")?.textContent).toLocaleDateString('vi-VN'),
+            date: rawDate.toLocaleDateString('vi-VN'),
+            timestamp: rawDate.getTime(), // Lưu thời gian dạng số để dễ sắp xếp
             content: contentRaw,
             excerpt: excerpt,
             image: img,
-            category: item.querySelector("category")?.textContent || "Blog"
+            categories: categories.length > 0 ? categories : ["Blog"] // Đổi tên biến thành categories (số nhiều)
           };
         });
+
+        // Thêm hàm update Tag vào dropdown ngay sau khi parse xong
+        updateTagDropdown();
 
         // Cập nhật State và UI
         state.posts = [...state.posts, ...newPosts];
@@ -2497,26 +2582,97 @@
     // ==========================================
     // 4. HIỂN THỊ & GIAO DIỆN (UI RENDER)
     // ==========================================
+    function appendPostsToView(postsToRender, isFiltering = false) {
+      const html = postsToRender.map(post => {
+        // Tạo HTML cho từng tag
+        const tagsHtml = post.categories.map(tag => 
+          `<span class="post-tag">#${tag}</span>`
+        ).join('');
 
-    function appendPostsToView(newPosts) {
-      const html = newPosts.map(post => `
+        return `
             <div class="post-card" onclick="openPost('${post.id}')">
                 <img src="${post.image}" class="card-image" loading="lazy">
                 <div class="card-content">
+                    <div class="card-tags">
+                        ${tagsHtml}
+                    </div>
                     <div class="card-meta">
-                        <span><i class="fa-solid fa-tag" style="vertical-align:middle; font-size:12px;"></i> ${post.category}</span>
-                        <span>•</span>
                         <span>${post.date}</span>
                     </div>
                     <h3 class="card-title">${post.title}</h3>
                     <p class="card-excerpt">${post.excerpt}</p>
                 </div>
             </div>
-        `).join('');
+        `;
+      }).join('');
 
-      DOM.feedList.insertAdjacentHTML('beforeend', html);
-      setupInfiniteScroll(); // Cài đặt cuộn trang
+      // Nếu đang dùng bộ lọc thì ghi đè, nếu đang lướt bình thường thì chèn thêm
+      if (isFiltering) {
+        DOM.feedList.innerHTML = html;
+      } else {
+        DOM.feedList.insertAdjacentHTML('beforeend', html);
+      }
+      
+      setupInfiniteScroll(); 
     }
+
+    // --- BỘ LỌC NÂNG CAO ---
+
+    // 1. Cập nhật danh sách Option vào thẻ Select
+    function updateTagDropdown() {
+        const selectTag = document.getElementById('filter-tag');
+        const currentSelection = selectTag.value; // Lưu lại lựa chọn hiện tại
+        
+        let optionsHtml = '<option value="all">Tất cả Hashtag</option>';
+        
+        // Sắp xếp tag theo alphabet
+        const sortedTags = Array.from(state.allTags).sort();
+        
+        sortedTags.forEach(tag => {
+            optionsHtml += `<option value="${tag}">${tag}</option>`;
+        });
+        
+        selectTag.innerHTML = optionsHtml;
+        selectTag.value = currentSelection; // Trả lại lựa chọn
+    }
+
+    // 2. Logic xử lý khi người dùng chọn Filter
+    function applyFilters() {
+        const selectedTag = document.getElementById('filter-tag').value;
+        const sortTime = document.getElementById('sort-time').value;
+        
+        // Bắt đầu với toàn bộ bài viết đã tải về
+        let filteredPosts = [...state.posts];
+
+        // Lọc theo Tag
+        if (selectedTag !== 'all') {
+            filteredPosts = filteredPosts.filter(post => post.categories.includes(selectedTag));
+        }
+
+        // Sắp xếp theo Thời gian
+        if (sortTime === 'oldest') {
+            filteredPosts.sort((a, b) => a.timestamp - b.timestamp); // Tăng dần (Cũ tới mới)
+        } else {
+            filteredPosts.sort((a, b) => b.timestamp - a.timestamp); // Giảm dần (Mới tới cũ)
+        }
+
+        // Cập nhật số lượng hiển thị
+        document.getElementById('filter-count').innerText = `Hiển thị ${filteredPosts.length} bài viết`;
+
+        // Render lại giao diện
+        appendPostsToView(filteredPosts, true); // true = chế độ ghi đè danh sách
+        
+        // Lưu ý: Khi xài filter, ta tạm ẩn infinite scroll (vì nó gọi theo số trang gốc)
+        // Khi gỡ filter (chọn lại 'Tất cả') thì tự động kích hoạt lại
+        const sentinel = document.getElementById('scroll-sentinel');
+        if (sentinel) {
+             sentinel.style.display = (selectedTag === 'all' && sortTime === 'newest') ? 'block' : 'none';
+        }
+    }
+    
+    // Đừng quên reset allTags khi forceReload
+    // Tìm hàm forceReload() hiện tại của bạn và thêm dòng state.allTags.clear(); vào
+
 
     function setupInfiniteScroll() {
       if (state.observer) state.observer.disconnect();

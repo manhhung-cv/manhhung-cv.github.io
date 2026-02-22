@@ -48,6 +48,10 @@ export function template() {
             .tab-content.active { display: block; animation: fadeIn 0.3s; }
             @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
+            /* Sync Buttons */
+            .btn-sync { background: var(--bg-main); color: #10b981; border: 1px solid #10b981; padding: 6px 12px; font-size: 0.8rem; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+            .btn-sync:hover { background: #10b981; color: white; }
+
             /* Preview Wrapper */
             .preview-container {
                 display: flex; flex-direction: column; gap: 24px;
@@ -158,8 +162,11 @@ export function template() {
                     </div>
 
                     <div class="tab-content" id="form-og">
-                        <div style="margin-bottom: 12px; font-size: 0.85rem; color: #10b981; background: #10b98115; padding: 8px; border-radius: 4px;">
-                            <i class="fas fa-info-circle"></i> Nếu để trống, hệ thống sẽ tự động lấy dữ liệu từ tab "Cơ bản".
+                        <div class="flex-between" style="margin-bottom: 16px; font-size: 0.85rem; color: #10b981; background: #10b98115; padding: 10px 12px; border-radius: 6px; border: 1px solid #10b98130; flex-wrap: wrap; gap: 8px;">
+                            <span style="flex: 1;"><i class="fas fa-info-circle"></i> Nếu để trống, hệ thống sẽ tự động mượn dữ liệu từ tab <b>Cơ bản</b>.</span>
+                            <button type="button" class="btn-sync" id="btn-sync-og">
+                                <i class="fas fa-sync-alt"></i> Điền nhanh từ Cơ bản
+                            </button>
                         </div>
                         <div class="form-group">
                             <label class="form-label">OG Title (Tiêu đề FB)</label>
@@ -190,8 +197,11 @@ export function template() {
                     </div>
 
                     <div class="tab-content" id="form-tw">
-                        <div style="margin-bottom: 12px; font-size: 0.85rem; color: #10b981; background: #10b98115; padding: 8px; border-radius: 4px;">
-                            <i class="fas fa-info-circle"></i> Twitter sẽ mượn dữ liệu tab "Cơ bản" nếu bạn để trống.
+                        <div class="flex-between" style="margin-bottom: 16px; font-size: 0.85rem; color: #10b981; background: #10b98115; padding: 10px 12px; border-radius: 6px; border: 1px solid #10b98130; flex-wrap: wrap; gap: 8px;">
+                            <span style="flex: 1;"><i class="fas fa-info-circle"></i> Twitter sẽ tự mượn dữ liệu tab <b>Cơ bản</b> hoặc <b>Open Graph</b> nếu bạn để trống.</span>
+                            <button type="button" class="btn-sync" id="btn-sync-tw">
+                                <i class="fas fa-sync-alt"></i> Điền nhanh từ OG / Cơ bản
+                            </button>
                         </div>
                         <div class="grid-2" style="gap: 16px;">
                             <div class="form-group">
@@ -434,7 +444,48 @@ export function init() {
         });
     });
 
-    // 3. GENERATE LOGIC
+    // ==========================================
+    // 3. LOGIC NÚT ĐỒNG BỘ (SYNC)
+    // ==========================================
+    document.getElementById('btn-sync-og').addEventListener('click', () => {
+        const titleVal = document.getElementById('in-title').value;
+        const descVal = document.getElementById('in-desc').value;
+        
+        if(!titleVal && !descVal) {
+            UI.showAlert('Cảnh báo', 'Tab Cơ bản đang trống, không có gì để copy.', 'warning');
+            return;
+        }
+
+        document.getElementById('in-og-title').value = titleVal;
+        document.getElementById('in-og-desc').value = descVal;
+        
+        generateMeta();
+        UI.showAlert('Thành công', 'Đã copy Tiêu đề và Mô tả sang Open Graph.', 'success');
+    });
+
+    document.getElementById('btn-sync-tw').addEventListener('click', () => {
+        const ogTitle = document.getElementById('in-og-title').value;
+        const ogDesc = document.getElementById('in-og-desc').value;
+        const seoTitle = document.getElementById('in-title').value;
+        const seoDesc = document.getElementById('in-desc').value;
+        const ogImg = document.getElementById('in-og-img').value;
+
+        if(!ogTitle && !ogDesc && !seoTitle && !seoDesc) {
+            UI.showAlert('Cảnh báo', 'Chưa có Tiêu đề / Mô tả nào để copy.', 'warning');
+            return;
+        }
+
+        document.getElementById('in-tw-title').value = ogTitle || seoTitle;
+        document.getElementById('in-tw-desc').value = ogDesc || seoDesc;
+        if(ogImg) document.getElementById('in-tw-img').value = ogImg;
+        
+        generateMeta();
+        UI.showAlert('Thành công', 'Đã copy Tiêu đề, Mô tả (và Ảnh) sang Twitter.', 'success');
+    });
+
+    // ==========================================
+    // 4. GENERATE LOGIC
+    // ==========================================
     const inputs = document.querySelectorAll('.meta-input');
     const outCode = document.getElementById('mt-code-output');
     
@@ -472,8 +523,6 @@ export function init() {
             appleStatus: document.getElementById('in-apple-status').value,
             vpChecks: Array.from(document.querySelectorAll('.vp-check:checked')).map(cb => cb.value),
             fdChecks: Array.from(document.querySelectorAll('.fd-check:checked')).map(cb => cb.value),
-            
-            // New Features
             lang: document.getElementById('in-lang').value.trim() || 'vi',
             manifest: document.getElementById('in-manifest').value.trim(),
             cdnTw: document.getElementById('in-cdn-tailwind').checked,
@@ -517,11 +566,8 @@ export function init() {
         pTwDomain.textContent = domainStr;
         pTwImgWrap.innerHTML = twImg ? `<img src="${twImg}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<i class=\\'fas fa-image\\'></i>'">` : `<i class="fas fa-image"></i>`;
 
-        // ==========================================
-        // Sinh mã HTML
-        // ==========================================
         let html = '';
-        const ind = d.fullHtml ? '    ' : ''; // Biến indent (Lùi đầu dòng nếu bật HTML hoàn chỉnh)
+        const ind = d.fullHtml ? '    ' : ''; 
         
         if (d.fullHtml) {
             html += `<!DOCTYPE html>\n<html lang="${d.lang}">\n<head>\n`;
@@ -615,7 +661,7 @@ export function init() {
         }
     };
 
-    // 4. LƯU, TẢI, XUẤT, NHẬP (STORAGE & JSON)
+    // 5. LƯU, TẢI, XUẤT, NHẬP (STORAGE & JSON)
     const STORAGE_KEY = 'aio_meta_tags';
 
     const applyDataToForm = (data) => {
