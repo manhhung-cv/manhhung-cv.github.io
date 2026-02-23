@@ -42,6 +42,8 @@
 
       --sidebar-width: 260px;
       --container-width: 720px;
+      --article-font-size: 1.1rem;
+      --article-font-family: var(--font-sans);
     }
 
     [data-theme="dark"] {
@@ -415,7 +417,7 @@
 
     .article-header h1 {
       font-family: var(--font-serif);
-      font-size: 2.2rem;
+      font-size: 2.0rem;
       line-height: 1.3;
       margin-bottom: 1rem;
     }
@@ -430,10 +432,12 @@
     }
 
     .article-content {
-      font-size: 1.1rem;
+      font-size: var(--article-font-size); /* Sửa dòng này */
+      font-family: var(--article-font-family); /* Thêm dòng này */
       line-height: 1.8;
       color: var(--text-main);
     }
+    
 
     .article-content mark {
       padding: 0 5px;
@@ -463,6 +467,15 @@
     .article-content ol {
       margin-bottom: 1.5rem;
       padding-left: 1.5rem;
+    }
+
+    .article-content,
+    .article-content p,
+    .article-content a {
+      overflow-wrap: break-word;
+      word-wrap: break-word;
+      /* Dùng dòng dưới nếu vẫn bị tràn */
+      /* word-break: break-all; */
     }
 
     /* Code Blocks */
@@ -1446,6 +1459,44 @@
       color: #000;
       border-color: var(--accent);
     }
+
+    /* --- Reading Settings Modal --- */
+    #settings-modal {
+      display: none;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+      z-index: 4000; align-items: center; justify-content: center; padding: 1.5rem;
+      animation: fadeIn 0.2s ease-out;
+    }
+    #settings-modal.active { display: flex; }
+    
+    .settings-box {
+      background: var(--bg-card); border: 1px solid var(--border);
+      width: 100%; max-width: 400px; border-radius: 16px; padding: 2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+    }
+    .settings-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;
+    }
+    .settings-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); font-family: var(--font-serif);}
+    .setting-group { margin-bottom: 1.5rem; }
+    .setting-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem; display: block; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;}
+    .setting-options { display: flex; gap: 8px; flex-wrap: wrap; }
+    
+    .setting-btn {
+      flex: 1; padding: 10px 0; border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-sidebar); color: var(--text-muted);
+      cursor: pointer; transition: 0.2s; font-weight: 600; text-align: center;
+    }
+    .setting-btn:hover { background: var(--bg-card); border-color: var(--text-muted); color: var(--text-main); }
+    .setting-btn.active { background: var(--text-main); color: var(--bg-body); border-color: var(--text-main); }
+    
+    /* Font Preview inside buttons */
+    .font-sans { font-family: var(--font-sans); }
+    .font-serif { font-family: var(--font-serif); }
+    .font-mono { font-family: var(--font-mono); }
   </style>
 </head>
 
@@ -1469,6 +1520,7 @@
 
       <button class="header-btn" onclick="toggleTheme()"><i class="fa-solid fa-sun"></i></button>
       <button class="header-btn" onclick="openSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
+    
     </div>
   </header>
 
@@ -2177,7 +2229,7 @@
             Mechatronics Engineer • Web Developer
           </div>
         </div>
-        <div class="article-content">
+        <div class="article-content break-words">
           <p class="lead" style="font-size: 1.25rem; font-weight: 500; color: var(--text-main);">
             Xin chào, tôi là Hùng.
           </p>
@@ -2585,7 +2637,7 @@
     function appendPostsToView(postsToRender, isFiltering = false) {
       const html = postsToRender.map(post => {
         // Tạo HTML cho từng tag
-        const tagsHtml = post.categories.map(tag => 
+        const tagsHtml = post.categories.map(tag =>
           `<span class="post-tag">#${tag}</span>`
         ).join('');
 
@@ -2612,64 +2664,64 @@
       } else {
         DOM.feedList.insertAdjacentHTML('beforeend', html);
       }
-      
-      setupInfiniteScroll(); 
+
+      setupInfiniteScroll();
     }
 
     // --- BỘ LỌC NÂNG CAO ---
 
     // 1. Cập nhật danh sách Option vào thẻ Select
     function updateTagDropdown() {
-        const selectTag = document.getElementById('filter-tag');
-        const currentSelection = selectTag.value; // Lưu lại lựa chọn hiện tại
-        
-        let optionsHtml = '<option value="all">Tất cả Hashtag</option>';
-        
-        // Sắp xếp tag theo alphabet
-        const sortedTags = Array.from(state.allTags).sort();
-        
-        sortedTags.forEach(tag => {
-            optionsHtml += `<option value="${tag}">${tag}</option>`;
-        });
-        
-        selectTag.innerHTML = optionsHtml;
-        selectTag.value = currentSelection; // Trả lại lựa chọn
+      const selectTag = document.getElementById('filter-tag');
+      const currentSelection = selectTag.value; // Lưu lại lựa chọn hiện tại
+
+      let optionsHtml = '<option value="all">Tất cả Hashtag</option>';
+
+      // Sắp xếp tag theo alphabet
+      const sortedTags = Array.from(state.allTags).sort();
+
+      sortedTags.forEach(tag => {
+        optionsHtml += `<option value="${tag}">${tag}</option>`;
+      });
+
+      selectTag.innerHTML = optionsHtml;
+      selectTag.value = currentSelection; // Trả lại lựa chọn
     }
 
     // 2. Logic xử lý khi người dùng chọn Filter
     function applyFilters() {
-        const selectedTag = document.getElementById('filter-tag').value;
-        const sortTime = document.getElementById('sort-time').value;
-        
-        // Bắt đầu với toàn bộ bài viết đã tải về
-        let filteredPosts = [...state.posts];
+      const selectedTag = document.getElementById('filter-tag').value;
+      const sortTime = document.getElementById('sort-time').value;
 
-        // Lọc theo Tag
-        if (selectedTag !== 'all') {
-            filteredPosts = filteredPosts.filter(post => post.categories.includes(selectedTag));
-        }
+      // Bắt đầu với toàn bộ bài viết đã tải về
+      let filteredPosts = [...state.posts];
 
-        // Sắp xếp theo Thời gian
-        if (sortTime === 'oldest') {
-            filteredPosts.sort((a, b) => a.timestamp - b.timestamp); // Tăng dần (Cũ tới mới)
-        } else {
-            filteredPosts.sort((a, b) => b.timestamp - a.timestamp); // Giảm dần (Mới tới cũ)
-        }
+      // Lọc theo Tag
+      if (selectedTag !== 'all') {
+        filteredPosts = filteredPosts.filter(post => post.categories.includes(selectedTag));
+      }
 
-        // Cập nhật số lượng hiển thị
-        document.getElementById('filter-count').innerText = `Hiển thị ${filteredPosts.length} bài viết`;
+      // Sắp xếp theo Thời gian
+      if (sortTime === 'oldest') {
+        filteredPosts.sort((a, b) => a.timestamp - b.timestamp); // Tăng dần (Cũ tới mới)
+      } else {
+        filteredPosts.sort((a, b) => b.timestamp - a.timestamp); // Giảm dần (Mới tới cũ)
+      }
 
-        // Render lại giao diện
-        appendPostsToView(filteredPosts, true); // true = chế độ ghi đè danh sách
-        
-        // Lưu ý: Khi xài filter, ta tạm ẩn infinite scroll (vì nó gọi theo số trang gốc)
-        // Khi gỡ filter (chọn lại 'Tất cả') thì tự động kích hoạt lại
-        const sentinel = document.getElementById('scroll-sentinel');
-        if (sentinel) {
-             sentinel.style.display = (selectedTag === 'all' && sortTime === 'newest') ? 'block' : 'none';
-        }
+      // Cập nhật số lượng hiển thị
+      document.getElementById('filter-count').innerText = `Hiển thị ${filteredPosts.length} bài viết`;
+
+      // Render lại giao diện
+      appendPostsToView(filteredPosts, true); // true = chế độ ghi đè danh sách
+
+      // Lưu ý: Khi xài filter, ta tạm ẩn infinite scroll (vì nó gọi theo số trang gốc)
+      // Khi gỡ filter (chọn lại 'Tất cả') thì tự động kích hoạt lại
+      const sentinel = document.getElementById('scroll-sentinel');
+      if (sentinel) {
+        sentinel.style.display = (selectedTag === 'all' && sortTime === 'newest') ? 'block' : 'none';
+      }
     }
-    
+
     // Đừng quên reset allTags khi forceReload
     // Tìm hàm forceReload() hiện tại của bạn và thêm dòng state.allTags.clear(); vào
 
@@ -2766,14 +2818,14 @@
         ADD_TAGS: ['iframe'],
         ADD_ATTR: ['target', 'allowfullscreen', 'frameborder']
       });
-
+      
       // Render bài viết
       DOM.articleDisplay.innerHTML = `
             <div class="article-header">
                 <h1>${post.title}</h1>
-                <div class="article-meta">Đăng ngày ${post.date} • ${post.category}</div>
+                <div class="article-meta">Đăng ngày ${post.date} • Đinh Mạnh Hùng 👑</div>
             </div>
-            <div class="article-content">${cleanContent}</div> 
+            <div class="article-content break-words">${cleanContent}</div> 
         `;
 
       // Áp dụng các tính năng nâng cao
