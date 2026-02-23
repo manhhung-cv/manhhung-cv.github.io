@@ -124,6 +124,31 @@
             box-shadow: 0 0 50px rgba(255, 255, 255, 0.3) !important;
         }
 
+        /* --- Thay thế .tab-active và .tab-inactive cũ --- */
+        .tab-active {
+            background-color: #ffffff;
+            color: #000000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .tab-inactive {
+            color: #71717a;
+            background-color: transparent;
+        }
+
+        /* --- Tối ưu Input Time cho iOS & Zen Minimal --- */
+        input[type="time"]::-webkit-calendar-picker-indicator {
+            display: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="time"] {
+            text-align: center;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+        }
+
         /* Trạng thái Thở ra (Vòng tròn thu nhỏ - Mặc định là scale-50) */
     </style>
 </head>
@@ -152,163 +177,189 @@
         </div>
 
         <div id="activeToolContainer" class="w-full mt-6 hidden transition-all duration-300 px-4">
+            <div id="tool-sleep"
+                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-3xl p-4 shadow-2xl transition-all duration-300 w-full">
+                
+                <div class="grid grid-cols-3 text-[11px] font-medium mb-4 bg-zinc-950/80 rounded-full p-1 gap-1 ring-1 ring-zinc-800/50">
+                    <button onclick="switchSleepTab('bedtime')" id="tab-bedtime"
+                        class="py-2 rounded-full transition-all duration-300 tab-active">Đi ngủ</button>
+                    <button onclick="switchSleepTab('waketime')" id="tab-waketime"
+                        class="py-2 rounded-full transition-all duration-300 tab-inactive">Thức dậy</button>
+                    <button onclick="switchSleepTab('duration')" id="tab-duration"
+                        class="py-2 rounded-full transition-all duration-300 tab-inactive">Thời lượng</button>
+                </div>
+
+                <div id="view-bedtime" class="flex flex-col items-center w-full">
+                    <span class="text-[9px] text-zinc-500 uppercase tracking-widest mb-1.5">Giờ lên giường</span>
+                    <div class="w-full bg-black/40 rounded-2xl p-3 mb-4 flex justify-center border border-zinc-800/50 transition-colors focus-within:border-zinc-500/50">
+                        <input type="time" id="input-bedtime"
+                            class="bg-transparent text-white text-4xl md:text-5xl font-extralight text-center outline-none w-full appearance-none">
+                    </div>
+                    <button onclick="calcSmartSleep('bedtime')"
+                        class="w-full bg-white hover:bg-zinc-200 text-black py-2.5 rounded-xl text-[11px] font-bold tracking-widest transition-colors">TÍNH GIỜ DẬY</button>
+                </div>
+
+                <div id="view-waketime" class="hidden flex flex-col items-center w-full">
+                    <span class="text-[9px] text-zinc-500 uppercase tracking-widest mb-1.5">Giờ báo thức</span>
+                    <div class="w-full bg-black/40 rounded-2xl p-3 mb-4 flex justify-center border border-zinc-800/50 transition-colors focus-within:border-zinc-500/50">
+                        <input type="time" id="input-waketime"
+                            class="bg-transparent text-white text-4xl md:text-5xl font-extralight text-center outline-none w-full appearance-none">
+                    </div>
+                    <button onclick="calcSmartSleep('waketime')"
+                        class="w-full bg-white hover:bg-zinc-200 text-black py-2.5 rounded-xl text-[11px] font-bold tracking-widest transition-colors">TÍNH GIỜ NGỦ</button>
+                </div>
+
+                <div id="view-duration" class="hidden flex-col items-center w-full">
+                    <div class="flex gap-2 w-full mb-4">
+                        <div class="w-1/2 flex flex-col items-center bg-black/40 rounded-2xl p-3 border border-zinc-800/50 transition-colors focus-within:border-zinc-500/50">
+                            <span class="text-[9px] text-zinc-500 uppercase tracking-widest mb-1">Bắt đầu</span>
+                            <input type="time" id="diff-start"
+                                class="bg-transparent text-white text-2xl font-light text-center outline-none w-full appearance-none">
+                        </div>
+                        <div class="w-1/2 flex flex-col items-center bg-black/40 rounded-2xl p-3 border border-zinc-800/50 transition-colors focus-within:border-zinc-500/50">
+                            <span class="text-[9px] text-zinc-500 uppercase tracking-widest mb-1">Kết thúc</span>
+                            <input type="time" id="diff-end" value="06:00"
+                                class="bg-transparent text-white text-2xl font-light text-center outline-none w-full appearance-none">
+                        </div>
+                    </div>
+                    <button onclick="calcDuration()"
+                        class="w-full bg-zinc-800 hover:bg-zinc-700 text-white py-2.5 rounded-xl text-[11px] font-bold tracking-widest transition-colors border border-zinc-700/50">TÍNH THỜI LƯỢNG</button>
+                </div>
+
+                <div id="sleepResultContainer" class="hidden mt-4 pt-4 border-t border-zinc-800/50 w-full">
+                    <div id="sleepResultContent" class="grid grid-cols-2 gap-2"></div>
+                    <div id="durationResult" class="text-center text-lg font-light text-white hidden flex flex-col items-center justify-center py-1"></div>
+                </div>
+            </div>
 
             <div id="tool-sound"
-                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-2xl p-4">
+                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-3xl p-4 shadow-2xl transition-all duration-300 w-full">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-widest">Âm Thanh Nền</h3>
+                    <h3 class="text-[10px] text-zinc-500 uppercase tracking-[0.2em]">Âm Thanh Nền</h3>
                     <button onclick="stopAllSounds()"
-                        class="text-[10px] text-red-400 border border-red-900/50 px-2 py-1 rounded hover:bg-red-900/20 transition-colors">DỪNG
-                        HẾT</button>
+                        class="text-[9px] text-red-400 border border-red-900/50 px-2.5 py-1 rounded-full hover:bg-red-900/20 transition-colors uppercase tracking-widest">
+                        Dừng hết
+                    </button>
                 </div>
 
-                <div id="soundGrid" class="grid grid-cols-4 gap-2 mb-4">
-                </div>
+                <div id="soundGrid" class="grid grid-cols-4 gap-2 mb-1">
+                    </div>
 
                 <div id="activeControls"
-                    class="h-0 overflow-hidden transition-all duration-300 opacity-0 border-t border-zinc-800">
-                    <div class="pt-4 flex items-center gap-3">
+                    class="h-0 overflow-hidden transition-all duration-300 opacity-0 border-t border-zinc-800/50 mt-2 pt-1">
+                    <div class="pt-3 flex items-center gap-3">
                         <i data-lucide="volume-2" class="w-4 h-4 text-zinc-500"></i>
                         <input type="range" id="globalVolumeControl" min="0" max="1" step="0.05"
                             class="flex-1 accent-white h-1 bg-zinc-700 rounded-lg appearance-none cursor-pointer">
                     </div>
-                    <div class="text-center mt-1 text-[10px] text-zinc-600" id="controlName">Volume</div>
-                </div>
-            </div>
-
-            <div id="tool-sleep"
-                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-2xl p-4">
-                <div class="grid grid-cols-3 text-xs font-medium mb-4 bg-zinc-950/50 rounded-lg p-1 gap-1">
-                    <button onclick="switchSleepTab('bedtime')" id="tab-bedtime"
-                        class="py-2 rounded transition-all tab-active">Đi ngủ</button>
-                    <button onclick="switchSleepTab('waketime')" id="tab-waketime"
-                        class="py-2 rounded transition-all tab-inactive">Thức dậy</button>
-                    <button onclick="switchSleepTab('duration')" id="tab-duration"
-                        class="py-2 rounded transition-all tab-inactive">Thời lượng</button>
-                </div>
-                <div id="view-bedtime">
-                    <div class="flex items-center rounded-lg border border-zinc-700 bg-black overflow-hidden mb-2">
-                        <input type="time" id="input-bedtime"
-                            class="flex-1 bg-transparent text-white p-2 text-center outline-none border-none">
-                    </div>
-                    <button onclick="calcSmartSleep('bedtime')"
-                        class="w-full bg-white text-black py-2 rounded-lg text-xs font-bold">TÍNH TOÁN</button>
-                </div>
-                <div id="view-waketime" class="hidden">
-                    <div class="flex items-center rounded-lg border border-zinc-700 bg-black overflow-hidden mb-2">
-                        <input type="time" id="input-waketime"
-                            class="flex-1 bg-transparent text-white p-2 text-center outline-none border-none">
-                    </div>
-                    <button onclick="calcSmartSleep('waketime')"
-                        class="w-full bg-white text-black py-2 rounded-lg text-xs font-bold">TÍNH TOÁN</button>
-                </div>
-                <div id="view-duration" class="hidden space-y-2">
-                    <div class="flex gap-2">
-                        <input type="time" id="diff-start"
-                            class="w-1/2 bg-black border border-zinc-700 text-white rounded p-2 text-center text-xs">
-                        <input type="time" id="diff-end" value="06:00"
-                            class="w-1/2 bg-black border border-zinc-700 text-white rounded p-2 text-center text-xs">
-                    </div>
-                    <button onclick="calcDuration()"
-                        class="w-full bg-zinc-700 text-white py-2 rounded-lg text-xs font-bold">TÍNH</button>
-                </div>
-                <div id="sleepResultContainer" class="hidden mt-4 pt-4 border-t border-zinc-800">
-                    <div id="sleepResultContent" class="grid grid-cols-2 gap-2"></div>
-                    <div id="durationResult" class="text-center text-lg font-light text-white hidden"></div>
+                    <div class="text-center mt-2 text-[9px] text-zinc-500 uppercase tracking-widest" id="controlName">Volume</div>
                 </div>
             </div>
 
             <div id="tool-breath"
-                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-2xl p-4 text-center">
-                <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Thư giãn</h3>
-                <div class="flex gap-2 justify-center">
+                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-3xl p-4 shadow-2xl transition-all duration-300 flex flex-col items-center w-full">
+                <h3 class="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mb-4">Bài tập thở</h3>
+                <div class="grid grid-cols-3 gap-2 w-full">
                     <button onclick="startBreathing(30)"
-                        class="px-3 py-2 rounded bg-zinc-800 text-xs hover:bg-white hover:text-black transition-colors">30s</button>
+                        class="py-3 rounded-2xl bg-black/40 border border-zinc-800/50 text-white text-xs font-light hover:bg-white hover:text-black hover:border-white transition-all">30s</button>
                     <button onclick="startBreathing(60)"
-                        class="px-3 py-2 rounded bg-zinc-800 text-xs hover:bg-white hover:text-black transition-colors">60s</button>
+                        class="py-3 rounded-2xl bg-black/40 border border-zinc-800/50 text-white text-xs font-light hover:bg-white hover:text-black hover:border-white transition-all">60s</button>
                     <button onclick="startBreathing(120)"
-                        class="px-3 py-2 rounded bg-zinc-800 text-xs hover:bg-white hover:text-black transition-colors">2m</button>
+                        class="py-3 rounded-2xl bg-black/40 border border-zinc-800/50 text-white text-xs font-light hover:bg-white hover:text-black hover:border-white transition-all">2m</button>
                 </div>
             </div>
 
             <div id="tool-focus"
-                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-2xl p-4">
-                <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Pomodoro</h3>
-                <div class="flex gap-2 mb-2">
-                    <input type="number" id="customFocusInput" placeholder="Phút"
-                        class="w-16 bg-black border border-zinc-700 text-center rounded text-sm text-white">
+                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-3xl p-4 shadow-2xl transition-all duration-300 flex flex-col items-center w-full">
+                <h3 class="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mb-4">Pomodoro</h3>
+                
+                <div class="w-full flex gap-2 mb-4">
+                    <div class="flex-1 bg-black/40 rounded-xl border border-zinc-800/50 transition-colors focus-within:border-zinc-500/50 flex items-center p-1">
+                        <input type="number" id="customFocusInput" placeholder="Phút"
+                            class="w-full bg-transparent text-center text-white text-xl font-light outline-none appearance-none">
+                    </div>
                     <button onclick="startFocusCustom()"
-                        class="flex-1 bg-white text-black rounded text-xs font-bold">BẮT ĐẦU</button>
+                        class="bg-white hover:bg-zinc-200 text-black px-4 rounded-xl text-[10px] font-bold tracking-widest transition-colors">BẮT ĐẦU</button>
                 </div>
-                <div class="flex justify-between gap-1">
-                    <button onclick="startFocus(15)"
-                        class="flex-1 py-1 bg-zinc-800 rounded text-[10px] text-zinc-400 hover:text-white">15p</button>
-                    <button onclick="startFocus(25)"
-                        class="flex-1 py-1 bg-zinc-800 rounded text-[10px] text-zinc-400 hover:text-white">25p</button>
-                    <button onclick="startFocus(45)"
-                        class="flex-1 py-1 bg-zinc-800 rounded text-[10px] text-zinc-400 hover:text-white">45p</button>
+                
+                <div class="w-full border-t border-zinc-800/50 pt-4">
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="startFocus(15)"
+                            class="py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/30 text-zinc-300 text-[10px] font-medium tracking-widest hover:bg-white hover:text-black transition-all">15P</button>
+                        <button onclick="startFocus(25)"
+                            class="py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/30 text-zinc-300 text-[10px] font-medium tracking-widest hover:bg-white hover:text-black transition-all">25P</button>
+                        <button onclick="startFocus(45)"
+                            class="py-2.5 rounded-xl bg-zinc-800/50 border border-zinc-700/30 text-zinc-300 text-[10px] font-medium tracking-widest hover:bg-white hover:text-black transition-all">45P</button>
+                    </div>
                 </div>
             </div>
 
             <div id="tool-location"
-                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-2xl p-4">
-                <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3">Vị trí</h3>
-                <div class="flex gap-2 mb-2">
-                    <input type="text" id="manualLocation" placeholder="Tên thành phố..."
-                        class="flex-1 bg-black border border-zinc-700 px-3 py-2 rounded text-xs text-white">
+                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-3xl p-4 shadow-2xl transition-all duration-300 flex flex-col items-center w-full">
+                <h3 class="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mb-4">Thời tiết & Vị trí</h3>
+                
+                <div class="w-full flex gap-2 mb-4">
+                    <div class="flex-1 bg-black/40 rounded-xl border border-zinc-800/50 transition-colors focus-within:border-zinc-500/50 flex items-center px-3">
+                        <input type="text" id="manualLocation" placeholder="Tên thành phố..."
+                            class="w-full bg-transparent text-white text-xs outline-none py-2.5">
+                    </div>
                     <button onclick="saveLocation()"
-                        class="px-3 bg-zinc-800 hover:bg-white hover:text-black rounded text-xs font-bold">LƯU</button>
+                        class="bg-zinc-800 hover:bg-white hover:text-black text-white px-4 rounded-xl text-[10px] font-bold tracking-widest transition-colors border border-zinc-700/50">LƯU</button>
                 </div>
+                
                 <button onclick="useGPS()"
-                    class="w-full py-2 flex items-center justify-center gap-2 text-[10px] text-blue-400 hover:text-blue-300 border border-dashed border-zinc-800 rounded">
-                    <i data-lucide="map-pin" class="w-3 h-3"></i> Dùng định vị GPS
+                    class="w-full py-3 flex items-center justify-center gap-2 text-[10px] text-blue-400 hover:text-blue-300 bg-blue-900/10 hover:bg-blue-900/20 border border-blue-900/30 rounded-xl transition-colors tracking-widest uppercase">
+                    <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> Dùng định vị GPS
                 </button>
-                <div id="locStatus" class="text-[10px] text-center mt-2 text-zinc-500"></div>
+                <div id="locStatus" class="text-[9px] text-center mt-3 text-zinc-500 uppercase tracking-widest"></div>
             </div>
 
             <div id="tool-story"
-                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-2xl p-4 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded bg-zinc-800 flex items-center justify-center"><i data-lucide="book-open"
-                            class="w-4 h-4 text-zinc-400"></i></div>
-                    <div>
-                        <div class="text-xs font-bold text-zinc-300">Chuyến Tàu Đêm</div>
-                        <div class="text-[10px] text-zinc-500">ASMR Story</div>
+                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-3xl p-4 shadow-2xl transition-all duration-300 flex flex-col w-full">
+                <h3 class="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mb-3 text-center">Âm thanh thư giãn</h3>
+                
+                <div class="flex items-center justify-between bg-black/40 p-2.5 rounded-2xl border border-zinc-800/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-zinc-800 flex items-center justify-center shadow-inner">
+                            <i data-lucide="book-open" class="w-4 h-4 text-zinc-400"></i>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <div class="text-xs font-semibold text-zinc-200 tracking-wide">Chuyến Tàu Đêm</div>
+                            <div class="text-[9px] text-zinc-500 uppercase tracking-widest mt-0.5">ASMR Story</div>
+                        </div>
                     </div>
+                    <button onclick="toggleStory()" id="storyBtn"
+                        class="w-10 h-10 rounded-xl bg-zinc-800 text-white flex items-center justify-center hover:bg-white hover:text-black transition-all shadow-lg mr-1 group">
+                        <i data-lucide="play" class="w-4 h-4 ml-0.5"></i>
+                    </button>
                 </div>
-                <button onclick="toggleStory()" id="storyBtn"
-                    class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center hover:bg-white hover:text-black transition-all">
-                    <i data-lucide="play" class="w-3 h-3"></i>
-                </button>
             </div>
 
             <div id="tool-settings"
-                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-2xl p-4">
-                <h3 class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Cài đặt hiển thị</h3>
+                class="tool-content hidden bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-3xl p-4 shadow-2xl transition-all duration-300 flex flex-col w-full">
+                <h3 class="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mb-4 text-center">Cài đặt hiển thị</h3>
 
-                <div class="space-y-3">
-                    <label class="flex items-center justify-between cursor-pointer group">
-                        <span class="text-sm text-zinc-300 group-hover:text-white transition-colors">Hiển thị
-                            Giây</span>
+                <div class="space-y-1 mb-5 bg-black/40 rounded-2xl p-3 border border-zinc-800/50">
+                    <label class="flex items-center justify-between cursor-pointer group py-1.5">
+                        <span class="text-xs text-zinc-300 group-hover:text-white transition-colors tracking-wide">Hiển thị Giây</span>
                         <input type="checkbox" id="chk-seconds" onchange="toggleClockConfig('seconds')"
-                            class="w-4 h-4 accent-white bg-zinc-800 border-zinc-700 rounded cursor-pointer">
+                            class="w-4 h-4 accent-white bg-zinc-800 border-zinc-700 rounded cursor-pointer transition-all">
                     </label>
+                    
+                    <div class="w-full h-px bg-zinc-800/50 my-1"></div>
 
-                    <label class="flex items-center justify-between cursor-pointer group">
-                        <span class="text-sm text-zinc-300 group-hover:text-white transition-colors">Hiển thị
-                            Mili-giây</span>
+                    <label class="flex items-center justify-between cursor-pointer group py-1.5">
+                        <span class="text-xs text-zinc-300 group-hover:text-white transition-colors tracking-wide">Hiển thị Mili-giây</span>
                         <input type="checkbox" id="chk-millis" onchange="toggleClockConfig('millis')"
-                            class="w-4 h-4 accent-white bg-zinc-800 border-zinc-700 rounded cursor-pointer">
+                            class="w-4 h-4 accent-white bg-zinc-800 border-zinc-700 rounded cursor-pointer transition-all">
                     </label>
                 </div>
 
-                <div class="w-full h-px bg-zinc-800 my-4"></div>
-
                 <button onclick="toggleZenMode()"
-                    class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2">
+                    class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 border border-zinc-700/50 shadow-lg">
                     <i data-lucide="eye-off" class="w-4 h-4"></i> Ẩn thanh công cụ
                 </button>
-                <p class="text-[10px] text-zinc-600 text-center mt-2 italic">(Chạm vào đồng hồ để hiện lại)</p>
+                <p class="text-[9px] text-zinc-500 text-center mt-3 uppercase tracking-widest">(Chạm vào đồng hồ để hiện lại)</p>
             </div>
         </div>
 
@@ -322,37 +373,40 @@
         </div>
     </main>
 
-    <div id="bottomPanel" class="z-20 transition-all duration-500 pb-8 flex justify-center">
+    <div id="bottomPanel" class="z-20 transition-all duration-500 pb-6 md:pb-8 flex justify-center w-full px-2">
         <div
-            class="bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-full p-2 flex items-center gap-2 shadow-2xl">
+            class="bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-full p-1.5 sm:p-2 flex items-center gap-1 sm:gap-2 shadow-2xl max-w-full overflow-x-auto hide-scrollbar">
+
             <button onclick="toggleTool('sound')" id="btn-tool-sound"
-                class="p-3 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all relative group">
-                <i data-lucide="music" class="w-5 h-5"></i>
+                class="p-2.5 sm:p-3 flex-shrink-0 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all relative group">
+                <i data-lucide="music" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
 
-            <div class="w-px h-6 bg-zinc-800 mx-1"></div> <button onclick="toggleTool('sleep')" id="btn-tool-sleep"
-                class="p-3 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
-                <i data-lucide="moon" class="w-5 h-5"></i>
+            <div class="w-px h-5 sm:h-6 bg-zinc-800 mx-0.5 sm:mx-1 flex-shrink-0"></div>
+
+            <button onclick="toggleTool('sleep')" id="btn-tool-sleep"
+                class="p-2.5 sm:p-3 flex-shrink-0 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
+                <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
             <button onclick="toggleTool('story')" id="btn-tool-story"
-                class="p-3 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
-                <i data-lucide="book-open" class="w-5 h-5"></i>
+                class="p-2.5 sm:p-3 flex-shrink-0 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
+                <i data-lucide="book-open" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
             <button onclick="toggleTool('breath')" id="btn-tool-breath"
-                class="p-3 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
-                <i data-lucide="wind" class="w-5 h-5"></i>
+                class="p-2.5 sm:p-3 flex-shrink-0 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
+                <i data-lucide="wind" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
             <button onclick="toggleTool('focus')" id="btn-tool-focus"
-                class="p-3 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
-                <i data-lucide="timer" class="w-5 h-5"></i>
+                class="p-2.5 sm:p-3 flex-shrink-0 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
+                <i data-lucide="timer" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
             <button onclick="toggleTool('location')" id="btn-tool-location"
-                class="p-3 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
-                <i data-lucide="map" class="w-5 h-5"></i>
+                class="p-2.5 sm:p-3 flex-shrink-0 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
+                <i data-lucide="map" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
             <button onclick="toggleTool('settings')" id="btn-tool-settings"
-                class="p-3 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
-                <i data-lucide="settings-2" class="w-5 h-5"></i>
+                class="p-2.5 sm:p-3 flex-shrink-0 rounded-full text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all">
+                <i data-lucide="settings-2" class="w-4 h-4 sm:w-5 sm:h-5"></i>
             </button>
         </div>
     </div>
@@ -400,7 +454,7 @@
     const soundManager = {};
     let activeToolId = null;
     let isZenMode = false;
-    
+
     // Cấu hình đồng hồ
     const clockConfig = {
         showSeconds: false,
@@ -411,10 +465,10 @@
         // 1. Khởi tạo dữ liệu
         renderSounds();
         initWeather();
-        
+
         // 2. Bắt đầu vòng lặp đồng hồ (dùng animation frame cho mượt)
         loopClock();
-        
+
         // 3. Set giá trị mặc định cho các input thời gian
         const nowStr = new Date().toTimeString().substring(0, 5);
         if (document.getElementById('input-bedtime')) document.getElementById('input-bedtime').value = nowStr;
@@ -450,7 +504,7 @@
         if (activeToolId) {
             document.getElementById(`tool-${activeToolId}`).classList.add('hidden');
             const oldBtn = document.getElementById(`btn-tool-${activeToolId}`);
-            if(oldBtn) {
+            if (oldBtn) {
                 oldBtn.classList.remove('text-white', 'bg-zinc-800');
                 oldBtn.classList.add('text-zinc-500');
             }
@@ -460,22 +514,22 @@
         activeToolId = toolId;
         container.classList.remove('hidden');
         document.getElementById(`tool-${toolId}`).classList.remove('hidden');
-        
+
         // Highlight nút trên Dock
         const newBtn = document.getElementById(`btn-tool-${toolId}`);
-        if(newBtn) {
+        if (newBtn) {
             newBtn.classList.remove('text-zinc-500');
             newBtn.classList.add('text-white', 'bg-zinc-800');
         }
 
         // UI Effect: Thu nhỏ đồng hồ
-        clock.classList.add('scale-50', '-translate-y-4', 'opacity-50'); 
+        clock.classList.add('scale-50', '-translate-y-4', 'opacity-50');
         quote.classList.add('hidden');
-        
+
         // Special logic cho Sound tool
         if (toolId === 'sound') {
-             const playing = Object.values(soundManager).find(s => s.isPlaying);
-             if(playing) showVolumeControl(playing.id);
+            const playing = Object.values(soundManager).find(s => s.isPlaying);
+            if (playing) showVolumeControl(playing.id);
         }
     }
 
@@ -488,19 +542,19 @@
 
         // Ẩn nội dung
         document.getElementById(`tool-${activeToolId}`).classList.add('hidden');
-        
+
         // Reset nút Dock
         const btn = document.getElementById(`btn-tool-${activeToolId}`);
-        if(btn) {
+        if (btn) {
             btn.classList.remove('text-white', 'bg-zinc-800');
             btn.classList.add('text-zinc-500');
         }
-        
+
         container.classList.add('hidden');
-        
+
         // Reset UI chính
         clock.classList.remove('scale-50', '-translate-y-4', 'opacity-50');
-        if(!isZenMode) quote.classList.remove('hidden'); // Chỉ hiện quote nếu không phải Zen Mode
+        if (!isZenMode) quote.classList.remove('hidden'); // Chỉ hiện quote nếu không phải Zen Mode
 
         activeToolId = null;
     }
@@ -518,27 +572,27 @@
             this.audio.onerror = () => console.warn(`Missing file: ${id}.mp3`);
         }
         toggle() {
-            if (this.isPlaying) { 
-                this.audio.pause(); 
-                this.isPlaying = false; 
-            } else { 
-                this.audio.play().catch(() => {}); 
-                this.isPlaying = true; 
+            if (this.isPlaying) {
+                this.audio.pause();
+                this.isPlaying = false;
+            } else {
+                this.audio.play().catch(() => { });
+                this.isPlaying = true;
             }
             updateSoundUI(this.id);
         }
-        stop() { 
-            this.audio.pause(); 
-            this.audio.currentTime = 0; 
-            this.isPlaying = false; 
-            updateSoundUI(this.id); 
+        stop() {
+            this.audio.pause();
+            this.audio.currentTime = 0;
+            this.isPlaying = false;
+            updateSoundUI(this.id);
         }
         setVolume(v) { this.audio.volume = v; }
     }
 
     function renderSounds() {
         const grid = document.getElementById('soundGrid');
-        if(!grid) return;
+        if (!grid) return;
         grid.innerHTML = '';
         sounds.forEach(s => {
             soundManager[s.id] = new SoundNode(s.id);
@@ -555,13 +609,13 @@
     function clickSound(id) {
         const sound = soundManager[id];
         sound.toggle();
-        
-        if (sound.isPlaying) { 
-            showVolumeControl(id); 
+
+        if (sound.isPlaying) {
+            showVolumeControl(id);
         } else {
             // Nếu tắt, kiểm tra xem còn cái nào đang chạy không để hiện volume của cái đó
             const other = Object.values(soundManager).find(s => s.isPlaying);
-            if (other) showVolumeControl(other.id); 
+            if (other) showVolumeControl(other.id);
             else hideVolumeControl();
         }
     }
@@ -571,7 +625,7 @@
         const node = soundManager[id];
         const icon = btn.querySelector('i');
         const text = btn.querySelector('span');
-        
+
         if (node.isPlaying) {
             btn.classList.add('bg-white', 'border-white', 'scale-95');
             btn.classList.remove('bg-zinc-800', 'border-zinc-700/50', 'hover:bg-zinc-700');
@@ -589,11 +643,11 @@
         const panel = document.getElementById('activeControls');
         const soundName = sounds.find(s => s.id === id).name;
         document.getElementById('controlName').innerText = `Âm lượng: ${soundName}`;
-        
+
         const slider = document.getElementById('globalVolumeControl');
         slider.value = soundManager[id].audio.volume;
         slider.oninput = (e) => soundManager[id].setVolume(e.target.value);
-        
+
         panel.classList.remove('opacity-0');
         panel.style.height = '60px';
     }
@@ -604,9 +658,9 @@
         panel.style.height = '0';
     }
 
-    function stopAllSounds() { 
-        Object.values(soundManager).forEach(s => s.stop()); 
-        hideVolumeControl(); 
+    function stopAllSounds() {
+        Object.values(soundManager).forEach(s => s.stop());
+        hideVolumeControl();
     }
 
     /* =========================================
@@ -616,7 +670,7 @@
     function toggleClockConfig(key) {
         if (key === 'seconds') clockConfig.showSeconds = document.getElementById('chk-seconds').checked;
         if (key === 'millis') clockConfig.showMillis = document.getElementById('chk-millis').checked;
-        
+
         // Logic phụ thuộc: Millis cần Seconds
         if (key === 'millis' && clockConfig.showMillis) {
             clockConfig.showSeconds = true;
@@ -669,7 +723,7 @@
     function toggleZenMode() {
         const dock = document.getElementById('bottomPanel');
         const header = document.querySelector('header');
-        
+
         // Nếu đang mở công cụ thì đóng trước
         if (activeToolId && !isZenMode) {
             closeTools();
@@ -729,18 +783,18 @@
         const status = document.getElementById('locStatus');
         status.innerText = "Đang định vị...";
         if (!navigator.geolocation) { status.innerText = "Lỗi GPS."; return; }
-        
+
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const { latitude, longitude } = pos.coords;
             let finalName = "Vị trí của bạn";
             try {
                 const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=vi`);
-                if(res.ok) {
+                if (res.ok) {
                     const data = await res.json();
                     finalName = data.city || data.locality || finalName;
                 }
-            } catch(e){}
-            
+            } catch (e) { }
+
             saveToLocal(finalName, latitude, longitude);
             document.getElementById('manualLocation').value = finalName;
             await fetchWeatherAPI(latitude, longitude, finalName);
@@ -759,7 +813,7 @@
             const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
             const data = await res.json();
             const w = data.current_weather;
-            
+
             let icon = 'cloud';
             if (w.weathercode === 0) icon = 'sun';
             else if (w.weathercode <= 3) icon = 'cloud-sun';
@@ -784,16 +838,16 @@
     }
 
     function startFocus(mins) {
-        closeTools(); 
+        closeTools();
         if (focusInterval) clearInterval(focusInterval);
-        
+
         focusEnd = Date.now() + mins * 60000;
         focusActive = true;
 
         // UI: Ẩn dock, hiện nút Stop
         document.getElementById('bottomPanel').classList.add('translate-y-full', 'opacity-0', 'pointer-events-none');
         document.getElementById('focusLabel').classList.remove('hidden');
-        
+
         const btnStop = document.getElementById('btn-stop-main');
         btnStop.classList.remove('hidden');
         setTimeout(() => btnStop.classList.remove('opacity-0', 'translate-y-4'), 50);
@@ -859,7 +913,7 @@
 
         const inputId = mode === 'bedtime' ? 'input-bedtime' : 'input-waketime';
         const timeVal = document.getElementById(inputId).value;
-        if(!timeVal) return;
+        if (!timeVal) return;
 
         const baseDate = new Date();
         const [h, m] = timeVal.split(':');
@@ -867,22 +921,22 @@
 
         // Chu kỳ ngủ 90p + 14p đi vào giấc ngủ
         const cycles = mode === 'bedtime' ? [3, 4, 5, 6] : [6, 5, 4, 3];
-        
+
         cycles.forEach(c => {
             let tempTime = new Date(baseDate.getTime());
-            let minutes = (c * 90) + 14; 
+            let minutes = (c * 90) + 14;
 
-            if(mode === 'bedtime') {
-                if(tempTime < new Date()) tempTime.setDate(tempTime.getDate() + 1);
+            if (mode === 'bedtime') {
+                if (tempTime < new Date()) tempTime.setDate(tempTime.getDate() + 1);
                 tempTime.setMinutes(tempTime.getMinutes() + minutes);
             } else {
-                if(tempTime < new Date()) tempTime.setDate(tempTime.getDate() + 1);
+                if (tempTime < new Date()) tempTime.setDate(tempTime.getDate() + 1);
                 tempTime.setMinutes(tempTime.getMinutes() - minutes);
             }
-            
+
             const isBest = (c === 5 || c === 6);
-            const timeStr = tempTime.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit'});
-            
+            const timeStr = tempTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
             list.innerHTML += `
                 <div class="rounded-lg p-3 border ${isBest ? 'bg-white text-black border-white' : 'bg-zinc-800 border-zinc-700 text-zinc-400'} flex flex-col items-center justify-center relative">
                     ${isBest ? '<i data-lucide="star" class="absolute top-1 right-1 w-3 h-3 text-yellow-500 fill-current"></i>' : ''}
@@ -897,7 +951,7 @@
     function calcDuration() {
         const start = document.getElementById('diff-start').value;
         const end = document.getElementById('diff-end').value;
-        if(!start || !end) return;
+        if (!start || !end) return;
 
         const box = document.getElementById('sleepResultContainer');
         box.classList.remove('hidden');
@@ -907,14 +961,14 @@
 
         const [h1, m1] = start.split(':').map(Number);
         const [h2, m2] = end.split(':').map(Number);
-        let min1 = h1*60 + m1;
-        let min2 = h2*60 + m2;
-        if (min2 < min1) min2 += 1440; 
+        let min1 = h1 * 60 + m1;
+        let min2 = h2 * 60 + m2;
+        if (min2 < min1) min2 += 1440;
 
         const diff = min2 - min1;
         const h = Math.floor(diff / 60);
         const m = diff % 60;
-        
+
         txt.innerHTML = `
             <div class="text-xs text-zinc-500 mb-1 uppercase">Tổng thời gian</div>
             <div class="text-4xl font-light">${h}h ${m}p</div>
@@ -930,7 +984,7 @@
         closeTools();
         const overlay = document.getElementById('breathingOverlay');
         overlay.classList.remove('opacity-0', 'pointer-events-none');
-        
+
         document.getElementById('breathResult').classList.add('hidden');
         document.getElementById('breathCircleContainer').classList.remove('hidden');
         document.getElementById('breathTimerDisplay').classList.remove('hidden');
@@ -938,11 +992,11 @@
 
         let timeLeft = seconds;
         updateBreathTime(timeLeft);
-        
+
         breathTimer = setInterval(() => {
             timeLeft--;
             updateBreathTime(timeLeft);
-            if(timeLeft <= 0) finishBreathing();
+            if (timeLeft <= 0) finishBreathing();
         }, 1000);
 
         runBreathAnim();
@@ -952,14 +1006,14 @@
     function runBreathAnim() {
         const circle = document.getElementById('breathCircleMain');
         const text = document.getElementById('breathInstruct');
-        
+
         circle.classList.add('breath-in');
         text.innerText = "Hít vào...";
         text.style.opacity = "1";
-        
+
         setTimeout(() => {
             const overlay = document.getElementById('breathingOverlay');
-            if(!overlay.classList.contains('opacity-0')) {
+            if (!overlay.classList.contains('opacity-0')) {
                 circle.classList.remove('breath-in');
                 text.innerText = "Thở ra...";
                 text.style.opacity = "0.7";
@@ -968,9 +1022,9 @@
     }
 
     function updateBreathTime(s) {
-        const m = Math.floor(s/60);
-        const sec = s%60;
-        document.getElementById('breathTimerDisplay').innerText = `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+        const m = Math.floor(s / 60);
+        const sec = s % 60;
+        document.getElementById('breathTimerDisplay').innerText = `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
     }
 
     function finishBreathing() {
@@ -993,18 +1047,18 @@
        9. KỂ CHUYỆN & QUOTES
        ========================================= */
     let isStoryPlaying = false;
-    const storyAudio = new Audio('https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg'); 
+    const storyAudio = new Audio('https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg');
     storyAudio.loop = true;
 
     function toggleStory() {
         const btn = document.getElementById('storyBtn');
-        if(isStoryPlaying) {
+        if (isStoryPlaying) {
             storyAudio.pause();
             btn.innerHTML = '<i data-lucide="play" class="w-3 h-3"></i>';
             btn.classList.replace('bg-white', 'bg-zinc-800');
             btn.classList.replace('text-black', 'text-white');
         } else {
-            storyAudio.play().catch(()=>{});
+            storyAudio.play().catch(() => { });
             btn.innerHTML = '<i data-lucide="pause" class="w-3 h-3"></i>';
             btn.classList.replace('bg-zinc-800', 'bg-white');
             btn.classList.replace('text-white', 'text-black');
@@ -1063,10 +1117,10 @@
 
         // Logic chọn ngẫu nhiên và hiển thị
         const q = document.getElementById('quoteDisplay');
-        if(q) {
+        if (q) {
             // Hiệu ứng Fade out trước khi đổi chữ
             q.classList.add('opacity-0');
-            
+
             setTimeout(() => {
                 const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
                 q.innerText = `"${randomQuote}"`;
