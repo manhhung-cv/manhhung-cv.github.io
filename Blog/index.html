@@ -14,6 +14,14 @@
   <link
     href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@300;400;600;700&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap"
     rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@300;400;600;700&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap"
+    rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+    rel="stylesheet">
+
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
@@ -59,6 +67,40 @@
 
       --accent: #d7c08e;
       --accent-hover: #60a5fa;
+    }
+
+    /* Giao diện đọc sách: Mắt đỡ mỏi (Sepia) */
+    [data-theme="sepia"] {
+      --bg-body: #F4EAD5;
+      --bg-sidebar: #EAE0CB;
+      --bg-card: #F9F1DC;
+      --bg-code: #2D2A26;
+      --bg-overlay: rgba(244, 234, 213, 0.85);
+      --text-main: #4A3E33;
+      --text-muted: #7A6C5D;
+      --border: #DBCDBA;
+      --accent: #C2A068;
+      --accent-hover: #1d4ed8;
+    }
+
+    /* Nút mở cài đặt đọc trong Meta bài viết */
+    .btn-reading-settings {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .btn-reading-settings:hover {
+      background: var(--border);
+      color: var(--accent);
     }
 
     * {
@@ -432,12 +474,14 @@
     }
 
     .article-content {
-      font-size: var(--article-font-size); /* Sửa dòng này */
-      font-family: var(--article-font-family); /* Thêm dòng này */
+      font-size: var(--article-font-size);
+      /* Sửa dòng này */
+      font-family: var(--article-font-family);
+      /* Thêm dòng này */
       line-height: 1.8;
       color: var(--text-main);
     }
-    
+
 
     .article-content mark {
       padding: 0 5px;
@@ -1460,43 +1504,99 @@
       border-color: var(--accent);
     }
 
-    /* --- Reading Settings Modal --- */
+   /* --- Bảng Không gian đọc (Bottom Sheet) --- */
     #settings-modal {
       display: none;
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: var(--bg-overlay);
-      backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
-      z-index: 4000; align-items: center; justify-content: center; padding: 1.5rem;
-      animation: fadeIn 0.2s ease-out;
+      position: fixed; 
+      bottom: 0; 
+      left: 0; 
+      width: 100%;
+      z-index: 4000;
+      justify-content: center;
+      background: transparent; /* Không có nền đen che màn hình */
+      pointer-events: none; /* QUAN TRỌNG: Cho phép vuốt/cuộn xuyên qua */
     }
-    #settings-modal.active { display: flex; }
     
-    .settings-box {
-      background: var(--bg-card); border: 1px solid var(--border);
-      width: 100%; max-width: 400px; border-radius: 16px; padding: 2rem;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+    #settings-modal.active { 
+      display: flex; 
     }
+
+    .settings-box {
+      pointer-events: auto; /* Bản thân bảng cài đặt vẫn nhận thao tác chạm */
+      background: rgba(255, 255, 255, 0.85); /* Nền hơi trong suốt */
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); /* Hiệu ứng kính mờ */
+      width: 100%; 
+      max-width: 600px;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 20px 20px 0 0;
+      padding: 1.25rem 1.5rem 1.5rem;
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
+      animation: slideUpModal 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Hiệu ứng trượt lên mượt mà */
+    @keyframes slideUpModal {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* Đổi màu kính mờ khi ở chế độ Tối/Sepia */
+    [data-theme="dark"] .settings-box { background: rgba(24, 24, 27, 0.85); }
+    [data-theme="sepia"] .settings-box { background: rgba(249, 241, 220, 0.85); }
+
+    /* Tiêu đề & Nút tắt gọn gàng */
     .settings-header {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;
+      margin-bottom: 1.25rem;
     }
-    .settings-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); font-family: var(--font-serif);}
-    .setting-group { margin-bottom: 1.5rem; }
-    .setting-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.8rem; display: block; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;}
-    .setting-options { display: flex; gap: 8px; flex-wrap: wrap; }
+    .settings-title { font-size: 1rem; font-weight: 700; color: var(--text-main); }
+    .settings-close-btn {
+      background: var(--bg-sidebar); border: none; color: var(--text-muted);
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: 0.2s; font-size: 0.9rem;
+    }
+    .settings-close-btn:hover { background: var(--border); color: var(--text-main); }
+
+    /* Bố cục từng hàng */
+    .setting-row {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 0.3rem;
+    }
+    .setting-row:last-child { margin-bottom: 0; }
     
+    .setting-icon {
+      width: 16px; color: var(--text-muted); text-align: center; font-size: 0.8rem;
+    }
+
+    /* Khu vực nút bấm kiểu dáng Pill (Viên thuốc) */
+    .setting-controls {
+      flex: 1; display: flex; gap: 4px;
+      background: var(--bg-sidebar);
+      padding: 4px; border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
     .setting-btn {
-      flex: 1; padding: 10px 0; border: 1px solid var(--border); border-radius: 8px;
-      background: var(--bg-sidebar); color: var(--text-muted);
-      cursor: pointer; transition: 0.2s; font-weight: 600; text-align: center;
+      flex: 1; background: transparent; border: none; color: var(--text-muted);
+      padding: 4px 0; border-radius: 8px; font-weight: 600; font-size: 0.85rem;
+      cursor: pointer; transition: all 0.2s ease;
+      display: flex; align-items: center; justify-content: center;
     }
-    .setting-btn:hover { background: var(--bg-card); border-color: var(--text-muted); color: var(--text-main); }
-    .setting-btn.active { background: var(--text-main); color: var(--bg-body); border-color: var(--text-main); }
+    .setting-btn:hover { color: var(--text-main); }
     
-    /* Font Preview inside buttons */
-    .font-sans { font-family: var(--font-sans); }
-    .font-serif { font-family: var(--font-serif); }
-    .font-mono { font-family: var(--font-mono); }
+    /* Trạng thái nút đang được chọn */
+    .setting-btn.active {
+      background: var(--bg-card); color: var(--accent); 
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Hiển thị thông số (Ví dụ: 1.1) */
+    .setting-value {
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-mono); font-weight: 700; color: var(--text-main);
+      min-width: 40px; font-size: 0.9rem;
+    }
   </style>
 </head>
 
@@ -1520,7 +1620,7 @@
 
       <button class="header-btn" onclick="toggleTheme()"><i class="fa-solid fa-sun"></i></button>
       <button class="header-btn" onclick="openSearch()"><i class="fa-solid fa-magnifying-glass"></i></button>
-    
+
     </div>
   </header>
 
@@ -1625,7 +1725,13 @@
         <article id="article-display">
           <div class="article-header">
             <h1>Hướng dẫn cài đặt Windows với USB</h1>
-            <div class="article-meta">Đăng ngày 6/2/2026</div>
+            <div class="article-meta" style="display:flex; justify-content:space-between; align-items:center;">
+              <span>Đăng ngày 6/2/2026</span>
+              <button class="btn-reading-settings" onclick="openReadingSettings()" title="Tùy chỉnh đọc">
+                <i class="fa-solid fa-font"></i>
+              </button>
+            </div>
+
           </div>
           <div class="article-content">
             <h3 class="wp-block-heading">Tải &amp; cài đặt bộ cứu hộ WinPE cho USB</h3>
@@ -2321,6 +2427,43 @@
     </div>
   </div>
 
+ <div id="settings-modal">
+    <div class="settings-box">
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem;">
+        <button onclick="closeReadingSettings()" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 4px;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      
+      <div class="setting-row">
+        <span class="setting-icon"><i class="fa-solid fa-text-height"></i></span>
+        <div class="setting-controls">
+          <button class="setting-btn" onclick="changeFontSize(-0.1)">A-</button>
+          <span id="current-font-size" class="setting-value">1.1</span>
+          <button class="setting-btn" onclick="changeFontSize(0.1)">A+</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-icon"><i class="fa-solid fa-font"></i></span>
+        <div class="setting-controls">
+          <button class="setting-btn font-btn" data-font="Manrope" style="font-family: 'Manrope', sans-serif;" onclick="setFontFamily('Manrope')">Manrope</button>
+          <button class="setting-btn font-btn" data-font="Lora" style="font-family: 'Lora', serif;" onclick="setFontFamily('Lora')">Lora</button>
+          <button class="setting-btn font-btn" data-font="Be Vietnam Pro" style="font-family: 'Be Vietnam Pro', sans-serif;" onclick="setFontFamily('Be Vietnam Pro')">BeVN</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <span class="setting-icon"><i class="fa-solid fa-palette"></i></span>
+        <div class="setting-controls">
+          <button class="setting-btn theme-btn" data-theme="light" onclick="applyTheme('light')"><i class="fa-solid fa-sun" style="margin-right:5px"></i>Sáng</button>
+          <button class="setting-btn theme-btn" data-theme="sepia" onclick="applyTheme('sepia')"><i class="fa-solid fa-book-open" style="margin-right:5px"></i>Sepia</button>
+          <button class="setting-btn theme-btn" data-theme="dark" onclick="applyTheme('dark')"><i class="fa-solid fa-moon" style="margin-right:5px"></i>Tối</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
   <script>
     // ==========================================
@@ -2398,6 +2541,7 @@
     // ==========================================
     window.onload = () => {
       initTheme();
+      initReadingSettings(); // Khởi tạo cài đặt lưu từ máy
       fetchPosts(1); // Tải trang đầu tiên
       setupShortcuts();
 
@@ -2818,12 +2962,17 @@
         ADD_TAGS: ['iframe'],
         ADD_ATTR: ['target', 'allowfullscreen', 'frameborder']
       });
-      
+
       // Render bài viết
       DOM.articleDisplay.innerHTML = `
             <div class="article-header">
                 <h1>${post.title}</h1>
-                <div class="article-meta">Đăng ngày ${post.date} • Đinh Mạnh Hùng 👑</div>
+                <div class="article-meta" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>Đăng ngày ${post.date} • Đinh Mạnh Hùng 👑</span>
+                    <button class="btn-reading-settings" onclick="openReadingSettings()" title="Tùy chỉnh đọc">
+                        <i class="fa-solid fa-font"></i>
+                    </button>
+                </div>
             </div>
             <div class="article-content break-words">${cleanContent}</div> 
         `;
@@ -2950,6 +3099,69 @@
 
     function openPostFromSearch(id) { closeSearch(); openPost(id); }
 
+
+    // --- Tính năng: Tuỳ chỉnh Không gian đọc (Reading Settings) ---
+    let readingSettings = {
+      fontSize: 1.1, // rem
+      fontFamily: 'Manrope'
+    };
+
+    function initReadingSettings() {
+      const saved = localStorage.getItem('hunq-reading-settings');
+      if (saved) {
+        readingSettings = JSON.parse(saved);
+      }
+      applyReadingSettings();
+    }
+
+    function applyReadingSettings() {
+      // Set CSS Variables root
+      document.documentElement.style.setProperty('--article-font-size', readingSettings.fontSize + 'rem');
+
+      // Sửa fix font họ (Có chân hoặc không chân)
+      const fontSuffix = readingSettings.fontFamily === 'Lora' ? 'serif' : 'sans-serif';
+      document.documentElement.style.setProperty('--article-font-family', `"${readingSettings.fontFamily}", ${fontSuffix}`);
+
+      // Update thông số trên Modal UI
+      const sizeDisplay = document.getElementById('current-font-size');
+      if (sizeDisplay) sizeDisplay.innerText = readingSettings.fontSize.toFixed(1) + 'rem';
+
+      // Đổi class "active" cho các nút chọn font
+      document.querySelectorAll('.font-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.font === readingSettings.fontFamily) btn.classList.add('active');
+      });
+    }
+
+    function changeFontSize(step) {
+      // Giới hạn để chữ không quá bé/quá to và tránh lỗi số thập phân
+      readingSettings.fontSize = parseFloat((readingSettings.fontSize + step).toFixed(1));
+      if (readingSettings.fontSize < 0.8) readingSettings.fontSize = 0.8;
+      if (readingSettings.fontSize > 2.5) readingSettings.fontSize = 2.5;
+      saveReadingSettings();
+      applyReadingSettings();
+    }
+
+    function setFontFamily(font) {
+      readingSettings.fontFamily = font;
+      saveReadingSettings();
+      applyReadingSettings();
+    }
+
+    function saveReadingSettings() {
+      localStorage.setItem('hunq-reading-settings', JSON.stringify(readingSettings));
+    }
+
+    function openReadingSettings() {
+      document.getElementById('settings-modal').classList.add('active');
+      // ĐÃ XOÁ: document.body.style.overflow = 'hidden';
+    }
+
+    function closeReadingSettings(e) {
+      document.getElementById('settings-modal').classList.remove('active');
+      // ĐÃ XOÁ: document.body.style.overflow = '';
+    }
+
     // --- Theme ---
     // --- THEME 3 STATES (System -> Light -> Dark) ---
     const THEME_MODES = ['system', 'light', 'dark'];
@@ -2986,6 +3198,12 @@
         const systemIsDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         effectiveTheme = systemIsDark ? 'dark' : 'light';
       }
+      document.querySelectorAll('.theme-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.theme === themeName || (themeName === 'system' && btn.dataset.theme === effectiveTheme)) {
+          btn.classList.add('active');
+        }
+      });
 
       // Áp dụng class vào body để CSS hoạt động
       document.body.setAttribute('data-theme', effectiveTheme);
