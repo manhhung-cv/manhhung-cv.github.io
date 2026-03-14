@@ -1124,12 +1124,43 @@
                     img.onerror = () => reject(new Error("Lỗi load")); img.src = URL.createObjectURL(blob);
                 });
             },
-            copyImage(url) {
+            copyImage(url, type) {
                 this.showToast('Đang xử lý...');
+
+                // Xử lý sao chép ảnh GIF động (Sử dụng Native execCommand cho iOS/Safari)
+                if (type === 'gif' || url.toLowerCase().includes('.gif')) {
+                    try {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        img.style.position = 'fixed';
+                        img.style.left = '-9999px';
+                        document.body.appendChild(img);
+
+                        const range = document.createRange();
+                        range.selectNode(img);
+                        const selection = window.getSelection();
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+
+                        const successful = document.execCommand('copy');
+                        
+                        selection.removeAllRanges();
+                        document.body.removeChild(img);
+
+                        if (successful) {
+                            this.showToast('Đã chép ảnh GIF vào Khay nhớ!');
+                            return;
+                        }
+                    } catch (err) {
+                        console.log('Lỗi copy GIF native:', err);
+                    }
+                }
+
+                // Xử lý sao chép ảnh tĩnh bình thường (Sử dụng ClipboardItem API)
                 try {
                     const imagePromise = fetch(url).then(res => { if (!res.ok) throw new Error("Lỗi"); return res.blob(); }).then(blob => this.convertToPng(blob));
                     const item = new ClipboardItem({ 'image/png': imagePromise });
-                    navigator.clipboard.write([item]).then(() => this.showToast('Đã chép ảnh, hãy dán vào nội dung tin nhắn!'))
+                    navigator.clipboard.write([item]).then(() => this.showToast('Đã chép ảnh vào Khay nhớ!'))
                         .catch(err => this.fallbackCopyTextOnly(url, 'Đã copy URL.', true));
                 } catch (err) { this.fallbackCopyTextOnly(url, 'Đã copy URL.', true); }
             },
@@ -1235,9 +1266,9 @@
                         const isVideo = meme.type === 'video';
                         const zoomBtnAbs = `<button onclick="app.openViewModal('${meme.id}')" class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/50 backdrop-blur text-white flex items-center justify-center transition active:scale-90"><i class="fa-solid fa-expand text-[10px] sm:text-xs"></i></button>`;
                         
-                        const copyBtnInline = !isVideo ? `<button onclick="app.copyImage('${meme.url}')" class="flex-1 py-2 sm:py-2.5 rounded-xl sm:rounded-[14px] bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 dark:hover:bg-[#222] text-black dark:text-white flex items-center justify-center gap-1.5 active:scale-95 transition font-bold text-[10px] sm:text-xs"><i class="fa-regular fa-copy text-xs sm:text-sm"></i></button>` : '';
+                        const copyBtnInline = !isVideo ? `<button onclick="app.copyImage('${meme.url}', '${meme.type}')" class="flex-1 py-2 sm:py-2.5 rounded-xl sm:rounded-[14px] bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 dark:hover:bg-[#222] text-black dark:text-white flex items-center justify-center gap-1.5 active:scale-95 transition font-bold text-[10px] sm:text-xs"><i class="fa-regular fa-copy text-xs sm:text-sm"></i> <span class="hidden sm:inline">Copy</span></button>` : '';
                         
-                        const downloadBtnInline = `<button onclick="app.downloadMedia('${meme.url}', '${meme.title}')" class="flex-1 py-2 sm:py-2.5 rounded-xl sm:rounded-[14px] bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 dark:hover:bg-[#222] text-black dark:text-white flex items-center justify-center gap-1.5 active:scale-95 transition font-bold text-[10px] sm:text-xs"><i class="fa-solid fa-download text-xs sm:text-sm"></i></button>`;
+                        const downloadBtnInline = `<button onclick="app.downloadMedia('${meme.url}', '${meme.title}')" class="flex-1 py-2 sm:py-2.5 rounded-xl sm:rounded-[14px] bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 dark:hover:bg-[#222] text-black dark:text-white flex items-center justify-center gap-1.5 active:scale-95 transition font-bold text-[10px] sm:text-xs"><i class="fa-solid fa-download text-xs sm:text-sm"></i> <span class="hidden sm:inline">Tải</span></button>`;
                         
                         const adminBtnInline = this.state.isLoggedIn ? `<button onclick="app.deleteItem('${meme.id}', 'meme')" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-[14px] bg-red-50 dark:bg-red-500/10 text-red-500 flex items-center justify-center active:scale-95 transition shrink-0 ml-auto sm:ml-0"><i class="fa-solid fa-trash text-[10px] sm:text-xs"></i></button>` : '';
                         
