@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Meme Vault & Trend Dictionary</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -11,7 +11,6 @@
         }
     </script>
     <script>
-        // Ngăn chặn chớp nháy (FOUC) màu trắng trước khi tải xong JS
         const savedTheme = localStorage.getItem('theme') || 'system';
         if (savedTheme === 'dark' || (savedTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -21,214 +20,166 @@
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .toast-enter { animation: slideIn 0.2s ease-out forwards; }
-        @keyframes slideIn {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
+        .toast-enter { animation: slideUpToast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideUpToast { from { transform: translateY(100%) translateX(-50%); opacity: 0; } to { transform: translateY(0) translateX(-50%); opacity: 1; } }
+        /* Safe area padding for mobile notches */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#fafafa] dark:bg-black text-[#111] dark:text-[#f3f3f3] transition-colors duration-200 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
+<body class="min-h-screen flex flex-col bg-white dark:bg-black text-[#111] dark:text-[#f3f3f3] transition-colors duration-200 selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black pb-20 md:pb-0">
 
-    <!-- Navbar -->
-    <header class="bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-200 dark:border-[#222] sticky top-0 z-40 transition-colors duration-200">
-        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchTab('memes')">
-                <i class="fa-solid fa-layer-group text-xl text-black dark:text-white"></i>
-                <h1 class="font-bold text-lg tracking-tight">Vault.</h1>
-            </div>
+    <!-- Header (Sleek Minimal) -->
+    <header class="sticky top-0 z-40 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-b border-gray-100 dark:border-[#1a1a1a] transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between">
+            <h1 class="font-extrabold text-2xl md:text-3xl tracking-tighter text-black dark:text-white cursor-pointer" onclick="app.switchTab('memes')">Vault.</h1>
             
-            <div class="flex bg-gray-100 dark:bg-[#111] rounded-full p-1 transition-colors duration-200 border border-transparent dark:border-[#222]" id="main-tabs">
-                <button onclick="app.switchTab('memes')" id="tab-memes" class="px-5 py-1.5 rounded-full text-sm font-medium bg-white dark:bg-[#222] shadow-sm dark:shadow-none text-black dark:text-white transition-all">Memes</button>
-                <button onclick="app.switchTab('dictionary')" id="tab-dictionary" class="px-5 py-1.5 rounded-full text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-all bg-transparent shadow-none">Từ Điển</button>
+            <!-- Desktop Tabs -->
+            <div class="hidden md:flex bg-gray-100 dark:bg-[#111] rounded-full p-1.5 transition-colors duration-200 border border-transparent dark:border-[#222]" id="main-tabs-desktop">
+                <button onclick="app.switchTab('memes')" id="tab-memes-desktop" class="px-6 py-2 rounded-full text-sm font-bold bg-white dark:bg-[#222] shadow-sm dark:shadow-none text-black dark:text-white transition-all">Memes</button>
+                <button onclick="app.switchTab('dictionary')" id="tab-dicts-desktop" class="px-6 py-2 rounded-full text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-all bg-transparent shadow-none">Từ Điển</button>
+                <button onclick="app.switchTab('admin')" id="tab-admin-desktop" class="hidden px-6 py-2 rounded-full text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-all bg-transparent shadow-none">Admin</button>
             </div>
 
-            <div class="flex items-center gap-4">
-                <!-- Theme Toggle -->
-                <div class="relative" id="theme-dropdown-container">
-                    <button onclick="app.toggleThemeMenu()" class="w-9 h-9 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-[#111] transition">
-                        <i id="theme-icon" class="fa-solid fa-desktop"></i>
-                    </button>
-                    <!-- Theme Menu -->
-                    <div id="theme-menu" class="hidden absolute right-0 mt-2 w-36 bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#222] rounded-xl shadow-lg dark:shadow-none z-50 overflow-hidden py-1 text-sm">
-                        <button id="theme-option-light" onclick="app.setTheme('light')" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-[#111] flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors">
-                            <i class="fa-solid fa-sun w-4 text-center"></i> Sáng
-                        </button>
-                        <button id="theme-option-dark" onclick="app.setTheme('dark')" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-[#111] flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors">
-                            <i class="fa-solid fa-moon w-4 text-center"></i> Tối (OLED)
-                        </button>
-                        <button id="theme-option-system" onclick="app.setTheme('system')" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-[#111] flex items-center gap-3 text-gray-700 dark:text-gray-300 transition-colors">
-                            <i class="fa-solid fa-desktop w-4 text-center"></i> Thiết bị
-                        </button>
-                    </div>
-                </div>
-
-                <button id="dashboard-btn" onclick="app.switchTab('admin')" class="hidden text-sm font-semibold text-blue-600 dark:text-white hover:text-blue-800 dark:hover:text-gray-300 transition">
-                    Dashboard
+            <div class="flex items-center gap-5">
+                <button onclick="app.toggleTheme()" class="text-gray-900 dark:text-white text-xl active:scale-90 transition-transform">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
                 </button>
-                <button id="auth-btn" onclick="app.toggleAuthModal()" class="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white transition">
-                    Đăng nhập
+                <button id="header-auth-btn" onclick="app.toggleAuthModal()" class="text-gray-900 dark:text-white text-xl active:scale-90 transition-transform">
+                    <i class="fa-regular fa-user-circle"></i>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8 relative">
+    <!-- Search Bar (Sticky below header) -->
+    <div id="search-bar-container" class="sticky top-16 z-30 bg-white/90 dark:bg-black/90 backdrop-blur-xl pb-4 pt-4 border-b border-gray-100 dark:border-[#1a1a1a] transition-colors duration-200">
+        <div class="max-w-7xl mx-auto px-5 flex gap-3 items-center">
+            <div class="relative flex-1">
+                <i class="fa-solid fa-search absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#666] text-lg"></i>
+                <input type="text" id="search-input" placeholder="Tìm kiếm từ khoá..." 
+                    class="w-full bg-gray-100 dark:bg-[#111] text-gray-900 dark:text-white rounded-full py-3.5 pl-14 pr-5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-all placeholder-gray-400 dark:placeholder-[#666]"
+                    oninput="app.handleSearch(this.value)">
+            </div>
+            <button id="filter-toggle-btn" onclick="app.toggleFilters()" class="bg-gray-100 dark:bg-[#111] text-gray-900 dark:text-white w-12 h-12 rounded-full flex items-center justify-center transition-colors active:scale-95 shrink-0">
+                <i class="fa-solid fa-sliders text-base"></i>
+            </button>
+        </div>
+
+        <!-- Filters Dropdown -->
+        <div id="advanced-filters" class="hidden max-w-7xl mx-auto px-5 pt-5 pb-2 space-y-6">
+            <div id="meme-format-filter">
+                <h4 class="text-xs font-bold text-gray-400 dark:text-[#555] uppercase tracking-widest mb-4">Định dạng Media</h4>
+                <div class="flex gap-3 flex-wrap">
+                    <label class="cursor-pointer select-none">
+                        <input type="checkbox" value="image" class="peer sr-only filter-type-cb" onchange="app.handleFilterChange()">
+                        <div class="px-5 py-2.5 rounded-xl text-xs font-bold transition-all border border-gray-200 dark:border-[#333] bg-white dark:bg-black text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#111] peer-checked:bg-black peer-checked:text-white dark:peer-checked:bg-white dark:peer-checked:text-black peer-checked:border-black dark:peer-checked:border-white shadow-sm peer-checked:shadow-md">
+                            🖼️ Ảnh
+                        </div>
+                    </label>
+                    <label class="cursor-pointer select-none">
+                        <input type="checkbox" value="gif" class="peer sr-only filter-type-cb" onchange="app.handleFilterChange()">
+                        <div class="px-5 py-2.5 rounded-xl text-xs font-bold transition-all border border-gray-200 dark:border-[#333] bg-white dark:bg-black text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#111] peer-checked:bg-black peer-checked:text-white dark:peer-checked:bg-white dark:peer-checked:text-black peer-checked:border-black dark:peer-checked:border-white shadow-sm peer-checked:shadow-md">
+                            🎞️ GIF
+                        </div>
+                    </label>
+                    <label class="cursor-pointer select-none">
+                        <input type="checkbox" value="video" class="peer sr-only filter-type-cb" onchange="app.handleFilterChange()">
+                        <div class="px-5 py-2.5 rounded-xl text-xs font-bold transition-all border border-gray-200 dark:border-[#333] bg-white dark:bg-black text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#111] peer-checked:bg-black peer-checked:text-white dark:peer-checked:bg-white dark:peer-checked:text-black peer-checked:border-black dark:peer-checked:border-white shadow-sm peer-checked:shadow-md">
+                            🎬 Video
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold text-gray-400 dark:text-[#555] uppercase tracking-widest mb-4">Thẻ (Tags)</h4>
+                <div id="filter-tag-container" class="flex gap-2.5 flex-wrap"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-5 py-6 sm:py-8 relative">
         
-        <!-- ======================= -->
-        <!-- PUBLIC VIEW (MEME & DICT) -->
-        <!-- ======================= -->
+        <!-- PUBLIC VIEWS -->
         <div id="public-view-container">
-            <!-- Advanced Filters & Search -->
-            <div class="max-w-3xl mx-auto mb-10 space-y-4">
-                <div class="flex gap-2 relative">
-                    <div class="relative flex-1">
-                        <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"></i>
-                        <input type="text" id="search-input" placeholder="Tìm kiếm từ khoá..." 
-                            class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] text-gray-900 dark:text-white rounded-xl py-3.5 pl-11 pr-4 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-all shadow-sm dark:shadow-none placeholder-gray-400 dark:placeholder-gray-600"
-                            oninput="app.handleSearch(this.value)">
-                    </div>
-                    <button id="filter-toggle-btn" onclick="app.toggleFilters()" class="bg-white dark:bg-black border border-gray-200 dark:border-[#333] text-gray-700 dark:text-gray-300 px-5 py-3.5 rounded-xl shadow-sm dark:shadow-none hover:bg-gray-50 dark:hover:bg-[#111] flex items-center gap-2 transition-all whitespace-nowrap">
-                        <i class="fa-solid fa-sliders"></i> <span class="hidden sm:inline font-medium">Bộ lọc</span>
-                    </button>
-                </div>
-                
-                <!-- Bộ lọc ẩn/hiện -->
-                <div id="advanced-filters" class="hidden bg-white dark:bg-black border border-gray-200 dark:border-[#222] rounded-xl p-6 shadow-sm dark:shadow-none space-y-6 transition-colors duration-200">
-                    <div id="meme-format-filter">
-                        <h4 class="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">Định dạng file</h4>
-                        <div class="flex gap-6 flex-wrap">
-                            <label class="flex items-center gap-2.5 cursor-pointer group">
-                                <input type="checkbox" value="image" class="filter-type-cb w-4 h-4 border-gray-300 dark:border-[#444] rounded bg-white dark:bg-black text-black dark:text-white focus:ring-black dark:focus:ring-white transition-all" onchange="app.handleFilterChange()">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Hình ảnh</span>
-                            </label>
-                            <label class="flex items-center gap-2.5 cursor-pointer group">
-                                <input type="checkbox" value="gif" class="filter-type-cb w-4 h-4 border-gray-300 dark:border-[#444] rounded bg-white dark:bg-black text-black dark:text-white focus:ring-black dark:focus:ring-white transition-all" onchange="app.handleFilterChange()">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Ảnh động (GIF)</span>
-                            </label>
-                            <label class="flex items-center gap-2.5 cursor-pointer group">
-                                <input type="checkbox" value="video" class="filter-type-cb w-4 h-4 border-gray-300 dark:border-[#444] rounded bg-white dark:bg-black text-black dark:text-white focus:ring-black dark:focus:ring-white transition-all" onchange="app.handleFilterChange()">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">Video</span>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h4 class="text-[11px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-4">Thẻ (Tags)</h4>
-                        <div id="filter-tag-container" class="flex gap-2 flex-wrap">
-                            <!-- Populated by JS -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="admin-actions" class="hidden mb-8 flex justify-end">
-                <button onclick="app.openAddModal()" class="bg-black dark:bg-white text-white dark:text-black px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-200 transition flex items-center gap-2 shadow-sm dark:shadow-none">
-                    <i class="fa-solid fa-plus"></i> <span id="add-btn-text">Thêm Meme</span>
-                </button>
-            </div>
-
-            <!-- Memes Grid -->
-            <div id="memes-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 transition-all"></div>
-
+            <!-- Memes Grid (Responsive: 2 cols on Mobile, up to 5 on Desktop) -->
+            <div id="memes-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 transition-all"></div>
+            
             <!-- Dictionary List -->
-            <div id="dictionary-container" class="hidden max-w-3xl mx-auto space-y-5 transition-all"></div>
+            <div id="dictionary-container" class="hidden flex-col gap-0 transition-all max-w-4xl mx-auto"></div>
 
             <!-- Empty State -->
-            <div id="empty-state" class="hidden flex-col items-center justify-center py-32 text-gray-400 dark:text-[#555]">
-                <i class="fa-regular fa-folder-open text-5xl mb-4 opacity-50"></i>
-                <p class="font-medium">Không tìm thấy nội dung phù hợp.</p>
+            <div id="empty-state" class="hidden flex-col items-center justify-center py-32 text-gray-300 dark:text-[#333]">
+                <i class="fa-solid fa-ghost text-7xl mb-5"></i>
+                <p class="font-semibold text-gray-400 dark:text-[#555] text-base">Trống rỗng...</p>
             </div>
         </div>
 
-        <!-- ======================= -->
-        <!-- ADMIN DASHBOARD VIEW    -->
-        <!-- ======================= -->
+        <!-- ADMIN DASHBOARD VIEW -->
         <div id="admin-container" class="hidden space-y-8">
-            <div class="flex items-end justify-between border-b border-gray-200 dark:border-[#222] pb-5">
-                <div>
-                    <h2 class="text-3xl font-bold tracking-tight text-black dark:text-white">Quản trị Hệ thống</h2>
-                    <div class="flex gap-8 mt-5">
-                        <button id="admin-tab-btn-memes" onclick="app.switchAdminTab('memes')" class="font-semibold text-black dark:text-white border-b-2 border-black dark:border-white pb-2 transition">Quản lý Meme</button>
-                        <button id="admin-tab-btn-dicts" onclick="app.switchAdminTab('dicts')" class="font-medium text-gray-500 dark:text-gray-500 hover:text-black dark:hover:text-gray-200 pb-2 transition">Quản lý Từ Điển</button>
-                    </div>
+            <div class="mb-4">
+                <h2 class="text-3xl font-extrabold tracking-tight text-black dark:text-white">Admin Dashboard</h2>
+                <div class="flex gap-8 mt-5 border-b border-gray-100 dark:border-[#1a1a1a]">
+                    <button id="admin-tab-btn-memes" onclick="app.switchAdminTab('memes')" class="font-bold text-base text-black dark:text-white border-b-2 border-black dark:border-white pb-3 transition">Meme</button>
+                    <button id="admin-tab-btn-dicts" onclick="app.switchAdminTab('dicts')" class="font-semibold text-base text-gray-400 dark:text-[#555] hover:text-black dark:hover:text-gray-300 pb-3 transition">Từ Điển</button>
                 </div>
-                <button onclick="app.switchTab('memes')" class="text-sm bg-white dark:bg-black border border-gray-200 dark:border-[#333] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#111] hover:text-black dark:hover:text-white px-4 py-2.5 rounded-xl font-medium transition mb-1"><i class="fa-solid fa-arrow-left mr-1.5"></i> Trở về Web</button>
             </div>
 
             <!-- QUẢN LÝ MEME -->
-            <div id="admin-view-memes" class="space-y-8">
-                <!-- Nhập Meme Hàng Loạt (Smart UI & Textarea) -->
-                <div class="bg-white dark:bg-black border border-gray-200 dark:border-[#222] rounded-2xl p-6 transition-colors duration-200 shadow-sm dark:shadow-none">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-images text-gray-400 dark:text-[#555]"></i>Nhập Meme Hàng Loạt</h3>
-                        <div class="flex items-center gap-3">
-                            <select id="meme-bulk-mode" onchange="app.toggleBulkMode('meme', this.value)" class="text-sm border border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-black text-gray-900 dark:text-white rounded-lg px-3 py-2 outline-none focus:border-black dark:focus:border-white transition-colors cursor-pointer">
-                                <option value="grid">Dạng Lưới (Smart Grid)</option>
-                                <option value="text">Văn bản (Textarea)</option>
-                            </select>
-                            <button id="meme-add-row-btn" onclick="app.addDraftRow('meme')" class="text-sm bg-gray-100 dark:bg-[#111] text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-[#222] hover:text-black dark:hover:text-white font-medium transition border border-transparent dark:border-[#222]"><i class="fa-solid fa-plus mr-1"></i> Thêm dòng</button>
-                        </div>
+            <div id="admin-view-memes" class="space-y-8 grid grid-cols-1 lg:grid-cols-1 gap-8">
+                
+                <!-- Bảng Upload Nhiều Files -->
+                <div class="bg-gray-50/50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#222] rounded-3xl p-6 sm:p-8 transition-colors">
+                    <div class="flex justify-between items-center mb-5">
+                        <h3 class="font-bold text-lg"><i class="fa-solid fa-cloud-arrow-up text-gray-400 mr-2"></i>Tải lên Hàng Loạt File</h3>
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-[#888] mb-6 leading-relaxed font-medium">
+                        Chọn nhiều ảnh/video cùng lúc. Hệ thống sẽ tự động tải lên và đặt tên tự động theo số thứ tự (Ví dụ: <b>Meme A-0001</b>). Tags mặc định sẽ để trống.
                     </div>
                     
-                    <!-- GRID MODE -->
-                    <div id="meme-bulk-grid-container">
-                        <div class="bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-400 text-xs p-4 rounded-xl mb-6 border border-gray-200 dark:border-[#222] leading-relaxed transition-colors">
-                            <i class="fa-solid fa-lightbulb mr-1.5 text-black dark:text-white"></i> <b>Tính năng Smart Paste:</b> Trực tiếp copy từ Excel (Cột 1: URL, Cột 2: Tiêu đề, Cột 3: Tags) và <b>nhấn Ctrl+V</b> vào ô URL dưới đây. Hệ thống tự động chia cột.
-                        </div>
+                    <input type="file" id="bulk-local-files" multiple accept="image/*,video/mp4,image/gif" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-5 py-4 focus:outline-none text-sm file:mr-4 file:py-2 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-black dark:file:bg-white file:text-white dark:file:text-black cursor-pointer transition-colors mb-5">
 
-                        <!-- Header các cột -->
-                        <div class="grid grid-cols-12 gap-3 px-2 text-[11px] font-bold text-gray-500 dark:text-[#666] uppercase tracking-widest mb-3">
-                            <div class="col-span-5">Nguồn Media (File/URL)</div>
-                            <div class="col-span-3">Tiêu đề</div>
-                            <div class="col-span-3">Thẻ Tags (cách bằng dấu ,)</div>
-                            <div class="col-span-1 text-center">Xóa</div>
-                        </div>
+                    <button id="btn-submit-bulk-local" onclick="app.bulkUploadLocalFiles()" class="bg-black dark:bg-white text-white dark:text-black w-full py-4 rounded-2xl font-bold text-base active:scale-[0.98] transition shadow-lg dark:shadow-none">
+                        Tải Lên Máy Chủ
+                    </button>
+                </div>
 
-                        <!-- Container chứa các dòng -->
-                        <div id="bulk-memes-container" class="space-y-3 mb-8 max-h-[45vh] overflow-y-auto no-scrollbar pb-2">
-                            <!-- Render by JS -->
-                        </div>
+                <!-- Nhập Meme Hàng Loạt (Smart Paste) -->
+                <div class="bg-gray-50/50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#222] rounded-3xl p-6 sm:p-8 transition-colors">
+                    <div class="flex justify-between items-center mb-5">
+                        <h3 class="font-bold text-lg"><i class="fa-solid fa-bolt text-gray-400 mr-2"></i>Smart Paste từ Excel</h3>
+                        <button onclick="app.addDraftRow('meme')" class="text-sm bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full font-bold active:scale-95 transition"><i class="fa-solid fa-plus mr-1"></i> Hàng</button>
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-[#888] mb-6 leading-relaxed font-medium">
+                        Copy từ Excel <b>(URL | Tiêu đề | Tags)</b> và ấn <b>Ctrl+V</b> vào ô Nguồn Media để hệ thống tự động phân tách.
                     </div>
 
-                    <!-- TEXTAREA MODE -->
-                    <div id="meme-bulk-text-container" class="hidden mb-8">
-                        <div class="bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-400 text-xs p-4 rounded-xl mb-6 border border-gray-200 dark:border-[#222] leading-relaxed transition-colors">
-                            <i class="fa-solid fa-info-circle mr-1.5 text-black dark:text-white"></i> <b>Nhập thô bằng văn bản:</b> Mỗi meme trên 1 dòng, phân cách nhau bởi phím Tab hoặc dấu gạch dọc <code>|</code>.<br>
-                            Định dạng: <code>URL | Tiêu đề | tag1, tag2</code>
-                        </div>
-                        <textarea id="bulk-meme-textarea" rows="8" placeholder="https://domain.com/img.jpg | Mèo vui | cat, happy&#10;https://domain.com/vid.mp4 | Chó chạy | dog, run" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] text-gray-900 dark:text-white rounded-xl p-4 text-sm font-mono focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white no-scrollbar whitespace-nowrap overflow-x-auto transition-colors placeholder-gray-400 dark:placeholder-[#555]"></textarea>
-                    </div>
+                    <!-- Container chứa các dòng -->
+                    <div id="bulk-memes-container" class="space-y-4 mb-6"></div>
 
-                    <button id="btn-submit-bulk-memes" onclick="app.submitBulkMemes()" class="bg-black dark:bg-white text-white dark:text-black px-6 py-3.5 rounded-xl font-bold hover:bg-gray-800 dark:hover:bg-gray-200 transition w-full flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-cloud-arrow-up"></i> Lưu & Tải lên Cloudinary
+                    <button id="btn-submit-bulk-memes" onclick="app.submitBulkMemes()" class="bg-black dark:bg-white text-white dark:text-black w-full py-4 rounded-2xl font-bold text-base active:scale-[0.98] transition shadow-lg dark:shadow-none">
+                        Tải Link lên Cloudinary & Lưu
                     </button>
                 </div>
 
                 <!-- Bảng Danh Sách Meme -->
-                <div class="bg-white dark:bg-black border border-gray-200 dark:border-[#222] rounded-2xl flex flex-col transition-colors shadow-sm dark:shadow-none">
-                    <div class="p-6 border-b border-gray-100 dark:border-[#222] flex justify-between items-center">
-                        <h3 class="font-bold text-lg">Cơ sở dữ liệu Meme</h3>
-                        <button id="btn-bulk-delete-memes" onclick="app.bulkDelete('memes')" class="hidden bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border border-red-100 dark:border-red-500/20 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition">
-                            <i class="fa-solid fa-trash mr-1.5"></i> Xoá mục đã chọn
-                        </button>
+                <div>
+                    <div class="flex justify-between items-center mb-4 px-2">
+                        <h3 class="font-bold text-sm text-gray-500 uppercase tracking-widest">Dữ liệu hiện có</h3>
+                        <button id="btn-bulk-delete-memes" onclick="app.bulkDelete('memes')" class="hidden text-red-500 text-sm font-bold bg-red-50 dark:bg-red-500/10 px-4 py-2 rounded-full transition">Xoá đã chọn</button>
                     </div>
-                    <div class="overflow-x-auto">
+                    <div class="bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#222] rounded-3xl overflow-x-auto">
                         <table class="w-full text-left text-sm whitespace-nowrap">
-                            <thead class="bg-gray-50 dark:bg-[#0a0a0a] text-gray-500 dark:text-[#666] text-[11px] uppercase tracking-widest border-b border-gray-100 dark:border-[#222]">
+                            <thead class="text-gray-400 dark:text-[#666] border-b border-gray-100 dark:border-[#222]">
                                 <tr>
-                                    <th class="px-6 py-4 w-12"><input type="checkbox" id="cb-all-memes" onchange="app.toggleSelectAll(this)" class="w-4 h-4 accent-black dark:accent-white rounded border-gray-300 dark:border-[#444] bg-white dark:bg-black cursor-pointer"></th>
-                                    <th class="px-6 py-4">Media</th>
-                                    <th class="px-6 py-4 w-1/3">Tiêu đề</th>
-                                    <th class="px-6 py-4">Tags</th>
-                                    <th class="px-6 py-4 text-right">Thao tác</th>
+                                    <th class="px-6 py-4 w-12"><input type="checkbox" id="cb-all-memes" onchange="app.toggleSelectAll(this)" class="w-5 h-5 accent-black dark:accent-white rounded bg-gray-100 dark:bg-[#111] border-transparent cursor-pointer"></th>
+                                    <th class="px-6 py-4 font-semibold">Media</th>
+                                    <th class="px-6 py-4 font-semibold">Thông tin</th>
+                                    <th class="px-6 py-4 text-right font-semibold">Xóa</th>
                                 </tr>
                             </thead>
                             <tbody id="admin-table-memes" class="divide-y divide-gray-100 dark:divide-[#1a1a1a]"></tbody>
@@ -240,69 +191,36 @@
             <!-- QUẢN LÝ TỪ ĐIỂN -->
             <div id="admin-view-dicts" class="hidden space-y-8">
                 <!-- Nhập Từ Điển Hàng Loạt -->
-                <div class="bg-white dark:bg-black border border-gray-200 dark:border-[#222] rounded-2xl p-6 transition-colors shadow-sm dark:shadow-none">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-lg flex items-center gap-2"><i class="fa-solid fa-book-open text-gray-400 dark:text-[#555]"></i>Nhập Từ Lóng Hàng Loạt</h3>
-                        <div class="flex items-center gap-3">
-                            <select id="dict-bulk-mode" onchange="app.toggleBulkMode('dict', this.value)" class="text-sm border border-gray-200 dark:border-[#333] bg-gray-50 dark:bg-black text-gray-900 dark:text-white rounded-lg px-3 py-2 outline-none focus:border-black dark:focus:border-white transition-colors cursor-pointer">
-                                <option value="grid">Dạng Lưới (Smart Grid)</option>
-                                <option value="text">Văn bản (Textarea)</option>
-                            </select>
-                            <button id="dict-add-row-btn" onclick="app.addDraftRow('dict')" class="text-sm bg-gray-100 dark:bg-[#111] text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-[#222] hover:text-black dark:hover:text-white font-medium transition border border-transparent dark:border-[#222]"><i class="fa-solid fa-plus mr-1"></i> Thêm dòng</button>
-                        </div>
+                <div class="bg-gray-50/50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#222] rounded-3xl p-6 sm:p-8 transition-colors">
+                    <div class="flex justify-between items-center mb-5">
+                        <h3 class="font-bold text-lg"><i class="fa-solid fa-bolt text-gray-400 mr-2"></i>Smart Paste từ Excel</h3>
+                        <button onclick="app.addDraftRow('dict')" class="text-sm bg-black dark:bg-white text-white dark:text-black px-4 py-2 rounded-full font-bold active:scale-95 transition"><i class="fa-solid fa-plus mr-1"></i> Hàng</button>
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-[#888] mb-6 leading-relaxed font-medium">
+                        Copy từ Excel <b>(Từ khoá | Định nghĩa | Ví dụ | Tags)</b> và dán vào ô Từ khoá.
                     </div>
 
-                    <!-- GRID MODE -->
-                    <div id="dict-bulk-grid-container">
-                        <div class="bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-400 text-xs p-4 rounded-xl mb-6 border border-gray-200 dark:border-[#222] leading-relaxed transition-colors">
-                            <i class="fa-solid fa-lightbulb mr-1.5 text-black dark:text-white"></i> <b>Tính năng Smart Paste:</b> Trực tiếp copy từ Excel (Cột 1: Từ khoá, Cột 2: Định nghĩa, Cột 3: Ví dụ, Cột 4: Tags) và Dán vào đây để hệ thống tự động nhận diện.
-                        </div>
+                    <div id="bulk-dicts-container" class="space-y-4 mb-6"></div>
 
-                        <div class="grid grid-cols-12 gap-3 px-2 text-[11px] font-bold text-gray-500 dark:text-[#666] uppercase tracking-widest mb-3">
-                            <div class="col-span-2">Từ khoá</div>
-                            <div class="col-span-4">Định nghĩa</div>
-                            <div class="col-span-3">Ví dụ (Tùy chọn)</div>
-                            <div class="col-span-2">Tags</div>
-                            <div class="col-span-1 text-center">Xóa</div>
-                        </div>
-
-                        <div id="bulk-dicts-container" class="space-y-3 mb-8 max-h-[45vh] overflow-y-auto no-scrollbar pb-2">
-                            <!-- Render by JS -->
-                        </div>
-                    </div>
-
-                    <!-- TEXTAREA MODE -->
-                    <div id="dict-bulk-text-container" class="hidden mb-8">
-                        <div class="bg-gray-50 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-400 text-xs p-4 rounded-xl mb-6 border border-gray-200 dark:border-[#222] leading-relaxed transition-colors">
-                            <i class="fa-solid fa-info-circle mr-1.5 text-black dark:text-white"></i> <b>Nhập thô bằng văn bản:</b> Mỗi từ lóng trên 1 dòng, phân cách nhau bởi phím Tab hoặc dấu gạch dọc <code>|</code>.<br>
-                            Định dạng: <code>Từ khóa | Định nghĩa | Ví dụ (nếu có) | tag1, tag2</code>
-                        </div>
-                        <textarea id="bulk-dict-textarea" rows="8" placeholder="Ngoan xinh yêu | Chỉ một người dễ thương | Bé ngoan xinh yêu của anh | cute, genz&#10;Vô tri | Hành động thiếu suy nghĩ | Cười vô tri | funny" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] text-gray-900 dark:text-white rounded-xl p-4 text-sm font-mono focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white no-scrollbar whitespace-nowrap overflow-x-auto transition-colors placeholder-gray-400 dark:placeholder-[#555]"></textarea>
-                    </div>
-
-                    <button id="btn-submit-bulk-dicts" onclick="app.submitBulkDicts()" class="bg-black dark:bg-white text-white dark:text-black px-6 py-3.5 rounded-xl font-bold hover:bg-gray-800 dark:hover:bg-gray-200 transition w-full flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-save"></i> Lưu tất cả Từ Điển
+                    <button id="btn-submit-bulk-dicts" onclick="app.submitBulkDicts()" class="bg-black dark:bg-white text-white dark:text-black w-full py-4 rounded-2xl font-bold text-base active:scale-[0.98] transition shadow-lg dark:shadow-none">
+                        Lưu vào Từ điển
                     </button>
                 </div>
 
                 <!-- Bảng Danh Sách Từ Điển -->
-                <div class="bg-white dark:bg-black border border-gray-200 dark:border-[#222] rounded-2xl flex flex-col transition-colors shadow-sm dark:shadow-none">
-                    <div class="p-6 border-b border-gray-100 dark:border-[#222] flex justify-between items-center">
-                        <h3 class="font-bold text-lg">Cơ sở dữ liệu Từ Điển</h3>
-                        <button id="btn-bulk-delete-dicts" onclick="app.bulkDelete('dictionary')" class="hidden bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border border-red-100 dark:border-red-500/20 px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition">
-                            <i class="fa-solid fa-trash mr-1.5"></i> Xoá mục đã chọn
-                        </button>
+                <div>
+                    <div class="flex justify-between items-center mb-4 px-2">
+                        <h3 class="font-bold text-sm text-gray-500 uppercase tracking-widest">Dữ liệu hiện có</h3>
+                        <button id="btn-bulk-delete-dicts" onclick="app.bulkDelete('dictionary')" class="hidden text-red-500 text-sm font-bold bg-red-50 dark:bg-red-500/10 px-4 py-2 rounded-full transition">Xoá đã chọn</button>
                     </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-50 dark:bg-[#0a0a0a] text-gray-500 dark:text-[#666] text-[11px] uppercase tracking-widest whitespace-nowrap border-b border-gray-100 dark:border-[#222]">
+                    <div class="bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#222] rounded-3xl overflow-x-auto">
+                        <table class="w-full text-left text-sm whitespace-nowrap">
+                            <thead class="text-gray-400 dark:text-[#666] border-b border-gray-100 dark:border-[#222]">
                                 <tr>
-                                    <th class="px-6 py-4 w-12"><input type="checkbox" id="cb-all-dicts" onchange="app.toggleSelectAll(this)" class="w-4 h-4 accent-black dark:accent-white rounded border-gray-300 dark:border-[#444] bg-white dark:bg-black cursor-pointer"></th>
-                                    <th class="px-6 py-4 whitespace-nowrap">Từ khoá</th>
-                                    <th class="px-6 py-4 w-1/3 min-w-[200px]">Định nghĩa</th>
-                                    <th class="px-6 py-4">Ví dụ</th>
-                                    <th class="px-6 py-4">Tags</th>
-                                    <th class="px-6 py-4 text-right">Thao tác</th>
+                                    <th class="px-6 py-4 w-12"><input type="checkbox" id="cb-all-dicts" onchange="app.toggleSelectAll(this)" class="w-5 h-5 accent-black dark:accent-white rounded bg-gray-100 dark:bg-[#111] border-transparent cursor-pointer"></th>
+                                    <th class="px-6 py-4 font-semibold">Từ & Nghĩa</th>
+                                    <th class="px-6 py-4 font-semibold">Tags</th>
+                                    <th class="px-6 py-4 text-right font-semibold">Xóa</th>
                                 </tr>
                             </thead>
                             <tbody id="admin-table-dicts" class="divide-y divide-gray-100 dark:divide-[#1a1a1a]"></tbody>
@@ -314,114 +232,124 @@
 
     </main>
 
-    <!-- Modal Phóng to Ảnh/Video (View Modal) -->
-    <div id="view-modal" class="fixed inset-0 bg-white/95 dark:bg-black/95 backdrop-blur-sm hidden z-[60] flex items-center justify-center opacity-0 transition-opacity">
-        <button onclick="app.closeViewModal()" class="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#111] text-black dark:text-white hover:bg-gray-200 dark:hover:bg-[#222] transition-colors z-10"><i class="fa-solid fa-xmark"></i></button>
-        <div id="view-content" class="w-full max-w-5xl max-h-[90vh] p-4 flex justify-center items-center"></div>
+    <!-- Bottom Navigation Bar (Mobile App Style) - Hidden on md+ -->
+    <nav class="fixed bottom-0 w-full z-40 bg-white/90 dark:bg-black/90 backdrop-blur-xl border-t border-gray-100 dark:border-[#1a1a1a] pb-safe transition-colors duration-200 md:hidden">
+        <div class="flex justify-around items-center h-16 px-2">
+            <button id="nav-btn-memes" onclick="app.switchTab('memes')" class="flex flex-col items-center justify-center gap-1 w-20 h-full text-black dark:text-white transition-colors">
+                <i class="fa-solid fa-layer-group text-2xl mb-0.5"></i>
+                <span class="text-[10px] font-bold tracking-widest uppercase">Meme</span>
+            </button>
+            <button id="nav-btn-dicts" onclick="app.switchTab('dictionary')" class="flex flex-col items-center justify-center gap-1 w-20 h-full text-gray-400 dark:text-[#555] transition-colors">
+                <i class="fa-solid fa-book text-2xl mb-0.5"></i>
+                <span class="text-[10px] font-bold tracking-widest uppercase">Từ điển</span>
+            </button>
+            <button id="nav-btn-admin" onclick="app.switchTab('admin')" class="hidden flex flex-col items-center justify-center gap-1 w-20 h-full text-gray-400 dark:text-[#555] transition-colors">
+                <i class="fa-solid fa-shield-halved text-2xl mb-0.5"></i>
+                <span class="text-[10px] font-bold tracking-widest uppercase">Admin</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Floating Action Button (FAB) for Add -->
+    <button id="fab-add" onclick="app.openAddModal()" class="hidden fixed bottom-24 md:bottom-10 right-6 w-14 h-14 bg-black dark:bg-white text-white dark:text-black rounded-full shadow-2xl dark:shadow-[0_0_15px_rgba(255,255,255,0.2)] flex items-center justify-center text-xl z-40 active:scale-90 transition-transform">
+        <i class="fa-solid fa-plus"></i>
+    </button>
+
+    <!-- Modal Phóng to Ảnh/Video -->
+    <div id="view-modal" class="fixed inset-0 bg-white/95 dark:bg-black/95 backdrop-blur-md hidden z-[60] flex items-center justify-center opacity-0 transition-opacity">
+        <button onclick="app.closeViewModal()" class="absolute top-6 right-6 w-12 h-12 flex items-center justify-center rounded-full bg-gray-100 dark:bg-[#111] text-black dark:text-white active:scale-90 transition z-10"><i class="fa-solid fa-xmark text-lg"></i></button>
+        <div id="view-content" class="w-full h-full p-4 flex justify-center items-center"></div>
     </div>
 
-    <!-- Auth Modal -->
-    <div id="auth-modal" class="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center opacity-0 transition-opacity">
-        <div class="bg-white dark:bg-black rounded-2xl p-8 w-full max-w-sm transform scale-95 transition-all mx-4 text-[#111] dark:text-[#f3f3f3] border border-gray-100 dark:border-[#222] shadow-2xl dark:shadow-none">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold tracking-tight">Đăng nhập</h2>
-                <button onclick="app.closeAuthModal()" class="text-gray-400 hover:text-black dark:hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
-            </div>
-            <div class="space-y-4">
+    <!-- Auth Modal (Bottom Sheet on Mobile, Centered on Desktop) -->
+    <div id="auth-modal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity opacity-0" id="auth-modal-backdrop" onclick="app.closeAuthModal()"></div>
+        <div class="relative w-full max-w-sm bg-white dark:bg-black rounded-t-[2rem] sm:rounded-3xl p-8 transform translate-y-full transition-transform duration-300 text-[#111] dark:text-[#f3f3f3] border-t sm:border border-gray-100 dark:border-[#222]" id="auth-modal-sheet">
+            <div class="w-12 h-1.5 bg-gray-200 dark:bg-[#333] rounded-full mx-auto mb-6 sm:hidden"></div>
+            <h2 class="text-3xl font-extrabold tracking-tight mb-8 text-center">Quản trị viên</h2>
+            <div class="space-y-5">
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Email</label>
-                    <input type="email" id="login-email" placeholder="admin@example.com" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors">
+                    <input type="email" id="login-email" placeholder="Email" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#222] rounded-2xl px-5 py-4 text-base font-medium focus:outline-none focus:border-black dark:focus:border-white transition-colors">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Mật khẩu</label>
-                    <input type="password" id="login-pass" placeholder="••••••••" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors">
+                    <input type="password" id="login-pass" placeholder="Mật khẩu" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#222] rounded-2xl px-5 py-4 text-base font-medium focus:outline-none focus:border-black dark:focus:border-white transition-colors">
                 </div>
-                <button id="btn-login" onclick="app.login()" class="w-full bg-black dark:bg-white text-white dark:text-black font-bold rounded-xl py-3.5 mt-4 hover:bg-gray-800 dark:hover:bg-gray-200 transition">Đăng nhập ngay</button>
-                <p class="text-xs text-center text-gray-500 dark:text-gray-500 mt-4">Chỉ dành cho quản trị viên hệ thống.</p>
+                <button id="btn-login" onclick="app.login()" class="w-full bg-black dark:bg-white text-white dark:text-black font-bold text-lg rounded-2xl py-4 mt-4 active:scale-[0.98] transition">Đăng nhập</button>
             </div>
         </div>
     </div>
 
-    <!-- Add/Edit Item Modal (Dùng cho Thêm Lẻ bên ngoài Web) -->
-    <div id="add-modal" class="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center opacity-0 transition-opacity">
-        <div class="bg-white dark:bg-black rounded-2xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto mx-4 text-[#111] dark:text-[#f3f3f3] border border-gray-100 dark:border-[#222] shadow-2xl dark:shadow-none transition-colors">
-            <div class="flex justify-between items-center mb-6">
-                <h2 id="modal-title" class="text-2xl font-bold tracking-tight">Thêm nội dung</h2>
-                <button onclick="app.closeAddModal()" class="text-gray-400 hover:text-black dark:hover:text-white transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button>
+    <!-- Add Item Modal (Bottom Sheet on Mobile, Centered on Desktop) -->
+    <div id="add-modal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center">
+        <div class="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity opacity-0" id="add-modal-backdrop" onclick="app.closeAddModal()"></div>
+        <div class="relative w-full max-w-md bg-white dark:bg-black rounded-t-[2rem] sm:rounded-3xl p-7 sm:p-8 transform translate-y-full transition-transform duration-300 max-h-[90vh] overflow-y-auto no-scrollbar text-[#111] dark:text-[#f3f3f3] border-t sm:border border-gray-100 dark:border-[#222] pb-safe" id="add-modal-sheet">
+            <div class="w-12 h-1.5 bg-gray-200 dark:bg-[#333] rounded-full mx-auto mb-6 sm:hidden"></div>
+            <div class="flex justify-between items-center mb-8">
+                <h2 id="modal-title" class="text-3xl font-extrabold tracking-tight">Thêm nội dung</h2>
+                <button onclick="app.closeAddModal()" class="w-10 h-10 rounded-full bg-gray-100 dark:bg-[#111] flex justify-center items-center active:scale-90 transition hidden sm:flex"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <div id="meme-form" class="space-y-5">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Loại file</label>
-                    <select id="meme-type" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors cursor-pointer">
-                        <option value="image">Hình ảnh (Image)</option>
-                        <option value="gif">Ảnh động (GIF)</option>
-                        <option value="video">Video (MP4)</option>
-                    </select>
+                <!-- Chuyển loại Meme sang Toggle thay vì Select -->
+                <div class="flex gap-2 bg-gray-100 dark:bg-[#111] p-1.5 rounded-2xl">
+                    <label class="flex-1 text-center cursor-pointer relative group">
+                        <input type="radio" name="meme-type-toggle" value="image" checked class="peer sr-only"> 
+                        <div class="py-2.5 text-xs font-bold text-gray-500 dark:text-[#666] peer-checked:text-black dark:peer-checked:text-white peer-checked:bg-white dark:peer-checked:bg-[#222] rounded-xl transition-all shadow-sm peer-checked:shadow">Ảnh</div>
+                    </label>
+                    <label class="flex-1 text-center cursor-pointer relative group">
+                        <input type="radio" name="meme-type-toggle" value="gif" class="peer sr-only"> 
+                        <div class="py-2.5 text-xs font-bold text-gray-500 dark:text-[#666] peer-checked:text-black dark:peer-checked:text-white peer-checked:bg-white dark:peer-checked:bg-[#222] rounded-xl transition-all shadow-sm peer-checked:shadow">GIF</div>
+                    </label>
+                    <label class="flex-1 text-center cursor-pointer relative group">
+                        <input type="radio" name="meme-type-toggle" value="video" class="peer sr-only"> 
+                        <div class="py-2.5 text-xs font-bold text-gray-500 dark:text-[#666] peer-checked:text-black dark:peer-checked:text-white peer-checked:bg-white dark:peer-checked:bg-[#222] rounded-xl transition-all shadow-sm peer-checked:shadow">Video</div>
+                    </label>
                 </div>
 
-                <div class="flex gap-6 mb-2">
-                    <label class="flex items-center gap-2 cursor-pointer text-sm font-medium group">
-                        <input type="radio" name="upload-method" value="url" checked onchange="app.toggleUploadMethod()" class="accent-black dark:accent-white w-4 h-4 bg-white dark:bg-black border-gray-300 dark:border-[#555]"> 
-                        <span class="group-hover:text-black dark:group-hover:text-white transition-colors">Dùng Link URL</span>
+                <div class="flex gap-2 bg-gray-100 dark:bg-[#111] p-1.5 rounded-2xl">
+                    <label class="flex-1 text-center cursor-pointer relative group">
+                        <input type="radio" name="upload-method" value="url" checked onchange="app.toggleUploadMethod()" class="peer sr-only"> 
+                        <div class="py-2.5 text-xs font-bold text-gray-500 dark:text-[#666] peer-checked:text-black dark:peer-checked:text-white peer-checked:bg-white dark:peer-checked:bg-[#222] rounded-xl transition-all shadow-sm peer-checked:shadow">Link URL</div>
                     </label>
-                    <label class="flex items-center gap-2 cursor-pointer text-sm font-medium group">
-                        <input type="radio" name="upload-method" value="file" onchange="app.toggleUploadMethod()" class="accent-black dark:accent-white w-4 h-4 bg-white dark:bg-black border-gray-300 dark:border-[#555]"> 
-                        <span class="group-hover:text-black dark:group-hover:text-white transition-colors">Tải file</span>
+                    <label class="flex-1 text-center cursor-pointer relative group">
+                        <input type="radio" name="upload-method" value="file" onchange="app.toggleUploadMethod()" class="peer sr-only"> 
+                        <div class="py-2.5 text-xs font-bold text-gray-500 dark:text-[#666] peer-checked:text-black dark:peer-checked:text-white peer-checked:bg-white dark:peer-checked:bg-[#222] rounded-xl transition-all shadow-sm peer-checked:shadow">Tải file</div>
                     </label>
                 </div>
 
                 <div id="input-url-container">
-                    <input type="url" id="meme-url" placeholder="https://..." class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors">
+                    <input type="url" id="meme-url" placeholder="Dán link (https://...)" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-black dark:focus:border-white transition-colors">
                 </div>
                 
                 <div id="input-file-container" class="hidden">
-                    <input type="file" id="meme-file" accept="image/*,video/mp4,image/gif" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-2.5 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white text-sm file:mr-4 file:py-1.5 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-black dark:file:bg-white file:text-white dark:file:text-black cursor-pointer transition-colors">
+                    <input type="file" id="meme-file" accept="image/*,video/mp4,image/gif" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-4 py-3 focus:outline-none text-sm file:mr-4 file:py-2 file:px-5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-black dark:file:bg-white file:text-white dark:file:text-black cursor-pointer transition-colors">
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Tiêu đề</label>
-                    <input type="text" id="meme-title" placeholder="VD: Mèo khóc" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Tags (cách bằng dấu phẩy)</label>
-                    <input type="text" id="meme-tags" placeholder="cat, sad, funny" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors">
-                </div>
+                <input type="text" id="meme-title" placeholder="Tiêu đề Meme" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-black dark:focus:border-white transition-colors">
+                <input type="text" id="meme-tags" placeholder="Tags (cách bằng dấu phẩy)" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-black dark:focus:border-white transition-colors">
             </div>
 
             <div id="dict-form" class="space-y-5 hidden">
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Từ lóng / Trend</label>
-                    <input type="text" id="dict-term" placeholder="VD: Brainrot" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Định nghĩa</label>
-                    <textarea id="dict-def" rows="3" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors no-scrollbar"></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Ví dụ minh họa</label>
-                    <input type="text" id="dict-example" placeholder="VD: Bạn nói chuyện brainrot quá." class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1.5">Tags (cách bằng dấu phẩy)</label>
-                    <input type="text" id="dict-tags" placeholder="genz, slang" class="w-full bg-[#fafafa] dark:bg-[#0a0a0a] border border-gray-200 dark:border-[#333] rounded-xl px-4 py-3 focus:outline-none focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors">
-                </div>
+                <input type="text" id="dict-term" placeholder="Từ khoá / Trend" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-black dark:focus:border-white transition-colors">
+                <textarea id="dict-def" rows="3" placeholder="Giải nghĩa..." class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-black dark:focus:border-white transition-colors no-scrollbar"></textarea>
+                <input type="text" id="dict-example" placeholder="Ví dụ (Tuỳ chọn)" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-black dark:focus:border-white transition-colors">
+                <input type="text" id="dict-tags" placeholder="Tags (cách bằng dấu phẩy)" class="w-full bg-white dark:bg-black border border-gray-200 dark:border-[#333] rounded-2xl px-5 py-4 text-sm focus:outline-none focus:border-black dark:focus:border-white transition-colors">
             </div>
 
-            <button id="btn-save" onclick="app.saveItem()" class="w-full bg-black dark:bg-white text-white dark:text-black font-bold rounded-xl py-3.5 mt-6 hover:bg-gray-800 dark:hover:bg-gray-200 transition flex justify-center items-center gap-2">Lưu thay đổi</button>
+            <button id="btn-save" onclick="app.saveItem()" class="w-full bg-black dark:bg-white text-white dark:text-black font-extrabold text-lg rounded-2xl py-4 mt-8 active:scale-[0.98] transition shadow-xl dark:shadow-none">Lưu thay đổi</button>
         </div>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 bg-black dark:bg-white text-white dark:text-black px-5 py-3.5 rounded-xl shadow-2xl dark:shadow-none flex items-center gap-3 hidden z-[70] border border-transparent dark:border-[#333]">
-        <i class="fa-solid fa-circle-check text-white dark:text-black"></i>
-        <span id="toast-msg" class="text-sm font-bold">Thành công!</span>
+    <div id="toast" class="fixed top-20 left-1/2 -translate-x-1/2 md:top-auto md:bottom-8 md:left-auto md:right-8 md:translate-x-0 bg-black dark:bg-white text-white dark:text-black px-6 py-4 rounded-full shadow-2xl flex items-center gap-3 hidden z-[70] transition-colors border border-transparent dark:border-[#333]">
+        <i class="fa-solid fa-circle-check text-green-400 dark:text-green-600 text-lg"></i>
+        <span id="toast-msg" class="text-sm font-bold tracking-wide">Thành công!</span>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, deleteDoc, updateDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const CLOUDINARY_CLOUD_NAME = 'dbcixss3h'; 
         const CLOUDINARY_UPLOAD_PRESET = 'meme_upload'; 
@@ -455,19 +383,14 @@
                 data: { memes: [], dictionary: [] },
                 unsubscribeMemes: null,
                 unsubscribeDict: null,
-                selectedAdminItems: new Set()
+                selectedAdminItems: new Set(),
+                editingId: null
             },
 
             async init() {
                 this.applyTheme(this.state.theme);
                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
                     if (this.state.theme === 'system') this.applyTheme('system');
-                });
-                
-                document.addEventListener('click', (e) => {
-                    if (!e.target.closest('#theme-dropdown-container')) {
-                        document.getElementById('theme-menu').classList.add('hidden');
-                    }
                 });
 
                 try {
@@ -486,43 +409,31 @@
                     }
                 });
 
-                this.addDraftRow('meme', 3);
-                this.addDraftRow('dict', 3);
-            },
-
-            toggleThemeMenu() {
-                document.getElementById('theme-menu').classList.toggle('hidden');
+                this.addDraftRow('meme', 2);
+                this.addDraftRow('dict', 2);
             },
             
+            toggleTheme() {
+                const isDark = document.documentElement.classList.contains('dark');
+                this.setTheme(isDark ? 'light' : 'dark');
+            },
+
             setTheme(mode) {
                 this.state.theme = mode;
                 localStorage.setItem('theme', mode);
                 this.applyTheme(mode);
-                document.getElementById('theme-menu').classList.add('hidden');
             },
 
             applyTheme(mode) {
                 const isDark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                if (isDark) {
-                    document.documentElement.classList.add('dark');
-                } else {
-                    document.documentElement.classList.remove('dark');
-                }
+                if (isDark) document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
                 
                 const btnIcon = document.getElementById('theme-icon');
                 if (btnIcon) {
-                    if (mode === 'light') btnIcon.className = 'fa-solid fa-sun text-black dark:text-white';
-                    else if (mode === 'dark') btnIcon.className = 'fa-solid fa-moon text-black dark:text-white';
-                    else btnIcon.className = 'fa-solid fa-desktop text-black dark:text-white';
+                    if (isDark) btnIcon.className = 'fa-solid fa-moon';
+                    else btnIcon.className = 'fa-regular fa-sun text-orange-500';
                 }
-
-                ['light', 'dark', 'system'].forEach(m => {
-                    const el = document.getElementById(`theme-option-${m}`);
-                    if (el) {
-                        if (m === mode) el.classList.add('bg-gray-100', 'dark:bg-[#111]', 'font-bold');
-                        else el.classList.remove('bg-gray-100', 'dark:bg-[#111]', 'font-bold');
-                    }
-                });
             },
 
             attachDataListeners() {
@@ -544,20 +455,23 @@
             },
 
             renderAuthUI() {
-                const authBtn = document.getElementById('auth-btn');
-                const adminActions = document.getElementById('admin-actions');
-                const dashBtn = document.getElementById('dashboard-btn');
+                const headerAuthBtn = document.getElementById('header-auth-btn');
+                const navAdminBtn = document.getElementById('nav-btn-admin');
+                const tabAdminDesktop = document.getElementById('tab-admin-desktop');
+                const fabAdd = document.getElementById('fab-add');
                 
                 if (this.state.isLoggedIn) {
-                    authBtn.innerText = 'Đăng xuất';
-                    authBtn.classList.add('text-red-500', 'dark:text-red-400');
-                    if(this.state.tab !== 'admin') adminActions.classList.remove('hidden');
-                    dashBtn.classList.remove('hidden');
+                    headerAuthBtn.innerHTML = '<i class="fa-solid fa-arrow-right-from-bracket text-red-500"></i>';
+                    headerAuthBtn.setAttribute('onclick', 'app.logout()');
+                    if (navAdminBtn) navAdminBtn.classList.remove('hidden');
+                    if (tabAdminDesktop) tabAdminDesktop.classList.remove('hidden');
+                    if (this.state.tab !== 'admin' && fabAdd) fabAdd.classList.remove('hidden');
                 } else {
-                    authBtn.innerText = 'Đăng nhập';
-                    authBtn.classList.remove('text-red-500', 'dark:text-red-400');
-                    adminActions.classList.add('hidden');
-                    dashBtn.classList.add('hidden');
+                    headerAuthBtn.innerHTML = '<i class="fa-regular fa-user-circle"></i>';
+                    headerAuthBtn.setAttribute('onclick', 'app.toggleAuthModal()');
+                    if (navAdminBtn) navAdminBtn.classList.add('hidden');
+                    if (tabAdminDesktop) tabAdminDesktop.classList.add('hidden');
+                    if (fabAdd) fabAdd.classList.add('hidden');
                     if (this.state.tab === 'admin') this.switchTab('memes');
                 }
                 this.render();
@@ -571,46 +485,82 @@
                 this.state.filterTypes = [];
                 this.state.filterTags = [];
                 document.querySelectorAll('.filter-type-cb, .filter-tag-cb').forEach(cb => cb.checked = false);
+                document.getElementById('advanced-filters').classList.add('hidden');
                 
                 const publicContainer = document.getElementById('public-view-container');
                 const adminContainer = document.getElementById('admin-container');
-                const adminActions = document.getElementById('admin-actions');
-                const mainTabs = document.getElementById('main-tabs');
-                const btnMemes = document.getElementById('tab-memes');
-                const btnDict = document.getElementById('tab-dictionary');
+                const searchContainer = document.getElementById('search-bar-container');
+                const fabAdd = document.getElementById('fab-add');
+
+                // Bottom Nav elements
+                const navBtnMemes = document.getElementById('nav-btn-memes');
+                const navBtnDicts = document.getElementById('nav-btn-dicts');
+                const navBtnAdmin = document.getElementById('nav-btn-admin');
+                
+                // Desktop Tabs
+                const desktopTabMemes = document.getElementById('tab-memes-desktop');
+                const desktopTabDicts = document.getElementById('tab-dicts-desktop');
+                const desktopTabAdmin = document.getElementById('tab-admin-desktop');
+
+                const activeNavCls = ['text-black', 'dark:text-white'];
+                const inactiveNavCls = ['text-gray-400', 'dark:text-[#555]'];
+
+                const activeDeskCls = ['bg-white', 'dark:bg-[#222]', 'shadow-sm', 'dark:shadow-none', 'text-black', 'dark:text-white'];
+                const inactiveDeskCls = ['text-gray-500', 'dark:text-gray-400', 'hover:text-gray-900', 'dark:hover:text-gray-100', 'bg-transparent', 'shadow-none'];
 
                 if (tabName === 'admin') {
                     publicContainer.classList.add('hidden');
+                    searchContainer.classList.add('hidden');
                     adminContainer.classList.remove('hidden');
-                    mainTabs.classList.add('opacity-50', 'pointer-events-none');
+                    if (fabAdd) fabAdd.classList.add('hidden');
+                    
+                    if (navBtnAdmin) { navBtnAdmin.classList.add(...activeNavCls); navBtnAdmin.classList.remove(...inactiveNavCls); }
+                    if (navBtnMemes) { navBtnMemes.classList.add(...inactiveNavCls); navBtnMemes.classList.remove(...activeNavCls); }
+                    if (navBtnDicts) { navBtnDicts.classList.add(...inactiveNavCls); navBtnDicts.classList.remove(...activeNavCls); }
+                    
+                    if (desktopTabAdmin) { desktopTabAdmin.classList.add(...activeDeskCls); desktopTabAdmin.classList.remove(...inactiveDeskCls); }
+                    if (desktopTabMemes) { desktopTabMemes.classList.add(...inactiveDeskCls); desktopTabMemes.classList.remove(...activeDeskCls); }
+                    if (desktopTabDicts) { desktopTabDicts.classList.add(...inactiveDeskCls); desktopTabDicts.classList.remove(...activeDeskCls); }
+
                     this.switchAdminTab('memes'); 
                 } else {
                     publicContainer.classList.remove('hidden');
+                    searchContainer.classList.remove('hidden');
                     adminContainer.classList.add('hidden');
-                    mainTabs.classList.remove('opacity-50', 'pointer-events-none');
-                    
-                    const activeClasses = ['bg-white', 'dark:bg-[#222]', 'shadow-sm', 'dark:shadow-none', 'text-black', 'dark:text-white'];
-                    const inactiveClasses = ['text-gray-500', 'dark:text-gray-400', 'hover:text-gray-900', 'dark:hover:text-gray-100', 'bg-transparent', 'shadow-none'];
+                    if(this.state.isLoggedIn && fabAdd) fabAdd.classList.remove('hidden');
+
+                    if (navBtnAdmin) { navBtnAdmin.classList.add(...inactiveNavCls); navBtnAdmin.classList.remove(...activeNavCls); }
+                    if (desktopTabAdmin) { desktopTabAdmin.classList.add(...inactiveDeskCls); desktopTabAdmin.classList.remove(...activeDeskCls); }
 
                     if (tabName === 'memes') {
-                        btnMemes.classList.add(...activeClasses); btnMemes.classList.remove(...inactiveClasses);
-                        btnDict.classList.add(...inactiveClasses); btnDict.classList.remove(...activeClasses);
+                        if (navBtnMemes) { navBtnMemes.classList.add(...activeNavCls); navBtnMemes.classList.remove(...inactiveNavCls); }
+                        if (navBtnDicts) { navBtnDicts.classList.add(...inactiveNavCls); navBtnDicts.classList.remove(...activeNavCls); }
+                        
+                        if (desktopTabMemes) { desktopTabMemes.classList.add(...activeDeskCls); desktopTabMemes.classList.remove(...inactiveDeskCls); }
+                        if (desktopTabDicts) { desktopTabDicts.classList.add(...inactiveDeskCls); desktopTabDicts.classList.remove(...activeDeskCls); }
+
                         document.getElementById('memes-container').classList.remove('hidden');
+                        document.getElementById('memes-container').classList.add('grid');
                         document.getElementById('dictionary-container').classList.add('hidden');
+                        document.getElementById('dictionary-container').classList.remove('flex');
                         document.getElementById('meme-format-filter').classList.remove('hidden'); 
-                        document.getElementById('add-btn-text').innerText = 'Thêm Meme';
                     } else {
-                        btnDict.classList.add(...activeClasses); btnDict.classList.remove(...inactiveClasses);
-                        btnMemes.classList.add(...inactiveClasses); btnMemes.classList.remove(...activeClasses);
+                        if (navBtnDicts) { navBtnDicts.classList.add(...activeNavCls); navBtnDicts.classList.remove(...inactiveNavCls); }
+                        if (navBtnMemes) { navBtnMemes.classList.add(...inactiveNavCls); navBtnMemes.classList.remove(...activeNavCls); }
+
+                        if (desktopTabDicts) { desktopTabDicts.classList.add(...activeDeskCls); desktopTabDicts.classList.remove(...inactiveDeskCls); }
+                        if (desktopTabMemes) { desktopTabMemes.classList.add(...inactiveDeskCls); desktopTabMemes.classList.remove(...activeDeskCls); }
+
                         document.getElementById('dictionary-container').classList.remove('hidden');
+                        document.getElementById('dictionary-container').classList.add('flex');
                         document.getElementById('memes-container').classList.add('hidden');
+                        document.getElementById('memes-container').classList.remove('grid');
                         document.getElementById('meme-format-filter').classList.add('hidden');
-                        document.getElementById('add-btn-text').innerText = 'Thêm Từ Lóng';
                     }
 
-                    if(this.state.isLoggedIn) adminActions.classList.remove('hidden');
                     this.updateTagsFilter(); 
                 }
+                window.scrollTo(0,0);
                 this.render();
             },
 
@@ -623,8 +573,8 @@
                 const viewMemes = document.getElementById('admin-view-memes');
                 const viewDicts = document.getElementById('admin-view-dicts');
 
-                const activeCls = ['font-semibold', 'text-black', 'dark:text-white', 'border-b-2', 'border-black', 'dark:border-white'];
-                const inactiveCls = ['font-medium', 'text-gray-500', 'dark:text-gray-500', 'hover:text-black', 'dark:hover:text-gray-200'];
+                const activeCls = ['font-bold', 'text-black', 'dark:text-white', 'border-b-2', 'border-black', 'dark:border-white'];
+                const inactiveCls = ['font-semibold', 'text-gray-400', 'dark:text-[#555]', 'hover:text-black', 'dark:hover:text-gray-300', 'border-b-2', 'border-transparent'];
 
                 if(subTab === 'memes') {
                     btnMemes.classList.add(...activeCls); btnMemes.classList.remove(...inactiveCls);
@@ -637,22 +587,6 @@
                 }
                 this.updateBulkDeleteButton();
                 this.render();
-            },
-
-            toggleBulkMode(type, mode) {
-                const gridContainer = document.getElementById(type === 'meme' ? 'meme-bulk-grid-container' : 'dict-bulk-grid-container');
-                const textContainer = document.getElementById(type === 'meme' ? 'meme-bulk-text-container' : 'dict-bulk-text-container');
-                const addRowBtn = document.getElementById(type === 'meme' ? 'meme-add-row-btn' : 'dict-add-row-btn');
-
-                if (mode === 'grid') {
-                    gridContainer.classList.remove('hidden');
-                    textContainer.classList.add('hidden');
-                    addRowBtn.classList.remove('hidden');
-                } else {
-                    gridContainer.classList.add('hidden');
-                    textContainer.classList.remove('hidden');
-                    addRowBtn.classList.add('hidden');
-                }
             },
 
             toggleFilters() { document.getElementById('advanced-filters').classList.toggle('hidden'); },
@@ -675,9 +609,11 @@
                 Array.from(tagSet).sort().forEach(tag => {
                     const isChecked = this.state.filterTags.includes(tag) ? 'checked' : '';
                     container.innerHTML += `
-                        <label class="flex items-center gap-2 cursor-pointer bg-white dark:bg-black px-4 py-2 rounded-lg border border-gray-200 dark:border-[#333] hover:border-black dark:hover:border-white transition-all select-none group">
-                            <input type="checkbox" value="${tag}" ${isChecked} class="filter-tag-cb w-4 h-4 border-gray-300 dark:border-[#444] rounded bg-white dark:bg-black text-black dark:text-white focus:ring-black dark:focus:ring-white transition-all" onchange="app.handleFilterChange()">
-                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-black dark:group-hover:text-white transition-colors">#${tag}</span>
+                        <label class="cursor-pointer select-none">
+                            <input type="checkbox" value="${tag}" ${isChecked} class="peer sr-only filter-tag-cb" onchange="app.handleFilterChange()">
+                            <div class="px-4 py-2 rounded-full text-xs font-bold transition-all border border-gray-200 dark:border-[#333] bg-white dark:bg-black text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-[#111] peer-checked:bg-black peer-checked:text-white dark:peer-checked:bg-white dark:peer-checked:text-black peer-checked:border-black dark:peer-checked:border-white shadow-sm peer-checked:shadow-md">
+                                #${tag}
+                            </div>
                         </label>
                     `;
                 });
@@ -690,8 +626,8 @@
             showToast(message, isError = false) {
                 const toast = document.getElementById('toast');
                 toast.innerHTML = isError 
-                    ? `<i class="fa-solid fa-circle-exclamation text-white dark:text-black"></i><span class="text-sm font-bold">${message}</span>`
-                    : `<i class="fa-solid fa-circle-check text-white dark:text-black"></i><span class="text-sm font-bold">${message}</span>`;
+                    ? `<i class="fa-solid fa-circle-exclamation text-white dark:text-black"></i><span class="text-[13px] font-bold tracking-wide">${message}</span>`
+                    : `<i class="fa-solid fa-circle-check text-green-400 dark:text-green-600 text-lg"></i><span class="text-[14px] font-bold tracking-wide">${message}</span>`;
                 
                 if(isError) {
                     toast.classList.add('bg-red-600', 'dark:bg-red-400');
@@ -702,39 +638,67 @@
                 }
 
                 toast.classList.remove('hidden'); toast.classList.add('toast-enter');
-                setTimeout(() => { toast.classList.add('hidden'); toast.classList.remove('toast-enter'); }, 3000);
+                setTimeout(() => { toast.classList.add('hidden'); toast.classList.remove('toast-enter'); }, 2500);
             },
 
+            // --- AUTO NAMING UTILS ---
+            getNextMemeName(currentMemes, offset = 0) {
+                let maxAlpha = 'A';
+                let maxNum = 0;
+                const regex = /^Meme ([A-Z])-(\d{4})$/i;
+                
+                currentMemes.forEach(m => {
+                    const match = m.title?.match(regex);
+                    if (match) {
+                        const alpha = match[1].toUpperCase();
+                        const num = parseInt(match[2], 10);
+                        if (alpha > maxAlpha || (alpha === maxAlpha && num > maxNum)) {
+                            maxAlpha = alpha;
+                            maxNum = num;
+                        }
+                    }
+                });
+
+                maxNum += offset;
+                
+                while (maxNum >= 9999) {
+                    maxNum -= 9999;
+                    maxAlpha = String.fromCharCode(maxAlpha.charCodeAt(0) + 1);
+                }
+
+                return `Meme ${maxAlpha}-${String(maxNum + 1).padStart(4, '0')}`;
+            },
+
+            // --- SMART PASTE ADMIN ---
             addDraftRow(type, count = 1) {
                 for(let i=0; i<count; i++) {
                     if (type === 'meme') {
                         const html = `
-                            <div class="draft-row-meme grid grid-cols-12 gap-3 items-start bg-white dark:bg-[#0a0a0a] p-3 rounded-xl border border-gray-200 dark:border-[#222] relative group transition-colors">
-                                <div class="col-span-5 flex flex-col gap-1.5">
+                            <div class="draft-row-meme grid grid-cols-12 gap-3 items-center bg-white dark:bg-black p-3 sm:p-4 rounded-2xl border border-gray-200 dark:border-[#222]">
+                                <div class="col-span-12 md:col-span-5 flex flex-col gap-2">
                                     <div class="flex items-center justify-between px-1">
-                                        <span class="text-[10px] font-bold text-gray-500 dark:text-[#555] uppercase tracking-widest">Nguồn Media</span>
-                                        <select name="upload_type" class="text-xs border border-gray-200 dark:border-[#333] rounded px-1.5 py-0.5 outline-none bg-white dark:bg-black text-black dark:text-white cursor-pointer font-medium" onchange="app.toggleRowType(this)">
-                                            <option value="url">URL (Re-host)</option>
-                                            <option value="file">Tải file từ máy</option>
+                                        <select name="upload_type" class="text-[10px] uppercase tracking-widest font-bold border-none outline-none bg-transparent text-gray-500 cursor-pointer" onchange="app.toggleRowType(this)">
+                                            <option value="url">🔗 URL Web</option>
+                                            <option value="file">📁 Tải Máy</option>
                                         </select>
                                     </div>
-                                    <input name="url" placeholder="Dán link..." class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors" onpaste="app.handleSmartPaste(event, 'meme', this)">
-                                    <input type="file" name="file" accept="image/*,video/mp4,image/gif" class="hidden w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-1.5 rounded-lg text-xs text-gray-700 dark:text-gray-300 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-black dark:file:bg-white file:text-white dark:file:text-black cursor-pointer transition-colors">
+                                    <input name="url" placeholder="Dán link (Ctrl+V)..." class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors" onpaste="app.handleSmartPaste(event, 'meme', this)">
+                                    <input type="file" name="file" accept="image/*,video/mp4,image/gif" class="hidden w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] p-1.5 rounded-xl text-[10px] text-gray-700 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-bold file:bg-black dark:file:bg-white file:text-white dark:file:text-black cursor-pointer">
                                 </div>
-                                <div class="col-span-3 mt-6"><input name="title" placeholder="Tiêu đề" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
-                                <div class="col-span-3 mt-6"><input name="tags" placeholder="Tags (,)" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
-                                <div class="col-span-1 text-center mt-6"><button onclick="this.closest('.draft-row-meme').remove()" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-2.5 rounded-lg transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+                                <div class="col-span-12 md:col-span-3 mt-2 md:mt-0"><input name="title" placeholder="Tiêu đề" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
+                                <div class="col-span-10 md:col-span-3 mt-2 md:mt-0"><input name="tags" placeholder="Tags (,)" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
+                                <div class="col-span-2 md:col-span-1 text-right md:text-center mt-2 md:mt-0"><button onclick="this.closest('.draft-row-meme').remove()" class="text-gray-400 hover:text-red-500 w-10 h-10 rounded-full bg-gray-50 dark:bg-[#111] transition-colors"><i class="fa-solid fa-xmark text-sm"></i></button></div>
                             </div>
                         `;
                         document.getElementById('bulk-memes-container').insertAdjacentHTML('beforeend', html);
                     } else {
                         const html = `
-                            <div class="draft-row-dict grid grid-cols-12 gap-3 items-start bg-white dark:bg-[#0a0a0a] p-3 rounded-xl border border-gray-200 dark:border-[#222] transition-colors">
-                                <div class="col-span-2"><input name="term" placeholder="Từ khoá" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors" onpaste="app.handleSmartPaste(event, 'dict', this)"></div>
-                                <div class="col-span-4"><textarea name="def" placeholder="Định nghĩa" rows="1" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none no-scrollbar transition-colors"></textarea></div>
-                                <div class="col-span-3"><textarea name="ex" placeholder="Ví dụ" rows="1" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none no-scrollbar transition-colors"></textarea></div>
-                                <div class="col-span-2"><input name="tags" placeholder="Tags (,)" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
-                                <div class="col-span-1 text-center"><button onclick="this.closest('.draft-row-dict').remove()" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-2.5 rounded-lg transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+                            <div class="draft-row-dict grid grid-cols-12 gap-3 items-start bg-white dark:bg-black p-3 sm:p-4 rounded-2xl border border-gray-200 dark:border-[#222]">
+                                <div class="col-span-12 md:col-span-3"><input name="term" placeholder="Từ khoá" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-bold focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors" onpaste="app.handleSmartPaste(event, 'dict', this)"></div>
+                                <div class="col-span-12 md:col-span-4"><textarea name="def" placeholder="Định nghĩa" rows="2" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none no-scrollbar transition-colors"></textarea></div>
+                                <div class="col-span-12 md:col-span-3"><textarea name="ex" placeholder="Ví dụ" rows="2" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none no-scrollbar transition-colors"></textarea></div>
+                                <div class="col-span-10 md:col-span-2"><input name="tags" placeholder="Tags (,)" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
+                                <div class="col-span-2 md:hidden text-right"><button onclick="this.closest('.draft-row-dict').remove()" class="text-gray-400 hover:text-red-500 w-10 h-10 rounded-full bg-gray-50 dark:bg-[#111] transition-colors"><i class="fa-solid fa-xmark text-sm"></i></button></div>
                             </div>
                         `;
                         document.getElementById('bulk-dicts-container').insertAdjacentHTML('beforeend', html);
@@ -743,7 +707,7 @@
             },
 
             toggleRowType(selectElem) {
-                const container = selectElem.closest('.col-span-5');
+                const container = selectElem.closest('.flex-col');
                 const urlInput = container.querySelector('input[name="url"]');
                 const fileInput = container.querySelector('input[name="file"]');
                 if (selectElem.value === 'url') {
@@ -767,32 +731,31 @@
                         if (type === 'meme') {
                             const url = cols[0] || ''; const title = cols[1] || ''; const tags = cols[2] || '';
                             insertHTML += `
-                                <div class="draft-row-meme grid grid-cols-12 gap-3 items-start bg-white dark:bg-[#0a0a0a] p-3 rounded-xl border border-gray-200 dark:border-[#333] border-l-4 border-l-black dark:border-l-white relative transition-colors">
-                                    <div class="col-span-5 flex flex-col gap-1.5">
+                                <div class="draft-row-meme grid grid-cols-12 gap-3 items-center bg-white dark:bg-black p-3 sm:p-4 rounded-2xl border border-gray-200 dark:border-[#333] border-l-4 border-l-black dark:border-l-white relative transition-colors">
+                                    <div class="col-span-12 md:col-span-5 flex flex-col gap-2">
                                         <div class="flex items-center justify-between px-1">
-                                            <span class="text-[10px] font-bold text-gray-500 dark:text-[#555] uppercase tracking-widest">Nguồn Media</span>
-                                            <select name="upload_type" class="text-xs border border-gray-200 dark:border-[#333] rounded px-1.5 py-0.5 outline-none bg-white dark:bg-black text-black dark:text-white cursor-pointer font-medium" onchange="app.toggleRowType(this)">
-                                                <option value="url" selected>URL (Re-host)</option>
-                                                <option value="file">Tải file từ máy</option>
+                                            <select name="upload_type" class="text-[10px] uppercase tracking-widest font-bold border-none outline-none bg-transparent text-gray-500 cursor-pointer" onchange="app.toggleRowType(this)">
+                                                <option value="url" selected>🔗 URL Web</option>
+                                                <option value="file">📁 Tải Máy</option>
                                             </select>
                                         </div>
-                                        <input name="url" value="${url}" placeholder="Dán link..." class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors">
-                                        <input type="file" name="file" accept="image/*,video/mp4,image/gif" class="hidden w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-1.5 rounded-lg text-xs text-gray-700 dark:text-gray-300 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-black dark:file:bg-white file:text-white dark:file:text-black cursor-pointer transition-colors">
+                                        <input name="url" value="${url}" placeholder="URL Ảnh/Video" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors">
+                                        <input type="file" name="file" accept="image/*,video/mp4,image/gif" class="hidden w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] p-1.5 rounded-xl text-[10px] text-gray-700 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:font-bold file:bg-black dark:file:bg-white file:text-white dark:file:text-black cursor-pointer">
                                     </div>
-                                    <div class="col-span-3 mt-6"><input name="title" value="${title}" placeholder="Tiêu đề" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
-                                    <div class="col-span-3 mt-6"><input name="tags" value="${tags}" placeholder="Tags (,)" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
-                                    <div class="col-span-1 text-center mt-6"><button onclick="this.closest('.draft-row-meme').remove()" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-2.5 rounded-lg transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+                                    <div class="col-span-12 md:col-span-3 mt-2 md:mt-0"><input name="title" value="${title}" placeholder="Tiêu đề" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
+                                    <div class="col-span-10 md:col-span-3 mt-2 md:mt-0"><input name="tags" value="${tags}" placeholder="Tags (,)" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
+                                    <div class="col-span-2 md:col-span-1 text-right md:text-center mt-2 md:mt-0"><button onclick="this.closest('.draft-row-meme').remove()" class="text-gray-400 hover:text-red-500 w-10 h-10 rounded-full bg-gray-50 dark:bg-[#111] transition-colors"><i class="fa-solid fa-xmark text-sm"></i></button></div>
                                 </div>
                             `;
                         } else {
                             const term = cols[0] || ''; const def = cols[1] || ''; const ex = cols[2] || ''; const tags = cols[3] || '';
                             insertHTML += `
-                                <div class="draft-row-dict grid grid-cols-12 gap-3 items-start bg-white dark:bg-[#0a0a0a] p-3 rounded-xl border border-gray-200 dark:border-[#333] border-l-4 border-l-black dark:border-l-white transition-colors">
-                                    <div class="col-span-2"><input name="term" value="${term}" placeholder="Từ khoá" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
-                                    <div class="col-span-4"><textarea name="def" placeholder="Định nghĩa" rows="1" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none no-scrollbar transition-colors">${def}</textarea></div>
-                                    <div class="col-span-3"><textarea name="ex" placeholder="Ví dụ" rows="1" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none no-scrollbar transition-colors">${ex}</textarea></div>
-                                    <div class="col-span-2"><input name="tags" value="${tags}" placeholder="Tags" class="w-full bg-[#fafafa] dark:bg-black border border-gray-200 dark:border-[#333] p-2.5 rounded-lg text-sm focus:border-black dark:focus:border-white focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
-                                    <div class="col-span-1 text-center"><button onclick="this.closest('.draft-row-dict').remove()" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-2.5 rounded-lg transition-colors"><i class="fa-solid fa-xmark text-lg"></i></button></div>
+                                <div class="draft-row-dict grid grid-cols-12 gap-3 items-start bg-white dark:bg-black p-3 sm:p-4 rounded-2xl border border-gray-200 dark:border-[#333] border-l-4 border-l-black dark:border-l-white transition-colors">
+                                    <div class="col-span-12 md:col-span-3"><input name="term" value="${term}" placeholder="Từ khoá" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-bold focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
+                                    <div class="col-span-12 md:col-span-4"><textarea name="def" placeholder="Định nghĩa" rows="2" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none no-scrollbar transition-colors">${def}</textarea></div>
+                                    <div class="col-span-12 md:col-span-3"><textarea name="ex" placeholder="Ví dụ" rows="2" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none no-scrollbar transition-colors">${ex}</textarea></div>
+                                    <div class="col-span-10 md:col-span-2"><input name="tags" value="${tags}" placeholder="Tags (,)" class="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-100 dark:border-[#1a1a1a] px-4 py-3 rounded-xl text-xs font-medium focus:ring-1 focus:ring-black dark:focus:ring-white outline-none transition-colors"></div>
+                                    <div class="col-span-2 md:hidden text-right"><button onclick="this.closest('.draft-row-dict').remove()" class="text-gray-400 hover:text-red-500 w-10 h-10 rounded-full bg-gray-50 dark:bg-[#111] transition-colors"><i class="fa-solid fa-xmark text-sm"></i></button></div>
                                 </div>
                             `;
                         }
@@ -801,7 +764,7 @@
                     const parentRow = inputElem.closest(type === 'meme' ? '.draft-row-meme' : '.draft-row-dict');
                     parentRow.insertAdjacentHTML('afterend', insertHTML);
                     if(inputElem.value.trim() === '') parentRow.remove();
-                    this.showToast(`Đã nhận diện thông minh ${rows.length} dòng.`);
+                    this.showToast(`Đã nhận diện ${rows.length} dòng.`);
                 }
             },
 
@@ -815,40 +778,61 @@
                 return data.secure_url;
             },
 
+            // Xử lý upload multi-file từ máy
+            async bulkUploadLocalFiles() {
+                const fileInput = document.getElementById('bulk-local-files');
+                if (fileInput.files.length === 0) return alert("Vui lòng chọn ít nhất 1 file!");
+                
+                const btn = document.getElementById('btn-submit-bulk-local');
+                btn.disabled = true; 
+                let successCount = 0, failCount = 0;
+                let offset = 0;
+                const files = Array.from(fileInput.files);
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tải lên ${i + 1}/${files.length}...`;
+                    try {
+                        let type = 'image';
+                        if (file.type === 'video/mp4') type = 'video'; 
+                        else if (file.type === 'image/gif') type = 'gif';
+                        
+                        const finalUrl = await this.uploadToCloudinary(file); 
+                        const autoTitle = this.getNextMemeName(this.state.data.memes, offset);
+                        offset++;
+
+                        await addDoc(memesRef, { type: type, url: finalUrl, title: autoTitle, tags: [], createdAt: Date.now() });
+                        successCount++;
+                    } catch(e) { failCount++; }
+                }
+                
+                btn.innerHTML = 'Tải Lên Máy Chủ';
+                btn.disabled = false;
+                fileInput.value = ''; 
+                this.showToast(`Hoàn tất: ${successCount} OK, ${failCount} Lỗi.`);
+            },
+
             async submitBulkMemes() {
-                const mode = document.getElementById('meme-bulk-mode').value;
+                const rows = document.querySelectorAll('.draft-row-meme');
                 const validData = [];
 
-                if (mode === 'grid') {
-                    const rows = document.querySelectorAll('.draft-row-meme');
-                    rows.forEach(row => {
-                        const uploadType = row.querySelector('[name="upload_type"]').value;
-                        const title = row.querySelector('[name="title"]').value.trim();
-                        const tags = row.querySelector('[name="tags"]').value.trim();
-                        
-                        let fileOrUrl = null;
-                        if (uploadType === 'url') {
-                            const urlValue = row.querySelector('[name="url"]').value.trim();
-                            if (urlValue) fileOrUrl = urlValue;
-                        } else {
-                            const fileInput = row.querySelector('[name="file"]');
-                            if (fileInput.files.length > 0) fileOrUrl = fileInput.files[0];
-                        }
-                        if (fileOrUrl) validData.push({ uploadType, fileOrUrl, title, tags });
-                    });
-                } else {
-                    const text = document.getElementById('bulk-meme-textarea').value;
-                    const lines = text.split('\n').filter(l => l.trim() !== '');
-                    lines.forEach(line => {
-                        const parts = line.includes('\t') ? line.split('\t') : line.split('|');
-                        const urlValue = (parts[0] || '').trim();
-                        const title = (parts[1] || '').trim();
-                        const tags = (parts[2] || '').trim();
-                        if (urlValue) validData.push({ uploadType: 'url', fileOrUrl: urlValue, title, tags });
-                    });
-                }
+                rows.forEach(row => {
+                    const uploadType = row.querySelector('[name="upload_type"]').value;
+                    const title = row.querySelector('[name="title"]').value.trim();
+                    const tags = row.querySelector('[name="tags"]').value.trim();
+                    
+                    let fileOrUrl = null;
+                    if (uploadType === 'url') {
+                        const urlValue = row.querySelector('[name="url"]').value.trim();
+                        if (urlValue) fileOrUrl = urlValue;
+                    } else {
+                        const fileInput = row.querySelector('[name="file"]');
+                        if (fileInput.files.length > 0) fileOrUrl = fileInput.files[0];
+                    }
+                    if (fileOrUrl) validData.push({ uploadType, fileOrUrl, title, tags });
+                });
 
-                if(validData.length === 0) return alert("Vui lòng điền ít nhất 1 dòng hợp lệ!");
+                if(validData.length === 0) return alert("Điền ít nhất 1 dòng hợp lệ!");
                 
                 const btn = document.getElementById('btn-submit-bulk-memes');
                 btn.disabled = true; let successCount = 0, failCount = 0;
@@ -870,42 +854,25 @@
                     } catch(e) { failCount++; }
                 }
                 
-                btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Lưu & Tải lên Cloudinary';
+                btn.innerHTML = 'Tải Link lên Cloudinary & Lưu';
                 btn.disabled = false;
-                
-                if (mode === 'grid') { document.getElementById('bulk-memes-container').innerHTML = ''; this.addDraftRow('meme', 3); } 
-                else { document.getElementById('bulk-meme-textarea').value = ''; }
-                
-                this.showToast(`Hoàn tất: ${successCount} thành công, ${failCount} thất bại.`);
+                document.getElementById('bulk-memes-container').innerHTML = ''; this.addDraftRow('meme', 2);
+                this.showToast(`Hoàn tất: ${successCount} OK, ${failCount} Lỗi.`);
             },
 
             async submitBulkDicts() {
-                const mode = document.getElementById('dict-bulk-mode').value;
+                const rows = document.querySelectorAll('.draft-row-dict');
                 const validData = [];
 
-                if (mode === 'grid') {
-                    const rows = document.querySelectorAll('.draft-row-dict');
-                    rows.forEach(row => {
-                        const term = row.querySelector('[name="term"]').value.trim();
-                        const def = row.querySelector('[name="def"]').value.trim();
-                        const ex = row.querySelector('[name="ex"]').value.trim();
-                        const tags = row.querySelector('[name="tags"]').value.trim();
-                        if(term && def) validData.push({term, def, ex, tags});
-                    });
-                } else {
-                    const text = document.getElementById('bulk-dict-textarea').value;
-                    const lines = text.split('\n').filter(l => l.trim() !== '');
-                    lines.forEach(line => {
-                        const parts = line.includes('\t') ? line.split('\t') : line.split('|');
-                        const term = (parts[0] || '').trim();
-                        const def = (parts[1] || '').trim();
-                        const ex = (parts[2] || '').trim();
-                        const tags = (parts[3] || '').trim();
-                        if(term && def) validData.push({term, def, ex, tags});
-                    });
-                }
+                rows.forEach(row => {
+                    const term = row.querySelector('[name="term"]').value.trim();
+                    const def = row.querySelector('[name="def"]').value.trim();
+                    const ex = row.querySelector('[name="ex"]').value.trim();
+                    const tags = row.querySelector('[name="tags"]').value.trim();
+                    if(term && def) validData.push({term, def, ex, tags});
+                });
 
-                if(validData.length === 0) return alert("Vui lòng nhập Từ khoá và Định nghĩa!");
+                if(validData.length === 0) return alert("Nhập Từ khoá và Định nghĩa!");
                 
                 const btn = document.getElementById('btn-submit-bulk-dicts');
                 btn.disabled = true; let successCount = 0, failCount = 0;
@@ -919,13 +886,10 @@
                     } catch(e) { failCount++; }
                 }
                 
-                btn.innerHTML = '<i class="fa-solid fa-save"></i> Lưu tất cả Từ Điển';
+                btn.innerHTML = 'Lưu vào Từ điển';
                 btn.disabled = false;
-
-                if (mode === 'grid') { document.getElementById('bulk-dicts-container').innerHTML = ''; this.addDraftRow('dict', 3); } 
-                else { document.getElementById('bulk-dict-textarea').value = ''; }
-
-                this.showToast(`Hoàn tất: ${successCount} thành công, ${failCount} thất bại.`);
+                document.getElementById('bulk-dicts-container').innerHTML = ''; this.addDraftRow('dict', 2);
+                this.showToast(`Hoàn tất: ${successCount} OK, ${failCount} Lỗi.`);
             },
 
             toggleSelectAll(checkbox) {
@@ -953,15 +917,15 @@
                 const btnId = this.state.adminTab === 'memes' ? 'btn-bulk-delete-memes' : 'btn-bulk-delete-dicts';
                 const btn = document.getElementById(btnId);
                 if(this.state.selectedAdminItems.size > 0) {
-                    btn.classList.remove('hidden'); btn.innerHTML = `<i class="fa-solid fa-trash mr-1"></i> Xóa (${this.state.selectedAdminItems.size})`;
+                    btn.classList.remove('hidden'); btn.innerHTML = `Xóa (${this.state.selectedAdminItems.size})`;
                 } else { btn.classList.add('hidden'); }
             },
 
             async bulkDelete(collectionType) {
-                if(!confirm(`Bạn chắc chắn muốn xóa vĩnh viễn ${this.state.selectedAdminItems.size} mục?`)) return;
+                if(!confirm(`Xóa vĩnh viễn ${this.state.selectedAdminItems.size} mục?`)) return;
                 const btnId = collectionType === 'memes' ? 'btn-bulk-delete-memes' : 'btn-bulk-delete-dicts';
                 const btn = document.getElementById(btnId);
-                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang xóa...`; btn.disabled = true;
+                btn.innerHTML = `Đang xóa...`; btn.disabled = true;
 
                 try {
                     const idsToDelete = Array.from(this.state.selectedAdminItems);
@@ -975,18 +939,18 @@
 
             togglePlay(id) {
                 const video = document.getElementById(`video-${id}`); const icon = document.getElementById(`play-icon-${id}`);
-                if (video.paused) { video.play(); icon.className = "fa-solid fa-pause text-sm"; } else { video.pause(); icon.className = "fa-solid fa-play text-sm ml-0.5"; }
+                if (video.paused) { video.play(); icon.className = "fa-solid fa-pause text-[10px] sm:text-xs"; } else { video.pause(); icon.className = "fa-solid fa-play text-[10px] sm:text-xs ml-0.5"; }
             },
             toggleMute(id) {
                 const video = document.getElementById(`video-${id}`); const icon = document.getElementById(`mute-icon-${id}`);
                 video.muted = !video.muted;
-                if (video.muted) icon.className = "fa-solid fa-volume-xmark text-sm"; else icon.className = "fa-solid fa-volume-high text-sm";
+                if (video.muted) icon.className = "fa-solid fa-volume-xmark text-[10px] sm:text-xs"; else icon.className = "fa-solid fa-volume-high text-[10px] sm:text-xs";
             },
             openViewModal(id) {
                 const meme = this.state.data.memes.find(m => m.id === id); if (!meme) return;
                 const modal = document.getElementById('view-modal'); const content = document.getElementById('view-content');
-                if (meme.type === 'video') content.innerHTML = `<video src="${meme.url}" controls autoplay class="max-w-full max-h-[85vh] rounded-xl shadow-2xl"></video>`;
-                else content.innerHTML = `<img src="${meme.url}" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl">`;
+                if (meme.type === 'video') content.innerHTML = `<video src="${meme.url}" controls autoplay playsinline class="max-w-full max-h-[85vh] rounded-3xl shadow-2xl"></video>`;
+                else content.innerHTML = `<img src="${meme.url}" class="max-w-full max-h-[85vh] object-contain rounded-3xl shadow-2xl">`;
                 modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
             },
             closeViewModal() {
@@ -994,11 +958,22 @@
                 setTimeout(() => { modal.classList.add('hidden'); document.getElementById('view-content').innerHTML = ''; }, 300);
             },
             toggleAuthModal() {
-                if (this.state.isLoggedIn) this.logout();
-                else { const modal = document.getElementById('auth-modal'); modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10); }
+                const modal = document.getElementById('auth-modal');
+                const sheet = document.getElementById('auth-modal-sheet');
+                const backdrop = document.getElementById('auth-modal-backdrop');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.remove('opacity-0');
+                    sheet.classList.remove('translate-y-full');
+                }, 10);
             },
             closeAuthModal() {
-                const modal = document.getElementById('auth-modal'); modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300);
+                const modal = document.getElementById('auth-modal');
+                const sheet = document.getElementById('auth-modal-sheet');
+                const backdrop = document.getElementById('auth-modal-backdrop');
+                backdrop.classList.add('opacity-0');
+                sheet.classList.add('translate-y-full');
+                setTimeout(() => modal.classList.add('hidden'), 300);
             },
             async login() {
                 const email = document.getElementById('login-email').value; const pass = document.getElementById('login-pass').value; const btn = document.getElementById('btn-login');
@@ -1008,16 +983,75 @@
                 catch (error) { alert('Tài khoản hoặc mật khẩu không đúng.'); } 
                 finally { btn.innerText = "Đăng nhập ngay"; btn.disabled = false; }
             },
-            async logout() { try { await signOut(auth); await signInAnonymously(auth); this.showToast('Đã đăng xuất'); } catch(e) { console.error(e); } },
+            async logout() { try { await signOut(auth); await signInAnonymously(auth); this.showToast('Đã đăng xuất'); } catch(e) {} },
             openAddModal() {
-                const modal = document.getElementById('add-modal'); document.getElementById('modal-title').innerText = this.state.tab === 'memes' ? 'Thêm Meme' : 'Thêm Từ Lóng';
-                if (this.state.tab === 'memes') { document.getElementById('meme-form').classList.remove('hidden'); document.getElementById('dict-form').classList.add('hidden'); } 
+                this.state.editingId = null;
+                const isMeme = this.state.tab === 'memes' || (this.state.tab === 'admin' && this.state.adminTab === 'memes');
+                document.getElementById('modal-title').innerText = isMeme ? 'Thêm Meme' : 'Thêm Từ Lóng';
+                if (isMeme) { document.getElementById('meme-form').classList.remove('hidden'); document.getElementById('dict-form').classList.add('hidden'); } 
                 else { document.getElementById('dict-form').classList.remove('hidden'); document.getElementById('meme-form').classList.add('hidden'); }
-                modal.classList.remove('hidden'); setTimeout(() => modal.classList.remove('opacity-0'), 10);
+                
+                const modal = document.getElementById('add-modal');
+                const sheet = document.getElementById('add-modal-sheet');
+                const backdrop = document.getElementById('add-modal-backdrop');
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.remove('opacity-0');
+                    sheet.classList.remove('translate-y-full');
+                }, 10);
+            },
+            openEditModal(id, type) {
+                this.state.editingId = id;
+                const modal = document.getElementById('add-modal');
+                const sheet = document.getElementById('add-modal-sheet');
+                const backdrop = document.getElementById('add-modal-backdrop');
+                
+                if (type === 'meme') {
+                    const item = this.state.data.memes.find(m => m.id === id);
+                    if (!item) return;
+                    document.getElementById('modal-title').innerText = 'Chỉnh sửa Meme';
+                    document.getElementById('meme-form').classList.remove('hidden');
+                    document.getElementById('dict-form').classList.add('hidden');
+                    
+                    const typeRadio = document.querySelector(`input[name="meme-type-toggle"][value="${item.type}"]`);
+                    if (typeRadio) typeRadio.checked = true;
+
+                    document.querySelector('input[name="upload-method"][value="url"]').checked = true;
+                    this.toggleUploadMethod();
+                    
+                    document.getElementById('meme-url').value = item.url || '';
+                    document.getElementById('meme-title').value = item.title || '';
+                    document.getElementById('meme-tags').value = item.tags ? item.tags.join(', ') : '';
+                } else {
+                    const item = this.state.data.dictionary.find(d => d.id === id);
+                    if (!item) return;
+                    document.getElementById('modal-title').innerText = 'Chỉnh sửa Từ Lóng';
+                    document.getElementById('dict-form').classList.remove('hidden');
+                    document.getElementById('meme-form').classList.add('hidden');
+                    
+                    document.getElementById('dict-term').value = item.term || '';
+                    document.getElementById('dict-def').value = item.definition || '';
+                    document.getElementById('dict-example').value = item.example || '';
+                    document.getElementById('dict-tags').value = item.tags ? item.tags.join(', ') : '';
+                }
+
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.remove('opacity-0');
+                    sheet.classList.remove('translate-y-full');
+                }, 10);
             },
             closeAddModal() {
-                const modal = document.getElementById('add-modal'); modal.classList.add('opacity-0');
-                setTimeout(() => { modal.classList.add('hidden'); document.querySelectorAll('#add-modal input[type="text"], #add-modal input[type="url"], #add-modal textarea').forEach(i => i.value = ''); document.getElementById('meme-file').value = ''; }, 300);
+                const modal = document.getElementById('add-modal');
+                const sheet = document.getElementById('add-modal-sheet');
+                const backdrop = document.getElementById('add-modal-backdrop');
+                backdrop.classList.add('opacity-0');
+                sheet.classList.add('translate-y-full');
+                setTimeout(() => { 
+                    modal.classList.add('hidden'); 
+                    this.state.editingId = null;
+                    document.querySelectorAll('#add-modal input[type="text"], #add-modal input[type="url"], #add-modal textarea').forEach(i => i.value = ''); document.getElementById('meme-file').value = ''; 
+                }, 300);
             },
             toggleUploadMethod() {
                 const method = document.querySelector('input[name="upload-method"]:checked').value;
@@ -1026,27 +1060,52 @@
             },
             async saveItem() {
                 const btn = document.getElementById('btn-save'); btn.disabled = true;
+                const isEditing = !!this.state.editingId;
+                const isMemeForm = !document.getElementById('meme-form').classList.contains('hidden');
+
                 try {
-                    if(this.state.tab === 'memes') {
-                        let finalUrl = ''; const method = document.querySelector('input[name="upload-method"]:checked').value;
-                        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tải...`;
+                    if(isMemeForm) {
+                        let finalUrl = ''; 
+                        const method = document.querySelector('input[name="upload-method"]:checked').value;
+                        const memeType = document.querySelector('input[name="meme-type-toggle"]:checked').value;
+
                         if(method === 'url') {
                             const rawUrl = document.getElementById('meme-url').value; if(!rawUrl) throw new Error('Vui lòng nhập URL');
-                            finalUrl = await this.uploadToCloudinary(rawUrl); 
+                            if(isEditing && (rawUrl.includes('cloudinary.com') || rawUrl.includes('firebasestorage'))) {
+                                finalUrl = rawUrl; // Không rehost lại nếu đã có sẵn link nội bộ
+                            } else {
+                                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tải...`;
+                                finalUrl = await this.uploadToCloudinary(rawUrl); 
+                            }
                         } else {
                             const fileInput = document.getElementById('meme-file'); if(fileInput.files.length === 0) throw new Error('Vui lòng chọn file');
+                            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang tải...`;
                             finalUrl = await this.uploadToCloudinary(fileInput.files[0]);
                         }
                         const title = document.getElementById('meme-title').value;
-                        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...`;
-                        await addDoc(memesRef, { type: document.getElementById('meme-type').value, url: finalUrl, title: title || 'Meme', tags: document.getElementById('meme-tags').value.split(',').map(t => t.trim()).filter(t => t), createdAt: Date.now() });
+                        btn.innerHTML = `Đang lưu...`;
+
+                        const memeData = { type: memeType, url: finalUrl, title: title || 'Meme', tags: document.getElementById('meme-tags').value.split(',').map(t => t.trim()).filter(t => t) };
+                        if (isEditing) {
+                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'memes', this.state.editingId), memeData);
+                        } else {
+                            memeData.createdAt = Date.now();
+                            await addDoc(memesRef, memeData);
+                        }
                     } else {
                         const term = document.getElementById('dict-term').value; const def = document.getElementById('dict-def').value;
                         if(!term || !def) throw new Error('Nhập Từ và Định nghĩa');
-                        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...`;
-                        await addDoc(dictRef, { term: term, definition: def, example: document.getElementById('dict-example').value, tags: document.getElementById('dict-tags').value.split(',').map(t => t.trim()).filter(t => t), createdAt: Date.now() });
+                        btn.innerHTML = `Đang lưu...`;
+
+                        const dictData = { term: term, definition: def, example: document.getElementById('dict-example').value, tags: document.getElementById('dict-tags').value.split(',').map(t => t.trim()).filter(t => t) };
+                        if (isEditing) {
+                            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'dictionary', this.state.editingId), dictData);
+                        } else {
+                            dictData.createdAt = Date.now();
+                            await addDoc(dictRef, dictData);
+                        }
                     }
-                    this.closeAddModal(); this.showToast('Đã thêm nội dung mới');
+                    this.closeAddModal(); this.showToast(isEditing ? 'Cập nhật thành công!' : 'Đã lưu thành công!');
                 } catch (error) { alert(error.message); } finally { btn.innerHTML = 'Lưu thay đổi'; btn.disabled = false; }
             },
             async deleteItem(id, type) {
@@ -1066,11 +1125,11 @@
                 });
             },
             copyImage(url) {
-                this.showToast('Đang sao chép...');
+                this.showToast('Đang xử lý...');
                 try {
                     const imagePromise = fetch(url).then(res => { if (!res.ok) throw new Error("Lỗi"); return res.blob(); }).then(blob => this.convertToPng(blob));
                     const item = new ClipboardItem({ 'image/png': imagePromise });
-                    navigator.clipboard.write([item]).then(() => this.showToast('Đã chép ảnh vào Clipboard!'))
+                    navigator.clipboard.write([item]).then(() => this.showToast('Đã chép ảnh, hãy dán vào nội dung tin nhắn!'))
                         .catch(err => this.fallbackCopyTextOnly(url, 'Đã copy URL.', true));
                 } catch (err) { this.fallbackCopyTextOnly(url, 'Đã copy URL.', true); }
             },
@@ -1084,7 +1143,7 @@
                     this.showToast("Đã tải xong!");
                 } catch (err) {
                     const a = document.createElement('a'); a.href = url; a.download = title || 'download'; a.target = '_blank';
-                    document.body.appendChild(a); a.click(); document.body.removeChild(a); this.showToast("Tải qua URL mới", true);
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a); this.showToast("Tải qua web gốc", true);
                 }
             },
             async copyTextRaw(text, successMsg) {
@@ -1094,16 +1153,16 @@
             fallbackCopyTextOnly(text, msg, isError = false) {
                 const textArea = document.createElement("textarea"); textArea.value = text; textArea.style.position = "fixed"; textArea.style.left = "-999999px";
                 document.body.appendChild(textArea); textArea.focus(); textArea.select();
-                try { document.execCommand('copy'); this.showToast(msg, isError); } catch (err) { alert('Không hỗ trợ copy'); }
+                try { document.execCommand('copy'); this.showToast(msg, isError); } catch (err) { alert('Lỗi copy'); }
                 document.body.removeChild(textArea);
             },
             copyDictData(id, field) {
                 const item = this.state.data.dictionary.find(d => d.id === id); if(!item) return;
                 let text = '', msg = '';
-                if(field === 'term') { text = item.term; msg = 'Đã sao chép Từ khoá!'; } 
-                else if(field === 'def') { text = item.definition; msg = 'Đã sao chép Định nghĩa!'; } 
-                else if(field === 'ex') { text = item.example; msg = 'Đã sao chép Ví dụ!'; } 
-                else if(field === 'all') { text = `${item.term}\n${item.definition}`; if(item.example) text += `\nVD: ${item.example}`; msg = 'Đã chép nội dung!'; }
+                if(field === 'term') { text = item.term; msg = 'Đã chép Từ khoá!'; } 
+                else if(field === 'def') { text = item.definition; msg = 'Đã chép Định nghĩa!'; } 
+                else if(field === 'ex') { text = item.example; msg = 'Đã chép Ví dụ!'; } 
+                else if(field === 'all') { text = `${item.term}\n${item.definition}`; if(item.example) text += `\nVD: ${item.example}`; msg = 'Đã chép toàn bộ!'; }
                 this.copyTextRaw(text, msg);
             },
 
@@ -1113,38 +1172,43 @@
                 
                 if (this.state.tab === 'admin') {
                     const tbodyMemes = document.getElementById('admin-table-memes'); tbodyMemes.innerHTML = '';
-                    if(this.state.data.memes.length === 0) tbodyMemes.innerHTML = `<tr><td colspan="5" class="py-12 text-center text-gray-500 dark:text-[#555]">Cơ sở dữ liệu đang trống.</td></tr>`;
+                    if(this.state.data.memes.length === 0) tbodyMemes.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-gray-500 dark:text-[#555] text-xs font-bold">Cơ sở dữ liệu trống.</td></tr>`;
                     else {
                         this.state.data.memes.forEach(meme => {
                             const isChecked = this.state.selectedAdminItems.has(meme.id) ? 'checked' : '';
-                            const mediaThumb = meme.type === 'video' ? `<div class="w-12 h-12 bg-black dark:bg-[#111] rounded border border-transparent dark:border-[#333] flex items-center justify-center text-white dark:text-gray-400 text-xs"><i class="fa-solid fa-video"></i></div>` : `<img src="${meme.url}" class="w-12 h-12 object-cover rounded border border-gray-100 dark:border-[#333]">`;
-                            const tagsStr = meme.tags ? meme.tags.map(t=>`#${t}`).join(', ') : '';
+                            const mediaThumb = meme.type === 'video' ? `<div class="w-10 h-10 bg-black dark:bg-[#111] rounded flex items-center justify-center text-white dark:text-gray-400"><i class="fa-solid fa-video text-[10px]"></i></div>` : `<img src="${meme.url}" class="w-10 h-10 object-cover rounded bg-gray-100">`;
                             tbodyMemes.innerHTML += `
-                                <tr class="hover:bg-gray-50 dark:hover:bg-[#111] transition-colors group">
-                                    <td class="px-6 py-4"><input type="checkbox" value="${meme.id}" ${isChecked} onchange="app.toggleSelectItem('${meme.id}', this.checked)" class="w-4 h-4 accent-black dark:accent-white rounded border-gray-300 dark:border-[#444] bg-white dark:bg-black cursor-pointer admin-item-cb-memes"></td>
-                                    <td class="px-6 py-4">${mediaThumb}</td>
-                                    <td class="px-6 py-4 font-semibold text-gray-900 dark:text-white truncate max-w-[200px]">${meme.title}</td>
-                                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400 truncate max-w-[150px]">${tagsStr}</td>
-                                    <td class="px-6 py-4 text-right"><button onclick="app.deleteItem('${meme.id}', 'meme')" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-2 rounded transition-colors"><i class="fa-solid fa-trash"></i></button></td>
+                                <tr class="hover:bg-gray-50 dark:hover:bg-[#111] transition-colors border-b border-gray-50 dark:border-[#1a1a1a]">
+                                    <td class="px-4 py-3"><input type="checkbox" value="${meme.id}" ${isChecked} onchange="app.toggleSelectItem('${meme.id}', this.checked)" class="w-4 h-4 accent-black dark:accent-white rounded bg-gray-100 border-transparent admin-item-cb-memes"></td>
+                                    <td class="px-4 py-3">${mediaThumb}</td>
+                                    <td class="px-4 py-3 max-w-[150px]"><div class="font-bold text-gray-900 dark:text-white truncate">${meme.title}</div></td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex justify-end gap-2">
+                                            <button onclick="app.openEditModal('${meme.id}', 'meme')" class="text-blue-400 hover:text-blue-600 bg-blue-50 dark:bg-blue-500/10 w-10 h-10 rounded-full transition-colors"><i class="fa-solid fa-pen"></i></button>
+                                            <button onclick="app.deleteItem('${meme.id}', 'meme')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-500/10 w-10 h-10 rounded-full transition-colors"><i class="fa-solid fa-trash"></i></button>
+                                        </div>
+                                    </td>
                                 </tr>
                             `;
                         });
                     }
 
                     const tbodyDicts = document.getElementById('admin-table-dicts'); tbodyDicts.innerHTML = '';
-                    if(this.state.data.dictionary.length === 0) tbodyDicts.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-gray-500 dark:text-[#555]">Cơ sở dữ liệu đang trống.</td></tr>`;
+                    if(this.state.data.dictionary.length === 0) tbodyDicts.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-gray-500 dark:text-[#555] text-xs font-bold">Cơ sở dữ liệu trống.</td></tr>`;
                     else {
                         this.state.data.dictionary.forEach(dict => {
                             const isChecked = this.state.selectedAdminItems.has(dict.id) ? 'checked' : '';
-                            const tagsStr = dict.tags ? dict.tags.map(t=>`#${t}`).join(', ') : '';
                             tbodyDicts.innerHTML += `
-                                <tr class="hover:bg-gray-50 dark:hover:bg-[#111] transition-colors group">
-                                    <td class="px-6 py-4"><input type="checkbox" value="${dict.id}" ${isChecked} onchange="app.toggleSelectItem('${dict.id}', this.checked)" class="w-4 h-4 accent-black dark:accent-white rounded border-gray-300 dark:border-[#444] bg-white dark:bg-black cursor-pointer admin-item-cb-dicts"></td>
-                                    <td class="px-6 py-4 font-bold text-gray-900 dark:text-white">${dict.term}</td>
-                                    <td class="px-6 py-4 text-gray-600 dark:text-gray-300 truncate max-w-[200px]" title="${dict.definition}">${dict.definition}</td>
-                                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400 truncate max-w-[150px]">${dict.example || '-'}</td>
-                                    <td class="px-6 py-4 text-gray-500 dark:text-gray-400 truncate max-w-[150px]">${tagsStr}</td>
-                                    <td class="px-6 py-4 text-right"><button onclick="app.deleteItem('${dict.id}', 'dict')" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-2 rounded transition-colors"><i class="fa-solid fa-trash"></i></button></td>
+                                <tr class="hover:bg-gray-50 dark:hover:bg-[#111] transition-colors border-b border-gray-50 dark:border-[#1a1a1a]">
+                                    <td class="px-4 py-3"><input type="checkbox" value="${dict.id}" ${isChecked} onchange="app.toggleSelectItem('${dict.id}', this.checked)" class="w-4 h-4 accent-black dark:accent-white rounded bg-gray-100 border-transparent admin-item-cb-dicts"></td>
+                                    <td class="px-4 py-3 max-w-[150px]"><div class="font-bold text-gray-900 dark:text-white truncate">${dict.term}</div><div class="text-[10px] text-gray-500 truncate">${dict.definition}</div></td>
+                                    <td class="px-4 py-3 text-gray-400 truncate max-w-[100px]">${dict.tags ? dict.tags.join(', ') : ''}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex justify-end gap-2">
+                                            <button onclick="app.openEditModal('${dict.id}', 'dict')" class="text-blue-400 hover:text-blue-600 bg-blue-50 dark:bg-blue-500/10 w-10 h-10 rounded-full transition-colors"><i class="fa-solid fa-pen"></i></button>
+                                            <button onclick="app.deleteItem('${dict.id}', 'dict')" class="text-red-400 hover:text-red-600 bg-red-50 dark:bg-red-500/10 w-10 h-10 rounded-full transition-colors"><i class="fa-solid fa-trash"></i></button>
+                                        </div>
+                                    </td>
                                 </tr>
                             `;
                         });
@@ -1157,34 +1221,51 @@
                     const filtered = this.state.data.memes.filter(m => {
                         const matchSearch = m.title?.toLowerCase().includes(q) || (m.tags && m.tags.some(t => t.toLowerCase().includes(q)));
                         const matchType = fTypes.length === 0 || fTypes.includes(m.type);
-                        const matchTag = fTags.length === 0 || (m.tags && m.tags.some(t => fTags.includes(t)));
+                        
+                        // AND logic cho tags: Meme phải chứa TẤT CẢ các tags được chọn trong bộ lọc
+                        const matchTag = fTags.length === 0 || (m.tags && fTags.every(filterTag => m.tags.includes(filterTag)));
+                        
                         return matchSearch && matchType && matchTag;
                     });
                     if(filtered.length === 0 && this.state.data.memes.length > 0) { emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); } 
-                    else if (this.state.data.memes.length === 0) { emptyState.innerHTML = '<i class="fa-regular fa-folder-open text-5xl mb-4 opacity-50"></i><p class="font-medium">Kho lưu trữ đang trống.</p>'; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); } 
-                    else { emptyState.classList.add('hidden'); emptyState.classList.remove('flex'); emptyState.innerHTML = '<i class="fa-regular fa-folder-open text-5xl mb-4 opacity-50"></i><p class="font-medium">Không tìm thấy nội dung phù hợp.</p>'; }
+                    else if (this.state.data.memes.length === 0) { emptyState.innerHTML = '<i class="fa-solid fa-ghost text-5xl mb-4 opacity-50"></i><p class="font-medium text-sm">Chưa có Meme nào.</p>'; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); } 
+                    else { emptyState.classList.add('hidden'); emptyState.classList.remove('flex'); emptyState.innerHTML = '<i class="fa-solid fa-ghost text-5xl mb-4 opacity-50"></i><p class="font-medium text-sm">Không tìm thấy.</p>'; }
 
                     filtered.forEach(meme => {
                         const isVideo = meme.type === 'video';
-                        const zoomBtn = `<button onclick="app.openViewModal('${meme.id}')" class="w-10 h-10 rounded-full bg-white/90 dark:bg-black/90 backdrop-blur text-black dark:text-white flex items-center justify-center hover:bg-white dark:hover:bg-black shadow-sm border border-transparent dark:border-[#333] transition" title="Phóng to"><i class="fa-solid fa-expand"></i></button>`;
-                        const copyBtn = !isVideo ? `<button onclick="app.copyImage('${meme.url}')" class="w-10 h-10 rounded-full bg-white/90 dark:bg-black/90 backdrop-blur text-black dark:text-white flex items-center justify-center hover:bg-white dark:hover:bg-black shadow-sm border border-transparent dark:border-[#333] transition" title="Copy Ảnh"><i class="fa-regular fa-copy"></i></button>` : '';
-                        const downloadBtn = `<button onclick="app.downloadMedia('${meme.url}', '${meme.title}')" class="w-10 h-10 rounded-full bg-white/90 dark:bg-black/90 backdrop-blur text-black dark:text-white flex items-center justify-center hover:bg-white dark:hover:bg-black shadow-sm border border-transparent dark:border-[#333] transition" title="Tải xuống"><i class="fa-solid fa-download"></i></button>`;
-                        const adminBtn = this.state.isLoggedIn ? `<button onclick="app.deleteItem('${meme.id}', 'meme')" class="w-10 h-10 rounded-full bg-red-500/90 dark:bg-red-900/80 backdrop-blur text-white flex items-center justify-center hover:bg-red-600 dark:hover:bg-red-800 shadow-sm transition" title="Xóa"><i class="fa-solid fa-trash"></i></button>` : '';
-                        const videoControls = isVideo ? `<div class="absolute bottom-4 left-4 flex gap-2.5 z-10"><button onclick="app.togglePlay('${meme.id}')" class="w-10 h-10 rounded-full bg-black/60 dark:bg-black/80 backdrop-blur border border-white/20 dark:border-[#333] text-white flex items-center justify-center hover:bg-black/80 dark:hover:bg-black transition shadow-sm"><i id="play-icon-${meme.id}" class="fa-solid fa-play text-sm ml-0.5"></i></button><button onclick="app.toggleMute('${meme.id}')" class="w-10 h-10 rounded-full bg-black/60 dark:bg-black/80 backdrop-blur border border-white/20 dark:border-[#333] text-white flex items-center justify-center hover:bg-black/80 dark:hover:bg-black transition shadow-sm"><i id="mute-icon-${meme.id}" class="fa-solid fa-volume-xmark text-sm"></i></button></div>` : '';
-                        const mediaHtml = isVideo ? `<video id="video-${meme.id}" src="${meme.url}" class="w-full h-64 object-cover bg-gray-100 dark:bg-[#0a0a0a]" muted loop playsinline></video>` : `<img src="${meme.url}" alt="${meme.title}" class="w-full h-64 object-cover bg-gray-50 dark:bg-[#0a0a0a]">`;
-                        let badgeHtml = ''; if(meme.type === 'video') badgeHtml = `<div class="absolute top-4 left-4 bg-black/70 dark:bg-black/90 backdrop-blur border border-white/20 dark:border-[#333] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-sm tracking-widest uppercase"><i class="fa-solid fa-video mr-1.5"></i>Video</div>`; else if(meme.type === 'gif') badgeHtml = `<div class="absolute top-4 left-4 bg-black/70 dark:bg-black/90 backdrop-blur border border-white/20 dark:border-[#333] text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg shadow-sm tracking-widest uppercase">GIF</div>`;
-                        const tagsDisplay = meme.tags ? meme.tags.map(t => `<span class="text-[10px] bg-gray-100 dark:bg-[#111] border border-gray-200 dark:border-[#333] px-2.5 py-1 rounded-md text-gray-700 dark:text-gray-300 whitespace-nowrap font-medium transition-colors">#${t}</span>`).join('') : '';
+                        const zoomBtnAbs = `<button onclick="app.openViewModal('${meme.id}')" class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/50 backdrop-blur text-white flex items-center justify-center transition active:scale-90"><i class="fa-solid fa-expand text-[10px] sm:text-xs"></i></button>`;
+                        
+                        const copyBtnInline = !isVideo ? `<button onclick="app.copyImage('${meme.url}')" class="flex-1 py-2 sm:py-2.5 rounded-xl sm:rounded-[14px] bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 dark:hover:bg-[#222] text-black dark:text-white flex items-center justify-center gap-1.5 active:scale-95 transition font-bold text-[10px] sm:text-xs"><i class="fa-regular fa-copy text-xs sm:text-sm"></i></button>` : '';
+                        
+                        const downloadBtnInline = `<button onclick="app.downloadMedia('${meme.url}', '${meme.title}')" class="flex-1 py-2 sm:py-2.5 rounded-xl sm:rounded-[14px] bg-gray-100 dark:bg-[#1a1a1a] hover:bg-gray-200 dark:hover:bg-[#222] text-black dark:text-white flex items-center justify-center gap-1.5 active:scale-95 transition font-bold text-[10px] sm:text-xs"><i class="fa-solid fa-download text-xs sm:text-sm"></i></button>`;
+                        
+                        const adminBtnInline = this.state.isLoggedIn ? `<button onclick="app.deleteItem('${meme.id}', 'meme')" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-[14px] bg-red-50 dark:bg-red-500/10 text-red-500 flex items-center justify-center active:scale-95 transition shrink-0 ml-auto sm:ml-0"><i class="fa-solid fa-trash text-[10px] sm:text-xs"></i></button>` : '';
+                        
+                        const videoControls = isVideo ? `<div class="absolute bottom-2 left-2 sm:bottom-3 sm:left-3 flex gap-1.5 sm:gap-2 z-10"><button onclick="app.togglePlay('${meme.id}')" class="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center active:scale-90 transition"><i id="play-icon-${meme.id}" class="fa-solid fa-play text-[10px] sm:text-xs ml-0.5"></i></button><button onclick="app.toggleMute('${meme.id}')" class="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/60 backdrop-blur text-white flex items-center justify-center active:scale-90 transition"><i id="mute-icon-${meme.id}" class="fa-solid fa-volume-xmark text-[10px] sm:text-xs"></i></button></div>` : '';
+                        
+                        const mediaHtml = isVideo ? `<video id="video-${meme.id}" src="${meme.url}" class="w-full h-full object-cover bg-gray-100 dark:bg-[#111]" muted loop playsinline></video>` : `<img src="${meme.url}" alt="${meme.title}" class="w-full h-full object-cover bg-gray-50 dark:bg-[#111] loading='lazy'">`;
+                        
+                        let badgeHtml = ''; 
+                        if(meme.type === 'video') badgeHtml = `<div class="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/60 backdrop-blur text-white text-[8px] sm:text-[10px] font-bold px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-lg tracking-widest uppercase"><i class="fa-solid fa-video mr-1 sm:mr-1.5"></i>Video</div>`; 
+                        else if(meme.type === 'gif') badgeHtml = `<div class="absolute top-2 left-2 sm:top-3 sm:left-3 bg-black/60 backdrop-blur text-white text-[8px] sm:text-[10px] font-bold px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-md sm:rounded-lg tracking-widest uppercase">GIF</div>`;
+                        
+                        const tagsDisplay = meme.tags && meme.tags.length > 0 ? meme.tags.map(t => `<span class="text-[9px] font-bold text-gray-400 dark:text-[#666] uppercase tracking-widest">#${t}</span>`).join('<span class="text-gray-200 dark:text-[#333] mx-1 text-[8px]">&bull;</span>') : '';
 
                         container.innerHTML += `
-                            <div class="relative bg-white dark:bg-black rounded-2xl overflow-hidden border border-gray-200 dark:border-[#222] shadow-sm dark:shadow-none transition-colors group">
-                                <div class="relative">
-                                    ${mediaHtml}${videoControls}
-                                    <div class="absolute top-4 right-4 flex flex-col gap-2.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">${zoomBtn}${copyBtn}${downloadBtn}${adminBtn}</div>
-                                    ${badgeHtml}
+                            <div class="flex flex-col gap-1.5 break-inside-avoid bg-white dark:bg-[#0a0a0a] rounded-2xl sm:rounded-[2rem] p-2 sm:p-2.5 border border-gray-100 dark:border-[#222] shadow-sm dark:shadow-none">
+                                <div class="relative w-full rounded-xl sm:rounded-[1.5rem] overflow-hidden bg-gray-100 dark:bg-[#111] aspect-[4/5] sm:aspect-square">
+                                    ${mediaHtml}${videoControls}${badgeHtml}${zoomBtnAbs}
                                 </div>
-                                <div class="p-4 border-t border-gray-100 dark:border-[#222]">
-                                    <h3 class="font-bold text-sm truncate text-gray-900 dark:text-white">${meme.title}</h3>
-                                    <div class="flex gap-1.5 mt-2.5 overflow-x-auto no-scrollbar">${tagsDisplay}</div>
+                                <div class="flex flex-col px-1 sm:px-2.5 pb-1 sm:pb-1.5 pt-1.5 sm:pt-2 gap-2 sm:gap-3">
+                                    <div class="flex-1 min-w-0">
+                                        <h3 class="font-extrabold text-xs sm:text-base text-gray-900 dark:text-white truncate">${meme.title}</h3>
+                                        ${tagsDisplay ? `<div class="flex items-center overflow-x-auto no-scrollbar mt-1 sm:mt-1.5">${tagsDisplay}</div>` : ''}
+                                    </div>
+                                    <div class="flex items-center gap-1.5 sm:gap-2 pt-2 sm:pt-3 border-t border-gray-100 dark:border-[#222]">
+                                        ${copyBtnInline}
+                                        ${downloadBtnInline}
+                                        ${adminBtnInline}
+                                    </div>
                                 </div>
                             </div>
                         `;
@@ -1193,26 +1274,29 @@
                     const container = document.getElementById('dictionary-container'); container.innerHTML = '';
                     const filtered = this.state.data.dictionary.filter(d => {
                         const matchSearch = d.term?.toLowerCase().includes(q) || d.definition?.toLowerCase().includes(q);
-                        const matchTag = fTags.length === 0 || (d.tags && d.tags.some(t => fTags.includes(t)));
+                        
+                        // AND logic cho tags: Từ điển phải chứa TẤT CẢ các tags được chọn trong bộ lọc
+                        const matchTag = fTags.length === 0 || (d.tags && fTags.every(filterTag => d.tags.includes(filterTag)));
+                        
                         return matchSearch && matchTag;
                     });
                     if(filtered.length === 0 && this.state.data.dictionary.length > 0) { emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); } 
-                    else if (this.state.data.dictionary.length === 0) { emptyState.innerHTML = '<i class="fa-solid fa-spell-check text-5xl mb-4 opacity-50"></i><p class="font-medium">Từ điển đang trống.</p>'; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); } 
-                    else { emptyState.classList.add('hidden'); emptyState.classList.remove('flex'); emptyState.innerHTML = '<i class="fa-regular fa-folder-open text-5xl mb-4 opacity-50"></i><p class="font-medium">Không tìm thấy nội dung phù hợp.</p>'; }
+                    else if (this.state.data.dictionary.length === 0) { emptyState.innerHTML = '<i class="fa-solid fa-ghost text-7xl mb-5 opacity-30"></i><p class="font-bold text-gray-400 dark:text-[#555]">Từ điển đang trống.</p>'; emptyState.classList.remove('hidden'); emptyState.classList.add('flex'); } 
+                    else { emptyState.classList.add('hidden'); emptyState.classList.remove('flex'); emptyState.innerHTML = '<i class="fa-solid fa-ghost text-7xl mb-5 opacity-30"></i><p class="font-bold text-gray-400 dark:text-[#555]">Không tìm thấy.</p>'; }
 
                     filtered.forEach(dict => {
-                        const adminBtn = this.state.isLoggedIn ? `<button onclick="app.deleteItem('${dict.id}', 'dict')" class="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-2 rounded-lg transition-colors"><i class="fa-solid fa-trash"></i></button>` : '';
-                        const copyAllBtn = `<button onclick="app.copyDictData('${dict.id}', 'all')" class="text-gray-400 hover:text-black dark:hover:text-white p-2 rounded-lg transition-colors" title="Sao chép toàn bộ"><i class="fa-regular fa-copy text-lg"></i></button>`;
-                        const tagsHtml = dict.tags && dict.tags.length > 0 ? `<div class="flex gap-2 mt-4 flex-wrap">${dict.tags.map(t => `<span class="text-[11px] font-medium bg-gray-100 dark:bg-[#111] border border-gray-200 dark:border-[#333] px-3 py-1 rounded-lg text-gray-600 dark:text-gray-400 transition-colors">#${t}</span>`).join('')}</div>` : '';
+                        const adminBtn = this.state.isLoggedIn ? `<button onclick="app.deleteItem('${dict.id}', 'dict')" class="text-red-500 w-10 h-10 rounded-full flex justify-center items-center active:scale-90 transition bg-red-50 dark:bg-red-500/10"><i class="fa-solid fa-trash text-sm"></i></button>` : '';
+                        const copyAllBtn = `<button onclick="app.copyDictData('${dict.id}', 'all')" class="text-gray-900 dark:text-white bg-gray-100 dark:bg-[#1a1a1a] w-10 h-10 rounded-full flex justify-center items-center active:scale-90 transition"><i class="fa-regular fa-copy text-sm"></i></button>`;
+                        const tagsHtml = dict.tags && dict.tags.length > 0 ? `<div class="flex gap-2 mt-4 flex-wrap">${dict.tags.map(t => `<span class="text-[11px] font-bold bg-gray-100 dark:bg-[#111] border border-transparent dark:border-[#333] px-3 py-1.5 rounded-xl text-gray-500 dark:text-gray-400 transition-colors uppercase tracking-widest">#${t}</span>`).join('')}</div>` : '';
 
                         container.innerHTML += `
-                            <div class="bg-white dark:bg-black p-6 rounded-2xl border border-gray-200 dark:border-[#222] shadow-sm dark:shadow-none relative group transition-colors">
-                                <div class="flex justify-between items-start">
-                                    <h3 class="text-xl font-bold text-black dark:text-white flex items-center gap-2.5 cursor-pointer hover:opacity-70 transition-opacity" onclick="app.copyDictData('${dict.id}', 'term')" title="Sao chép từ khoá"><i class="fa-solid fa-hashtag text-gray-300 dark:text-[#333] text-lg no-underline"></i>${dict.term}</h3>
-                                    <div class="flex items-center gap-1 -mt-1 -mr-1">${copyAllBtn}${adminBtn}</div>
+                            <div class="py-6 border-b border-gray-100 dark:border-[#1a1a1a] first:pt-0">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h3 class="text-2xl font-extrabold text-black dark:text-white tracking-tight active:opacity-50 transition-opacity" onclick="app.copyDictData('${dict.id}', 'term')">${dict.term}</h3>
+                                    <div class="flex items-center gap-2 -mt-1 -mr-1">${copyAllBtn}${adminBtn}</div>
                                 </div>
-                                <p class="mt-3 text-gray-700 dark:text-gray-300 text-sm leading-relaxed cursor-pointer hover:text-black dark:hover:text-white transition-colors" onclick="app.copyDictData('${dict.id}', 'def')" title="Sao chép định nghĩa">${dict.definition}</p>
-                                ${dict.example ? `<div class="mt-4 bg-gray-50 dark:bg-[#0a0a0a] p-4 rounded-xl border border-gray-100 dark:border-[#222] text-sm text-gray-600 dark:text-gray-400 cursor-pointer hover:border-gray-200 dark:hover:border-[#333] transition-colors" onclick="app.copyDictData('${dict.id}', 'ex')" title="Sao chép ví dụ"><span class="font-bold text-gray-900 dark:text-white mr-1.5 uppercase text-[10px] tracking-widest">Ví dụ:</span> <span class="italic">"${dict.example}"</span></div>` : ''}
+                                <p class="text-base leading-relaxed font-medium text-gray-600 dark:text-[#ccc] active:opacity-50 transition-opacity" onclick="app.copyDictData('${dict.id}', 'def')">${dict.definition}</p>
+                                ${dict.example ? `<p class="mt-4 text-sm text-gray-500 dark:text-[#777] font-medium active:opacity-50 transition-opacity border-l-4 border-gray-200 dark:border-[#333] pl-3" onclick="app.copyDictData('${dict.id}', 'ex')">"${dict.example}"</p>` : ''}
                                 ${tagsHtml}
                             </div>
                         `;
