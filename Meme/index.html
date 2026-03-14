@@ -279,7 +279,7 @@
         </div>
     </div>
 
-    <!-- Add Item Modal (Bottom Sheet on Mobile, Centered on Desktop) -->
+    <!-- Add/Edit Item Modal (Bottom Sheet on Mobile, Centered on Desktop) -->
     <div id="add-modal" class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center">
         <div class="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity opacity-0" id="add-modal-backdrop" onclick="app.closeAddModal()"></div>
         <div class="relative w-full max-w-md bg-white dark:bg-black rounded-t-[2rem] sm:rounded-3xl p-7 sm:p-8 transform translate-y-full transition-transform duration-300 max-h-[90vh] overflow-y-auto no-scrollbar text-[#111] dark:text-[#f3f3f3] border-t sm:border border-gray-100 dark:border-[#222] pb-safe" id="add-modal-sheet">
@@ -290,7 +290,6 @@
             </div>
             
             <div id="meme-form" class="space-y-5">
-                <!-- Chuyển loại Meme sang Toggle thay vì Select -->
                 <div class="flex gap-2 bg-gray-100 dark:bg-[#111] p-1.5 rounded-2xl">
                     <label class="flex-1 text-center cursor-pointer relative group">
                         <input type="radio" name="meme-type-toggle" value="image" checked class="peer sr-only"> 
@@ -1124,45 +1123,43 @@
                     img.onerror = () => reject(new Error("Lỗi load")); img.src = URL.createObjectURL(blob);
                 });
             },
-            copyImage(url, type) {
+            async copyImage(url, type) {
                 this.showToast('Đang xử lý...');
 
-                // Xử lý sao chép ảnh GIF động (Sử dụng Native execCommand cho iOS/Safari)
-                if (type === 'gif' || url.toLowerCase().includes('.gif')) {
+                const isGif = type === 'gif' || url.toLowerCase().includes('.gif');
+
+                if (isGif) {
                     try {
-                        const img = document.createElement('img');
-                        img.src = url;
-                        img.style.position = 'fixed';
-                        img.style.left = '-9999px';
-                        document.body.appendChild(img);
-
-                        const range = document.createRange();
-                        range.selectNode(img);
-                        const selection = window.getSelection();
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-
-                        const successful = document.execCommand('copy');
+                        // Kích hoạt Native Share API cho thiết bị di động (để giữ nguyên frame động gửi thẳng qua Messenger)
+                        const response = await fetch(url);
+                        const blob = await response.blob();
+                        const file = new File([blob], "meme.gif", { type: "image/gif" });
                         
-                        selection.removeAllRanges();
-                        document.body.removeChild(img);
-
-                        if (successful) {
-                            this.showToast('Đã chép ảnh GIF vào Khay nhớ!');
-                            return;
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            await navigator.share({
+                                files: [file]
+                            });
+                            // Hệ điều hành đã gọi Share Sheet lên, không cần Toast báo thành công
+                            document.getElementById('toast').classList.add('hidden');
+                        } else {
+                            // Desktop hoặc trình duyệt ko hỗ trợ Share API
+                            this.fallbackCopyTextOnly(url, 'Không thể chép GIF động, đã copy Link.', true);
                         }
                     } catch (err) {
-                        console.log('Lỗi copy GIF native:', err);
+                        if (err.name !== 'AbortError') { // Bỏ qua nếu user tắt bảng share
+                            this.fallbackCopyTextOnly(url, 'Lỗi. Đã copy Link.', true);
+                        }
                     }
+                    return;
                 }
 
-                // Xử lý sao chép ảnh tĩnh bình thường (Sử dụng ClipboardItem API)
+                // Xử lý sao chép ảnh tĩnh (PNG/JPG) bình thường
                 try {
                     const imagePromise = fetch(url).then(res => { if (!res.ok) throw new Error("Lỗi"); return res.blob(); }).then(blob => this.convertToPng(blob));
                     const item = new ClipboardItem({ 'image/png': imagePromise });
                     navigator.clipboard.write([item]).then(() => this.showToast('Đã chép ảnh vào Khay nhớ!'))
-                        .catch(err => this.fallbackCopyTextOnly(url, 'Đã copy URL.', true));
-                } catch (err) { this.fallbackCopyTextOnly(url, 'Đã copy URL.', true); }
+                        .catch(err => this.fallbackCopyTextOnly(url, 'Trình duyệt chặn. Đã copy URL.', true));
+                } catch (err) { this.fallbackCopyTextOnly(url, 'Lỗi. Đã copy URL.', true); }
             },
             async downloadMedia(url, title) {
                 this.showToast('Đang tải...');
