@@ -56,18 +56,18 @@
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
 
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-sm p-6 space-y-6">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-sm p-6 space-y-6 border border-gray-100">
         <div class="text-center">
             <h1 class="text-2xl font-bold text-gray-800">Sao chép ảnh nhanh</h1>
-            <p class="text-gray-500 text-sm mt-1">Tính năng này yêu cầu <b>HTTPS</b> và quyền truy cập <b>Clipboard</b> từ trình duyệt.</p>
+            <p class="text-gray-500 text-sm mt-1">Tính năng yêu cầu quyền truy cập <b>Clipboard</b>.</p>
         </div>
 
         <!-- Image Container -->
-        <div class="image-card relative group bg-gray-100 rounded-xl overflow-hidden aspect-square flex items-center justify-center border border-gray-100">
+        <div class="image-card relative group bg-gray-50 rounded-xl overflow-hidden aspect-square flex items-center justify-center border border-gray-100">
             <img 
                 id="targetImage" 
                 src="https://picsum.photos/800/800" 
-                alt="Test" 
+                alt="Test Image" 
                 class="w-full h-full object-cover"
                 crossorigin="anonymous"
             >
@@ -76,64 +76,74 @@
             <div id="loadingOverlay" class="absolute inset-0 bg-white/80 flex items-center justify-center hidden">
                 <div class="flex flex-col items-center gap-3">
                     <div class="loader w-10 h-10 border-4 border-gray-200 rounded-full"></div>
-                    <span class="text-sm font-medium text-blue-600">Đang xử lý ảnh...</span>
+                    <span class="text-sm font-medium text-blue-600">Đang xử lý...</span>
                 </div>
             </div>
         </div>
 
-        <!-- Action Button -->
+        <!-- Action Buttons -->
         <div class="space-y-3">
             <button 
                 onclick="copyImage()" 
                 id="copyBtn"
-                class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-200"
+                class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-semibold py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-100"
             >
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                 Sao chép vào Clipboard
             </button>
+
+            <button 
+                onclick="downloadImage()" 
+                id="downloadBtn"
+                class="w-full bg-gray-100 hover:bg-gray-200 active:scale-[0.98] text-gray-700 font-semibold py-3.5 px-6 rounded-xl transition-all flex items-center justify-center gap-2"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Tải ảnh về máy
+            </button>
             
-            <div id="errorHelper" class="hidden p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <!-- Error Helper UI -->
+            <div id="errorHelper" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-xl">
                 <p class="text-xs text-amber-800 leading-relaxed">
-                    <b>Lưu ý:</b> Nếu bạn đang chạy trong cửa sổ xem trước (iframe), trình duyệt có thể chặn quyền sao chép. Hãy thử mở trang này trong tab mới hoặc chạy trên server HTTPS chính thức.
+                    <strong class="block mb-1">⚠️ Lỗi phân quyền trình duyệt</strong>
+                    Tính năng sao chép bị chặn trong cửa sổ xem trước (iframe). Bạn có thể dùng nút <b>Tải ảnh về máy</b> hoặc chạy file HTML này trực tiếp trên trình duyệt bằng server riêng (localhost/https).
                 </p>
             </div>
         </div>
 
-        <div class="pt-4 border-t border-gray-50">
-            <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Trạng thái hệ thống:</h3>
-            <ul id="systemStatus" class="text-xs space-y-1 text-gray-500">
-                <li class="flex items-center gap-2">
-                    <span id="httpsStatus" class="w-2 h-2 rounded-full bg-gray-300"></span> HTTPS: Đang kiểm tra...
+        <div class="pt-4 border-t border-gray-100">
+            <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Trạng thái kỹ thuật</h3>
+            <ul id="systemStatus" class="text-xs space-y-2 text-gray-500">
+                <li class="flex items-center justify-between">
+                    <span>Giao thức bảo mật (HTTPS)</span>
+                    <span id="httpsStatus" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100">Kiểm tra...</span>
                 </li>
-                <li class="flex items-center gap-2">
-                    <span id="apiStatus" class="w-2 h-2 rounded-full bg-gray-300"></span> Clipboard API: Đang kiểm tra...
+                <li class="flex items-center justify-between">
+                    <span>Clipboard API</span>
+                    <span id="apiStatus" class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-gray-100">Kiểm tra...</span>
                 </li>
             </ul>
         </div>
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="bg-gray-800 text-white py-3 px-6 shadow-2xl">
+    <div id="toast" class="bg-gray-900 text-white py-3 px-6 shadow-2xl">
         Đã sao chép ảnh thành công!
     </div>
 
     <script>
-        // Kiểm tra trạng thái hệ thống ngay khi load
-        window.onload = () => {
-            const httpsStatus = document.getElementById('httpsStatus');
-            const apiStatus = document.getElementById('apiStatus');
+        // Cập nhật trạng thái ngay khi load
+        window.addEventListener('DOMContentLoaded', () => {
+            const httpsLabel = document.getElementById('httpsStatus');
+            const apiLabel = document.getElementById('apiStatus');
             
             const isHttps = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
-            httpsStatus.className = isHttps ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500';
-            document.getElementById('httpsStatus').parentNode.innerHTML = `<span class="${httpsStatus.className}"></span> Protocol: ${window.location.protocol.toUpperCase()}`;
+            httpsLabel.innerText = isHttps ? 'Đạt' : 'Không đạt';
+            httpsLabel.className = isHttps ? 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-green-100 text-green-700' : 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700';
 
             const hasApi = !!(navigator.clipboard && window.ClipboardItem);
-            apiStatus.className = hasApi ? 'w-2 h-2 rounded-full bg-green-500' : 'w-2 h-2 rounded-full bg-red-500';
-            document.getElementById('apiStatus').parentNode.innerHTML = `<span class="${apiStatus.className}"></span> Clipboard API: ${hasApi ? 'Hỗ trợ' : 'Không hỗ trợ'}`;
-        };
+            apiLabel.innerText = hasApi ? 'Hỗ trợ' : 'Không hỗ trợ';
+            apiLabel.className = hasApi ? 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-green-100 text-green-700' : 'px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-red-100 text-red-700';
+        });
 
         async function copyImage() {
             const btn = document.getElementById('copyBtn');
@@ -146,38 +156,53 @@
             errorHelper.classList.add('hidden');
 
             try {
-                // 1. Kiểm tra HTTPS
-                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                    throw new Error("Clipboard API chỉ hoạt động trên HTTPS.");
-                }
-
-                // 2. Fetch ảnh
                 const response = await fetch(imgElement.src);
-                if (!response.ok) throw new Error("Không thể tải dữ liệu ảnh từ server.");
                 const blob = await response.blob();
-
-                // 3. Chuyển đổi sang PNG để đảm bảo tương thích tốt nhất
                 const pngBlob = await convertToPng(blob);
 
-                // 4. Thực hiện ghi vào Clipboard
                 const data = [new ClipboardItem({ [pngBlob.type]: pngBlob })];
                 
                 await navigator.clipboard.write(data).catch(err => {
-                    // Xử lý lỗi NotAllowedError cụ thể do chính sách iframe
                     if (err.name === 'NotAllowedError') {
-                        throw new Error("Bị chặn bởi chính sách bảo mật (Permissions Policy). Hãy thử chạy trực tiếp trên web chính thức thay vì cửa sổ preview.");
+                        throw new Error("Lỗi phân quyền: Trình duyệt chặn quyền truy cập Clipboard trong iframe.");
                     }
                     throw err;
                 });
 
-                showToast("Đã sao chép! Bạn có thể dán (Ctrl+V) ngay.");
+                showToast("Đã sao chép! Hãy dán (Ctrl+V) vào nơi bạn muốn.");
 
             } catch (err) {
-                console.error("Lỗi chi tiết:", err);
+                console.error("Lỗi:", err);
                 showToast(err.message, true);
                 errorHelper.classList.remove('hidden');
             } finally {
                 btn.disabled = false;
+                overlay.classList.add('hidden');
+            }
+        }
+
+        async function downloadImage() {
+            const imgElement = document.getElementById('targetImage');
+            const overlay = document.getElementById('loadingOverlay');
+            overlay.classList.remove('hidden');
+
+            try {
+                const response = await fetch(imgElement.src);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `photo-copy-demo-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                
+                window.URL.revokeObjectURL(url);
+                showToast("Đã tải ảnh thành công!");
+            } catch (err) {
+                showToast("Không thể tải ảnh: " + err.message, true);
+            } finally {
                 overlay.classList.add('hidden');
             }
         }
@@ -194,10 +219,10 @@
                     ctx.drawImage(img, 0, 0);
                     canvas.toBlob((resultBlob) => {
                         if (resultBlob) resolve(resultBlob);
-                        else reject(new Error("Lỗi chuyển đổi ảnh."));
+                        else reject(new Error("Lỗi xử lý file ảnh."));
                     }, 'image/png');
                 };
-                img.onerror = () => reject(new Error("Lỗi tải ảnh vào bộ xử lý."));
+                img.onerror = () => reject(new Error("Không thể đọc file ảnh."));
                 img.src = URL.createObjectURL(blob);
             });
         }
