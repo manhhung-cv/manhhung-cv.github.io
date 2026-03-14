@@ -3,629 +3,460 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Quản Trị Gia Đình Pro</title>
+    <title>Bảng Theo Dõi Mục Tiêu Gia Đình</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <!-- Canvas Confetti cho hiệu ứng pháo giấy -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
-                    colors: { primary: '#3b82f6', surface: '#ffffff', background: '#f8fafc', adminbg: '#0f172a', adminpanel: '#1e293b' }
-                }
-            }
-        }
-    </script>
     <style>
-        body { -webkit-tap-highlight-color: transparent; }
-        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .pin-dot { transition: all 0.2s; }
-        .pin-dot.active { background-color: #3b82f6; transform: scale(1.2); }
-        .tab-btn.active { background-color: #334155; color: #fff; border-bottom: 2px solid #3b82f6; }
-        
-        /* Calendar Styles */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background-color: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden; }
-        .cal-header { background-color: #f8fafc; text-align: center; padding: 10px 0; font-weight: 600; font-size: 0.875rem; color: #64748b; }
-        .cal-cell { background-color: #ffffff; min-height: 100px; padding: 8px; transition: background-color 0.2s; cursor: pointer; }
-        .cal-cell:hover { background-color: #f1f5f9; }
-        .cal-cell.disabled { background-color: #f8fafc; color: #cbd5e1; cursor: default; }
-        .cal-cell.today { background-color: #eff6ff; }
-        .cal-date { font-weight: 600; font-size: 0.875rem; margin-bottom: 4px; display: inline-block; width: 24px; height: 24px; text-align: center; line-height: 24px; border-radius: 50%; }
-        .cal-cell.today .cal-date { background-color: #3b82f6; color: white; }
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #FAFAFA;
+            color: #374151;
+        }
+        .btn-flat {
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-flat:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 0 transparent !important;
+        }
+        .btn-flat:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: 0 4px 0 0 #D1D5DB !important;
+        }
+        .progress-bar {
+            transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .card-flat {
+            background: #ffffff;
+            border: 2px solid #E5E7EB;
+            border-radius: 1.5rem;
+            box-shadow: 0 4px 0 0 #E5E7EB;
+            transition: transform 0.2s;
+        }
+        .pop-in {
+            animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        /* Modal background */
+        .modal-bg {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
-<body class="bg-background text-slate-800 font-sans min-h-screen transition-colors duration-500" id="main-body">
+<body class="pb-16">
 
-    <header class="p-6 md:p-8 flex justify-between items-center max-w-7xl mx-auto hidden" id="main-header">
-        <div class="flex items-center gap-4">
-            <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-slate-800 flex items-center" id="header-title">
-                <i class="fa-solid fa-house-chimney text-primary mr-3" id="header-icon"></i> 
-                <span id="header-text">Việc Nhà</span>
-                <span id="role-badge" class="ml-3 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider hidden"></span>
-            </h1>
-            <div id="nav-toggles" class="hidden bg-slate-200 p-1 rounded-lg">
-                <button onclick="window.switchMainView('dashboard')" id="btn-view-dash" class="px-3 py-1.5 text-sm font-medium rounded bg-white shadow-sm text-slate-800 transition">Hôm Nay</button>
-                <button onclick="window.switchMainView('calendar')" id="btn-view-cal" class="px-3 py-1.5 text-sm font-medium rounded text-slate-500 hover:text-slate-800 transition"><i class="fa-regular fa-calendar-days mr-1"></i> Lịch Tháng</button>
-            </div>
-        </div>
-
-        <div class="flex gap-2 md:gap-3">
-            <button id="btn-admin-panel" onclick="window.toggleAdminPanel()" class="hidden bg-slate-800 text-white px-4 py-2 rounded-xl shadow-sm hover:bg-slate-700 transition font-medium border border-slate-700">
-                <i class="fa-solid fa-server mr-1"></i> <span class="hidden md:inline">Database</span>
-            </button>
-            <button onclick="window.toggleHistory()" class="bg-white px-4 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition border border-gray-100 font-medium text-slate-600">
-                <i class="fa-solid fa-clock-rotate-left text-primary mr-1"></i> <span class="hidden md:inline">Lịch sử</span>
-            </button>
-            <button onclick="window.logout()" class="bg-white px-4 py-2 rounded-xl shadow-sm hover:bg-slate-50 transition border border-gray-100 font-medium text-slate-600">
-                <i class="fa-solid fa-right-from-bracket text-rose-500 mr-1"></i>
-            </button>
-        </div>
-    </header>
-
-    <section id="screen-login" class="flex flex-col items-center justify-center min-h-screen transition-all duration-300">
-        <h2 class="text-2xl font-semibold mb-10 text-slate-600" id="login-title">Đang tải cấu trúc Database...</h2>
-        <div class="flex flex-wrap justify-center gap-8 md:gap-12 p-4 max-w-3xl" id="avatar-container">
-            <div class="animate-pulse flex gap-4"><div class="w-24 h-24 bg-slate-200 rounded-full"></div></div>
-        </div>
-    </section>
-
-    <div id="pin-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center mx-4">
-            <img id="pin-avatar" src="" class="w-20 h-20 rounded-full mx-auto mb-4 border-4 border-slate-100 object-cover">
-            <h3 class="text-xl font-bold mb-1" id="pin-name">Name</h3>
-            <p class="text-sm text-slate-500 mb-6">Mã PIN xác thực</p>
-            <div class="flex justify-center gap-4 mb-8" id="pin-display">
-                <div class="w-4 h-4 rounded-full bg-slate-200 pin-dot" id="dot-1"></div><div class="w-4 h-4 rounded-full bg-slate-200 pin-dot" id="dot-2"></div><div class="w-4 h-4 rounded-full bg-slate-200 pin-dot" id="dot-3"></div><div class="w-4 h-4 rounded-full bg-slate-200 pin-dot" id="dot-4"></div>
-            </div>
-            <div class="grid grid-cols-3 gap-3 mb-6">
-                <button onclick="window.addPin(1)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">1</button><button onclick="window.addPin(2)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">2</button><button onclick="window.addPin(3)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">3</button>
-                <button onclick="window.addPin(4)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">4</button><button onclick="window.addPin(5)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">5</button><button onclick="window.addPin(6)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">6</button>
-                <button onclick="window.addPin(7)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">7</button><button onclick="window.addPin(8)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">8</button><button onclick="window.addPin(9)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">9</button>
-                <button onclick="window.closePinModal()" class="py-3 text-lg font-semibold text-rose-500 rounded-xl"><i class="fa-solid fa-xmark"></i></button><button onclick="window.addPin(0)" class="py-3 text-xl font-semibold bg-slate-50 rounded-xl">0</button><button onclick="window.clearPin()" class="py-3 text-lg font-semibold text-slate-500 rounded-xl"><i class="fa-solid fa-delete-left"></i></button>
-            </div>
-            <p id="pin-error" class="text-rose-500 text-sm font-medium hidden">Mã PIN sai!</p>
-        </div>
-    </div>
-
-    <section id="screen-dashboard" class="hidden max-w-7xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6 fade-in">
-        <div class="lg:col-span-7 space-y-6">
-            <div class="bg-surface rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold" id="greeting-name">Chào bạn!</h2>
-                    <p class="text-slate-500 text-sm flex items-center gap-2"><span>Điểm tải trọng hôm nay: <strong id="my-load-score" class="text-primary">0</strong></span></p>
+    <!-- Header / Navbar Flat -->
+    <nav class="bg-white border-b-2 border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20 items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-indigo-500 w-10 h-10 rounded-xl flex items-center justify-center transform rotate-3">
+                        <i class="fa-solid fa-house-chimney text-white text-xl"></i>
+                    </div>
+                    <h1 class="font-black text-xl md:text-2xl tracking-tight text-gray-800">Family<span class="text-indigo-500">Goals</span></h1>
                 </div>
-                <div id="management-controls" class="hidden w-full md:w-auto">
-                    <div class="flex gap-2">
-                        <input type="text" id="new-task-name" placeholder="Việc đột xuất..." class="bg-slate-50 border border-gray-200 text-sm rounded-xl outline-none p-2.5 w-full">
-                        <input type="number" id="new-task-weight" placeholder="Điểm (1-10)" min="1" max="10" class="bg-slate-50 border border-gray-200 text-sm rounded-xl outline-none p-2.5 w-24" value="5">
-                        <select id="new-task-assignee" class="bg-slate-50 border border-gray-200 text-sm rounded-xl outline-none p-2.5 user-select-dropdown"></select>
-                        <button onclick="window.addManualTask()" class="bg-primary text-white font-medium rounded-xl px-4 py-2"><i class="fa-solid fa-plus"></i></button>
+                
+                <div class="flex items-center gap-3">
+                    <!-- Nút Admin -->
+                    <button id="btn-admin-login" onclick="window.showAdminModal()" class="hidden md:flex items-center gap-2 bg-gray-100 hover:bg-gray-200 border-2 border-gray-300 text-gray-700 px-4 py-2 rounded-xl font-bold transition">
+                        <i class="fa-solid fa-lock"></i> Đăng nhập Admin
+                    </button>
+                    <div id="admin-badge" class="hidden items-center gap-2 bg-green-100 border-2 border-green-500 text-green-700 px-4 py-2 rounded-xl font-bold">
+                        <i class="fa-solid fa-unlock"></i> Quyền Admin
+                    </div>
+
+                    <!-- Tổng điểm -->
+                    <div class="flex items-center gap-2 bg-yellow-400 border-2 border-yellow-500 shadow-[0_3px_0_0_#D97706] px-4 py-2 md:px-5 rounded-2xl">
+                        <i class="fa-solid fa-star text-yellow-100 text-lg"></i>
+                        <span class="font-extrabold text-yellow-900 text-sm md:text-lg">Tổng: <span id="family-total-points" class="ml-1 text-lg md:text-xl">0</span></span>
                     </div>
                 </div>
             </div>
+        </div>
+    </nav>
 
-            <div class="bg-surface rounded-2xl shadow-sm border border-gray-100 p-6">
-                <div class="flex justify-between items-end mb-4 border-b border-gray-100 pb-2">
-                    <h3 class="text-lg font-semibold">Việc của <span id="task-owner-name">tôi</span> hôm nay</h3>
+    <!-- Trạng thái Loading -->
+    <div id="loading-state" class="fixed inset-0 z-40 bg-white flex flex-col items-center justify-center">
+        <i class="fa-solid fa-spinner fa-spin text-5xl text-indigo-500 mb-4"></i>
+        <h2 class="text-xl font-bold text-gray-600">Đang kết nối Máy chủ Đám mây...</h2>
+    </div>
+
+    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 space-y-16 hidden">
+        <!-- Phần 1: Các thành viên -->
+        <section>
+            <div class="flex items-center gap-3 mb-6">
+                <h2 class="text-2xl md:text-3xl font-black text-gray-800">Team Gia Đình</h2>
+                <div class="h-1 flex-1 bg-gray-200 rounded-full"></div>
+            </div>
+            <div id="members-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        </section>
+
+        <!-- Phần 2: Mục tiêu chung -->
+        <section>
+            <div class="flex items-center gap-3 mb-6">
+                <h2 class="text-2xl md:text-3xl font-black text-gray-800">Nhiệm Vụ Tổ Đội</h2>
+                <div class="h-1 flex-1 bg-gray-200 rounded-full"></div>
+            </div>
+            <div id="common-goals-container" class="grid grid-cols-1 md:grid-cols-2 gap-8"></div>
+        </section>
+
+        <!-- Phần 3: Mục tiêu cá nhân -->
+        <section>
+            <div class="flex items-center gap-3 mb-6">
+                <h2 class="text-2xl md:text-3xl font-black text-gray-800">Mục Tiêu Cá Nhân</h2>
+                <div class="h-1 flex-1 bg-gray-200 rounded-full"></div>
+            </div>
+            <div id="individual-goals-container" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+        </section>
+    </main>
+
+    <!-- Admin Login Modal -->
+    <div id="admin-modal" class="fixed inset-0 z-50 modal-bg hidden flex items-center justify-center px-4">
+        <div class="bg-white rounded-3xl p-8 max-w-sm w-full border-4 border-gray-200 shadow-2xl pop-in">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa-solid fa-shield-halved text-3xl text-indigo-500"></i>
                 </div>
-                <ul id="my-tasks-list" class="space-y-2 min-h-[150px]"></ul>
+                <h3 class="text-2xl font-black text-gray-800">Xác thực Admin</h3>
+                <p class="text-gray-500 font-semibold mt-1">Chỉ Admin mới có thể cộng điểm.</p>
             </div>
-        </div>
-
-        <div class="lg:col-span-5 space-y-6">
-            <div class="bg-surface rounded-2xl shadow-sm border border-amber-100 p-6 relative overflow-hidden">
-                <div class="absolute top-0 left-0 w-1 h-full bg-amber-400"></div>
-                <h3 class="text-lg font-semibold mb-1"><i class="fa-solid fa-hand-holding-heart text-amber-400 mr-2"></i> Việc Cần Giúp</h3>
-                <ul id="pool-tasks-list" class="space-y-3 mt-4 max-h-[250px] overflow-y-auto pr-2"></ul>
+            <input type="password" id="admin-pin" placeholder="Nhập mã PIN (Mặc định: 123456)" 
+                class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl px-4 py-3 font-bold text-center mb-4 focus:outline-none focus:border-indigo-500 transition">
+            <p id="admin-error" class="text-red-500 text-sm font-bold text-center mb-4 hidden">Mã PIN không chính xác!</p>
+            <div class="flex gap-3">
+                <button onclick="window.closeAdminModal()" class="flex-1 bg-gray-200 text-gray-700 font-black py-3 rounded-xl hover:bg-gray-300 transition">Hủy</button>
+                <button onclick="window.verifyAdmin()" class="flex-1 bg-indigo-500 text-white font-black py-3 rounded-xl hover:bg-indigo-600 transition shadow-[0_4px_0_0_#4338CA] btn-flat">Xác nhận</button>
             </div>
-
-            <div class="bg-surface rounded-2xl shadow-sm border border-rose-100 p-6 relative">
-                <div class="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-                <h3 class="text-lg font-semibold mb-4 text-rose-600"><i class="fa-solid fa-triangle-exclamation mr-2"></i> Báo Cáo Vi Phạm</h3>
-                <div class="space-y-3">
-                    <select id="report-user" class="bg-slate-50 border border-rose-200 text-sm rounded-xl outline-none w-full p-2.5 user-select-dropdown"></select>
-                    <select id="report-reason" class="bg-slate-50 border border-rose-200 text-sm rounded-xl outline-none w-full p-2.5 text-slate-700">
-                        <option value="Chưa hoàn thành công việc được giao">Chưa hoàn thành công việc được giao</option>
-                        <option value="Làm việc cẩu thả, không sạch sẽ">Làm việc cẩu thả, không sạch sẽ</option>
-                        <option value="Đùn đẩy trách nhiệm">Đùn đẩy trách nhiệm</option>
-                    </select>
-                    <button onclick="window.submitReport()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-medium rounded-xl text-sm px-4 py-2.5 transition">Gửi Báo Cáo</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section id="screen-calendar" class="hidden max-w-7xl mx-auto p-4 md:p-8 fade-in">
-        <div class="bg-surface rounded-2xl shadow-sm border border-gray-100 p-6">
-            <div class="flex justify-between items-center mb-6">
-                <div class="flex items-center gap-4">
-                    <button onclick="window.changeMonth(-1)" class="p-2 text-slate-400 hover:text-primary transition bg-slate-50 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
-                    <h2 class="text-xl font-bold text-slate-700 w-40 text-center" id="calendar-month-year">Tháng ...</h2>
-                    <button onclick="window.changeMonth(1)" class="p-2 text-slate-400 hover:text-primary transition bg-slate-50 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
-                    <button onclick="window.resetMonth()" class="text-sm font-medium text-primary hover:underline ml-2">Hôm nay</button>
-                </div>
-                <div class="text-sm text-slate-500 hidden md:block">
-                    <i class="fa-solid fa-circle-info mr-1 text-primary"></i> Lịch hiển thị toàn bộ công việc của gia đình.
-                </div>
-            </div>
-            
-            <div class="calendar-grid">
-                <div class="cal-header text-rose-500">CN</div><div class="cal-header">T2</div><div class="cal-header">T3</div>
-                <div class="cal-header">T4</div><div class="cal-header">T5</div><div class="cal-header">T6</div><div class="cal-header text-primary">T7</div>
-            </div>
-            <div id="calendar-body" class="calendar-grid" style="border-top:none; border-top-left-radius:0; border-top-right-radius:0;"></div>
-        </div>
-    </section>
-
-    <section id="screen-admin" class="hidden max-w-7xl mx-auto p-4 md:p-8 fade-in text-slate-300">
-        <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
-            <button onclick="window.switchAdminTab('users')" id="tab-btn-users" class="tab-btn active px-4 py-2 bg-adminpanel text-slate-400 rounded-t-lg font-mono text-sm transition"><i class="fa-solid fa-users mr-2"></i>Users</button>
-            <button onclick="window.switchAdminTab('templates')" id="tab-btn-templates" class="tab-btn px-4 py-2 bg-adminpanel text-slate-400 rounded-t-lg font-mono text-sm transition"><i class="fa-solid fa-robot mr-2"></i>Schedules_Rules</button>
-            <button onclick="window.switchAdminTab('tasks')" id="tab-btn-tasks" class="tab-btn px-4 py-2 bg-adminpanel text-slate-400 rounded-t-lg font-mono text-sm transition"><i class="fa-solid fa-list-check mr-2"></i>All_Tasks_DB</button>
-            <button onclick="window.switchAdminTab('history')" id="tab-btn-history" class="tab-btn px-4 py-2 bg-adminpanel text-slate-400 rounded-t-lg font-mono text-sm transition"><i class="fa-solid fa-terminal mr-2"></i>System_Logs</button>
-            <div class="flex-1 border-b-2 border-slate-700"></div>
-        </div>
-
-        <div class="bg-adminpanel rounded-b-2xl rounded-tr-2xl shadow-2xl border border-slate-700 overflow-hidden min-h-[500px]">
-            <div class="bg-[#0f172a] p-4 border-b border-slate-700 flex justify-between items-center">
-                <span class="font-mono text-sm text-primary" id="admin-path">~/db/users</span>
-                <div id="admin-actions"></div>
-            </div>
-            <div class="overflow-x-auto p-4 max-h-[600px] overflow-y-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead id="admin-thead" class="font-mono text-xs text-slate-500 border-b border-slate-700"></thead>
-                    <tbody id="admin-tbody" class="font-mono text-sm"></tbody>
-                </table>
-            </div>
-        </div>
-    </section>
-
-    <div id="crud-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden z-50 flex items-center justify-center">
-        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-2xl max-w-md w-full mx-4 font-sans relative">
-            <button onclick="window.closeCrudModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 text-xl"><i class="fa-solid fa-xmark"></i></button>
-            <h3 class="text-xl font-bold mb-6 text-slate-800" id="crud-modal-title">Tiêu đề</h3>
-            <div id="crud-modal-body" class="space-y-4 text-slate-800"></div>
         </div>
     </div>
 
-    <div id="history-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden z-50 flex justify-end">
-        <div class="bg-white w-full max-w-md h-full shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300" id="history-panel">
-            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-slate-50">
-                <h3 class="text-lg font-bold"><i class="fa-solid fa-list-ul text-primary mr-2"></i> Lịch sử hoạt động</h3>
-                <button onclick="window.toggleHistory()" class="text-slate-400"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <div class="px-6 pt-4">
-                <input type="text" id="history-search" placeholder="Lọc theo tên hoặc hành động..." onkeyup="window.filterHistorySidebar()" class="w-full bg-slate-50 border border-gray-200 rounded-lg p-2 text-sm outline-none">
-            </div>
-            <div class="p-6 overflow-y-auto flex-1"><ul id="history-list" class="space-y-6 relative border-l-2 border-slate-100 ml-3 pl-5"></ul></div>
-        </div>
-    </div>
-
-    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 flex items-center min-w-[300px] p-4 space-x-3 text-slate-600 bg-white rounded-2xl shadow-xl border border-gray-100 transition-all duration-300 translate-y-24 opacity-0 z-50">
-        <div class="w-8 h-8 rounded-full bg-green-100 text-green-500 flex items-center justify-center shrink-0"><i class="fa-solid fa-check" id="toast-icon"></i></div>
-        <div class="text-sm font-medium flex-1" id="toast-message">Thông báo</div>
-    </div>
-
+    <!-- Firebase SDK & Logic Script -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, updateDoc, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, setDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const app = initializeApp({
-            apiKey: "AIzaSyB-Tb8ZtZl0McKv9coWbSEE0Sc6okCmL9I", authDomain: "fami-work.firebaseapp.com",
-            projectId: "fami-work", storageBucket: "fami-work.firebasestorage.app",
-            messagingSenderId: "52153247868", appId: "1:52153247868:web:1d537bedd1ec4f766841f9"
-        });
+        // Khởi tạo Firebase
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'family-goals-app';
 
-        // DATA STORE
-        let familyUsers = [], allTasks = [], taskTemplates = [], allHistory = [];
-        let currentUser = null, pendingUser = null, currentPinInput = '', currentAdminTab = 'users';
-        let currentMonthDate = new Date();
+        // Trạng thái ứng dụng
+        let currentUser = null;
+        let isAdmin = false; // Mặc định không phải admin
+        const ADMIN_PIN = "123456"; // Mã PIN mặc định
 
-        function listenToDatabase() {
-            onSnapshot(collection(db, 'users'), (snap) => {
-                familyUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                if (familyUsers.length === 0) { seedDefaultAdmin(); return; }
-                renderLoginAvatars(); updateUserSelectDropdowns();
-                if(currentAdminTab === 'users' && !document.getElementById('screen-admin').classList.contains('hidden')) renderAdminTable();
-            });
+        // Dữ liệu sẽ được đồng bộ từ Cloud
+        let membersData = [];
+        let commonGoalsData = [];
+        let individualGoalsData = [];
 
-            onSnapshot(collection(db, 'task_templates'), (snap) => {
-                taskTemplates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                if(currentAdminTab === 'templates' && !document.getElementById('screen-admin').classList.contains('hidden')) renderAdminTable();
-            });
+        // 1. DỮ LIỆU MẪU ĐỂ KHỞI TẠO LẦN ĐẦU
+        const defaultMembers = [
+            { id: 'm1', name: 'Bố (Hùng)', points: 1450, icon: 'fa-user-astronaut', color: 'text-blue-500', bg: 'bg-blue-100', barBg: 'bg-blue-500', shadowColor: '#2563EB' },
+            { id: 'm2', name: 'Mẹ (Mai)', points: 1520, icon: 'fa-crown', color: 'text-rose-500', bg: 'bg-rose-100', barBg: 'bg-rose-500', shadowColor: '#E11D48' },
+            { id: 'm3', name: 'Anh Hai (Bi)', points: 680, icon: 'fa-gamepad', color: 'text-green-500', bg: 'bg-green-100', barBg: 'bg-green-500', shadowColor: '#16A34A' },
+            { id: 'm4', name: 'Em Gái (Bống)', points: 120, icon: 'fa-star-and-crescent', color: 'text-purple-500', bg: 'bg-purple-100', barBg: 'bg-purple-500', shadowColor: '#9333EA' }
+        ];
 
-            onSnapshot(query(collection(db, 'tasks'), orderBy('createdAt', 'desc')), (snap) => {
-                allTasks = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                renderUserDashboardTasks();
-                renderCalendar();
-                if(currentAdminTab === 'tasks' && !document.getElementById('screen-admin').classList.contains('hidden')) renderAdminTable();
-            });
+        const defaultCommonGoals = [
+            // Mục tiêu sử dụng Ảnh (URL)
+            { id: 'cg1', type: 'image', imageUrl: 'https://images.unsplash.com/photo-1540202404-b711142289eb?auto=format&fit=crop&w=600&q=80', title: 'Chuyến du lịch biển', target: 5000 },
+            // Mục tiêu sử dụng Icon
+            { id: 'cg2', type: 'icon', icon: 'fa-tv', iconBg: 'bg-orange-100', iconColor: 'text-orange-500', title: 'Mua TV OLED 65 inch', target: 3500 }
+        ];
 
-            onSnapshot(query(collection(db, 'history'), orderBy('timestamp', 'desc'), limit(100)), (snap) => {
-                allHistory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                renderHistorySidebar();
-                if(currentAdminTab === 'history' && !document.getElementById('screen-admin').classList.contains('hidden')) renderAdminTable();
-            });
-        }
+        const defaultIndividualGoals = [
+            { id: 'ig1', type: 'icon', icon: 'fa-mobile-screen', assigneeId: 'm1', title: 'Đổi điện thoại mới', target: 2000 },
+            // Mục tiêu sử dụng Ảnh (URL) cho cá nhân
+            { id: 'ig2', type: 'image', imageUrl: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=300&q=80', assigneeId: 'm2', title: 'Khóa Yoga cao cấp', target: 1600 },
+            { id: 'ig3', type: 'icon', icon: 'fa-robot', assigneeId: 'm3', title: 'Robot Transformer', target: 1000 },
+            { id: 'ig4', type: 'icon', icon: 'fa-house-chimney-window', assigneeId: 'm4', title: 'Nhà búp bê cỡ lớn', target: 500 }
+        ];
 
-        async function seedDefaultAdmin() {
-            await setDoc(doc(db, 'users', 'admin_root'), { name: 'Super Admin', role: 'admin', pin: '0000', avatar: 'https://api.dicebear.com/7.x/notionists/svg?seed=admin&backgroundColor=b6e3f4' });
-        }
+        // 2. KHỞI TẠO XÁC THỰC
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Lỗi đăng nhập:", error);
+            }
+        };
 
-        // ==========================================
-        // THUẬT TOÁN CHIA VIỆC THÔNG MINH (CÔNG BẰNG KÉP)
-        // ==========================================
-        window.runSmartScheduler = async () => {
-            if(!currentUser || currentUser.role !== 'admin') return showToast("Chỉ Admin được chạy bộ tạo lịch!", true);
+        // 3. THEO DÕI VÀ KIỂM TRA DỮ LIỆU ĐÁM MÂY
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                await checkAndSeedData(); // Tạo dữ liệu mẫu nếu chưa có
+                setupRealtimeListeners(); // Bật chế độ lắng nghe Real-time
+            }
+        });
+
+        async function checkAndSeedData() {
+            const membersRef = collection(db, 'artifacts', appId, 'public', 'data', 'members');
+            const snap = await getDocs(membersRef);
             
-            const btn = document.getElementById('btn-run-schedule');
-            if(btn) { btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> Đang tính toán...`; btn.disabled = true; }
-
-            let tasksGenerated = 0;
-            const members = familyUsers.filter(u => u.role !== 'admin');
-            if(members.length === 0) { showToast("Chưa có thành viên nào để giao việc!", true); return; }
-
-            let currentDate = new Date();
-            let endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-
-            // BƯỚC 1: Tính TỔNG tải trọng trong tháng của mỗi người từ DB
-            let cumulativeLoads = {};
-            let dailyLoads = {}; 
-            members.forEach(m => cumulativeLoads[m.id] = 0);
-
-            const currentMonthPrefix = currentDate.toLocaleDateString('en-CA').substring(0, 7);
-            allTasks.forEach(t => {
-                if(t.dateStr && t.dateStr.startsWith(currentMonthPrefix) && cumulativeLoads[t.assigneeId] !== undefined) {
-                    cumulativeLoads[t.assigneeId] += (Number(t.weight) || 5);
-                    if(!dailyLoads[t.dateStr]) dailyLoads[t.dateStr] = {};
-                    if(!dailyLoads[t.dateStr][t.assigneeId]) dailyLoads[t.dateStr][t.assigneeId] = 0;
-                    dailyLoads[t.dateStr][t.assigneeId] += (Number(t.weight) || 5);
-                }
-            });
-
-            // BƯỚC 2: Rải việc từ hôm nay tới cuối tháng
-            for (let d = new Date(currentDate); d <= endOfMonth; d.setDate(d.getDate() + 1)) {
-                let dateStr = d.toLocaleDateString('en-CA');
-                let dayOfWeek = d.getDay();
-                if(!dailyLoads[dateStr]) dailyLoads[dateStr] = {};
-
-                for (let tpl of taskTemplates) {
-                    // Chống trùng lặp trong ngày
-                    const alreadyExists = allTasks.some(t => t.templateId === tpl.id && t.dateStr === dateStr);
-                    if(alreadyExists) continue;
-
-                    let shouldRun = false;
-                    if (tpl.frequencyType === 'daily') shouldRun = true;
-                    else if (tpl.frequencyType === 'specific_days' && tpl.daysOfWeek && tpl.daysOfWeek.includes(dayOfWeek)) {
-                        shouldRun = true;
-                    }
-
-                    if(shouldRun) {
-                        // BƯỚC 3: Sắp xếp người rảnh nhất THÁNG, nếu bằng nhau xét ai rảnh nhất NGÀY
-                        let sortedMembers = [...members].sort((a, b) => {
-                            let loadA = cumulativeLoads[a.id];
-                            let loadB = cumulativeLoads[b.id];
-                            if (loadA === loadB) {
-                                let dLoadA = dailyLoads[dateStr][a.id] || 0;
-                                let dLoadB = dailyLoads[dateStr][b.id] || 0;
-                                return dLoadA - dLoadB;
-                            }
-                            return loadA - loadB;
-                        });
-
-                        const chosenMember = sortedMembers[0];
-
-                        // Giao việc
-                        await addDoc(collection(db, 'tasks'), {
-                            title: tpl.title,
-                            templateId: tpl.id,
-                            assigneeId: chosenMember.id,
-                            status: 'pending',
-                            weight: Number(tpl.weight) || 5,
-                            dateStr: dateStr, 
-                            createdAt: serverTimestamp(),
-                            isAuto: true
-                        });
-
-                        // Cập nhật tải trọng ảo để vòng lặp kế tiếp tính toán chính xác
-                        cumulativeLoads[chosenMember.id] += (Number(tpl.weight) || 5);
-                        if(!dailyLoads[dateStr][chosenMember.id]) dailyLoads[dateStr][chosenMember.id] = 0;
-                        dailyLoads[dateStr][chosenMember.id] += (Number(tpl.weight) || 5);
-                        
-                        tasksGenerated++;
-                    }
-                }
+            // Nếu Database trống, đẩy dữ liệu mẫu lên
+            if (snap.empty) {
+                for (const m of defaultMembers) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'members', m.id), m); }
+                for (const cg of defaultCommonGoals) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'commonGoals', cg.id), cg); }
+                for (const ig of defaultIndividualGoals) { await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'individualGoals', ig.id), ig); }
             }
+        }
 
-            logHistory('hệ thống', `Thuật toán đã rải đều ${tasksGenerated} công việc lên Lịch.`);
-            if(btn) { btn.innerHTML = `<i class="fa-solid fa-play mr-1"></i>Tạo Lịch Tháng Này`; btn.disabled = false; }
-            showToast(`Tuyệt vời! Đã rải đều ${tasksGenerated} việc dựa trên tổng điểm tháng.`);
+        function setupRealtimeListeners() {
+            if (!currentUser) return;
+
+            // Lắng nghe Members
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'members'), (snapshot) => {
+                membersData = snapshot.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.id.localeCompare(b.id));
+                checkIfReadyToRender();
+            }, (error) => console.error(error));
+
+            // Lắng nghe Mục tiêu chung
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'commonGoals'), (snapshot) => {
+                commonGoalsData = snapshot.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.id.localeCompare(b.id));
+                checkIfReadyToRender();
+            }, (error) => console.error(error));
+
+            // Lắng nghe Mục tiêu cá nhân
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'individualGoals'), (snapshot) => {
+                individualGoalsData = snapshot.docs.map(d => ({id: d.id, ...d.data()})).sort((a,b) => a.id.localeCompare(b.id));
+                checkIfReadyToRender();
+            }, (error) => console.error(error));
+        }
+
+        let readyCount = 0;
+        function checkIfReadyToRender() {
+            // Khi đủ cả 3 bảng dữ liệu tải xong thì ẩn màn hình Loading
+            if (membersData.length > 0 && commonGoalsData.length > 0 && individualGoalsData.length > 0) {
+                document.getElementById('loading-state').classList.add('hidden');
+                document.getElementById('main-content').classList.remove('hidden');
+                renderAll();
+            }
+        }
+
+        // 4. LOGIC XỬ LÝ (Giao diện Admin & Thêm điểm)
+        
+        window.showAdminModal = () => {
+            document.getElementById('admin-modal').classList.remove('hidden');
+            document.getElementById('admin-pin').value = '';
+            document.getElementById('admin-error').classList.add('hidden');
+            document.getElementById('admin-pin').focus();
         };
 
-
-        // ==========================================
-        // LOGIC LỊCH THÁNG (CALENDAR VIEW)
-        // ==========================================
-        window.switchMainView = (view) => {
-            if(view === 'dashboard') {
-                document.getElementById('screen-dashboard').classList.remove('hidden');
-                document.getElementById('screen-calendar').classList.add('hidden');
-                document.getElementById('btn-view-dash').className = "px-3 py-1.5 text-sm font-medium rounded bg-white shadow-sm text-slate-800 transition";
-                document.getElementById('btn-view-cal').className = "px-3 py-1.5 text-sm font-medium rounded text-slate-500 hover:text-slate-800 transition";
-            } else {
-                document.getElementById('screen-dashboard').classList.add('hidden');
-                document.getElementById('screen-calendar').classList.remove('hidden');
-                document.getElementById('btn-view-dash').className = "px-3 py-1.5 text-sm font-medium rounded text-slate-500 hover:text-slate-800 transition";
-                document.getElementById('btn-view-cal').className = "px-3 py-1.5 text-sm font-medium rounded bg-white shadow-sm text-slate-800 transition";
-                renderCalendar();
-            }
+        window.closeAdminModal = () => {
+            document.getElementById('admin-modal').classList.add('hidden');
         };
 
-        window.changeMonth = (dir) => { currentMonthDate.setMonth(currentMonthDate.getMonth() + dir); renderCalendar(); };
-        window.resetMonth = () => { currentMonthDate = new Date(); renderCalendar(); };
-
-        function renderCalendar() {
-            const year = currentMonthDate.getFullYear();
-            const month = currentMonthDate.getMonth();
-            document.getElementById('calendar-month-year').innerText = `Tháng ${month + 1} - ${year}`;
-
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const todayStr = new Date().toLocaleDateString('en-CA');
-            let html = '';
-
-            for (let i = 0; i < firstDay; i++) html += `<div class="cal-cell disabled"></div>`;
-
-            for (let day = 1; day <= daysInMonth; day++) {
-                const cellDate = new Date(year, month, day);
-                const dateStr = cellDate.toLocaleDateString('en-CA');
-                const isToday = dateStr === todayStr;
+        window.verifyAdmin = () => {
+            const pin = document.getElementById('admin-pin').value;
+            if (pin === ADMIN_PIN) {
+                isAdmin = true;
+                window.closeAdminModal();
+                // Thay đổi UI
+                document.getElementById('btn-admin-login').classList.add('hidden');
+                document.getElementById('admin-badge').classList.remove('hidden');
+                document.getElementById('admin-badge').classList.add('flex');
+                renderAll(); // Cập nhật lại UI để hiện nút bấm
                 
-                const dayTasks = allTasks.filter(t => t.dateStr === dateStr);
-                
-                let tasksHtml = '';
-                const maxDisplay = 3;
-                for(let i=0; i<Math.min(dayTasks.length, maxDisplay); i++) {
-                    const t = dayTasks[i];
-                    const u = familyUsers.find(x=>x.id===t.assigneeId);
-                    const color = t.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700 border border-blue-100';
-                    const icon = t.status === 'completed' ? '<i class="fa-solid fa-check mr-1"></i>' : '';
-                    tasksHtml += `<div class="text-[10px] leading-tight p-1 mb-1 rounded truncate shadow-sm ${color}">${icon}${u?.name}: ${t.title}</div>`;
-                }
-                if(dayTasks.length > maxDisplay) tasksHtml += `<div class="text-[10px] text-slate-500 font-medium text-center">+${dayTasks.length - maxDisplay} việc nữa</div>`;
-
-                html += `<div class="cal-cell ${isToday ? 'today' : ''}" onclick="window.openManualTaskModal('${dateStr}')"><span class="cal-date">${day}</span><div class="mt-1">${tasksHtml}</div></div>`;
-            }
-
-            const totalCells = firstDay + daysInMonth;
-            const remainder = totalCells % 7;
-            if (remainder !== 0) { for(let i=0; i < (7 - remainder); i++) html += `<div class="cal-cell disabled"></div>`; }
-
-            document.getElementById('calendar-body').innerHTML = html;
-        }
-
-        window.openManualTaskModal = (dateStr) => {
-            if(!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'manage')) {
-                return showToast("Chỉ Quản lý/Admin mới có quyền giao việc trên Lịch!", true);
-            }
-            
-            document.getElementById('crud-modal').classList.remove('hidden');
-            document.getElementById('crud-modal-title').innerText = `Giao việc ngày ${dateStr.split('-').reverse().join('/')}`;
-            
-            const userOptions = familyUsers.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-            document.getElementById('crud-modal-body').innerHTML = `
-                <input type="hidden" id="crud-type" value="manual_task"><input type="hidden" id="manual-task-date" value="${dateStr}">
-                <div class="mb-3"><label class="text-xs text-slate-500">Tên công việc</label><input type="text" id="manual-task-title" class="w-full bg-slate-50 border rounded-lg p-2 text-slate-800 outline-none" autofocus></div>
-                <div class="flex gap-2 mb-3"><div class="w-2/3"><label class="text-xs text-slate-500">Người nhận</label><select id="manual-task-assignee" class="w-full bg-slate-50 border rounded-lg p-2 text-slate-800 outline-none">${userOptions}</select></div><div class="w-1/3"><label class="text-xs text-slate-500">Độ nặng</label><input type="number" id="manual-task-weight" value="5" min="1" max="10" class="w-full bg-slate-50 border rounded-lg p-2 text-slate-800 outline-none"></div></div>
-                <button onclick="window.saveCrud()" class="w-full bg-primary text-white py-2 rounded-lg font-bold mt-2">Giao Việc</button>
-            `;
-        };
-
-        // ==========================================
-        // UI & LOGIN
-        // ==========================================
-        function renderLoginAvatars() {
-            document.getElementById('avatar-container').innerHTML = familyUsers.map(u => `<div onclick="window.attemptLogin('${u.id}')" class="flex flex-col items-center cursor-pointer group"><div class="relative"><img src="${u.avatar}" class="w-24 h-24 rounded-full border-4 border-transparent group-hover:border-primary transition-all object-cover bg-white shadow-sm">${u.role !== 'member' ? `<div class="absolute -top-1 -right-1 bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded-full z-10">${u.role}</div>` : ''}</div><span class="font-semibold text-slate-600 mt-3 group-hover:text-primary transition-colors">${u.name}</span></div>`).join('');
-        }
-        function updateUserSelectDropdowns() {
-            const opts = familyUsers.map(u => `<option value="${u.id}">${u.name}</option>`).join('');
-            document.querySelectorAll('.user-select-dropdown').forEach(s => { const v = s.value; s.innerHTML = opts; if(v) s.value = v; });
-        }
-
-        function renderUserDashboardTasks() {
-            if(!currentUser) return;
-            const list = document.getElementById('my-tasks-list');
-            const poolList = document.getElementById('pool-tasks-list');
-            const todayStr = new Date().toLocaleDateString('en-CA');
-            
-            const myTasks = allTasks.filter(t => t.assigneeId === currentUser.id && t.status !== 'pooled' && t.dateStr === todayStr);
-            const myLoad = myTasks.filter(t => t.status === 'pending').reduce((s, t) => s + (Number(t.weight)||5), 0);
-            document.getElementById('my-load-score').innerText = myLoad;
-
-            myTasks.sort((a,b) => (a.status === 'completed' ? 1 : -1));
-
-            if(myTasks.length === 0) { list.innerHTML = `<li class="text-center text-slate-400 py-4 text-sm">Hôm nay rảnh rỗi!</li>`; }
-            else {
-                list.innerHTML = myTasks.map(t => {
-                    const isDone = t.status === 'completed';
-                    const sCls = isDone ? "opacity-50 bg-gray-50" : "bg-white border-blue-100 hover:border-blue-300 shadow-sm";
-                    const tCls = isDone ? "line-through text-slate-400" : "text-slate-700 font-medium";
-                    const badge = `<span class="text-[10px] bg-blue-50 text-blue-600 px-1.5 rounded mr-2">${t.weight||5}★</span>`;
-                    return `<li class="flex items-center justify-between p-3 rounded-xl border transition-all ${sCls}"><label class="flex items-center gap-3 cursor-pointer flex-1"><input type="checkbox" ${isDone?'checked':''} onchange="window.toggleTaskStatus('${t.id}', '${t.status}', '${t.title}')" class="w-5 h-5 text-primary rounded cursor-pointer accent-primary"><span class="${tCls}">${badge}${t.title}</span></label>${!isDone ? `<button onclick="window.requestLeave('${t.id}', '${t.title}')" class="text-xs text-rose-500 border px-2 py-1 rounded hover:bg-rose-50 ml-2">Xin nghỉ</button>` : ''}</li>`;
-                }).join('');
-            }
-
-            const poolTasks = allTasks.filter(t => t.status === 'pooled');
-            poolList.innerHTML = poolTasks.length ? poolTasks.map(t => `<li class="flex justify-between p-3 bg-white rounded-xl border border-amber-100 shadow-sm"><div class="flex-1"><span class="text-slate-800 font-medium text-sm block"><span class="text-amber-500 mr-1">${t.weight||5}★</span>${t.title}</span><span class="text-xs text-amber-600 bg-amber-50 px-1 rounded block mt-1">${familyUsers.find(x=>x.id===t.assigneeId)?.name||'Ai đó'}: ${t.reason}</span></div><button onclick="window.takeTask('${t.id}')" class="text-xs bg-amber-500 text-white px-3 rounded-lg hover:bg-amber-600 ml-2">Nhận</button></li>`).join('') : `<li class="text-slate-400 text-sm py-2 text-center">Trống.</li>`;
-        }
-
-        window.attemptLogin = (id) => {
-            const u = familyUsers.find(x => x.id === id);
-            if(u.role === 'admin' || u.role === 'manage') { pendingUser = u; currentPinInput = ''; updatePinDisplay(); document.getElementById('pin-avatar').src = u.avatar; document.getElementById('pin-name').innerText = u.name; document.getElementById('pin-error').classList.add('hidden'); document.getElementById('pin-modal').classList.remove('hidden'); } else finalizeLogin(u);
-        };
-        window.addPin = (n) => { if(currentPinInput.length<4){ currentPinInput+=n; updatePinDisplay(); if(currentPinInput.length===4) setTimeout(()=>{if(currentPinInput===pendingUser.pin){document.getElementById('pin-modal').classList.add('hidden');finalizeLogin(pendingUser);}else{document.getElementById('pin-error').classList.remove('hidden');currentPinInput='';updatePinDisplay();}}, 200); }};
-        window.clearPin = () => { currentPinInput = currentPinInput.slice(0,-1); updatePinDisplay(); };
-        window.closePinModal = () => { document.getElementById('pin-modal').classList.add('hidden'); pendingUser=null; };
-        function updatePinDisplay() { for(let i=1;i<=4;i++) document.getElementById(`dot-${i}`).classList.toggle('active', i<=currentPinInput.length); }
-
-        function finalizeLogin(u) {
-            currentUser = u;
-            document.getElementById('screen-login').classList.add('hidden');
-            document.getElementById('screen-dashboard').classList.remove('hidden');
-            document.getElementById('main-header').classList.remove('hidden');
-            document.getElementById('greeting-name').innerText = `Chào ${u.name}!`;
-            document.getElementById('task-owner-name').innerText = u.name;
-            
-            // LUÔN HIỂN THỊ NÚT CHUYỂN CALENDAR CHO MỌI NGƯỜI
-            document.getElementById('nav-toggles').classList.remove('hidden'); 
-
-            const mc = document.getElementById('management-controls'); const rb = document.getElementById('role-badge'); const ba = document.getElementById('btn-admin-panel');
-            if (u.role === 'admin' || u.role === 'manage') {
-                mc.classList.remove('hidden'); mc.classList.add('flex');
-                rb.classList.remove('hidden'); rb.innerText = u.role; rb.className = `ml-3 text-[10px] font-bold px-2 py-0.5 rounded uppercase ${u.role==='admin'?'bg-rose-100 text-rose-600':'bg-blue-100 text-blue-600'}`;
-                if(u.role==='admin') ba.classList.remove('hidden'); else ba.classList.add('hidden');
-            } else { mc.classList.add('hidden'); mc.classList.remove('flex'); rb.classList.add('hidden'); ba.classList.add('hidden'); }
-            
-            window.switchMainView('dashboard');
-            renderUserDashboardTasks(); logHistory('đăng nhập', 'mở ứng dụng');
-        }
-
-        window.logout = () => { currentUser = null; document.getElementById('screen-login').classList.remove('hidden'); document.getElementById('screen-dashboard').classList.add('hidden'); document.getElementById('screen-calendar').classList.add('hidden'); document.getElementById('screen-admin').classList.add('hidden'); document.getElementById('main-header').classList.add('hidden'); document.getElementById('main-body').classList.replace('bg-adminbg', 'bg-background'); document.getElementById('header-title').classList.replace('text-slate-100', 'text-slate-800'); };
-
-        window.addManualTask = async () => {
-            const title = document.getElementById('new-task-name').value.trim(); const w = document.getElementById('new-task-weight').value; const aId = document.getElementById('new-task-assignee').value;
-            if(!title) return showToast("Nhập tên công việc!", true);
-            const todayStr = new Date().toLocaleDateString('en-CA');
-            await addDoc(collection(db, 'tasks'), { title, weight: Number(w)||5, assigneeId: aId, status: 'pending', dateStr: todayStr, createdAt: serverTimestamp() });
-            document.getElementById('new-task-name').value = ''; showToast("Đã giao việc!"); logHistory('tạo việc', `giao đột xuất: ${title}`);
-        };
-
-        window.toggleTaskStatus = async (id, status, title) => { await updateDoc(doc(db, 'tasks', id), { status: status==='completed'?'pending':'completed' }); logHistory(status==='completed'?'hoàn tác':'hoàn thành', `Cập nhật: ${title}`); };
-        window.requestLeave = async (id, title) => { const r = prompt("Lý do nghỉ?"); if(r) { await updateDoc(doc(db, 'tasks', id), { status: 'pooled', reason: r }); logHistory('xin nghỉ', `bỏ lại: ${title}`); } };
-        window.takeTask = async (id) => { await updateDoc(doc(db, 'tasks', id), { status: 'pending', assigneeId: currentUser.id, reason: null }); logHistory('nhận làm', `từ chợ việc chung`); };
-        window.submitReport = () => { const u = document.getElementById('report-user').value; const r = document.getElementById('report-reason').value; const n = familyUsers.find(x=>x.id===u).name; logHistory('báo cáo', `🚩 Báo cáo ${n}: ${r}`); showToast('Đã ghi nhận báo cáo!'); };
-
-        // ==========================================
-        // ADMIN PANEL & CRUD
-        // ==========================================
-        window.toggleAdminPanel = () => {
-            const dbh = document.getElementById('screen-dashboard'); const cal = document.getElementById('screen-calendar'); const ap = document.getElementById('screen-admin'); const bd = document.getElementById('main-body'); const ht = document.getElementById('header-title');
-            if(ap.classList.contains('hidden')) {
-                dbh.classList.add('hidden'); cal.classList.add('hidden'); document.getElementById('nav-toggles').classList.add('hidden');
-                ap.classList.remove('hidden'); bd.classList.replace('bg-background', 'bg-adminbg'); ht.classList.replace('text-slate-800', 'text-slate-100'); document.getElementById('header-text').innerText = 'Database'; document.getElementById('header-icon').className = 'fa-solid fa-server text-primary mr-3';
-                window.switchAdminTab('templates');
+                // Pháo giấy nhẹ báo đăng nhập thành công
+                confetti({ particleCount: 30, spread: 50, origin: { y: 0.2 }, zIndex: 9999, colors: ['#4ADE80', '#ffffff'] });
             } else {
-                ap.classList.add('hidden'); bd.classList.replace('bg-adminbg', 'bg-background'); ht.classList.replace('text-slate-100', 'text-slate-800'); document.getElementById('header-text').innerText = 'Việc Nhà'; document.getElementById('header-icon').className = 'fa-solid fa-house-chimney text-primary mr-3';
-                document.getElementById('nav-toggles').classList.remove('hidden'); window.switchMainView('dashboard');
+                document.getElementById('admin-error').classList.remove('hidden');
             }
         };
 
-        window.switchAdminTab = (tab) => {
-            currentAdminTab = tab; document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.getElementById(`tab-btn-${tab}`).classList.add('active'); document.getElementById('admin-path').innerText = `~/db/${tab}.json`;
-            const act = document.getElementById('admin-actions');
-            if(tab === 'users') act.innerHTML = `<button onclick="window.openCrud('user')" class="bg-primary hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded transition"><i class="fa-solid fa-plus mr-1"></i>New User</button>`;
-            else if(tab === 'templates') act.innerHTML = `<button id="btn-run-schedule" onclick="window.runSmartScheduler()" class="bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded transition mr-2"><i class="fa-solid fa-play mr-1"></i>Tạo Lịch Tháng Này</button><button onclick="window.openCrud('template')" class="bg-primary hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded transition"><i class="fa-solid fa-plus mr-1"></i>New Rule</button>`;
-            else act.innerHTML = '';
-            renderAdminTable();
-        };
-
-        function renderAdminTable() {
-            const th = document.getElementById('admin-thead'); const tb = document.getElementById('admin-tbody');
-            if (currentAdminTab === 'users') {
-                th.innerHTML = `<tr><th class="p-3">Avatar</th><th class="p-3">Tên</th><th class="p-3">Quyền</th><th class="p-3 text-right">Actions</th></tr>`;
-                tb.innerHTML = familyUsers.map(u => `<tr class="border-b border-slate-700 hover:bg-slate-800"><td class="p-3"><img src="${u.avatar}" class="w-6 h-6 rounded-full bg-white"></td><td class="p-3 text-slate-200">${u.name}</td><td class="p-3 text-blue-400">${u.role}</td><td class="p-3 text-right"><button onclick="window.openCrud('user','${u.id}')" class="text-slate-400 hover:text-white p-2"><i class="fa-solid fa-pen"></i></button><button onclick="window.deleteDocDB('users','${u.id}')" class="text-slate-400 hover:text-rose-500 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('');
-            } 
-            else if (currentAdminTab === 'templates') {
-                th.innerHTML = `<tr><th class="p-3">Tên Công Việc</th><th class="p-3">Lịch Lặp Lại</th><th class="p-3">Điểm</th><th class="p-3 text-right">Actions</th></tr>`;
-                tb.innerHTML = taskTemplates.map(t => {
-                    let f = t.frequencyType==='daily'?'Mỗi ngày':`Thứ: ${t.daysOfWeek?.map(d=>d===0?'CN':`T${d+1}`).join(', ')||'Chưa chọn'}`;
-                    return `<tr class="border-b border-slate-700 hover:bg-slate-800"><td class="p-3 text-slate-200">${t.title}</td><td class="p-3 text-blue-400">${f}</td><td class="p-3 text-amber-500 font-bold">${t.weight}★</td><td class="p-3 text-right"><button onclick="window.openCrud('template','${t.id}')" class="text-slate-400 hover:text-white p-2"><i class="fa-solid fa-pen"></i></button><button onclick="window.deleteDocDB('task_templates','${t.id}')" class="text-slate-400 hover:text-rose-500 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`;
-                }).join('');
-            }
-            else if (currentAdminTab === 'tasks') {
-                th.innerHTML = `<tr><th class="p-3">Ngày</th><th class="p-3">Trạng Thái</th><th class="p-3">Công Việc</th><th class="p-3 text-right">Actions</th></tr>`;
-                tb.innerHTML = allTasks.map(t => `<tr class="border-b border-slate-700 hover:bg-slate-800"><td class="p-3 text-slate-400">${t.dateStr}</td><td class="p-3">${t.status==='completed'?'<span class="text-green-500">Done</span>':'<span class="text-slate-400">Wait</span>'}</td><td class="p-3 text-slate-200">${t.title}</td><td class="p-3 text-right"><button onclick="window.deleteDocDB('tasks','${t.id}')" class="text-slate-400 hover:text-rose-500 p-2"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('');
-            }
-            else if (currentAdminTab === 'history') {
-                th.innerHTML = `<tr><th class="p-3">Log</th></tr>`;
-                tb.innerHTML = allHistory.map(h => `<tr><td class="p-3 text-slate-400 text-xs border-b border-slate-700">[${h.timestamp?new Date(h.timestamp.toDate()).toLocaleTimeString('vi-VN'):''}] <strong>${h.userName}</strong>: ${h.action} - ${h.details}</td></tr>`).join('');
-            }
-        }
-
-        window.openCrud = (type, id = null) => {
-            document.getElementById('crud-modal').classList.remove('hidden');
-            const b = document.getElementById('crud-modal-body');
+        window.addPointsToCloud = async (memberId, currentPoints, pointsToAdd, event, colorHex) => {
+            if (!isAdmin) return; // Bảo vệ vòng ngoài
             
-            if(type === 'user') {
-                document.getElementById('crud-modal-title').innerText = id ? "Sửa User" : "Tạo User";
-                const u = id ? familyUsers.find(x=>x.id===id) : {name:'', role:'member', pin:'', avatar:`https://api.dicebear.com/7.x/notionists/svg?seed=${Math.random()}&backgroundColor=e2e8f0`};
-                b.innerHTML = `<input type="hidden" id="crud-id" value="${id||''}"><input type="hidden" id="crud-type" value="user"><input type="text" id="db-u-name" value="${u.name}" placeholder="Tên" class="w-full bg-slate-50 border rounded-lg p-2 mb-3 outline-none"><select id="db-u-role" class="w-full bg-slate-50 border rounded-lg p-2 mb-3 outline-none"><option value="member" ${u.role==='member'?'selected':''}>Member</option><option value="manage" ${u.role==='manage'?'selected':''}>Manage</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select><input type="text" id="db-u-pin" value="${u.pin||''}" placeholder="Mã PIN (nếu Admin)" class="w-full bg-slate-50 border rounded-lg p-2 mb-3 outline-none"><input type="text" id="db-u-ava" value="${u.avatar}" placeholder="URL Ảnh" class="w-full bg-slate-50 border rounded-lg p-2 mb-3 outline-none"><button onclick="window.saveCrud()" class="w-full bg-primary text-white py-2 rounded-lg font-bold">Lưu</button>`;
-            } else if (type === 'template') {
-                document.getElementById('crud-modal-title').innerText = "Luật Tự Động Giao Việc";
-                const t = id ? taskTemplates.find(x=>x.id===id) : {title:'', weight:5, frequencyType:'daily', daysOfWeek:[]};
-                const daysHtml = [1,2,3,4,5,6,0].map(d => `<label class="flex items-center gap-1 text-sm bg-slate-100 px-2 py-1 rounded cursor-pointer"><input type="checkbox" value="${d}" class="day-cb accent-primary" ${t.daysOfWeek?.includes(d)?'checked':''}> ${d===0?'CN':`T${d+1}`}</label>`).join('');
+            // Bắn pháo giấy ngay lập tức để UI mượt mà
+            const rect = event.target.getBoundingClientRect();
+            confetti({
+                particleCount: 50, spread: 70,
+                origin: { x: (rect.left + rect.width / 2) / window.innerWidth, y: (rect.top + rect.height / 2) / window.innerHeight },
+                colors: [colorHex, '#FFD700', '#FFFFFF'], disableForReducedMotion: true
+            });
 
-                b.innerHTML = `<input type="hidden" id="crud-id" value="${id||''}"><input type="hidden" id="crud-type" value="template">
-                    <label class="text-xs text-slate-500">Tên công việc</label><input type="text" id="db-t-title" value="${t.title}" class="w-full bg-slate-50 border rounded-lg p-2 mb-3 outline-none">
-                    <div class="flex gap-2 mb-3"><div class="w-1/2"><label class="text-xs text-slate-500">Điểm (Độ nặng)</label><input type="number" id="db-t-weight" value="${t.weight}" class="w-full bg-slate-50 border rounded-lg p-2 outline-none"></div>
-                    <div class="w-1/2"><label class="text-xs text-slate-500">Lặp lại</label><select id="db-t-freq" onchange="document.getElementById('div-days').style.display=this.value==='specific_days'?'flex':'none'" class="w-full bg-slate-50 border rounded-lg p-2 outline-none"><option value="daily" ${t.frequencyType==='daily'?'selected':''}>Mỗi ngày</option><option value="specific_days" ${t.frequencyType==='specific_days'?'selected':''}>Chọn Thứ</option></select></div></div>
-                    <div id="div-days" class="gap-2 flex-wrap mb-4" style="display:${t.frequencyType==='specific_days'?'flex':'none'}">${daysHtml}</div>
-                    <button onclick="window.saveCrud()" class="w-full bg-amber-500 text-white py-2 rounded-lg font-bold">Lưu Kịch Bản</button>`;
+            // Cập nhật lên Cloud Storage
+            try {
+                const memberRef = doc(db, 'artifacts', appId, 'public', 'data', 'members', memberId);
+                await updateDoc(memberRef, { points: currentPoints + pointsToAdd });
+                // Giao diện sẽ tự động cập nhật nhờ onSnapshot!
+            } catch (error) {
+                console.error("Lỗi khi cộng điểm:", error);
             }
         };
 
-        window.closeCrudModal = () => document.getElementById('crud-modal').classList.add('hidden');
+        // 5. RENDER GIAO DIỆN
+        function formatNumber(num) { return num.toLocaleString('vi-VN'); }
+        function getFamilyTotalPoints() { return membersData.reduce((total, m) => total + m.points, 0); }
 
-        window.saveCrud = async () => {
-            const type = document.getElementById('crud-type').value; const id = document.getElementById('crud-id').value;
-            if (type === 'user') {
-                const data = { name: document.getElementById('db-u-name').value, role: document.getElementById('db-u-role').value, pin: document.getElementById('db-u-pin').value||null, avatar: document.getElementById('db-u-ava').value };
-                if(id) await updateDoc(doc(db, 'users', id), data); else await addDoc(collection(db, 'users'), data);
-            } else if (type === 'template') {
-                const checkedDays = Array.from(document.querySelectorAll('.day-cb:checked')).map(cb => Number(cb.value));
-                const data = { title: document.getElementById('db-t-title').value, weight: Number(document.getElementById('db-t-weight').value), frequencyType: document.getElementById('db-t-freq').value, daysOfWeek: checkedDays };
-                if(id) await updateDoc(doc(db, 'task_templates', id), data); else await addDoc(collection(db, 'task_templates'), data);
-            } else if (type === 'manual_task') {
-                const title = document.getElementById('manual-task-title').value; const weight = document.getElementById('manual-task-weight').value; const assigneeId = document.getElementById('manual-task-assignee').value; const dateStr = document.getElementById('manual-task-date').value;
-                if(!title) return showToast("Nhập tên!", true);
-                await addDoc(collection(db, 'tasks'), { title, weight: Number(weight)||5, assigneeId, status: 'pending', dateStr, createdAt: serverTimestamp(), isManual: true });
-            }
-            closeCrudModal(); showToast("Đã lưu dữ liệu!");
-        };
+        function renderMembers() {
+            const container = document.getElementById('members-container');
+            container.innerHTML = '';
 
-        window.deleteDocDB = async (col, id) => { if(confirm("Xóa vĩnh viễn?")) await deleteDoc(doc(db, col, id)); };
-
-        // ==========================================
-        // UI TIỆN ÍCH (TOAST & SIDEBAR LỊCH SỬ)
-        // ==========================================
-        window.toggleHistory = () => { const m=document.getElementById('history-modal'); const p=document.getElementById('history-panel'); if(m.classList.contains('hidden')){m.classList.remove('hidden');setTimeout(()=>p.classList.remove('translate-x-full'),10);}else{p.classList.add('translate-x-full');setTimeout(()=>m.classList.add('hidden'),300);} };
-        window.filterHistorySidebar = () => renderHistorySidebar();
-        function renderHistorySidebar() {
-            const kw = (document.getElementById('history-search')?.value||'').toLowerCase();
-            document.getElementById('history-list').innerHTML = allHistory.filter(h => h.userName.toLowerCase().includes(kw) || h.action.toLowerCase().includes(kw) || h.details.toLowerCase().includes(kw)).map(item => {
-                let ic = 'fa-circle-dot text-slate-300'; if(item.action==='báo cáo') ic='fa-triangle-exclamation text-rose-500'; else if(item.action.includes('hoàn thành')) ic='fa-check-circle text-green-500';
-                return `<li class="relative"><span class="absolute -left-[1.65rem] top-1 bg-white"><i class="fa-solid ${ic} text-lg bg-white"></i></span><div class="mb-1"><span class="font-bold text-sm text-slate-700">${item.userName}</span><span class="text-slate-500 text-sm"> ${item.details}</span></div></li>`;
-            }).join('');
-        }
-        async function logHistory(act, det) { await addDoc(collection(db, 'history'), { action: act, details: det, userId: currentUser.id, userName: currentUser.name, timestamp: serverTimestamp() }); }
-
-        let toastTimeout;
-        function showToast(msg, isError = false) {
-            const toast = document.getElementById('toast'); document.getElementById('toast-message').innerText = msg;
-            const icon = document.getElementById('toast-icon');
-            if(isError) { icon.className = 'fa-solid fa-xmark'; icon.parentElement.className = 'w-8 h-8 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center shrink-0'; } 
-            else { icon.className = 'fa-solid fa-check'; icon.parentElement.className = 'w-8 h-8 rounded-full bg-green-100 text-green-500 flex items-center justify-center shrink-0'; }
-            toast.classList.replace('translate-y-24', 'translate-y-0'); toast.classList.replace('opacity-0', 'opacity-100');
-            clearTimeout(toastTimeout); toastTimeout = setTimeout(() => { toast.classList.replace('translate-y-0', 'translate-y-24'); toast.classList.replace('opacity-100', 'opacity-0'); }, 3000);
+            membersData.forEach(member => {
+                const buttonDisplay = isAdmin ? 'flex' : 'hidden'; // Chỉ hiện nếu là Admin
+                const card = document.createElement('div');
+                card.className = `card-flat p-6 flex flex-col items-center relative`;
+                card.innerHTML = `
+                    <div class="w-24 h-24 rounded-full ${member.bg} flex items-center justify-center mb-4 border-4 border-white shadow-sm">
+                        <i class="fa-solid ${member.icon} text-4xl ${member.color}"></i>
+                    </div>
+                    <h3 class="text-xl font-extrabold text-gray-800 mb-1">${member.name}</h3>
+                    <div class="text-3xl font-black ${member.color} mb-6 flex items-baseline gap-1 bg-gray-50 px-4 py-2 rounded-2xl border-2 border-gray-100">
+                        ${formatNumber(member.points)}
+                        <i class="fa-solid fa-star text-yellow-400 text-lg"></i>
+                    </div>
+                    <div class="${buttonDisplay} gap-3 w-full mt-auto">
+                        <button onclick="window.addPointsToCloud('${member.id}', ${member.points}, 10, event, '${member.shadowColor}')" 
+                            class="btn-flat flex-1 ${member.barBg} text-white font-black py-3 rounded-2xl"
+                            style="box-shadow: 0 4px 0 0 ${member.shadowColor};">
+                            +10
+                        </button>
+                        <button onclick="window.addPointsToCloud('${member.id}', ${member.points}, 50, event, '${member.shadowColor}')" 
+                            class="btn-flat flex-1 ${member.barBg} text-white font-black py-3 rounded-2xl"
+                            style="box-shadow: 0 4px 0 0 ${member.shadowColor};">
+                            +50
+                        </button>
+                    </div>
+                    ${!isAdmin ? `<div class="w-full text-center text-xs font-bold text-gray-400 mt-2 bg-gray-100 py-2 rounded-lg border-2 border-gray-200 border-dashed">Yêu cầu quyền Admin</div>` : ''}
+                `;
+                container.appendChild(card);
+            });
         }
 
-        listenToDatabase();
+        function createProgressBar(percent, colorClass) {
+            return `
+                <div class="w-full bg-gray-100 rounded-full h-6 border-2 border-gray-200 overflow-hidden p-0.5 mt-2">
+                    <div class="progress-bar ${colorClass} h-full rounded-full relative" style="width: ${percent}%">
+                        <div class="absolute top-0.5 left-1.5 right-1.5 h-1.5 bg-white/30 rounded-full"></div>
+                    </div>
+                </div>`;
+        }
+
+        function renderCommonGoals() {
+            const container = document.getElementById('common-goals-container');
+            container.innerHTML = '';
+            const totalFamilyPoints = getFamilyTotalPoints();
+
+            commonGoalsData.forEach(goal => {
+                let progressPercent = Math.min((totalFamilyPoints / goal.target) * 100, 100);
+                const isCompleted = progressPercent === 100;
+
+                // Xử lý hiển thị Ảnh hoặc Icon
+                let visualHtml = '';
+                if (goal.type === 'image' && goal.imageUrl) {
+                    visualHtml = `<img src="${goal.imageUrl}" class="w-full h-full object-cover rounded-xl" alt="Mục tiêu">`;
+                } else {
+                    visualHtml = `<i class="fa-solid ${goal.icon} text-6xl ${goal.iconColor}"></i>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = `card-flat overflow-hidden flex flex-col sm:flex-row p-2 ${isCompleted ? 'border-green-400 bg-green-50' : ''}`;
+                card.innerHTML = `
+                    <div class="sm:w-1/3 h-48 sm:h-auto ${goal.type==='icon' ? goal.iconBg : 'bg-gray-200'} rounded-2xl flex items-center justify-center relative border-2 border-white overflow-hidden">
+                        ${visualHtml}
+                        ${isCompleted ? `
+                        <div class="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-black px-3 py-1 rounded-xl shadow-sm border-2 border-white pop-in">
+                            HOÀN THÀNH!
+                        </div>` : ''}
+                    </div>
+                    <div class="p-5 flex flex-col justify-center flex-1">
+                        <h3 class="text-2xl font-black text-gray-800 mb-4">${goal.title}</h3>
+                        <div class="mt-auto">
+                            <div class="flex justify-between items-end mb-1">
+                                <span class="font-bold text-gray-500">Tiến độ gia đình</span>
+                                <span class="font-black text-gray-800 text-lg">${formatNumber(totalFamilyPoints)} / ${formatNumber(goal.target)}</span>
+                            </div>
+                            ${createProgressBar(progressPercent, isCompleted ? 'bg-green-400' : 'bg-yellow-400')}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderIndividualGoals() {
+            const container = document.getElementById('individual-goals-container');
+            container.innerHTML = '';
+
+            individualGoalsData.forEach(goal => {
+                const member = membersData.find(m => m.id === goal.assigneeId);
+                if (!member) return;
+
+                let progressPercent = Math.min((member.points / goal.target) * 100, 100);
+                const isCompleted = progressPercent === 100;
+
+                // Xử lý hiển thị Ảnh hoặc Icon cho mục tiêu cá nhân
+                let visualHtml = '';
+                if (goal.type === 'image' && goal.imageUrl) {
+                    visualHtml = `<img src="${goal.imageUrl}" class="w-full h-full object-cover rounded-[14px]" alt="Mục tiêu">`;
+                } else {
+                    visualHtml = `<div class="w-full h-full rounded-[14px] ${member.bg} flex items-center justify-center"><i class="fa-solid ${goal.icon} text-2xl ${member.color}"></i></div>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = `card-flat p-5 flex flex-col relative ${isCompleted ? 'border-green-400 bg-green-50' : ''}`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center border-2 border-white shadow-sm p-0.5">
+                            ${visualHtml}
+                        </div>
+                        <div class="bg-white border-2 border-gray-100 px-3 py-1 rounded-xl flex items-center gap-2">
+                            <div class="w-5 h-5 rounded-full ${member.barBg} text-white flex items-center justify-center text-[10px]">
+                                <i class="fa-solid ${member.icon}"></i>
+                            </div>
+                            <span class="text-sm font-bold text-gray-600">${member.name.split(' ')[0]}</span>
+                        </div>
+                    </div>
+                    <h3 class="font-black text-lg text-gray-800 mb-4 truncate">${goal.title}</h3>
+                    <div class="mt-auto">
+                        <div class="flex justify-between text-sm mb-1 font-black">
+                            <span class="text-gray-400">${formatNumber(member.points)}</span>
+                            <span class="text-gray-800">${formatNumber(goal.target)}</span>
+                        </div>
+                        ${createProgressBar(progressPercent, isCompleted ? 'bg-green-400' : member.barBg)}
+                    </div>
+                    ${isCompleted ? `
+                    <div class="absolute -top-3 -right-3 bg-green-500 text-white w-10 h-10 flex items-center justify-center rounded-full border-4 border-white pop-in">
+                        <i class="fa-solid fa-check"></i>
+                    </div>` : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderAll() {
+            document.getElementById('family-total-points').innerText = formatNumber(getFamilyTotalPoints());
+            renderMembers();
+            renderCommonGoals();
+            renderIndividualGoals();
+        }
+
+        // Bắt đầu khởi tạo
+        initAuth();
+
     </script>
 </body>
 </html>

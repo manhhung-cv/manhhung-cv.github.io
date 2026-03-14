@@ -593,6 +593,35 @@
                 transform: rotate(360deg);
             }
         }
+
+        /* Khung chứa quảng cáo chung */
+        .ad-slot-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            margin: 10px auto;
+            background: rgba(0, 0, 0, 0.05);
+            /* Hiển thị vùng chờ khi ảnh chưa tải */
+        }
+
+        /* Ép ảnh không được vượt quá khung nhưng vẫn giữ tỷ lệ */
+        .ad-slot-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            /* Hoặc cover tùy sở thích */
+            display: block;
+        }
+
+        /* Riêng cho mobile, nếu banner 728px quá rộng thì nó sẽ co lại */
+        @media (max-width: 768px) {
+            .ad-slot-container {
+                width: 100% !important;
+                height: auto !important;
+                max-height: 150px;
+            }
+        }
     </style>
 </head>
 
@@ -664,7 +693,7 @@
 
                 <div class="form-group">
                     <label>Bí danh (Tuỳ chọn)</label>
-                    <input type="text" id="alias"  placeholder="Tuỳ chọn">
+                    <input type="text" id="alias" placeholder="Tuỳ chọn">
                 </div>
 
                 <div class="settings-row">
@@ -791,12 +820,12 @@
         const auth = getAuth(app);
 
         const ADS_POS = [
-            { id: 'top', name: 'Top Banner' },
-            { id: 'content', name: 'Center' },
-            { id: 'sidebar_left', name: 'Left' },
-            { id: 'sidebar_right', name: 'Right' },
-            { id: 'footer', name: 'Sticky Footer' },
-            { id: 'interstitial', name: 'Popup' }
+            { id: 'top', name: 'Top Banner', width: '728px', height: '90px', maxWidth: '100%' },
+            { id: 'content', name: 'Center', width: '300px', height: '250px', maxWidth: '100%' },
+            { id: 'sidebar_left', name: 'Left', width: '160px', height: '600px', maxWidth: '20vw' },
+            { id: 'sidebar_right', name: 'Right', width: '160px', height: '600px', maxWidth: '20vw' },
+            { id: 'footer', name: 'Sticky Footer', width: '100%', height: '50px', maxWidth: '100%' },
+            { id: 'interstitial', name: 'Popup', width: '80vw', height: '80vh', maxWidth: '500px' }
         ];
 
         /* --- LOGIC TOKEN THAY ĐỔI: HQ --- */
@@ -1272,15 +1301,29 @@
                         const adDoc = await getDoc(doc(db, "settings", "ads"));
                         if (adDoc.exists()) {
                             const ads = adDoc.data();
+                            // Tìm cấu hình trong ADS_POS dựa trên ID
                             ADS_POS.forEach(p => {
                                 const d = ads[p.id];
                                 if (d && d.img) {
                                     const slot = document.getElementById(`ad-slot-${p.id}`);
                                     slot.classList.remove('hidden');
+
+                                    // Áp dụng style trực tiếp vào container
+                                    slot.style.width = p.width;
+                                    slot.style.height = p.height;
+                                    slot.style.maxWidth = p.maxWidth;
+                                    slot.classList.add('ad-slot-container'); // Thêm class CSS đã viết ở trên
+
                                     if (p.id === 'interstitial') {
-                                        document.getElementById('interstitial-content').innerHTML = `<a href="${d.url || '#'}" target="_blank"><img src="${d.img}" style="max-height:80vh; max-width:100%"></a>`;
+                                        document.getElementById('interstitial-content').innerHTML = `
+                <a href="${d.url || '#'}" target="_blank">
+                    <img src="${d.img}" style="max-height:${p.height}; max-width:${p.width}">
+                </a>`;
                                     } else {
-                                        slot.innerHTML = `<a href="${d.url || '#'}" target="_blank"><img src="${d.img}" style="width:100%; border-radius:8px;"></a>`;
+                                        slot.innerHTML = `
+                <a href="${d.url || '#'}" target="_blank">
+                    <img src="${d.img}" alt="Ad">
+                </a>`;
                                     }
                                 }
                             });
