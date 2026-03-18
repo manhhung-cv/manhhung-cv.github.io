@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Quản lý đơn hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <div id="loginSection" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 w-full max-w-sm">
+            <h1 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Đăng nhập Admin</h1>
+            <input type="email" id="email" placeholder="Email" class="w-full px-4 py-3 mb-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black">
+            <input type="password" id="password" placeholder="Mật khẩu" class="w-full px-4 py-3 mb-6 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black">
+            <button id="loginBtn" class="w-full bg-black text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition">Đăng Nhập</button>
+            <p id="loginError" class="text-red-500 text-sm mt-3 hidden text-center">Sai thông tin đăng nhập!</p>
+        </div>
+    </div>
+
+    <div id="adminSection" class="hidden p-6 max-w-6xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-2xl font-semibold text-gray-800">Quản Lý Đơn Hàng</h1>
+                <p class="text-gray-500 text-sm">Thêm, sửa, xoá đơn hàng của khách</p>
+            </div>
+            <button id="logoutBtn" class="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition">Đăng xuất</button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
+                <h2 class="text-lg font-semibold mb-4">Lên Đơn Mới</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">Mã đơn hàng</label>
+                        <input type="text" id="orderId" placeholder="VD: DH123" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-black focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">Tên người mua</label>
+                        <input type="text" id="buyerName" placeholder="Tên khách hàng" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-black focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">Tên sản phẩm</label>
+                        <input type="text" id="productName" placeholder="Tên sản phẩm" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-black focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm text-gray-500 mb-1">Hạn sử dụng</label>
+                        <input type="date" id="expiryDate" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-black focus:outline-none">
+                    </div>
+                    <button id="addOrderBtn" class="w-full bg-black text-white py-2.5 rounded-lg font-medium hover:bg-gray-800 transition">Thêm Đơn</button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+                <h2 class="text-lg font-semibold mb-4">Danh Sách Đơn</h2>
+                <table class="w-full text-left min-w-[600px]">
+                    <thead>
+                        <tr class="text-sm text-gray-500 border-b border-gray-100">
+                            <th class="pb-3 font-medium">Mã Đơn</th>
+                            <th class="pb-3 font-medium">Khách Hàng</th>
+                            <th class="pb-3 font-medium">Sản Phẩm</th>
+                            <th class="pb-3 font-medium">Hạn SD</th>
+                            <th class="pb-3 font-medium text-right">Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderList" class="text-sm">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-lg w-full max-w-md">
+            <h2 class="text-lg font-semibold mb-4">Chỉnh Sửa Đơn Hàng</h2>
+            <input type="hidden" id="editDocId">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm text-gray-500 mb-1">Mã đơn hàng</label>
+                    <input type="text" id="editOrderId" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-black focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-500 mb-1">Tên người mua</label>
+                    <input type="text" id="editBuyerName" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-black focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-500 mb-1">Tên sản phẩm</label>
+                    <input type="text" id="editProductName" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-black focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-500 mb-1">Hạn sử dụng</label>
+                    <input type="date" id="editExpiryDate" class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-black focus:outline-none">
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button id="cancelEditBtn" class="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-200 transition">Huỷ</button>
+                    <button id="saveEditBtn" class="flex-1 bg-black text-white py-2.5 rounded-lg font-medium hover:bg-gray-800 transition">Lưu Thay Đổi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD3iNgTEPWTLts2MoFEZm29WjAgqIeS6bs",
+            authDomain: "tra-cuu-hunq.firebaseapp.com",
+            projectId: "tra-cuu-hunq",
+            storageBucket: "tra-cuu-hunq.firebasestorage.app",
+            messagingSenderId: "132028098824",
+            appId: "1:132028098824:web:6e2f550fc8a08fb6b424bd"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State & Auth
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('adminSection').classList.remove('hidden');
+                loadOrders(); // Load dữ liệu khi đã đăng nhập
+            } else {
+                document.getElementById('loginSection').classList.remove('hidden');
+                document.getElementById('adminSection').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            signInWithEmailAndPassword(auth, email, password).catch(() => {
+                document.getElementById('loginError').classList.remove('hidden');
+            });
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => signOut(auth));
+
+        // Hàm tính ngày hiển thị trong bảng admin
+        function formatExpiry(dateString) {
+            const exp = new Date(dateString);
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            exp.setHours(0,0,0,0);
+            
+            const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+            const formattedDate = exp.toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: 'numeric'});
+
+            if (diffDays > 0) return `<span class="text-green-600">${formattedDate}</span>`;
+            if (diffDays === 0) return `<span class="text-yellow-600 font-medium">${formattedDate} (Hôm nay)</span>`;
+            return `<span class="text-red-600 font-medium">${formattedDate} (Hết hạn)</span>`;
+        }
+
+        // Real-time Load Orders
+        let unsub = null;
+        function loadOrders() {
+            if(unsub) unsub();
+            unsub = onSnapshot(collection(db, "orders"), (snapshot) => {
+                const list = document.getElementById('orderList');
+                list.innerHTML = "";
+                
+                let ordersData = [];
+                snapshot.forEach(doc => {
+                    ordersData.push({ id: doc.id, ...doc.data() });
+                });
+
+                // Sắp xếp đơn mới thêm lên đầu
+                ordersData.sort((a, b) => b.createdAt - a.createdAt);
+
+                ordersData.forEach(data => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-50 hover:bg-gray-50 transition";
+                    tr.innerHTML = `
+                        <td class="py-3 font-medium text-gray-800">${data.orderId}</td>
+                        <td class="py-3 text-gray-600">${data.buyerName}</td>
+                        <td class="py-3 text-gray-600">${data.productName}</td>
+                        <td class="py-3">${formatExpiry(data.expiryDate)}</td>
+                        <td class="py-3 text-right space-x-2">
+                            <button class="edit-btn text-blue-500 hover:underline" data-id="${data.id}" data-order="${data.orderId}" data-buyer="${data.buyerName}" data-product="${data.productName}" data-expiry="${data.expiryDate}">Sửa</button>
+                            <button class="delete-btn text-red-500 hover:underline" data-id="${data.id}">Xoá</button>
+                        </td>
+                    `;
+                    list.appendChild(tr);
+                });
+
+                attachEvents();
+            });
+        }
+
+        // Thêm đơn hàng
+        document.getElementById('addOrderBtn').addEventListener('click', async () => {
+            const orderId = document.getElementById('orderId').value;
+            const buyerName = document.getElementById('buyerName').value;
+            const productName = document.getElementById('productName').value;
+            const expiryDate = document.getElementById('expiryDate').value;
+
+            if(!orderId || !buyerName || !productName || !expiryDate) {
+                alert("Vui lòng điền đủ thông tin!"); return;
+            }
+
+            try {
+                await addDoc(collection(db, "orders"), {
+                    orderId, buyerName, productName, expiryDate, createdAt: new Date()
+                });
+                document.querySelectorAll('#adminSection input[type="text"], #adminSection input[type="date"]').forEach(input => input.value = '');
+            } catch (e) { alert("Lỗi khi thêm: " + e.message); }
+        });
+
+        // Gắn sự kiện Xoá và Sửa (Dùng Event Delegation hoặc Query Selector sau khi render)
+        function attachEvents() {
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    if(confirm("Bạn có chắc chắn muốn xoá đơn này?")) {
+                        await deleteDoc(doc(db, "orders", e.target.dataset.id));
+                    }
+                });
+            });
+
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const dataset = e.target.dataset;
+                    document.getElementById('editDocId').value = dataset.id;
+                    document.getElementById('editOrderId').value = dataset.order;
+                    document.getElementById('editBuyerName').value = dataset.buyer;
+                    document.getElementById('editProductName').value = dataset.product;
+                    document.getElementById('editExpiryDate').value = dataset.expiry;
+                    document.getElementById('editModal').classList.remove('hidden');
+                });
+            });
+        }
+
+        // Modal Sửa Đơn
+        document.getElementById('cancelEditBtn').addEventListener('click', () => {
+            document.getElementById('editModal').classList.add('hidden');
+        });
+
+        document.getElementById('saveEditBtn').addEventListener('click', async () => {
+            const id = document.getElementById('editDocId').value;
+            try {
+                await updateDoc(doc(db, "orders", id), {
+                    orderId: document.getElementById('editOrderId').value,
+                    buyerName: document.getElementById('editBuyerName').value,
+                    productName: document.getElementById('editProductName').value,
+                    expiryDate: document.getElementById('editExpiryDate').value
+                });
+                document.getElementById('editModal').classList.add('hidden');
+            } catch (e) { alert("Lỗi cập nhật: " + e.message); }
+        });
+
+    </script>
+</body>
+</html>
