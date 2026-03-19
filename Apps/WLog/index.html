@@ -165,9 +165,9 @@
 
             <div
                 class="flex overflow-x-auto no-scrollbar gap-2 px-6 py-3 border-b border-gray-100 dark:border-gray-800/60 bg-white dark:bg-gray-950 shrink-0">
-                <button
+                <buttson
                     class="set-tab-btn px-4 py-1.5 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-xs font-semibold shrink-0 transition"
-                    onclick="switchSetTab('set-sync', this)">Đám mây</button>
+                    onclick="switchSetTab('set-sync', this)">Đám mây</buttson>
                 <button
                     class="set-tab-btn px-4 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs font-semibold shrink-0 transition"
                     onclick="switchSetTab('set-theme', this)">Giao diện</button>
@@ -261,7 +261,7 @@
                         <div
                             class="flex justify-between items-center border-b border-gray-100 dark:border-gray-800/60 pb-3">
                             <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Giờ chuẩn / Ngày</span>
-                            <input type="number" step="0.5" id="standardHours"
+                            <input type="number" step="0.01" id="standardHours"
                                 class="w-16 text-center bg-gray-100 dark:bg-gray-800/60 rounded-xl px-2 py-1.5 text-sm font-bold text-gray-900 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 transition">
                         </div>
                     </div>
@@ -548,7 +548,7 @@
                                 <button type="button" onclick="adjustHours('hoursInput', -0.5)"
                                     class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 dark:bg-gray-800 text-gray-500 active:scale-90 transition"><i
                                         class="fa-solid fa-minus text-xs"></i></button>
-                                <input type="number" step="0.5" id="hoursInput" required
+                                <input type="number" step="0.01" id="hoursInput" required
                                     class="w-12 text-center bg-transparent text-gray-900 dark:text-white text-xl font-bold outline-none hide-arrows p-0 border-none"
                                     value="8">
                                 <button type="button" onclick="adjustHours('hoursInput', 0.5)"
@@ -577,7 +577,7 @@
                                 <button type="button" onclick="adjustHours('otInput', -0.5)"
                                     class="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50/50 dark:bg-blue-900/10 text-blue-500 active:scale-90 transition"><i
                                         class="fa-solid fa-minus text-xs"></i></button>
-                                <input type="number" step="0.5" id="otInput" value="0"
+                                <input type="number" step="0.01" id="otInput" value="0"
                                     class="w-12 text-center bg-transparent text-blue-600 dark:text-blue-400 text-xl font-bold outline-none hide-arrows p-0 border-none">
                                 <button type="button" onclick="adjustHours('otInput', 0.5)"
                                     class="w-8 h-8 flex items-center justify-center rounded-full bg-blue-50/50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 active:scale-90 transition"><i
@@ -894,7 +894,7 @@
 
     </div>
 
-    <script>
+   <script>
         // ==========================================
         // CẤU HÌNH FIREBASE - VUI LÒNG THAY MÃ CỦA BẠN VÀO ĐÂY
         // ==========================================
@@ -1260,8 +1260,15 @@
         const getCycleDates = (targetDate) => {
             const year = targetDate.getFullYear(), month = targetDate.getMonth(), cutoff = Number(appConfig.cutoffDate) || 31;
             let start, end;
-            if (cutoff >= 28) { start = new Date(year, month, 1); end = new Date(year, month + 1, 0); }
-            else { start = new Date(year, month - 1, cutoff + 1); end = new Date(year, month, cutoff); }
+            if (cutoff >= 28) { 
+                start = new Date(year, month, 1); 
+                end = new Date(year, month + 1, 0); 
+            } else { 
+                start = new Date(year, month - 1, cutoff + 1); 
+                end = new Date(year, month, cutoff); 
+            }
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999); // Ép cứng kết thúc vào cuối ngày
             return { start, end };
         };
 
@@ -1287,7 +1294,11 @@
                 for (let i = 0; i < offset; i++) container.innerHTML += `<div></div>`;
 
                 let iterDate = new Date(start);
-                while (iterDate <= end) {
+                iterDate.setHours(0, 0, 0, 0);
+                let safeEnd = new Date(end);
+                safeEnd.setHours(23, 59, 59, 999);
+                
+                while (iterDate <= safeEnd) {
                     const dateStr = getLocalISOString(iterDate);
                     const dayName = daysOfWeek[iterDate.getDay()];
                     const existingEntry = workEntries.find(e => e.date === dateStr);
@@ -1386,12 +1397,37 @@
             if (reRender) renderTimeline();
         };
 
-        window.adjustHours = (inputId, amount) => {
-            const input = document.getElementById(inputId);
+        // 1. Hàm cộng trừ giờ (Fix lỗi số thập phân dài của Javascript)
+        window.adjustHours = (id, amount) => {
+            const input = document.getElementById(id);
             let val = Number(input.value) || 0;
             val += amount;
-            if (val < 0) val = 0; // Không cho phép giờ âm
-            input.value = val;
+            if (val < 0) val = 0;
+            // Làm tròn 2 chữ số thập phân (VD: 7.75)
+            input.value = Number(val.toFixed(2));
+        };
+
+        // 2. Hàm đọc tiền tệ / số từ ô nhập (Bảo tồn dấu phẩy thập phân)
+        window.getMoneyValue = (str) => {
+            if (!str) return 0;
+            let s = String(str);
+            // Nếu có cả chấm (hàng nghìn) và phẩy (thập phân) VD: 1.000.000,75
+            if (s.includes(',') && s.includes('.')) {
+                s = s.replace(/\./g, '').replace(',', '.');
+            }
+            // Nếu chỉ có dấu phẩy VD: 7,75
+            else if (s.includes(',')) {
+                s = s.replace(',', '.');
+            }
+            // Lọc bỏ ký tự thừa, chỉ giữ số và dấu chấm thập phân
+            return Number(s.replace(/[^0-9.-]/g, '')) || 0;
+        };
+
+        // 3. Hàm hiển thị tiền tệ (Tự động dùng phẩy cho thập phân, chấm cho hàng nghìn)
+        window.formatMoney = (amount, currency = 'đ') => {
+            // Dùng toLocaleString của VN để format cực chuẩn
+            const formatted = Number(amount).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+            return formatted + (currency === 'đ' ? currency : ` ${currency}`);
         };
 
         const calculateDailySalaryDetails = (hours, otHours, hasAllowance, isHoliday, dateStr) => {
@@ -1713,7 +1749,7 @@
             }
 
             const startM = new Date(start); startM.setHours(0, 0, 0, 0);
-            const endM = new Date(end); endM.setHours(0, 0, 0, 0);
+            const endM = new Date(end); endM.setHours(23, 59, 59, 999); // Đổi thành 23:59:59 để không bị hụt ngày cuối
 
             let totalWorkingDaysInCycle = 0;
             let iterDate = new Date(startM);
@@ -1724,8 +1760,8 @@
                 }
                 iterDate.setDate(iterDate.getDate() + 1);
             }
-            if (totalWorkingDaysInCycle === 0) totalWorkingDaysInCycle = 1; // Tránh lỗi chia cho 0
-
+            if (totalWorkingDaysInCycle === 0) totalWorkingDaysInCycle = 1;
+            
             // -- CẬP NHẬT THANH 1: Tiến độ theo Lịch Tháng --
             const timeProgTotalEl = document.getElementById('timeProgTotal');
             if (timeProgTotalEl) {
@@ -1922,6 +1958,7 @@
 
         init();
     </script>
+
 </body>
 
 </html>
