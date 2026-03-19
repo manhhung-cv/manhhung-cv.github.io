@@ -1,0 +1,1461 @@
+
+<!DOCTYPE html>
+<html lang="vi" class="pink-light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>WorkLog Pro | Pink Edition</title>
+    <meta name="description" content="Sổ chấm công thế hệ mới - Giao diện kẹo ngọt">
+    <meta name="author" content="Hunq">
+    <meta name="theme-color" content="#FF3366">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/Asset/logo/logo.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Be Vietnam Pro', 'sans-serif'] },
+                    colors: {
+                        pink: {
+                            50: '#fff5f7', 100: '#ffe6ed', 200: '#ffccd9',
+                            300: '#ff99b3', 400: '#ff668c', 500: '#ff3366', 
+                            600: '#cc2952', 700: '#991f3d', 800: '#661429', 900: '#330a14',
+                        },
+                        plum: {
+                            50: '#f6f1f4', 100: '#e9dee3', 200: '#d7c0ca',
+                            300: '#bf99aa', 400: '#a36d86', 500: '#894f6b',
+                            600: '#6d3f55', 700: '#553142', 800: '#321d27', 
+                            900: '#1f1117', 950: '#120a0e'
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 10px 30px -5px rgba(255, 51, 102, 0.08)',
+                        'modal': '0 30px 60px -12px rgba(50, 29, 39, 0.15), 0 18px 36px -18px rgba(0, 0, 0, 0.1)',
+                        'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.02)'
+                    },
+                    borderRadius: {
+                        '4xl': '2rem',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: 'Be Vietnam Pro', sans-serif; overflow-x: hidden; }
+        ::-webkit-scrollbar { height: 5px; width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #ffccd9; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #553142; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        * {
+            transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+            transition-duration: 300ms;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* PINK LIGHT */
+        html.pink-light body { background-color: #fff5f7; color: #330a14; }
+        html.pink-light .main-card { background-color: #ffffff; border-color: #ffe6ed; }
+
+        /* PINK DARK */
+        html.dark body { background-color: #1f1117; color: #fce7f3; }
+        html.dark .main-card { background-color: #321d27; border-color: #553142; }
+
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+
+<body class="antialiased min-h-screen pb-10 flex flex-col items-center pt-6 md:pt-12 px-4 selection:bg-pink-100 selection:text-pink-900">
+
+    <div id="customModalOverlay" class="fixed inset-0 bg-plum-950/40 dark:bg-black/60 backdrop-blur-md hidden flex justify-center items-center z-[999] p-6 opacity-0 transition-opacity duration-300">
+        <div id="customModalBox" class="bg-white dark:bg-plum-800 rounded-3xl shadow-modal w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-300 border border-pink-100 dark:border-plum-700">
+            <div class="p-8">
+                <div class="w-12 h-12 rounded-full bg-pink-100 dark:bg-pink-900/50 flex items-center justify-center text-pink-500 mb-5">
+                    <i class="fa-solid fa-bell text-xl"></i>
+                </div>
+                <h3 id="customModalTitle" class="text-xl font-bold text-gray-950 dark:text-white mb-2.5 tracking-tight">Thông báo</h3>
+                <p id="customModalMessage" class="text-base text-gray-600 dark:text-plum-200 mb-8 leading-relaxed">Nội dung</p>
+                <input type="text" id="customModalInput" class="hidden w-full px-5 py-4 border border-pink-100 dark:border-plum-700 rounded-2xl text-base outline-none bg-pink-50 dark:bg-plum-900 text-gray-950 dark:text-white focus:ring-2 focus:ring-pink-300 mb-8 font-medium placeholder:text-pink-200" autocomplete="off">
+                <div class="flex justify-end gap-3.5">
+                    <button id="customModalCancel" class="hidden px-6 py-3 bg-pink-100 dark:bg-plum-700 text-pink-700 dark:text-pink-200 rounded-full text-sm font-semibold hover:bg-pink-200 dark:hover:bg-plum-600 active:scale-95">Hủy</button>
+                    <button id="customModalOK" class="px-7 py-3 bg-pink-500 text-white rounded-full text-sm font-semibold hover:bg-pink-600 active:scale-95 shadow-lg shadow-pink-500/20">Đồng ý</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsOverlay" class="fixed inset-0 bg-plum-950/40 dark:bg-black/70 backdrop-blur-lg hidden justify-center items-end md:items-center z-[100] transition-opacity duration-300 p-0 md:p-6">
+        <div class="bg-white dark:bg-plum-900 w-full md:max-w-2xl h-[92vh] md:h-[85vh] rounded-t-4xl md:rounded-4xl shadow-modal flex flex-col overflow-hidden border border-pink-100 dark:border-plum-700 animate-[slideUp_0.4s_ease-out]">
+            <div class="flex justify-between items-center px-8 py-5 border-b border-pink-100 dark:border-plum-700/60 bg-pink-50/50 dark:bg-plum-950/40 shrink-0 relative z-10">
+                <h2 class="text-xl font-extrabold tracking-tighter text-gray-950 dark:text-white">Cấu hình Cá nhân</h2>
+                <div class="flex items-center gap-3">
+                    <button id="saveSettingsBtn" class="px-6 py-2.5 bg-pink-500 text-white text-sm font-bold rounded-full hover:bg-pink-600 active:scale-95 transition shadow-lg shadow-pink-500/15">Lưu thay đổi</button>
+                    <button id="closeSettingsBtn" class="w-10 h-10 rounded-full bg-pink-100 dark:bg-plum-700 text-pink-500 dark:text-pink-300 hover:bg-pink-200 dark:hover:bg-plum-600 flex items-center justify-center active:scale-95 transition"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <div class="flex overflow-x-auto no-scrollbar gap-2 px-8 py-4 border-b border-pink-100 dark:border-plum-700/60 bg-white dark:bg-plum-900 shrink-0">
+                <button class="set-tab-btn px-5 py-2 rounded-full bg-pink-500 text-white text-sm font-semibold shrink-0 transition" onclick="switchSetTab('set-sync', this)"><i class="fa-solid fa-cloud mr-2"></i>Đám mây</button>
+                <button class="set-tab-btn px-5 py-2 rounded-full bg-pink-100 dark:bg-plum-800 text-pink-700 dark:text-pink-200 text-sm font-semibold shrink-0 transition" onclick="switchSetTab('set-theme', this)"><i class="fa-solid fa-palette mr-2"></i>Giao diện</button>
+                <button class="set-tab-btn px-5 py-2 rounded-full bg-pink-100 dark:bg-plum-800 text-pink-700 dark:text-pink-200 text-sm font-semibold shrink-0 transition" onclick="switchSetTab('set-time', this)"><i class="fa-solid fa-sliders mr-2"></i>Cơ bản</button>
+                <button class="set-tab-btn px-5 py-2 rounded-full bg-pink-100 dark:bg-plum-800 text-pink-700 dark:text-pink-200 text-sm font-semibold shrink-0 transition" onclick="switchSetTab('set-salary', this)"><i class="fa-solid fa-money-bill-wave mr-2"></i>Lương & Trợ cấp</button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-8 py-8 relative space-y-10">
+                <div id="set-sync" class="set-tab-content block space-y-8 pb-10">
+                    <div id="loggedOutUI" class="space-y-5 bg-white dark:bg-plum-800 p-7 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                        <div class="flex items-center gap-4 mb-2">
+                            <div class="w-12 h-12 rounded-2xl bg-pink-100 dark:bg-plum-700 flex items-center justify-center text-pink-500"><i class="fa-solid fa-shield-heart text-2xl"></i></div>
+                            <div>
+                                <h4 class="text-lg font-bold text-gray-950 dark:text-white">Bảo mật dữ liệu</h4>
+                                <p class="text-sm text-gray-500 dark:text-plum-200">Đăng nhập để đồng bộ và không lo mất dữ liệu.</p>
+                            </div>
+                        </div>
+                        <input type="email" id="emailInput" placeholder="Email của bạn" class="w-full px-5 py-4 bg-pink-50 dark:bg-plum-950 border border-pink-100 dark:border-plum-700 rounded-2xl text-base outline-none text-gray-950 dark:text-white focus:ring-2 focus:ring-pink-300 placeholder:text-pink-200">
+                        <input type="password" id="passInput" placeholder="Mật khẩu" class="w-full px-5 py-4 bg-pink-50 dark:bg-plum-950 border border-pink-100 dark:border-plum-700 rounded-2xl text-base outline-none text-gray-950 dark:text-white focus:ring-2 focus:ring-pink-300 placeholder:text-pink-200">
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="loginEmail()" class="flex-1 bg-gray-950 dark:bg-white text-white dark:text-plum-950 text-base font-bold py-4 rounded-2xl active:scale-95 transition shadow-lg shadow-gray-950/10">Đăng nhập / Đăng ký</button>
+                            <button type="button" onclick="loginGoogle()" class="w-16 bg-white dark:bg-plum-950 border border-pink-100 dark:border-plum-700 text-gray-700 dark:text-white rounded-2xl flex items-center justify-center active:scale-95 transition hover:bg-pink-50"><img src="https://authjs.dev/img/providers/google.svg" alt="Google" class="w-6 h-6"></button>
+                        </div>
+                        <div class="text-center mt-2">
+                            <button onclick="resetPassword()" class="text-sm font-medium text-pink-500 hover:text-pink-700 underline underline-offset-4 transition">Quên mật khẩu?</button>
+                        </div>
+                    </div>
+
+                    <div id="loggedInUI" class="hidden flex-col gap-6">
+                        <div class="flex items-center justify-between bg-green-50 dark:bg-green-900/20 p-5 rounded-3xl border border-green-100 dark:border-green-800">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-800/50 text-green-600 dark:text-green-400 flex justify-center items-center"><i class="fa-solid fa-user"></i></div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-green-600 dark:text-green-400 uppercase tracking-wider">Đã kết nối</p>
+                                    <p id="userEmailDisplay" class="text-base font-bold text-gray-950 dark:text-white"></p>
+                                </div>
+                            </div>
+                            <button onclick="logout()" class="text-sm font-bold text-gray-500 hover:text-red-500 px-4 py-2 rounded-full bg-white dark:bg-plum-950 shadow-sm active:scale-95 transition">Đăng xuất</button>
+                        </div>
+                        <div class="bg-white dark:bg-plum-800 p-6 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                            <div class="flex justify-between items-center border-b border-pink-50 dark:border-plum-700/60 pb-4 mb-4">
+                                <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Tự động sao lưu</span>
+                                <label class="relative inline-flex items-center cursor-pointer active:scale-90 transition-transform">
+                                    <input type="checkbox" id="autoBackupCheck" class="sr-only peer" onchange="toggleAutoBackup(this.checked)">
+                                    <div class="w-12 h-6 bg-gray-200 dark:bg-plum-700 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                                </label>
+                            </div>
+                            <div class="flex gap-3 mb-4">
+                                <button onclick="promptManualBackup()" class="flex-1 bg-pink-50 dark:bg-plum-900 text-pink-600 dark:text-pink-300 font-bold py-3 rounded-2xl text-sm active:scale-95 transition">Tạo bản sao lưu ngay</button>
+                                <button onclick="loadFirebaseBackups()" class="w-12 bg-pink-50 dark:bg-plum-900 text-pink-500 rounded-2xl flex items-center justify-center active:scale-95 transition"><i class="fa-solid fa-rotate-right"></i></button>
+                            </div>
+                            <div class="bg-pink-50/50 dark:bg-plum-950/50 rounded-2xl border border-pink-100 dark:border-plum-700 p-3 h-48 overflow-y-auto" id="cloudBackupsList">
+                                <p class="text-sm font-medium text-gray-400 text-center py-6">Đang tải...</p>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-plum-800 p-6 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                            <h3 class="text-xs font-bold text-gray-400 dark:text-plum-300 uppercase tracking-wider mb-4">Lưu trữ cục bộ (.JSON)</h3>
+                            <div class="flex gap-3">
+                                <button onclick="exportAllData()" class="flex-1 bg-white dark:bg-plum-900 text-gray-700 dark:text-plum-100 font-bold py-3.5 rounded-2xl border border-pink-200 dark:border-plum-600 text-sm active:scale-95 shadow-sm transition">Xuất tệp</button>
+                                <label class="flex-1 bg-gray-950 dark:bg-white text-white dark:text-plum-950 font-bold py-3.5 rounded-2xl text-sm text-center cursor-pointer active:scale-95 shadow-sm transition">
+                                    Nhập tệp <input type="file" accept=".json" class="hidden" onchange="importAllData(event)">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="set-theme" class="set-tab-content hidden space-y-8 pb-10">
+                    <div class="bg-white dark:bg-plum-800 p-7 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                        <span class="block text-base font-bold text-gray-950 dark:text-white mb-5"><i class="fa-solid fa-brush mr-2 text-pink-400"></i>Chọn chủ đề yêu thích</span>
+                        <input type="hidden" id="themeSelect" value="pink-light">
+                        <div class="grid grid-cols-2 gap-4">
+                            <button type="button" class="theme-btn p-5 h-24 text-sm font-bold rounded-2xl border-2 border-pink-500 bg-white text-pink-950 shadow-soft flex flex-col justify-between" onclick="setThemeType('pink-light', this)">
+                                <div class="flex gap-1.5"><div class="w-4 h-4 rounded-full bg-pink-50"></div><div class="w-4 h-4 rounded-full bg-white border border-pink-100"></div><div class="w-4 h-4 rounded-full bg-pink-500"></div></div>
+                                Hồng Thơ Ngây
+                            </button>
+                            <button type="button" class="theme-btn p-5 h-24 text-sm font-medium rounded-2xl border-2 border-pink-100 dark:border-plum-700 text-gray-500 dark:text-plum-300 bg-pink-50 dark:bg-plum-800 flex flex-col justify-between hover:border-pink-300" onclick="setThemeType('pink-dark', this)">
+                                <div class="flex gap-1.5"><div class="w-4 h-4 rounded-full bg-plum-900 border border-plum-700"></div><div class="w-4 h-4 rounded-full bg-plum-800 border border-plum-700"></div><div class="w-4 h-4 rounded-full bg-pink-400"></div></div>
+                                Hồng Huyền Bí
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="set-time" class="set-tab-content hidden space-y-8 pb-10">
+                    <div class="bg-white dark:bg-plum-800 p-7 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft space-y-6">
+                        <div class="flex justify-between items-center border-b border-pink-50 dark:border-plum-700/60 pb-5">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Tiền tệ</span>
+                            <input type="hidden" id="currency" value="đ">
+                            <div class="flex p-1 bg-pink-50 dark:bg-plum-900 rounded-xl w-48 border border-pink-100 dark:border-plum-700">
+                                <button type="button" class="currency-btn flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 transition hover:text-pink-500" onclick="setCurrency('¥', this)">¥</button>
+                                <button type="button" class="currency-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white dark:bg-plum-700 shadow-sm text-gray-950 dark:text-white transition" onclick="setCurrency('đ', this)">đ</button>
+                                <button type="button" class="currency-btn flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 transition hover:text-pink-500" onclick="setCurrency('$', this)">$</button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pb-2">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Ngày chốt công</span>
+                            <input type="number" id="cutoffDate" min="1" max="31" class="w-20 text-center bg-pink-50 dark:bg-plum-900 rounded-xl px-3 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700" placeholder="31">
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-plum-800 p-7 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                        <label class="block text-base font-semibold text-gray-700 dark:text-plum-100 mb-4">Ngày làm việc mặc định</label>
+                        <div class="flex flex-wrap gap-3">
+                            <label class="cursor-pointer group"><input type="checkbox" value="T2" class="workday-cb hidden peer" checked><span class="w-11 h-11 flex items-center justify-center rounded-full bg-pink-50 dark:bg-plum-900 text-gray-500 dark:text-plum-300 text-sm font-bold peer-checked:bg-pink-500 peer-checked:text-white transition shadow-inner-soft peer-checked:shadow-lg peer-checked:shadow-pink-500/30">T2</span></label>
+                            <label class="cursor-pointer group"><input type="checkbox" value="T3" class="workday-cb hidden peer" checked><span class="w-11 h-11 flex items-center justify-center rounded-full bg-pink-50 dark:bg-plum-900 text-gray-500 dark:text-plum-300 text-sm font-bold peer-checked:bg-pink-500 peer-checked:text-white transition shadow-inner-soft peer-checked:shadow-lg peer-checked:shadow-pink-500/30">T3</span></label>
+                            <label class="cursor-pointer group"><input type="checkbox" value="T4" class="workday-cb hidden peer" checked><span class="w-11 h-11 flex items-center justify-center rounded-full bg-pink-50 dark:bg-plum-900 text-gray-500 dark:text-plum-300 text-sm font-bold peer-checked:bg-pink-500 peer-checked:text-white transition shadow-inner-soft peer-checked:shadow-lg peer-checked:shadow-pink-500/30">T4</span></label>
+                            <label class="cursor-pointer group"><input type="checkbox" value="T5" class="workday-cb hidden peer" checked><span class="w-11 h-11 flex items-center justify-center rounded-full bg-pink-50 dark:bg-plum-900 text-gray-500 dark:text-plum-300 text-sm font-bold peer-checked:bg-pink-500 peer-checked:text-white transition shadow-inner-soft peer-checked:shadow-lg peer-checked:shadow-pink-500/30">T5</span></label>
+                            <label class="cursor-pointer group"><input type="checkbox" value="T6" class="workday-cb hidden peer" checked><span class="w-11 h-11 flex items-center justify-center rounded-full bg-pink-50 dark:bg-plum-900 text-gray-500 dark:text-plum-300 text-sm font-bold peer-checked:bg-pink-500 peer-checked:text-white transition shadow-inner-soft peer-checked:shadow-lg peer-checked:shadow-pink-500/30">T6</span></label>
+                            <label class="cursor-pointer group"><input type="checkbox" value="T7" class="workday-cb hidden peer" checked><span class="w-11 h-11 flex items-center justify-center rounded-full bg-pink-50 dark:bg-plum-900 text-gray-500 dark:text-plum-300 text-sm font-bold peer-checked:bg-pink-500 peer-checked:text-white transition shadow-inner-soft peer-checked:shadow-lg peer-checked:shadow-pink-500/30">T7</span></label>
+                            <label class="cursor-pointer group"><input type="checkbox" value="CN" class="workday-cb hidden peer"><span class="w-11 h-11 flex items-center justify-center rounded-full bg-pink-50 dark:bg-plum-900 text-gray-500 dark:text-plum-300 text-sm font-bold peer-checked:bg-red-500 peer-checked:text-white transition shadow-inner-soft peer-checked:shadow-lg peer-checked:shadow-red-500/30">CN</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="set-salary" class="set-tab-content hidden space-y-8 pb-10">
+                    <div class="bg-white dark:bg-plum-800 p-7 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft space-y-5">
+                        <div class="flex justify-between items-center border-b border-pink-50 dark:border-plum-700/60 pb-5">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Hình thức lương</span>
+                            <input type="hidden" id="salaryType" value="thang">
+                            <div class="flex p-1 bg-pink-50 dark:bg-plum-900 rounded-xl w-56 border border-pink-100 dark:border-plum-700">
+                                <button type="button" class="salary-type-btn flex-1 py-2 text-[13px] font-bold rounded-lg bg-white dark:bg-plum-700 shadow-sm text-gray-950 dark:text-white transition" onclick="setSalaryType('thang', this)">Theo Tháng</button>
+                                <button type="button" class="salary-type-btn flex-1 py-2 text-[13px] font-medium rounded-lg text-gray-500 transition hover:text-pink-500" onclick="setSalaryType('gio', this)">Theo Giờ</button>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pb-2">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Giờ chuẩn / Ngày</span>
+                            <input type="number" step="0.5" id="standardHours" class="w-20 text-center bg-pink-50 dark:bg-plum-900 rounded-xl px-3 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700">
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-plum-800 p-7 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft space-y-5" id="monthlyWrapper">
+                        <div class="flex justify-between items-center border-b border-pink-50 dark:border-plum-700/60 pb-5">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Lương cơ bản / Tháng</span>
+                            <input type="text" inputmode="numeric" id="baseSalaryMonth" class="money-input w-28 text-right bg-pink-50 dark:bg-plum-900 rounded-xl px-4 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700">
+                        </div>
+                        <div class="flex justify-between items-center pb-2">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Số ngày chuẩn / Tháng</span>
+                            <input type="number" id="standardDays" class="w-28 text-right bg-pink-50 dark:bg-plum-900 rounded-xl px-4 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700">
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-plum-800 p-7 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft hidden" id="hourlyWrapper">
+                        <div class="flex justify-between items-center">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Lương cơ bản / Giờ</span>
+                            <input type="text" inputmode="numeric" id="baseSalaryHour" class="money-input w-28 text-right bg-pink-50 dark:bg-plum-900 rounded-xl px-4 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700">
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-plum-800 p-7 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft space-y-5">
+                        <h3 class="text-xs font-bold text-pink-500 uppercase tracking-wider mb-2">Phụ cấp & Làm thêm</h3>
+                        <div class="flex justify-between items-center border-b border-pink-50 dark:border-plum-700/60 pb-5">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Lương OT / Giờ</span>
+                            <input type="text" inputmode="numeric" id="otRate" class="money-input w-28 text-right bg-pink-50 dark:bg-plum-900 rounded-xl px-4 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700">
+                        </div>
+                        <div class="flex justify-between items-center border-b border-pink-50 dark:border-plum-700/60 pb-5">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Thưởng Lễ / Ngày</span>
+                            <input type="text" inputmode="numeric" id="holidayRate" class="money-input w-28 text-right bg-pink-50 dark:bg-plum-900 rounded-xl px-4 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700">
+                        </div>
+                        <div class="flex justify-between items-center border-b border-pink-50 dark:border-plum-700/60 pb-5">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Trợ cấp / Ngày</span>
+                            <input type="text" inputmode="numeric" id="dailyAllowance" class="money-input w-28 text-right bg-pink-50 dark:bg-plum-900 rounded-xl px-4 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700">
+                        </div>
+                        <div class="flex justify-between items-center pb-2">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Trợ cấp cố định / Tháng</span>
+                            <input type="text" inputmode="numeric" id="monthlyAllowance" class="money-input w-28 text-right bg-pink-50 dark:bg-plum-900 rounded-xl px-4 py-2.5 text-base font-bold text-gray-950 dark:text-white outline-none hide-arrows focus:ring-2 focus:ring-pink-300 transition border border-pink-100 dark:border-plum-700">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainApp" class="hidden w-full max-w-3xl space-y-5 px-0 md:px-2">
+        <header class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 md:px-0">
+            <h1 class="text-3xl font-extrabold tracking-tighter text-gray-950 dark:text-white">
+                WorkLog <span class="text-pink-500">Pro.</span><span class="text-xs font-medium text-pink-300 ml-1 border-l border-pink-200 pl-2">Pink Ed.</span>
+            </h1>
+
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="flex-1 sm:flex-none flex items-center justify-between bg-white dark:bg-plum-800 rounded-full px-1.5 py-1.5 border border-pink-100 dark:border-plum-700 shadow-soft">
+                    <button onclick="shiftMonth(-1)" class="w-10 h-10 flex items-center justify-center rounded-full text-pink-400 hover:bg-pink-50 dark:hover:bg-plum-700 active:scale-90 transition shrink-0"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                    <div class="relative flex-1 flex items-center justify-center h-full px-4">
+                        <span id="cycleMonthDisplay" class="text-base font-bold text-gray-950 dark:text-white select-none tracking-tight">Tháng...</span>
+                        <input type="month" id="cycleMonthPicker" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    </div>
+                    <button onclick="shiftMonth(1)" class="w-10 h-10 flex items-center justify-center rounded-full text-pink-400 hover:bg-pink-50 dark:hover:bg-plum-700 active:scale-90 transition shrink-0"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                </div>
+                <button id="openSettingsBtn" class="w-14 h-14 shrink-0 rounded-full bg-white dark:bg-plum-800 border border-pink-100 dark:border-plum-700 hover:bg-pink-50 dark:hover:bg-plum-700 flex items-center justify-center text-pink-500 transition active:scale-95 shadow-soft"><i class="fa-solid fa-gear text-xl"></i></button>
+            </div>
+        </header>
+
+        <div class="flex p-1.5 bg-white dark:bg-plum-800 rounded-full border border-pink-100 dark:border-plum-700 shadow-soft mb-6 mx-4 md:mx-0">
+            <button onclick="switchTab('tab-log', this)" class="tab-btn active-tab flex-1 py-3.5 text-sm md:text-base font-semibold rounded-full bg-pink-500 text-white shadow-lg shadow-pink-500/20 transition-all duration-300"><i class="fa-solid fa-pen-nib mr-2"></i>Ghi chép</button>
+            <button onclick="switchTab('tab-dashboard', this)" class="tab-btn flex-1 py-3.5 text-sm md:text-base font-semibold rounded-full text-gray-500 dark:text-plum-300 hover:text-pink-500 transition-all duration-300"><i class="fa-solid fa-chart-pie mr-2"></i>Thống kê</button>
+            <button onclick="switchTab('tab-payslip', this)" class="tab-btn flex-1 py-3.5 text-sm md:text-base font-semibold rounded-full text-gray-500 dark:text-plum-300 hover:text-pink-500 transition-all duration-300"><i class="fa-solid fa-file-invoice-dollar mr-2"></i>Phiếu lương</button>
+        </div>
+
+        <div id="tab-log" class="tab-content block space-y-6 px-4 md:px-0">
+            <div class="bg-white dark:bg-plum-800 rounded-4xl border border-pink-100 dark:border-plum-700 shadow-soft overflow-hidden">
+                <div class="px-6 py-6 md:p-8 border-b border-pink-50 dark:border-plum-700/60 bg-white dark:bg-plum-800">
+                    <div class="flex justify-between items-center mb-6">
+                        <div class="flex bg-pink-50 dark:bg-plum-900 rounded-full p-1 border border-pink-100 dark:border-plum-700">
+                            <button id="btnViewWeek" onclick="setViewMode('week')" class="px-5 py-2 rounded-full bg-white dark:bg-plum-700 text-sm font-semibold text-pink-600 dark:text-white shadow-sm transition">Tuần</button>
+                            <button id="btnViewCycle" onclick="setViewMode('cycle')" class="px-5 py-2 rounded-full text-sm font-semibold text-gray-500 dark:text-plum-300 transition hover:text-pink-500">Tháng</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div id="weekNavBtns" class="flex items-center gap-1.5 hidden">
+                                <button onclick="shiftWeek(-7)" class="w-10 h-10 rounded-full bg-pink-50 dark:bg-plum-900 hover:bg-pink-100 text-pink-500 flex items-center justify-center active:scale-90 transition"><i class="fa-solid fa-chevron-left text-sm"></i></button>
+                                <button onclick="shiftWeek(7)" class="w-10 h-10 rounded-full bg-pink-50 dark:bg-plum-900 hover:bg-pink-100 text-pink-500 flex items-center justify-center active:scale-90 transition"><i class="fa-solid fa-chevron-right text-sm"></i></button>
+                            </div>
+                            <button id="btnToday" class="text-sm font-semibold text-pink-600 dark:text-white px-5 py-2.5 rounded-full border border-pink-200 dark:border-plum-600 hover:bg-pink-50 dark:hover:bg-plum-700 transition bg-white dark:bg-plum-800 active:scale-95 shadow-sm">Hôm nay</button>
+                        </div>
+                    </div>
+                    <div id="timelineContainer" class="no-scrollbar"></div>
+                </div>
+
+                <form id="workForm" class="p-6 md:p-8 flex flex-col gap-6">
+                    <div class="flex justify-between items-center bg-pink-50 dark:bg-plum-900/50 p-5 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-inner-soft">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-2xl bg-white dark:bg-plum-700 flex items-center justify-center text-pink-500 shadow-sm"><i class="fa-regular fa-calendar-check text-2xl"></i></div>
+                            <div>
+                                <h2 id="formDateDisplay" class="text-xl font-bold text-gray-950 dark:text-white tracking-tight">Chọn ngày</h2>
+                                <span id="formStatusBadge" class="text-xs px-3 py-1 rounded-full font-semibold bg-gray-100 dark:bg-plum-700 text-gray-500 dark:text-plum-200 inline-block mt-1">Trống</span>
+                            </div>
+                        </div>
+                        <button type="button" id="btnDeleteCurrent" class="hidden w-12 h-12 rounded-full text-gray-400 hover:text-red-500 hover:bg-white dark:hover:bg-plum-700 active:scale-90 transition-all shadow-sm flex items-center justify-center">
+                            <i class="fa-regular fa-trash-can text-xl"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between gap-4 bg-white dark:bg-plum-800 p-6 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                            <label class="block text-base font-semibold text-gray-700 dark:text-plum-100">Giờ làm chính</label>
+                            <div class="flex items-center gap-3 bg-pink-50 dark:bg-plum-900 p-1.5 rounded-full border border-pink-100 dark:border-plum-700">
+                                <button type="button" onclick="adjustHours('hoursInput', -0.5)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-plum-700 text-pink-400 hover:text-pink-600 active:scale-90 transition shadow-sm"><i class="fa-solid fa-minus text-sm"></i></button>
+                                <input type="number" step="0.5" id="hoursInput" required class="w-16 text-center bg-transparent text-gray-950 dark:text-white text-2xl font-extrabold outline-none hide-arrows p-0 border-none focus:ring-0" value="8">
+                                <button type="button" onclick="adjustHours('hoursInput', 0.5)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-plum-700 text-pink-400 hover:text-pink-600 active:scale-90 transition shadow-sm"><i class="fa-solid fa-plus text-sm"></i></button>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 bg-white dark:bg-plum-800 p-6 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                            <label class="block text-base font-semibold text-pink-600 dark:text-pink-300">Làm thêm (OT)</label>
+                            <div class="flex items-center gap-3 bg-pink-100/50 dark:bg-pink-900/50 p-1.5 rounded-full border border-pink-200 dark:border-pink-800">
+                                <button type="button" onclick="adjustHours('otInput', -0.5)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-plum-700 text-pink-400 hover:text-pink-600 active:scale-90 transition shadow-sm"><i class="fa-solid fa-minus text-sm"></i></button>
+                                <input type="number" step="0.5" id="otInput" value="0" class="w-16 text-center bg-transparent text-pink-600 dark:text-pink-300 text-2xl font-extrabold outline-none hide-arrows p-0 border-none focus:ring-0">
+                                <button type="button" onclick="adjustHours('otInput', 0.5)" class="w-10 h-10 flex items-center justify-center rounded-full bg-white dark:bg-plum-700 text-pink-400 hover:text-pink-600 active:scale-90 transition shadow-sm"><i class="fa-solid fa-plus text-sm"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="flex items-center justify-between bg-white dark:bg-plum-800 p-6 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Nhận trợ cấp</span>
+                            <label class="relative inline-flex items-center cursor-pointer active:scale-95 transition-transform">
+                                <input type="checkbox" id="allowanceCheck" checked class="sr-only peer">
+                                <div class="w-14 h-8 bg-gray-200 dark:bg-plum-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-pink-500 shadow-inner"></div>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between bg-white dark:bg-plum-800 p-6 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                            <span class="text-base font-semibold text-gray-700 dark:text-plum-100">Ngày Lễ / Tết</span>
+                            <label class="relative inline-flex items-center cursor-pointer active:scale-95 transition-transform">
+                                <input type="checkbox" id="holidayCheck" class="sr-only peer">
+                                <div class="w-14 h-8 bg-gray-200 dark:bg-plum-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-red-500 shadow-inner"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btnSaveLog" class="w-full py-5 mt-4 bg-pink-500 text-white text-lg font-bold rounded-full hover:bg-pink-600 active:scale-[0.98] transition-all shadow-lg shadow-pink-500/25">Lưu bản ghi công <i class="fa-solid fa-arrow-right ml-2"></i></button>
+                </form>
+            </div>
+
+            <div class="bg-white dark:bg-plum-800 rounded-4xl border border-pink-100 dark:border-plum-700 shadow-soft overflow-hidden">
+                <div class="px-8 py-6 border-b border-pink-50 dark:border-plum-700/60 flex justify-between items-center bg-white dark:bg-plum-800">
+                    <h3 class="text-sm font-bold text-gray-500 dark:text-plum-300 uppercase tracking-wider">Lịch sử chu kỳ này</h3>
+                    <div class="flex gap-4">
+                        <button onclick="exportCycleImage()" class="text-sm font-semibold text-pink-500 hover:text-pink-700 active:scale-95 transition"><i class="fa-regular fa-image mr-1.5"></i>Ảnh</button>
+                        <button onclick="exportCyclePDF()" class="text-sm font-semibold text-pink-500 hover:text-pink-700 active:scale-95 transition"><i class="fa-regular fa-file-pdf mr-1.5"></i>PDF</button>
+                    </div>
+                </div>
+                <div id="cycleHistoryExportContainer" class="relative bg-white dark:bg-plum-800 p-2 md:p-4">
+                    <div id="exportSummary" class="hidden mb-6 p-6 border border-pink-100 dark:border-plum-700 rounded-3xl bg-pink-50 dark:bg-plum-900 mx-2 mt-2">
+                        <h2 class="text-xl font-bold text-gray-950 dark:text-white text-center mb-5 tracking-tight">Báo Cáo Công Tháng <span id="expMonth"></span></h2>
+                        <div class="grid grid-cols-2 gap-x-6 gap-y-4 text-base text-gray-700 dark:text-plum-100">
+                            <div>Ngày công: <span id="expTotalDays" class="font-bold text-gray-950 dark:text-white"></span></div>
+                            <div>Giờ làm: <span id="expTotalHours" class="font-bold text-gray-950 dark:text-white"></span></div>
+                            <div>Giờ OT: <span id="expTotalOT" class="font-bold text-pink-600 dark:text-pink-300"></span></div>
+                            <div class="col-span-2 mt-3 pt-3 border-t border-pink-200 dark:border-plum-600 text-lg">Tổng thu nhập: <span id="expTotalIncome" class="font-extrabold text-pink-500"></span></div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[300px]">
+                            <thead>
+                                <tr class="text-sm text-gray-500 dark:text-plum-300 border-b border-pink-50 dark:border-plum-700/60">
+                                    <th class="p-5 pl-6 font-semibold">Ngày</th>
+                                    <th class="p-5 font-semibold">Chi tiết</th>
+                                    <th class="p-5 pr-6 text-right font-semibold">Thu nhập</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTable" class="text-base divide-y divide-pink-50 dark:divide-plum-700/60"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-dashboard" class="tab-content hidden space-y-6 px-4 md:px-0">
+            <div class="bg-gradient-to-br from-pink-500 to-pink-600 text-white rounded-4xl p-10 md:p-12 flex flex-col items-center justify-center text-center shadow-xl shadow-pink-500/20 relative overflow-hidden">
+                <div class="absolute -top-10 -left-10 w-40 h-40 rounded-full bg-white/10 blur-xl"></div>
+                <div class="absolute -bottom-16 -right-16 w-56 h-56 rounded-full bg-black/10 blur-2xl"></div>
+                
+                <span class="text-sm font-bold uppercase tracking-widest text-pink-100 opacity-90 mb-4 relative z-10">Thu nhập tạm tính</span>
+                <span class="text-5xl md:text-6xl font-extrabold tracking-tighter mb-6 relative z-10 drop-shadow-md" id="dashTotal">0</span>
+                
+                <div class="px-6 py-3 bg-white/20 rounded-full flex items-center gap-2.5 text-sm font-semibold backdrop-blur-md border border-white/20 relative z-10 shadow-inner-soft">
+                    <i class="fa-solid fa-money-bill-trend-up"></i>
+                    <span>Trung bình:</span>
+                    <span id="dashAvgPay" class="font-bold text-base">0</span>
+                    <span class="opacity-80">/ ngày</span>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-plum-800 p-8 rounded-4xl border border-pink-100 dark:border-plum-700 shadow-soft space-y-8" id="monthlyProgressSection">
+                <div>
+                    <div class="flex justify-between items-end mb-3 px-1">
+                        <div>
+                            <span class="block text-xs font-bold text-gray-400 dark:text-plum-300 uppercase tracking-wider mb-1.5">Thời gian chu kỳ</span>
+                            <div class="flex items-baseline gap-1.5">
+                                <span class="text-2xl font-extrabold text-gray-950 dark:text-white tracking-tight" id="timeProgCurrent">0</span>
+                                <span class="text-sm font-medium text-gray-500 dark:text-plum-200">/ <span id="timeProgTotal">30</span> ngày</span>
+                            </div>
+                        </div>
+                        <span class="text-base font-bold text-pink-500" id="timeProgPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-pink-50 dark:bg-plum-900 rounded-full h-4 overflow-hidden border border-pink-100 dark:border-plum-700 shadow-inner-soft p-0.5">
+                        <div class="bg-pink-500 h-full rounded-full transition-all duration-1000 ease-out shadow-lg shadow-pink-500/30" id="timeProgBar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="workProgressWrapper">
+                    <div class="flex justify-between items-end mb-3 px-1">
+                        <div>
+                            <span class="block text-xs font-bold text-gray-400 dark:text-plum-300 uppercase tracking-wider mb-1.5">Ngày công chuẩn</span>
+                            <div class="flex items-baseline gap-1.5">
+                                <span class="text-2xl font-extrabold text-gray-950 dark:text-white tracking-tight" id="progCurrent">0</span>
+                                <span class="text-sm font-medium text-gray-500 dark:text-plum-200">/ <span id="progTarget">26</span> ngày</span>
+                            </div>
+                        </div>
+                        <span class="text-base font-bold text-pink-500" id="progPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-pink-50 dark:bg-plum-900 rounded-full h-4 overflow-hidden border border-pink-100 dark:border-plum-700 shadow-inner-soft p-0.5">
+                        <div class="bg-gray-900 dark:bg-white h-full rounded-full transition-all duration-1000 ease-out shadow-lg shadow-gray-900/20" id="progBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+                <div class="bg-white dark:bg-plum-800 p-6 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft flex flex-col items-center justify-center text-center gap-2">
+                    <span class="text-xs font-bold text-gray-500 dark:text-plum-300 uppercase tracking-wider">Tổng ngày</span>
+                    <span class="text-3xl font-extrabold text-gray-950 dark:text-white tracking-tight" id="dashDays">0</span>
+                </div>
+                <div class="bg-red-50/50 dark:bg-red-950/30 p-6 rounded-3xl border border-red-100 dark:border-red-900 flex flex-col items-center justify-center text-center gap-2">
+                    <span class="text-xs font-bold text-red-500 dark:text-red-300 uppercase tracking-wider">Lễ/Tết</span>
+                    <span class="text-3xl font-extrabold text-red-600 dark:text-red-300 tracking-tight" id="dashHolidays">0</span>
+                </div>
+                <div class="bg-white dark:bg-plum-800 p-6 rounded-3xl border border-pink-100 dark:border-plum-700 shadow-soft flex flex-col items-center justify-center text-center gap-1.5 sm:col-span-1 col-span-2">
+                    <span class="text-xs font-bold text-gray-500 dark:text-plum-300 uppercase tracking-wider">Giờ chính</span>
+                    <span class="text-3xl font-extrabold text-gray-950 dark:text-white tracking-tight" id="dashHours">0</span>
+                    <span class="text-sm font-medium text-pink-500" id="dashOT">OT: 0h</span>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-plum-800 p-8 rounded-4xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                <h3 class="text-sm font-bold text-gray-500 dark:text-plum-300 uppercase tracking-wider mb-6">Chi tiết các khoản thu</h3>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center bg-pink-50 dark:bg-plum-900/50 p-5 rounded-2xl border border-pink-100/50 dark:border-plum-700/50">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-white dark:bg-plum-700 flex items-center justify-center text-pink-500 shadow-sm"><i class="fa-solid fa-wallet text-xl"></i></div>
+                            <span class="text-base font-bold text-gray-800 dark:text-plum-100">Lương cơ bản</span>
+                        </div>
+                        <span class="text-lg font-bold text-gray-950 dark:text-white" id="dashBasePay">0</span>
+                    </div>
+                     <div class="flex justify-between items-center bg-pink-50 dark:bg-plum-900/50 p-5 rounded-2xl border border-pink-100/50 dark:border-plum-700/50">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-white dark:bg-plum-700 flex items-center justify-center text-pink-500 shadow-sm"><i class="fa-solid fa-clock-rotate-left text-xl"></i></div>
+                            <span class="text-base font-bold text-gray-800 dark:text-plum-100">Tiền làm thêm (OT)</span>
+                        </div>
+                        <span class="text-lg font-bold text-pink-600 dark:text-pink-300" id="dashOTPay">0</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-pink-50 dark:bg-plum-900/50 p-5 rounded-2xl border border-pink-100/50 dark:border-plum-700/50">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-full bg-white dark:bg-plum-700 flex items-center justify-center text-pink-500 shadow-sm"><i class="fa-solid fa-gift text-xl"></i></div>
+                            <span class="text-base font-bold text-gray-800 dark:text-plum-100">Phụ cấp & Thưởng Lễ</span>
+                        </div>
+                        <span class="text-lg font-bold text-gray-950 dark:text-white" id="dashAllowance">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-payslip" class="tab-content hidden space-y-6 px-4 md:px-0">
+            <div class="bg-white dark:bg-plum-800 p-8 rounded-4xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                <h2 class="text-sm font-bold mb-6 uppercase tracking-wider text-gray-500 dark:text-plum-300 border-b border-pink-50 dark:border-plum-700/60 pb-4">Tổng Thu Nhập</h2>
+                <div class="space-y-4 text-base font-medium">
+                    <div class="flex justify-between"><span class="text-gray-600 dark:text-plum-200">Lương cơ bản</span><span class="text-gray-950 dark:text-white font-bold" id="psBase">0</span></div>
+                    <div class="flex justify-between"><span class="text-gray-600 dark:text-plum-200">Làm thêm (OT)</span><span class="text-pink-600 dark:text-pink-300 font-bold" id="psOT">0</span></div>
+                    <div class="flex justify-between"><span class="text-gray-600 dark:text-plum-200">Thưởng ngày lễ</span><span class="text-gray-950 dark:text-white font-bold" id="psHoliday">0</span></div>
+                    <div class="flex justify-between"><span class="text-gray-600 dark:text-plum-200">Tổng trợ cấp</span><span class="text-gray-950 dark:text-white font-bold" id="psAllowance">0</span></div>
+                </div>
+                <div class="flex justify-between items-center pt-6 mt-6 border-t border-pink-100 dark:border-plum-700">
+                    <span class="text-lg font-bold text-gray-950 dark:text-white">Cộng thu nhập</span>
+                    <span class="text-2xl font-extrabold text-pink-500 tracking-tight" id="psTotal">0</span>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-plum-800 p-8 rounded-4xl border border-pink-100 dark:border-plum-700 shadow-soft">
+                <h2 class="text-sm font-bold mb-6 uppercase tracking-wider text-gray-500 dark:text-plum-300 border-b border-pink-50 dark:border-plum-700/60 pb-4">Khấu Trừ & Chi Phí</h2>
+                <div class="space-y-5">
+                    <div class="flex justify-between items-center">
+                        <span class="text-base font-medium text-gray-600 dark:text-plum-200">Thuế</span>
+                        <input type="text" inputmode="numeric" id="inputTax" class="money-input w-32 px-4 py-3 border border-pink-100 dark:border-plum-600 rounded-2xl text-base font-bold outline-none text-right bg-pink-50 dark:bg-plum-900 dark:text-white transition focus:ring-2 focus:ring-pink-300 shadow-inner-soft" value="0">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-base font-medium text-gray-600 dark:text-plum-200">Bảo hiểm</span>
+                        <input type="text" inputmode="numeric" id="inputInsurance" class="money-input w-32 px-4 py-3 border border-pink-100 dark:border-plum-600 rounded-2xl text-base font-bold outline-none text-right bg-pink-50 dark:bg-plum-900 dark:text-white transition focus:ring-2 focus:ring-pink-300 shadow-inner-soft" value="0">
+                    </div>
+                </div>
+                <div class="mt-8 border-t border-pink-50 dark:border-plum-700/60 pt-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-base font-medium text-gray-600 dark:text-plum-200">Chi phí khác</span>
+                        <button onclick="addCustomExpense()" class="text-sm font-bold text-pink-500 hover:text-pink-600 bg-pink-50 dark:bg-plum-900 px-4 py-2 rounded-full active:scale-95 transition"><i class="fa-solid fa-plus mr-1"></i>Thêm khoản</button>
+                    </div>
+                    <div id="customExpensesList" class="space-y-3"></div>
+                </div>
+                <div class="flex justify-between items-center pt-6 mt-6 border-t border-pink-100 dark:border-plum-700">
+                    <span class="text-lg font-bold text-gray-950 dark:text-white">Cộng khấu trừ</span>
+                    <span class="text-2xl font-extrabold text-gray-950 dark:text-white tracking-tight" id="psTotalDeductions">0</span>
+                </div>
+            </div>
+
+            <div class="bg-gray-950 dark:bg-white p-8 md:p-10 rounded-4xl shadow-xl shadow-gray-950/10 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-pink-500/20 dark:bg-pink-500/10 rounded-full blur-2xl"></div>
+                <div class="relative z-10">
+                    <span class="block text-sm font-bold text-pink-400 dark:text-pink-500 uppercase tracking-widest">Thực nhận</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400 mt-1.5 font-medium">(Số dư cuối cùng mang về)</span>
+                </div>
+                <span class="text-4xl md:text-5xl font-extrabold text-white dark:text-plum-950 tracking-tighter relative z-10 drop-shadow-sm" id="psNetTotal">0</span>
+            </div>
+
+            <div class="bg-white dark:bg-plum-800 p-8 rounded-4xl border border-pink-100 dark:border-plum-700 mt-6 shadow-soft">
+                <label class="block text-base font-bold text-gray-800 dark:text-white mb-4">Lương thực nhận có khớp với hệ thống không?</label>
+                <div class="flex flex-col sm:flex-row gap-4 sm:gap-6 mb-4">
+                    <label class="flex items-center gap-3 cursor-pointer bg-pink-50 dark:bg-plum-900 px-5 py-3 rounded-2xl border border-pink-100 dark:border-plum-700 w-full sm:w-auto">
+                        <input type="radio" name="isMatch" value="yes" checked class="w-5 h-5 text-pink-500 focus:ring-pink-500 border-gray-300" onchange="toggleActualInput(true)">
+                        <span class="text-base font-semibold text-gray-900 dark:text-plum-100">Đã khớp <i class="fa-solid fa-check text-green-500 ml-1"></i></span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer bg-pink-50 dark:bg-plum-900 px-5 py-3 rounded-2xl border border-pink-100 dark:border-plum-700 w-full sm:w-auto">
+                        <input type="radio" name="isMatch" value="no" class="w-5 h-5 text-pink-500 focus:ring-pink-500 border-gray-300" onchange="toggleActualInput(false)">
+                        <span class="text-base font-semibold text-gray-900 dark:text-plum-100">Có sai lệch <i class="fa-solid fa-triangle-exclamation text-orange-500 ml-1"></i></span>
+                    </label>
+                </div>
+                <div id="actualInputWrapper" class="hidden mt-4">
+                    <input type="text" inputmode="numeric" id="actualReceivedInput" placeholder="Nhập số tiền bạn thực tế nhận được..." class="money-input w-full px-6 py-4 border border-pink-200 dark:border-plum-600 rounded-2xl text-base font-bold outline-none bg-white dark:bg-plum-950 dark:text-white focus:ring-2 focus:ring-pink-400 shadow-inner-soft">
+                </div>
+            </div>
+
+            <button onclick="saveCurrentPayslip()" class="w-full bg-pink-500 text-white font-extrabold text-lg py-5 rounded-full shadow-lg shadow-pink-500/30 hover:bg-pink-600 active:scale-[0.98] transition mt-6"><i class="fa-solid fa-floppy-disk mr-2"></i>Lưu Phiếu Lương</button>
+
+            <div class="pt-8">
+                <h3 class="text-sm font-bold text-gray-400 dark:text-plum-300 uppercase tracking-wider mb-5 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left"></i> Lịch sử đã lưu</h3>
+                <div id="savedPayslipsContainer" class="space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIG FIREBASE (THAY MÃ CỦA BẠN VÀO ĐÂY)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAZMqF1hkGZ-vZl2Gj9YPAnwGGOiS-ZJ6A",
+            authDomain: "sochamcong-hunq.firebaseapp.com",
+            projectId: "sochamcong-hunq",
+            storageBucket: "sochamcong-hunq.firebasestorage.app",
+            messagingSenderId: "85426930976",
+            appId: "1:85426930976:web:d98438d8fcf8a050364345"
+        };
+
+        let db, auth, googleProvider;
+        let currentUser = null;
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            auth = firebase.auth();
+            googleProvider = new firebase.auth.GoogleAuthProvider();
+
+            auth.onAuthStateChanged(user => {
+                currentUser = user;
+                if (user) {
+                    document.getElementById('loggedOutUI').classList.add('hidden');
+                    document.getElementById('loggedInUI').classList.remove('hidden');
+                    document.getElementById('loggedInUI').classList.add('flex');
+                    document.getElementById('userEmailDisplay').innerText = user.email || user.displayName || 'Người dùng';
+                    loadFirebaseBackups();
+                } else {
+                    document.getElementById('loggedOutUI').classList.remove('hidden');
+                    document.getElementById('loggedInUI').classList.add('hidden');
+                    document.getElementById('loggedInUI').classList.remove('flex');
+                    document.getElementById('cloudBackupsList').innerHTML = '<p class="text-sm font-medium text-gray-400 text-center py-6">Vui lòng đăng nhập để xem dữ liệu.</p>';
+                }
+            });
+        } catch (error) { console.log("Firebase config error:", error); }
+
+        // CUSTOM MODAL
+        window.customModalResolve = null;
+        function openCustomModal({ type, title, message, defaultValue = '' }) {
+            return new Promise(resolve => {
+                const overlay = document.getElementById('customModalOverlay');
+                const box = document.getElementById('customModalBox');
+                const titleEl = document.getElementById('customModalTitle');
+                const msgEl = document.getElementById('customModalMessage');
+                const inputEl = document.getElementById('customModalInput');
+                const cancelBtn = document.getElementById('customModalCancel');
+                const okBtn = document.getElementById('customModalOK');
+
+                titleEl.textContent = title;
+                msgEl.textContent = message;
+                inputEl.classList.add('hidden');
+                cancelBtn.classList.add('hidden');
+                inputEl.value = '';
+
+                if (type === 'prompt') {
+                    inputEl.classList.remove('hidden');
+                    cancelBtn.classList.remove('hidden');
+                    inputEl.value = defaultValue;
+                } else if (type === 'confirm') {
+                    cancelBtn.classList.remove('hidden');
+                }
+
+                overlay.classList.remove('hidden');
+                void overlay.offsetWidth;
+                overlay.classList.remove('opacity-0');
+                box.classList.remove('scale-95');
+                if (type === 'prompt') setTimeout(() => inputEl.focus(), 300);
+
+                window.customModalResolve = resolve;
+                const closeModal = (result) => {
+                    overlay.classList.add('opacity-0');
+                    box.classList.add('scale-95');
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                        if (window.customModalResolve) {
+                            window.customModalResolve(result);
+                            window.customModalResolve = null;
+                        }
+                    }, 300);
+                };
+
+                cancelBtn.onclick = () => closeModal(null);
+                okBtn.onclick = () => {
+                    if (type === 'prompt') closeModal(inputEl.value);
+                    else closeModal(true);
+                };
+                inputEl.onkeydown = (e) => { if (e.key === 'Enter') okBtn.click(); };
+            });
+        }
+        window.customAlert = (message, title = 'Thông báo') => openCustomModal({ type: 'alert', title, message });
+        window.customConfirm = (message, title = 'Xác nhận') => openCustomModal({ type: 'confirm', title, message });
+        window.customPrompt = (message, defaultValue = '', title = 'Nhập liệu') => openCustomModal({ type: 'prompt', title, message, defaultValue });
+
+        // FIREBASE AUTH
+        async function loginGoogle() {
+            if (!auth) return await customAlert("Vui lòng cấu hình Firebase Config.");
+            auth.signInWithPopup(googleProvider).catch(async err => await customAlert(err.message, "Lỗi"));
+        }
+        async function loginEmail() {
+            if (!auth) return await customAlert("Vui lòng cấu hình Firebase Config.");
+            const email = document.getElementById('emailInput').value;
+            const pass = document.getElementById('passInput').value;
+            if (!email || !pass) return await customAlert('Vui lòng nhập Email và Mật khẩu.');
+            auth.signInWithEmailAndPassword(email, pass).catch(async err => {
+                if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
+                    if (await customConfirm("Tài khoản không tồn tại. Bạn muốn ĐĂNG KÝ mới?")) {
+                        auth.createUserWithEmailAndPassword(email, pass).catch(async e => await customAlert(e.message, "Lỗi"));
+                    }
+                } else await customAlert(err.message, "Lỗi");
+            });
+        }
+        window.resetPassword = async () => {
+            if (!auth) return await customAlert("Vui lòng cấu hình Firebase Config.");
+            const email = document.getElementById('emailInput').value.trim();
+            if (!email) return await customAlert("Vui lòng nhập Email của bạn vào ô đăng nhập trước, sau đó bấm 'Quên mật khẩu'.");
+            try {
+                await auth.sendPasswordResetEmail(email);
+                await customAlert("Đã gửi liên kết đặt lại mật khẩu! Vui lòng kiểm tra hộp thư (bao gồm cả thư rác).", "Thành công");
+            } catch (err) {
+                if (err.code === 'auth/user-not-found') await customAlert("Tài khoản này chưa được đăng ký.", "Lỗi");
+                else await customAlert(err.message, "Lỗi");
+            }
+        };
+        function logout() { if (auth) auth.signOut(); }
+
+        // UTILS & STATE
+        let appConfig = {};
+        let workEntries = JSON.parse(localStorage.getItem('payrollEntriesV5')) || [];
+        let storedExpenses = JSON.parse(localStorage.getItem('payrollExpensesV6')) || {};
+        let savedPayslips = JSON.parse(localStorage.getItem('savedPayslipsV1')) || [];
+        let currentGrossIncome = 0;
+        let currentTargetDate = new Date();
+        let selectedDayString = "";
+        let timelineViewMode = 'week';
+
+        const daysOfWeek = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+        const fullDaysOfWeek = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
+
+        const formatNumToVN = (num) => new Intl.NumberFormat('vi-VN').format(Number(num) || 0);
+        window.formatMoney = (amount, currency = 'đ') => {
+            const formatted = Number(amount).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+            return formatted + (currency === 'đ' ? currency : ` ${currency}`);
+        };
+        window.getMoneyValue = (str) => {
+            if (!str) return 0;
+            let s = String(str);
+            if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+            else if (s.includes(',')) s = s.replace(',', '.');
+            return Number(s.replace(/[^0-9.-]/g, '')) || 0;
+        };
+        const getLocalISOString = (date) => {
+            const offset = date.getTimezoneOffset() * 60000;
+            return (new Date(date - offset)).toISOString().split('T')[0];
+        };
+        const getMonthKey = () => document.getElementById('cycleMonthPicker').value || "default";
+
+        window.formatInputMoney = (e) => {
+            let val = String(e.target.value).replace(/\D/g, '');
+            if (val === '') { e.target.value = ''; return; }
+            e.target.value = formatNumToVN(val);
+        };
+        document.querySelectorAll('.money-input').forEach(el => el.addEventListener('input', formatInputMoney));
+
+        // TABS
+        function switchTab(tabId, btnElement) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('active-tab', 'bg-pink-500', 'text-white', 'shadow-lg', 'shadow-pink-500/20');
+                b.classList.add('text-gray-500', 'dark:text-plum-300');
+            });
+            btnElement.classList.remove('text-gray-500', 'dark:text-plum-300');
+            btnElement.classList.add('active-tab', 'bg-pink-500', 'text-white', 'shadow-lg', 'shadow-pink-500/20');
+            
+            if(tabId === 'tab-log' && selectedDayString) renderTimeline();
+            else updateDataDisplays();
+        }
+        window.switchSetTab = (tabId, btnEl) => {
+            document.querySelectorAll('.set-tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            document.querySelectorAll('.set-tab-btn').forEach(btn => {
+                btn.className = "set-tab-btn px-5 py-2 rounded-full bg-pink-100 dark:bg-plum-800 text-pink-700 dark:text-pink-200 text-sm font-semibold shrink-0 transition";
+            });
+            btnEl.className = "set-tab-btn px-5 py-2 rounded-full bg-pink-500 text-white text-sm font-semibold shrink-0 transition shadow-lg shadow-pink-500/20";
+        };
+
+        // THEME
+        const applyTheme = (theme) => {
+            const html = document.documentElement;
+            html.classList.remove('pink-light', 'dark'); 
+            if (theme === 'pink-dark') {
+                html.classList.add('dark');
+                localStorage.setItem('themePrefV6', 'pink-dark');
+            } else {
+                html.classList.add('pink-light');
+                localStorage.setItem('themePrefV6', 'pink-light');
+            }
+            if(selectedDayString) renderTimeline();
+        }
+        window.setThemeType = (val, btn) => {
+            document.getElementById('themeSelect').value = val;
+            document.querySelectorAll('.theme-btn').forEach(b => {
+                b.className = "theme-btn p-5 h-24 text-sm font-medium rounded-2xl border-2 border-pink-100 dark:border-plum-700 text-gray-500 dark:text-plum-300 bg-pink-50 dark:bg-plum-800 flex flex-col justify-between hover:border-pink-300 transition";
+            });
+            if (btn) btn.className = "theme-btn p-5 h-24 text-sm font-bold rounded-2xl border-2 border-pink-500 bg-white dark:bg-plum-700 text-pink-950 dark:text-white shadow-soft flex flex-col justify-between transition";
+            applyTheme(val);
+        };
+
+        // FIREBASE SYNC
+        function toggleAutoBackup(isON) { localStorage.setItem('autoBackupON', isON ? '1' : '0'); }
+        async function createCloudBackup(name, isAuto = false) {
+            if (!db || !currentUser || !navigator.onLine) return false;
+            const data = { config: appConfig, entries: workEntries, expenses: storedExpenses, payslips: savedPayslips, timestamp: new Date().toISOString(), name, isAuto };
+            try {
+                const userBackupsRef = db.collection('users').doc(currentUser.uid).collection('backups');
+                if (isAuto) await userBackupsRef.doc('auto_backup').set(data);
+                else await userBackupsRef.add(data);
+                loadFirebaseBackups(); return true;
+            } catch (err) { return false; }
+        }
+        window.promptManualBackup = () => {
+            if (!currentUser) { customAlert("Bạn cần đăng nhập trước."); return; }
+            customPrompt("Nhập tên bản sao lưu:").then(async name => {
+                if (name) {
+                    const ok = await createCloudBackup(name, false);
+                    if (ok) await customAlert('Đã tạo bản sao lưu thành công!');
+                }
+            });
+        }
+        let autoBackupTimeout;
+        function triggerAutoBackup() {
+            if (localStorage.getItem('autoBackupON') === '1' && currentUser) {
+                clearTimeout(autoBackupTimeout);
+                autoBackupTimeout = setTimeout(() => { createCloudBackup("Tự động sao lưu", true); }, 3000);
+            }
+        }
+        async function loadFirebaseBackups() {
+            if (!db || !currentUser) return;
+            const listEl = document.getElementById('cloudBackupsList');
+            listEl.innerHTML = '<p class="text-sm font-medium text-gray-400 text-center py-6">Đang tải...</p>';
+            try {
+                const snap = await db.collection('users').doc(currentUser.uid).collection('backups').get();
+                let backups = []; snap.forEach(doc => { backups.push({ id: doc.id, ...doc.data() }); });
+                backups.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                if (backups.length === 0) { listEl.innerHTML = '<p class="text-sm font-medium text-gray-400 text-center py-6">Chưa có bản sao lưu nào.</p>'; return; }
+                listEl.innerHTML = backups.map(b => `
+                    <div class="py-3 px-4 flex justify-between items-center group hover:bg-white dark:hover:bg-plum-800 rounded-xl transition shadow-sm bg-pink-50/50 dark:bg-plum-900 mb-2 border border-pink-100 dark:border-plum-700">
+                        <div>
+                            <div class="text-sm font-bold text-gray-800 dark:text-plum-100">${b.name} ${b.isAuto ? '<span class="text-[10px] bg-pink-100 dark:bg-plum-700 text-pink-600 dark:text-pink-300 px-1.5 py-0.5 rounded ml-2">Auto</span>' : ''}</div>
+                            <div class="text-xs text-gray-500 dark:text-plum-300 mt-1">${new Date(b.timestamp).toLocaleString('vi-VN')}</div>
+                        </div>
+                        <div class="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">
+                            <button onclick="restoreCloudBackup('${b.id}')" class="w-8 h-8 rounded-full bg-white dark:bg-plum-700 shadow-sm text-pink-500 hover:text-pink-600"><i class="fa-solid fa-clock-rotate-left text-sm"></i></button>
+                            <button onclick="deleteCloudBackup('${b.id}')" class="w-8 h-8 rounded-full bg-white dark:bg-plum-700 shadow-sm text-red-500 hover:text-red-600"><i class="fa-solid fa-trash text-sm"></i></button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { listEl.innerHTML = '<p class="text-sm font-medium text-red-400 text-center py-6">Lỗi truy cập dữ liệu.</p>'; }
+        }
+        window.restoreCloudBackup = async (docId) => {
+            if (!(await customConfirm("Khôi phục sẽ GHI ĐÈ dữ liệu hiện tại. Bạn chắc chứ?"))) return;
+            try {
+                const doc = await db.collection('users').doc(currentUser.uid).collection('backups').doc(docId).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.config) localStorage.setItem('userPayrollConfig', JSON.stringify(data.config));
+                    if (data.entries) localStorage.setItem('payrollEntriesV5', JSON.stringify(data.entries));
+                    if (data.expenses) localStorage.setItem('payrollExpensesV6', JSON.stringify(data.expenses));
+                    if (data.payslips) localStorage.setItem('savedPayslipsV1', JSON.stringify(data.payslips));
+                    await customAlert('Khôi phục thành công! Trang sẽ tải lại.'); location.reload();
+                }
+            } catch (e) { await customAlert("Lỗi khôi phục.", "Lỗi"); }
+        }
+        window.deleteCloudBackup = async (docId) => {
+            if (await customConfirm("Xóa bản sao lưu khỏi đám mây?")) {
+                await db.collection('users').doc(currentUser.uid).collection('backups').doc(docId).delete(); loadFirebaseBackups();
+            }
+        }
+
+        // SETTINGS & LOGIC
+        const loadSettings = () => {
+            const data = JSON.parse(localStorage.getItem('userPayrollConfig'));
+            if (!data) return false;
+            appConfig = data;
+            const curr = data.currency || 'đ';
+            setCurrency(curr, Array.from(document.querySelectorAll('.currency-btn')).find(b => b.innerText.includes(curr)));
+            const salType = data.salaryType || 'thang';
+            setSalaryType(salType, Array.from(document.querySelectorAll('.salary-type-btn')).find(b => b.innerText.toLowerCase().includes(salType === 'thang' ? 'tháng' : 'giờ')));
+            document.getElementById('cutoffDate').value = data.cutoffDate || '31';
+            document.getElementById('standardHours').value = data.standardHours || 8;
+            document.getElementById('baseSalaryMonth').value = formatNumToVN(data.baseSalaryMonth);
+            document.getElementById('baseSalaryHour').value = formatNumToVN(data.baseSalaryHour);
+            document.getElementById('otRate').value = formatNumToVN(data.otRate);
+            document.getElementById('holidayRate').value = formatNumToVN(data.holidayRate);
+            document.getElementById('dailyAllowance').value = formatNumToVN(data.dailyAllowance);
+            document.getElementById('monthlyAllowance').value = formatNumToVN(data.monthlyAllowance);
+            document.getElementById('standardDays').value = data.standardDays || 26;
+
+            const savedDays = data.workingDays || ['T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+            document.querySelectorAll('.workday-cb').forEach(cb => { cb.checked = savedDays.includes(cb.value); });
+            appConfig.workingDays = savedDays;
+            return true;
+        };
+
+        window.setCurrency = (val, btn) => {
+            document.getElementById('currency').value = val;
+            document.querySelectorAll('.currency-btn').forEach(b => {
+                b.className = "currency-btn flex-1 py-2 text-sm font-medium rounded-lg text-gray-500 transition hover:text-pink-500";
+            });
+            if (btn) btn.className = "currency-btn flex-1 py-2 text-sm font-bold rounded-lg bg-white dark:bg-plum-700 shadow-sm text-gray-950 dark:text-white transition";
+        };
+
+        window.setSalaryType = (val, btn) => {
+            document.getElementById('salaryType').value = val;
+            document.querySelectorAll('.salary-type-btn').forEach(b => {
+                b.className = "salary-type-btn flex-1 py-2 text-[13px] font-medium rounded-lg text-gray-500 transition hover:text-pink-500";
+            });
+            if (btn) btn.className = "salary-type-btn flex-1 py-2 text-[13px] font-bold rounded-lg bg-white dark:bg-plum-700 shadow-sm text-gray-950 dark:text-white transition";
+            const isThang = val === 'thang';
+            document.getElementById('monthlyWrapper').classList.toggle('hidden', !isThang);
+            document.getElementById('hourlyWrapper').classList.toggle('hidden', isThang);
+        };
+
+        document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+            const selectedDays = Array.from(document.querySelectorAll('.workday-cb:checked')).map(cb => cb.value);
+            appConfig = {
+                currency: document.getElementById('currency').value,
+                cutoffDate: document.getElementById('cutoffDate').value,
+                workingDays: selectedDays,
+                salaryType: document.getElementById('salaryType').value,
+                standardHours: Number(document.getElementById('standardHours').value) || 8,
+                baseSalaryMonth: getMoneyValue(document.getElementById('baseSalaryMonth').value),
+                standardDays: Number(document.getElementById('standardDays').value) || 26,
+                baseSalaryHour: getMoneyValue(document.getElementById('baseSalaryHour').value),
+                otRate: getMoneyValue(document.getElementById('otRate').value),
+                holidayRate: getMoneyValue(document.getElementById('holidayRate').value),
+                dailyAllowance: getMoneyValue(document.getElementById('dailyAllowance').value),
+                monthlyAllowance: getMoneyValue(document.getElementById('monthlyAllowance').value)
+            };
+            localStorage.setItem('userPayrollConfig', JSON.stringify(appConfig));
+            workEntries = workEntries.map(e => {
+                e.breakdown = calculateDailySalaryDetails(e.hours, e.otHours, e.hasAllowance, e.isHoliday, e.date);
+                return e;
+            });
+            localStorage.setItem('payrollEntriesV5', JSON.stringify(workEntries));
+            document.getElementById('settingsOverlay').classList.add('hidden');
+            renderTimeline(); updateDataDisplays(); triggerAutoBackup();
+        });
+
+        // DATE / TIMELINE
+        const getCycleDates = (targetDate) => {
+            const year = targetDate.getFullYear(), month = targetDate.getMonth(), cutoff = Number(appConfig.cutoffDate) || 31;
+            let start, end;
+            if (cutoff >= 28) { 
+                start = new Date(year, month, 1); 
+                end = new Date(year, month + 1, 0); 
+            } else { 
+                start = new Date(year, month - 1, cutoff + 1); 
+                end = new Date(year, month, cutoff); 
+            }
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
+            return { start, end };
+        };
+
+        window.setViewMode = (mode) => {
+            timelineViewMode = mode;
+            const btnW = document.getElementById('btnViewWeek');
+            const btnC = document.getElementById('btnViewCycle');
+            if (mode === 'week') {
+                btnW.className = "px-5 py-2 rounded-full bg-white dark:bg-plum-700 text-sm font-semibold text-pink-600 dark:text-white shadow-sm transition";
+                btnC.className = "px-5 py-2 rounded-full text-sm font-semibold text-gray-500 dark:text-plum-300 transition hover:text-pink-500";
+            } else {
+                btnC.className = "px-5 py-2 rounded-full bg-white dark:bg-plum-700 text-sm font-semibold text-pink-600 dark:text-white shadow-sm transition";
+                btnW.className = "px-5 py-2 rounded-full text-sm font-semibold text-gray-500 dark:text-plum-300 transition hover:text-pink-500";
+            }
+            renderTimeline();
+        };
+
+        window.shiftMonth = (offset) => {
+            const input = document.getElementById('cycleMonthPicker');
+            if (!input.value) return;
+            let [year, month] = input.value.split('-');
+            let d = new Date(year, month - 1, 1);
+            d.setMonth(d.getMonth() + offset);
+            input.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            input.dispatchEvent(new Event('change'));
+        };
+
+        document.getElementById('cycleMonthPicker').addEventListener('change', (e) => {
+            if (e.target.value) {
+                const p = e.target.value.split('-');
+                currentTargetDate = new Date(p[0], p[1] - 1, 1);
+                selectedDayString = "";
+                document.getElementById('cycleMonthDisplay').textContent = `Tháng ${p[1]}/${p[0]}`;
+                renderTimeline(); updateDataDisplays();
+            }
+        });
+
+        window.shiftWeek = (offsetDays) => {
+            if (!selectedDayString) return;
+            const sd = new Date(selectedDayString); sd.setDate(sd.getDate() + offsetDays);
+            currentTargetDate = sd;
+            document.getElementById('cycleMonthPicker').value = `${sd.getFullYear()}-${String(sd.getMonth() + 1).padStart(2, '0')}`;
+            selectedDayString = getLocalISOString(sd);
+            renderTimeline(); selectDate(selectedDayString, false);
+        };
+
+        document.getElementById('btnToday').addEventListener('click', () => {
+            const now = new Date(); currentTargetDate = now;
+            document.getElementById('cycleMonthPicker').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            selectedDayString = getLocalISOString(now);
+            renderTimeline(); selectDate(selectedDayString, false);
+        });
+
+        window.selectDate = (dateStr, reRender = true) => {
+            selectedDayString = dateStr;
+            const entry = workEntries.find(e => e.date === dateStr);
+            const parts = dateStr.split('-');
+            const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            document.getElementById('formDateDisplay').textContent = `${fullDaysOfWeek[dObj.getDay()]}, ${dObj.getDate()}/${dObj.getMonth() + 1}`;
+            
+            const badge = document.getElementById('formStatusBadge');
+            const btnDelete = document.getElementById('btnDeleteCurrent');
+
+            if (entry) {
+                badge.textContent = "Đã ghi chép";
+                badge.className = "text-xs px-3 py-1 rounded-full font-bold bg-pink-100 dark:bg-pink-900/50 text-pink-700 dark:text-pink-300 mt-1 inline-block";
+                document.getElementById('hoursInput').value = entry.hours;
+                document.getElementById('otInput').value = entry.otHours;
+                document.getElementById('allowanceCheck').checked = entry.hasAllowance;
+                document.getElementById('holidayCheck').checked = entry.isHoliday;
+                btnDelete.classList.remove('hidden');
+            } else {
+                badge.textContent = "Chưa có dữ liệu";
+                badge.className = "text-xs px-3 py-1 rounded-full font-bold bg-pink-50 dark:bg-plum-700 text-gray-500 dark:text-plum-300 mt-1 inline-block";
+                document.getElementById('hoursInput').value = appConfig.standardHours || 8;
+                document.getElementById('otInput').value = 0;
+                document.getElementById('allowanceCheck').checked = true;
+                document.getElementById('holidayCheck').checked = false;
+                btnDelete.classList.add('hidden');
+            }
+            if (reRender) renderTimeline();
+        };
+
+        const renderTimeline = () => {
+            const container = document.getElementById('timelineContainer');
+            container.className = "flex gap-3 md:gap-4 py-2 overflow-x-auto no-scrollbar pb-4 -mb-4 px-2";
+            container.innerHTML = '';
+            
+            const { start, end } = getCycleDates(currentTargetDate);
+            let iterDate = new Date(start); iterDate.setHours(0,0,0,0);
+            let safeEnd = new Date(end); safeEnd.setHours(23,59,59,999);
+
+            let displayStart = iterDate, displayEnd = safeEnd;
+            if (timelineViewMode === 'week' && selectedDayString) {
+                const sdObj = new Date(selectedDayString);
+                const dayNum = sdObj.getDay() === 0 ? 7 : sdObj.getDay(); 
+                const ws = new Date(sdObj); ws.setDate(sdObj.getDate() - dayNum + 1); 
+                const we = new Date(ws); we.setDate(ws.getDate() + 6); 
+                displayStart = ws; displayEnd = we;
+                document.getElementById('weekNavBtns').classList.remove('hidden');
+            } else {
+                document.getElementById('weekNavBtns').classList.add('hidden');
+            }
+
+            let runner = new Date(displayStart); runner.setHours(0,0,0,0);
+            if(!selectedDayString) selectedDayString = getLocalISOString(start);
+            
+            while (runner <= displayEnd) {
+                const dateStr = getLocalISOString(runner);
+                const isSelected = dateStr === selectedDayString;
+                const existingEntry = workEntries.find(e => e.date === dateStr);
+                const dayName = daysOfWeek[runner.getDay()];
+                const isToday = getLocalISOString(new Date()) === dateStr;
+
+                let itemClass = `flex-shrink-0 w-16 md:w-20 h-24 md:h-28 rounded-[20px] flex flex-col items-center justify-center border-2 cursor-pointer transition-all duration-300 relative select-none `;
+                if (isSelected) itemClass += `bg-pink-500 border-pink-500 text-white shadow-xl shadow-pink-500/30 transform scale-[1.05] md:scale-110 z-10`;
+                else if (existingEntry) itemClass += `bg-white dark:bg-plum-800 border-pink-100 dark:border-plum-600 hover:border-pink-300 hover:bg-pink-50 dark:hover:bg-plum-700 shadow-sm`;
+                else itemClass += `bg-transparent border-dashed border-pink-200 dark:border-plum-700 hover:border-pink-300 hover:bg-pink-50/50 dark:hover:bg-plum-800`;
+                
+                if (isToday && !isSelected) itemClass += ` !border-pink-400 dark:!border-pink-500`;
+
+                const dayOfWeekColor = isSelected ? 'text-pink-100' : 'text-gray-400 dark:text-plum-300';
+                const dateColor = isSelected ? 'text-white' : 'text-gray-950 dark:text-white';
+                
+                let indicator = runner.getDay() === 0 || runner.getDay() === 6 ? `<div class="w-1.5 h-1.5 rounded-full bg-pink-300 mt-2"></div>` : `<div class="w-1.5 h-1.5 mt-2"></div>`;
+                if (existingEntry) indicator = `<div class="w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-pink-500'} mt-2 shadow-sm"></div>`;
+                if (isToday && !existingEntry && !isSelected) indicator = `<div class="w-5 h-1.5 rounded-full bg-pink-400 mt-2"></div>`;
+
+                let otBadge = (existingEntry && existingEntry.otHours > 0) ? `<div class="absolute -top-2 -right-2 bg-pink-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md z-20">${existingEntry.otHours}h</div>` : '';
+
+                container.innerHTML += `
+                    <div id="card-${dateStr}" class="${itemClass}" onclick="selectDate('${dateStr}')">
+                        ${otBadge}
+                        <span class="text-[11px] md:text-xs font-bold uppercase tracking-widest ${dayOfWeekColor}">${dayName}</span>
+                        <span class="text-3xl md:text-4xl font-extrabold tracking-tighter mt-1 ${dateColor}">${runner.getDate()}</span>
+                        ${indicator}
+                    </div>
+                `;
+                runner.setDate(runner.getDate() + 1);
+            }
+            if (selectedDayString) {
+                setTimeout(() => {
+                    const selectedCard = document.getElementById(`card-${selectedDayString}`);
+                    if (selectedCard) selectedCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }, 100);
+            }
+        };
+
+        // CALCULATIONS & FORM
+        window.adjustHours = (id, amount) => {
+            const input = document.getElementById(id);
+            let val = Number(input.value) || 0; val += amount;
+            if (val < 0) val = 0;
+            input.value = Number(val.toFixed(2));
+        };
+
+        const calculateDailySalaryDetails = (hours, otHours, hasAllowance, isHoliday, dateStr) => {
+            let hourlyRate = 0;
+            const stdDays = Number(appConfig.standardDays) || 26;
+            const stdHours = Number(appConfig.standardHours) || 8;
+            if (appConfig.salaryType === 'thang') hourlyRate = (Number(appConfig.baseSalaryMonth) / stdDays) / stdHours;
+            else hourlyRate = Number(appConfig.baseSalaryHour);
+
+            if (!dateStr) dateStr = selectedDayString;
+            if (!dateStr) return { basePay: 0, otPay: 0, allowancePay: 0, holidayPay: 0, isSpecialDay: false, isOffDay: false };
+
+            const parts = dateStr.split('-');
+            const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+            const dayName = daysOfWeek[dObj.getDay()];
+
+            let workingDaysConf = appConfig.workingDays;
+            if (!Array.isArray(workingDaysConf) || workingDaysConf.length === 0) workingDaysConf = ['T2', 'T3', 'T4', 'T5', 'T6'];
+
+            const isWorkingDay = workingDaysConf.includes(dayName);
+            const isOffDay = !isWorkingDay && !isHoliday; 
+            const isSpecialDay = isHoliday || !isWorkingDay;
+
+            let basePay = 0, otPay = 0, holidayPay = 0;
+            let allowancePay = hasAllowance ? Number(appConfig.dailyAllowance) : 0;
+
+            if (isSpecialDay) {
+                holidayPay = Number(appConfig.holidayRate) * (Number(hours) + Number(otHours));
+            } else {
+                basePay = Number(hours) * hourlyRate;
+                otPay = Number(otHours) * Number(appConfig.otRate);
+            }
+            return { basePay, otPay, allowancePay, holidayPay, isSpecialDay, isOffDay };
+        };
+
+        document.getElementById('workForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const hours = Number(document.getElementById('hoursInput').value) || 0;
+            const otHours = Number(document.getElementById('otInput').value) || 0;
+            const hasAllowance = document.getElementById('allowanceCheck').checked;
+            const isHoliday = document.getElementById('holidayCheck').checked;
+
+            const breakdown = calculateDailySalaryDetails(hours, otHours, hasAllowance, isHoliday);
+            const newEntry = { id: Date.now().toString(), date: selectedDayString, hours, otHours, hasAllowance, isHoliday, breakdown };
+            const existingIndex = workEntries.findIndex(e => e.date === selectedDayString);
+            if (existingIndex > -1) workEntries[existingIndex] = newEntry; else workEntries.push(newEntry);
+
+            localStorage.setItem('payrollEntriesV5', JSON.stringify(workEntries));
+            renderTimeline(); selectDate(selectedDayString, false); updateDataDisplays(); triggerAutoBackup();
+        });
+
+        document.getElementById('btnDeleteCurrent').addEventListener('click', async () => {
+            if (await customConfirm('Xóa bản ghi công này?')) {
+                workEntries = workEntries.filter(e => e.date !== selectedDayString);
+                localStorage.setItem('payrollEntriesV5', JSON.stringify(workEntries));
+                renderTimeline(); selectDate(selectedDayString, false); updateDataDisplays(); triggerAutoBackup();
+            }
+        });
+
+        // PAYSLIP & EXPENSES
+        window.saveExpenses = () => {
+            const key = getMonthKey();
+            if (!storedExpenses[key]) storedExpenses[key] = { tax: 0, insurance: 0, custom: [] };
+            storedExpenses[key].tax = getMoneyValue(document.getElementById('inputTax').value);
+            storedExpenses[key].insurance = getMoneyValue(document.getElementById('inputInsurance').value);
+            localStorage.setItem('payrollExpensesV6', JSON.stringify(storedExpenses));
+            calculateFinalPayslip(); triggerAutoBackup();
+        };
+        document.getElementById('inputTax').addEventListener('input', saveExpenses);
+        document.getElementById('inputInsurance').addEventListener('input', saveExpenses);
+
+        window.renderPayslipExpenses = () => {
+            const key = getMonthKey(); const exp = storedExpenses[key] || { tax: 0, insurance: 0, custom: [] };
+            document.getElementById('inputTax').value = formatNumToVN(exp.tax);
+            document.getElementById('inputInsurance').value = formatNumToVN(exp.insurance);
+            const list = document.getElementById('customExpensesList'); list.innerHTML = '';
+            (exp.custom || []).forEach((item, index) => {
+                list.innerHTML += `
+                    <div class="flex gap-3">
+                        <input type="text" placeholder="Tên khoản thu/chi" value="${item.name}" oninput="updateCustomExpense(${index}, 'name', this.value)" class="flex-1 px-4 py-3 border border-pink-100 dark:border-plum-600 rounded-2xl text-sm font-medium outline-none bg-pink-50 dark:bg-plum-900 dark:text-white focus:ring-2 focus:ring-pink-300">
+                        <input type="text" inputmode="numeric" placeholder="Số tiền" value="${formatNumToVN(item.amount)}" oninput="formatInputMoney(event); updateCustomExpense(${index}, 'amount', this.value)" class="w-28 px-4 py-3 border border-pink-100 dark:border-plum-600 rounded-2xl text-sm font-bold outline-none text-right bg-pink-50 dark:bg-plum-900 dark:text-white focus:ring-2 focus:ring-pink-300">
+                        <button onclick="removeCustomExpense(${index})" class="w-12 h-12 rounded-2xl text-gray-400 hover:text-red-500 bg-white dark:bg-plum-800 hover:bg-red-50 dark:hover:bg-red-900/30 active:scale-90 border border-pink-50 dark:border-plum-700 shadow-sm transition"><i class="fa-solid fa-xmark"></i></button>
+                    </div>`;
+            });
+            calculateFinalPayslip();
+        };
+        window.addCustomExpense = () => {
+            const key = getMonthKey();
+            if (!storedExpenses[key]) storedExpenses[key] = { tax: 0, insurance: 0, custom: [] };
+            if (!storedExpenses[key].custom) storedExpenses[key].custom = [];
+            storedExpenses[key].custom.push({ name: '', amount: 0 });
+            renderPayslipExpenses(); saveExpenses();
+        };
+        window.updateCustomExpense = (index, field, val) => {
+            const key = getMonthKey(); if (field === 'amount') val = getMoneyValue(val);
+            storedExpenses[key].custom[index][field] = val; saveExpenses();
+        };
+        window.removeCustomExpense = (index) => {
+            const key = getMonthKey(); storedExpenses[key].custom.splice(index, 1);
+            renderPayslipExpenses(); saveExpenses();
+        };
+        window.calculateFinalPayslip = () => {
+            const curr = appConfig.currency || 'đ'; const key = getMonthKey();
+            const exp = storedExpenses[key] || { tax: 0, insurance: 0, custom: [] };
+            let customTotal = 0; (exp.custom || []).forEach(item => customTotal += (Number(item.amount) || 0));
+            const totalDeductions = (Number(exp.tax) || 0) + (Number(exp.insurance) || 0) + customTotal;
+            const net = currentGrossIncome - totalDeductions;
+            document.getElementById('psTotalDeductions').textContent = formatMoney(totalDeductions, curr);
+            document.getElementById('psNetTotal').textContent = formatMoney(net, curr);
+        };
+        window.toggleActualInput = (isMatch) => {
+            const wrapper = document.getElementById('actualInputWrapper');
+            if (isMatch) { wrapper.classList.add('hidden'); document.getElementById('actualReceivedInput').value = ''; } 
+            else wrapper.classList.remove('hidden');
+        };
+        window.saveCurrentPayslip = async () => {
+            const month = getMonthKey(); const existsIndex = savedPayslips.findIndex(p => p.month === month);
+            if (existsIndex > -1) if (!(await customConfirm(`Đã lưu tháng ${month}. Bạn muốn cập nhật lại?`))) return;
+            const payslipData = { id: Date.now().toString(), month: month, gross: document.getElementById('psTotal').innerText, deductions: document.getElementById('psTotalDeductions').innerText, net: document.getElementById('psNetTotal').innerText, timestamp: new Date().toLocaleString('vi-VN') };
+            if (existsIndex > -1) savedPayslips[existsIndex] = payslipData; else savedPayslips.push(payslipData);
+            localStorage.setItem('savedPayslipsV1', JSON.stringify(savedPayslips));
+            await customAlert('Đã lưu bảng lương tuyệt đẹp!'); renderSavedPayslips(); triggerAutoBackup();
+        };
+        window.renderSavedPayslips = () => {
+            const container = document.getElementById('savedPayslipsContainer'); container.innerHTML = '';
+            if (savedPayslips.length === 0) { container.innerHTML = '<p class="text-sm font-medium text-gray-500">Chưa có bảng lương nào.</p>'; return; }
+            [...savedPayslips].sort((a, b) => b.id - a.id).forEach(ps => {
+                container.innerHTML += `
+                    <div class="border border-pink-100 dark:border-plum-700 rounded-3xl p-5 bg-pink-50 dark:bg-plum-900/50 flex justify-between items-center shadow-sm">
+                        <div>
+                            <div class="text-base font-bold text-gray-950 dark:text-white tracking-tight">Tháng ${ps.month}</div>
+                            <div class="text-xs text-gray-500 dark:text-plum-300 mt-1 font-medium">${ps.timestamp}</div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="text-lg font-extrabold text-pink-500">${ps.net}</span>
+                            <button onclick="deletePayslip('${ps.id}')" class="w-10 h-10 rounded-full text-gray-400 hover:text-red-500 hover:bg-white dark:hover:bg-plum-800 shadow-sm transition flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>`;
+            });
+        };
+        window.deletePayslip = async (id) => {
+            if (await customConfirm('Xoá phiếu lương này khỏi lịch sử?')) {
+                savedPayslips = savedPayslips.filter(p => p.id !== id); localStorage.setItem('savedPayslipsV1', JSON.stringify(savedPayslips));
+                renderSavedPayslips(); triggerAutoBackup();
+            }
+        };
+
+        // EXPORT
+        window.exportAllData = () => {
+            const data = { config: appConfig, entries: workEntries, expenses: storedExpenses, payslips: savedPayslips };
+            const blob = new Blob([JSON.stringify(data)], { type: "application/json" }); const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = `WorkLog_Backup_${getLocalISOString(new Date())}.json`;
+            a.click(); URL.revokeObjectURL(url);
+        };
+        window.importAllData = async (event) => {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.config) localStorage.setItem('userPayrollConfig', JSON.stringify(data.config));
+                    if (data.entries) localStorage.setItem('payrollEntriesV5', JSON.stringify(data.entries));
+                    if (data.expenses) localStorage.setItem('payrollExpensesV6', JSON.stringify(data.expenses));
+                    if (data.payslips) localStorage.setItem('savedPayslipsV1', JSON.stringify(data.payslips));
+                    await customAlert('Khôi phục thành công! Trang sẽ tải lại.'); location.reload();
+                } catch (err) { await customAlert('File không hợp lệ!'); }
+            }; reader.readAsText(file);
+        };
+        const getCycleEntries = () => {
+            const { start, end } = getCycleDates(currentTargetDate);
+            return workEntries.filter(e => { const d = new Date(e.date); return d >= start && d <= end; }).sort((a, b) => new Date(a.date) - new Date(b.date));
+        };
+        window.exportCycleImage = async () => {
+            const el = document.getElementById('cycleHistoryExportContainer');
+            if (getCycleEntries().length === 0) return await customAlert('Chưa có dữ liệu để xuất.');
+            document.getElementById('exportSummary').classList.remove('hidden');
+            html2canvas(el, { scale: 2, backgroundColor: document.documentElement.classList.contains('dark') ? '#1f1117' : '#ffffff' }).then(canvas => {
+                const a = document.createElement('a'); a.href = canvas.toDataURL("image/png"); a.download = `LichSu_${getMonthKey()}.png`; a.click();
+                document.getElementById('exportSummary').classList.add('hidden');
+            });
+        };
+        window.exportCyclePDF = async () => {
+            const el = document.getElementById('cycleHistoryExportContainer'); if (getCycleEntries().length === 0) return await customAlert('Chưa có dữ liệu để xuất.');
+            document.getElementById('exportSummary').classList.remove('hidden');
+            html2canvas(el, { scale: 2, backgroundColor: document.documentElement.classList.contains('dark') ? '#1f1117' : '#ffffff' }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png'); const { jsPDF } = window.jspdf; const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth(); const imgProps = pdf.getImageProperties(imgData);
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                pdf.text(`Bao Cao Cong - Thang ${getMonthKey()}`, 10, 10);
+                pdf.addImage(imgData, 'PNG', 0, 15, pdfWidth, pdfHeight); pdf.save(`LichSu_${getMonthKey()}.pdf`);
+                document.getElementById('exportSummary').classList.add('hidden');
+            });
+        };
+
+        // UPDATE DISPLAYS (Dashboard, History Table, Payslip logic)
+        const updateDataDisplays = () => {
+            const curr = appConfig.currency || 'đ';
+            const { start, end } = getCycleDates(currentTargetDate);
+            const cycleEntries = getCycleEntries().reverse();
+
+            let totalDays = cycleEntries.length;
+            let totalHours = 0, totalOT = 0, sumBase = 0, sumOT = 0, sumAllowance = 0, sumHoliday = 0;
+            let holidayCount = 0, offDayCount = 0;
+
+            const table = document.getElementById('historyTable');
+            table.innerHTML = '';
+
+            if (cycleEntries.length === 0) {
+                table.innerHTML = `<tr><td colspan="3" class="p-10 text-center text-gray-400 font-medium text-base">Hè hè, chưa có tí dữ liệu nào cho chu kỳ này cả. <br>Bấm "Hôm nay" rồi lưu thử 1 ngày xem sao!</td></tr>`;
+            } else {
+                cycleEntries.forEach(entry => {
+                    totalHours += Number(entry.hours); totalOT += Number(entry.otHours);
+                    const breakdown = entry.breakdown || { basePay: 0, otPay: 0, allowancePay: 0, holidayPay: 0, isSpecialDay: false, isOffDay: false };
+                    sumBase += Number(breakdown.basePay); sumOT += Number(breakdown.otPay);
+                    sumAllowance += Number(breakdown.allowancePay); sumHoliday += Number(breakdown.holidayPay);
+
+                    if (entry.isHoliday) holidayCount++;
+                    else if (breakdown.isOffDay) offDayCount++;
+
+                    const dailyTotal = Number(breakdown.basePay) + Number(breakdown.otPay) + Number(breakdown.allowancePay) + Number(breakdown.holidayPay);
+                    const parts = entry.date.split('-'); const dObj = new Date(parts[0], parts[1] - 1, parts[2]);
+
+                    let dayStyle = entry.isHoliday ? 'text-red-500' : (breakdown.isOffDay ? 'text-orange-500' : 'text-gray-950 dark:text-white');
+                    let tag = entry.isHoliday ? `<span class="text-[10px] font-bold bg-red-100 dark:bg-red-950/40 text-red-600 px-2 py-0.5 rounded-full ml-2">LỄ</span>` : (breakdown.isOffDay ? `<span class="text-[10px] font-bold bg-orange-100 dark:bg-orange-950/40 text-orange-600 px-2 py-0.5 rounded-full ml-2">NGHỈ</span>` : '');
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-pink-50/80 dark:hover:bg-plum-700/50 transition cursor-pointer rounded-2xl group";
+                    tr.onclick = () => { switchTab('tab-log', document.querySelectorAll('.tab-btn')[0]); selectDate(entry.date); };
+                    
+                    tr.innerHTML = `
+                        <td class="p-5 pl-6 rounded-l-3xl border-y border-transparent group-hover:border-pink-100 dark:group-hover:border-plum-600">
+                            <div class="font-extrabold text-lg ${dayStyle}">${dObj.getDate()}/${dObj.getMonth()+1}${tag}</div>
+                            <div class="text-xs text-gray-400 dark:text-plum-300 font-medium mt-0.5">${fullDaysOfWeek[dObj.getDay()]}</div>
+                        </td>
+                        <td class="p-5 border-y border-transparent group-hover:border-pink-100 dark:group-hover:border-plum-600">
+                            <div class="font-semibold text-gray-800 dark:text-plum-100">${entry.hours}h chính</div>
+                            <div class="text-sm font-bold ${entry.otHours > 0 ? 'text-pink-500' : 'text-gray-400 dark:text-plum-400'}">${entry.otHours > 0 ? `+${entry.otHours}h OT` : 'Không OT'}</div>
+                        </td>
+                        <td class="p-5 pr-6 text-right font-extrabold text-gray-950 dark:text-white rounded-r-3xl border-y border-transparent group-hover:border-pink-100 dark:group-hover:border-plum-600">${formatMoney(dailyTotal, curr)}</td>
+                    `;
+                    table.appendChild(tr);
+                });
+            }
+
+            const monthlyAllowValue = Number(appConfig.monthlyAllowance) || 0;
+            if (monthlyAllowValue > 0 && totalDays > 0) sumAllowance += monthlyAllowValue;
+            currentGrossIncome = sumBase + sumOT + sumAllowance + sumHoliday;
+
+            // Update Dashboard
+            document.getElementById('dashTotal').textContent = formatMoney(currentGrossIncome, curr);
+            document.getElementById('dashAvgPay').textContent = formatMoney(totalDays > 0 ? (currentGrossIncome / totalDays) : 0, curr);
+            document.getElementById('dashDays').textContent = totalDays;
+            document.getElementById('dashHolidays').textContent = holidayCount;
+            document.getElementById('dashHours').textContent = totalHours;
+            document.getElementById('dashOT').textContent = `OT: ${totalOT}h`;
+            document.getElementById('dashBasePay').textContent = formatMoney(sumBase, curr);
+            document.getElementById('dashOTPay').textContent = formatMoney(sumOT, curr);
+            document.getElementById('dashAllowance').textContent = formatMoney(sumAllowance + sumHoliday, curr);
+
+            // Progress Bars
+            const progressSection = document.getElementById('monthlyProgressSection');
+            if (progressSection) progressSection.classList.remove('hidden');
+
+            let workingDaysConf = appConfig.workingDays;
+            if (!Array.isArray(workingDaysConf) || workingDaysConf.length === 0) workingDaysConf = ['T2', 'T3', 'T4', 'T5', 'T6'];
+
+            const startM = new Date(start); startM.setHours(0, 0, 0, 0);
+            const endM = new Date(end); endM.setHours(23, 59, 59, 999); 
+            let totalWorkingDaysInCycle = 0; let iterD = new Date(startM);
+            while (iterD <= endM) {
+                if (workingDaysConf.includes(daysOfWeek[iterD.getDay()])) totalWorkingDaysInCycle++;
+                iterD.setDate(iterD.getDate() + 1);
+            }
+            if (totalWorkingDaysInCycle === 0) totalWorkingDaysInCycle = 1;
+            
+            document.getElementById('timeProgTotal').textContent = totalWorkingDaysInCycle;
+            document.getElementById('timeProgCurrent').textContent = totalDays;
+            let timePercent = Math.min((totalDays / totalWorkingDaysInCycle) * 100, 100);
+            document.getElementById('timeProgPercent').textContent = `${timePercent.toFixed(0)}%`;
+            setTimeout(() => { document.getElementById('timeProgBar').style.width = `${timePercent}%`; }, 100);
+
+            const workProgressWrapper = document.getElementById('workProgressWrapper');
+            if (appConfig.salaryType === 'thang') {
+                if (workProgressWrapper) workProgressWrapper.classList.remove('hidden');
+                const targetDays = Number(appConfig.standardDays) || 26;
+                document.getElementById('progTarget').textContent = targetDays;
+                document.getElementById('progCurrent').textContent = totalDays;
+                let percent = Math.min((totalDays / targetDays) * 100, 100);
+                document.getElementById('progPercent').textContent = `${percent % 1 === 0 ? percent : percent.toFixed(1)}%`;
+                setTimeout(() => { document.getElementById('progBar').style.width = `${percent}%`; }, 100);
+            } else {
+                if (workProgressWrapper) workProgressWrapper.classList.add('hidden');
+            }
+
+            // Update Payslip & Export Info
+            document.getElementById('psBase').textContent = formatMoney(sumBase, curr);
+            document.getElementById('psOT').textContent = formatMoney(sumOT, curr);
+            document.getElementById('psHoliday').textContent = formatMoney(sumHoliday, curr);
+            document.getElementById('psAllowance').textContent = formatMoney(sumAllowance, curr);
+            document.getElementById('psTotal').textContent = formatMoney(currentGrossIncome, curr);
+
+            const expTotalDays = document.getElementById('expTotalDays');
+            if (expTotalDays) {
+                let specialText = [];
+                if (holidayCount > 0) specialText.push(`${holidayCount} Lễ`);
+                if (offDayCount > 0) specialText.push(`${offDayCount} Nghỉ`);
+                let specialString = specialText.length > 0 ? ` (${specialText.join(' - ')})` : '';
+                expTotalDays.textContent = `${totalDays}${specialString}`;
+                document.getElementById('expTotalHours').textContent = `${totalHours}h`;
+                document.getElementById('expTotalOT').textContent = `${totalOT}h`;
+                document.getElementById('expTotalIncome').textContent = formatMoney(currentGrossIncome, curr);
+                document.getElementById('expMonth').textContent = document.getElementById('cycleMonthDisplay').textContent.replace('Tháng ', '');
+            }
+
+            renderPayslipExpenses();
+            renderSavedPayslips();
+        };
+
+        // INIT
+        const init = () => {
+            const savedTheme = localStorage.getItem('themePrefV6') || 'pink-light';
+            applyTheme(savedTheme);
+
+            document.getElementById('autoBackupCheck').checked = localStorage.getItem('autoBackupON') === '1';
+            document.getElementById('openSettingsBtn').addEventListener('click', () => {
+                document.getElementById('settingsOverlay').classList.remove('hidden');
+                document.getElementById('settingsOverlay').classList.add('flex');
+                const currentTheme = localStorage.getItem('themePrefV6') || 'pink-light';
+                const themeBtn = Array.from(document.querySelectorAll('.theme-btn')).find(b => b.getAttribute('onclick').includes(`'${currentTheme}'`));
+                if(themeBtn) setThemeType(currentTheme, themeBtn);
+            });
+            document.getElementById('closeSettingsBtn').addEventListener('click', () => document.getElementById('settingsOverlay').classList.add('hidden'));
+
+            const now = new Date();
+            const monthInput = document.getElementById('cycleMonthPicker');
+            monthInput.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            monthInput.dispatchEvent(new Event('change'));
+
+            if (!loadSettings()) {
+                document.getElementById('settingsOverlay').classList.remove('hidden');
+                document.getElementById('settingsOverlay').classList.add('flex');
+            } else {
+                setViewMode('week');
+                document.getElementById('mainApp').classList.remove('hidden');
+                switchTab('tab-log', document.querySelectorAll('.tab-btn')[0]);
+                document.getElementById('btnToday').click();
+            }
+        };
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
