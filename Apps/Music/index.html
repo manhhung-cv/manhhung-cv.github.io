@@ -2,520 +2,556 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimalist Audio Player - Pro Log</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flat Web Audio Player</title>
     <style>
         :root {
-            --bg: #121212;
-            --surface: #1e1e1e;
-            --primary: #ffffff;
-            --secondary: #a0a0a0;
-            --accent: #00ffcc;
-            --border: #333333;
-            --radius: 12px;
+            /* Flat Design Color Palette */
+            --bg-body: #1e1e24;
+            --bg-panel: #2b2b36;
+            --bg-hover: #3a3a48;
+            --text-main: #ffffff;
+            --text-muted: #9ba1a6;
+            --accent: #00d2d3; /* Flat Cyan */
+            --border: #424250;
+            --radius: 4px; /* Bo góc rất nhẹ, đặc trưng của Modern Flat */
         }
 
         * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            box-sizing: border-box; margin: 0; padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            background-color: var(--bg);
-            color: var(--primary);
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-            min-height: 100vh;
-        }
-
-        .app-container {
-            width: 100%;
-            max-width: 900px;
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
-
-        @media (min-width: 768px) {
-            .app-container {
-                grid-template-columns: 1fr 1fr;
-            }
-            .visualizer-section {
-                grid-column: 1 / -1;
-            }
-        }
-
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 20px;
-        }
-
-        h2, h3 {
-            font-weight: 500;
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-            color: var(--primary);
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* Player & Playlist */
-        audio {
-            width: 100%;
-            height: 36px;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            outline: none;
-        }
-
-        .upload-btn {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            background: var(--border);
-            color: var(--primary);
-            text-align: center;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            margin-bottom: 15px;
-            transition: background 0.3s;
-        }
-
-        .upload-btn:hover { background: #444; }
-        input[type="file"] { display: none; }
-
-        .playlist {
-            list-style: none;
-            max-height: 150px;
-            overflow-y: auto;
-        }
-
-        .playlist li {
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            color: var(--secondary);
-            transition: all 0.2s;
-            white-space: nowrap;
+            background-color: var(--bg-body); color: var(--text-main);
+            height: 100vh; height: 100dvh;
+            display: flex; flex-direction: column;
             overflow: hidden;
-            text-overflow: ellipsis;
         }
 
-        .playlist li:hover, .playlist li.active {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--primary);
+        /* Tùy chỉnh Scrollbar phẳng */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-body); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: var(--radius); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* --- LAYOUT CHÍNH --- */
+        .app-container {
+            display: flex; flex: 1; min-height: 0;
         }
 
-        /* Equalizer */
-        .eq-header-controls {
-            display: flex;
-            gap: 10px;
+        /* --- SIDEBAR --- */
+        .sidebar {
+            width: 350px; background-color: var(--bg-panel);
+            display: flex; flex-direction: column;
+            border-right: 1px solid var(--border);
         }
 
-        select, button {
-            background: var(--bg);
-            color: var(--primary);
-            border: 1px solid var(--border);
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            cursor: pointer;
+        .tabs { display: flex; border-bottom: 1px solid var(--border); }
+        .tab-btn {
+            flex: 1; background: none; border: none; border-bottom: 3px solid transparent;
+            color: var(--text-muted); padding: 16px 10px; font-weight: bold; cursor: pointer;
+            transition: 0.2s ease; font-size: 0.85rem; text-transform: uppercase;
         }
+        .tab-btn:hover { color: var(--text-main); background: var(--bg-hover); }
+        .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-        .eq-grid {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            height: 160px;
-            padding-top: 20px;
-        }
+        .tab-content { display: none; flex: 1; overflow-y: auto; padding: 20px; }
+        .tab-content.active { display: block; }
 
-        .eq-band {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 18%;
-        }
-
-        .eq-val {
-            font-size: 0.75rem;
-            color: var(--accent);
-            margin-bottom: 10px;
-        }
-
-        .eq-label {
-            font-size: 0.75rem;
-            color: var(--secondary);
-            margin-top: 10px;
-        }
-
-        input[type=range] {
-            -webkit-appearance: none;
-            width: 100px;
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-            outline: none;
-            transform: rotate(-90deg);
-            margin: 40px 0;
-        }
-
-        input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: var(--accent);
-            cursor: pointer;
-        }
-
-        /* Visualizer */
-        canvas {
-            width: 100%;
-            height: 200px;
-            background: var(--bg);
-            border-radius: var(--radius);
-            margin-bottom: 15px;
-        }
-
-        /* Live Data Log - Cập nhật layout mới */
-        .log-panel {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
-            background: #000;
-            padding: 12px;
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 0.8rem;
-        }
-
-        @media (min-width: 768px) {
-            .log-panel {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        .log-box {
-            background: #111;
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #222;
-        }
-
-        .log-title {
-            color: #888;
-            font-size: 0.7rem;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .log-data {
-            color: #0f0;
-            word-wrap: break-word;
-        }
+        /* --- THÊM NHẠC UI (Flat) --- */
+        .add-music-section { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         
-        /* Highlight màu riêng cho Band */
-        .color-bass { color: #ff3366; }
-        .color-mid { color: #00ffcc; }
-        .color-treb { color: #ffcc00; }
+        .url-input-group { display: flex; gap: 8px; }
+        .flat-input {
+            flex: 1; background: var(--bg-body); border: 1px solid var(--border);
+            color: var(--text-main); padding: 10px 12px; border-radius: var(--radius);
+            font-size: 0.85rem; outline: none;
+        }
+        .flat-input:focus { border-color: var(--accent); }
+        
+        .flat-btn {
+            background: var(--border); border: none; color: var(--text-main);
+            padding: 10px 16px; border-radius: var(--radius); cursor: pointer;
+            font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: 0.2s;
+        }
+        .flat-btn:hover { background: var(--bg-hover); }
+        .flat-btn.primary { background: var(--accent); color: #000; }
+        .flat-btn.primary:hover { opacity: 0.85; }
 
+        /* --- PLAYLIST --- */
+        .playlist { list-style: none; }
+        .playlist li {
+            padding: 12px 16px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 12px; cursor: pointer; transition: 0.2s;
+        }
+        .playlist li:hover { background: var(--bg-hover); }
+        .playlist li.active { background: var(--bg-body); border-left: 4px solid var(--accent); }
+        .playlist li .track-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.9rem; }
+        .play-indicator { width: 16px; height: 16px; fill: var(--accent); display: none; }
+        .playlist li.active .play-indicator { display: block; }
+
+        /* --- CÀI ĐẶT UI (Flat) --- */
+        .setting-group { margin-bottom: 20px; }
+        .setting-label { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+        .setting-label span:last-child { color: var(--accent); font-weight: bold; }
+        select.flat-select {
+            width: 100%; padding: 10px; background: var(--bg-body); border: 1px solid var(--border);
+            color: var(--text-main); border-radius: var(--radius); outline: none; appearance: none;
+        }
+
+        /* --- MAIN VIEW (VISUALIZER) --- */
+        .main-view {
+            flex: 1; background-color: var(--bg-body);
+            position: relative; display: flex; justify-content: center; align-items: center;
+        }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        /* --- BOTTOM PLAYER BAR (Flat) --- */
+        .player-bar {
+            background-color: var(--bg-panel); border-top: 1px solid var(--border);
+            padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+        }
+
+        .track-info { width: 30%; display: flex; flex-direction: column; overflow: hidden; }
+        .track-title { font-weight: bold; font-size: 1rem; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-status { font-size: 0.75rem; color: var(--accent); text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Điều khiển Media */
+        .controls-center { width: 40%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .buttons-row { display: flex; align-items: center; gap: 24px; }
+        
+        .ctrl-btn { background: none; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .ctrl-btn svg { width: 24px; height: 24px; fill: currentColor; }
+        .ctrl-btn:hover { color: var(--accent); }
+        
+        .play-btn { width: 48px; height: 48px; background: var(--accent); color: var(--bg-body); border-radius: 50%; }
+        .play-btn:hover { background: var(--text-main); color: var(--bg-body); }
+        .play-btn svg { width: 24px; height: 24px; }
+
+        /* Flat Slider cho Tua nhạc & Âm lượng */
+        .playback-bar { width: 100%; display: flex; align-items: center; gap: 12px; font-size: 0.75rem; color: var(--text-muted); }
+        
+        .flat-slider {
+            -webkit-appearance: none; width: 100%; height: 6px; background: var(--border); border-radius: 0; outline: none; cursor: pointer;
+        }
+        .flat-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent); border-radius: 0; cursor: pointer; transition: 0.1s;
+        }
+        .flat-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        .extra-controls { width: 30%; display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+        .volume-slider { width: 100px; }
+
+        /* EQ Grid */
+        .eq-grid { display: flex; justify-content: space-between; height: 140px; margin-top: 20px; }
+        .eq-band { display: flex; flex-direction: column; align-items: center; width: 30px; }
+        .eq-val { font-size: 0.65rem; color: var(--accent); margin-bottom: 8px; }
+        .eq-band input[type=range] { width: 90px; transform: rotate(-90deg); margin: 35px 0; }
+        .eq-label { font-size: 0.65rem; color: var(--text-muted); margin-top: 8px; }
+
+        /* --- RESPONSIVE MOBILE --- */
+        @media (max-width: 768px) {
+            .app-container { flex-direction: column; }
+            .sidebar { width: 100%; flex: 1; border-right: none; border-bottom: 1px solid var(--border); }
+            .main-view { height: 25vh; flex: none; order: -1; border-bottom: 1px solid var(--border); }
+            
+            .player-bar { flex-direction: column; padding: 16px; gap: 16px; }
+            .track-info { width: 100%; text-align: center; }
+            .controls-center { width: 100%; }
+            .extra-controls { display: none; } /* Ẩn volume trên mobile */
+        }
     </style>
 </head>
 <body>
 
     <div class="app-container">
-        
-        <div class="card visualizer-section">
-            <h2>
-                Visualizer
-                <div class="eq-header-controls">
-                    <select id="vis-style">
-                        <option value="bars">Bars</option>
-                        <option value="wave">Waveform</option>
+        <aside class="sidebar">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('playlist')">Playlist</button>
+                <button class="tab-btn" onclick="switchTab('vis')">Visualizer</button>
+                <button class="tab-btn" onclick="switchTab('eq')">EQ</button>
+            </div>
+
+            <div class="tab-content active" id="tab-playlist">
+                <div class="add-music-section">
+                    <label class="flat-btn">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+                        Chọn File từ máy
+                        <input type="file" id="audio-upload" accept="audio/*" multiple style="display:none;">
+                    </label>
+                    
+                    <div class="url-input-group">
+                        <input type="text" id="url-input" class="flat-input" placeholder="Dán link URL (mp3...)">
+                        <button class="flat-btn primary" id="btn-add-url">Thêm</button>
+                    </div>
+                </div>
+
+                <ul class="playlist" id="playlist-ui"></ul>
+            </div>
+
+            <div class="tab-content" id="tab-vis">
+                <div class="setting-group">
+                    <div class="setting-label"><span>Kiểu dáng</span></div>
+                    <select id="vis-type" class="flat-select">
+                        <option value="bars">Cột phẳng (Flat Bars)</option>
+                        <option value="wave">Đường kẻ (Line Wave)</option>
                     </select>
                 </div>
-            </h2>
-            <canvas id="visualizer"></canvas>
-            
-            <div style="font-size: 0.8rem; color: var(--secondary); margin-bottom: 8px;">Live Audio Data:</div>
-            
-            <div class="log-panel">
-                <div class="log-box">
-                    <div class="log-title">Frequency Bands (0 - 255)</div>
-                    <div class="log-data" id="log-bands">Chờ âm thanh...</div>
+                <div class="setting-group" style="display: flex; gap: 10px;">
+                    <div style="flex:1;">
+                        <div class="setting-label"><span>Màu chính</span></div>
+                        <input type="color" id="vis-color1" value="#00d2d3" style="width:100%; height:36px; border:none; cursor:pointer;">
+                    </div>
+                    <div style="flex:1;">
+                        <div class="setting-label"><span>Màu phụ</span></div>
+                        <input type="color" id="vis-color2" value="#00d2d3" style="width:100%; height:36px; border:none; cursor:pointer;">
+                    </div>
                 </div>
-                <div class="log-box">
-                    <div class="log-title">Raw Bins Array (Top 16)</div>
-                    <div class="log-data" id="log-bins">[ ... ]</div>
+                <div class="setting-group">
+                    <div class="setting-label"><span>Số cột</span><span id="val-count">64</span></div>
+                    <input type="range" id="vis-count" class="flat-slider" min="16" max="128" step="4" value="64">
+                </div>
+                <div class="setting-group">
+                    <div class="setting-label"><span>Độ nhạy</span><span id="val-sens">1.5x</span></div>
+                    <input type="range" id="vis-sens" class="flat-slider" min="0.5" max="3.0" step="0.1" value="1.5">
                 </div>
             </div>
-            
-        </div>
 
-        <div class="card">
-            <h2>Music Player</h2>
-            <audio id="audio-player" controls></audio>
-            
-            <label class="upload-btn">
-                + Thêm nhạc vào Playlist
-                <input type="file" id="audio-upload" accept="audio/*" multiple>
-            </label>
-
-            <ul class="playlist" id="playlist-ui">
-                <li style="text-align:center; color: #555;">Chưa có bài hát nào. Hãy tải lên!</li>
-            </ul>
-        </div>
-
-        <div class="card">
-            <h2>
-                5-Band EQ
-                <div class="eq-header-controls">
-                    <select id="eq-preset">
-                        <option value="default">Default</option>
+            <div class="tab-content" id="tab-eq">
+                <div class="setting-group">
+                    <div class="setting-label"><span>Bộ lọc</span></div>
+                    <select id="eq-preset" class="flat-select">
+                        <option value="default">Flat (Mặc định)</option>
                         <option value="pop">Pop</option>
-                        <option value="dance">Dance</option>
                         <option value="bass">Bass Boost</option>
+                        <option value="custom">Tùy chỉnh</option>
                     </select>
-                    <button id="eq-reset">Reset</button>
                 </div>
-            </h2>
-            <div class="eq-grid">
-                </div>
-        </div>
+                <div class="eq-grid"></div>
+            </div>
+        </aside>
 
+        <main class="main-view">
+            <canvas id="visualizer"></canvas>
+        </main>
     </div>
 
+    <footer class="player-bar">
+        <div class="track-info">
+            <div class="track-title" id="track-name">Đang tải...</div>
+            <div class="track-status" id="track-status">Sẵn sàng phát</div>
+        </div>
+
+        <div class="controls-center">
+            <div class="buttons-row">
+                <button class="ctrl-btn" id="btn-prev" title="Previous">
+                    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                </button>
+                <button class="ctrl-btn play-btn" id="btn-play" title="Play/Pause">
+                    <svg id="icon-play" viewBox="0 0 24 24" style="margin-left: 4px;"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="icon-pause" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                </button>
+                <button class="ctrl-btn" id="btn-next" title="Next">
+                    <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                </button>
+            </div>
+            
+            <div class="playback-bar">
+                <span id="time-current">0:00</span>
+                <input type="range" class="flat-slider" id="progress-slider" value="0" min="0" max="100" step="0.1">
+                <span id="time-total">0:00</span>
+            </div>
+        </div>
+
+        <div class="extra-controls">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="var(--text-muted)"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            <input type="range" class="flat-slider volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1">
+        </div>
+    </footer>
+
+    <audio id="audio-player" crossorigin="anonymous"></audio>
+
     <script>
+        // --- TABS LOGIC ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+        }
+
+        // --- AUDIO STATE ---
         const audioPlayer = document.getElementById('audio-player');
-        const audioUpload = document.getElementById('audio-upload');
         const playlistUI = document.getElementById('playlist-ui');
-        const canvas = document.getElementById('visualizer');
-        const ctx = canvas.getContext('2d');
-        const logBands = document.getElementById('log-bands');
-        const logBins = document.getElementById('log-bins');
-        const eqGrid = document.querySelector('.eq-grid');
-        const presetSelect = document.getElementById('eq-preset');
-        const resetBtn = document.getElementById('eq-reset');
-        const visStyleSelect = document.getElementById('vis-style');
-
-        let audioCtx, source, analyser;
-        let filters = [];
         let playlist = [];
-        let currentTrackIndex = 0;
-        let visStyle = 'bars';
-        
-        const frequencies = [60, 230, 910, 3600, 14000];
-        const eqPresets = {
-            default: [0, 0, 0, 0, 0],
-            pop: [-1, 2, 4, 3, -2],
-            dance: [5, 3, 0, 2, 4],
-            bass: [6, 4, 0, 0, 0]
-        };
+        let currentIndex = 0;
 
-        function resizeCanvas() {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        function createEQUI() {
-            frequencies.forEach((freq, i) => {
-                const label = freq >= 1000 ? (freq/1000) + 'k' : freq;
-                const bandHTML = `
-                    <div class="eq-band">
-                        <span class="eq-val" id="val-${i}">0 dB</span>
-                        <input type="range" class="eq-slider" min="-12" max="12" value="0" step="0.5" data-index="${i}">
-                        <span class="eq-label">${label}</span>
-                    </div>
-                `;
-                eqGrid.insertAdjacentHTML('beforeend', bandHTML);
-            });
-
-            document.querySelectorAll('.eq-slider').forEach(slider => {
-                slider.addEventListener('input', (e) => {
-                    const idx = e.target.getAttribute('data-index');
-                    const val = parseFloat(e.target.value);
-                    updateEQBand(idx, val);
-                    presetSelect.value = 'custom';
-                });
-            });
-        }
-        createEQUI();
-
-        function updateEQBand(index, value) {
-            document.getElementById(`val-${index}`).innerText = `${value > 0 ? '+' : ''}${value} dB`;
-            document.querySelector(`.eq-slider[data-index="${index}"]`).value = value;
-            if (filters[index]) {
-                filters[index].gain.value = value;
-            }
-        }
-
-        function applyPreset(presetName) {
-            const values = eqPresets[presetName] || eqPresets.default;
-            values.forEach((val, idx) => updateEQBand(idx, val));
-            if(presetName !== 'custom') presetSelect.value = presetName;
-        }
-
-        presetSelect.addEventListener('change', (e) => applyPreset(e.target.value));
-        resetBtn.addEventListener('click', () => applyPreset('default'));
-
-        audioUpload.addEventListener('change', function(e) {
-            const files = Array.from(this.files);
-            if (files.length === 0) return;
-
-            if (playlist.length === 0) playlistUI.innerHTML = ''; 
-
-            files.forEach(file => {
-                const url = URL.createObjectURL(file);
-                playlist.push({ name: file.name, url: url });
-                
+        // --- HÀM RENDER PLAYLIST ---
+        function renderPlaylist() {
+            playlistUI.innerHTML = '';
+            playlist.forEach((track, idx) => {
                 const li = document.createElement('li');
-                li.innerText = file.name;
-                const index = playlist.length - 1;
-                li.addEventListener('click', () => playTrack(index));
+                li.innerHTML = `
+                    <svg class="play-indicator" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <div class="track-name" title="${track.name}">${track.name}</div>
+                `;
+                li.addEventListener('click', () => playTrack(idx));
+                if (idx === currentIndex) li.classList.add('active');
                 playlistUI.appendChild(li);
             });
+        }
 
-            if (audioPlayer.src === "" || audioPlayer.src.includes(window.location.host) === false) {
-                playTrack(0);
-            }
-        });
-
-        function playTrack(index) {
-            currentTrackIndex = index;
-            const track = playlist[index];
-            audioPlayer.src = track.url;
-            audioPlayer.play();
-
-            document.querySelectorAll('.playlist li').forEach((li, i) => {
-                li.classList.toggle('active', i === index);
+        function playTrack(idx) {
+            if (playlist.length === 0) return;
+            currentIndex = idx;
+            audioPlayer.src = playlist[idx].url;
+            document.getElementById('track-name').innerText = playlist[idx].name;
+            audioPlayer.play().catch(e => {
+                alert("Lỗi phát nhạc: Có thể do định dạng hoặc URL bị chặn CORS.");
             });
-
+            
+            document.querySelectorAll('.playlist li').forEach((li, i) => li.classList.toggle('active', i === idx));
             initAudioContext();
         }
 
-        audioPlayer.addEventListener('ended', () => {
-            if (currentTrackIndex < playlist.length - 1) {
-                playTrack(currentTrackIndex + 1);
+        // --- KHỞI TẠO BÀI HÁT MẶC ĐỊNH ---
+        window.addEventListener('DOMContentLoaded', () => {
+            playlist.push({
+                name: "Nhạc mặc định",
+                url: "https://files.catbox.moe/9ha4ws.mp3"
+            });
+            renderPlaylist();
+            // Nạp thông tin bài hát nhưng không auto-play để tránh trình duyệt chặn
+            audioPlayer.src = playlist[0].url;
+            document.getElementById('track-name').innerText = playlist[0].name;
+        });
+
+        // --- THÊM NHẠC TỪ FILE ---
+        document.getElementById('audio-upload').addEventListener('change', function(e) {
+            const files = Array.from(this.files);
+            if (!files.length) return;
+            files.forEach(file => {
+                playlist.push({ name: file.name.replace(/\.[^/.]+$/, ""), url: URL.createObjectURL(file) });
+            });
+            renderPlaylist();
+            if (audioPlayer.paused && playlist.length === files.length + 1) playTrack(playlist.length - files.length); 
+        });
+
+        // --- THÊM NHẠC TỪ URL ---
+        document.getElementById('btn-add-url').addEventListener('click', () => {
+            const input = document.getElementById('url-input');
+            const url = input.value.trim();
+            if (url) {
+                // Thử lấy tên file từ URL, nếu không có thì để tên chung
+                let name = url.split('/').pop().split('?')[0];
+                if (!name || name.length < 2) name = "Bài hát từ URL";
+                
+                playlist.push({ name: decodeURIComponent(name), url: url });
+                renderPlaylist();
+                input.value = '';
             }
         });
 
-        function initAudioContext() {
-            if (audioCtx) return;
+        // --- CONTROLS LOGIC ---
+        const btnPlay = document.getElementById('btn-play');
+        const iconPlay = document.getElementById('icon-play');
+        const iconPause = document.getElementById('icon-pause');
+        const trackStatus = document.getElementById('track-status');
 
+        btnPlay.addEventListener('click', () => {
+            if (!audioPlayer.src) return;
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                initAudioContext();
+            } else {
+                audioPlayer.pause();
+            }
+        });
+
+        audioPlayer.addEventListener('play', () => {
+            iconPlay.style.display = 'none'; iconPause.style.display = 'block';
+            trackStatus.innerText = "Đang phát";
+            document.querySelectorAll('.playlist li').forEach((li, i) => li.classList.toggle('active', i === currentIndex));
+        });
+
+        audioPlayer.addEventListener('pause', () => {
+            iconPlay.style.display = 'block'; iconPause.style.display = 'none';
+            trackStatus.innerText = "Tạm dừng";
+        });
+
+        document.getElementById('btn-prev').addEventListener('click', () => {
+            if (playlist.length) playTrack(currentIndex > 0 ? currentIndex - 1 : playlist.length - 1);
+        });
+        document.getElementById('btn-next').addEventListener('click', () => {
+            if (playlist.length) playTrack((currentIndex + 1) % playlist.length);
+        });
+        audioPlayer.addEventListener('ended', () => document.getElementById('btn-next').click());
+
+        // --- PROGRESS & VOLUME SLIDERS ---
+        const progressSlider = document.getElementById('progress-slider');
+        const volumeSlider = document.getElementById('volume-slider');
+        let isSeeking = false;
+
+        function fmt(sec) {
+            if(isNaN(sec)) return "0:00";
+            const m = Math.floor(sec/60), s = Math.floor(sec%60);
+            return `${m}:${s<10?'0':''}${s}`;
+        }
+
+        audioPlayer.addEventListener('timeupdate', () => {
+            if(!isSeeking && audioPlayer.duration) {
+                progressSlider.value = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                document.getElementById('time-current').innerText = fmt(audioPlayer.currentTime);
+            }
+        });
+
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            document.getElementById('time-total').innerText = fmt(audioPlayer.duration);
+        });
+
+        progressSlider.addEventListener('mousedown', () => isSeeking = true);
+        progressSlider.addEventListener('touchstart', () => isSeeking = true, {passive:true});
+        progressSlider.addEventListener('input', (e) => {
+            document.getElementById('time-current').innerText = fmt((e.target.value / 100) * audioPlayer.duration);
+        });
+        progressSlider.addEventListener('change', (e) => {
+            audioPlayer.currentTime = (e.target.value / 100) * audioPlayer.duration;
+            isSeeking = false;
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            audioPlayer.volume = e.target.value;
+        });
+
+        // --- VISUALIZER & EQ ---
+        let audioCtx, source, analyser;
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        let filters = [];
+
+        const visConfig = { type: 'bars', color1: '#00d2d3', color2: '#00d2d3', count: 64, sens: 1.5 };
+
+        const bindCfg = (id, key, suffix='') => {
+            document.getElementById(`vis-${id}`).addEventListener('input', e => {
+                visConfig[key] = isNaN(e.target.value) ? e.target.value : parseFloat(e.target.value);
+                const valTxt = document.getElementById(`val-${id}`);
+                if(valTxt) valTxt.innerText = e.target.value + suffix;
+            });
+        };
+        bindCfg('type', 'type'); bindCfg('color1', 'color1'); bindCfg('color2', 'color2');
+        bindCfg('count', 'count'); bindCfg('sens', 'sens', 'x');
+
+        const freqs = [60, 230, 910, 3600, 14000];
+        const eqPresets = { default:[0,0,0,0,0], pop:[-1,2,4,3,-2], bass:[6,4,0,0,0] };
+        const eqGrid = document.querySelector('.eq-grid');
+        
+        freqs.forEach((f, i) => {
+            const label = f>=1000 ? (f/1000)+'k' : f;
+            eqGrid.insertAdjacentHTML('beforeend', `
+                <div class="eq-band">
+                    <span class="eq-val" id="eq-val-${i}">0</span>
+                    <input type="range" class="flat-slider eq-slider" min="-12" max="12" value="0" step="0.5" data-index="${i}">
+                    <span class="eq-label">${label}</span>
+                </div>
+            `);
+        });
+
+        document.querySelectorAll('.eq-slider').forEach(s => {
+            s.addEventListener('input', e => {
+                const idx = e.target.getAttribute('data-index');
+                const v = parseFloat(e.target.value);
+                document.getElementById(`eq-val-${idx}`).innerText = v>0?`+${v}`:v;
+                if(filters[idx]) filters[idx].gain.value = v;
+                document.getElementById('eq-preset').value = 'custom';
+            });
+        });
+
+        document.getElementById('eq-preset').addEventListener('change', e => {
+            if(e.target.value==='custom') return;
+            eqPresets[e.target.value].forEach((v, i) => {
+                const s = document.querySelector(`.eq-slider[data-index="${i}"]`);
+                s.value = v; s.dispatchEvent(new Event('input'));
+            });
+        });
+
+        function resizeCanvas() {
+            const dpr = window.devicePixelRatio || 1;
+            const r = canvas.parentNode.getBoundingClientRect();
+            canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+            ctx.scale(dpr, dpr);
+            canvas.cssWidth = r.width; canvas.cssHeight = r.height;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 0);
+
+        function initAudioContext() {
+            if(audioCtx) return;
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             source = audioCtx.createMediaElementSource(audioPlayer);
             analyser = audioCtx.createAnalyser();
-            
-            // Giữ fftSize 256 (tạo ra 128 bins)
-            analyser.fftSize = 256; 
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.8;
 
-            let prevNode = source;
-
-            frequencies.forEach((freq, i) => {
-                let filter = audioCtx.createBiquadFilter();
-                filter.type = i === 0 ? 'lowshelf' : (i === frequencies.length - 1 ? 'highshelf' : 'peaking');
-                filter.frequency.value = freq;
-                
-                const currentVal = parseFloat(document.querySelector(`.eq-slider[data-index="${i}"]`).value);
-                filter.gain.value = currentVal;
-                
-                filters.push(filter);
-                prevNode.connect(filter);
-                prevNode = filter;
+            let prev = source;
+            freqs.forEach((f, i) => {
+                let flt = audioCtx.createBiquadFilter();
+                flt.type = i===0 ? 'lowshelf' : (i===freqs.length-1 ? 'highshelf' : 'peaking');
+                flt.frequency.value = f;
+                flt.gain.value = parseFloat(document.querySelector(`.eq-slider[data-index="${i}"]`).value);
+                filters.push(flt);
+                prev.connect(flt);
+                prev = flt;
             });
-
-            prevNode.connect(analyser);
+            prev.connect(analyser);
             analyser.connect(audioCtx.destination);
-
-            drawVisualizer();
+            drawVis();
         }
 
-        visStyleSelect.addEventListener('change', (e) => visStyle = e.target.value);
+        function drawVis() {
+            requestAnimationFrame(drawVis);
+            if(!analyser) return;
 
-        // Hàm hỗ trợ tính toán trung bình của một mảng con
-        function getAverageOfRange(array, startIndex, endIndex) {
-            let sum = 0;
-            for (let i = startIndex; i < endIndex; i++) {
-                sum += array[i];
-            }
-            return Math.round(sum / (endIndex - startIndex)) || 0;
-        }
-
-        let frameCount = 0;
-        function drawVisualizer() {
-            requestAnimationFrame(drawVisualizer);
-            frameCount++;
-
-            const bufferLength = analyser.frequencyBinCount; // Sẽ là 128
-            const dataArray = new Uint8Array(bufferLength);
+            const buffer = analyser.frequencyBinCount;
+            const data = new Uint8Array(buffer);
+            visConfig.type==='wave' ? analyser.getByteTimeDomainData(data) : analyser.getByteFrequencyData(data);
             
-            // Xóa Canvas
-            ctx.fillStyle = 'var(--bg)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            const w = canvas.cssWidth; const h = canvas.cssHeight;
+            ctx.clearRect(0,0,w,h);
 
-            // Cập nhật mảng dataArray tùy theo kiểu Visualizer
-            if (visStyle === 'bars') {
-                analyser.getByteFrequencyData(dataArray);
-                const barWidth = (canvas.width / bufferLength) * 2.5;
+            let grad = ctx.createLinearGradient(0, h, 0, 0);
+            grad.addColorStop(0, visConfig.color2);
+            grad.addColorStop(1, visConfig.color1);
+            ctx.fillStyle = grad; ctx.strokeStyle = grad; 
+            ctx.lineWidth = 3;
+
+            const bars = visConfig.count;
+            const step = Math.floor(buffer / bars);
+
+            if(visConfig.type === 'bars') {
+                const gap = 2; // Flat design, gap hẹp
+                const bw = Math.max(2, (w - (bars-1)*gap) / bars);
                 let x = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    const barHeight = dataArray[i] * 0.8; 
-                    ctx.fillStyle = `rgb(${dataArray[i]}, 255, 204)`;
-                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                    x += barWidth + 1;
+                for(let i=0; i<bars; i++) {
+                    let v = data[i*step];
+                    let bh = (v/255) * h * visConfig.sens;
+                    if(bh<2) bh=2; if(bh>h) bh=h;
+                    
+                    // Vẽ hình chữ nhật phẳng không bo góc
+                    ctx.fillRect(x, h-bh, bw, bh);
+                    x += bw + gap;
                 }
-            } else if (visStyle === 'wave') {
-                analyser.getByteTimeDomainData(dataArray);
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = 'var(--accent)';
+            } else if(visConfig.type === 'wave') {
                 ctx.beginPath();
-                const sliceWidth = canvas.width * 1.0 / bufferLength;
-                let x = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    const v = dataArray[i] / 128.0;
-                    const y = v * canvas.height / 2;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                    x += sliceWidth;
+                const sw = w / bars; let x = 0;
+                for(let i=0; i<bars; i++) {
+                    let y = (data[i*step]/128.0) * h/2;
+                    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+                    x += sw;
                 }
-                ctx.lineTo(canvas.width, canvas.height / 2);
-                ctx.stroke();
-                
-                // Trở lại Frequency Data để xuất log vì wave dùng TimeDomainData
-                analyser.getByteFrequencyData(dataArray); 
-            }
-
-            // --- LOGIC XUẤT LOG (Cập nhật mỗi 10 frame để chống lag) ---
-            if (frameCount % 10 === 0) {
-                // 1. Log Raw Bins
-                const rawBinsStr = Array.from(dataArray).slice(0, 16).join(', ');
-                logBins.innerText = `[ ${rawBinsStr} ... ]`;
-
-                // 2. Log Frequency Bands (Gom nhóm Bins)
-                // Lưu ý: với fftSize = 256, bufferLength = 128. Mỗi Bin chênh nhau ~172Hz (với sample rate 44.1kHz)
-                const bassVal = getAverageOfRange(dataArray, 0, 3);    // Bins 0-2: ~0 -> 516Hz (Bass)
-                const midVal = getAverageOfRange(dataArray, 3, 20);    // Bins 3-19: ~516 -> 3400Hz (Mid)
-                const trebVal = getAverageOfRange(dataArray, 20, 128); // Bins 20-127: ~3400 -> 22000Hz (Treble)
-
-                logBands.innerHTML = `
-                    <span class="color-bass">Bass: ${bassVal}</span> | 
-                    <span class="color-mid">Mid: ${midVal}</span> | 
-                    <span class="color-treb">Treb: ${trebVal}</span>
-                `;
+                ctx.lineTo(w, h/2); ctx.stroke();
             }
         }
     </script>
