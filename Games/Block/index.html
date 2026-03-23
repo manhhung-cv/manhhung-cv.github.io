@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Block Blast - Xếp Hình Khối</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Biến CSS Hệ thống Theme */
+        :root, body.theme-light {
+            --bg-color: #f0fdf4;
+            --board-bg: #ffffff;
+            --cell-empty: #f1f5f9;
+            --primary: #22c55e;
+            --text-main: #334155;
+            --text-muted: #94a3b8;
+            --shadow-board: 0 10px 40px -10px rgba(34, 197, 94, 0.15);
+            --border-board: none;
+            --border-panel: 1px solid #f1f5f9;
+            --glass-bg: rgba(255, 255, 255, 0.9);
+
+            /* Màu khối gốc (Theme Mặc định) */
+            --c-1: #ff8787; --c-2: #ffa94d; --c-3: #ffd43b;
+            --c-4: #4dabf7; --c-5: #38d9a9; --c-6: #9775fa;
+            --c-7: #f783ac; --c-8: #ff8787; --c-9: #748ffc;
+        }
+
+        body.theme-dark {
+            --bg-color: #0f172a;
+            --board-bg: #1e293b;
+            --cell-empty: #334155;
+            --primary: #4ade80; 
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+            --shadow-board: 0 10px 40px -10px rgba(0,0,0,0.5);
+            --border-board: 1px solid #334155;
+            --border-panel: 1px solid #334155;
+            --glass-bg: rgba(30, 41, 59, 0.9);
+
+            /* Màu khối rực rỡ (Dark Mode) */
+            --c-1: #ef4444; --c-2: #f97316; --c-3: #eab308;
+            --c-4: #3b82f6; --c-5: #10b981; --c-6: #8b5cf6;
+            --c-7: #ec4899; --c-8: #f43f5e; --c-9: #6366f1;
+        }
+
+        body.theme-oled {
+            --bg-color: #000000;
+            --board-bg: #000000;
+            --cell-empty: #111111;
+            --primary: #00ff00; 
+            --text-main: #ffffff;
+            --text-muted: #666666;
+            --shadow-board: none;
+            --border-board: 1px solid #222222;
+            --border-panel: 1px solid #222222;
+            --glass-bg: rgba(0, 0, 0, 0.95);
+
+            /* Màu khối tương phản cực cao (OLED) */
+            --c-1: #ff0040; --c-2: #ff7b00; --c-3: #ffee00;
+            --c-4: #00bfff; --c-5: #00ff00; --c-6: #aa00ff;
+            --c-7: #ff00ea; --c-8: #ff2a00; --c-9: #2a00ff;
+        }
+
+        /* --- CẤU HÌNH MÀU SẮC KHỐI CHÍNH THỨC --- */
+        /* Mặc định lấy từ Theme */
+        :root {
+            --shape-c-1: var(--c-1); --shape-c-2: var(--c-2); --shape-c-3: var(--c-3);
+            --shape-c-4: var(--c-4); --shape-c-5: var(--c-5); --shape-c-6: var(--c-6);
+            --shape-c-7: var(--c-7); --shape-c-8: var(--c-8); --shape-c-9: var(--c-9);
+        }
+
+        /* Khi chọn chế độ ĐƠN SẮC */
+        body[data-tone="monochrome"] {
+            --shape-c-1: var(--custom-mono, var(--primary)); --shape-c-2: var(--custom-mono, var(--primary)); 
+            --shape-c-3: var(--custom-mono, var(--primary)); --shape-c-4: var(--custom-mono, var(--primary)); 
+            --shape-c-5: var(--custom-mono, var(--primary)); --shape-c-6: var(--custom-mono, var(--primary));
+            --shape-c-7: var(--custom-mono, var(--primary)); --shape-c-8: var(--custom-mono, var(--primary)); 
+            --shape-c-9: var(--custom-mono, var(--primary));
+        }
+
+        /* Các bộ màu ĐA SẮC (Palettes) */
+        body[data-tone="polychrome"][data-palette="pastel"] {
+            --shape-c-1: #ff8787; --shape-c-2: #ffa94d; --shape-c-3: #ffd43b;
+            --shape-c-4: #4dabf7; --shape-c-5: #38d9a9; --shape-c-6: #9775fa;
+            --shape-c-7: #f783ac; --shape-c-8: #ff8787; --shape-c-9: #748ffc;
+        }
+
+        body[data-tone="polychrome"][data-palette="neon"] {
+            --shape-c-1: #ff0055; --shape-c-2: #ff5500; --shape-c-3: #ffee00;
+            --shape-c-4: #00e5ff; --shape-c-5: #00ff66; --shape-c-6: #b800ff;
+            --shape-c-7: #ff00bb; --shape-c-8: #ff3333; --shape-c-9: #3333ff;
+        }
+
+        body[data-tone="polychrome"][data-palette="ocean"] {
+            --shape-c-1: #03045e; --shape-c-2: #023e8a; --shape-c-3: #0077b6;
+            --shape-c-4: #0096c7; --shape-c-5: #00b4d8; --shape-c-6: #48cae4;
+            --shape-c-7: #90e0ef; --shape-c-8: #ade8f4; --shape-c-9: #caf0f8;
+        }
+
+        body[data-tone="polychrome"][data-palette="random"] {
+            --shape-c-1: var(--rand-c-1, var(--c-1)); --shape-c-2: var(--rand-c-2, var(--c-2)); --shape-c-3: var(--rand-c-3, var(--c-3));
+            --shape-c-4: var(--rand-c-4, var(--c-4)); --shape-c-5: var(--rand-c-5, var(--c-5)); --shape-c-6: var(--rand-c-6, var(--c-6));
+            --shape-c-7: var(--rand-c-7, var(--c-7)); --shape-c-8: var(--rand-c-8, var(--c-8)); --shape-c-9: var(--rand-c-9, var(--c-9));
+        }
+
+        /* Tuỳ chọn Hình dáng */
+        body[data-shape="square"] { --shape-radius: 2px; }
+        body[data-shape="rounded"] { --shape-radius: 8px; }
+        body[data-shape="circle"] { --shape-radius: 50%; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden; 
+            touch-action: none; 
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .panel-bg {
+            background-color: var(--board-bg);
+            border: var(--border-panel);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .text-main { color: var(--text-main); transition: color 0.3s;}
+        .text-muted { color: var(--text-muted); transition: color 0.3s;}
+
+        /* Lưới trò chơi */
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 4px; 
+            background-color: var(--board-bg);
+            padding: 6px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            aspect-ratio: 1/1;
+            margin: 0 auto;
+            box-shadow: var(--shadow-board);
+            border: var(--border-board);
+            transition: background-color 0.3s, box-shadow 0.3s, border 0.3s;
+        }
+
+        .cell {
+            background-color: var(--cell-empty);
+            border-radius: var(--shape-radius, 6px);
+            transition: background-color 0.2s, transform 0.2s, opacity 0.2s, border-radius 0.3s;
+        }
+
+        .cell.filled {
+            box-shadow: none;
+            border: none;
+        }
+
+        .cell.clearing {
+            animation: clearAnim 0.3s forwards cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes clearAnim {
+            0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+            50% { transform: scale(1.2); opacity: 0.9; filter: brightness(1.5); }
+            100% { transform: scale(0); opacity: 0; filter: brightness(0); }
+        }
+
+        /* Khu vực chọn khối hình */
+        .rack {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            height: 120px;
+            margin-top: 10px;
+        }
+
+        .shape-container {
+            width: 90px;
+            height: 90px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .shape {
+            display: grid;
+            gap: 3px;
+            cursor: grab;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        .shape:active { cursor: grabbing; }
+
+        .shape-cell {
+            background-color: currentColor;
+            border-radius: var(--shape-radius, 6px);
+            transition: background-color 0.3s, border-radius 0.3s;
+        }
+
+        /* Kéo khối trực tiếp - Tối ưu 1:1 với ngón tay */
+        .dragging {
+            position: fixed;
+            top: 0;
+            left: 0;
+            margin: 0;
+            pointer-events: none;
+            z-index: 1000;
+            filter: drop-shadow(0 15px 25px rgba(0,0,0,0.25));
+            transition: none !important; 
+        }
+
+        .preview-cell {
+            background-color: currentColor !important;
+            opacity: 0.3;
+            transform: scale(0.85);
+        }
+
+        /* Nút Tùy Chỉnh Settings */
+        .setting-btn {
+            padding: 8px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            cursor: pointer;
+            outline: none;
+            flex: 1;
+            text-align: center;
+            background-color: var(--cell-empty);
+            color: var(--text-muted);
+        }
+        .setting-btn:active { transform: scale(0.95); }
+        .setting-btn.active { 
+            border-color: var(--primary); 
+            color: var(--text-main);
+        }
+
+        /* Toggle Switch Custom */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: var(--primary);
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: var(--primary);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen relative w-full h-full theme-light" data-shape="rounded" data-tone="polychrome" data-palette="theme" id="app-body">
+
+    <!-- Header & Điểm số -->
+    <div class="w-full max-w-md px-5 py-4 flex justify-between items-center mt-4">
+        <div class="text-md font-black text-main flex items-center gap-2 tracking-tight">
+            <i class="fa-solid fa-cube text-[var(--primary)] text-md"></i>Block<span class="text-[var(--primary)] font-medium">Blast</span>
+        </div>
+        <div class="flex gap-2 items-center">
+            <div class="panel-bg px-3 py-1.5 rounded-xl shadow-sm text-center min-w-[60px]">
+                <div class="text-[9px] text-muted font-bold uppercase tracking-wider mb-0.5">Kỷ Lục</div>
+                <div id="high-score" class="text-base font-black text-amber-500 leading-none">0</div>
+            </div>
+            <div class="panel-bg px-3 py-1.5 rounded-xl shadow-sm text-center min-w-[60px]">
+                <div class="text-[9px] text-muted font-bold uppercase tracking-wider mb-0.5">Điểm</div>
+                <div id="score" class="text-base font-black text-[var(--primary)] leading-none">0</div>
+            </div>
+            
+            <button onclick="openRestartConfirm()" class="ml-1 w-9 h-9 flex items-center justify-center rounded-xl panel-bg text-muted hover:text-red-500 transition-colors shadow-sm">
+                <i class="fa-solid fa-rotate-right text-base"></i>
+            </button>
+
+            <button onclick="openSettings()" class="w-9 h-9 flex items-center justify-center rounded-xl panel-bg text-muted hover:text-[var(--primary)] transition-colors shadow-sm">
+                <i class="fa-solid fa-gear text-base"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Bảng trò chơi chính -->
+    <div class="w-full max-w-md px-5 flex-1 flex flex-col justify-center pb-8">
+        <div id="board" class="board"></div>
+        <div id="rack" class="rack">
+            <div class="shape-container" id="rack-0"></div>
+            <div class="shape-container" id="rack-1"></div>
+            <div class="shape-container" id="rack-2"></div>
+        </div>
+    </div>
+
+    <!-- Màn Hình Cài Đặt -->
+    <div id="settings-modal" class="fixed inset-0 z-50 flex flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300" style="background-color: var(--glass-bg); backdrop-filter: blur(8px);">
+        <div class="panel-bg p-6 rounded-[2rem] shadow-2xl transform scale-95 transition-transform duration-300 w-[85%] max-w-sm max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-black text-main">Cài Đặt</h2>
+                <button onclick="closeSettings()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200/20 text-muted hover:text-main">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <!-- Giao diện Theme -->
+            <div class="mb-5">
+                <div class="text-[10px] text-muted font-bold uppercase tracking-wider mb-2">Giao Diện</div>
+                <div class="flex gap-2 w-full">
+                    <button onclick="setTheme('light')" id="btn-theme-light" class="setting-btn">Sáng</button>
+                    <button onclick="setTheme('dark')" id="btn-theme-dark" class="setting-btn">Tối</button>
+                    <button onclick="setTheme('oled')" id="btn-theme-oled" class="setting-btn">OLED</button>
+                </div>
+            </div>
+
+            <!-- Hình dáng -->
+            <div class="mb-5">
+                <div class="text-[10px] text-muted font-bold uppercase tracking-wider mb-2">Hình Dáng Ô</div>
+                <div class="flex gap-2 w-full">
+                    <button onclick="setShape('square')" id="btn-shape-square" class="setting-btn">Vuông</button>
+                    <button onclick="setShape('rounded')" id="btn-shape-rounded" class="setting-btn">Bo góc</button>
+                    <button onclick="setShape('circle')" id="btn-shape-circle" class="setting-btn">Tròn</button>
+                </div>
+            </div>
+
+            <!-- Tone Màu Mới -->
+            <div class="mb-6">
+                <div class="text-[10px] text-muted font-bold uppercase tracking-wider mb-2">Chế Độ Màu</div>
+                <div class="flex gap-2 w-full mb-3">
+                    <button onclick="setTone('polychrome')" id="btn-tone-polychrome" class="setting-btn active">Đa sắc</button>
+                    <button onclick="setTone('monochrome')" id="btn-tone-monochrome" class="setting-btn">Đơn sắc</button>
+                </div>
+
+                <!-- Tuỳ chọn Đa Sắc -->
+                <div id="poly-options" class="flex gap-2 w-full flex-wrap">
+                    <button onclick="setPalette('theme')" id="btn-palette-theme" class="setting-btn px-2 py-1.5 text-[10px]">Mặc định</button>
+                    <button onclick="setPalette('pastel')" id="btn-palette-pastel" class="setting-btn px-2 py-1.5 text-[10px]">Pastel</button>
+                    <button onclick="setPalette('neon')" id="btn-palette-neon" class="setting-btn px-2 py-1.5 text-[10px]">Neon</button>
+                    <button onclick="setPalette('ocean')" id="btn-palette-ocean" class="setting-btn px-2 py-1.5 text-[10px]">Đại Dương</button>
+                    <button onclick="setPalette('random')" id="btn-palette-random" class="setting-btn px-2 py-1.5 text-[10px] bg-indigo-100 dark:bg-indigo-900"><i class="fa-solid fa-dice"></i> Lắc Ngẫu Nhiên</button>
+                </div>
+
+                <!-- Tuỳ chọn Đơn Sắc -->
+                <div id="mono-options" class="hidden items-center justify-between panel-bg p-2 rounded-xl">
+                    <span class="text-xs font-semibold text-main ml-2">Chọn màu tùy thích:</span>
+                    <input type="color" id="custom-mono-color" value="#22c55e" class="w-8 h-8 rounded-lg cursor-pointer border-none outline-none bg-transparent" onchange="setCustomMonoColor(this.value)">
+                </div>
+            </div>
+
+            <!-- Âm thanh -->
+            <div class="flex justify-between items-center mb-3 panel-bg p-3 rounded-xl border-none" style="background-color: var(--cell-empty);">
+                <div class="flex items-center gap-3 text-main font-semibold text-sm">
+                    <i class="fa-solid fa-music w-5 text-center text-[var(--primary)]"></i> Âm Thanh
+                </div>
+                <div class="relative inline-block w-11 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="toggle-sound" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0 left-0 transition-all duration-300" onclick="toggleSound()"/>
+                    <label for="toggle-sound" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"></label>
+                </div>
+            </div>
+
+            <!-- Rung -->
+            <div class="flex justify-between items-center panel-bg p-3 rounded-xl border-none" style="background-color: var(--cell-empty);">
+                <div class="flex items-center gap-3 text-main font-semibold text-sm">
+                    <i class="fa-solid fa-mobile-screen-button w-5 text-center text-[var(--primary)]"></i> Rung (Haptic)
+                </div>
+                <div class="relative inline-block w-11 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="toggle-vibration" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-0 left-0 transition-all duration-300" onclick="toggleVibration()"/>
+                    <label for="toggle-vibration" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer transition-colors duration-300"></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Màn Hình Xác Nhận Chơi Lại -->
+    <div id="restart-modal" class="fixed inset-0 z-50 flex flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300" style="background-color: rgba(0,0,0,0.6); backdrop-filter: blur(4px);">
+        <div class="panel-bg p-6 rounded-2xl shadow-2xl transform scale-95 transition-transform duration-300 w-[80%] max-w-xs text-center border-none">
+            <div class="w-12 h-12 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 class="text-xl font-bold text-main mb-2">Chơi lại từ đầu?</h3>
+            <p class="text-muted text-sm mb-6">Tiến trình hiện tại của bạn sẽ bị xóa và không thể khôi phục.</p>
+            <div class="flex gap-3">
+                <button onclick="closeRestartConfirm()" class="flex-1 py-2.5 rounded-xl font-bold text-main bg-gray-200/50 hover:bg-gray-300/50 transition-colors">Hủy</button>
+                <button onclick="forceRestart()" class="flex-1 py-2.5 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 transition-colors shadow-md">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Màn hình Kết Thúc Trò Chơi -->
+    <div id="game-over-modal" class="fixed inset-0 z-50 flex flex-col items-center justify-center hidden opacity-0 transition-opacity duration-300" style="background-color: var(--glass-bg); backdrop-filter: blur(8px);">
+        <div class="panel-bg p-8 rounded-[2rem] shadow-2xl text-center transform scale-95 transition-transform duration-300 w-[85%] max-w-sm">
+            <h2 class="text-3xl font-black text-main mb-2">Hết Nước Đi!</h2>
+            <p class="text-muted mb-8 text-sm">Bạn không thể đặt thêm khối nào nữa.</p>
+            
+            <div class="rounded-2xl p-6 mb-8 border" style="background-color: var(--cell-empty); border-color: var(--border-panel);">
+                <div class="text-xs text-muted font-bold tracking-widest uppercase">Điểm Của Bạn</div>
+                <div id="final-score" class="text-6xl font-black text-main my-3">0</div>
+                <div class="text-sm text-amber-500 font-bold h-5" id="new-highscore-msg"></div>
+            </div>
+
+            <button onclick="forceRestart()" class="w-full bg-[var(--primary)] hover:opacity-80 text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2 text-lg">
+                <i class="fa-solid fa-rotate-right"></i> Chơi Lại
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- HỆ THỐNG CÀI ĐẶT & TRẠNG THÁI ---
+        const BOARD_SIZE = 8;
+        let board = [];
+        let score = 0;
+        let highScore = localStorage.getItem('blockBlastHighScore') || 0;
+        let currentShapes = []; 
+        
+        document.getElementById('high-score').textContent = highScore;
+
+        // Quản lý các tuỳ chọn hiển thị
+        const bodyEl = document.getElementById('app-body');
+        
+        function updateActiveButton(prefix, value) {
+            document.querySelectorAll(`[id^="btn-${prefix}-"]`).forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`btn-${prefix}-${value}`);
+            if(activeBtn) activeBtn.classList.add('active');
+        }
+
+        function setTheme(theme) {
+            bodyEl.className = bodyEl.className.replace(/theme-\w+/, `theme-${theme}`);
+            updateActiveButton('theme', theme);
+            localStorage.setItem('blockBlastTheme', theme);
+        }
+        
+        function setShape(shape) {
+            bodyEl.setAttribute('data-shape', shape);
+            updateActiveButton('shape', shape);
+            localStorage.setItem('blockBlastShape', shape);
+        }
+
+        function setTone(tone) {
+            bodyEl.setAttribute('data-tone', tone);
+            updateActiveButton('tone', tone);
+            localStorage.setItem('blockBlastTone', tone);
+
+            if (tone === 'monochrome') {
+                document.getElementById('poly-options').classList.add('hidden');
+                document.getElementById('mono-options').classList.remove('hidden');
+                document.getElementById('mono-options').classList.add('flex');
+            } else {
+                document.getElementById('poly-options').classList.remove('hidden');
+                document.getElementById('mono-options').classList.add('hidden');
+                document.getElementById('mono-options').classList.remove('flex');
+            }
+        }
+
+        function setPalette(palette) {
+            bodyEl.setAttribute('data-palette', palette);
+            updateActiveButton('palette', palette);
+            localStorage.setItem('blockBlastPalette', palette);
+
+            if (palette === 'random') {
+                generateRandomPalette();
+            }
+        }
+
+        function setCustomMonoColor(color) {
+            document.documentElement.style.setProperty('--custom-mono', color);
+            localStorage.setItem('blockBlastMonoColor', color);
+        }
+
+        function generateRandomPalette() {
+            for (let i = 1; i <= 9; i++) {
+                const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+                document.documentElement.style.setProperty(`--rand-c-${i}`, randomColor);
+            }
+        }
+
+        // Khôi phục cài đặt hiển thị khi khởi động
+        setTheme(localStorage.getItem('blockBlastTheme') || 'light');
+        setShape(localStorage.getItem('blockBlastShape') || 'rounded');
+        setTone(localStorage.getItem('blockBlastTone') || 'polychrome');
+        setPalette(localStorage.getItem('blockBlastPalette') || 'theme');
+        
+        const savedMonoColor = localStorage.getItem('blockBlastMonoColor') || '#22c55e';
+        document.getElementById('custom-mono-color').value = savedMonoColor;
+        setCustomMonoColor(savedMonoColor);
+
+        if (bodyEl.getAttribute('data-palette') === 'random') {
+            generateRandomPalette();
+        }
+
+        // Quản lý Tùy chọn (Âm thanh & Rung)
+        let isSoundEnabled = localStorage.getItem('bbSound') !== 'false';
+        let isVibrationEnabled = localStorage.getItem('bbVib') !== 'false';
+
+        document.getElementById('toggle-sound').checked = isSoundEnabled;
+        document.getElementById('toggle-vibration').checked = isVibrationEnabled;
+
+        function toggleSound() {
+            isSoundEnabled = document.getElementById('toggle-sound').checked;
+            localStorage.setItem('bbSound', isSoundEnabled);
+            initAudio(); 
+        }
+
+        function toggleVibration() {
+            isVibrationEnabled = document.getElementById('toggle-vibration').checked;
+            localStorage.setItem('bbVib', isVibrationEnabled);
+            if(isVibrationEnabled) triggerVibration(50);
+        }
+
+        function openSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.replace('opacity-0', 'opacity-100');
+                modal.querySelector('div').classList.replace('scale-95', 'scale-100');
+            });
+        }
+
+        function closeSettings() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.replace('opacity-100', 'opacity-0');
+            modal.querySelector('div').classList.replace('scale-100', 'scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function openRestartConfirm() {
+            const modal = document.getElementById('restart-modal');
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.replace('opacity-0', 'opacity-100');
+                modal.querySelector('div').classList.replace('scale-95', 'scale-100');
+            });
+        }
+
+        function closeRestartConfirm() {
+            const modal = document.getElementById('restart-modal');
+            modal.classList.replace('opacity-100', 'opacity-0');
+            modal.querySelector('div').classList.replace('scale-100', 'scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // --- HỆ THỐNG LƯU TIẾN TRÌNH (AUTO SAVE) ---
+        function saveGameState() {
+            const state = {
+                board: board,
+                score: score,
+                shapes: currentShapes
+            };
+            localStorage.setItem('blockBlastGameState', JSON.stringify(state));
+        }
+
+        function loadGameState() {
+            const savedState = localStorage.getItem('blockBlastGameState');
+            if (savedState) {
+                try {
+                    const parsed = JSON.parse(savedState);
+                    if (parsed.board && parsed.board.length === BOARD_SIZE) {
+                        board = parsed.board;
+                        score = parsed.score || 0;
+                        currentShapes = parsed.shapes || [null, null, null];
+                        return true;
+                    }
+                } catch (e) {
+                    console.error("Lỗi khi đọc file save", e);
+                }
+            }
+            return false;
+        }
+
+        function clearGameState() {
+            localStorage.removeItem('blockBlastGameState');
+        }
+
+        // --- HỆ THỐNG ÂM THANH & RUNG ---
+        let audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSoundEffect(type) {
+            if (!isSoundEnabled) return;
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            const now = audioCtx.currentTime;
+
+            if (type === 'place') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+                gain.gain.setValueAtTime(0.5, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if (type === 'clear') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } else if (type === 'gameover') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(50, now + 0.5);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
+            }
+        }
+
+        function triggerVibration(pattern) {
+            if (isVibrationEnabled && navigator.vibrate) navigator.vibrate(pattern);
+        }
+
+        // --- THƯ VIỆN KHỐI HÌNH ---
+        // Đã cập nhật để nhận màu từ biến CSS thay vì fix cứng màu
+        const SHAPES_LIBRARY = [
+            { matrix: [[1]], color: 'var(--shape-c-1)' },
+            { matrix: [[1, 1]], color: 'var(--shape-c-2)' },
+            { matrix: [[1], [1]], color: 'var(--shape-c-2)' },
+            { matrix: [[1, 1, 1]], color: 'var(--shape-c-3)' },
+            { matrix: [[1], [1], [1]], color: 'var(--shape-c-3)' },
+            { matrix: [[1, 1, 1, 1]], color: 'var(--shape-c-4)' },
+            { matrix: [[1], [1], [1], [1]], color: 'var(--shape-c-4)' },
+            { matrix: [[1, 1, 1, 1, 1]], color: 'var(--shape-c-5)' },
+            { matrix: [[1], [1], [1], [1], [1]], color: 'var(--shape-c-5)' },
+            { matrix: [[1, 1], [1, 1]], color: 'var(--shape-c-6)' },
+            { matrix: [[1, 1, 1], [1, 1, 1], [1, 1, 1]], color: 'var(--shape-c-7)' },
+            { matrix: [[1, 1], [1, 0]], color: 'var(--shape-c-8)' },
+            { matrix: [[1, 1], [0, 1]], color: 'var(--shape-c-8)' },
+            { matrix: [[1, 0], [1, 1]], color: 'var(--shape-c-8)' },
+            { matrix: [[0, 1], [1, 1]], color: 'var(--shape-c-8)' },
+            { matrix: [[1, 1, 1], [1, 0, 0], [1, 0, 0]], color: 'var(--shape-c-9)' },
+            { matrix: [[1, 1, 1], [0, 0, 1], [0, 0, 1]], color: 'var(--shape-c-9)' },
+            { matrix: [[1, 0, 0], [1, 0, 0], [1, 1, 1]], color: 'var(--shape-c-9)' },
+            { matrix: [[0, 0, 1], [0, 0, 1], [1, 1, 1]], color: 'var(--shape-c-9)' },
+        ];
+
+        // --- DOM & GAME LOGIC ---
+        const boardEl = document.getElementById('board');
+        const scoreEl = document.getElementById('score');
+        const gameOverModal = document.getElementById('game-over-modal');
+        
+        let draggedShapeData = null;
+        let ghostEl = null;
+        let isDragging = false;
+        let activeRackIndex = -1;
+        
+        let cachedBoardRect = null;
+        let cachedCellWidth = 0;
+        let cachedCellHeight = 0;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        function initGame() {
+            gameOverModal.classList.add('hidden', 'opacity-0');
+            gameOverModal.querySelector('div').classList.replace('scale-100', 'scale-95');
+
+            if (!loadGameState()) {
+                board = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(0));
+                score = 0;
+                generateShapes();
+            } else {
+                renderAllRacks();
+                if (currentShapes.every(s => s === null)) generateShapes();
+                else checkGameOver();
+            }
+            
+            updateScore();
+            renderBoard();
+        }
+
+        function forceRestart() {
+            closeRestartConfirm();
+            clearGameState();
+            initGame();
+        }
+
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (board[r][c] !== 0) {
+                        cell.style.backgroundColor = board[r][c];
+                        cell.classList.add('filled');
+                    }
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    boardEl.appendChild(cell);
+                }
+            }
+        }
+
+        function generateShapes() {
+            currentShapes = [];
+            for (let i = 0; i < 3; i++) {
+                const randomShape = SHAPES_LIBRARY[Math.floor(Math.random() * SHAPES_LIBRARY.length)];
+                currentShapes.push(randomShape);
+            }
+            renderAllRacks();
+            saveGameState();
+            checkGameOver();
+        }
+
+        function renderAllRacks() {
+            for (let i = 0; i < 3; i++) {
+                renderShapeInRack(currentShapes[i], i);
+            }
+        }
+
+        function renderShapeInRack(shapeData, index) {
+            const container = document.getElementById(`rack-${index}`);
+            container.innerHTML = '';
+            if (!shapeData) return; 
+
+            const shapeEl = document.createElement('div');
+            shapeEl.className = 'shape';
+            shapeEl.style.color = shapeData.color;
+            shapeEl.style.gridTemplateColumns = `repeat(${shapeData.matrix[0].length}, 20px)`;
+            shapeEl.style.gridTemplateRows = `repeat(${shapeData.matrix.length}, 20px)`;
+
+            shapeData.matrix.forEach(row => {
+                row.forEach(val => {
+                    const cell = document.createElement('div');
+                    if (val === 1) cell.className = 'shape-cell';
+                    else cell.style.visibility = 'hidden';
+                    shapeEl.appendChild(cell);
+                });
+            });
+
+            shapeEl.addEventListener('pointerdown', (e) => onPointerDown(e, shapeData, index, shapeEl));
+            container.appendChild(shapeEl);
+        }
+
+        /* ----- LOGIC KÉO THẢ TỐI ƯU CỰC CHUẨN ----- */
+        function onPointerDown(e, shapeData, index, originalEl) {
+            initAudio(); 
+            triggerVibration(20); 
+            
+            if (isDragging) return;
+            isDragging = true;
+            activeRackIndex = index;
+            draggedShapeData = shapeData;
+
+            cachedBoardRect = boardEl.getBoundingClientRect();
+            cachedCellWidth = cachedBoardRect.width / BOARD_SIZE;
+            cachedCellHeight = cachedBoardRect.height / BOARD_SIZE;
+
+            ghostEl = document.createElement('div');
+            ghostEl.className = 'shape dragging scale-105';
+            ghostEl.style.color = shapeData.color;
+            ghostEl.style.gap = '4px'; 
+            ghostEl.style.gridTemplateColumns = `repeat(${shapeData.matrix[0].length}, ${cachedCellWidth}px)`;
+            ghostEl.style.gridTemplateRows = `repeat(${shapeData.matrix.length}, ${cachedCellHeight}px)`;
+
+            shapeData.matrix.forEach(row => {
+                row.forEach(val => {
+                    const cell = document.createElement('div');
+                    if (val === 1) cell.className = 'shape-cell';
+                    else cell.style.visibility = 'hidden';
+                    ghostEl.appendChild(cell);
+                });
+            });
+
+            document.body.appendChild(ghostEl);
+            originalEl.style.opacity = '0.15'; 
+
+            const ghostRect = ghostEl.getBoundingClientRect();
+            dragOffsetX = ghostRect.width / 2;
+            const isTouch = e.pointerType === 'touch' || e.pointerType === 'pen';
+            
+            // Nâng khối lên để không bị ngón tay che mất nếu dùng cảm ứng
+            dragOffsetY = isTouch ? (ghostRect.height + 40) : (ghostRect.height / 2);
+
+            updateGhostPosition(e.clientX, e.clientY);
+
+            window.addEventListener('pointermove', onPointerMove, { passive: false });
+            window.addEventListener('pointerup', onPointerUp);
+            window.addEventListener('pointercancel', onPointerUp);
+        }
+
+        function updateGhostPosition(clientX, clientY) {
+            if (!ghostEl) return;
+            const x = clientX - dragOffsetX;
+            const y = clientY - dragOffsetY;
+            ghostEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        }
+
+        function onPointerMove(e) {
+            if (!isDragging) return;
+            if(e.cancelable) e.preventDefault(); 
+            
+            updateGhostPosition(e.clientX, e.clientY);
+            clearPreviews();
+            
+            const hoverPos = getHoveredGridPosition(e.clientX, e.clientY);
+            
+            if (hoverPos) {
+                const { r, c } = hoverPos;
+                if (canPlace(draggedShapeData.matrix, r, c)) {
+                    drawPreview(draggedShapeData.matrix, r, c);
+                }
+            }
+        }
+
+        function onPointerUp(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            const hoverPos = getHoveredGridPosition(e.clientX, e.clientY);
+            clearPreviews();
+
+            let placed = false;
+            if (hoverPos) {
+                const { r, c } = hoverPos;
+                if (canPlace(draggedShapeData.matrix, r, c)) {
+                    placeShape(draggedShapeData, r, c);
+                    placed = true;
+                    playSoundEffect('place');
+                    triggerVibration([30]);
+                }
+            }
+
+            if(ghostEl && ghostEl.parentNode) document.body.removeChild(ghostEl);
+            ghostEl = null;
+
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+            window.removeEventListener('pointercancel', onPointerUp);
+
+            const rackContainer = document.getElementById(`rack-${activeRackIndex}`);
+            const originalEl = rackContainer ? rackContainer.firstChild : null;
+            
+            if (placed) {
+                currentShapes[activeRackIndex] = null;
+                if(rackContainer) rackContainer.innerHTML = '';
+                
+                checkLines();
+                
+                if (currentShapes.every(s => s === null)) {
+                    generateShapes();
+                } else {
+                    saveGameState();
+                    checkGameOver();
+                }
+            } else {
+                if (originalEl) {
+                    originalEl.style.opacity = '1';
+                    originalEl.animate([
+                        { transform: 'translateX(0)' }, { transform: 'translateX(-5px)' },
+                        { transform: 'translateX(5px)' }, { transform: 'translateX(0)' }
+                    ], { duration: 250 });
+                }
+            }
+
+            draggedShapeData = null;
+            activeRackIndex = -1;
+        }
+
+        // THUẬT TOÁN TÍNH TỌA ĐỘ MỚI (Tự động Snap-to-grid cực chuẩn)
+        function getHoveredGridPosition(clientX, clientY) {
+            if (!cachedBoardRect) return null;
+            
+            // Tính toán vị trí góc trên cùng bên trái của khối ảo đang cầm
+            const ghostLeft = clientX - dragOffsetX;
+            const ghostTop = clientY - dragOffsetY;
+
+            // Tính toán khoảng cách (delta) so với bảng
+            const deltaX = ghostLeft - cachedBoardRect.left;
+            const deltaY = ghostTop - cachedBoardRect.top;
+
+            // Dùng Math.round để tự động bám vào ô gần nhất (Snap-to-Grid)
+            const c = Math.round(deltaX / cachedCellWidth);
+            const r = Math.round(deltaY / cachedCellHeight);
+
+            // Cho phép trả về kết quả ngay cả khi ngón tay nằm ngoài viền bảng, 
+            // hàm canPlace sẽ tự chịu trách nhiệm chặn nếu khối vượt biên
+            if (r >= -4 && r < BOARD_SIZE && c >= -4 && c < BOARD_SIZE) {
+                return { r, c };
+            }
+            return null;
+        }
+
+        function canPlace(matrix, startR, startC) {
+            for (let r = 0; r < matrix.length; r++) {
+                for (let c = 0; c < matrix[0].length; c++) {
+                    if (matrix[r][c] === 1) {
+                        const boardR = startR + r;
+                        const boardC = startC + c;
+                        if (boardR < 0 || boardR >= BOARD_SIZE || boardC < 0 || boardC >= BOARD_SIZE) return false;
+                        if (board[boardR][boardC] !== 0) return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function drawPreview(matrix, startR, startC) {
+            for (let r = 0; r < matrix.length; r++) {
+                for (let c = 0; c < matrix[0].length; c++) {
+                    if (matrix[r][c] === 1) {
+                        const cell = getBoardCell(startR + r, startC + c);
+                        if (cell) {
+                            cell.classList.add('preview-cell');
+                            cell.style.color = draggedShapeData.color; 
+                        }
+                    }
+                }
+            }
+        }
+
+        function clearPreviews() {
+            const cells = boardEl.querySelectorAll('.preview-cell');
+            cells.forEach(cell => {
+                cell.classList.remove('preview-cell');
+                cell.style.color = '';
+            });
+        }
+
+        function getBoardCell(r, c) {
+            return boardEl.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+        }
+
+        function placeShape(shapeData, startR, startC) {
+            let blocksPlaced = 0;
+            for (let r = 0; r < shapeData.matrix.length; r++) {
+                for (let c = 0; c < shapeData.matrix[0].length; c++) {
+                    if (shapeData.matrix[r][c] === 1) {
+                        board[startR + r][startC + c] = shapeData.color;
+                        const cell = getBoardCell(startR + r, startC + c);
+                        cell.style.backgroundColor = shapeData.color;
+                        cell.classList.add('filled');
+                        blocksPlaced++;
+                    }
+                }
+            }
+            addScore(blocksPlaced);
+        }
+
+        function checkLines() {
+            let rowsToClear = [];
+            let colsToClear = [];
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                if (board[r].every(cell => cell !== 0)) rowsToClear.push(r);
+            }
+
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                let colFull = true;
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    if (board[r][c] === 0) { colFull = false; break; }
+                }
+                if (colFull) colsToClear.push(c);
+            }
+
+            const linesCleared = rowsToClear.length + colsToClear.length;
+
+            if (linesCleared > 0) {
+                playSoundEffect('clear');
+                triggerVibration([50, 50, 100]); 
+
+                let points = linesCleared * 10;
+                if (linesCleared > 1) points += (linesCleared - 1) * 5; 
+                addScore(points);
+
+                let cellsToAnimate = new Set();
+                rowsToClear.forEach(r => {
+                    for (let c = 0; c < BOARD_SIZE; c++) { cellsToAnimate.add(`${r},${c}`); board[r][c] = 0; }
+                });
+                colsToClear.forEach(c => {
+                    for (let r = 0; r < BOARD_SIZE; r++) { cellsToAnimate.add(`${r},${c}`); board[r][c] = 0; }
+                });
+                
+                saveGameState();
+
+                cellsToAnimate.forEach(coord => {
+                    const [r, c] = coord.split(',').map(Number);
+                    const cell = getBoardCell(r, c);
+                    cell.classList.add('clearing');
+                    
+                    setTimeout(() => {
+                        cell.className = 'cell'; 
+                        cell.style.backgroundColor = '';
+                    }, 300);
+                });
+            }
+        }
+
+        function checkGameOver() {
+            let canMakeMove = false;
+
+            for (let i = 0; i < currentShapes.length; i++) {
+                const shape = currentShapes[i];
+                if (!shape) continue;
+
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        if (canPlace(shape.matrix, r, c)) {
+                            canMakeMove = true;
+                            break;
+                        }
+                    }
+                    if (canMakeMove) break;
+                }
+                if (canMakeMove) break;
+            }
+
+            if (!canMakeMove && currentShapes.some(s => s !== null)) {
+                setTimeout(showGameOver, 500);
+            }
+        }
+
+        function addScore(points) {
+            score += points;
+            updateScore();
+        }
+
+        function updateScore() {
+            scoreEl.textContent = score;
+            scoreEl.animate([
+                { transform: 'scale(1)' },
+                { transform: 'scale(1.2)', color: 'var(--primary)' },
+                { transform: 'scale(1)' }
+            ], { duration: 300 });
+        }
+
+        function showGameOver() {
+            playSoundEffect('gameover');
+            triggerVibration([200, 100, 200]);
+            clearGameState(); 
+
+            document.getElementById('final-score').textContent = score;
+            const highscoreMsg = document.getElementById('new-highscore-msg');
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('blockBlastHighScore', highScore);
+                document.getElementById('high-score').textContent = highScore;
+                highscoreMsg.textContent = "Kỷ Lục Mới! 🎉";
+            } else {
+                highscoreMsg.textContent = "";
+            }
+
+            gameOverModal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                gameOverModal.classList.replace('opacity-0', 'opacity-100');
+                gameOverModal.querySelector('div').classList.replace('scale-95', 'scale-100');
+            });
+        }
+
+        window.onload = initGame;
+    </script>
+</body>
+</html>

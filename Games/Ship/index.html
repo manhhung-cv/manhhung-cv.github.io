@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship Online</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<style>
+    * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f0f4f8;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    text-align: center;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+h1 {
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.info-panel {
+    margin-bottom: 25px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #e67e22;
+}
+
+.game-boards {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.board-container h2 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: #34495e;
+}
+
+/* Lưới 10x10 */
+.board {
+    display: grid;
+    grid-template-columns: repeat(10, 35px);
+    grid-template-rows: repeat(10, 35px);
+    gap: 2px;
+    background-color: #bdc3c7;
+    border: 3px solid #7f8c8d;
+    padding: 2px;
+}
+
+.cell {
+    width: 35px;
+    height: 35px;
+    background-color: #ecf0f1;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.cell:hover {
+    background-color: #3498db;
+    opacity: 0.7;
+}
+
+/* Các trạng thái của ô */
+.cell.ship { background-color: #34495e; } /* Tàu của mình */
+.cell.hit { background-color: #e74c3c; }  /* Bắn trúng */
+.cell.miss { background-color: #95a5a6; } /* Bắn trượt */
+
+button {
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    background-color: #2980b9;
+    color: white;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+    background-color: #2471a3;
+}
+</style>
+<body>
+    <div class="container">
+        <h1>Battleship Online</h1>
+        
+        <div class="info-panel">
+            <p id="turn-display">Trạng thái: Đang chuẩn bị (Đặt tàu của bạn)</p>
+        </div>
+
+        <div class="game-boards">
+            <div class="board-container">
+                <h2>Vùng biển của bạn</h2>
+                <div id="player-board" class="board"></div>
+            </div>
+
+            <div class="board-container">
+                <h2>Vùng biển đối phương</h2>
+                <div id="enemy-board" class="board"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="start-btn" disabled>Tìm đối thủ (Firebase)</button>
+        </div>
+    </div>
+
+    <script >
+        const playerBoard = document.getElementById('player-board');
+const enemyBoard = document.getElementById('enemy-board');
+const boardSize = 10;
+
+// Hàm khởi tạo lưới 10x10
+function createBoard(boardElement, isEnemy) {
+    for (let i = 0; i < boardSize * boardSize; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        
+        // Lưu tọa độ dưới dạng data attribute (ví dụ: data-id="45")
+        cell.dataset.id = i; 
+
+        if (isEnemy) {
+            // Logic UI tạm thời: Bắn vào bảng đối phương
+            cell.addEventListener('click', () => handleAttackUI(cell));
+        } else {
+            // Logic UI tạm thời: Nhấp để chọn vị trí đặt tàu của mình
+            cell.addEventListener('click', () => placeShipUI(cell));
+        }
+
+        boardElement.appendChild(cell);
+    }
+}
+
+// Giả lập UI: Nhấp vào ô bên bảng mình sẽ hiển thị màu của tàu
+function placeShipUI(cell) {
+    cell.classList.toggle('ship');
+}
+
+// Giả lập UI: Nhấp vào ô bên bảng địch sẽ ra random Trúng (đỏ) hoặc Trượt (xám)
+function handleAttackUI(cell) {
+    // Nếu ô đã bị bắn rồi thì bỏ qua
+    if (cell.classList.contains('hit') || cell.classList.contains('miss')) return;
+
+    // Random 50/50 để xem hiệu ứng
+    const isHit = Math.random() > 0.5; 
+    
+    if (isHit) {
+        cell.classList.add('hit');
+    } else {
+        cell.classList.add('miss');
+    }
+}
+
+// Chạy hàm tạo bảng khi tải trang
+createBoard(playerBoard, false);
+createBoard(enemyBoard, true);
+    </script>
+</body>
+</html>

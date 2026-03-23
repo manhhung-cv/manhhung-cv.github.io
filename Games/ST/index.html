@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Survive: Day Zero</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a; --text-color: #e0e0e0; --panel-bg: #2a2a2a;
+            --hp-color: #ff4d4d; --hunger-color: #ff9f43; 
+            --thirst-color: #0abde3; --rad-color: #1dd1a1; --border-color: #333;
+            --sanity-color: #9b59b6; 
+        }
+        body.night-mode { --bg-color: #0a0e17; --panel-bg: #151b29; --border-color: #111; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-color); color: var(--text-color); font-family: 'Courier New', Courier, monospace; display: flex; justify-content: center; height: 100vh; overflow: hidden; transition: 2s ease; }
+        .game-container { width: 100%; max-width: 480px; display: flex; flex-direction: column; background-color: var(--bg-color); border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color); position: relative; height: 100%; transition: 2s ease; }
+        
+        .danger-pulse { animation: pulseRed 2s infinite; }
+        @keyframes pulseRed { 0% { box-shadow: inset 0 0 0px 0px rgba(0,0,0,0); } 50% { box-shadow: inset 0 0 15px 2px rgba(255, 77, 77, 0.4); } 100% { box-shadow: inset 0 0 0px 0px rgba(0,0,0,0); } }
+
+        /* HEADER & STATS */
+        .stats-panel { background-color: var(--panel-bg); padding: 10px 15px; border-bottom: 2px solid #000; transition: 2s ease; flex-shrink: 0; }
+        .header-top { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: center; font-size: 14px;}
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px; background: #111; padding: 8px; border-radius: 6px; border: 1px solid #333;}
+        .stat-item { display: flex; justify-content: space-between; align-items: center; }
+        .stat-label { color: #aaa; }
+        .stat-value { font-weight: bold; font-size: 14px; transition: color 0.3s; }
+        .text-danger { color: var(--hp-color) !important; animation: blinkText 1s infinite; }
+        .text-warning { color: var(--hunger-color) !important; }
+        @keyframes blinkText { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .env-panel { font-size: 12px; text-align: center; color: #ddd; padding: 5px; background: #222; border-bottom: 1px solid #000; flex-shrink: 0; display:flex; justify-content:space-between; padding: 8px 15px;}
+        
+        /* CONTENT AREA */
+        .content-area { flex-grow: 1; overflow-y: hidden; display: flex; flex-direction: column; position: relative; }
+        .tab-content { display: none; padding: 15px; flex-direction: column; gap: 15px; animation: fadeIn 0.2s; height: 100%; overflow-y: auto;}
+        .tab-active { display: flex; }
+        
+        /* LOGS CẬP NHẬT: Không auto scroll nữa, hiển thị ngược từ trên xuống */
+        .log-panel { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #111; padding: 10px; border-radius: 6px; border: 1px solid #333;}
+        .log-entry { background-color: var(--panel-bg); padding: 8px; border-left: 3px solid #555; font-size: 13px; line-height: 1.4; animation: slideDown 0.3s forwards;}
+        .log-danger { border-left-color: var(--hp-color); color: #ffcccc; } .log-good { border-left-color: var(--rad-color); color: #ccffcc; } .log-system { border-left-color: #f39c12; color: #f39c12; font-style: italic; } .log-love { border-left-color: #e84393; color: #fdcb6e; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* BOTTOM NAVIGATION */
+        .bottom-nav { display: flex; background-color: #111; border-top: 2px solid #000; flex-shrink: 0; z-index: 10;}
+        .nav-btn { flex: 1; background: none; border: none; color: #888; padding: 10px 0; font-size: 10px; cursor: pointer; font-family: inherit; display: flex; flex-direction: column; align-items: center; gap: 4px; border-top: 2px solid transparent; }
+        .nav-btn span { font-size: 16px; }
+        .nav-btn:hover { color: #ddd; background: #222; }
+        .nav-active { color: #0abde3; border-top-color: #0abde3; background: #1a1a1a; }
+
+        /* BUTTONS & CARDS */
+        .action-card { background: #333; padding: 12px; border-radius: 6px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #444; flex-shrink: 0;}
+        .card-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 14px; color: #f39c12; }
+        .btn-main { background-color: #27ae60; color: white; border: none; padding: 12px; font-size: 14px; border-radius: 4px; cursor: pointer; font-family: inherit; font-weight: bold; width: 100%; }
+        .btn-main:hover:not(:disabled) { background-color: #2ecc71; }
+        .btn-danger { background-color: #c0392b; color: white; border: none; padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%;}
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .equipped-panel { border: 1px dashed #0abde3; padding: 10px; border-radius: 6px; background: rgba(10, 189, 227, 0.05); margin-bottom: 10px; }
+        .craft-req { font-size: 12px; color: #aaa; }
+        .dev-input, .dev-select { background: #111; border: 1px solid #555; color: #fff; padding: 8px; border-radius: 4px; width: 100%; font-family: inherit;}
+
+        /* OVERLAY CHỜ HÀNH ĐỘNG (HOẠT ẢNH) */
+        #action-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(3px); }
+        .hidden { display: none !important; }
+        .anim-bounce { font-size: 80px; animation: bounce 1s infinite; margin-bottom: 20px;}
+        .anim-pulse { font-size: 80px; animation: pulseSize 1.5s infinite; margin-bottom: 20px;}
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        @keyframes pulseSize { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .progress-bar-container { width: 70%; height: 12px; background: #333; border-radius: 6px; overflow: hidden; margin-top: 20px; border: 1px solid #555;}
+        .progress-bar-fill { width: 0%; height: 100%; background: #1dd1a1; transition: 1s linear; }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="game-container">
+        
+        <div id="action-overlay" class="hidden">
+            <div id="action-emoji" class="anim-bounce">🚶</div>
+            <h2 id="action-title" style="color: #0abde3; margin:0; text-align: center;">Đang di chuyển...</h2>
+            <p id="action-desc" style="color: #aaa; font-size: 14px; margin-top: 10px;">Cẩn thận với thây ma xung quanh.</p>
+            
+            <div class="progress-bar-container">
+                <div id="action-progress" class="progress-bar-fill"></div>
+            </div>
+            <p id="action-timeleft" style="color: #f39c12; font-size: 14px; margin-top: 15px; font-weight: bold;">Còn: 10s</p>
+        </div>
+
+        <header class="stats-panel">
+            <div class="header-top">
+                <strong>DAY ZERO</strong>
+                <span id="location-header" style="color: #1dd1a1;">📍 Cứ điểm</span>
+            </div>
+            <div class="stat-grid">
+                <div class="stat-item"><span class="stat-label">❤️ Máu</span><span class="stat-value" id="val-hp">100/100</span></div>
+                <div class="stat-item"><span class="stat-label">🧠 Tinh thần</span><span class="stat-value" id="val-sanity" style="color: var(--sanity-color);">100/100</span></div>
+                <div class="stat-item"><span class="stat-label">🍖 Đói</span><span class="stat-value" id="val-hunger">100/100</span></div>
+                <div class="stat-item"><span class="stat-label">💧 Khát</span><span class="stat-value" id="val-thirst">100/100</span></div>
+                <div class="stat-item"><span class="stat-label">☢️ Phóng xạ</span><span class="stat-value" id="val-rad">0%</span></div>
+                <div class="stat-item"><span class="stat-label">🌡️ Nhiệt</span><span class="stat-value" id="val-temp">37.0°C</span></div>
+            </div>
+        </header>
+
+        <div class="env-panel">
+            <span>Ngày <strong id="val-day" style="color:#f39c12;">1</strong> | 🕒 <strong id="val-time">08:00</strong></span>
+            <span><span id="val-weather">☀️</span> <span id="val-ambient">25</span>°C</span>
+        </div>
+
+        <div class="content-area">
+            <div id="tab-location" class="tab-content tab-active">
+                <div id="location-actions"></div>
+                <h4 style="font-size: 12px; color: #aaa; margin:0;">📜 Nhật ký sinh tồn:</h4>
+                <div class="log-panel" id="log-container"></div>
+            </div>
+
+            <div id="tab-map" class="tab-content">
+                <h3 style="text-align: center; color: #0abde3; font-size: 16px;">Bản đồ Viễn chinh</h3>
+                <div id="vehicle-status" style="text-align:center; font-size:12px; color:#1dd1a1; margin-bottom: 5px;"></div>
+                <div id="map-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+
+            <div id="tab-inventory" class="tab-content">
+                <div class="equipped-panel">
+                    <h4 style="color:#0abde3; margin-bottom: 8px; font-size: 14px;">🛡️ Đang Trang Bị</h4>
+                    <div id="equip-slots" style="font-size: 13px; color:#ddd; display:flex; flex-direction:column; gap:5px;"></div>
+                </div>
+                <div id="inventory-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
+
+            <div id="tab-crafting" class="tab-content">
+                <h3 style="text-align: center; color: #f39c12; font-size: 16px;">Bàn Chế Tạo 🔨</h3>
+                <div id="crafting-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+
+            <div id="tab-settings" class="tab-content">
+                <div class="action-card">
+                    <p style="font-size: 12px; color: #aaa;">Mã Save Game (Copy để lưu trữ):</p>
+                    <textarea id="save-data-text" style="width:100%; height:80px; background:#111; color:#0abde3; padding:10px; border-radius:4px; font-family:monospace; border:1px solid #555; resize:none;"></textarea>
+                    <div style="display:flex; gap:10px; margin-top:10px;">
+                        <button class="btn-main" style="background:#2980b9;" id="btn-export">Xuất Save</button>
+                        <button class="btn-main" style="background:#e67e22;" id="btn-import">Nhập Save</button>
+                    </div>
+                    <button class="btn-danger" id="btn-hard-reset" style="margin-top:10px;">Xóa Tiến Trình</button>
+                </div>
+                <button id="btn-restart" class="btn-danger" style="display: none; padding: 15px;">CHƠI LẠI TỪ ĐẦU 🔄</button>
+            </div>
+
+            <div id="tab-dev" class="tab-content">
+                <h3 style="text-align: center; color: #ff4d4d; font-size: 16px;">🛠️ Công cụ Tester / Dev</h3>
+                
+                <div class="action-card" style="border-color: #ff4d4d;">
+                    <div class="card-header" style="color: #ff4d4d;">🚀 God Mode</div>
+                    <button class="btn-main" style="background:#27ae60; padding:8px;" onclick="devHealAll()">❤️ Hồi Full Máu & Chỉ Số</button>
+                    <button class="btn-main" style="background:#8e44ad; padding:8px;" onclick="devMaxBase()">⛺ Nâng Max Cứ Điểm</button>
+                    <button class="btn-main" style="background:#e84393; padding:8px;" onclick="devForceNPC()">👩‍❤️‍👨 Ép có NPC Max Thiện Cảm</button>
+                </div>
+
+                <div class="action-card" style="border-color: #0abde3;">
+                    <div class="card-header" style="color: #0abde3;">📦 Spawn Vật Phẩm</div>
+                    <select id="dev-item-select" class="dev-select"></select>
+                    <div style="display:flex; gap:10px; margin-top:5px;">
+                        <input type="number" id="dev-item-qty" class="dev-input" value="10" placeholder="Số lượng" style="width:70px;">
+                        <button class="btn-main" style="background:#2980b9;" onclick="devSpawnItem()">Lấy Đồ</button>
+                    </div>
+                </div>
+
+                <div class="action-card" style="border-color: #f39c12;">
+                    <div class="card-header" style="color: #f39c12;">⏱️ Điều khiển Thời gian</div>
+                    <button class="btn-main" style="background:#f39c12; padding:8px;" onclick="devSkipDay()">⏩ Bỏ qua 1 Ngày (Tua nhanh)</button>
+                    <button class="btn-main" style="background:#e67e22; padding:8px;" onclick="devSkipOverlay()">⚡ Bỏ qua Hoạt ảnh chờ (Skip Anim)</button>
+                </div>
+            </div>
+        </div>
+
+        <nav class="bottom-nav">
+            <button class="nav-btn nav-active" id="nav-location" onclick="switchTab('location')"><span>📍</span>Ở đâu</button>
+            <button class="nav-btn" id="nav-map" onclick="switchTab('map')"><span>🗺️</span>Đi xa</button>
+            <button class="nav-btn" id="nav-inventory" onclick="switchTab('inventory')"><span>🎒</span>Ba lô</button>
+            <button class="nav-btn" id="nav-crafting" onclick="switchTab('crafting')"><span>🔨</span>Chế tạo</button>
+            <button class="nav-btn" id="nav-settings" onclick="switchTab('settings')"><span>⚙️</span>H.Thống</button>
+            <button class="nav-btn" id="nav-dev" onclick="switchTab('dev')"><span style="color:#ff4d4d;">🛠️</span>Dev</button>
+        </nav>
+    </div>
+
+    <script>
+        const SAVE_KEY = 'zombie_survival_save_v7';
+
+        // ⏱️ SETTING THỜI GIAN (DEV CÓ THỂ ĐỔI)
+        // Yêu cầu của bạn: 1 giờ trong game = 10 giây thực. 
+        // Hãy đổi số này thành 1 hoặc 2 nếu bạn thấy 10 giây chờ là quá lâu!
+        const SECONDS_PER_HOUR = 1; 
+
+        let actionInterval = null; // Biến giữ timer để Dev có thể Skip
+
+        // MỞ RỘNG DATABASE VẬT PHẨM
+        const ITEM_DB = {
+            'water': { id: 'water', name: 'Nước lọc', emoji: '💧', type: 'thirst', value: 35 },
+            'food': { id: 'food', name: 'Đồ hộp', emoji: '🥫', type: 'hunger', value: 40 },
+            'bandage': { id: 'bandage', name: 'Băng gạc', emoji: '🩹', type: 'hp', value: 25 },
+            'medkit': { id: 'medkit', name: 'Túi cứu thương', emoji: '💊', type: 'hp', value: 60 },
+            'antidote': { id: 'antidote', name: 'Thuốc giải', emoji: '💉', type: 'rad_clear', value: 0 },
+            'scrap': { id: 'scrap', name: 'Phế liệu', emoji: '🧱', type: 'material', value: 0 },
+            'parts': { id: 'parts', name: 'Linh kiện', emoji: '⚙️', type: 'material', value: 0 },
+            'cloth': { id: 'cloth', name: 'Vải vụn', emoji: '🧶', type: 'material', value: 0 },
+            'chocolate': { id: 'chocolate', name: 'Thanh Socola', emoji: '🍫', type: 'gift', value: 30 },
+            'weapon_bat': { id: 'weapon_bat', name: 'Gậy bóng chày', emoji: '🏏', type: 'equip_weapon', desc: 'Giảm 50% sát thương từ Zombie' },
+            'mask_gas': { id: 'mask_gas', name: 'Mặt nạ phòng độc', emoji: '🤿', type: 'equip_mask', desc: 'Giảm 80% Phóng xạ' },
+            'vehicle_bike': { id: 'vehicle_bike', name: 'Xe đạp cũ', emoji: '🚲', type: 'vehicle', desc: 'Giảm 1/2 thời gian đi lại' }
+        };
+
+        const RECIPES = [
+            { id: 'bandage', result: 'bandage', name: 'Băng gạc', emoji: '🩹', req: { cloth: 2 }, desc: 'Hồi 25 Máu.' },
+            { id: 'weapon_bat', result: 'weapon_bat', name: 'Gậy', emoji: '🏏', req: { scrap: 3, cloth: 1 }, desc: 'Vũ khí cận chiến.' },
+            { id: 'mask_gas', result: 'mask_gas', name: 'Mặt nạ', emoji: '🤿', req: { scrap: 4, parts: 3, cloth: 2 }, desc: 'Chống Phóng xạ.' },
+            { id: 'vehicle_bike', result: 'vehicle_bike', name: 'Sửa Xe đạp', emoji: '🚲', req: { scrap: 8, parts: 10 }, desc: 'Đi lại siêu tốc độ.' },
+            { id: 'medkit', result: 'medkit', name: 'Túi cứu thương', emoji: '💊', req: { bandage: 2, parts: 1 }, desc: 'Hồi 60 Máu.' }
+        ];
+
+        const WEATHER_TYPES = [
+            { icon: '☀️', tempMod: 0, name: 'Quang đãng' }, { icon: '☁️', tempMod: -3, name: 'Nhiều mây' },
+            { icon: '🌧️', tempMod: -8, name: 'Mưa lạnh' }, { icon: '🌫️', tempMod: -2, name: 'Sương mù bức xạ' }
+        ];
+
+        const MAP_LOCATIONS = {
+            'home': { name: 'Cứ điểm', icon: '🏕️', x: 0, y: 0, desc: 'Nơi trú ẩn.' },
+            'residential_1': { name: 'Khu dân cư', icon: '🏘️', x: 2, y: 0, danger: 0.3, dropRate: 0.6, radRate: 0, pools: ['water', 'food', 'scrap', 'cloth', 'chocolate'] },
+            'hospital': { name: 'Bệnh viện', icon: '🏥', x: 1, y: 4, danger: 0.6, dropRate: 0.8, radRate: 5, pools: ['bandage', 'antidote', 'cloth', 'water'] },
+            'factory': { name: 'Khu công nghiệp', icon: '🏭', x: -3, y: 1, danger: 0.5, dropRate: 0.85, radRate: 15, pools: ['scrap', 'parts', 'parts', 'cloth'] }
+        };
+
+        const BASE_LEVELS = [
+            { level: 1, name: "Lán trại", hpRegen: 15, cost: null },
+            { level: 2, name: "Hầm trú ẩn", hpRegen: 30, cost: { scrap: 5, parts: 2 } },
+            { level: 3, name: "Pháo đài", hpRegen: 50, cost: { scrap: 15, parts: 8 } }
+        ];
+
+        let gameState = {};
+
+        function getInitialState() {
+            return {
+                day: 1, time: 8, baseLevel: 1, currentLocation: 'home',
+                player: { hp: 100, maxHp: 100, hunger: 100, thirst: 100, sanity: 100, bodyTemp: 37.0, radiation: 0, isAlive: true },
+                equipped: { weapon: null, mask: null, vehicle: null },
+                companion: { active: false, intimacy: 0, status: 'Người lạ' },
+                environment: { weatherIcon: '☀️', ambientTemp: 25 },
+                logs: [{ time: "08:00", text: "Trang bị vũ khí để sống sót ngoài kia.", type: "system" }],
+                inventory: [{ ...ITEM_DB['water'], qty: 3 }, { ...ITEM_DB['food'], qty: 2 }]
+            };
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('tab-active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('nav-active'));
+            document.getElementById(`tab-${tabId}`).classList.add('tab-active');
+            document.getElementById(`nav-${tabId}`).classList.add('nav-active');
+            
+            if(tabId === 'map') renderMap();
+            if(tabId === 'inventory') renderInventory();
+            if(tabId === 'crafting') renderCrafting();
+            if(tabId === 'location') renderLocationActions();
+            if(tabId === 'dev') renderDevTools();
+        }
+
+        function saveGame() { localStorage.setItem(SAVE_KEY, JSON.stringify(gameState)); }
+        function loadGame() {
+            const saved = localStorage.getItem(SAVE_KEY);
+            if (saved) { 
+                try { 
+                    gameState = JSON.parse(saved); 
+                    if(!gameState.equipped) gameState.equipped = { weapon: null, mask: null, vehicle: null };
+                    if(!gameState.player.maxHp) gameState.player.maxHp = 100;
+                } catch (e) { gameState = getInitialState(); } 
+            } else { gameState = getInitialState(); }
+        }
+
+        // --- CẬP NHẬT: LOG HIỂN THỊ NGƯỢC (TỪ TRÊN XUỐNG) ---
+        function addLog(text, type = "normal") {
+            const timeStr = gameState.time.toString().padStart(2, '0') + ":00";
+            gameState.logs.push({ time: timeStr, text: text, type: type });
+            if(gameState.logs.length > 30) gameState.logs.shift();
+            renderLogs();
+        }
+
+        function renderLogs() {
+            const c = document.getElementById('log-container'); c.innerHTML = ''; 
+            // Dùng .slice().reverse() để tin mới nhất nằm trên cùng
+            const reversedLogs = gameState.logs.slice().reverse();
+            
+            reversedLogs.forEach(l => { 
+                c.innerHTML += `<div class="log-entry ${l.type==='danger'?'log-danger':l.type==='good'?'log-good':l.type==='system'?'log-system':l.type==='love'?'log-love':''}"><strong>[${l.time}]</strong> ${l.text}</div>`; 
+            });
+            // Không cần scrollTop nữa vì tin mới đã ở trên đỉnh
+        }
+
+        // --- HỆ THỐNG HOẠT ẢNH CHỜ (ACTION OVERLAY TIMER) ---
+        function performTimedAction(hours, title, desc, emoji, animationClass, callback) {
+            const overlay = document.getElementById('action-overlay');
+            const progBar = document.getElementById('action-progress');
+            const timeText = document.getElementById('action-timeleft');
+            
+            document.getElementById('action-title').innerText = title;
+            document.getElementById('action-desc').innerText = desc;
+            
+            const emojiEl = document.getElementById('action-emoji');
+            emojiEl.innerText = emoji;
+            emojiEl.className = animationClass; // 'anim-bounce' hoặc 'anim-pulse'
+
+            overlay.classList.remove('hidden');
+
+            const totalSeconds = hours * SECONDS_PER_HOUR;
+            let currentSec = 0;
+            progBar.style.width = '0%';
+            timeText.innerText = `Còn: ${totalSeconds}s`;
+
+            // Lưu vào biến global để Dev có thể Clear (Tua nhanh)
+            actionInterval = setInterval(() => {
+                currentSec++;
+                let pct = (currentSec / totalSeconds) * 100;
+                progBar.style.width = `${pct}%`;
+                timeText.innerText = `Còn: ${totalSeconds - currentSec}s`;
+                
+                if (currentSec >= totalSeconds) {
+                    clearInterval(actionInterval);
+                    overlay.classList.add('hidden');
+                    callback();
+                }
+            }, 1000);
+        }
+
+        function gameTick(hoursPassed) {
+            if (!gameState.player.isAlive) return;
+
+            for(let i = 0; i < hoursPassed; i++) {
+                gameState.time += 1;
+                if (gameState.time >= 24) {
+                    gameState.time -= 24; gameState.day += 1;
+                    const w = WEATHER_TYPES[Math.floor(Math.random() * WEATHER_TYPES.length)];
+                    gameState.environment.weatherIcon = w.icon;
+                    addLog(`🌅 Ngày ${gameState.day}. Thời tiết: ${w.name}.`, "system");
+                    
+                    if (gameState.baseLevel >= 3) addItemToInventory('water', 1);
+
+                    if (gameState.companion.active) {
+                        let f = getInventoryQty('food'); let wQty = getInventoryQty('water');
+                        if (f > 0 && wQty > 0) { removeItemQty('food', 1); removeItemQty('water', 1); } 
+                        else {
+                            gameState.companion.intimacy -= 30; updateCompanionStatus();
+                            if (gameState.companion.intimacy <= 0) {
+                                gameState.companion.active = false; gameState.player.sanity = Math.max(0, gameState.player.sanity - 50);
+                                addLog("Bạn đồng hành bỏ đi. Trầm cảm nặng (-50 Tinh thần).", "danger");
+                            }
+                        }
+                    }
+                }
+                
+                gameState.player.hunger = Math.max(0, gameState.player.hunger - 4);
+                gameState.player.thirst = Math.max(0, gameState.player.thirst - 6);
+                if (gameState.player.hunger < 20 || gameState.player.thirst < 20) gameState.player.sanity = Math.max(0, gameState.player.sanity - 2);
+
+                const isNight = (gameState.time >= 18 || gameState.time <= 5);
+                let baseTemp = isNight ? 12 : 25;
+                const currentW = WEATHER_TYPES.find(w => w.icon === gameState.environment.weatherIcon);
+                gameState.environment.ambientTemp = baseTemp + (currentW ? currentW.tempMod : 0);
+                if (gameState.environment.ambientTemp < 15) gameState.player.bodyTemp = Math.max(34.0, gameState.player.bodyTemp - 0.5);
+                else gameState.player.bodyTemp = Math.min(37.0, gameState.player.bodyTemp + 0.5);
+
+                let hourlyRad = (gameState.environment.weatherIcon === '🌫️') ? 2 : 0;
+                const locData = MAP_LOCATIONS[gameState.currentLocation];
+                if (locData && locData.radRate > 0) hourlyRad += (locData.radRate / 2);
+                if (gameState.equipped.mask === 'mask_gas' && hourlyRad > 0) hourlyRad = hourlyRad * 0.2;
+                
+                gameState.player.radiation = Math.min(100, gameState.player.radiation + hourlyRad);
+
+                let hpLoss = 0;
+                if (gameState.player.hunger === 0) hpLoss += 4;
+                if (gameState.player.thirst === 0) hpLoss += 8;
+                if (gameState.player.radiation >= 80) hpLoss += 5;
+                if (gameState.player.bodyTemp <= 35.0) hpLoss += 3;
+                if (gameState.player.sanity === 0) hpLoss += 2;
+
+                if (hpLoss > 0) { gameState.player.hp -= hpLoss; addLog(`⚠️ Tổn thương suy kiệt! Mất ${hpLoss} Máu.`, "danger"); }
+            }
+            if (gameState.player.hp <= 0) { gameState.player.hp = 0; gameState.player.isAlive = false; addLog("💀 Bạn đã gục ngã.", "danger"); }
+            saveGame(); updateUIStats();
+        }
+
+        // --- CẬP NHẬT CÁC HÀNH ĐỘNG GẮN VÀO TIMER ---
+        function travelTo(targetId) {
+            const targetLoc = MAP_LOCATIONS[targetId]; const currentLoc = MAP_LOCATIONS[gameState.currentLocation];
+            let distance = Math.abs(currentLoc.x - targetLoc.x) + Math.abs(currentLoc.y - targetLoc.y);
+            let hours = distance * 1;
+            
+            let emojiAnim = '🚶'; let titleAnim = 'Đang đi bộ...';
+            if (gameState.equipped.vehicle === 'vehicle_bike') {
+                hours = Math.max(1, Math.floor(hours / 2));
+                emojiAnim = '🚲'; titleAnim = 'Đang đạp xe...';
+            }
+
+            if (confirm(`Đi đến ${targetLoc.name} tốn ${hours} giờ (Đợi ${hours * SECONDS_PER_HOUR}s). Chắc chắn đi?`)) {
+                // Gọi Overlay
+                performTimedAction(hours, titleAnim, `Mất ${hours} giờ để đến ${targetLoc.name}`, emojiAnim, 'anim-bounce', () => {
+                    // Logic thực thi SAU KHI đếm ngược xong
+                    gameTick(hours);
+                    if (gameState.player.isAlive) { 
+                        gameState.currentLocation = targetId; 
+                        addLog(`📍 Đã đến nơi: ${targetLoc.name}.`); 
+                        saveGame(); 
+                        switchTab('location'); 
+                    }
+                });
+            }
+        }
+
+        function actionScavenge() {
+            const loc = MAP_LOCATIONS[gameState.currentLocation]; 
+            
+            // Gọi Overlay cho hành động lục lọi (2h)
+            performTimedAction(2, "Đang lục lọi...", "Sục sạo các góc khuất để tìm đồ.", "🔍", "anim-pulse", () => {
+                gameTick(2); if (!gameState.player.isAlive) return;
+
+                if (!gameState.companion.active && loc.danger >= 0.4 && Math.random() > 0.85) {
+                    gameState.companion.active = true; gameState.companion.intimacy = 20; updateCompanionStatus();
+                    addLog(`✨ Cứu được một người sống sót! Hãy đưa họ về.`, "love");
+                } else if (Math.random() < loc.danger) {
+                    let dmg = Math.floor(Math.random() * 20) + 15;
+                    if (gameState.equipped.weapon === 'weapon_bat') { dmg = Math.floor(dmg * 0.5); addLog(`🏏 Bạn vung gậy đập lùi Zombie! Sát thương giảm 50%.`, "good"); }
+                    gameState.player.hp -= dmg; gameState.player.sanity = Math.max(0, gameState.player.sanity - 10);
+                    addLog(`🧟 Bị cắn mất ${dmg} Máu, -10 Tinh thần.`, "danger");
+                } else if (Math.random() < loc.danger + loc.dropRate) {
+                    const randomItem = loc.pools[Math.floor(Math.random() * loc.pools.length)];
+                    addItemToInventory(randomItem, 1); addLog(`📦 Nhặt được 1x ${ITEM_DB[randomItem].emoji} ${ITEM_DB[randomItem].name}.`, "good");
+                } else { addLog(`Trống không.`); }
+                
+                if (gameState.player.hp <= 0) { gameState.player.hp = 0; gameState.player.isAlive = false; }
+                saveGame(); updateUIStats(); renderLocationActions();
+            });
+        }
+
+        function actionRestBase() {
+            performTimedAction(4, "Đang ngủ say...", "Cơ thể dần hồi phục sau những mệt mỏi.", "🛌", "anim-pulse", () => {
+                gameTick(4); if (!gameState.player.isAlive) return;
+                const baseData = BASE_LEVELS[gameState.baseLevel - 1];
+                gameState.player.bodyTemp = Math.min(37.0, gameState.player.bodyTemp + 5);
+                if(gameState.player.hunger > 30 && gameState.player.thirst > 30) {
+                    gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + baseData.hpRegen);
+                    gameState.player.sanity = Math.min(100, gameState.player.sanity + 15);
+                    addLog(`🏕️ Ngủ an toàn. (+Máu, +Tinh thần)`, "good");
+                } else addLog(`🏕️ Đói khát không ngủ nổi.`);
+                saveGame(); updateUIStats();
+            });
+        }
+
+        function interactCompanion(type) {
+            if (type === 'chat') {
+                if (getInventoryQty('chocolate') > 0) { removeItemQty('chocolate', 1); gameState.companion.intimacy += 30; }
+                else if (getInventoryQty('food') > 0) { removeItemQty('food', 1); gameState.companion.intimacy += 10; }
+                else return alert("Cần Đồ hộp hoặc Socola!");
+                
+                performTimedAction(1, "Đang tâm sự...", "Sự gắn kết làm ấm áp tâm hồn.", "💬", "anim-pulse", () => {
+                    gameState.companion.intimacy = Math.min(100, gameState.companion.intimacy);
+                    gameTick(1); gameState.player.sanity = Math.min(100, gameState.player.sanity + 15);
+                    updateCompanionStatus(); addLog("💬 Tặng quà trò chuyện (+Thiện cảm).", "good");
+                    saveGame(); renderLocationActions(); updateUIStats();
+                });
+            } else if (type === 'love') {
+                if (gameState.baseLevel < 2 || gameState.companion.intimacy < 80) return alert("Chưa đủ điều kiện!");
+                
+                performTimedAction(2, "Giây phút riêng tư", "Quên đi thực tại tàn khốc ngoài kia...", "💕", "anim-pulse", () => {
+                    gameTick(2); 
+                    gameState.player.hunger = Math.max(0, gameState.player.hunger - 20); gameState.player.thirst = Math.max(0, gameState.player.thirst - 20);
+                    gameState.player.sanity = 100; 
+                    if (gameState.player.maxHp === 100) {
+                        gameState.player.maxHp = 120; gameState.player.hp = 120;
+                        addLog("✨ Tình yêu làm bạn mạnh mẽ hơn! Giới hạn Máu tăng lên 120.", "love");
+                    } else { addLog("👩‍❤️‍👨 Những giây phút cuồng nhiệt (Hồi 100% Tinh thần)", "love"); }
+                    saveGame(); renderLocationActions(); updateUIStats();
+                });
+            }
+        }
+
+        function updateCompanionStatus() {
+            let i = gameState.companion.intimacy;
+            if (i >= 80) gameState.companion.status = 'Người tình 💕';
+            else if (i >= 40) gameState.companion.status = 'Bạn bè 🤝';
+            else gameState.companion.status = 'Người lạ 👀';
+        }
+
+        function getInventoryQty(itemId) { const item = gameState.inventory.find(i => i.id === itemId); return item ? item.qty : 0; }
+        function addItemToInventory(itemId, qty = 1) {
+            const ext = gameState.inventory.find(item => item.id === itemId);
+            if (ext) ext.qty += qty; else gameState.inventory.push({ ...ITEM_DB[itemId], qty: qty });
+        }
+        function removeItemQty(itemId, qty) {
+            const idx = gameState.inventory.findIndex(i => i.id === itemId);
+            if (idx > -1) { gameState.inventory[idx].qty -= qty; if (gameState.inventory[idx].qty <= 0) gameState.inventory.splice(idx, 1); }
+        }
+        
+        function useOrEquipItem(itemId) {
+            const item = gameState.inventory.find(i => i.id === itemId); if (!item) return;
+            if (item.type.startsWith('equip_') || item.type === 'vehicle') {
+                if (item.type === 'equip_weapon') gameState.equipped.weapon = item.id;
+                if (item.type === 'equip_mask') gameState.equipped.mask = item.id;
+                if (item.type === 'vehicle') gameState.equipped.vehicle = item.id;
+                addLog(`🛠️ Đã trang bị: ${item.name}`, "system"); removeItemQty(itemId, 1);
+            } else if (['hp', 'hunger', 'thirst', 'rad', 'rad_clear'].includes(item.type)) {
+                if (item.type === 'hp') { gameState.player.hp = Math.min(gameState.player.maxHp, gameState.player.hp + item.value); addLog(`🩹 Hồi ${item.value} Máu.`, "good"); }
+                if (item.type === 'hunger') { gameState.player.hunger = Math.min(100, gameState.player.hunger + item.value); addLog(`🥫 Hồi ${item.value} Đói.`, "good"); }
+                if (item.type === 'thirst') { gameState.player.thirst = Math.min(100, gameState.player.thirst + item.value); addLog(`💧 Hồi ${item.value} Khát.`, "good"); }
+                if (item.type === 'rad_clear') { gameState.player.radiation = 0; addLog(`💉 Đã thanh lọc sạch Phóng xạ!`, "good"); }
+                removeItemQty(itemId, 1);
+            } else alert("Vật phẩm này không dùng trực tiếp được.");
+            saveGame(); updateUIStats(); renderInventory();
+        }
+
+        function unequipItem(slotId) {
+            const itemId = gameState.equipped[slotId];
+            if (itemId) { addItemToInventory(itemId, 1); gameState.equipped[slotId] = null; saveGame(); renderInventory(); updateUIStats(); }
+        }
+
+        function craftItem(recipeId) {
+            const recipe = RECIPES.find(r => r.id === recipeId);
+            for (let [mat, reqQty] of Object.entries(recipe.req)) { if (getInventoryQty(mat) < reqQty) return alert(`Thiếu ${ITEM_DB[mat].name}!`); }
+            for (let [mat, reqQty] of Object.entries(recipe.req)) { removeItemQty(mat, reqQty); }
+            addItemToInventory(recipe.result, 1); addLog(`🔨 Đã chế tạo: ${recipe.name}`, "good");
+            saveGame(); renderCrafting(); renderInventory();
+        }
+
+        function renderLocationActions() {
+            const c = document.getElementById('location-actions'); const locId = gameState.currentLocation; const locData = MAP_LOCATIONS[locId];
+            document.getElementById('location-header').innerText = `📍 ${locData.name}`;
+            if (!gameState.player.isAlive) { c.innerHTML = `<h3 style="color:#ff4d4d;text-align:center;">💀 GAME OVER</h3>`; return; }
+
+            if (locId === 'home') {
+                let h = `<div class="action-card"><div class="card-header">🏕️ ${BASE_LEVELS[gameState.baseLevel - 1].name} (Cấp ${gameState.baseLevel})</div><button class="btn-main" onclick="actionRestBase()">Nghỉ ngơi an toàn (4h) 🛌</button>`;
+                if (gameState.baseLevel < 3) {
+                    const nx = BASE_LEVELS[gameState.baseLevel]; let sc = getInventoryQty('scrap'); let pt = getInventoryQty('parts');
+                    let canU = sc >= nx.cost.scrap && pt >= nx.cost.parts;
+                    h += `<div style="border-top:1px solid #555; padding-top:10px; margin-top:5px; font-size:12px;">Cần: <span style="color:${sc>=nx.cost.scrap?'#1dd1a1':'#ff4d4d'}">🧱${sc}/${nx.cost.scrap}</span> | <span style="color:${pt>=nx.cost.parts?'#1dd1a1':'#ff4d4d'}">⚙️${pt}/${nx.cost.parts}</span><button class="btn-main" style="background:#8e44ad; margin-top:5px;" onclick="upgradeBase()" ${canU?'':'disabled'}>Nâng Cấp Cứ Điểm</button></div>`;
+                }
+                if (gameState.companion.active) {
+                    let canL = gameState.baseLevel >= 2 && gameState.companion.intimacy >= 80;
+                    h += `<div style="border-top:1px dashed #e84393; padding-top:10px; margin-top:5px;">
+                        <span style="color:#e84393; font-weight:bold;">👩‍🦰 NPC (${gameState.companion.status} - Lớp: ${gameState.companion.intimacy})</span>
+                        <div style="display:flex; gap:5px; margin-top:5px;"><button class="btn-main" style="background:#e67e22; font-size:12px;" onclick="interactCompanion('chat')">Tặng Quà (1h)</button>
+                        <button class="btn-main" style="background:#e84393; font-size:12px;" onclick="interactCompanion('love')" ${canL?'':'disabled'}>Gần gũi (2h) 💕</button></div></div>`;
+                }
+                c.innerHTML = h + `</div>`;
+            } else {
+                c.innerHTML = `<div class="action-card" style="border-color:#ff4d4d;"><div class="card-header" style="color:#ff4d4d;">⚠️ Vùng Nguy Hiểm</div><button class="btn-main" onclick="actionScavenge()">Lục lọi (2h) 🔍</button></div>`;
+            }
+        }
+        function upgradeBase() {
+            const nx = BASE_LEVELS[gameState.baseLevel]; let sc = getInventoryQty('scrap'); let pt = getInventoryQty('parts');
+            if (sc >= nx.cost.scrap && pt >= nx.cost.parts) { removeItemQty('scrap', nx.cost.scrap); removeItemQty('parts', nx.cost.parts); gameState.baseLevel++; addLog(`🔨 Lên cấp Cứ điểm!`, "good"); saveGame(); renderLocationActions(); }
+        }
+
+        function renderMap() {
+            const list = document.getElementById('map-list'); const curr = MAP_LOCATIONS[gameState.currentLocation]; list.innerHTML = '';
+            document.getElementById('vehicle-status').innerText = gameState.equipped.vehicle ? "🚲 Có xe đạp: Di chuyển cực nhanh!" : "🚶 Đi bộ rã rời. Hãy chế tạo Xe đạp.";
+            for (const [id, loc] of Object.entries(MAP_LOCATIONS)) {
+                if (id === gameState.currentLocation) { list.innerHTML += `<div class="action-card" style="border-color:#0abde3;"><div class="card-header">${loc.icon} ${loc.name} <span style="font-size:12px;color:#0abde3;">📍 Đang ở đây</span></div></div>`; } 
+                else {
+                    let h = (Math.abs(curr.x - loc.x) + Math.abs(curr.y - loc.y)); if(gameState.equipped.vehicle) h = Math.max(1, Math.floor(h/2));
+                    list.innerHTML += `<div class="action-card"><div class="card-header">${loc.icon} ${loc.name} <span style="font-size:12px;color:#aaa;">🕒 ${h}h di chuyển</span></div><button class="btn-main" style="background:#2980b9;" onclick="travelTo('${id}')">Đi tới đây</button></div>`;
+                }
+            }
+        }
+
+        function renderInventory() {
+            const eqBox = document.getElementById('equip-slots'); eqBox.innerHTML = ''; let hasEq = false;
+            if(gameState.equipped.weapon) { eqBox.innerHTML += `<div style="display:flex; justify-content:space-between;"><span>${ITEM_DB[gameState.equipped.weapon].emoji} ${ITEM_DB[gameState.equipped.weapon].name}</span><button style="background:none; border:none; color:#ff4d4d; cursor:pointer;" onclick="unequipItem('weapon')">Tháo</button></div>`; hasEq=true; }
+            if(gameState.equipped.mask) { eqBox.innerHTML += `<div style="display:flex; justify-content:space-between;"><span>${ITEM_DB[gameState.equipped.mask].emoji} ${ITEM_DB[gameState.equipped.mask].name}</span><button style="background:none; border:none; color:#ff4d4d; cursor:pointer;" onclick="unequipItem('mask')">Tháo</button></div>`; hasEq=true; }
+            if(gameState.equipped.vehicle) { eqBox.innerHTML += `<div style="display:flex; justify-content:space-between;"><span>${ITEM_DB[gameState.equipped.vehicle].emoji} ${ITEM_DB[gameState.equipped.vehicle].name}</span><button style="background:none; border:none; color:#ff4d4d; cursor:pointer;" onclick="unequipItem('vehicle')">Tháo</button></div>`; hasEq=true; }
+            if(!hasEq) eqBox.innerHTML = '<span style="color:#666;">Chưa trang bị gì...</span>';
+
+            const invList = document.getElementById('inventory-list'); invList.innerHTML = '';
+            gameState.inventory.forEach(i => {
+                let btn = '';
+                if(['hp','hunger','thirst','rad','rad_clear'].includes(i.type)) btn = `<button class="btn-main" style="width:auto; padding:5px 15px;" onclick="useOrEquipItem('${i.id}')">Dùng</button>`;
+                else if(i.type.startsWith('equip_') || i.type === 'vehicle') btn = `<button class="btn-main" style="width:auto; padding:5px 15px; background:#8e44ad;" onclick="useOrEquipItem('${i.id}')">Đeo</button>`;
+                invList.innerHTML += `<div class="action-card" style="flex-direction:row; padding:10px;"><div style="flex-grow:1; font-size:13px;">${i.emoji} <strong>${i.name}</strong> (x${i.qty})</div>${btn}</div>`;
+            });
+        }
+
+        function renderCrafting() {
+            const list = document.getElementById('crafting-list'); list.innerHTML = '';
+            RECIPES.forEach(r => {
+                let reqStr = ''; let canCraft = true;
+                for(let [m, q] of Object.entries(r.req)) { 
+                    let myQ = getInventoryQty(m); reqStr += `<span style="color:${myQ>=q?'#1dd1a1':'#ff4d4d'}">${ITEM_DB[m].emoji}${myQ}/${q}</span> `; 
+                    if(myQ < q) canCraft = false; 
+                }
+                list.innerHTML += `<div class="action-card"><div class="card-header">${r.emoji} ${r.name}</div><p style="font-size:12px; color:#aaa;">${r.desc}</p><div class="craft-req">Cần: ${reqStr}</div><button class="btn-main" style="background:#e67e22;" onclick="craftItem('${r.id}')" ${canCraft?'':'disabled'}>Chế Tạo</button></div>`;
+            });
+        }
+
+        function updateUIStats() {
+            const cnt = document.getElementById('game-container'); const b = document.body;
+            if (gameState.player.hp <= 30 && gameState.player.isAlive) cnt.classList.add('danger-pulse'); else cnt.classList.remove('danger-pulse');
+            if (gameState.time >= 18 || gameState.time <= 5) b.classList.add('night-mode'); else b.classList.remove('night-mode');
+
+            document.getElementById('val-hp').innerText = `${gameState.player.hp}/${gameState.player.maxHp}`; document.getElementById('val-hp').className = `stat-value ${gameState.player.hp <= 30 ? 'text-danger' : ''}`;
+            document.getElementById('val-sanity').innerText = `${gameState.player.sanity}/100`;
+            document.getElementById('val-hunger').innerText = `${gameState.player.hunger}/100`; document.getElementById('val-thirst').innerText = `${gameState.player.thirst}/100`;
+            const rEl = document.getElementById('val-rad'); rEl.innerText = `${gameState.player.radiation}%`; rEl.style.color = gameState.player.radiation >= 80 ? '#ff4d4d' : 'inherit';
+            const tEl = document.getElementById('val-temp'); tEl.innerText = `${gameState.player.bodyTemp.toFixed(1)}°C`; tEl.style.color = gameState.player.bodyTemp <= 35.5 ? '#0abde3' : 'inherit'; 
+            document.getElementById('val-day').innerText = gameState.day; document.getElementById('val-time').innerText = gameState.time.toString().padStart(2, '0') + ":00";
+            document.getElementById('val-weather').innerText = gameState.environment.weatherIcon; document.getElementById('val-ambient').innerText = gameState.environment.ambientTemp;
+            if (!gameState.player.isAlive) { document.getElementById('btn-restart').style.display = 'block'; document.getElementById('btn-hard-reset').style.display = 'none'; }
+        }
+
+        // --- DEV TOOLS LOGIC ---
+        function renderDevTools() {
+            const select = document.getElementById('dev-item-select');
+            if(select.options.length === 0) {
+                for (const [id, item] of Object.entries(ITEM_DB)) { select.innerHTML += `<option value="${id}">${item.emoji} ${item.name}</option>`; }
+            }
+        }
+        function devHealAll() {
+            gameState.player.hp = gameState.player.maxHp; gameState.player.hunger = 100; gameState.player.thirst = 100; 
+            gameState.player.sanity = 100; gameState.player.radiation = 0; gameState.player.bodyTemp = 37.0;
+            addLog(`🛠️ DEV: Hồi Full Chỉ số.`, "system"); saveGame(); updateUIStats();
+        }
+        function devMaxBase() { gameState.baseLevel = 3; addLog(`🛠️ DEV: Max Cứ điểm.`, "system"); saveGame(); renderLocationActions(); }
+        function devForceNPC() {
+            gameState.companion.active = true; gameState.companion.intimacy = 100; updateCompanionStatus();
+            addLog(`🛠️ DEV: NPC Max Thiện cảm.`, "love"); saveGame(); renderLocationActions();
+        }
+        function devSkipDay() { gameTick(24); addLog(`🛠️ DEV: Tua nhanh 24h.`, "system"); }
+        function devSpawnItem() {
+            const id = document.getElementById('dev-item-select').value; const qty = parseInt(document.getElementById('dev-item-qty').value) || 1;
+            addItemToInventory(id, qty); addLog(`🛠️ DEV: Lấy ${qty}x ${ITEM_DB[id].name}.`, "system"); saveGame(); updateUIStats();
+        }
+        function devSkipOverlay() {
+            if(actionInterval) {
+                clearInterval(actionInterval);
+                // Trick the timer to finish immediately by forcing the interval logic
+                document.getElementById('action-progress').style.width = '100%';
+                setTimeout(() => { document.getElementById('action-overlay').classList.add('hidden'); }, 300);
+                addLog(`⚡ DEV: Đã Bỏ qua Hoạt ảnh chờ. Hành động lập tức hoàn thành.`, "system");
+            } else {
+                alert("Hiện không có hành động nào đang diễn ra để bỏ qua!");
+            }
+        }
+
+        document.getElementById('btn-export').onclick = () => { document.getElementById('save-data-text').value = btoa(JSON.stringify(gameState)); alert("Đã copy Save!"); };
+        document.getElementById('btn-import').onclick = () => { try { const d = JSON.parse(atob(document.getElementById('save-data-text').value.trim())); if(d.player) { gameState = d; saveGame(); alert("Tải thành công!"); switchTab('location'); loadGame(); updateUIStats(); renderLocationActions(); } } catch(e){ alert("Lỗi Save!"); } };
+        document.getElementById('btn-hard-reset').onclick = document.getElementById('btn-restart').onclick = () => { if(confirm("Chơi lại từ đầu?")) { localStorage.removeItem(SAVE_KEY); gameState = getInitialState(); saveGame(); window.location.reload(); } };
+
+        loadGame(); updateUIStats(); renderLogs(); switchTab('location');
+    </script>
+</body>
+</html>
