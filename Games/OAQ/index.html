@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Game Ô Ăn Quan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f8fafc;
+            overscroll-behavior-y: contain; 
+            overflow-x: hidden;
+        }
+        
+        .stone { transition: all 0.3s ease; }
+        .box-active { background-color: rgba(253, 224, 71, 0.4) !important; }
+        .box-highlight { box-shadow: inset 0 0 0 4px rgba(250, 204, 21, 0.6); }
+        
+        /* Dice Animation */
+        @keyframes roll {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        .rolling { animation: roll 0.5s ease-in-out; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800 selection:bg-amber-300">
+
+    <audio id="bg-music" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1718ab41b.mp3?filename=calm-ambient-11322.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="fixed top-2 right-2 z-50 flex gap-2">
+        <button onclick="toggleMusic()" class="w-10 h-10 bg-white rounded-full shadow border-2 border-slate-200 text-slate-600 hover:text-amber-500 flex items-center justify-center">
+            <i id="music-icon" class="fas fa-music-slash"></i>
+        </button>
+        <button onclick="toggleSound()" class="w-10 h-10 bg-white rounded-full shadow border-2 border-slate-200 text-slate-600 hover:text-amber-500 flex items-center justify-center">
+            <i id="sound-icon" class="fas fa-volume-up"></i>
+        </button>
+        <select id="speed-setting" onchange="changeSpeed(this.value)" class="bg-white rounded-full shadow border-2 border-slate-200 text-slate-600 px-3 text-sm font-bold outline-none">
+            <option value="500">Rùa bò</option>
+            <option value="300" selected>Bình thường</option>
+            <option value="100">Siêu tốc</option>
+        </select>
+    </div>
+
+    <div id="home-screen" class="fixed inset-0 bg-[#fef3c7] z-40 flex flex-col items-center justify-center p-4">
+        <h1 class="text-5xl md:text-7xl font-black text-amber-600 tracking-wider uppercase mb-8 drop-shadow-lg text-center">Ô Ăn Quan</h1>
+        
+        <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-4 border-amber-500 space-y-4">
+            <div id="mode-selection" class="space-y-4">
+                <button onclick="showPlayerInputs('pve')" class="w-full py-4 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-bold text-xl transition-all shadow-md hover:-translate-y-1"><i class="fas fa-robot mr-2"></i> Chơi với Máy</button>
+                <button onclick="showPlayerInputs('pvp')" class="w-full py-4 bg-rose-500 hover:bg-rose-600 text-white rounded-2xl font-bold text-xl transition-all shadow-md hover:-translate-y-1"><i class="fas fa-user-friends mr-2"></i> 2 Người Chơi</button>
+            </div>
+
+            <div id="player-setup" class="hidden space-y-4">
+                <h2 class="text-xl font-bold text-center text-slate-700" id="setup-title">Nhập Tên</h2>
+                <input type="text" id="p1-name" placeholder="Tên Người Chơi 1" class="w-full p-3 border-2 border-slate-300 rounded-xl focus:border-amber-500 outline-none font-bold text-rose-600" value="Người chơi 1">
+                
+                <div id="p2-input-group">
+                    <input type="text" id="p2-name" placeholder="Tên Người Chơi 2" class="w-full p-3 border-2 border-slate-300 rounded-xl focus:border-amber-500 outline-none font-bold text-blue-600" value="Người chơi 2">
+                </div>
+
+                <div id="ai-difficulty" class="hidden">
+                    <label class="font-bold text-slate-600 block mb-2">Độ khó của Máy:</label>
+                    <div class="flex gap-2">
+                        <button onclick="setAiLevel('easy', this)" class="flex-1 py-2 border-2 border-blue-400 bg-blue-100 text-blue-800 rounded-lg font-bold">Dễ</button>
+                        <button onclick="setAiLevel('medium', this)" class="flex-1 py-2 border-2 border-transparent bg-slate-100 text-slate-600 rounded-lg font-bold">TB</button>
+                        <button onclick="setAiLevel('hard', this)" class="flex-1 py-2 border-2 border-transparent bg-slate-100 text-slate-600 rounded-lg font-bold">Khó</button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-4">
+                    <button onclick="backToMode()" class="flex-1 py-3 bg-slate-300 hover:bg-slate-400 text-slate-800 rounded-xl font-bold transition-all"><i class="fas fa-arrow-left"></i> Trở lại</button>
+                    <button onclick="goToDice()" class="flex-[2] py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-all">Tiếp tục <i class="fas fa-arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dice-screen" class="hidden fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-30 flex flex-col items-center justify-center p-4 text-white">
+        <h2 class="text-3xl md:text-5xl font-black mb-8 text-amber-400 text-center">Đổ xúc xắc giành quyền đi trước</h2>
+        
+        <div class="flex gap-8 md:gap-20 mb-12 w-full max-w-2xl justify-center">
+            <div class="flex flex-col items-center gap-4 w-1/2">
+                <span id="dice-p1-name" class="font-bold text-xl text-rose-400">P1</span>
+                <div id="dice-p1-ui" class="text-7xl md:text-9xl text-slate-200 transition-transform"><i class="fas fa-dice-d6"></i></div>
+                <button id="btn-roll-p1" onclick="rollDice(1)" class="px-6 py-2 bg-rose-500 hover:bg-rose-600 rounded-full font-bold shadow-lg shadow-rose-500/50">Đổ Xúc Xắc</button>
+            </div>
+            
+            <div class="flex flex-col items-center gap-4 w-1/2">
+                <span id="dice-p2-name" class="font-bold text-xl text-blue-400">P2</span>
+                <div id="dice-p2-ui" class="text-7xl md:text-9xl text-slate-200 transition-transform"><i class="fas fa-dice-d6"></i></div>
+                <button id="btn-roll-p2" onclick="rollDice(2)" class="px-6 py-2 bg-blue-500 hover:bg-blue-600 rounded-full font-bold shadow-lg shadow-blue-500/50 hidden">Đổ Xúc Xắc</button>
+            </div>
+        </div>
+
+        <div id="dice-result" class="text-2xl font-bold text-center h-10 mb-4 text-green-400"></div>
+        <button id="btn-start-match" onclick="startMatch()" class="hidden px-8 py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-black text-xl shadow-[0_0_20px_rgba(245,158,11,0.5)] hover:scale-105 transition-transform">Vào Bàn Chơi Mới</button>
+    </div>
+
+    <div id="game-screen" class="hidden flex-col min-h-screen w-full">
+        <header class="w-full max-w-5xl mx-auto p-4 flex justify-between items-center bg-white shadow-sm md:rounded-b-3xl md:mt-0 z-20">
+            <div id="p2-panel" class="flex flex-col items-center p-2 md:p-4 rounded-xl bg-blue-50 border-2 border-blue-200 w-24 md:w-40 transition-all duration-300">
+                <span id="board-p2-name" class="font-bold text-blue-800 text-xs md:text-base whitespace-nowrap overflow-hidden text-ellipsis w-full text-center"><i class="fas fa-user-astronaut mr-1 md:mr-2"></i>Player 2</span>
+                <span id="score-2" class="text-2xl md:text-4xl font-black text-blue-600">0</span>
+            </div>
+
+            <div class="flex flex-col items-center mx-2 text-center">
+                <h1 class="text-xl md:text-4xl font-black text-amber-600 tracking-wider uppercase mb-1 md:mb-2 cursor-pointer hover:scale-105 transition-transform" onclick="location.reload()" title="Về trang chủ">Ô Ăn Quan</h1>
+                <div id="turn-indicator" class="px-3 py-1 md:px-6 md:py-2 bg-amber-100 text-amber-800 rounded-full font-bold text-xs md:text-base shadow-inner border border-amber-200">
+                    Lượt Người Chơi 1
+                </div>
+            </div>
+
+            <div id="p1-panel" class="flex flex-col items-center p-2 md:p-4 rounded-xl bg-red-50 border-2 border-red-200 w-24 md:w-40 transition-all duration-300">
+                <span id="board-p1-name" class="font-bold text-red-800 text-xs md:text-base whitespace-nowrap overflow-hidden text-ellipsis w-full text-center"><i class="fas fa-user-ninja mr-1 md:mr-2"></i>Player 1</span>
+                <span id="score-1" class="text-2xl md:text-4xl font-black text-red-600">0</span>
+            </div>
+        </header>
+
+        <main class="flex-1 flex items-center justify-center p-2 md:p-6 relative w-full max-w-6xl mx-auto">
+            <div class="flex flex-col md:flex-row w-full bg-[#fef3c7] rounded-[2.5rem] md:rounded-[5rem] border-[6px] md:border-8 border-amber-800 shadow-2xl overflow-hidden min-h-[600px] md:min-h-[300px] lg:min-h-[400px] relative">
+                <div id="box-0" class="w-full h-24 md:w-32 lg:w-48 md:h-auto border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 bg-amber-200/60 relative flex items-center justify-center transition-colors"></div>
+                <div class="flex flex-row md:flex-col flex-1">
+                    <div class="flex flex-col md:flex-row flex-1 border-r-[6px] md:border-r-0 md:border-b-[6px] md:border-b-8 border-amber-800 bg-blue-50/60">
+                        <div id="box-1" class="flex-1 border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 relative transition-colors" onclick="handleClick(1)"></div>
+                        <div id="box-2" class="flex-1 border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 relative transition-colors" onclick="handleClick(2)"></div>
+                        <div id="box-3" class="flex-1 border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 relative transition-colors" onclick="handleClick(3)"></div>
+                        <div id="box-4" class="flex-1 border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 relative transition-colors" onclick="handleClick(4)"></div>
+                        <div id="box-5" class="flex-1 relative transition-colors" onclick="handleClick(5)"></div>
+                    </div>
+                    <div class="flex flex-col md:flex-row flex-1 bg-red-50/60">
+                        <div id="box-11" class="flex-1 border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 relative transition-colors" onclick="handleClick(11)"></div>
+                        <div id="box-10" class="flex-1 border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 relative transition-colors" onclick="handleClick(10)"></div>
+                        <div id="box-9" class="flex-1 border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 relative transition-colors" onclick="handleClick(9)"></div>
+                        <div id="box-8" class="flex-1 border-b-[6px] md:border-b-0 md:border-r-[6px] md:border-r-8 border-amber-800 relative transition-colors" onclick="handleClick(8)"></div>
+                        <div id="box-7" class="flex-1 relative transition-colors" onclick="handleClick(7)"></div>
+                    </div>
+                </div>
+                <div id="box-6" class="w-full h-24 md:w-32 lg:w-48 md:h-auto border-t-[6px] md:border-t-0 md:border-l-[6px] md:border-l-8 border-amber-800 bg-amber-200/60 relative flex items-center justify-center transition-colors"></div>
+            </div>
+        </main>
+
+        <footer class="text-center p-4 text-slate-500 text-xs md:text-sm max-w-3xl mx-auto mb-4">
+            <p class="font-bold mb-1"><i class="fas fa-info-circle mr-1"></i>Luật chơi:</p>
+            <p>1. Chọn ô và chọn hướng rải sỏi.<br/>2. Nếu rải hòn cuối sát ô trống và ô tiếp theo có sỏi, bạn sẽ <b>ăn toàn bộ</b> sỏi đó (được ăn liên hoàn).<br/>3. Game kết thúc khi 2 Quan bị ăn mất.</p>
+        </footer>
+    </div>
+
+    <div id="notification-bg" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity opacity-0">
+        <div id="notification-box" class="bg-white px-8 py-6 rounded-3xl shadow-2xl text-center border-4 border-amber-500 max-w-sm w-[90%] transform scale-95 transition-transform">
+            <h2 id="notif-title" class="text-2xl font-black text-slate-800 mb-2">Thông báo</h2>
+            <p id="notif-text" class="text-slate-600 mb-6 text-lg font-medium">Nội dung</p>
+            <button id="notif-btn" class="hidden w-full px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-lg shadow-lg hover:scale-105 transition-all" onclick="location.reload()">
+                <i class="fas fa-home mr-2"></i>Về Trang Chủ
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- AUDIO SYSTEM (Web Audio API & Audio Tag) ---
+        let audioCtx;
+        let isMusicPlaying = false;
+        let isSoundEnabled = true;
+        const bgMusic = document.getElementById('bg-music');
+        bgMusic.volume = 0.3;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (!isSoundEnabled || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function sfxScatter() { playTone(400, 'sine', 0.1, 0.05); }
+        function sfxCapture() { 
+            playTone(600, 'square', 0.1, 0.1); 
+            setTimeout(() => playTone(900, 'square', 0.2, 0.1), 100); 
+        }
+        function sfxWin() {
+            playTone(400, 'triangle', 0.2, 0.2);
+            setTimeout(() => playTone(600, 'triangle', 0.2, 0.2), 200);
+            setTimeout(() => playTone(800, 'triangle', 0.4, 0.2), 400);
+        }
+
+        function toggleMusic() {
+            const icon = document.getElementById('music-icon');
+            if (isMusicPlaying) {
+                bgMusic.pause();
+                icon.className = 'fas fa-music-slash';
+            } else {
+                bgMusic.play().catch(e => console.log("Trình duyệt chặn autoplay"));
+                icon.className = 'fas fa-music';
+            }
+            isMusicPlaying = !isMusicPlaying;
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            document.getElementById('sound-icon').className = isSoundEnabled ? 'fas fa-volume-up' : 'fas fa-volume-mute';
+        }
+
+        function changeSpeed(val) { scatterSpeed = parseInt(val); }
+
+        // --- GAME SETTINGS & STATE ---
+        let gameMode = 'pvp'; // 'pvp' or 'pve'
+        let aiDifficulty = 'easy'; // easy, medium, hard
+        let p1Name = "Player 1";
+        let p2Name = "Player 2";
+        let p1Roll = 0, p2Roll = 0;
+        
+        let board = [];
+        let scores = { 1: 0, 2: 0 };
+        let turn = 1; 
+        let isAnimating = false;
+        let selectedBox = null;
+        let status = 'setup'; // setup, dice, playing, gameover
+        let lastModifiedBox = null;
+        let scatterSpeed = 300; // ms
+
+        // --- MENU LOGIC ---
+        function showPlayerInputs(mode) {
+            initAudio(); // Khởi tạo AudioContext khi user click
+            gameMode = mode;
+            document.getElementById('mode-selection').classList.add('hidden');
+            document.getElementById('player-setup').classList.remove('hidden');
+            
+            if(mode === 'pve') {
+                document.getElementById('p2-input-group').classList.add('hidden');
+                document.getElementById('ai-difficulty').classList.remove('hidden');
+                document.getElementById('p2-name').value = "Máy tính";
+            } else {
+                document.getElementById('p2-input-group').classList.remove('hidden');
+                document.getElementById('ai-difficulty').classList.add('hidden');
+                document.getElementById('p2-name').value = "Người chơi 2";
+            }
+        }
+
+        function backToMode() {
+            document.getElementById('mode-selection').classList.remove('hidden');
+            document.getElementById('player-setup').classList.add('hidden');
+        }
+
+        function setAiLevel(level, btn) {
+            aiDifficulty = level;
+            // Reset styles
+            let btns = btn.parentElement.children;
+            for(let b of btns) {
+                b.className = "flex-1 py-2 border-2 border-transparent bg-slate-100 text-slate-600 rounded-lg font-bold";
+            }
+            // Active style
+            btn.className = "flex-1 py-2 border-2 border-blue-400 bg-blue-100 text-blue-800 rounded-lg font-bold";
+        }
+
+        function goToDice() {
+            p1Name = document.getElementById('p1-name').value || "Người chơi 1";
+            p2Name = document.getElementById('p2-name').value || (gameMode === 'pve' ? "Máy" : "Người chơi 2");
+            
+            document.getElementById('dice-p1-name').innerText = p1Name;
+            document.getElementById('dice-p2-name').innerText = p2Name;
+            
+            document.getElementById('home-screen').classList.add('hidden');
+            document.getElementById('dice-screen').classList.remove('hidden');
+            
+            if(gameMode === 'pve') {
+                document.getElementById('btn-roll-p2').innerText = "Máy đang chờ...";
+                document.getElementById('btn-roll-p2').disabled = true;
+                document.getElementById('btn-roll-p2').classList.remove('hidden');
+            }
+        }
+
+        // --- DICE LOGIC ---
+        const diceClasses = ['fa-dice-one', 'fa-dice-two', 'fa-dice-three', 'fa-dice-four', 'fa-dice-five', 'fa-dice-six'];
+        
+        function rollDice(playerNum) {
+            initAudio();
+            const ui = document.getElementById(`dice-p${playerNum}-ui`);
+            const btn = document.getElementById(`btn-roll-p${playerNum}`);
+            btn.classList.add('hidden');
+            ui.classList.add('rolling');
+            
+            // Random sfx
+            let rollInterval = setInterval(()=> {
+                ui.innerHTML = `<i class="fas ${diceClasses[Math.floor(Math.random()*6)]}"></i>`;
+                sfxScatter();
+            }, 100);
+
+            setTimeout(() => {
+                clearInterval(rollInterval);
+                ui.classList.remove('rolling');
+                let result = Math.floor(Math.random() * 6) + 1;
+                ui.innerHTML = `<i class="fas ${diceClasses[result-1]} text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.8)]"></i>`;
+                
+                if (playerNum === 1) {
+                    p1Roll = result;
+                    if (gameMode === 'pvp') {
+                        document.getElementById('btn-roll-p2').classList.remove('hidden');
+                    } else {
+                        // PvE -> Auto roll P2
+                        setTimeout(() => rollDice(2), 800);
+                    }
+                } else {
+                    p2Roll = result;
+                    checkDiceResult();
+                }
+            }, 600);
+        }
+
+        function checkDiceResult() {
+            const resText = document.getElementById('dice-result');
+            if (p1Roll > p2Roll) {
+                resText.innerText = `${p1Name} đi trước!`;
+                turn = 1;
+                showStartBtn();
+            } else if (p2Roll > p1Roll) {
+                resText.innerText = `${p2Name} đi trước!`;
+                turn = 2;
+                showStartBtn();
+            } else {
+                resText.innerText = "Hòa! Đổ lại...";
+                resText.className = "text-2xl font-bold text-center h-10 mb-4 text-amber-400";
+                setTimeout(() => {
+                    p1Roll = p2Roll = 0;
+                    document.getElementById('btn-roll-p1').classList.remove('hidden');
+                    document.getElementById('dice-p1-ui').innerHTML = `<i class="fas fa-dice-d6"></i>`;
+                    document.getElementById('dice-p2-ui').innerHTML = `<i class="fas fa-dice-d6"></i>`;
+                    resText.innerText = "";
+                }, 2000);
+            }
+        }
+
+        function showStartBtn() {
+            setTimeout(() => {
+                document.getElementById('btn-start-match').classList.remove('hidden');
+            }, 500);
+        }
+
+        // --- CORE GAME ---
+        function startMatch() {
+            document.getElementById('dice-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('flex'); // Because it was hidden
+            
+            document.getElementById('board-p1-name').innerHTML = `<i class="fas fa-user-ninja mr-1 md:mr-2"></i>${p1Name}`;
+            document.getElementById('board-p2-name').innerHTML = `<i class="fas ${gameMode==='pve'?'fa-robot':'fa-user-astronaut'} mr-1 md:mr-2"></i>${p2Name}`;
+            
+            initBoard();
+        }
+
+        function initBoard() {
+            board = Array(12).fill(null).map((_, i) => ({
+                value: (i === 0 || i === 6) ? 0 : 5, 
+                hasBig: (i === 0 || i === 6) 
+            }));
+            scores = { 1: 0, 2: 0 };
+            status = 'playing';
+            isAnimating = false;
+            selectedBox = null;
+            lastModifiedBox = null;
+            
+            render();
+            checkAITurn();
+        }
+
+        function handleClick(index) {
+            if (status !== 'playing' || isAnimating) return;
+            if (turn === 1 && (index < 7 || index > 11)) return;
+            if (turn === 2 && (index < 1 || index > 5)) return;
+            if (gameMode === 'pve' && turn === 2) return; // Không cho click tay khi là máy
+            if (board[index].value === 0) return;
+
+            selectedBox = selectedBox === index ? null : index;
+            render();
+        }
+
+        function startMove(dir) {
+            if (selectedBox === null || isAnimating) return;
+            let startIndex = selectedBox;
+            selectedBox = null;
+            runScatterSequence(startIndex, dir);
+        }
+
+        function runScatterSequence(startIndex, dir) {
+            isAnimating = true;
+            let stones = board[startIndex].value;
+            board[startIndex].value = 0;
+            let curr = startIndex;
+            
+            function step() {
+                if (stones > 0) {
+                    curr = (curr + dir + 12) % 12;
+                    board[curr].value++;
+                    stones--;
+                    lastModifiedBox = curr;
+                    sfxScatter();
+                    render();
+                    setTimeout(step, scatterSpeed);
+                } else {
+                    let next = (curr + dir + 12) % 12;
+                    if (next === 0 || next === 6) {
+                        // Dừng khi gặp Ô Quan
+                        lastModifiedBox = null;
+                        finishTurn();
+                    } else if (board[next].value > 0) {
+                        // Ô tiếp theo có sỏi -> bốc rải tiếp
+                        stones = board[next].value;
+                        board[next].value = 0;
+                        curr = next;
+                        lastModifiedBox = curr;
+                        render();
+                        setTimeout(step, scatterSpeed + 100);
+                    } else {
+                        // Ô tiếp theo trống -> Kiểm tra ăn
+                        checkCaptureSequence(next, dir);
+                    }
+                }
+            }
+            render();
+            setTimeout(step, scatterSpeed);
+        }
+
+        function checkCaptureSequence(emptyIdx, dir) {
+            let targetIdx = (emptyIdx + dir + 12) % 12;
+            
+            if (board[targetIdx].value > 0 || board[targetIdx].hasBig) {
+                let pts = board[targetIdx].value + (board[targetIdx].hasBig ? 10 : 0);
+                scores[turn] += pts;
+                board[targetIdx].value = 0;
+                board[targetIdx].hasBig = false;
+                lastModifiedBox = targetIdx;
+                sfxCapture();
+                render();
+
+                setTimeout(() => {
+                    let nextEmptyIdx = (targetIdx + dir + 12) % 12;
+                    // Luật Ăn Liên Hoàn: Cách 1 ô trống ăn tiếp
+                    if (board[nextEmptyIdx].value === 0 && !board[nextEmptyIdx].hasBig) {
+                        checkCaptureSequence(nextEmptyIdx, dir);
+                    } else {
+                        lastModifiedBox = null;
+                        finishTurn();
+                    }
+                }, scatterSpeed * 2);
+            } else {
+                lastModifiedBox = null;
+                finishTurn();
+            }
+        }
+
+        function finishTurn() {
+            if (board[0].value === 0 && !board[0].hasBig && board[6].value === 0 && !board[6].hasBig) {
+                endGame();
+                return;
+            }
+
+            turn = turn === 1 ? 2 : 1;
+            let startIdx = turn === 1 ? 7 : 1;
+            let endIdx = turn === 1 ? 11 : 5;
+            let sideEmpty = true;
+            
+            for (let i = startIdx; i <= endIdx; i++) {
+                if (board[i].value > 0) { sideEmpty = false; break; }
+            }
+
+            isAnimating = false;
+            render(); 
+
+            if (sideEmpty) {
+                setTimeout(() => {
+                    scores[turn] -= 5;
+                    for (let i = startIdx; i <= endIdx; i++) board[i].value = 1;
+                    showNotification(`Mượn 5 quân để rải! (-5 điểm)`, false, 1500);
+                    sfxScatter();
+                    render();
+                    checkAITurn();
+                }, 800);
+            } else {
+                checkAITurn();
+            }
+        }
+
+        function endGame() {
+            for (let i = 1; i <= 5; i++) { scores[2] += board[i].value; board[i].value = 0; }
+            for (let i = 7; i <= 11; i++) { scores[1] += board[i].value; board[i].value = 0; }
+            status = 'gameover';
+            isAnimating = false;
+            render();
+
+            let msg = scores[1] > scores[2] ? `${p1Name} THẮNG! 🎉` : 
+                     (scores[2] > scores[1] ? `${p2Name} THẮNG! 🎉` : "HÒA NHAU! 🤝");
+            
+            setTimeout(() => {
+                sfxWin();
+                showNotification(msg, true);
+            }, 800);
+        }
+
+        // --- AI LOGIC ---
+        function checkAITurn() {
+            if (status !== 'playing' || isAnimating) return;
+            if (gameMode === 'pve' && turn === 2) {
+                setTimeout(makeAIMove, 1000);
+            }
+        }
+
+        function makeAIMove() {
+            if (status !== 'playing') return;
+            let validMoves = [];
+            for (let i = 1; i <= 5; i++) {
+                if (board[i].value > 0) {
+                    validMoves.push({ idx: i, dir: 1 });
+                    validMoves.push({ idx: i, dir: -1 });
+                }
+            }
+            if(validMoves.length === 0) return;
+
+            let chosenMove;
+            if(aiDifficulty === 'easy') {
+                chosenMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+            } else {
+                // Thuật toán tham lam (Greedy): Tìm bước có khả năng ăn được ngay
+                // (Mô phỏng đơn giản hóa)
+                chosenMove = validMoves[Math.floor(Math.random() * validMoves.length)]; // Default to random
+                let maxPoints = -1;
+                
+                // Note: Logic mô phỏng toàn diện khá dài, ở mức TB/Khó ta sẽ dùng heuristic 
+                // kiểm tra xem đánh bừa có rơi vào ô trống để ăn quân không.
+                for (let move of validMoves) {
+                    let endPos = (move.idx + move.dir * board[move.idx].value + 120) % 12;
+                    let nextPos = (endPos + move.dir + 12) % 12;
+                    let targetPos = (nextPos + move.dir + 12) % 12;
+                    
+                    if(board[nextPos].value === 0 && !board[nextPos].hasBig && (board[targetPos].value > 0 || board[targetPos].hasBig) && nextPos !== 0 && nextPos !== 6) {
+                        let potentialPoints = board[targetPos].value + (board[targetPos].hasBig ? 10 : 0);
+                        if(potentialPoints > maxPoints) {
+                            maxPoints = potentialPoints;
+                            chosenMove = move;
+                        }
+                    }
+                }
+            }
+
+            // Thực thi
+            selectedBox = chosenMove.idx;
+            render();
+            setTimeout(() => {
+                startMove(chosenMove.dir);
+            }, 500);
+        }
+
+
+        // --- RENDER & UI ---
+        function render() {
+            document.getElementById('score-1').innerText = scores[1];
+            document.getElementById('score-2').innerText = scores[2];
+
+            const turnInd = document.getElementById('turn-indicator');
+            const p1Panel = document.getElementById('p1-panel');
+            const p2Panel = document.getElementById('p2-panel');
+
+            if (status === 'gameover') {
+                turnInd.innerText = 'Trò Chơi Kết Thúc';
+                p1Panel.className = 'flex flex-col items-center p-2 md:p-4 rounded-xl bg-red-50 border-2 border-red-200 w-24 md:w-40 opacity-50';
+                p2Panel.className = 'flex flex-col items-center p-2 md:p-4 rounded-xl bg-blue-50 border-2 border-blue-200 w-24 md:w-40 opacity-50';
+            } else {
+                turnInd.innerText = `Lượt của ${turn === 1 ? p1Name : p2Name}`;
+                if (turn === 1) {
+                    p1Panel.className = 'flex flex-col items-center p-2 md:p-4 rounded-xl bg-red-100 border-2 border-red-400 w-24 md:w-40 shadow-[0_0_20px_rgba(248,113,113,0.5)] transform scale-105 z-10 transition-all duration-300';
+                    p2Panel.className = 'flex flex-col items-center p-2 md:p-4 rounded-xl bg-blue-50 border-2 border-blue-200 w-24 md:w-40 opacity-60 transition-all duration-300 scale-95';
+                } else {
+                    p2Panel.className = 'flex flex-col items-center p-2 md:p-4 rounded-xl bg-blue-100 border-2 border-blue-400 w-24 md:w-40 shadow-[0_0_20px_rgba(96,165,250,0.5)] transform scale-105 z-10 transition-all duration-300';
+                    p1Panel.className = 'flex flex-col items-center p-2 md:p-4 rounded-xl bg-red-50 border-2 border-red-200 w-24 md:w-40 opacity-60 transition-all duration-300 scale-95';
+                }
+            }
+
+            for (let i = 0; i < 12; i++) {
+                let boxEl = document.getElementById(`box-${i}`);
+                let state = board[i];
+                let totalValue = state.value + (state.hasBig ? 10 : 0);
+                let html = '';
+
+                if (totalValue > 0) {
+                    html += `<div class="absolute top-1 left-1/2 transform -translate-x-1/2 md:translate-x-0 md:top-2 md:right-2 bg-white/90 text-slate-800 text-xs md:text-sm font-black px-1.5 py-0.5 rounded shadow z-10">${totalValue}</div>`;
+                }
+
+                html += `<div class="w-full h-full flex flex-wrap justify-center items-center content-center p-2 gap-0.5 md:gap-1 pointer-events-none">`;
+                
+                if (state.hasBig) {
+                    html += `<div class="stone w-6 h-6 md:w-8 md:h-8 rounded-full bg-rose-500 shadow-md border-2 border-rose-700 m-1 flex-shrink-0 relative overflow-hidden"><div class="absolute inset-0 bg-white/20 w-1/2 rounded-full transform -rotate-45 translate-x-1 -translate-y-1"></div></div>`;
+                }
+                
+                let drawCount = Math.min(state.value, 20);
+                for (let s = 0; s < drawCount; s++) {
+                    html += `<div class="stone w-3 h-3 md:w-4 md:h-4 rounded-full bg-slate-400 shadow-sm border border-slate-600 flex-shrink-0 relative overflow-hidden"><div class="absolute top-0.5 left-0.5 w-1 h-1 bg-white/40 rounded-full"></div></div>`;
+                }
+                if (state.value > 20) html += `<div class="text-xs font-black text-amber-900 bg-white/50 px-1 rounded-full ml-1">+${state.value - 20}</div>`;
+                html += `</div>`;
+
+                if (selectedBox === i) {
+                    let dirLeft = (i >= 1 && i <= 5) ? -1 : 1;
+                    let dirRight = (i >= 1 && i <= 5) ? 1 : -1;
+                    html += `
+                    <div class="absolute inset-0 bg-slate-900/60 flex items-center justify-between px-2 md:px-6 z-20 rounded-xl" onclick="event.stopPropagation()">
+                        <button class="text-white text-2xl md:text-4xl hover:text-amber-400 hover:scale-125 transition-transform" onclick="startMove(${dirLeft})"><i class="fas fa-chevron-left hidden md:block drop-shadow-lg"></i><i class="fas fa-chevron-up block md:hidden drop-shadow-lg"></i></button>
+                        <button class="text-white text-2xl md:text-4xl hover:text-amber-400 hover:scale-125 transition-transform" onclick="startMove(${dirRight})"><i class="fas fa-chevron-right hidden md:block drop-shadow-lg"></i><i class="fas fa-chevron-down block md:hidden drop-shadow-lg"></i></button>
+                    </div>`;
+                }
+
+                boxEl.className = boxEl.className.replace(/box-active|box-highlight|cursor-pointer|hover:bg-[^\s]*/g, '').trim();
+                
+                if (i === 0 || i === 6) {
+                    boxEl.className += " cursor-default";
+                } else {
+                    let isValidMove = status === 'playing' && !isAnimating &&
+                                      ((turn === 1 && i >= 7 && i <= 11) || (turn === 2 && i >= 1 && i <= 5 && gameMode === 'pvp')) &&
+                                      state.value > 0;
+                    if (isValidMove && selectedBox !== i) boxEl.className += " cursor-pointer hover:bg-amber-100/50 box-highlight";
+                    else if (!isValidMove) boxEl.className += " cursor-default";
+                }
+
+                if (i === lastModifiedBox && isAnimating) boxEl.className += " box-active";
+                boxEl.innerHTML = html;
+            }
+        }
+
+        function showNotification(text, showBtn = false, timeout = 0) {
+            const bg = document.getElementById('notification-bg');
+            const box = document.getElementById('notification-box');
+            
+            document.getElementById('notif-title').innerText = status === 'gameover' ? 'Trò Chơi Kết Thúc' : 'Thông Báo';
+            document.getElementById('notif-text').innerHTML = text;
+            document.getElementById('notif-btn').style.display = showBtn ? 'inline-block' : 'none';
+            
+            bg.classList.remove('hidden');
+            setTimeout(() => {
+                bg.classList.add('opacity-100'); bg.classList.remove('opacity-0');
+                box.classList.add('scale-100'); box.classList.remove('scale-95');
+            }, 10);
+
+            if (timeout > 0) setTimeout(hideNotification, timeout);
+        }
+
+        function hideNotification() {
+            const bg = document.getElementById('notification-bg');
+            const box = document.getElementById('notification-box');
+            bg.classList.add('opacity-0'); bg.classList.remove('opacity-100');
+            box.classList.add('scale-95'); box.classList.remove('scale-100');
+            setTimeout(() => bg.classList.add('hidden'), 300); 
+        }
+
+    </script>
+</body>
+</html>
