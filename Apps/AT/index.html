@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra cứu đơn hàng</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+        
+        /* Ẩn input radio mặc định nhưng vẫn giữ được tính năng focus/required của trình duyệt */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col items-center py-10 px-4 sm:px-6 lg:px-8">
+
+    <div class="max-w-xl w-full mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold tracking-tight text-gray-900">Tra cứu đơn hàng</h1>
+            <p class="mt-2 text-sm text-gray-500">Chọn đơn vị vận chuyển và nhập mã vận đơn</p>
+        </div>
+
+        <!-- Form Box -->
+        <div class="bg-white py-8 px-5 shadow-sm rounded-3xl border border-gray-100 sm:px-10">
+            <form id="trackingForm" class="space-y-8">
+                
+                <!-- Chọn Đơn vị vận chuyển (Dạng Grid Buttons) -->
+                <div>
+                    <label class="block text-sm font-semibold text-gray-900 mb-4">1. Đơn vị vận chuyển</label>
+                    
+                    <!-- Lưới 2 cột trên mobile, 3 cột trên màn hình lớn hơn -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        
+                        <!-- SPX -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="SPX" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-orange-500 font-bold text-xl tracking-tighter">SPX</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">Shopee Express</div>
+                            </div>
+                            <!-- Icon Check mark (hiện khi được chọn) -->
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity">
+                                <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                            </div>
+                        </label>
+
+                        <!-- GHTK -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="GHTK" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-green-600 font-bold text-xl tracking-tighter">GHTK</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">Giao Hàng Tiết Kiệm</div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div>
+                        </label>
+
+                        <!-- J&T -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="JT" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-red-600 font-bold text-xl tracking-tighter">J&T</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">J&T Express</div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div>
+                        </label>
+
+                        <!-- GHN -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="GHN" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-orange-600 font-bold text-xl tracking-tighter">GHN</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">Giao Hàng Nhanh</div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div>
+                        </label>
+
+                        <!-- Viettel Post -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="VIETTEL" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-red-500 font-bold text-xl tracking-tighter">VTP</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">Viettel Post</div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div>
+                        </label>
+
+                        <!-- Ninja Van -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="NINJA" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-red-700 font-bold text-xl tracking-tighter">NINJA</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">Ninja Van</div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div>
+                        </label>
+
+                        <!-- Vietnam Post -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="VNPOST" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-blue-600 font-bold text-xl tracking-tighter">VNPOST</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">Vietnam Post</div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div>
+                        </label>
+
+                        <!-- EMS -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="EMS" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-blue-500 font-bold text-xl tracking-tighter">EMS</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">EMS Vietnam</div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div>
+                        </label>
+
+                        <!-- JPPost -->
+                        <label class="cursor-pointer relative">
+                            <input type="radio" name="carrier" value="JPPOST" class="peer sr-only" required>
+                            <div class="h-full rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center hover:bg-gray-100 peer-checked:border-black peer-checked:bg-white peer-checked:ring-1 peer-checked:ring-black transition-all">
+                                <div class="text-red-600 font-bold text-xl tracking-tighter">JP</div>
+                                <div class="text-[11px] text-gray-500 mt-1.5 font-medium uppercase tracking-wide">Japan Post</div>
+                            </div>
+                            <div class="absolute top-2 right-2 text-black opacity-0 peer-checked:opacity-100 transition-opacity"><svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></div>
+                        </label>
+
+                    </div>
+                </div>
+
+                <!-- Nhập mã vận đơn -->
+                <div>
+                    <label for="trackingCode" class="block text-sm font-semibold text-gray-900 mb-2">2. Nhập mã vận đơn</label>
+                    <div class="relative">
+                        <input id="trackingCode" name="trackingCode" type="text" required placeholder="VD: SPXVN0123456789" class="block w-full rounded-2xl border-gray-200 bg-gray-50 border py-3.5 px-4 text-base placeholder-gray-400 focus:border-black focus:bg-white focus:outline-none focus:ring-1 focus:ring-black transition-colors">
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nút Tra cứu -->
+                <div class="pt-2">
+                    <button type="submit" id="submitBtn" class="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-2xl shadow-sm text-base font-semibold text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-all">
+                        <span id="btnText">Tra cứu đơn hàng</span>
+                        <!-- Icon Loading -->
+                        <svg id="loadingIcon" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Result Box (Ẩn mặc định) -->
+        <div id="resultBox" class="bg-white p-6 shadow-sm rounded-3xl border border-gray-100 hidden transition-all duration-300">
+            <div class="flex items-start justify-between border-b border-gray-100 pb-5 mb-5">
+                <div>
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1" id="resultCarrier">Hãng vận chuyển</p>
+                    <p class="text-xl font-bold text-gray-900" id="resultTrackingCode">CODE123456</p>
+                </div>
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                    <span class="w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>
+                    Đang giao hàng
+                </span>
+            </div>
+
+            <!-- Timeline -->
+            <div class="flow-root pl-2">
+                <ul role="list" class="-mb-8" id="timelineList">
+                    <!-- Các items timeline sẽ được render bằng JS -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Xử lý Logic -->
+    <script>
+        const form = document.getElementById('trackingForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const loadingIcon = document.getElementById('loadingIcon');
+        const resultBox = document.getElementById('resultBox');
+        const resultCarrier = document.getElementById('resultCarrier');
+        const resultTrackingCode = document.getElementById('resultTrackingCode');
+        const timelineList = document.getElementById('timelineList');
+
+        // Danh sách tên đầy đủ của hãng để hiển thị ra kết quả
+        const carrierNames = {
+            "SPX": "Shopee Express",
+            "GHTK": "Giao Hàng Tiết Kiệm",
+            "JT": "J&T Express",
+            "GHN": "Giao Hàng Nhanh",
+            "VIETTEL": "Viettel Post",
+            "NINJA": "Ninja Van",
+            "VNPOST": "Vietnam Post",
+            "EMS": "EMS Vietnam",
+            "JPPOST": "Japan Post"
+        };
+
+        // Dữ liệu mẫu (Mock Data) mô phỏng trả về từ API
+        const mockTimelineData = [
+            { time: "08:30 - Hôm nay", status: "Đang giao hàng", desc: "Shipper đang giao hàng đến bạn. Vui lòng chú ý điện thoại.", isLast: false },
+            { time: "06:15 - Hôm nay", status: "Đã đến bưu cục giao", desc: "Đơn hàng đã đến trạm trung chuyển cuối.", isLast: false },
+            { time: "19:00 - Hôm qua", status: "Đang luân chuyển", desc: "Đơn hàng đang được luân chuyển từ kho phân loại trung tâm.", isLast: false },
+            { time: "14:20 - Hôm qua", status: "Đã lấy hàng", desc: "Tài xế đã lấy hàng thành công từ người gửi.", isLast: true }
+        ];
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Lấy radio button đang được chọn
+            const selectedCarrierInput = document.querySelector('input[name="carrier"]:checked');
+            if (!selectedCarrierInput) {
+                alert("Vui lòng chọn 1 đơn vị vận chuyển!");
+                return;
+            }
+
+            const carrierValue = selectedCarrierInput.value;
+            const trackingCode = document.getElementById('trackingCode').value.trim();
+
+            // Đổi trạng thái nút thành Đang xử lý
+            btnText.innerText = "Đang tra cứu...";
+            submitBtn.classList.add("cursor-not-allowed", "opacity-90");
+            loadingIcon.classList.remove('hidden');
+            resultBox.classList.add('hidden');
+
+            // Mô phỏng gọi API mất 1.5 giây
+            setTimeout(() => {
+                // Phục hồi nút
+                btnText.innerText = "Tra cứu đơn hàng";
+                submitBtn.classList.remove("cursor-not-allowed", "opacity-90");
+                loadingIcon.classList.add('hidden');
+
+                // Cập nhật thông tin Header của Box Kết quả
+                resultCarrier.innerText = carrierNames[carrierValue];
+                resultTrackingCode.innerText = trackingCode.toUpperCase();
+
+                // Render Timeline
+                renderTimeline(mockTimelineData);
+
+                // Hiển thị Box Kết quả
+                resultBox.classList.remove('hidden');
+            }, 1200);
+        });
+
+        function renderTimeline(data) {
+            timelineList.innerHTML = ''; // Xóa data cũ
+            
+            data.forEach((item, index) => {
+                const li = document.createElement('li');
+                const isLastItem = index === data.length - 1;
+                
+                // Màu sắc của icon timeline (mục đầu tiên có viền đậm)
+                const isFirst = index === 0;
+                const iconBgClass = isFirst ? 'bg-black ring-black' : 'bg-gray-200 ring-white';
+                const textStatusClass = isFirst ? 'text-black font-bold' : 'text-gray-600 font-medium';
+                
+                // Đường kẻ dọc
+                const lineClass = isLastItem ? '' : '<span class="absolute top-5 left-3 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>';
+
+                li.innerHTML = `
+                    <div class="relative pb-8">
+                        ${lineClass}
+                        <div class="relative flex items-start space-x-4">
+                            <div>
+                                <span class="h-6 w-6 rounded-full flex items-center justify-center ring-4 ${iconBgClass}">
+                                    ${isFirst ? '<div class="w-2 h-2 bg-white rounded-full"></div>' : '<div class="w-2 h-2 bg-white rounded-full"></div>'}
+                                </span>
+                            </div>
+                            <div class="min-w-0 flex-1 flex flex-col sm:flex-row sm:justify-between sm:space-x-4">
+                                <div>
+                                    <p class="text-sm ${textStatusClass}">${item.status}</p>
+                                    <p class="mt-1 text-sm text-gray-500 leading-relaxed">${item.desc}</p>
+                                </div>
+                                <div class="mt-2 sm:mt-0 text-left sm:text-right text-xs whitespace-nowrap text-gray-400 font-medium">
+                                    <time datetime="${item.time}">${item.time}</time>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                timelineList.appendChild(li);
+            });
+        }
+    </script>
+</body>
+</html>
