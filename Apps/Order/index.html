@@ -33,6 +33,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class', 
             theme: {
                 extend: {
                     fontFamily: { sans: ['Inter', 'sans-serif'] },
@@ -52,6 +53,31 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
+        /* --- DARK MODE OVERRIDES --- */
+        html.dark body { background-color: #121212; color: #e5e5e5; }
+        html.dark .bg-white { background-color: #1e1e1e !important; }
+        html.dark .text-black { color: #e5e5e5 !important; }
+        html.dark .border-gray-200, html.dark .border-gray-100 { border-color: #333 !important; }
+        html.dark .bg-gray-50 { background-color: #252525 !important; }
+        html.dark .bg-gray-100 { background-color: #2a2a2a !important; }
+        html.dark .text-gray-500, html.dark .text-gray-600 { color: #a3a3a3 !important; }
+        html.dark .border-black { border-color: #555 !important; }
+        
+        /* Đảo ngược các nút bấm / nền đen chữ trắng */
+        html.dark .bg-black { background-color: #e5e5e5 !important; color: #121212 !important; }
+        html.dark .bg-black i, html.dark .text-white { color: #121212 !important; }
+        html.dark .hover\:bg-gray-800:hover { background-color: #ccc !important; }
+        
+        /* Input & Table */
+        html.dark .input-minimal { background-color: #1e1e1e !important; border-color: #444 !important; color: #e5e5e5 !important; }
+        html.dark .input-minimal:focus { border-color: #888 !important; }
+        html.dark .min-table th { background-color: #1e1e1e !important; border-bottom-color: #555 !important; color: #e5e5e5 !important; }
+        html.dark .min-table td { background-color: #1e1e1e !important; border-bottom-color: #333 !important; }
+        html.dark .min-table tr:hover td { background-color: #252525 !important; }
+        
+        html.dark #global-loader { background: #121212 !important; }
+        html.dark .spinner { border-color: #333 !important; border-top-color: #e5e5e5 !important; }
+
         /* MINIMAL FLAT CSS TWEAKS */
         body {
             background-color: #fcfcfc;
@@ -231,6 +257,45 @@
     <div id="export-container" class="absolute top-[-9999px] left-[-9999px] bg-white w-[800px] p-8 text-black"></div>
 
     <script type="module">
+        // --- CHẾ ĐỘ DARK MODE ---
+        window.getCurrentTheme = () => localStorage.getItem('app_theme') || 'system';
+        
+        window.applyTheme = (theme) => {
+            if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        };
+
+        window.changeTheme = (theme) => {
+            localStorage.setItem('app_theme', theme);
+            window.applyTheme(theme);
+            if (typeof render === 'function') render();
+        };
+
+        window.toggleThemeCycle = () => {
+            const current = window.getCurrentTheme();
+            const next = current === 'system' ? 'light' : current === 'light' ? 'dark' : 'system';
+            window.changeTheme(next);
+            showToast(next === 'system' ? 'Giao diện: Thiết bị' : next === 'light' ? 'Giao diện: Sáng' : 'Giao diện: Tối');
+        };
+
+        window.getThemeIcon = () => {
+            const current = window.getCurrentTheme();
+            if (current === 'system') return '<i class="fa-solid fa-desktop"></i>';
+            if (current === 'light') return '<i class="fa-solid fa-sun"></i>';
+            return '<i class="fa-solid fa-moon"></i>';
+        };
+
+        // Lắng nghe đổi theme từ hệ điều hành
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+            if (window.getCurrentTheme() === 'system') window.applyTheme('system');
+        });
+
+        // Áp dụng ngay khi khởi tạo
+        window.applyTheme(window.getCurrentTheme());
+
         // --- FIREBASE IMPORTS & SETUP ---
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
@@ -260,7 +325,9 @@
             currentPkgId: null,
             tempNewPkgId: null,
             currentGuestPkg: null,
-            modals: { package: false, export: false, confirm: false, editOrder: false, share: false, guestPasswordPrompt: false, cameraScan: false },
+            modals: { package: false, export: false, confirm: false, editOrder: false, share: false, guestPasswordPrompt: false, cameraScan: false, exportJson: false, importConfirm: false },
+            selectedPackages: [],
+            pendingImport: null,
             editingPkgId: null,
             editingOrderId: null,
             selectedOrders: [],
@@ -277,6 +344,128 @@
             tempAddForm: { recipient: '', tracking: '', note: '' },
             isAddingScanMode: false,
             addScannerInstance: null
+        };
+
+        // --- NHẬP/XUẤT DỮ LIỆU JSON ---
+        window.openExportJsonModal = () => {
+            if (state.packages.length === 0) return showToast('Không có dữ liệu để xuất', 'error');
+            // Mặc định mở lên sẽ chọn tất cả
+            state.selectedPackages = state.packages.map(p => p.id);
+            state.modals.exportJson = true;
+            render();
+        };
+
+        window.toggleSelectPackage = (id, isChecked) => {
+            if (isChecked) {
+                if (!state.selectedPackages.includes(id)) state.selectedPackages.push(id);
+            } else {
+                state.selectedPackages = state.selectedPackages.filter(pId => pId !== id);
+            }
+            render(); // Cập nhật lại UI đếm số lượng
+        };
+
+        window.toggleSelectAllPackages = (isChecked) => {
+            if (isChecked) {
+                state.selectedPackages = state.packages.map(p => p.id);
+            } else {
+                state.selectedPackages = [];
+            }
+            render();
+        };
+
+        window.executeExportJson = () => {
+            if (state.selectedPackages.length === 0) return showToast('Vui lòng chọn ít nhất 1 kiện', 'error');
+
+            // Lọc ra các kiện hàng được tích chọn
+            const packagesToExport = state.packages.filter(p => state.selectedPackages.includes(p.id));
+
+            const dataStr = JSON.stringify(packagesToExport, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Backup_${packagesToExport.length}_Packages_${new Date().getTime()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast(`Đã xuất ${packagesToExport.length} kiện hàng`);
+            closeModal('exportJson');
+        };
+
+        window.importPackagesJSON = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = ''; // Reset input để có thể chọn lại cùng 1 file
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const importedPackages = JSON.parse(e.target.result);
+                    if (!Array.isArray(importedPackages)) throw new Error("Sai định dạng");
+
+                    // Kiểm tra số lượng mã trùng lặp
+                    const existingIds = state.packages.map(p => p.id);
+                    const duplicates = importedPackages.filter(p => existingIds.includes(p.id));
+
+                    // Lưu vào state chờ xác nhận
+                    state.pendingImport = {
+                        packages: importedPackages,
+                        duplicateCount: duplicates.length
+                    };
+
+                    state.modals.importConfirm = true;
+                    render();
+                } catch (err) {
+                    showToast('File JSON không hợp lệ!', 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        window.executeImportJson = async () => {
+            // Lấy lựa chọn TRƯỚC khi đóng modal (nếu đóng trước, HTML sẽ biến mất)
+            const actionEl = document.querySelector('input[name="importAction"]:checked');
+            const action = actionEl ? actionEl.value : 'replace'; 
+            
+            closeModal('importConfirm'); // Bây giờ mới đóng modal
+            
+            showLoader('Đang nhập dữ liệu...');
+            try {
+                const importedPackages = state.pendingImport.packages;
+                const existingIds = state.packages.map(p => p.id);
+
+                for (let pkg of importedPackages) {
+                    let finalPkg = { ...pkg };
+                    finalPkg.ownerId = state.user.uid;
+
+                    // Xử lý nếu mã bị trùng
+                    if (existingIds.includes(pkg.id)) {
+                        if (action === 'clone') {
+                            let newId = generatePackageCode();
+                            while(existingIds.includes(newId)) {
+                                newId = generatePackageCode();
+                            }
+                            finalPkg.id = newId;
+                            finalPkg.name = finalPkg.name + " - Bản sao";
+                            existingIds.push(newId);
+                        }
+                    } else {
+                        existingIds.push(pkg.id);
+                    }
+                    
+                    // Lưu lên Firebase
+                    await setDoc(doc(db, "packages", finalPkg.id), finalPkg);
+                }
+                
+                // Tải lại dữ liệu
+                await fetchAdminPackages();
+                render();
+                showToast(`Đã nhập thành công ${importedPackages.length} kiện hàng!`);
+            } catch (err) {
+                showToast('Lỗi khi lưu dữ liệu lên máy chủ', 'error');
+            }
+            hideLoader();
+            state.pendingImport = null;
         };
 
         // --- CÁC HÀM TIỆN ÍCH ---
@@ -401,8 +590,7 @@
                             Quản trị viên
                         </button>
                     </div>
-                    <p class="mt-3"><span class="text-sm font-light">With love for</span> <span class="text-rose-500 font-bold">Thy
-                        ❤️</span></p>
+                    <p class="mt-3"><span class="text-sm font-light">With love for</span> <span class="text-rose-500 font-bold">Thy ❤️</span></p>
                 </div>
             </div>
         `;
@@ -418,11 +606,11 @@
                     <div class="space-y-5 mb-8">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Email</label>
-                            <input type="email" id="auth-email" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Nhập email...">
+                            <input type="email" id="auth-email" onkeydown="if(event.key === 'Enter') handleLogin()" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Nhập email...">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Mật khẩu</label>
-                            <input type="password" id="auth-password" class="w-full input-minimal px-4 py-3 text-sm" placeholder="••••••••">
+                            <input type="password" id="auth-password" onkeydown="if(event.key === 'Enter') handleLogin()" class="w-full input-minimal px-4 py-3 text-sm" placeholder="••••••••">
                         </div>
                     </div>
                     <button onclick="handleLogin()" class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors mb-5">Đăng nhập</button>
@@ -445,15 +633,15 @@
                     <div class="space-y-5 mb-8">
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Email</label>
-                            <input type="email" id="reg-email" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Nhập email...">
+                            <input type="email" id="reg-email" onkeydown="if(event.key === 'Enter') handleRegister()" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Nhập email...">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Mật khẩu</label>
-                            <input type="password" id="reg-password" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Từ 6 ký tự">
+                            <input type="password" id="reg-password" onkeydown="if(event.key === 'Enter') handleRegister()" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Từ 6 ký tự">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Mã bảo mật <span class="text-red-500">*</span></label>
-                            <input type="text" id="reg-refcode" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Mã cấp quyền...">
+                            <input type="text" id="reg-refcode" onkeydown="if(event.key === 'Enter') handleRegister()" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Mã cấp quyền...">
                         </div>
                     </div>
                     <button onclick="handleRegister()" class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">Đăng ký ngay</button>
@@ -472,7 +660,7 @@
                     <p class="text-sm text-gray-500 mb-6 font-medium text-center">Nhập email để nhận link tạo lại mật khẩu.</p>
                     <div class="mb-8">
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Email</label>
-                        <input type="email" id="reset-email" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Nhập email...">
+                        <input type="email" id="reset-email" onkeydown="if(event.key === 'Enter') handleResetPassword()" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Nhập email...">
                     </div>
                     <button onclick="handleResetPassword()" class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">Gửi liên kết</button>
                 </div>
@@ -490,7 +678,7 @@
                     <p class="text-gray-500 text-sm mb-8 font-medium">Nhập mã kiện hàng bạn được cung cấp</p>
                     <div class="mb-6 text-left">
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Mã kiện hàng</label>
-                        <input type="text" id="guest-pkg-id" class="w-full input-minimal px-4 py-3 text-sm font-mono uppercase tracking-widest" placeholder="VD: A123">
+                        <input type="text" id="guest-pkg-id" onkeydown="if(event.key === 'Enter') handleGuestLookup()" class="w-full input-minimal px-4 py-3 text-sm font-mono uppercase tracking-widest" placeholder="VD: A123">
                     </div>
                     <button onclick="handleGuestLookup()" class="w-full bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors">Tìm kiếm</button>
                 </div>
@@ -504,15 +692,31 @@
                         <div class="w-8 h-8 rounded flex items-center justify-center bg-black text-white"><i class="fa-solid fa-box-open text-sm"></i></div> 
                         QL Đơn Hàng
                     </div>
-                    <button onclick="handleLogout()" class="text-gray-600 hover:text-black font-semibold text-sm border border-transparent hover:border-gray-300 px-3 py-1.5 rounded-md transition-all">Đăng xuất</button>
+                    <div class="flex items-center gap-1 sm:gap-3">
+                        <button onclick="toggleThemeCycle()" class="text-gray-600 hover:text-black font-semibold text-sm w-8 h-8 flex items-center justify-center rounded-md border border-transparent hover:border-gray-300 transition-all" title="Chế độ giao diện">
+                            ${window.getThemeIcon()}
+                        </button>
+                        <button onclick="handleLogout()" class="text-gray-600 hover:text-black font-semibold text-sm border border-transparent hover:border-gray-300 px-3 py-1.5 rounded-md transition-all">Đăng xuất</button>
+                    </div>
                 </div>
+                
             </header>
             <main class="max-w-6xl mx-auto px-4 lg:px-6 py-8 w-full flex-grow fade-in">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                     <h2 class="text-2xl font-extrabold text-black">Quản lý kiện hàng</h2>
-                    <button onclick="openPackageModal()" class="bg-black text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
-                        <i class="fa-solid fa-plus text-xs"></i> Tạo kiện mới
-                    </button>
+                    <div class="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                        <button onclick="openExportJsonModal()" class="bg-white text-black border border-gray-300 px-4 py-2.5 rounded-lg text-sm font-semibold hover:border-black transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-download"></i> Xuất File
+                        </button>
+                        <label class="bg-white text-black border border-gray-300 px-4 py-2.5 rounded-lg text-sm font-semibold hover:border-black transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
+                            <i class="fa-solid fa-upload"></i> Nhập File
+                            <input type="file" accept=".json" onchange="importPackagesJSON(event)" class="hidden">
+                        </label>
+                        <button onclick="openPackageModal()" class="bg-black text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-plus text-xs"></i> Tạo kiện mới
+                        </button>
+                    </div>
+                    
                 </div>
                 ${state.packages.length === 0 ? `
                     <div class="text-center py-20 border-2 border-dashed border-gray-200 rounded-xl bg-white">
@@ -602,6 +806,9 @@
                             </div>
                         </div>
                         <div class="flex gap-2 shrink-0">
+                            <button onclick="toggleThemeCycle()" class="bg-white border border-gray-200 text-black px-3 py-1.5 rounded-md text-sm font-semibold hover:border-black transition-colors flex items-center justify-center h-full">
+                                ${window.getThemeIcon()}
+                            </button>
                             <button onclick="toggleCheckMode()" class="${state.isCheckingMode ? 'bg-black text-white' : 'bg-white text-black border border-black'} px-3 py-1.5 rounded-md text-sm font-semibold transition-colors flex items-center gap-2">
                                 <i class="fa-solid fa-clipboard-check"></i> <span class="hidden sm:inline">${state.isCheckingMode ? 'Đóng Kiểm hàng' : 'Kiểm hàng'}</span>
                             </button>
@@ -709,11 +916,11 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Người nhận *</label>
-                                    <input type="text" id="ord-recipient" oninput="state.tempAddForm.recipient = this.value" value="${state.tempAddForm.recipient}" class="w-full input-minimal px-4 py-2.5 text-sm font-semibold" placeholder="Tên khách...">
+                                    <input type="text" id="ord-recipient" onkeydown="if(event.key === 'Enter') saveOrder()" oninput="state.tempAddForm.recipient = this.value" value="${state.tempAddForm.recipient}" class="w-full input-minimal px-4 py-2.5 text-sm font-semibold" placeholder="Tên khách...">
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ghi chú</label>
-                                    <input type="text" id="ord-note" oninput="state.tempAddForm.note = this.value" value="${state.tempAddForm.note}" class="w-full input-minimal px-4 py-2.5 text-sm" placeholder="VD: Dễ vỡ...">
+                                    <input type="text" id="ord-note" onkeydown="if(event.key === 'Enter') saveOrder()" oninput="state.tempAddForm.note = this.value" value="${state.tempAddForm.note}" class="w-full input-minimal px-4 py-2.5 text-sm" placeholder="VD: Dễ vỡ...">
                                 </div>
                             </div>
                             
@@ -879,19 +1086,19 @@
                             <div class="p-6 overflow-y-auto">
                                 <div class="mb-4">
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Mã kiện (3-9 ký tự) *</label>
-                                    <input type="text" id="pkg-id-input" value="${pkg ? pkg.id : state.tempNewPkgId}" class="w-full input-minimal px-4 py-3 text-sm font-mono uppercase font-bold" maxlength="9" placeholder="VD: A123">
+                                    <input type="text" id="pkg-id-input" onkeydown="if(event.key === 'Enter') savePackage()" value="${pkg ? pkg.id : state.tempNewPkgId}" class="w-full input-minimal px-4 py-3 text-sm font-mono uppercase font-bold" maxlength="9" placeholder="VD: A123">
                                 </div>
                                 <div class="mb-4">
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Tên kiện *</label>
-                                    <input type="text" id="pkg-name" value="${pkg ? pkg.name : ''}" class="w-full input-minimal px-4 py-3 text-sm font-semibold" placeholder="Tên kiện...">
+                                    <input type="text" id="pkg-name" onkeydown="if(event.key === 'Enter') savePackage()" value="${pkg ? pkg.name : ''}" class="w-full input-minimal px-4 py-3 text-sm font-semibold" placeholder="Tên kiện...">
                                 </div>
                                 <div class="mb-4">
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Mật khẩu (Tùy chọn)</label>
-                                    <input type="text" id="pkg-password" value="${pkg?.password || ''}" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Để trống nếu không cần">
+                                    <input type="text" id="pkg-password" onkeydown="if(event.key === 'Enter') savePackage()" value="${pkg?.password || ''}" class="w-full input-minimal px-4 py-3 text-sm" placeholder="Để trống nếu không cần">
                                 </div>
                                 <div class="mb-4">
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Mô tả</label>
-                                    <input type="text" id="pkg-desc" value="${pkg ? pkg.desc : ''}" class="w-full input-minimal px-4 py-3 text-sm">
+                                    <input type="text" id="pkg-desc" onkeydown="if(event.key === 'Enter') savePackage()" value="${pkg ? pkg.desc : ''}" class="w-full input-minimal px-4 py-3 text-sm">
                                 </div>
                                 <div class="mb-8">
                                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Trạng thái</label>
@@ -925,15 +1132,15 @@
                                 <div class="p-6 overflow-y-auto">
                                     <div class="mb-4">
                                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Người nhận</label>
-                                        <input type="text" id="edit-ord-recipient" value="${order.recipient}" class="w-full input-minimal px-4 py-3 text-sm font-semibold">
+                                        <input type="text" id="edit-ord-recipient" onkeydown="if(event.key === 'Enter') saveEditOrder()" value="${order.recipient}" class="w-full input-minimal px-4 py-3 text-sm font-semibold">
                                     </div>
                                     <div class="mb-4">
                                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Mã đơn</label>
-                                        <input type="text" id="edit-ord-tracking" value="${order.trackingCodes[0] || ''}" class="w-full input-minimal px-4 py-3 text-sm font-mono">
+                                        <input type="text" id="edit-ord-tracking" onkeydown="if(event.key === 'Enter') saveEditOrder()" value="${order.trackingCodes[0] || ''}" class="w-full input-minimal px-4 py-3 text-sm font-mono">
                                     </div>
                                     <div class="mb-8">
                                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Ghi chú</label>
-                                        <input type="text" id="edit-ord-note" value="${order.note || ''}" class="w-full input-minimal px-4 py-3 text-sm">
+                                        <input type="text" id="edit-ord-note" onkeydown="if(event.key === 'Enter') saveEditOrder()" value="${order.note || ''}" class="w-full input-minimal px-4 py-3 text-sm">
                                     </div>
                                     <div class="flex gap-3 mt-auto">
                                         <button onclick="closeModal('editOrder')" class="flex-1 px-4 py-3 font-bold text-sm text-black bg-white border border-gray-300 rounded-lg hover:border-black transition-colors">Hủy</button>
@@ -1064,7 +1271,7 @@
                         <div class="bg-white rounded-xl border border-gray-200 w-full max-w-sm p-6 text-center">
                             <h3 class="text-lg font-bold text-black mb-2 uppercase tracking-wide">Nhập mật khẩu</h3>
                             <p class="text-gray-600 text-sm mb-6 font-medium">Kiện hàng này được bảo vệ.</p>
-                            <input type="password" id="guest-password-input" class="w-full input-minimal px-4 py-3 text-sm mb-4 text-center font-mono tracking-widest" placeholder="Mật khẩu...">
+                            <input type="password" id="guest-password-input" onkeydown="if(event.key === 'Enter') submitGuestPassword()" class="w-full input-minimal px-4 py-3 text-sm mb-4 text-center font-mono tracking-widest" placeholder="Mật khẩu...">
                             
                             <label class="flex items-center justify-center gap-2 mb-6 cursor-pointer">
                                 <input type="checkbox" id="guest-remember-pwd" class="w-4 h-4 accent-black border-gray-300 rounded cursor-pointer">
@@ -1079,18 +1286,87 @@
                     </div>
                 `;
             }
+            if (state.modals.exportJson) {
+                const allSelected = state.selectedPackages.length === state.packages.length && state.packages.length > 0;
+                modalsHTML += `
+                    <div class="${overlayClass}">
+                        <div class="${modalBoxClass}">
+                            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white sticky top-0">
+                                <h3 class="font-bold text-black uppercase tracking-wide">Chọn kiện để xuất</h3>
+                                <button onclick="closeModal('exportJson')" class="text-black w-8 h-8 flex items-center justify-center hover:bg-gray-100 rounded-md"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                            <div class="p-6 overflow-y-auto">
+                                <div class="mb-4 flex justify-between items-center border-b border-gray-100 pb-3">
+                                    <span class="font-bold text-sm text-gray-600">Danh sách kiện hàng:</span>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" onchange="toggleSelectAllPackages(this.checked)" ${allSelected ? 'checked' : ''} class="w-4 h-4 accent-black border-gray-300 rounded cursor-pointer">
+                                        <span class="text-sm font-semibold">Chọn tất cả</span>
+                                    </label>
+                                </div>
+                                <div class="space-y-2 max-h-[40vh] overflow-y-auto mb-6 pr-2">
+                                    ${state.packages.length === 0 ? '<p class="text-sm text-gray-500 italic text-center">Không có kiện hàng nào.</p>' : ''}
+                                    ${state.packages.map(pkg => `
+                                        <label class="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${state.selectedPackages.includes(pkg.id) ? 'border-black bg-gray-50' : 'bg-white'}">
+                                            <input type="checkbox" onchange="toggleSelectPackage('${pkg.id}', this.checked)" ${state.selectedPackages.includes(pkg.id) ? 'checked' : ''} class="w-4 h-4 accent-black border-gray-300 rounded cursor-pointer">
+                                            <div class="flex-grow min-w-0">
+                                                <div class="font-bold text-sm text-black truncate">${pkg.name}</div>
+                                                <div class="text-xs text-gray-500 font-mono mt-0.5">ID: ${pkg.id} • ${pkg.orders?.length || 0} đơn</div>
+                                            </div>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                                <button onclick="executeExportJson()" class="w-full px-4 py-3 font-bold text-sm text-white bg-black rounded-lg hover:bg-gray-800 transition-colors">
+                                    Xuất ${state.selectedPackages.length} kiện
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            if (state.modals.importConfirm && state.pendingImport) {
+                const dupCount = state.pendingImport.duplicateCount;
+                const totalCount = state.pendingImport.packages.length;
+                modalsHTML += `
+                    <div class="${overlayClass}">
+                        <div class="bg-white rounded-xl border border-gray-200 w-full max-w-sm p-6 fade-in">
+                            <h3 class="text-lg font-bold text-black mb-2 text-center">Nhập dữ liệu</h3>
+                            <p class="text-gray-600 text-sm mb-4 text-center font-medium">Tìm thấy <b>${totalCount}</b> kiện hàng trong file.</p>
+                            
+                            ${dupCount > 0 ? `
+                                <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg mb-5">
+                                    <p class="text-xs font-bold text-amber-800 mb-3 uppercase tracking-wide"><i class="fa-solid fa-triangle-exclamation"></i> Trùng ${dupCount} mã kiện</p>
+                                    <div class="flex flex-col gap-3">
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="importAction" value="replace" checked class="w-4 h-4 accent-black cursor-pointer">
+                                            <span class="text-sm font-semibold text-black">Ghi đè (Thay thế bản cũ)</span>
+                                        </label>
+                                        <label class="flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="importAction" value="clone" class="w-4 h-4 accent-black cursor-pointer">
+                                            <span class="text-sm font-semibold text-black">Tạo bản sao (Mã & Tên mới)</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            ` : ''}
+
+                            <div class="flex gap-3">
+                                <button onclick="closeModal('importConfirm')" class="flex-1 px-4 py-3 font-bold text-sm text-black bg-white border border-gray-300 hover:border-black rounded-lg transition-colors">Hủy</button>
+                                <button onclick="executeImportJson()" class="flex-1 px-4 py-3 font-bold text-sm bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">Xác nhận</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
 
             container.innerHTML = modalsHTML;
             document.body.appendChild(container);
 
-            if (existingModals === null) {
-                container.addEventListener('click', (e) => {
-                    if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
-                        Object.keys(state.modals).forEach(k => state.modals[k] = false);
-                        render();
-                    }
-                });
-            }
+            // Xoá câu lệnh if (existingModals === null) để container luôn được gán sự kiện bắt click ra ngoài
+            container.addEventListener('click', (e) => {
+                if (e.target.classList.contains('fixed') && e.target.classList.contains('inset-0')) {
+                    Object.keys(state.modals).forEach(k => state.modals[k] = false);
+                    render();
+                }
+            });
         };
 
         // --- AUTH & ROUTING ---
