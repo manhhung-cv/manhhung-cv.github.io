@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modules & Extensions | Kho lưu trữ Minimal</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Cấu hình Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: '#111827', // Dark/Minimal aesthetic
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Tùy chỉnh thanh cuộn cho đẹp hơn */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d1d5db; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af; 
+        }
+        
+        /* Hiệu ứng chuyển động mượt mà cho các thẻ card */
+        .module-card {
+            transition: all 0.3s ease;
+        }
+        .module-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center gap-2 cursor-pointer">
+                    <div class="bg-brand text-white p-2 rounded-lg flex items-center justify-center">
+                        <i class="fa-solid fa-layer-group text-sm"></i>
+                    </div>
+                    <span class="font-bold text-xl tracking-tight text-brand">ModRepo.</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <a href="#" class="text-sm font-medium text-gray-500 hover:text-brand transition-colors">Trang chủ</a>
+                    <a href="#" class="text-sm font-medium text-gray-500 hover:text-brand transition-colors">Hướng dẫn</a>
+                    <a href="https://github.com" target="_blank" class="text-gray-400 hover:text-brand transition-colors">
+                        <i class="fa-brands fa-github text-xl"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header / Hero Section -->
+    <header class="py-16 sm:py-24 text-center px-4">
+        <h1 class="text-4xl sm:text-5xl font-extrabold text-brand tracking-tight mb-4">
+            Kho Lưu Trữ Tối Giản
+        </h1>
+        <p class="text-lg text-gray-500 max-w-2xl mx-auto">
+            Khám phá và tải xuống các Magisk Modules & Tiện ích mở rộng tốt nhất. Tối ưu hóa, tùy chỉnh và nâng cao thiết bị của bạn.
+        </p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full pb-20">
+        
+        <!-- Controls: Search & Filters -->
+        <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-10">
+            
+            <!-- Search Bar -->
+            <div class="relative w-full md:w-96">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass text-gray-400"></i>
+                </div>
+                <input 
+                    type="text" 
+                    id="searchInput"
+                    class="block w-full pl-10 pr-3 py-2.5 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand sm:text-sm transition-shadow shadow-sm" 
+                    placeholder="Tìm kiếm module, tác giả..."
+                >
+            </div>
+
+            <!-- Category Filters -->
+            <div class="flex space-x-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 hide-scrollbar" id="filterContainer">
+                <button data-filter="all" class="filter-btn active px-4 py-2 rounded-lg text-sm font-medium bg-brand text-white shadow-sm transition-colors whitespace-nowrap">
+                    Tất cả
+                </button>
+                <button data-filter="magisk" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors whitespace-nowrap">
+                    <i class="fa-brands fa-android text-green-500 mr-1.5"></i> Magisk
+                </button>
+                <button data-filter="extension" class="filter-btn px-4 py-2 rounded-lg text-sm font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition-colors whitespace-nowrap">
+                    <i class="fa-solid fa-puzzle-piece text-blue-500 mr-1.5"></i> Extensions
+                </button>
+            </div>
+        </div>
+
+        <!-- Modules Grid -->
+        <div id="modulesGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Items sẽ được render bằng JavaScript ở đây -->
+        </div>
+
+        <!-- Trạng thái không tìm thấy -->
+        <div id="noResults" class="hidden text-center py-20">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+                <i class="fa-regular fa-face-frown text-2xl text-gray-400"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900">Không tìm thấy kết quả</h3>
+            <p class="text-gray-500 mt-1">Vui lòng thử lại với từ khóa khác.</p>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 py-8 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p class="text-sm text-gray-500">
+                &copy; 2026 ModRepo. Thiết kế giao diện Minimal bằng Tailwind CSS.
+            </p>
+        </div>
+    </footer>
+
+    <!-- Dữ liệu và Logic JavaScript -->
+    <script>
+        // Mock Data: Danh sách các Module và Extension
+        const data = [
+            {
+                id: 1,
+                name: "TTL65 Hunq Module",
+                type: "magisk",
+                version: "1.0.0",
+                author: "Hunq",
+                description: "Tự động set IPv4 TTL và IPv6 HL về 65 khi khởi động để bypass giới hạn chia sẻ mạng (Tethering).",
+                icon: "fa-solid fa-network-wired",
+                iconColor: "text-green-800",
+                iconBg: "bg-gray-100",
+                downloadsLink: "./Android/TTL65-Hunq_Module/TTL65-Hunq_Module.zip", // Thay bằng link thật
+                uploadDate: "29/03/2026"
+            }
+        ];
+
+        // Các thành phần DOM
+        const grid = document.getElementById('modulesGrid');
+        const searchInput = document.getElementById('searchInput');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const noResults = document.getElementById('noResults');
+
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        // Hàm render thẻ (Card) giao diện Minimal
+        function createCard(item) {
+            const isMagisk = item.type === 'magisk';
+            const typeBadge = isMagisk 
+                ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700 border border-green-200"><i class="fa-brands fa-android mr-1"></i> Magisk</span>`
+                : `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"><i class="fa-solid fa-puzzle-piece mr-1"></i> Extension</span>`;
+
+            // Thay đổi hiển thị phần Tải xuống và Ngày tải lên
+            return `
+                <div class="module-card bg-white rounded-2xl p-6 border border-gray-100 flex flex-col h-full relative group">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center ${item.iconBg}">
+                                <i class="${item.icon} text-xl ${item.iconColor}"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-900 leading-tight">${item.name}</h3>
+                                <p class="text-sm text-gray-500">bởi ${item.author}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        ${typeBadge}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 ml-1">
+                            ${item.version}
+                        </span>
+                    </div>
+                    
+                    <p class="text-gray-600 text-sm flex-grow mb-6 line-clamp-3">
+                        ${item.description}
+                    </p>
+                    
+                    <div class="flex items-center justify-between mt-auto pt-4 border-t border-gray-50">
+                        <div class="text-xs text-gray-400 font-medium" title="Ngày tải lên">
+                            <i class="fa-regular fa-calendar mr-1"></i> ${item.uploadDate}
+                        </div>
+                        <a href="${item.downloadsLink || '#'}" ${item.downloadsLink && item.downloadsLink !== '#' ? 'target="_blank"' : ''} class="bg-brand text-white hover:bg-gray-800 transition-colors px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                            <span>Tải về</span>
+                            <i class="fa-solid fa-arrow-down-long text-xs"></i>
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Hàm lọc và render dữ liệu
+        function renderData() {
+            grid.innerHTML = '';
+            
+            const filteredData = data.filter(item => {
+                // Lọc theo text tìm kiếm (Tên, Tác giả hoặc Mô tả)
+                const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                      item.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                      item.description.toLowerCase().includes(searchQuery.toLowerCase());
+                
+                // Lọc theo Type
+                const matchesFilter = currentFilter === 'all' || item.type === currentFilter;
+
+                return matchesSearch && matchesFilter;
+            });
+
+            if (filteredData.length === 0) {
+                grid.classList.add('hidden');
+                noResults.classList.remove('hidden');
+            } else {
+                grid.classList.remove('hidden');
+                noResults.classList.add('hidden');
+                
+                filteredData.forEach(item => {
+                    grid.innerHTML += createCard(item);
+                });
+            }
+        }
+
+        // Event Listener: Tìm kiếm
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderData();
+        });
+
+        // Event Listener: Nút bộ lọc
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Bỏ Active tất cả
+                filterBtns.forEach(b => {
+                    b.classList.remove('bg-brand', 'text-white');
+                    b.classList.add('bg-white', 'text-gray-600', 'border', 'border-gray-200');
+                });
+                
+                // Set Active cho nút được bấm
+                btn.classList.remove('bg-white', 'text-gray-600', 'border', 'border-gray-200');
+                btn.classList.add('bg-brand', 'text-white');
+                
+                currentFilter = btn.getAttribute('data-filter');
+                renderData();
+            });
+        });
+
+        // Khởi tạo ban đầu
+        renderData();
+    </script>
+</body>
+</html>
