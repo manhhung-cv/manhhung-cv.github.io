@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hệ thống Tra cứu Nhật Bản Pro - Distance & GPS</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { width: 5px; }
+        .hide-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .hide-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .leaflet-popup-content-wrapper { border-radius: 12px; }
+        .leaflet-control-layers { border-radius: 12px !important; border: none !important; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; overflow: hidden; }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 overflow-hidden">
+
+    <main class="flex flex-col md:flex-row h-[100dvh] w-full">
+        <section class="w-full h-[35vh] md:h-full md:flex-1 relative z-0 order-1 md:order-2">
+            <div id="map" class="absolute inset-0 w-full h-full z-0"></div>
+        </section>
+
+        <aside class="w-full md:w-[450px] lg:w-[500px] bg-white shadow-2xl z-10 flex flex-col h-[65vh] md:h-full order-2 md:order-1 rounded-t-3xl md:rounded-none relative">
+            <div class="w-full flex justify-center pt-3 pb-1 md:hidden"><div class="w-12 h-1.5 bg-gray-200 rounded-full"></div></div>
+
+            <div class="px-6 pt-2 pb-4 border-b border-gray-100 shrink-0 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-xl font-bold text-gray-900"><i class="fa-solid fa-map-location-dot mr-2 text-blue-600"></i>Tra cứu Thông minh</h1>
+                    <span id="resultCount" class="text-[11px] font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full hidden">0 kết quả</span>
+                </div>
+                
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-gray-400"></i>
+                    <input type="text" id="searchInput" disabled placeholder="Tìm kiếm (Hỗ trợ tiếng Anh)..." class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <select id="categorySelect" disabled class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none">
+                        <option value="all">📁 Tất cả danh mục</option>
+                    </select>
+
+                    <div class="flex gap-2">
+                        <select id="sortSelect" disabled class="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer appearance-none">
+                            <option value="default">↕️ Thứ tự mặc định</option>
+                            <option value="name">🔤 Tên A-Z</option>
+                            <option value="distance">📍 Gần tôi nhất (GPS)</option>
+                        </select>
+                        <button id="gpsBtn" title="Định vị của tôi" class="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex justify-center items-center shadow-lg transition-all active:scale-95">
+                            <i class="fa-solid fa-location-crosshairs text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="resultsList" class="flex-1 overflow-y-auto hide-scrollbar p-6 space-y-4 bg-gray-50/30">
+                </div>
+            
+            <div id="scrollSentinel" class="h-12 w-full flex justify-center items-center pb-6 text-gray-400 text-sm hidden">
+                <i class="fa-solid fa-circle-notch fa-spin mr-2 text-blue-500"></i> Đang tải thêm dữ liệu...
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        // --- TỪ ĐIỂN DANH MỤC ---
+        const VI_CATEGORIES = {
+            '飲食店': '🍽️ Nhà hàng / Quán ăn',
+            'スーパー、コンビニ': '🛒 Siêu thị / Tiện lợi',
+            '衣料品、靴、クリーニング': '👕 Thời trang / Giặt là',
+            'ギフト、雑貨店': '🎁 Quà tặng / Tạp hóa',
+            '文具、印鑑、写真': '✂️ Văn phòng phẩm / Ảnh',
+            'ドラッグストア、薬局': '💊 Hiệu thuốc / Dược phẩm',
+            'ガソリンスタンド、燃料': '⛽ Trạm xăng / Nhiên liệu',
+            'その他': '📦 Khác'
+        };
+
+        let allData = [], filteredData = [], mapMarkers = [];
+        let currentPage = 1, ITEMS_PER_PAGE = 20, userLocation = null;
+
+        // Cache phiên bản mới v5 để tránh xung đột dữ liệu cũ
+        const getCache = (k) => JSON.parse(localStorage.getItem(k));
+        const setCache = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+        let recentStores = getCache('recentStores_v5') || [];
+
+        // --- BẢN ĐỒ HYBRID (STREET & SATELLITE) ---
+        const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' });
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri'
+        });
+
+        let map = L.map('map', { zoomControl: false, layers: [streetLayer] }).setView([35.6895, 139.6917], 5);
+        L.control.layers({ "<i class='fa-solid fa-road mr-1'></i> Giao thông": streetLayer, "<i class='fa-solid fa-satellite mr-1'></i> Vệ tinh": satelliteLayer }, null, { position: 'topright' }).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        const defaultIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="background-color: #64748b; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white;"></div>`, iconSize: [14, 14], iconAnchor: [7, 7]});
+        const activeIcon = L.divIcon({ className: 'custom-div-icon', html: `<div style="background-color: #2563eb; width: 22px; height: 22px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 10px rgba(37,99,235,0.4);"></div>`, iconSize: [22, 22], iconAnchor: [11, 11]});
+
+        const resultsList = document.getElementById('resultsList');
+        const searchInput = document.getElementById('searchInput');
+        const categorySelect = document.getElementById('categorySelect');
+        const sortSelect = document.getElementById('sortSelect');
+        const gpsBtn = document.getElementById('gpsBtn');
+
+        // --- DỊCH & GEOCODE ---
+        async function translate(text) {
+            if(!text) return "";
+            const ck = `en_v5_${text}`;
+            if(getCache(ck)) return getCache(ck);
+            try {
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ja|en`);
+                const d = await res.json();
+                setCache(ck, d.responseData.translatedText);
+                return d.responseData.translatedText;
+            } catch(e) { return text; }
+        }
+
+        async function geocode(addr) {
+            const ck = `geo_v5_${addr}`;
+            if(getCache(ck)) return getCache(ck);
+            try {
+                const res = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(addr.replace(/株式会社|有限会社/g, ''))}`);
+                const d = await res.json();
+                if(d?.length) {
+                    const c = { lat: d[0].geometry.coordinates[1], lng: d[0].geometry.coordinates[0] };
+                    setCache(ck, c); return c;
+                }
+            } catch(e) {} return null;
+        }
+
+        // --- CÔNG THỨC HAVERSINE (Khoảng cách đường chim bay) ---
+        function calcDist(lat1, lon1, lat2, lon2) {
+            const p = 0.017453292519943295;
+            const a = 0.5 - Math.cos((lat2 - lat1) * p)/2 + Math.cos(lat1 * p) * Math.cos(lat2 * p) * (1 - Math.cos((lon2 - lon1) * p))/2;
+            return 12742 * Math.asin(Math.sqrt(a)); // Trả về số KM
+        }
+
+        // --- RENDER MAP ---
+        function renderMap() {
+            mapMarkers.forEach(m => map.removeLayer(m.marker));
+            mapMarkers = [];
+            if(userLocation) L.marker([userLocation.lat, userLocation.lng], {icon: L.divIcon({className: 'user-pos', html: '<div class="relative"><i class="fa-solid fa-circle-dot text-red-500 text-xl absolute -top-2.5 -left-2.5"></i><div class="w-5 h-5 bg-red-500/30 rounded-full animate-ping absolute -top-2.5 -left-2.5"></div></div>'})}).addTo(map);
+            
+            recentStores.forEach(s => {
+                let m = L.marker([s.lat, s.lng], {icon: defaultIcon}).addTo(map)
+                         .bindPopup(`<div class="text-xs font-sans"><b>${s.name}</b><br>${s.address}</div>`, {closeButton: false});
+                mapMarkers.push({ id: s.id, marker: m });
+            });
+
+            if(mapMarkers.length > 0) {
+                let g = new L.featureGroup(mapMarkers.map(m => m.marker));
+                if(userLocation) g.addLayer(L.marker([userLocation.lat, userLocation.lng]));
+                map.fitBounds(g.getBounds().pad(0.2), { maxZoom: 16 });
+            }
+        }
+
+        // --- CLICK CARD ---
+        async function onCardClick(item, el) {
+            el.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50/50');
+            let coords = (item.lat && item.lng) ? {lat: item.lat, lng: item.lng} : await geocode(item.address);
+            if(!coords) {
+                alert("Đang quá tải API hoặc địa chỉ không hợp lệ. Hãy thử lại sau.");
+                el.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50/50');
+                return;
+            }
+
+            recentStores = recentStores.filter(s => s.id !== item.id);
+            recentStores.unshift({ id: item.id, name: item.store_name, address: item.address, ...coords });
+            if(recentStores.length > 30) recentStores.pop();
+            setCache('recentStores_v5', recentStores);
+
+            renderMap();
+            let mObj = mapMarkers.find(m => m.id === item.id);
+            if(mObj) {
+                mObj.marker.setIcon(activeIcon).setZIndexOffset(1000).openPopup();
+                map.flyTo([coords.lat, coords.lng], 16, {duration: 1.5});
+            }
+            document.querySelectorAll('#resultsList > div').forEach(c => { if(c !== el) c.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50/50')});
+        }
+
+        // --- RENDER GIAO DIỆN THẺ (Bổ sung Nhãn Khoảng cách) ---
+        function createCard(item) {
+            const card = document.createElement('div');
+            card.className = "bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md cursor-pointer transition-all animate-fade-in relative";
+            const catLabel = VI_CATEGORIES[item.store_type_name] || item.store_type_name || '📦 Khác';
+            
+            // Xử lý nút Link
+            let webBtn = item.website_url ? `<a href="${item.website_url}" target="_blank" class="text-blue-500 hover:text-blue-700 text-sm font-semibold flex items-center gap-1.5 transition-colors"><i class="fa-solid fa-globe"></i> Website</a>` : '';
+            let mapBtn = item.google_map_url ? `<a href="${item.google_map_url}" target="_blank" class="text-emerald-600 hover:text-emerald-700 text-sm font-semibold flex items-center gap-1.5 transition-colors"><i class="fa-solid fa-map-location-dot"></i> Bản đồ</a>` : '';
+
+            // Render Nhãn khoảng cách nếu có tính toán
+            let distanceBadge = (item.distance && item.distance !== Infinity) ? 
+                `<div class="inline-flex items-center gap-1 mt-3 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg text-[11px] font-bold">
+                    <i class="fa-solid fa-route"></i> Cách đây ${item.distance.toFixed(1)} km
+                </div>` : '';
+
+            card.innerHTML = `
+                <div class="flex justify-between items-start gap-3">
+                    <div class="flex-1">
+                        <h2 class="text-[16px] font-bold text-gray-900 leading-tight">${item.store_name}</h2>
+                        <p class="en-name text-[11px] text-blue-600 font-medium mt-1 opacity-60"><i class="fa-solid fa-language"></i> Translating name...</p>
+                    </div>
+                    <span class="text-[9px] font-bold px-2 py-1 bg-gray-100 rounded-lg text-gray-500 uppercase shrink-0">${catLabel}</span>
+                </div>
+                <div class="mt-4 space-y-2.5 text-xs text-gray-500">
+                    <div class="flex items-start gap-2">
+                        <i class="fa-solid fa-location-dot mt-0.5 text-red-400"></i>
+                        <div class="leading-relaxed">
+                            ${item.address}
+                            <div class="en-address text-[11px] text-gray-400 mt-0.5 italic"><i class="fa-solid fa-language opacity-60"></i> Translating address...</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2"><i class="fa-solid fa-phone text-green-400"></i><span>${item.phone_number || '---'}</span></div>
+                </div>
+                
+                ${distanceBadge}
+                
+                ${(webBtn || mapBtn) ? `<div class="mt-4 pt-3 border-t border-gray-50 flex gap-5 z-20 relative">${webBtn}${mapBtn}</div>` : ''}
+            `;
+
+            // Dịch song song Tên và Địa chỉ
+            translate(item.store_name).then(t => { 
+                const el = card.querySelector('.en-name'); el.innerHTML = t; el.classList.remove('opacity-60');
+            });
+            translate(item.address).then(t => { 
+                const el = card.querySelector('.en-address'); el.innerHTML = t;
+            });
+            
+            card.onclick = (e) => {
+                if(e.target.closest('a')) return; 
+                onCardClick(item, card);
+            };
+            return card;
+        }
+
+        // --- LOGIC LỌC, TÍNH KHOẢNG CÁCH & SẮP XẾP ---
+        function apply() {
+            const term = searchInput.value.toLowerCase();
+            const cat = categorySelect.value;
+            const sort = sortSelect.value;
+
+            // 1. Lọc cơ bản
+            let res = allData.filter(i => {
+                const enName = getCache(`en_v5_${i.store_name}`) || "";
+                const enAddr = getCache(`en_v5_${i.address}`) || "";
+                return (i.store_name.toLowerCase().includes(term) || i.address.toLowerCase().includes(term) || enName.toLowerCase().includes(term) || enAddr.toLowerCase().includes(term)) 
+                        && (cat === 'all' || i.store_type_name === cat);
+            });
+
+            // 2. Tính toán khoảng cách (Nếu chọn Gần tôi nhất)
+            if(sort === 'distance' && userLocation) {
+                res.forEach(item => {
+                    let cachedGeo = getCache(`geo_v5_${item.address}`);
+                    let lat = item.lat || (cachedGeo ? cachedGeo.lat : null);
+                    let lng = item.lng || (cachedGeo ? cachedGeo.lng : null);
+                    
+                    if(lat && lng) {
+                        item.distance = calcDist(userLocation.lat, userLocation.lng, lat, lng);
+                    } else {
+                        item.distance = Infinity; // Nếu chưa có tọa độ, gán giá trị Vô cực để đẩy xuống cuối
+                    }
+                });
+                
+                // Sắp xếp theo khoảng cách từ nhỏ đến lớn
+                res.sort((a,b) => a.distance - b.distance);
+            } 
+            else {
+                // Xóa khoảng cách nếu chọn kiểu sắp xếp khác
+                res.forEach(item => item.distance = undefined);
+                if(sort === 'name') res.sort((a,b) => a.store_name.localeCompare(b.store_name, 'ja'));
+            }
+
+            filteredData = res; resultsList.innerHTML = ''; currentPage = 1;
+            document.getElementById('resultCount').textContent = `${res.length} cửa hàng`;
+            document.getElementById('resultCount').classList.remove('hidden');
+            loadMore();
+        }
+
+        // --- PHÂN TRANG (SCROLL VÔ CỰC) ---
+        function loadMore() {
+            const chunk = filteredData.slice((currentPage-1)*ITEMS_PER_PAGE, currentPage*ITEMS_PER_PAGE);
+            if(!chunk.length) return document.getElementById('scrollSentinel').classList.add('hidden');
+            chunk.forEach(i => resultsList.appendChild(createCard(i)));
+            currentPage++;
+            document.getElementById('scrollSentinel').classList.toggle('hidden', (currentPage-1)*ITEMS_PER_PAGE >= filteredData.length);
+        }
+
+        // --- NÚT ĐỊNH VỊ CHÍNH XÁC ---
+        gpsBtn.onclick = () => {
+            gpsBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            navigator.geolocation.getCurrentPosition(pos => {
+                userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                gpsBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
+                sortSelect.value = 'distance'; // Tự động đổi filter
+                apply(); 
+                renderMap();
+                // Bay đến vị trí của user
+                map.flyTo([userLocation.lat, userLocation.lng], 14, {duration: 1.5});
+            }, () => {
+                alert("Hãy bật quyền truy cập vị trí (GPS) trên trình duyệt của bạn."); 
+                gpsBtn.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i>';
+            });
+        };
+
+        // Gắn sự kiện
+        searchInput.oninput = () => { clearTimeout(this.t); this.t = setTimeout(apply, 300); };
+        categorySelect.onchange = apply;
+        sortSelect.onchange = apply;
+
+        new IntersectionObserver(e => { if(e[0].isIntersecting) loadMore(); }, {root: resultsList}).observe(document.getElementById('scrollSentinel'));
+
+        // --- KHỞI TẠO ---
+        async function init() {
+            try {
+                const r = await fetch('./data.json');
+                allData = await r.json();
+                Object.keys(VI_CATEGORIES).forEach(k => {
+                    let o = document.createElement('option'); o.value = k; o.textContent = VI_CATEGORIES[k];
+                    categorySelect.appendChild(o);
+                });
+                [searchInput, categorySelect, sortSelect].forEach(i => i.disabled = false);
+                apply(); renderMap();
+            } catch(e) { resultsList.innerHTML = `<div class="p-4 text-center text-red-500 font-medium">Lỗi kết nối dữ liệu. Hãy chạy qua Local Server.</div>`; }
+        }
+        init();
+    </script>
+</body>
+</html>
