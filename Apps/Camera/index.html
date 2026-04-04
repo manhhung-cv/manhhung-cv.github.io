@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pro Web Camera</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { margin: 0; padding: 0; background-color: black; overflow: hidden; font-family: sans-serif; }
+        #video-preview { object-fit: cover; width: 100vw; height: 100vh; }
+        .text-shadow { text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
+        /* Tùy chỉnh thanh cuộn cho bảng cài đặt */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+    </style>
+</head>
+<body class="text-white select-none">
+
+    <div class="relative w-full h-screen flex justify-center items-center">
+        <video id="video-preview" autoplay playsinline muted></video>
+
+        <div id="overlay-info" class="absolute w-full h-full pointer-events-none p-6 flex flex-col justify-between z-10 text-shadow">
+            <div id="overlay-top" class="flex justify-between w-full">
+                <div id="overlay-top-left" class="flex flex-col gap-1"></div>
+                <div id="overlay-top-right" class="flex flex-col gap-1 text-right"></div>
+            </div>
+            <div id="overlay-center" class="absolute inset-0 flex flex-col items-center justify-center gap-1"></div>
+            <div id="overlay-bottom" class="flex justify-between w-full mb-24">
+                <div id="overlay-bottom-left" class="flex flex-col gap-1"></div>
+                <div id="overlay-bottom-right" class="flex flex-col gap-1 text-right"></div>
+            </div>
+        </div>
+
+        <div id="settings-panel" class="absolute top-0 left-0 w-full h-full bg-black/85 z-40 hidden flex-col items-center justify-center backdrop-blur-md transition-opacity">
+            <div class="bg-gray-900 border border-gray-700 rounded-2xl w-[95%] max-w-md shadow-2xl flex flex-col h-[80vh]">
+                <div class="p-4 border-b border-gray-700 flex justify-between items-center">
+                    <h2 class="text-xl font-bold">Cài đặt Camera Pro</h2>
+                    <button id="close-settings" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-2xl"></i></button>
+                </div>
+                
+                <div class="p-6 overflow-y-auto custom-scrollbar flex-1 flex flex-col gap-6 text-sm">
+                    <div>
+                        <label class="block font-bold mb-2 text-blue-400">Ống kính / Camera thiết bị</label>
+                        <select id="camera-select" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-2 text-white outline-none">
+                            <option value="">Đang tải danh sách camera...</option>
+                        </select>
+                    </div>
+
+                    <div class="border-t border-gray-700 pt-4">
+                        <label class="block font-bold mb-2 text-blue-400">Đóng dấu Ảnh (Logo & Thông số)</label>
+                        <label class="flex items-center justify-between mb-2 cursor-pointer">
+                            <span>Bật khung Watermark</span>
+                            <input type="checkbox" id="toggle-watermark" class="w-5 h-5 accent-blue-500" checked>
+                        </label>
+                        <select id="brand-select" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-2 text-white outline-none mt-2">
+                            <option value="leica">Leica (Chấm đỏ)</option>
+                            <option value="canon">Canon</option>
+                            <option value="nikon">Nikon</option>
+                            <option value="apple">Apple (iPhone)</option>
+                        </select>
+                    </div>
+
+                    <div class="border-t border-gray-700 pt-4">
+                        <label class="block font-bold mb-2 text-blue-400">Hiển thị thông tin (Overlay)</label>
+                        
+                        <div class="mb-4 bg-gray-800 p-3 rounded-lg">
+                            <label class="flex items-center justify-between font-semibold mb-2">
+                                <span><i class="fa-regular fa-clock mr-2"></i>Thời gian</span>
+                                <input type="checkbox" id="toggle-time" class="w-4 h-4 accent-blue-500" checked>
+                            </label>
+                            <select id="pos-time" class="w-full bg-gray-700 border-none rounded p-1 mb-2 text-xs">
+                                <option value="top-left">Góc trái trên</option>
+                                <option value="top-right">Góc phải trên</option>
+                                <option value="bottom-left">Góc trái dưới</option>
+                                <option value="bottom-right">Góc phải dưới</option>
+                                <option value="center">Giữa màn hình</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4 bg-gray-800 p-3 rounded-lg">
+                            <label class="flex items-center justify-between font-semibold mb-2">
+                                <span><i class="fa-solid fa-location-dot mr-2"></i>Vị trí GPS</span>
+                                <input type="checkbox" id="toggle-location" class="w-4 h-4 accent-blue-500">
+                            </label>
+                            <select id="pos-location" class="w-full bg-gray-700 border-none rounded p-1 mb-2 text-xs">
+                                <option value="top-left">Góc trái trên</option>
+                                <option value="top-right">Góc phải trên</option>
+                                <option value="bottom-left" selected>Góc trái dưới</option>
+                                <option value="bottom-right">Góc phải dưới</option>
+                                <option value="center">Giữa màn hình</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <div>
+                                <label class="text-xs text-gray-400">Màu chữ & Nền</label>
+                                <select id="style-color" class="w-full bg-gray-800 border border-gray-600 rounded p-1 text-xs">
+                                    <option value="white-transparent">Trắng - Nền trong</option>
+                                    <option value="black-white">Đen - Nền trắng</option>
+                                    <option value="white-black">Trắng - Nền đen</option>
+                                    <option value="yellow-transparent">Vàng - Nền trong</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400">Font & Cỡ chữ</label>
+                                <select id="style-font" class="w-full bg-gray-800 border border-gray-600 rounded p-1 text-xs">
+                                    <option value="16px Arial">Nhỏ - Arial</option>
+                                    <option value="20px Arial">Vừa - Arial</option>
+                                    <option value="24px Courier New">Lớn - Khung đánh chữ</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="absolute bottom-0 left-0 w-full pb-8 pt-6 bg-gradient-to-t from-black to-transparent flex justify-around items-center px-6 z-20">
+            <button id="btn-settings" class="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex justify-center items-center hover:bg-white/30 transition text-white">
+                <i class="fa-solid fa-sliders text-xl"></i>
+            </button>
+            <button id="btn-action" class="w-20 h-20 rounded-full border-4 border-white flex justify-center items-center bg-transparent hover:bg-white/20 transition">
+                <div class="w-16 h-16 bg-white rounded-full transition-all duration-300"></div>
+            </button>
+            <div class="w-12 h-12 rounded-full bg-gray-800 border border-gray-600 overflow-hidden flex justify-center items-center">
+                <i class="fa-regular fa-image text-gray-400"></i>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas" class="hidden"></canvas>
+
+    <script>
+        const video = document.getElementById('video-preview');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Settings Elements
+        const btnSettings = document.getElementById('btn-settings');
+        const closeSettings = document.getElementById('close-settings');
+        const settingsPanel = document.getElementById('settings-panel');
+        const cameraSelect = document.getElementById('camera-select');
+        const btnAction = document.getElementById('btn-action');
+
+        let stream = null;
+        let currentDeviceId = null;
+        let currentTime = "";
+        let currentLocation = "Đang lấy vị trí...";
+        let deviceInfo = navigator.userAgent.includes("iPhone") ? "iPhone Camera" : "Smartphone Camera";
+
+        // 1. Quản lý Camera & Lenses
+        async function getCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                cameraSelect.innerHTML = '';
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    // Đặt tên ống kính (Ví dụ: Cam 1 có thể là góc rộng, Cam 2 là siêu rộng tùy điện thoại)
+                    option.text = device.label || `Ống kính / Camera ${index + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+
+                if (videoDevices.length > 0) {
+                    currentDeviceId = videoDevices[0].deviceId;
+                    startCamera(currentDeviceId);
+                }
+            } catch (err) {
+                console.error("Lỗi lấy danh sách camera:", err);
+            }
+        }
+
+        async function startCamera(deviceId) {
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            
+            const constraints = {
+                video: {
+                    deviceId: deviceId ? { exact: deviceId } : undefined,
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                }
+            };
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+            } catch (err) {
+                alert("Lỗi truy cập camera: " + err.message);
+            }
+        }
+
+        cameraSelect.addEventListener('change', (e) => {
+            startCamera(e.target.value);
+        });
+
+        // 2. Cập nhật dữ liệu thời gian thực
+        setInterval(() => { currentTime = new Date().toLocaleString('vi-VN'); updateOverlay(); }, 1000);
+
+        document.getElementById('toggle-location').addEventListener('change', (e) => {
+            if(e.target.checked && navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => { currentLocation = `Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)}`; updateOverlay(); },
+                    err => { currentLocation = "Không xác định GPS"; updateOverlay(); }
+                );
+            }
+        });
+
+        // 3. Quản lý Overlay trên màn hình
+        function updateOverlay() {
+            const positions = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center'];
+            positions.forEach(pos => document.getElementById(`overlay-${pos}`).innerHTML = '');
+
+            const isTime = document.getElementById('toggle-time').checked;
+            const isLoc = document.getElementById('toggle-location').checked;
+
+            if (isTime) {
+                const pos = document.getElementById('pos-time').value;
+                document.getElementById(`overlay-${pos}`).innerHTML += `<div>${currentTime}</div>`;
+            }
+            if (isLoc) {
+                const pos = document.getElementById('pos-location').value;
+                document.getElementById(`overlay-${pos}`).innerHTML += `<div>${currentLocation}</div>`;
+            }
+        }
+
+        // Lắng nghe thay đổi cài đặt để update UI
+        const inputs = ['toggle-time', 'toggle-location', 'pos-time', 'pos-location'];
+        inputs.forEach(id => document.getElementById(id).addEventListener('change', updateOverlay));
+
+        btnSettings.addEventListener('click', () => settingsPanel.classList.remove('hidden', 'flex'));
+        closeSettings.addEventListener('click', () => settingsPanel.classList.add('hidden'));
+
+        // 4. CHỤP ẢNH & ĐÓNG DẤU LOGO WATERMARK
+        btnAction.addEventListener('click', () => {
+            // Flash effect
+            const flash = document.createElement('div');
+            flash.className = 'absolute inset-0 bg-white z-50 transition-opacity duration-300';
+            document.body.appendChild(flash);
+            setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 300); }, 50);
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // Vẽ ảnh gốc
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Xử lý Setting Style Overlay
+            const styleColor = document.getElementById('style-color').value;
+            const styleFont = document.getElementById('style-font').value;
+            let textColor = "white", bgColor = "transparent";
+            
+            if(styleColor === 'black-white') { textColor = "black"; bgColor = "rgba(255,255,255,0.7)"; }
+            else if(styleColor === 'white-black') { textColor = "white"; bgColor = "rgba(0,0,0,0.6)"; }
+            else if(styleColor === 'yellow-transparent') { textColor = "#fbbf24"; bgColor = "transparent"; }
+
+            ctx.font = styleFont;
+            ctx.textBaseline = "top";
+
+            // Hàm hỗ trợ vẽ text có background
+            function drawTextWithBg(text, x, y, align = "left") {
+                const padding = 10;
+                const metrics = ctx.measureText(text);
+                const height = parseInt(styleFont.split("px")[0]);
+                
+                let startX = x;
+                if (align === "right") startX = x - metrics.width;
+                else if (align === "center") startX = x - metrics.width / 2;
+
+                if (bgColor !== "transparent") {
+                    ctx.fillStyle = bgColor;
+                    ctx.fillRect(startX - padding, y - padding/2, metrics.width + padding*2, height + padding);
+                }
+                
+                ctx.fillStyle = textColor;
+                if(bgColor === "transparent") {
+                    ctx.shadowColor = "black"; ctx.shadowBlur = 4;
+                } else {
+                    ctx.shadowColor = "transparent";
+                }
+                ctx.fillText(text, startX, y);
+                ctx.shadowColor = "transparent"; // reset
+            }
+
+            // Vẽ Overlay Thông tin
+            const padX = 40, padY = 40;
+            const isTime = document.getElementById('toggle-time').checked;
+            const isLoc = document.getElementById('toggle-location').checked;
+
+            const drawItems = [];
+            if (isTime) drawItems.push({ text: currentTime, pos: document.getElementById('pos-time').value });
+            if (isLoc) drawItems.push({ text: currentLocation, pos: document.getElementById('pos-location').value });
+
+            // Quản lý toạ độ Y gộp nếu cùng vị trí
+            let yOffsets = { 'top-left': padY, 'top-right': padY, 'bottom-left': canvas.height - padY - 80, 'bottom-right': canvas.height - padY - 80, 'center': canvas.height/2 };
+            const heightStep = parseInt(styleFont.split("px")[0]) + 20;
+
+            drawItems.forEach(item => {
+                let x, align;
+                if(item.pos.includes('left')) { x = padX; align = "left"; }
+                else if(item.pos.includes('right')) { x = canvas.width - padX; align = "right"; }
+                else { x = canvas.width / 2; align = "center"; }
+
+                drawTextWithBg(item.text, x, yOffsets[item.pos], align);
+                yOffsets[item.pos] += heightStep;
+            });
+
+            // VẼ KHUNG WATERMARK (Logo Camera Chuyên Nghiệp)
+            if (document.getElementById('toggle-watermark').checked) {
+                const brand = document.getElementById('brand-select').value;
+                const barHeight = canvas.height * 0.12; // Chiếm 12% chiều cao ảnh dưới cùng
+                const barY = canvas.height - barHeight;
+
+                // Nền thanh watermark (Màu trắng)
+                ctx.fillStyle = "white";
+                ctx.fillRect(0, barY, canvas.width, barHeight);
+
+                const centerMargin = barY + barHeight/2;
+                ctx.textBaseline = "middle";
+                
+                // --- BÊN TRÁI: LOGO ---
+                let logoText = "SHOT ON DEVICE";
+                ctx.font = "bold " + (barHeight * 0.25) + "px Arial";
+                
+                if (brand === "leica") {
+                    // Chấm đỏ Leica
+                    ctx.beginPath();
+                    ctx.arc(padX + barHeight*0.25, centerMargin, barHeight*0.28, 0, 2 * Math.PI);
+                    ctx.fillStyle = "#e50000";
+                    ctx.fill();
+                    // Chữ Leica
+                    ctx.fillStyle = "white";
+                    ctx.font = "italic bold " + (barHeight * 0.18) + "px Arial";
+                    ctx.fillText("Leica", padX + barHeight*0.05, centerMargin);
+                    // Chữ bên cạnh
+                    ctx.fillStyle = "black";
+                    ctx.font = "bold " + (barHeight * 0.2) + "px Arial";
+                    ctx.fillText("LEICA CAMERA", padX + barHeight*0.65, centerMargin);
+                } 
+                else if (brand === "canon") {
+                    ctx.fillStyle = "#e50000";
+                    ctx.font = "bold italic " + (barHeight * 0.35) + "px Georgia"; // Giả lập font Canon
+                    ctx.fillText("Canon", padX, centerMargin);
+                }
+                else if (brand === "nikon") {
+                    ctx.fillStyle = "#ffe000"; // Vàng Nikon
+                    ctx.fillRect(padX, centerMargin - barHeight*0.25, barHeight*0.8, barHeight*0.5);
+                    ctx.fillStyle = "black";
+                    ctx.font = "bold italic " + (barHeight * 0.2) + "px Arial";
+                    ctx.fillText("Nikon", padX + 5, centerMargin);
+                }
+                else if (brand === "apple") {
+                    ctx.fillStyle = "black";
+                    ctx.font = "bold " + (barHeight * 0.25) + "px Arial";
+                    ctx.fillText(" iPhone Pro", padX, centerMargin);
+                }
+
+                // --- BÊN PHẢI: THÔNG SỐ (Mock Data - Vì Web không lấy được real-time ISO/Aperture) ---
+                // Random thông số hợp lý để giả lập
+                const apertures = ["f/1.5", "f/1.8", "f/2.2", "f/2.8"];
+                const isos = ["ISO 100", "ISO 200", "ISO 400", "ISO 800"];
+                const shutters = ["1/100s", "1/250s", "1/500s", "1/1000s"];
+                
+                const randAp = apertures[Math.floor(Math.random() * apertures.length)];
+                const randIso = isos[Math.floor(Math.random() * isos.length)];
+                const randSh = shutters[Math.floor(Math.random() * shutters.length)];
+                
+                const specText = `24mm  |  ${randAp}  |  ${randIso}  |  ${randSh}`;
+                
+                ctx.fillStyle = "#333333";
+                ctx.font = (barHeight * 0.18) + "px Courier New"; // Font kỹ thuật
+                const specMetrics = ctx.measureText(specText);
+                ctx.fillText(specText, canvas.width - padX - specMetrics.width, centerMargin);
+            }
+
+            // Tải ảnh
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/jpeg', 0.95);
+            link.download = `ProCam_${Date.now()}.jpg`;
+            link.click();
+        });
+
+        // Cấp quyền và khởi chạy
+        navigator.mediaDevices.getUserMedia({ video: true }).then(() => getCameras()).catch(e => alert("Hãy cấp quyền camera!"));
+
+    </script>
+</body>
+</html>

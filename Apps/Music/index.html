@@ -6,38 +6,35 @@
     <title>HunqFM - Premium Live Audio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap');
         
         body { 
             font-family: 'Inter', sans-serif; 
-            background-color: #050505; 
-            color: #e5e5e5;
+            background-color: #030303; 
+            color: #EAEAEA;
         }
         
         .font-serif { font-family: 'Playfair Display', serif; }
+        
+        /* Premium Accent Colors */
+        .text-champagne { color: #C5B390; }
+        .bg-champagne { background-color: #C5B390; }
+        .border-champagne { border-color: #C5B390; }
 
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #262626; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #404040; }
+        ::-webkit-scrollbar-thumb { background: #1a1a1a; }
+        ::-webkit-scrollbar-thumb:hover { background: #C5B390; }
 
         .pulse-dot {
-            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         @keyframes pulse-ring {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
         }
 
-        .fade-in-msg {
-            animation: fadeInMsg 0.4s ease-out forwards;
-        }
-        @keyframes fadeInMsg {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Thanh Seek & EQ tối giản */
+        /* Thanh Seek & EQ - Thiết kế sợi chỉ thanh mảnh */
         input[type=range] {
             -webkit-appearance: none;
             width: 100%;
@@ -45,184 +42,167 @@
         }
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 10px;
-            width: 10px;
+            height: 8px;
+            width: 8px;
             border-radius: 50%;
-            background: #fff;
+            background: #C5B390;
             cursor: pointer;
-            margin-top: -5px;
-            box-shadow: 0 0 10px rgba(255,255,255,0.2);
+            margin-top: -3.5px;
+            box-shadow: 0 0 12px rgba(197, 179, 144, 0.4);
+            transition: transform 0.3s ease;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.3);
         }
         input[type=range]::-webkit-slider-runnable-track {
             width: 100%;
-            height: 2px;
+            height: 1px;
             cursor: pointer;
-            background: #262626;
-            border-radius: 1px;
+            background: rgba(255, 255, 255, 0.1);
         }
         input[type=range]:focus { outline: none; }
-        /* Sync styling for progress bar filled part */
-        #seek-bar { accent-color: white; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col selection:bg-neutral-800 selection:text-white h-screen overflow-hidden">
+<body class="min-h-screen flex flex-col selection:bg-[#C5B390] selection:text-black h-screen overflow-hidden">
 
-    <nav class="w-full flex justify-between items-center px-6 py-8 md:px-12 border-b border-neutral-900/50 shrink-0 z-30 relative bg-[#050505]">
-        <div class="font-serif text-2xl md:text-3xl tracking-wide text-white">
-            Hunq<span class="text-neutral-600 italic">FM</span>
+    <nav class="w-full flex justify-between items-center px-8 py-10 md:px-16 border-b border-white/5 shrink-0 z-30 relative bg-[#030303]/80 backdrop-blur-md">
+        <div class="font-serif text-2xl md:text-3xl tracking-widest text-white font-light">
+            Hunq<span class="text-champagne italic">FM</span>
         </div>
         
-        <div class="flex items-center gap-5 md:gap-6">
-            <button onclick="toggleChat()" id="btn-chat" class="text-[10px] uppercase tracking-[0.2em] text-white hover:text-white transition-colors duration-300 focus:outline-none flex items-center gap-2">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                <span class="hidden md:inline">Chat</span>
-            </button>
-
-            <button onclick="toggleVisualizer()" id="btn-visualizer" class="text-[10px] uppercase tracking-[0.2em] text-neutral-500 hover:text-white transition-colors duration-300 focus:outline-none flex items-center gap-2">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                <span class="hidden md:inline">Spectrum</span>
+        <div class="flex items-center gap-8 md:gap-10">
+            <button onclick="toggleVisualizer()" id="btn-visualizer" class="text-[9px] uppercase tracking-[0.25em] text-neutral-500 hover:text-champagne transition-all duration-500 focus:outline-none flex items-center gap-3">
+                <span class="hidden md:inline font-light">Phổ Âm</span>
             </button>
             
-            <button onclick="toggleFXPanel()" id="btn-fx" class="text-[10px] uppercase tracking-[0.2em] text-neutral-500 hover:text-white transition-colors duration-300 focus:outline-none flex items-center gap-2">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                <span class="hidden md:inline">Studio FX</span>
+            <button onclick="toggleFXPanel()" id="btn-fx" class="text-[9px] uppercase tracking-[0.25em] text-neutral-500 hover:text-champagne transition-all duration-500 focus:outline-none flex items-center gap-3">
+                <span class="hidden md:inline font-light">Hiệu Ứng Studio</span>
             </button>
 
-            <div class="w-px h-4 bg-neutral-800 hidden md:block"></div>
+            <div class="w-px h-3 bg-white/10 hidden md:block"></div>
             
             <div class="flex items-center gap-3">
-                <span id="live-led" class="w-1.5 h-1.5 rounded-full bg-neutral-700 transition-colors duration-500"></span>
-                <span id="status-text" class="text-[10px] uppercase tracking-[0.2em] text-neutral-500 font-medium">Standby</span>
+                <span id="live-led" class="w-1.5 h-1.5 rounded-full bg-neutral-800 transition-colors duration-700"></span>
+                <span id="status-text" class="text-[9px] uppercase tracking-[0.25em] text-neutral-600 font-light">Đang chờ</span>
             </div>
         </div>
     </nav>
 
-    <div id="fx-panel" class="w-full bg-[#070707] border-b border-neutral-900/50 shrink-0 overflow-hidden transition-all duration-500 ease-in-out max-h-0 opacity-0 relative z-20">
-        <div class="max-w-4xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between h-full gap-12">
-            <div class="flex-1 flex flex-col gap-6">
-                <h3 class="text-[10px] uppercase tracking-[0.2em] text-neutral-500">Equalizer</h3>
-                <div class="w-full grid grid-cols-3 gap-6">
-                    <div class="flex flex-col items-center gap-3">
-                        <span class="text-[9px] tracking-widest text-neutral-400">LOW</span>
+    <div id="fx-panel" class="w-full bg-[#050505] border-b border-white/5 shrink-0 overflow-hidden transition-all duration-700 ease-in-out max-h-0 opacity-0 relative z-20">
+        <div class="max-w-5xl mx-auto px-8 py-12 flex flex-col md:flex-row justify-between h-full gap-16">
+            <div class="flex-1 flex flex-col gap-8">
+                <h3 class="text-[9px] uppercase tracking-[0.3em] text-champagne font-light">Bộ Chỉnh Âm</h3>
+                <div class="w-full grid grid-cols-3 gap-8">
+                    <div class="flex flex-col items-center gap-4 group">
+                        <span class="text-[8px] tracking-[0.3em] text-neutral-500 group-hover:text-champagne transition-colors">TRẦM</span>
                         <input type="range" id="eq-low" min="-15" max="15" value="0" step="1" oninput="updateEQ('low', this.value)">
-                        <span id="val-low" class="text-[10px] text-neutral-500">0</span>
+                        <span id="val-low" class="text-[9px] font-light text-neutral-400">0</span>
                     </div>
-                    <div class="flex flex-col items-center gap-3">
-                        <span class="text-[9px] tracking-widest text-neutral-400">MID</span>
+                    <div class="flex flex-col items-center gap-4 group">
+                        <span class="text-[8px] tracking-[0.3em] text-neutral-500 group-hover:text-champagne transition-colors">TRUNG</span>
                         <input type="range" id="eq-mid" min="-15" max="15" value="0" step="1" oninput="updateEQ('mid', this.value)">
-                        <span id="val-mid" class="text-[10px] text-neutral-500">0</span>
+                        <span id="val-mid" class="text-[9px] font-light text-neutral-400">0</span>
                     </div>
-                    <div class="flex flex-col items-center gap-3">
-                        <span class="text-[9px] tracking-widest text-neutral-400">HIGH</span>
+                    <div class="flex flex-col items-center gap-4 group">
+                        <span class="text-[8px] tracking-[0.3em] text-neutral-500 group-hover:text-champagne transition-colors">CAO</span>
                         <input type="range" id="eq-high" min="-15" max="15" value="0" step="1" oninput="updateEQ('high', this.value)">
-                        <span id="val-high" class="text-[10px] text-neutral-500">0</span>
+                        <span id="val-high" class="text-[9px] font-light text-neutral-400">0</span>
                     </div>
                 </div>
             </div>
 
-            <div class="w-px bg-neutral-800 hidden md:block"></div>
+            <div class="w-px bg-white/5 hidden md:block"></div>
 
-            <div class="flex-1 flex flex-col gap-6">
-                <h3 class="text-[10px] uppercase tracking-[0.2em] text-neutral-500">Spectrum Settings</h3>
-                <div class="flex flex-col gap-5 justify-center h-full">
-                    <div class="flex items-center justify-between border-b border-neutral-900 pb-3">
-                        <span class="text-[10px] tracking-widest text-neutral-400">POSITION</span>
-                        <button id="btn-vis-pos" onclick="toggleVisPos()" class="text-[9px] text-white bg-neutral-800 hover:bg-neutral-700 px-4 py-1.5 rounded-full uppercase tracking-widest transition-colors">Background</button>
+            <div class="flex-1 flex flex-col gap-8">
+                <h3 class="text-[9px] uppercase tracking-[0.3em] text-champagne font-light">Cài Đặt Phổ Âm</h3>
+                <div class="flex flex-col gap-6 justify-center h-full">
+                    <div class="flex items-center justify-between border-b border-white/5 pb-4">
+                        <span class="text-[8px] tracking-[0.3em] text-neutral-500">VỊ TRÍ</span>
+                        <button id="btn-vis-pos" onclick="toggleVisPos()" class="text-[8px] text-neutral-300 hover:text-champagne uppercase tracking-[0.2em] transition-colors font-light focus:outline-none">Nền</button>
                     </div>
                     <div class="flex items-center justify-between">
-                        <span class="text-[10px] tracking-widest text-neutral-400">COLOR MODE</span>
-                        <button id="btn-vis-color" onclick="toggleVisColor()" class="text-[9px] text-white bg-neutral-800 hover:bg-neutral-700 px-4 py-1.5 rounded-full uppercase tracking-widest transition-colors">Dynamic</button>
+                        <span class="text-[8px] tracking-[0.3em] text-neutral-500">CHẾ ĐỘ MÀU</span>
+                        <button id="btn-vis-color" onclick="toggleVisColor()" class="text-[8px] text-neutral-300 hover:text-champagne uppercase tracking-[0.2em] transition-colors font-light focus:outline-none">Động</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <main class="flex-grow flex flex-col lg:flex-row w-full max-w-[1600px] mx-auto overflow-hidden relative z-0">
+    <main class="flex-grow flex flex-col w-full mx-auto overflow-hidden relative z-0">
         
-        <div class="flex-grow flex flex-col justify-center px-6 py-8 md:px-16 lg:px-24 relative overflow-hidden group transition-all duration-500">
+        <div class="flex-grow flex flex-col justify-center px-8 py-12 md:px-20 lg:px-32 relative overflow-hidden group transition-all duration-700 items-center">
             
             <div id="vis-bg-container" class="absolute inset-0 w-full h-full pointer-events-none z-0">
-                <canvas id="visualizer-canvas" class="w-full h-full opacity-0 transition-opacity duration-700"></canvas>
+                <canvas id="visualizer-canvas" class="w-full h-full opacity-0 transition-opacity duration-1000"></canvas>
             </div>
             
-            <div class="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent pointer-events-none z-0"></div>
+            <div class="absolute inset-0 bg-gradient-to-t from-[#030303] via-transparent to-[#030303]/30 pointer-events-none z-0"></div>
 
-            <div class="relative z-10 w-full h-full flex flex-col justify-center">
+            <div class="relative z-10 w-full max-w-4xl h-full flex flex-col justify-center">
                 
-                <div class="flex gap-8 md:gap-12 mb-10 overflow-x-auto pb-2 shrink-0 border-b border-neutral-900/30">
-                    <button onclick="changeChannel('vinahouse')" id="btn-vinahouse" class="channel-btn text-xs uppercase tracking-[0.15em] pb-3 border-b border-white text-white transition-all duration-300 focus:outline-none">Vinahouse</button>
-                    <button onclick="changeChannel('chillout')" id="btn-chillout" class="channel-btn text-xs uppercase tracking-[0.15em] pb-3 border-b border-transparent text-neutral-600 hover:text-neutral-300 transition-all duration-300 whitespace-nowrap focus:outline-none">Chill Out</button>
-                    <button onclick="changeChannel('remix')" id="btn-remix" class="channel-btn text-xs uppercase tracking-[0.15em] pb-3 border-b border-transparent text-neutral-600 hover:text-neutral-300 transition-all duration-300 focus:outline-none">Remix</button>
-                    <button onclick="changeChannel('custom')" id="btn-custom" class="channel-btn text-xs uppercase tracking-[0.15em] pb-3 border-b border-transparent text-neutral-600 hover:text-neutral-300 transition-all duration-300 flex items-center gap-2 focus:outline-none">
-                        Personal FM
+                <div class="flex gap-10 md:gap-16 mb-16 overflow-x-auto pb-4 shrink-0 border-b border-white/5 no-scrollbar justify-center">
+                    <button onclick="changeChannel('vinahouse')" id="btn-vinahouse" class="channel-btn text-[9px] uppercase tracking-[0.25em] pb-4 border-b border-champagne text-champagne transition-all duration-500 focus:outline-none font-light">Vinahouse</button>
+                    <button onclick="changeChannel('chillout')" id="btn-chillout" class="channel-btn text-[9px] uppercase tracking-[0.25em] pb-4 border-b border-transparent text-neutral-600 hover:text-neutral-300 transition-all duration-500 whitespace-nowrap focus:outline-none font-light">Chill Out</button>
+                    <button onclick="changeChannel('remix')" id="btn-remix" class="channel-btn text-[9px] uppercase tracking-[0.25em] pb-4 border-b border-transparent text-neutral-600 hover:text-neutral-300 transition-all duration-500 focus:outline-none font-light">Remix</button>
+                    <button onclick="changeChannel('custom')" id="btn-custom" class="channel-btn text-[9px] uppercase tracking-[0.25em] pb-4 border-b border-transparent text-neutral-600 hover:text-neutral-300 transition-all duration-500 flex items-center gap-2 focus:outline-none font-light">
+                        Cá Nhân
                     </button>
                 </div>
 
-                <div class="flex flex-col justify-center min-h-[160px]">
-                    <div class="flex items-center justify-between mb-6 max-w-4xl">
-                        <h2 class="text-[10px] uppercase tracking-[0.2em] text-neutral-500">Now Playing</h2>
-                        <div id="upload-container" class="hidden transition-opacity duration-300">
-                            <label class="cursor-pointer border border-neutral-800 px-4 py-1.5 text-[9px] uppercase tracking-[0.15em] text-neutral-400 hover:border-white hover:text-white transition-all duration-300 rounded-sm flex items-center gap-2 bg-[#050505]">
-                                <span>+ Import Tracks</span>
+                <div class="flex flex-col justify-center min-h-[200px] text-center md:text-left">
+                    <div class="flex flex-col md:flex-row items-center justify-between mb-8 gap-6">
+                        <h2 class="text-[8px] uppercase tracking-[0.4em] text-champagne/80 font-light">Đang Phát</h2>
+                        
+                        <div id="upload-container" class="hidden transition-opacity duration-500">
+                            <label class="cursor-pointer border border-white/10 px-6 py-2.5 text-[8px] uppercase tracking-[0.3em] text-neutral-400 hover:border-champagne hover:text-champagne transition-all duration-500 rounded-full flex items-center gap-2 bg-transparent">
+                                <span>Thêm Tệp Âm Thanh</span>
                                 <input type="file" id="file-upload" multiple accept="audio/*" class="hidden" onchange="handleFileUpload(event)">
                             </label>
                         </div>
                     </div>
 
-                    <h1 id="track-name" class="font-serif text-4xl md:text-5xl lg:text-7xl leading-[1.1] text-white font-normal max-w-4xl transition-opacity duration-500 line-clamp-3">
-                        Connect to synchronize timeline.
+                    <h1 id="track-name" class="font-serif text-4xl md:text-6xl lg:text-[5.5rem] leading-[1.1] text-white font-light tracking-wide max-w-4xl transition-opacity duration-700 line-clamp-3">
+                        Kết nối để đồng bộ tác phẩm.
                     </h1>
                     
-                    <div id="vis-inline-container" class="w-full max-w-3xl h-24 mt-8 hidden relative overflow-hidden rounded-xl border border-neutral-800/50 bg-gradient-to-b from-[#0a0a0a] to-[#050505]"></div>
-                    <p id="custom-meta" class="text-[10px] text-neutral-500 mt-4 tracking-widest hidden uppercase"></p>
+                    <div id="vis-inline-container" class="w-full max-w-2xl h-16 mt-12 hidden relative overflow-hidden border-b border-white/5 opacity-70"></div>
+                    <p id="custom-meta" class="text-[9px] text-neutral-500 mt-6 tracking-[0.3em] hidden uppercase font-light"></p>
                 </div>
 
-                <div class="mt-12 flex flex-col shrink-0 gap-6 w-full max-w-2xl relative z-20">
+                <div class="mt-20 flex flex-col shrink-0 gap-10 w-full relative z-20">
                     
-                    <div class="flex items-center gap-4 w-full group">
-                        <span id="time-current" class="text-[10px] tracking-widest text-neutral-500 w-12 text-right">00:00</span>
-                        <input type="range" id="seek-bar" class="flex-1" min="0" max="100" step="0.1" value="0" 
-                               oninput="handleSeek(this.value)" 
-                               onmousedown="isSeeking = true" 
-                               onmouseup="isSeeking = false"
-                               ontouchstart="isSeeking = true"
-                               ontouchend="isSeeking = false">
-                        <span id="time-duration" class="text-[10px] tracking-widest text-neutral-500 w-12">00:00</span>
+                    <div class="flex items-center gap-6 w-full group">
+                        <span id="time-current" class="text-[9px] tracking-[0.2em] font-light text-neutral-500 w-12 text-right">00:00</span>
+                        <div class="flex-1 relative flex items-center h-4">
+                            <input type="range" id="seek-bar" class="absolute w-full z-10" min="0" max="100" step="0.1" value="0" 
+                                   oninput="handleSeek(this.value)" 
+                                   onmousedown="isSeeking = true" 
+                                   onmouseup="isSeeking = false"
+                                   ontouchstart="isSeeking = true"
+                                   ontouchend="isSeeking = false">
+                        </div>
+                        <span id="time-duration" class="text-[9px] tracking-[0.2em] font-light text-neutral-500 w-12">00:00</span>
                     </div>
 
                     <div class="flex items-center justify-between w-full">
-                        <div class="w-24"></div> <button id="master-play-btn" onclick="togglePlay()" class="w-16 h-16 md:w-20 md:h-20 rounded-full border border-neutral-800 flex items-center justify-center text-white hover:border-neutral-400 hover:bg-neutral-900 transition-all duration-500 focus:outline-none shrink-0 bg-[#050505] active:scale-95">
-                            <svg id="icon-play" class="w-5 h-5 md:w-6 md:h-6 ml-1 transition-transform" fill="currentColor" viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>
-                            <svg id="icon-stop" class="w-4 h-4 md:w-5 md:h-5 hidden transition-transform" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+                        <div class="w-32 hidden md:block"></div> 
+                        
+                        <button id="master-play-btn" onclick="togglePlay()" class="w-20 h-20 md:w-24 md:h-24 rounded-full border border-white/10 flex items-center justify-center text-white hover:border-champagne hover:text-champagne transition-all duration-700 focus:outline-none shrink-0 bg-transparent relative group">
+                            <div class="absolute inset-0 rounded-full bg-champagne/0 group-hover:bg-champagne/5 transition-colors duration-700"></div>
+                            
+                            <svg id="icon-play" class="w-6 h-6 md:w-8 md:h-8 ml-1.5 transition-transform duration-500 group-hover:scale-105 stroke-current" fill="none" viewBox="0 0 24 24" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M5 3l14 9-14 9V3z"/></svg>
+                            <svg id="icon-stop" class="w-5 h-5 md:w-6 md:h-6 hidden transition-transform duration-500 group-hover:scale-105 stroke-current" fill="none" viewBox="0 0 24 24" stroke-width="1"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
 
-                        <div class="w-24 flex justify-end items-center">
-                            <button onclick="toggleLiveMode()" id="btn-sync-mode" class="text-[9px] px-2.5 py-1.5 border border-white text-white rounded-sm uppercase tracking-widest transition-colors hover:bg-white hover:text-black focus:outline-none">
-                                SYNC: ON
+                        <div class="w-32 flex justify-end items-center">
+                            <button onclick="toggleLiveMode()" id="btn-sync-mode" class="text-[8px] px-4 py-2 border border-white/20 text-neutral-300 rounded-full uppercase tracking-[0.3em] transition-all duration-500 hover:border-champagne hover:text-champagne focus:outline-none font-light">
+                                Đồng Bộ: Bật
                             </button>
                         </div>
                     </div>
                 </div>
 
-            </div>
-        </div>
-
-        <div id="chat-section" class="w-full lg:w-[450px] border-t lg:border-t-0 lg:border-l border-neutral-900/50 flex flex-col bg-[#050505] lg:bg-[#070707] h-[400px] lg:h-full shrink-0 relative z-20">
-            <div class="px-8 py-6 border-b border-neutral-900/50 flex justify-between items-center shrink-0">
-                <h3 class="text-[10px] uppercase tracking-[0.2em] text-neutral-500">Live Conversation</h3>
-                <span class="text-[10px] text-neutral-600 tracking-wider">1.2K Listens</span>
-            </div>
-            
-            <div id="chat-messages" class="flex-1 overflow-y-auto p-8 flex flex-col gap-6 scroll-smooth"></div>
-
-            <div class="p-8 pt-6 shrink-0 border-t border-neutral-900/30">
-                <div class="relative">
-                    <input type="text" id="chat-input" placeholder="Share your thoughts..." class="w-full bg-transparent border-b border-neutral-800 pb-3 text-sm font-light text-white focus:outline-none focus:border-neutral-400 transition-colors placeholder-neutral-700">
-                    <button onclick="sendComment()" class="absolute right-0 bottom-3 text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors focus:outline-none font-bold">
-                        Send
-                    </button>
-                </div>
             </div>
         </div>
     </main>
@@ -234,16 +214,16 @@
 
         const playlists = {
             vinahouse: [
-                { title: "Vinahouse Set I. Khởi động", src: trackUrl, duration: 5415 },
-                { title: "Vinahouse Set II. Lên nóc", src: trackUrl, duration: 7825 },
-                { title: "Vinahouse Set III. Hạ cánh", src: trackUrl, duration: 4230 }
+                { title: "Khởi Nguồn Âm Thanh", src: trackUrl, duration: 5415 },
+                { title: "Tuyệt Đỉnh Không Gian", src: trackUrl, duration: 7825 },
+                { title: "Dư Âm Hạ Cánh", src: trackUrl, duration: 4230 }
             ],
             chillout: [
-                { title: "Lofi Chill Out — Morning Edition", src: trackUrl, duration: 3600 },
-                { title: "Deep Focus — Afternoon Session", src: trackUrl, duration: 3600 }
+                { title: "Bình Minh Thư Thái", src: trackUrl, duration: 3600 },
+                { title: "Chiều Tà Yên Bình", src: trackUrl, duration: 3600 }
             ],
             remix: [
-                { title: "Viet Mix Nonstop — 2026 Exclusive", src: trackUrl, duration: 7200 }
+                { title: "Bản Phối Độc Quyền", src: trackUrl, duration: 7200 }
             ],
             custom: [] 
         };
@@ -254,7 +234,6 @@
         let activePlayer = 0; 
         let syncInterval = null;
         let currentTrackIndex = -1;
-        let isChatVisible = true; 
         
         // Trạng thái tua & Sync
         let isLiveSync = true;
@@ -332,21 +311,21 @@
             isFXPanelOpen = !isFXPanelOpen;
 
             if (isFXPanelOpen) {
-                panel.style.maxHeight = '400px'; 
+                panel.style.maxHeight = '500px'; 
                 panel.style.opacity = '1';
-                btnFX.classList.add('text-white');
+                btnFX.classList.add('text-champagne');
                 btnFX.classList.remove('text-neutral-500');
             } else {
                 panel.style.maxHeight = '0'; 
                 panel.style.opacity = '0';
-                btnFX.classList.remove('text-white');
+                btnFX.classList.remove('text-champagne');
                 btnFX.classList.add('text-neutral-500');
             }
         }
 
         function toggleVisPos() {
             visPos = visPos === 'bg' ? 'inline' : 'bg';
-            document.getElementById('btn-vis-pos').innerText = visPos === 'bg' ? 'Background' : 'Inline';
+            document.getElementById('btn-vis-pos').innerText = visPos === 'bg' ? 'Nền' : 'Nội dòng';
             
             const inlineContainer = document.getElementById('vis-inline-container');
             const bgContainer = document.getElementById('vis-bg-container');
@@ -367,14 +346,14 @@
 
         function toggleVisColor() {
             visColor = visColor === 'dynamic' ? 'solid' : 'dynamic';
-            document.getElementById('btn-vis-color').innerText = visColor === 'dynamic' ? 'Dynamic' : 'Solid';
+            document.getElementById('btn-vis-color').innerText = visColor === 'dynamic' ? 'Động' : 'Champagne';
         }
 
         function updateVisOpacity() {
             if (!isVisualizerActive) {
                 canvas.style.opacity = '0';
             } else {
-                canvas.style.opacity = visPos === 'bg' ? '0.15' : '1';
+                canvas.style.opacity = visPos === 'bg' ? '0.08' : '1';
             }
         }
 
@@ -383,7 +362,7 @@
             const btnVis = document.getElementById('btn-visualizer');
             
             if (isVisualizerActive) {
-                btnVis.classList.add('text-white');
+                btnVis.classList.add('text-champagne');
                 btnVis.classList.remove('text-neutral-500');
                 
                 if (isPlaying) {
@@ -391,7 +370,7 @@
                     drawVisualizer();
                 }
             } else {
-                btnVis.classList.remove('text-white');
+                btnVis.classList.remove('text-champagne');
                 btnVis.classList.add('text-neutral-500');
                 cancelAnimationFrame(animationId);
             }
@@ -411,45 +390,30 @@
 
             canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 
-            const barWidth = (canvas.width / bufferLength) * 2.5;
+            const barWidth = (canvas.width / bufferLength) * 3;
             let barHeight;
             let x = 0;
 
             for(let i = 0; i < bufferLength; i++) {
-                barHeight = (dataArray[i] / 255) * canvas.height * (visPos === 'bg' ? 0.8 : 1.0);
+                barHeight = (dataArray[i] / 255) * canvas.height * (visPos === 'bg' ? 0.9 : 1.0);
                 
                 if (visColor === 'dynamic') {
                     const intensity = dataArray[i] / 255;
-                    canvasCtx.fillStyle = `rgba(255, 255, 255, ${intensity})`; 
+                    // Sử dụng tông màu ấm vàng nhạt sang trọng
+                    canvasCtx.fillStyle = `rgba(197, 179, 144, ${intensity * 0.8})`; 
                 } else {
-                    canvasCtx.fillStyle = `rgba(255, 255, 255, 0.7)`; 
+                    canvasCtx.fillStyle = `rgba(197, 179, 144, 0.4)`; 
                 }
                 
                 canvasCtx.beginPath();
-                canvasCtx.roundRect(x, canvas.height - barHeight, barWidth - 1, barHeight, [4, 4, 0, 0]);
+                canvasCtx.roundRect(x, canvas.height - barHeight, barWidth - 1, barHeight, [2, 2, 0, 0]);
                 canvasCtx.fill();
 
                 x += barWidth;
             }
         }
 
-        function toggleChat() {
-            isChatVisible = !isChatVisible;
-            const chatSection = document.getElementById('chat-section');
-            const btnChat = document.getElementById('btn-chat');
-            
-            if (isChatVisible) {
-                chatSection.classList.remove('hidden');
-                btnChat.classList.add('text-white');
-                btnChat.classList.remove('text-neutral-500');
-            } else {
-                chatSection.classList.add('hidden');
-                btnChat.classList.remove('text-white');
-                btnChat.classList.add('text-neutral-500');
-            }
-        }
-
-        // --- 4. TÍNH NĂNG TUA & CHẾ ĐỘ SYNC (MỚI) ---
+        // --- 4. TÍNH NĂNG TUA & CHẾ ĐỘ SYNC ---
         function toggleLiveMode() {
             isLiveSync = !isLiveSync;
             const btn = document.getElementById('btn-sync-mode');
@@ -457,23 +421,23 @@
             const statusText = document.getElementById('status-text');
 
             if (isLiveSync) {
-                btn.innerText = "SYNC: ON";
-                btn.className = "text-[9px] px-2.5 py-1.5 border border-white text-white rounded-sm uppercase tracking-widest transition-colors hover:bg-white hover:text-black focus:outline-none";
+                btn.innerText = "Đồng Bộ: Bật";
+                btn.className = "text-[8px] px-4 py-2 border border-champagne text-champagne rounded-full uppercase tracking-[0.3em] transition-all duration-500 focus:outline-none font-light shadow-[0_0_15px_rgba(197,179,144,0.15)]";
                 
-                statusText.innerText = "Synchronizing";
-                led.classList.replace('bg-neutral-700', 'bg-white');
+                statusText.innerText = "Đang đồng bộ";
+                led.classList.replace('bg-neutral-800', 'bg-champagne');
                 led.classList.add('pulse-dot');
                 
                 if (isPlaying) {
-                    currentTrackIndex = -1; // Ép load lại nhạc để dính GMT
+                    currentTrackIndex = -1; 
                     engineTick();
                 }
             } else {
-                btn.innerText = "SYNC: OFF";
-                btn.className = "text-[9px] px-2.5 py-1.5 border border-neutral-700 text-neutral-500 rounded-sm uppercase tracking-widest transition-colors hover:border-neutral-500 hover:text-white focus:outline-none";
+                btn.innerText = "Đồng Bộ: Tắt";
+                btn.className = "text-[8px] px-4 py-2 border border-white/20 text-neutral-400 rounded-full uppercase tracking-[0.3em] transition-all duration-500 hover:border-champagne hover:text-champagne focus:outline-none font-light";
                 
-                statusText.innerText = "Free Play Mode";
-                led.classList.replace('bg-white', 'bg-neutral-700');
+                statusText.innerText = "Phát tự do";
+                led.classList.replace('bg-champagne', 'bg-neutral-800');
                 led.classList.remove('pulse-dot');
             }
         }
@@ -481,7 +445,6 @@
         function handleSeek(percent) {
             if (!isPlaying && !players[activePlayer].src) return;
             
-            // Tự động tắt Live Sync khi người dùng cố tình tua
             if (isLiveSync) toggleLiveMode();
 
             const currentPlayer = players[activePlayer];
@@ -489,7 +452,6 @@
                 const targetTime = (percent / 100) * currentPlayer.duration;
                 currentPlayer.currentTime = targetTime;
                 
-                // Cập nhật UI ngay lập tức ngay cả khi đang Pause
                 document.getElementById('time-current').innerText = formatTime(targetTime);
             }
         }
@@ -551,13 +513,12 @@
             const currentPlayer = players[activePlayer];
             const trackNameEl = document.getElementById('track-name');
 
-            // --- CHẾ ĐỘ 1: SYNC ON (GMT Live) ---
             if (isLiveSync) {
                 const state = getPlaybackState();
                 
                 if (!state) {
-                    if (trackNameEl.innerText !== "Awaiting audio files...") {
-                        trackNameEl.innerText = "Awaiting audio files...";
+                    if (trackNameEl.innerText !== "Đang chờ tệp âm thanh...") {
+                        trackNameEl.innerText = "Đang chờ tệp âm thanh...";
                         document.getElementById('time-current').innerText = "00:00";
                         document.getElementById('time-duration').innerText = "00:00";
                     }
@@ -571,7 +532,7 @@
                     setTimeout(() => {
                         trackNameEl.innerText = state.track.title;
                         trackNameEl.style.opacity = 1;
-                    }, 300);
+                    }, 500);
                 }
 
                 if (state.trackIndex !== currentTrackIndex) {
@@ -606,13 +567,11 @@
                     }
                 }
             } 
-            // --- CHẾ ĐỘ 2: SYNC OFF (Tua Tự Do) ---
             else {
-                // Tự động chuyển bài khi hết nhạc
                 if (currentPlayer.duration > 0 && (currentPlayer.duration - currentPlayer.currentTime <= 0.5)) {
                     const playlist = playlists[currentChannel];
                     let nextIndex = currentTrackIndex + 1;
-                    if (nextIndex >= playlist.length) nextIndex = 0; // Lặp lại list
+                    if (nextIndex >= playlist.length) nextIndex = 0; 
                     
                     const prevPlayerIndex = activePlayer;
                     activePlayer = (activePlayer + 1) % 2;
@@ -636,11 +595,10 @@
                     setTimeout(() => {
                         trackNameEl.innerText = playlist[nextIndex].title;
                         trackNameEl.style.opacity = 1;
-                    }, 300);
+                    }, 500);
                 }
             }
 
-            // --- CẬP NHẬT UI THỜI GIAN CHUNG CHO CẢ 2 CHẾ ĐỘ ---
             if (currentPlayer.duration) {
                 const curr = currentPlayer.currentTime || 0;
                 const dur = currentPlayer.duration || 0;
@@ -674,14 +632,13 @@
                 stopIcon.classList.remove('hidden');
                 
                 if (isLiveSync) {
-                    statusText.innerText = "Synchronizing";
-                    led.classList.replace('bg-neutral-700', 'bg-white');
+                    statusText.innerText = "Đang đồng bộ";
+                    led.classList.replace('bg-neutral-800', 'bg-champagne');
                     led.classList.add('pulse-dot');
                 }
                 
                 if (currentTrackIndex === -1 && isLiveSync) currentTrackIndex = -1; 
                 if (currentTrackIndex === -1 && !isLiveSync) {
-                     // Force play first track if starting free play from scratch
                      currentTrackIndex = 0;
                      const pl = playlists[currentChannel];
                      if(pl && pl.length > 0) {
@@ -700,8 +657,8 @@
                 playIcon.classList.remove('hidden');
                 stopIcon.classList.add('hidden');
                 
-                statusText.innerText = "Paused";
-                led.classList.replace('bg-white', 'bg-neutral-700');
+                statusText.innerText = "Đã tạm dừng";
+                led.classList.replace('bg-champagne', 'bg-neutral-800');
                 led.classList.remove('pulse-dot');
                 
                 clearInterval(syncInterval);
@@ -714,16 +671,15 @@
         function changeChannel(channelId) {
             currentChannel = channelId;
             
-            // Ép bật lại Live Sync khi người dùng đổi kênh
             if (!isLiveSync) toggleLiveMode();
             
             document.querySelectorAll('.channel-btn').forEach(btn => {
-                btn.classList.remove('border-white', 'text-white');
+                btn.classList.remove('border-champagne', 'text-champagne');
                 btn.classList.add('border-transparent', 'text-neutral-600');
             });
             const activeBtn = document.getElementById(`btn-${channelId}`);
             activeBtn.classList.remove('border-transparent', 'text-neutral-600');
-            activeBtn.classList.add('border-white', 'text-white');
+            activeBtn.classList.add('border-champagne', 'text-champagne');
 
             const uploadContainer = document.getElementById('upload-container');
             const customMeta = document.getElementById('custom-meta');
@@ -741,7 +697,7 @@
 
             setTimeout(() => {
                 if (channelId === 'custom' && playlists.custom.length === 0) {
-                    trackNameEl.innerText = "Import local tracks to establish FM.";
+                    trackNameEl.innerText = "Thêm bộ sưu tập âm thanh của bạn.";
                     document.getElementById('time-current').innerText = "00:00";
                     document.getElementById('time-duration').innerText = "00:00";
                     document.getElementById('seek-bar').value = 0;
@@ -753,19 +709,22 @@
                     players[0].pause();
                     players[1].pause();
                     currentTrackIndex = -1;
-                    document.getElementById('status-text').innerText = "Loading Audio...";
+                    document.getElementById('status-text').innerText = "Đang tải tác phẩm...";
                     engineTick();
                 } else {
-                    trackNameEl.innerText = `${channelId} selected.`;
+                    let channelName = channelId.charAt(0).toUpperCase() + channelId.slice(1);
+                    if (channelId === 'custom') channelName = "Cá Nhân";
+                    if (channelId === 'chillout') channelName = "Chill Out";
+                    
+                    trackNameEl.innerText = `Kênh ${channelName} đã sẵn sàng.`;
                     document.getElementById('time-current').innerText = "00:00";
                     document.getElementById('time-duration').innerText = "00:00";
                     document.getElementById('seek-bar').value = 0;
                 }
                 trackNameEl.style.opacity = 1;
-            }, 300);
+            }, 500);
         }
 
-        // CUSTOM UPLOAD
         function getAudioDuration(fileUrl) {
             return new Promise((resolve) => {
                 const tempAudio = new Audio(fileUrl);
@@ -781,7 +740,7 @@
             const trackNameEl = document.getElementById('track-name');
             const customMetaEl = document.getElementById('custom-meta');
             
-            trackNameEl.innerText = "Analyzing tracks... Please wait.";
+            trackNameEl.innerText = "Đang thẩm âm... Vui lòng đợi.";
             customMetaEl.classList.add('hidden');
 
             if (playlists.custom.length > 0) {
@@ -809,8 +768,8 @@
             playlists.custom = newCustomPlaylist;
             
             if (currentChannel === 'custom') {
-                trackNameEl.innerText = "Broadcast timeline established. Ready to play.";
-                customMetaEl.innerText = `${playlists.custom.length} TRACKS LOADED • TOTAL: ${formatTime(totalSeconds)}`;
+                trackNameEl.innerText = "Dòng thời gian âm nhạc đã thiết lập.";
+                customMetaEl.innerText = `${playlists.custom.length} Tác Phẩm • Tổng thời lượng: ${formatTime(totalSeconds)}`;
                 customMetaEl.classList.remove('hidden');
 
                 if (isPlaying) {
@@ -820,50 +779,6 @@
             }
         }
 
-        // --- 7. CHAT UI ---
-        const demoNames = ['H.R.', 'Binh', 'M. Chill', 'Guest_88', 'T. Lofi'];
-        const demoMessages = ['Âm thanh tuyệt vời.', 'Bản phối này rất có chiều sâu.', 'Đang nghe từ Tokyo, kết nối rất tốt.', 'Hoàn hảo cho buổi tối thư giãn.'];
-
-        function appendComment(name, text, isSelf = false) {
-            const chatBox = document.getElementById('chat-messages');
-            const commentDiv = document.createElement('div');
-            
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            const nameBgClass = isSelf ? 'bg-neutral-200 text-neutral-900' : 'bg-neutral-800 text-white';
-            const nameLabel = isSelf ? 'You' : name;
-
-            commentDiv.innerHTML = `
-                <div class="flex flex-col gap-1.5 fade-in-msg">
-                    <div class="flex items-center gap-2">
-                        <span class="text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-sm ${nameBgClass}">${nameLabel}</span>
-                        <span class="text-[10px] tracking-wider text-neutral-600">${timeString}</span>
-                    </div>
-                    <span class="text-sm font-light leading-relaxed text-neutral-300">${text}</span>
-                </div>
-            `;
-            chatBox.appendChild(commentDiv);
-            chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
-        }
-
-        function sendComment() {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
-            if (text === "") return;
-            appendComment('', text, true);
-            input.value = "";
-        }
-
-        function simulateComments() {
-            setInterval(() => {
-                const name = demoNames[Math.floor(Math.random() * demoNames.length)];
-                const message = demoMessages[Math.floor(Math.random() * demoMessages.length)];
-                if (isPlaying) appendComment(name, message);
-            }, 8000); 
-        }
-
-        // --- 8. INIT & UTILS ---
         function formatTime(seconds) {
             if (isNaN(seconds)) return "00:00";
             const h = Math.floor(seconds / 3600);
@@ -874,14 +789,6 @@
             }
             return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            appendComment('System', 'Welcome to HunqFM. Press play to start listening.');
-            simulateComments();
-            document.getElementById('chat-input').addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') sendComment();
-            });
-        });
     </script>
 </body>
 </html>

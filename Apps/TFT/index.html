@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TFT Premium Wiki</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        premium: {
+                            bg: '#090d14',      /* Nền app tối sâu */
+                            card: '#121722',    /* Nền thẻ */
+                            border: '#1f2937',  /* Viền xám tối */
+                            gold: '#d4af37',    /* Vàng TFT */
+                            accent: '#38bdf8'   /* Xanh nhẹ */
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Ẩn thanh cuộn cho mobile app feel */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Hiệu ứng Modal */
+        .modal-overlay {
+            transition: opacity 0.2s ease;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            transition: transform 0.2s ease;
+            transform: scale(0.95);
+        }
+
+        .modal-overlay.show .modal-box {
+            transform: scale(1);
+        }
+
+        /* CSS cho chức năng ẩn/hiện nội dung Card */
+        .card-expandable-body {
+            /* Mặc định ẩn bằng cách xét chiều cao tối đa = 0 */
+            max-height: 0;
+            overflow: hidden;
+            /* Tạo hiệu ứng chuyển động mượt mà */
+            transition: max-height 0.3s ease-out, opacity 0.2s ease-out, padding 0.3s ease-out;
+            opacity: 0;
+            /* Bỏ padding dọc khi đóng */
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        /* Khi Card có class 'is-expanded' (được mở) */
+        .bg-premium-card.is-expanded .card-expandable-body {
+            /* Cho phép hiển thị chiều cao tối đa (đặt một con số đủ lớn) */
+            max-height: 1000px;
+            opacity: 1;
+            /* Khôi phục padding gốc */
+            padding-top: 0.875rem !important;
+            /* t-3.5 */
+            padding-bottom: 0.875rem !important;
+            /* b-3.5 */
+        }
+
+        /* Hiệu ứng xoay icon Chevron */
+        .expand-chevron {
+            transition: transform 0.3s ease;
+        }
+
+        .bg-premium-card.is-expanded .expand-chevron {
+            transform: rotate(180deg);
+            color: #d4af37;
+            /* Đổi sang màu vàng khi mở */
+        }
+    </style>
+</head>
+
+<body
+    class="bg-premium-bg text-slate-300 font-sans antialiased min-h-screen flex flex-col selection:bg-premium-gold selection:text-black">
+
+    <header class="sticky top-0 z-40 bg-premium-bg/95 backdrop-blur shadow-sm shadow-black/50">
+        <div class="px-4 py-3 flex items-center justify-between">
+            <h1 class="text-xl font-black tracking-tight flex items-center gap-2 text-white">
+                <i class="fa-solid fa-chess-knight text-premium-gold"></i> TFT Wiki
+            </h1>
+            <button onclick="testConfirm()" class="text-slate-400 hover:text-white p-2">
+                <i class="fa-solid fa-ellipsis-vertical text-lg"></i>
+            </button>
+        </div>
+
+        <nav id="tab-nav"
+            class="flex overflow-x-auto no-scrollbar px-4 pb-3 pt-1 gap-2 border-b border-premium-border scroll-smooth">
+        </nav>
+    </header>
+
+    <main class="flex-1 w-full max-w-7xl mx-auto p-4 lg:p-6 relative">
+        <div id="tab-containers">
+        </div>
+    </main>
+
+    <div id="custom-modal"
+        class="modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+        <div class="modal-box bg-premium-card border border-premium-border rounded-2xl p-5 w-full max-w-sm shadow-2xl">
+            <h3 id="modal-title" class="text-lg font-bold text-white mb-2 flex items-center gap-2"></h3>
+            <p id="modal-message" class="text-sm text-slate-400 mb-5 leading-relaxed"></p>
+            <div class="flex justify-end gap-2" id="modal-actions"></div>
+        </div>
+    </div>
+
+    <script>
+        const Tabs = [
+            { id: 'gods', name: 'Thần', icon: 'fa-bolt' },
+            { id: 'champions', name: 'Tướng', icon: 'fa-user-ninja' },
+            { id: 'items', name: 'Trang bị', icon: 'fa-khanda' },
+            { id: 'origin-synergies', name: 'Nghề nghiệp - x', icon: 'fa-dna' },
+            { id: 'traits', name: 'Tộc hệ - x', icon: 'fa-users' },
+            { id: 'augments', name: 'Lõi', icon: 'fa-gem' }
+        ];
+
+        let currentTabId = Tabs[0].id;
+
+        function initWiki() {
+            const navContainer = document.getElementById('tab-nav');
+            const contentContainer = document.getElementById('tab-containers');
+
+            Tabs.forEach((tab) => {
+                // Tạo nút Navigation dạng Pill (Viên thuốc)
+                const btn = document.createElement('button');
+                btn.id = `btn-${tab.id}`;
+                // CSS cơ bản cho nút
+                btn.className = `shrink-0 px-4 py-2 text-sm font-semibold rounded-full transition-colors flex items-center gap-1.5 border `;
+
+                // Set trạng thái active/inactive
+                if (tab.id === currentTabId) {
+                    btn.className += `bg-premium-gold text-black border-premium-gold shadow-[0_0_10px_rgba(212,175,55,0.3)]`;
+                } else {
+                    btn.className += `bg-premium-card text-slate-400 border-premium-border hover:bg-slate-800 hover:text-slate-200`;
+                }
+
+                btn.innerHTML = `<i class="fa-solid ${tab.icon}"></i> ${tab.name}`;
+                btn.onclick = () => switchTab(tab.id);
+                navContainer.appendChild(btn);
+
+                // Tạo Content Container
+                const contentDiv = document.createElement('div');
+                contentDiv.id = `content-${tab.id}`;
+                contentDiv.className = `tab-content ${tab.id === currentTabId ? 'active' : ''}`;
+
+                contentDiv.innerHTML = `
+                    <div class="flex items-center gap-3 mb-5 px-1">
+                        <div class="w-10 h-10 rounded-xl bg-premium-card flex items-center justify-center border border-premium-border text-premium-accent">
+                            <i class="fa-solid ${tab.icon} text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-white leading-tight">${tab.name}</h2>
+                            <p class="text-xs text-slate-500">Dữ liệu ${tab.name.toLowerCase()}</p>
+                        </div>
+                    </div>
+                    
+                    <div id="grid-${tab.id}" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div class="col-span-full text-center py-10 text-slate-500 text-sm">Chưa có dữ liệu</div>
+                    </div>
+                `;
+                contentContainer.appendChild(contentDiv);
+            });
+
+            loadGodsData();
+            loadOriginData();
+            loadTraitsData();
+            loadChampionsData();
+            loadItemsData();
+        }
+
+        // ---------------------------------------------------------
+        // HÀM FETCH VÀ RENDER DỮ LIỆU TỪ gods.json (ULTRA PREMIUM + NEON TAGS)
+        // ---------------------------------------------------------
+        async function loadGodsData() {
+            const gridContainer = document.getElementById('grid-gods');
+            if (!gridContainer) return;
+
+            try {
+                const response = await fetch('./asset/gods.json');
+                if (!response.ok) throw new Error('Không tìm thấy file gods.json');
+
+                const gods = await response.json();
+
+                gridContainer.innerHTML = '';
+                gridContainer.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5";
+
+                const createBadges = (rewardsArray) => {
+                    if (!rewardsArray || !Array.isArray(rewardsArray)) return '';
+                    return rewardsArray.map(item =>
+                        `<span class="inline-block px-2.5 py-1 text-[10.5px] font-medium bg-[#090d14] text-slate-300 rounded shadow-sm border border-white/5">
+                            ${item}
+                        </span>`
+                    ).join('');
+                };
+
+                gods.forEach(god => {
+                    // HTML cho Tags (Thiết kế Huy hiệu Neon nhỏ gọn xếp ngang)
+                    let tagsHTML = '';
+                    if (god.tags && god.tags.length > 0) {
+                        tagsHTML = god.tags.map(tag =>
+                            `<span class="px-2 py-[3px] rounded-md border border-premium-accent/50 bg-premium-accent/20 text-premium-accent text-[8.5px] font-black uppercase tracking-wider backdrop-blur-md shadow-[0_0_8px_rgba(56,189,248,0.25)]">
+                                ${tag}
+                            </span>`
+                        ).join('');
+                    }
+
+                    // HTML cho Box Chiến thuật
+                    let bestForHTML = '';
+                    if (god.best_for) {
+                        bestForHTML = `
+                            <div class="mb-1 p-3 rounded-xl bg-sky-900/20 border border-sky-500/20 flex items-start gap-2.5 shadow-inner">
+                                <i class="fa-solid fa-lightbulb text-sky-400 text-sm mt-0.5 drop-shadow-md"></i>
+                                <p class="text-[11px] text-sky-100/90 leading-relaxed"><span class="text-sky-300 font-bold uppercase text-[10px] tracking-wider mr-1">Chiến thuật:</span>${god.best_for}</p>
+                            </div>
+                        `;
+                    }
+
+                    const cardHTML = `
+                        <div class="bg-premium-card rounded-2xl overflow-hidden shadow-lg ring-1 ring-white/10 hover:ring-premium-gold/50 transition-all duration-300 flex flex-col group cursor-pointer" onclick="toggleCard(this)">
+
+                            <div class="relative h-[170px] w-full overflow-hidden shrink-0">
+                                <img src="${god.image_url}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="${god.name}" loading="lazy">
+
+                                <div class="absolute inset-0 bg-gradient-to-b from-black/80 via-transparent to-transparent h-16"></div>
+                                <div class="absolute bottom-0 w-full bg-gradient-to-t from-[#090d14] via-[#090d14]/90 to-transparent h-[120px]"></div>
+
+                                <div class="absolute bottom-0 w-full h-1/2 bg-gradient-to-t from-premium-gold/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+
+                                <div class="absolute top-3 left-3 z-10 pointer-events-none">
+                                    <span class="text-[9.5px] font-black text-premium-gold uppercase tracking-widest drop-shadow-md bg-black/60 px-2.5 py-1.5 rounded-lg border border-premium-gold/30 backdrop-blur-sm">
+                                        <i class="fa-solid fa-crown mr-1"></i> ${god.title}
+                                    </span>
+                                </div>
+
+                                <div class="absolute bottom-3 left-4 flex flex-col gap-1.5 z-10 pointer-events-none">
+                                    <h3 class="text-[28px] font-black text-white drop-shadow-lg tracking-tight group-hover:text-premium-gold transition-colors duration-300 leading-none">${god.name}</h3>
+                                    
+                                    <div class="flex flex-wrap gap-1.5 mt-0.5">
+                                        ${tagsHTML}
+                                    </div>
+                                </div>
+
+                                <div class="absolute bottom-3 right-4 z-10">
+                                    <div class="w-8 h-8 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shadow-lg">
+                                        <i class="fa-solid fa-chevron-down expand-chevron text-slate-300 text-sm drop-shadow"></i>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card-expandable-body bg-[#090d14]">
+                                <div class="p-4 flex flex-col gap-3">
+                                    
+                                    <p class="text-[11.5px] text-slate-300 italic bg-white/5 p-3 rounded-xl border border-white/5 leading-relaxed">"${god.description}"</p>
+
+                                    ${bestForHTML}
+
+                                    <div class="grid grid-cols-1 gap-2.5 mt-1">
+                                        <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase mb-2.5 flex items-center gap-1.5"><i class="fa-solid fa-play text-[8px] text-slate-500"></i> Vòng 2</div>
+                                            <div class="flex flex-wrap gap-1.5">${createBadges(god.rewards.stage_2)}</div>
+                                        </div>
+                                        <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase mb-2.5 flex items-center gap-1.5"><i class="fa-solid fa-play text-[8px] text-slate-500"></i> Vòng 3</div>
+                                            <div class="flex flex-wrap gap-1.5">${createBadges(god.rewards.stage_3)}</div>
+                                        </div>
+                                        <div class="bg-white/[0.03] p-3 rounded-xl border border-white/5">
+                                            <div class="text-[10px] font-bold text-slate-400 uppercase mb-2.5 flex items-center gap-1.5"><i class="fa-solid fa-play text-[8px] text-slate-500"></i> Vòng 4</div>
+                                            <div class="flex flex-wrap gap-1.5">${createBadges(god.rewards.stage_4)}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-2 p-3.5 bg-gradient-to-r from-premium-gold/15 to-transparent border-l-2 border-premium-gold rounded-r-xl group-hover:from-premium-gold/25 transition-colors">
+                                        <div class="text-[10px] font-black text-premium-gold uppercase mb-1.5 flex items-center gap-1.5 drop-shadow-md">
+                                            <i class="fa-solid fa-bolt text-yellow-400"></i> Thử thách 4-7
+                                        </div>
+                                        <div class="text-[12px] text-yellow-100/90 leading-relaxed font-medium">
+                                            ${god.rewards.reward_4_7}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    gridContainer.innerHTML += cardHTML;
+                });
+
+            } catch (error) {
+                gridContainer.innerHTML = `<div class="col-span-full text-center py-8 text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Gods: ${error.message}</div>`;
+            }
+        }
+
+        // ---------------------------------------------------------
+        // 1. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ origin.json
+        // ---------------------------------------------------------
+        async function loadOriginData() {
+            const gridContainer = document.getElementById('grid-origin-synergies');
+            if (!gridContainer) return;
+
+            try {
+                const response = await fetch('./asset/origin.json');
+                if (!response.ok) throw new Error('Không tìm thấy file origin.json');
+
+                const origins = await response.json();
+                gridContainer.innerHTML = '';
+
+                origins.forEach(origin => {
+
+                    // 1. Dựng HTML Tướng
+                    // Lọc bỏ tướng rác (trùng tên với Trait) nếu có
+                    const validChampions = origin.champions ? origin.champions.filter(champ => champ.name !== origin.traitName) : [];
+                    let championsHTML = '';
+
+                    if (validChampions.length > 0) {
+                        championsHTML = validChampions.map(champ => {
+                            // Vì dữ liệu mới không có trường cost, ta sẽ dùng viền mặc định
+                            return `
+                                <div class="flex flex-col items-center w-[46px] flex-shrink-0 cursor-pointer group" 
+                                     onclick="event.stopPropagation(); uiAlert('Thông tin Tướng', '<span class=\\'text-premium-gold font-bold\\'>${champ.name}</span>')">
+                                    <img src="${champ.icon}" alt="${champ.name}" 
+                                         class="w-10 h-10 rounded-[10px] border border-slate-600 object-cover bg-black shadow-sm group-hover:scale-105 group-hover:border-slate-400 transition-all">
+                                    <span class="text-[8.5px] text-slate-400 font-medium text-center w-full truncate mt-1 group-hover:text-white transition-colors">
+                                        ${champ.name}
+                                    </span>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
+                    // 2. Dựng HTML Mốc hiệu ứng (từ mảng stats)
+                    let statsHTML = '';
+                    if (origin.stats && origin.stats.length > 0) {
+                        statsHTML = origin.stats.map(stat => {
+                            return `
+                                <div class="flex items-start gap-2">
+                                    <span class="shrink-0 min-w-[20px] px-1 py-0.5 rounded bg-premium-gold/10 border border-premium-gold/30 text-premium-gold text-[9px] font-bold text-center mt-0.5">
+                                        ${stat.count}
+                                    </span>
+                                    <p class="text-[11px] text-slate-300 leading-snug">${stat.effect}</p>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
+                    // 3. Ghép Card Origin
+                    const cardHTML = `
+                        <div class="col-span-full md:col-span-1 lg:col-span-1 bg-premium-card border border-premium-border rounded-xl overflow-hidden flex flex-col h-full shadow-lg transition-colors hover:border-slate-600 cursor-pointer"
+                             onclick="toggleCard(this)">
+                            
+                            <div class="p-3.5 flex items-center gap-3 border-b border-white/5 bg-gradient-to-r from-white/[0.03] to-transparent">
+                                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                                    <div class="w-full h-full bg-premium-gold" 
+                                         style="-webkit-mask-image: url('${origin.traitIcon}'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-image: url('${origin.traitIcon}'); mask-size: contain; mask-repeat: no-repeat; mask-position: center;">
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-base font-bold text-white leading-tight">${origin.traitName}</h3>
+                                    <p class="text-[9px] font-semibold text-premium-accent uppercase tracking-wider">Origin</p>
+                                </div>
+                                <i class="fa-solid fa-chevron-down expand-chevron text-slate-600 text-sm p-1"></i>
+                            </div>
+                            
+                            <div class="card-expandable-body p-3.5 flex flex-col gap-3">
+                                ${origin.description ? `<p class="text-[11px] text-slate-400 italic leading-relaxed">"${origin.description}"</p>` : ''}
+                                ${statsHTML ? `<div class="flex flex-col gap-2 pt-1">${statsHTML}</div>` : ''}
+                            </div>
+
+                            <div class="p-3 bg-black/40 border-t border-white/5" onclick="event.stopPropagation();">
+                                <div class="flex flex-wrap items-start justify-between gap-y-3">
+                                    ${championsHTML}
+                                    <div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    gridContainer.innerHTML += cardHTML;
+                });
+
+            } catch (error) {
+                gridContainer.innerHTML = `<div class="col-span-full text-center py-8 text-red-400 text-sm">Lỗi tải dữ liệu Origin. ${error.message}</div>`;
+            }
+        }
+        // ---------------------------------------------------------
+        // 2. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ traits.json
+        // ---------------------------------------------------------
+        async function loadTraitsData() {
+            const gridContainer = document.getElementById('grid-traits');
+            if (!gridContainer) return;
+
+            try {
+                const response = await fetch('./asset/traits.json');
+                if (!response.ok) throw new Error('Không tìm thấy file traits.json');
+
+                const traits = await response.json();
+                gridContainer.innerHTML = '';
+
+                traits.forEach(trait => {
+                    // Dựng HTML Tướng
+                    const validChampions = trait.champions ? trait.champions.filter(champ => champ.name !== trait.traitName) : [];
+                    let championsHTML = '';
+                    if (validChampions.length > 0) {
+                        championsHTML = validChampions.map(champ => {
+                            return `
+                                <div class="flex flex-col items-center w-[46px] flex-shrink-0 cursor-pointer group" 
+                                     onclick="event.stopPropagation(); uiAlert('Thông tin Tướng', '<span class=\\'text-premium-gold font-bold\\'>${champ.name}</span>')">
+                                    <img src="${champ.icon}" alt="${champ.name}" 
+                                         class="w-10 h-10 rounded-[10px] border border-slate-600 object-cover bg-black shadow-sm group-hover:scale-105 transition-transform">
+                                    <span class="text-[8.5px] text-slate-400 font-medium text-center w-full truncate mt-1 group-hover:text-white transition-colors">
+                                        ${champ.name}
+                                    </span>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
+                    // Dựng HTML Mốc hiệu ứng
+                    let statsHTML = '';
+                    if (trait.stats && trait.stats.length > 0) {
+                        statsHTML = trait.stats.map(stat => {
+                            return `
+                                <div class="flex items-start gap-2">
+                                    <span class="shrink-0 min-w-[20px] px-1 py-0.5 rounded bg-premium-gold/10 border border-premium-gold/30 text-premium-gold text-[9px] font-bold text-center mt-0.5">
+                                        ${stat.count}
+                                    </span>
+                                    <p class="text-[11px] text-slate-300 leading-snug">${stat.effect}</p>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
+                    // Ghép Card Traits (Thêm onclick và Chevron)
+                    const cardHTML = `
+                        <div class="col-span-full md:col-span-1 lg:col-span-1 bg-premium-card border border-premium-border rounded-xl overflow-hidden flex flex-col h-full shadow-lg transition-colors hover:border-slate-600 cursor-pointer"
+                             onclick="toggleCard(this)">
+                            
+                            <div class="p-3.5 flex items-center gap-3 border-b border-white/5 bg-gradient-to-r from-white/[0.03] to-transparent">
+                                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                                    <div class="w-full h-full bg-premium-gold" 
+                                         style="-webkit-mask-image: url('${trait.traitIcon}'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-image: url('${trait.traitIcon}'); mask-size: contain; mask-repeat: no-repeat; mask-position: center;">
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-base font-bold text-white leading-tight">${trait.traitName}</h3>
+                                    <p class="text-[9px] font-semibold text-premium-accent uppercase tracking-wider">Tộc Hệ</p>
+                                </div>
+                                <i class="fa-solid fa-chevron-down expand-chevron text-slate-600 text-sm p-1"></i>
+                            </div>
+                            
+                            <div class="card-expandable-body p-3.5 flex flex-col gap-3">
+                                ${trait.description ? `<p class="text-[11px] text-slate-400 italic leading-relaxed">"${trait.description}"</p>` : ''}
+                                ${statsHTML ? `<div class="flex flex-col gap-2 pt-1">${statsHTML}</div>` : ''}
+                            </div>
+
+                            <div class="p-3 bg-black/40 border-t border-white/5" onclick="event.stopPropagation();">
+                                <div class="flex flex-wrap items-start justify-between gap-y-3">
+                                    ${championsHTML}
+                                    <div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    gridContainer.innerHTML += cardHTML;
+                });
+
+            } catch (error) {
+                gridContainer.innerHTML = `<div class="col-span-full text-center py-8 text-red-400 text-sm">Lỗi tải dữ liệu Tộc hệ. ${error.message}</div>`;
+            }
+        }
+
+        // ---------------------------------------------------------
+        // 4. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ champions.json (ULTRA PREMIUM)
+        // ---------------------------------------------------------
+        async function loadChampionsData() {
+            const gridContainer = document.getElementById('grid-champions');
+            if (!gridContainer) return;
+
+            try {
+                const response = await fetch('./asset/champions.json');
+                if (!response.ok) throw new Error('Không tìm thấy file champions.json');
+
+                const champions = await response.json();
+
+                // --- STATE QUẢN LÝ BỘ LỌC ---
+                let activeCosts = new Set();
+                let activeTraits = new Set();
+                let searchQuery = '';
+
+                const allTraits = [...new Set(champions.flatMap(c => c.traits.map(t => t.name)))].sort();
+
+                // --- HÀM RENDER UI BỘ LỌC VÀ CONTAINER ---
+                gridContainer.className = "flex flex-col gap-6";
+                gridContainer.innerHTML = `
+                    <div class="bg-premium-card/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col gap-3 sticky top-[8.5rem] z-40">
+                        
+                        <div class="relative group">
+                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-premium-gold transition-colors"></i>
+                            <input type="text" id="search-champ" placeholder="Tìm kiếm tướng (VD: Aatrox, Jinx)..." 
+                                class="w-full bg-[#090d14]/80 border border-white/5 text-white text-sm rounded-xl pl-11 pr-4 py-3 focus:outline-none focus:ring-1 focus:ring-premium-gold/50 transition-all shadow-inner placeholder:text-slate-600">
+                        </div>
+
+                        <div class="flex flex-col md:flex-row gap-3">
+                            <div class="flex items-center gap-1.5 shrink-0 bg-[#090d14]/60 p-1.5 rounded-xl border border-white/5">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase ml-2 mr-1 tracking-wider">Giá:</span>
+                                ${[1, 2, 3, 4, 5].map(cost => `
+                                    <button class="filter-cost-btn w-8 h-8 rounded-lg bg-white/5 border border-white/5 text-xs font-bold text-slate-400 hover:bg-white/10 hover:text-white transition-all duration-300" data-cost="${cost}">
+                                        ${cost}
+                                    </button>
+                                `).join('')}
+                            </div>
+
+                            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-1 bg-[#090d14]/60 p-1.5 rounded-xl border border-white/5 relative">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase ml-2 mr-1 shrink-0 tracking-wider">Hệ:</span>
+                                ${allTraits.map(trait => `
+                                    <button class="filter-trait-btn shrink-0 px-3.5 py-1.5 rounded-lg bg-white/5 border border-white/5 text-[11px] font-medium text-slate-400 hover:bg-white/10 hover:text-white transition-all duration-300" data-trait="${trait}">
+                                        ${trait}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="champ-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                        </div>
+                `;
+
+                // --- HÀM RENDER DANH SÁCH TƯỚNG ---
+                const renderChampions = () => {
+                    const listContainer = document.getElementById('champ-list');
+
+                    const filteredChamps = champions.filter(champ => {
+                        const matchSearch = champ.name.toLowerCase().includes(searchQuery.toLowerCase());
+                        const matchCost = activeCosts.size === 0 || activeCosts.has(champ.cost);
+                        const matchTraits = activeTraits.size === 0 || [...activeTraits].every(selectedTrait =>
+                            champ.traits.some(t => t.name === selectedTrait)
+                        );
+                        return matchSearch && matchCost && matchTraits;
+                    });
+
+                    if (filteredChamps.length === 0) {
+                        listContainer.innerHTML = `
+                            <div class="col-span-full py-16 flex flex-col items-center justify-center text-slate-500">
+                                <i class="fa-solid fa-ghost text-4xl mb-3 opacity-20"></i>
+                                <p class="text-sm font-medium">Không tìm thấy tướng phù hợp với bộ lọc.</p>
+                            </div>`;
+                        return;
+                    }
+
+                    listContainer.innerHTML = filteredChamps.map(champ => {
+
+                        // Cấu hình Theme (Màu sắc, Viền sáng, Đổ bóng) dựa theo Giá tiền
+                        let theme = {
+                            ring: 'ring-white/20',
+                            shadow: 'group-hover:shadow-white/20',
+                            text: 'text-slate-200',
+                            bg: 'bg-slate-300',
+                            gradient: 'from-slate-500/20'
+                        };
+                        if (champ.cost === 2) theme = { ring: 'ring-emerald-500/40', shadow: 'group-hover:shadow-emerald-500/30', text: 'text-emerald-400', bg: 'bg-emerald-500', gradient: 'from-emerald-500/20' };
+                        if (champ.cost === 3) theme = { ring: 'ring-blue-500/40', shadow: 'group-hover:shadow-blue-500/30', text: 'text-blue-400', bg: 'bg-blue-500', gradient: 'from-blue-500/20' };
+                        if (champ.cost === 4) theme = { ring: 'ring-purple-500/40', shadow: 'group-hover:shadow-purple-500/30', text: 'text-purple-400', bg: 'bg-purple-500', gradient: 'from-purple-500/20' };
+                        if (champ.cost === 5) theme = { ring: 'ring-yellow-500/40', shadow: 'group-hover:shadow-yellow-500/30', text: 'text-yellow-400', bg: 'bg-yellow-500', gradient: 'from-yellow-500/20' };
+
+                        // Chấm LED hiển thị Tầm đánh
+                        const rangeDots = Array.from({ length: 5 }).map((_, i) => {
+                            if (i < champ.range) {
+                                return `<div class="w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_4px_rgba(255,255,255,0.8)]"></div>`;
+                            } else {
+                                return `<div class="w-1.5 h-1.5 rounded-full bg-white/10"></div>`;
+                            }
+                        }).join('');
+
+                        // Danh sách Tộc Hệ gọn gàng
+                        const traitList = champ.traits.map(t => `
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-1 h-3 rounded-full ${theme.bg} shadow-[0_0_5px_currentColor]"></div>
+                                <span class="text-[11px] font-medium text-slate-200 drop-shadow-md">${t.name}</span>
+                            </div>
+                        `).join('');
+
+                        return `
+                            <div class="relative h-[180px] rounded-2xl overflow-hidden bg-premium-card ring-1 ${theme.ring} shadow-lg transition-all duration-500 hover:-translate-y-1.5 group cursor-pointer ${theme.shadow}">
+                                
+                                <img src="${champ.image}" class="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110" alt="${champ.name}" loading="lazy">
+                                
+                                <div class="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-transparent h-20"></div>
+                                <div class="absolute bottom-0 w-full bg-gradient-to-t from-[#090d14] via-[#090d14]/80 to-transparent h-[110px]"></div>
+                                
+                                <div class="absolute bottom-0 w-full h-1/2 bg-gradient-to-t ${theme.gradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+
+                                <div class="absolute top-3 right-3 flex flex-col items-end gap-1.5 z-10 pointer-events-none">
+                                    <div class="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg px-2.5 py-1.5 flex items-center gap-2 shadow-sm">
+                                        <i class="fa-solid fa-crosshairs text-slate-400 text-[10px]"></i>
+                                        <div class="flex gap-[3px]">
+                                            ${rangeDots}
+                                        </div>
+                                    </div>
+                                    <div class="bg-black/40 backdrop-blur-md border border-white/10 rounded-lg px-2.5 py-1 shadow-sm">
+                                        <span class="text-[10px] font-semibold text-slate-300 tracking-wide">${champ.role}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="absolute bottom-3 left-4 right-3 flex justify-between items-end z-10 pointer-events-none">
+                                    
+                                    <div class="flex flex-col gap-1.5">
+                                        <h3 class="text-2xl font-black text-white drop-shadow-lg tracking-tight group-hover:text-premium-gold transition-colors duration-300 leading-none">${champ.name}</h3>
+                                        <div class="flex flex-col gap-1 mt-1">
+                                            ${traitList}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center justify-center w-9 h-9 rounded-full bg-[#090d14]/80 backdrop-blur-md border border-white/10 ring-1 ${theme.ring} shadow-lg group-hover:rotate-12 transition-transform duration-500">
+                                        <span class="text-base font-black ${theme.text} drop-shadow-md">${champ.cost}</span>
+                                    </div>
+                                </div>
+
+                                <div class="absolute inset-0 z-20" onclick="uiAlert('${champ.name}', 'Hệ thống hiển thị chi tiết tướng đang được phát triển.')"></div>
+                            </div>
+                        `;
+                    }).join('');
+                };
+
+                // --- GẮN SỰ KIỆN LỌC ---
+                document.getElementById('search-champ').addEventListener('input', (e) => {
+                    searchQuery = e.target.value;
+                    renderChampions();
+                });
+
+                // Logic nút Giá
+                document.querySelectorAll('.filter-cost-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const cost = parseInt(e.currentTarget.dataset.cost);
+                        const isSelected = activeCosts.has(cost);
+
+                        if (isSelected) {
+                            activeCosts.delete(cost);
+                            e.currentTarget.classList.remove('bg-premium-gold', 'text-black', 'border-premium-gold', 'shadow-[0_0_10px_rgba(212,175,55,0.3)]');
+                            e.currentTarget.classList.add('bg-white/5', 'text-slate-400', 'border-white/5');
+                        } else {
+                            activeCosts.add(cost);
+                            e.currentTarget.classList.add('bg-premium-gold', 'text-black', 'border-premium-gold', 'shadow-[0_0_10px_rgba(212,175,55,0.3)]');
+                            e.currentTarget.classList.remove('bg-white/5', 'text-slate-400', 'border-white/5');
+                        }
+                        renderChampions();
+                    });
+                });
+
+                // Logic nút Hệ
+                document.querySelectorAll('.filter-trait-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const trait = e.currentTarget.dataset.trait;
+                        const isSelected = activeTraits.has(trait);
+
+                        if (isSelected) {
+                            activeTraits.delete(trait);
+                            e.currentTarget.classList.remove('bg-premium-accent', 'text-black', 'border-premium-accent', 'shadow-[0_0_10px_rgba(56,189,248,0.3)]');
+                            e.currentTarget.classList.add('bg-white/5', 'text-slate-400', 'border-white/5');
+                        } else {
+                            activeTraits.add(trait);
+                            e.currentTarget.classList.add('bg-premium-accent', 'text-black', 'border-premium-accent', 'shadow-[0_0_10px_rgba(56,189,248,0.3)]');
+                            e.currentTarget.classList.remove('bg-white/5', 'text-slate-400', 'border-white/5');
+                        }
+                        renderChampions();
+                    });
+                });
+
+                renderChampions();
+
+            } catch (error) {
+                gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Tướng: ${error.message}</div>`;
+            }
+        }
+
+// ---------------------------------------------------------
+        // 5. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ items.json (ULTRA PREMIUM)
+        // ---------------------------------------------------------
+        async function loadItemsData() {
+            const gridContainer = document.getElementById('grid-items'); 
+            if (!gridContainer) return;
+
+            try {
+                const response = await fetch('./asset/items.json'); 
+                if (!response.ok) throw new Error('Không tìm thấy file items.json');
+                
+                const items = await response.json();
+                
+                // --- STATE BỘ LỌC ---
+                let searchQuery = '';
+                let activeCategory = 'all'; // all, emblem (Ấn), radiant (Ánh sáng)
+
+                // --- HÀM RENDER UI BỘ LỌC ---
+                gridContainer.className = "flex flex-col gap-6";
+                gridContainer.innerHTML = `
+                    <div class="bg-premium-card/80 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl flex flex-col md:flex-row gap-4 sticky top-14 z-40">
+                        
+                        <div class="relative flex-1 group">
+                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-premium-gold transition-colors"></i>
+                            <input type="text" id="search-item" placeholder="Tìm kiếm trang bị..." 
+                                class="w-full bg-[#090d14]/80 border border-white/5 text-white text-sm rounded-xl pl-11 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-premium-gold/50 transition-all shadow-inner placeholder:text-slate-600">
+                        </div>
+
+                        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+                            <button class="filter-item-btn px-4 py-2.5 rounded-xl bg-premium-gold text-black font-bold text-xs shadow-[0_0_10px_rgba(212,175,55,0.3)] transition-all" data-cat="all">Tất cả</button>
+                            <button class="filter-item-btn px-4 py-2.5 rounded-xl bg-white/5 border border-white/5 text-slate-400 font-bold text-xs hover:bg-white/10 hover:text-white transition-all" data-cat="emblem">Ấn Tộc Hệ</button>
+                            <button class="filter-item-btn px-4 py-2.5 rounded-xl bg-white/5 border border-white/5 text-slate-400 font-bold text-xs hover:bg-white/10 hover:text-white transition-all" data-cat="radiant">Ánh Sáng</button>
+                        </div>
+                    </div>
+
+                    <div id="item-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        </div>
+                `;
+
+                // --- HÀM PHÂN TÍCH CHUỖI THUỘC TÍNH (ATTR PARSER) ---
+                const parseAttributes = (attrString) => {
+                    if (!attrString) return '';
+                    const regex = /\[(.*?)\]\s*([^\s\[]+)/g;
+                    let match;
+                    let badges = '';
+                    while ((match = regex.exec(attrString)) !== null) {
+                        let statName = match[1];
+                        let statValue = match[2];
+                        let icon = 'fa-star';
+                        let color = 'text-slate-300';
+                        let bgColor = 'bg-slate-800/80';
+                        
+                        // Phân loại icon và màu sắc theo chỉ số
+                        if (statName.includes('Sát thương vật lý')) { icon = 'fa-khanda'; color = 'text-orange-400'; bgColor = 'bg-orange-900/20'; }
+                        else if (statName.includes('Sức mạnh phép thuật')) { icon = 'fa-wand-magic-sparkles'; color = 'text-blue-400'; bgColor = 'bg-blue-900/20'; }
+                        else if (statName.includes('Tốc độ đánh')) { icon = 'fa-bolt'; color = 'text-yellow-400'; bgColor = 'bg-yellow-900/20'; }
+                        else if (statName.includes('Giáp')) { icon = 'fa-shield'; color = 'text-slate-300'; bgColor = 'bg-slate-700/50'; }
+                        else if (statName.includes('Kháng phép')) { icon = 'fa-shield-halved'; color = 'text-teal-400'; bgColor = 'bg-teal-900/20'; }
+                        else if (statName.includes('Máu')) { icon = 'fa-heart'; color = 'text-red-400'; bgColor = 'bg-red-900/20'; }
+                        else if (statName.includes('Chí mạng')) { icon = 'fa-crosshairs'; color = 'text-rose-400'; bgColor = 'bg-rose-900/20'; }
+                        else if (statName.includes('Chỉ số khác')) { icon = 'fa-plus'; color = 'text-emerald-400'; bgColor = 'bg-emerald-900/20'; }
+                        
+                        badges += `<span class="inline-flex items-center gap-1 ${bgColor} border border-white/5 rounded px-1.5 py-0.5 text-[9.5px] font-bold ${color} whitespace-nowrap shadow-sm"><i class="fa-solid ${icon}"></i> ${statValue}</span>`;
+                    }
+                    return badges;
+                };
+
+                // --- HÀM RENDER DANH SÁCH ---
+                const renderItems = () => {
+                    const listContainer = document.getElementById('item-list');
+                    
+                    const filteredItems = items.filter(item => {
+                        const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                            (item.info && item.info.toLowerCase().includes(searchQuery.toLowerCase()));
+                        
+                        let matchCat = true;
+                        if (activeCategory === 'emblem') matchCat = item.name.toLowerCase().includes('ấn') || item.name.toLowerCase().includes('huy hiệu');
+                        if (activeCategory === 'radiant') matchCat = item.name.toLowerCase().includes('ánh sáng');
+                        
+                        return matchSearch && matchCat;
+                    });
+
+                    if (filteredItems.length === 0) {
+                        listContainer.innerHTML = `<div class="col-span-full py-16 text-center text-slate-500 text-sm font-medium">Không tìm thấy trang bị phù hợp.</div>`;
+                        return;
+                    }
+
+                    listContainer.innerHTML = filteredItems.map(item => {
+                        const badgesHTML = parseAttributes(item.attr);
+                        // Thay thế ký tự \n thành thẻ <br> để xuống dòng chính xác
+                        const formattedInfo = item.info ? item.info.replace(/\n/g, '<br>') : '';
+                        
+                        // Kiểm tra xem có phải đồ Ánh Sáng không để tạo viền sáng chói
+                        const isRadiant = item.name.toLowerCase().includes('ánh sáng');
+                        const borderClass = isRadiant ? 'border-yellow-400/50 shadow-[0_0_15px_rgba(250,204,21,0.15)] hover:border-yellow-400' : 'border-white/10 hover:border-premium-gold/50';
+                        const titleColor = isRadiant ? 'text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]' : 'text-white';
+
+                        return `
+                            <div class="bg-[#090d14]/60 backdrop-blur-sm border ${borderClass} rounded-2xl p-3.5 flex gap-4 transition-all duration-300 hover:-translate-y-1 group">
+                                <div class="shrink-0 relative">
+                                    <div class="w-14 h-14 rounded-xl border border-white/10 bg-black overflow-hidden shadow-lg group-hover:scale-105 transition-transform duration-300">
+                                        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover" loading="lazy">
+                                    </div>
+                                    ${isRadiant ? `<div class="absolute -inset-2 bg-yellow-400/20 blur-xl rounded-full z-[-1] opacity-0 group-hover:opacity-100 transition-opacity"></div>` : ''}
+                                </div>
+                                
+                                <div class="flex-1 min-w-0 flex flex-col">
+                                    <h3 class="text-sm font-black ${titleColor} leading-tight mb-1.5 truncate">${item.name}</h3>
+                                    
+                                    ${badgesHTML ? `<div class="flex flex-wrap gap-1.5 mb-2">${badgesHTML}</div>` : ''}
+                                    
+                                    <div class="text-[11px] text-slate-400 leading-relaxed font-medium mt-auto line-clamp-3 group-hover:line-clamp-none transition-all duration-300">
+                                        ${formattedInfo}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                };
+
+                // --- GẮN SỰ KIỆN ---
+                document.getElementById('search-item').addEventListener('input', (e) => {
+                    searchQuery = e.target.value;
+                    renderItems();
+                });
+
+                document.querySelectorAll('.filter-item-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        // Đổi state
+                        activeCategory = e.currentTarget.dataset.cat;
+                        
+                        // Reset tất cả nút về xám
+                        document.querySelectorAll('.filter-item-btn').forEach(b => {
+                            b.classList.remove('bg-premium-gold', 'text-black', 'border-transparent', 'shadow-[0_0_10px_rgba(212,175,55,0.3)]');
+                            b.classList.add('bg-white/5', 'text-slate-400', 'border-white/5');
+                        });
+                        
+                        // Nổi bật nút được chọn
+                        e.currentTarget.classList.remove('bg-white/5', 'text-slate-400', 'border-white/5');
+                        e.currentTarget.classList.add('bg-premium-gold', 'text-black', 'border-transparent', 'shadow-[0_0_10px_rgba(212,175,55,0.3)]');
+                        
+                        renderItems();
+                    });
+                });
+
+                renderItems();
+
+            } catch (error) {
+                gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Trang Bị: ${error.message}</div>`;
+            }
+        }
+
+        
+        // Hàm xử lý đóng/mở Card khi được nhấn
+        function toggleCard(cardElement) {
+            // Chỉ đơn giản là toggle class 'is-expanded' trên thẻ Card được nhấn
+            // CSS sẽ tự xử lý phần còn lại (xoay icon, trượt nội dung)
+            cardElement.classList.toggle('is-expanded');
+        }
+        // Logic Chuyển Tab (Cập nhật cho kiểu dáng Pill)
+        function switchTab(tabId) {
+            currentTabId = tabId;
+            Tabs.forEach(tab => {
+                const btn = document.getElementById(`btn-${tab.id}`);
+                const content = document.getElementById(`content-${tab.id}`);
+
+                if (tab.id === tabId) {
+                    // Set active classes
+                    btn.className = `shrink-0 px-4 py-2 text-sm font-semibold rounded-full transition-colors flex items-center gap-1.5 border bg-premium-gold text-black border-premium-gold shadow-[0_0_10px_rgba(212,175,55,0.3)]`;
+                    content.classList.add('active');
+
+                    // Cuộn menu sao cho tab active ở giữa màn hình (rất tiện cho mobile)
+                    btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                } else {
+                    // Set inactive classes
+                    btn.className = `shrink-0 px-4 py-2 text-sm font-semibold rounded-full transition-colors flex items-center gap-1.5 border bg-premium-card text-slate-400 border-premium-border hover:bg-slate-800 hover:text-slate-200`;
+                    content.classList.remove('active');
+                }
+            });
+        }
+
+        // Modal Logic
+        const modalEl = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMsg = document.getElementById('modal-message');
+        const modalActions = document.getElementById('modal-actions');
+
+        function closeModal() { modalEl.classList.remove('show'); }
+
+        function uiAlert(title, message, type = 'info') {
+            const icon = type === 'error' ? '<i class="fa-solid fa-circle-exclamation text-red-500"></i>' : '<i class="fa-solid fa-circle-info text-premium-accent"></i>';
+            modalTitle.innerHTML = `${icon} ${title}`;
+            modalMsg.innerHTML = message;
+            modalActions.innerHTML = `<button onclick="closeModal()" class="px-5 py-2 bg-premium-card border border-premium-border hover:bg-slate-800 text-white text-sm font-semibold rounded-xl transition-colors">Đóng</button>`;
+            modalEl.classList.add('show');
+        }
+
+        function uiConfirm(title, message, onConfirm) {
+            modalTitle.innerHTML = `<i class="fa-solid fa-circle-question text-premium-gold"></i> ${title}`;
+            modalMsg.innerHTML = message;
+            modalActions.innerHTML = '';
+
+            const btnCancel = document.createElement('button');
+            btnCancel.className = "px-4 py-2 bg-transparent text-slate-400 hover:text-white text-sm font-medium rounded-xl transition-colors";
+            btnCancel.innerText = "Huỷ";
+            btnCancel.onclick = closeModal;
+
+            const btnAccept = document.createElement('button');
+            btnAccept.className = "px-4 py-2 bg-premium-gold text-black hover:bg-yellow-400 text-sm font-bold rounded-xl transition-colors";
+            btnAccept.innerText = "Xác nhận";
+            btnAccept.onclick = () => { closeModal(); if (onConfirm) onConfirm(); };
+
+            modalActions.appendChild(btnCancel);
+            modalActions.appendChild(btnAccept);
+            modalEl.classList.add('show');
+        }
+
+        function testConfirm() {
+            uiConfirm('Cài đặt', 'Bạn có muốn làm mới dữ liệu trang Wiki không?', () => {
+                setTimeout(() => uiAlert('Thành công', 'Dữ liệu đã được làm mới!'), 300);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initWiki);
+    </script>
+</body>
+
+</html>

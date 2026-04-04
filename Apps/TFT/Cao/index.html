@@ -1,0 +1,263 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataTFT Scraper Pro - Multi-Proxy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1f2937; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        .proxy-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-4 md:p-8">
+
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-400">DataTFT Scraper <span class="text-xs bg-blue-900 text-blue-200 px-2 py-1 rounded">v2.0</span></h1>
+                <p class="text-gray-400 text-sm mt-1">Hỗ trợ đa Proxy dự phòng để tránh lỗi CORS và chặn IP.</p>
+            </div>
+            <div class="flex gap-3">
+                <button id="btnFetch" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-all flex items-center gap-2">
+                    <svg id="iconLoading" class="hidden animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                    <span>Bắt đầu quét</span>
+                </button>
+                <button id="btnDownload" disabled class="bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-semibold transition-all">
+                    Tải JSON
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Bảng trạng thái -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <span class="w-2 h-2 bg-blue-500 rounded-full"></span> Nhật ký hệ thống
+                    </h2>
+                    <ul id="logList" class="text-sm space-y-2 text-gray-400 h-48 overflow-y-auto custom-scrollbar pr-2">
+                        <li>• Sẵn sàng cào dữ liệu...</li>
+                    </ul>
+                </div>
+
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                    <h2 class="text-lg font-semibold mb-2">Thống kê</h2>
+                    <div class="flex items-end justify-between">
+                        <div>
+                            <p class="text-3xl font-bold text-blue-400" id="countText">0</p>
+                            <p class="text-gray-500 text-xs uppercase tracking-wider">Vật phẩm tìm thấy</p>
+                        </div>
+                        <div id="proxyUsed" class="hidden text-right">
+                            <span class="proxy-tag bg-gray-700 text-gray-300" id="proxyName">None</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kết quả Preview -->
+            <div class="lg:col-span-2">
+                <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden flex flex-col h-[520px]">
+                    <div class="bg-gray-700 px-4 py-2 text-xs font-mono text-gray-300 flex justify-between items-center">
+                        <span>DATA_OUTPUT.JSON</span>
+                        <div class="flex gap-4">
+                            <span id="retryText" class="text-yellow-500 hidden font-bold">RETRYING...</span>
+                            <span id="timerText" class="bg-gray-800 px-2 py-0.5 rounded">0ms</span>
+                        </div>
+                    </div>
+                    <pre id="jsonOutput" class="p-4 text-sm font-mono text-blue-300 overflow-auto flex-grow custom-scrollbar bg-[#1e1e1e] line-clamp-none whitespace-pre">// Dữ liệu sẽ hiển thị sau khi quá trình quét hoàn tất...</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const btnFetch = document.getElementById('btnFetch');
+        const btnDownload = document.getElementById('btnDownload');
+        const logList = document.getElementById('logList');
+        const jsonOutput = document.getElementById('jsonOutput');
+        const countText = document.getElementById('countText');
+        const iconLoading = document.getElementById('iconLoading');
+        const timerText = document.getElementById('timerText');
+        const proxyName = document.getElementById('proxyName');
+        const proxyUsed = document.getElementById('proxyUsed');
+        const retryText = document.getElementById('retryText');
+
+        let finalData = [];
+
+        // Danh sách các Proxy hỗ trợ CORS
+        const PROXIES = [
+            { 
+                name: 'AllOrigins', 
+                getUrl: (target) => `https://api.allorigins.win/get?url=${encodeURIComponent(target)}&ts=${Date.now()}`,
+                parse: (res) => res.contents // AllOrigins đóng gói HTML trong field 'contents'
+            },
+            { 
+                name: 'Corsproxy.io', 
+                getUrl: (target) => `https://corsproxy.io/?${encodeURIComponent(target)}`,
+                parse: (res) => res // Trả về text/html trực tiếp
+            },
+            { 
+                name: 'Codetabs', 
+                getUrl: (target) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(target)}`,
+                parse: (res) => res // Trả về text/html trực tiếp
+            }
+        ];
+
+        function addLog(msg, type = 'info') {
+            const li = document.createElement('li');
+            let colorClass = "text-gray-400";
+            if (type === 'error') colorClass = "text-red-400";
+            if (type === 'success') colorClass = "text-green-400";
+            if (type === 'warning') colorClass = "text-yellow-400";
+
+            li.className = colorClass;
+            li.innerHTML = `<span class="opacity-50 text-[10px] mr-1">${new Date().toLocaleTimeString()}</span> • ${msg}`;
+            logList.appendChild(li);
+            logList.scrollTop = logList.scrollHeight;
+        }
+
+        async function attemptFetch(proxyIndex, targetUrl) {
+            const proxy = PROXIES[proxyIndex];
+            addLog(`Đang thử Proxy: <b class="text-blue-300">${proxy.name}</b>...`, 'warning');
+            
+            console.log(PROXIES);
+            
+            try {
+                const response = await fetch(proxy.getUrl(targetUrl));
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                // Một số proxy trả về JSON (AllOrigins), một số trả về text trực tiếp
+                let html;
+                if (proxy.name === 'AllOrigins') {
+                    const json = await response.json();
+                    html = proxy.parse(json);
+                } else {
+                    html = await response.text();
+                }
+
+                if (!html || html.length < 500) throw new Error("Dữ liệu nhận được quá ngắn hoặc rỗng.");
+                
+                proxyName.innerText = proxy.name;
+                proxyUsed.classList.remove('hidden');
+                return html;
+            } catch (err) {
+                addLog(`Proxy ${proxy.name} thất bại: ${err.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function scrapeData() {
+            const startTime = performance.now();
+            const target = 'https://www.datatft.com/database?lang=vn';
+            
+            // Reset UI
+            finalData = [];
+            jsonOutput.innerText = "// Đang bắt đầu quy trình quét...";
+            btnFetch.disabled = true;
+            iconLoading.classList.remove('hidden');
+            retryText.classList.add('hidden');
+            btnDownload.disabled = true;
+            countText.innerText = "0";
+
+            let htmlContent = null;
+
+            // Vòng lặp thử từng Proxy
+            for (let i = 0; i < PROXIES.length; i++) {
+                if (i > 0) {
+                    retryText.classList.remove('hidden');
+                    // Nghỉ 1s trước khi thử proxy tiếp theo
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+                
+                htmlContent = await attemptFetch(i, target);
+                if (htmlContent) break; // Nếu lấy được HTML thì thoát vòng lặp
+            }
+
+            if (!htmlContent) {
+                addLog("Tất cả các Proxy đều thất bại. Vui lòng thử lại sau.", "error");
+                jsonOutput.innerText = "// LỖI: Không thể kết nối với server qua bất kỳ Proxy nào.";
+                iconLoading.classList.add('hidden');
+                btnFetch.disabled = false;
+                retryText.classList.add('hidden');
+                return;
+            }
+
+            // Xử lý dữ liệu
+            try {
+                addLog("Đang phân tích cấu trúc dữ liệu...");
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+
+                // Ưu tiên 1: __NEXT_DATA__
+                const nextData = doc.getElementById('__NEXT_DATA__');
+                if (nextData) {
+                    addLog("Phát hiện JSON ẩn (__NEXT_DATA__). Đang giải mã...", "success");
+                    const obj = JSON.parse(nextData.textContent);
+                    const items = obj.props?.pageProps?.items || obj.props?.pageProps?.initialState?.database?.items || [];
+                    
+                    if (items.length > 0) {
+                        finalData = items.map(i => ({
+                            name: i.name || "N/A",
+                            image: i.imageUrl || (i.id ? `https://www.datatft.com/assets/items/${i.id}.png` : ""),
+                            info: i.description || i.desc || ""
+                        }));
+                    }
+                }
+
+                // Ưu tiên 2: DOM Scrapping nếu bước trên hụt
+                if (finalData.length === 0) {
+                    addLog("Không tìm thấy JSON thô. Đang quét cây DOM...", "warning");
+                    const cards = doc.querySelectorAll('[class*="Item_container"], .item-card, .database-item');
+                    cards.forEach(c => {
+                        const name = c.querySelector('h3, [class*="name"]')?.innerText.trim() || "N/A";
+                        let img = c.querySelector('img')?.getAttribute('src') || "";
+                        if (img && !img.startsWith('http')) img = "https://www.datatft.com" + (img.startsWith('/') ? '' : '/') + img;
+                        const info = c.querySelector('[class*="desc"], .item-description')?.innerText.trim() || "";
+                        if (name !== "N/A") finalData.push({ name, image: img, info });
+                    });
+                }
+
+                // Hiển thị kết quả
+                if (finalData.length > 0) {
+                    jsonOutput.innerText = JSON.stringify(finalData, null, 4);
+                    countText.innerText = finalData.length;
+                    btnDownload.disabled = false;
+                    addLog(`Hoàn tất! Thu thập được ${finalData.length} vật phẩm.`, "success");
+                } else {
+                    addLog("Phân tích thành công nhưng không tìm thấy dữ liệu vật phẩm nào.", "error");
+                }
+
+            } catch (err) {
+                addLog(`Lỗi xử lý dữ liệu: ${err.message}`, "error");
+            } finally {
+                iconLoading.classList.add('hidden');
+                btnFetch.disabled = false;
+                retryText.classList.add('hidden');
+                timerText.innerText = `${Math.round(performance.now() - startTime)}ms`;
+            }
+        }
+
+        btnFetch.addEventListener('click', scrapeData);
+
+        btnDownload.addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(finalData, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `datatft_items_${new Date().getTime()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            addLog("Đã lưu tệp JSON về máy tính.");
+        });
+    </script>
+</body>
+</html>
