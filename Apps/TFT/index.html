@@ -861,7 +861,7 @@
                     const contentHTML = `
                         <div class="flex flex-col gap-3 mt-2 text-left">
                             <div class="w-full h-[100px] md:h-[120px] rounded-xl overflow-hidden border-2 ${borderColor} relative shadow-md">
-                                <img src="${champ.image}" class="w-full h-full object-cover object-top" alt="${champ.name}">
+                                <img src="${champ.image}" class="w-full h-full object-cover object-[80%]" alt="${champ.name}">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                                 <div class="absolute bottom-2 left-2 flex flex-wrap gap-1.5">${traitPills}</div>
                             </div>
@@ -964,7 +964,7 @@
 
                                 return `
                                     <div class="relative h-[180px] rounded-2xl overflow-hidden bg-premium-card ring-1 ${theme.ring} shadow-lg transition-all duration-500 hover:-translate-y-1.5 group cursor-pointer" onclick="window.openChampModal(${currentIndex})">
-                                        <img src="${champ.image}" class="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110" alt="${champ.name}" loading="lazy">
+                                        <img src="${champ.image}" class="absolute inset-0 w-full h-full object-cover object-[80%] transition-transform duration-700 group-hover:scale-110" alt="${champ.name}" loading="lazy">
                                         <div class="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-transparent h-20"></div>
                                         <div class="absolute bottom-0 w-full bg-gradient-to-t from-[#090d14] via-[#090d14]/80 to-transparent h-[120px]"></div>
                                         <div class="absolute bottom-0 w-full h-1/2 bg-gradient-to-t ${theme.gradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
@@ -1346,13 +1346,14 @@
         }
         
         // ---------------------------------------------------------
-        // 6. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ comps.json (TÊN TƯỚNG TO RÕ & CỐ ĐỊNH)
+        // 6. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ comps.json (TỐI ƯU EARLY COMP)
         // ---------------------------------------------------------
         async function loadCompsData() {
             const gridContainer = document.getElementById('grid-comps'); 
             if (!gridContainer) return;
 
             try {
+                // TẢI 4 FILE ĐỂ CÓ THỂ MỞ MODAL TƯỚNG BÊN TRONG TAB ĐỘI HÌNH
                 const [resComps, resChamps, resItems, resBuilds] = await Promise.all([
                     fetch('./asset/comps.json'),
                     fetch('./asset/champions.json'),
@@ -1394,6 +1395,7 @@
                 
                 let searchQuery = '';
 
+                // --- HÀM 1: XỬ LÝ ĐÓNG/MỞ THẺ ĐỘI HÌNH BẰNG NÚT CHEVRON ---
                 window.toggleCompDetails = (btnElement) => {
                     const card = btnElement.closest('.comp-card');
                     const detailsWrapper = card.querySelector('.comp-details');
@@ -1410,6 +1412,7 @@
                     }
                 };
 
+                // --- HÀM 2: MỞ MODAL TƯỚNG ---
                 window.renderBuildTabInComp = (champName, styleIndex) => {
                     const builds = window._masterBuildsForComps[champName];
                     if (!builds || builds.length === 0) return '<p class="text-[10px] text-slate-500 text-center py-4 italic">Chưa có dữ liệu gợi ý.</p>';
@@ -1502,7 +1505,7 @@
                     const contentHTML = `
                         <div class="flex flex-col gap-3 mt-2 text-left">
                             <div class="w-full h-[100px] md:h-[120px] rounded-xl overflow-hidden border-2 ${borderColor} relative shadow-md">
-                                <img src="${champ.image}" class="w-full h-full object-cover object-top" alt="${champ.name}" ${onErrorFallback}>
+                                <img src="${champ.image}" class="w-full h-full object-cover object-[80%]" alt="${champ.name}" ${onErrorFallback}>
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                                 <div class="absolute bottom-2 left-2 flex flex-wrap gap-1.5">${traitPills}</div>
                             </div>
@@ -1524,6 +1527,7 @@
                     uiAlert(titleHTML, contentHTML);
                 };
 
+                // --- RENDER KHUNG GIAO DIỆN CHÍNH ---
                 gridContainer.className = "flex flex-col relative pb-20 min-h-screen w-full"; 
                 gridContainer.innerHTML = `
                     <div class="sticky top-14 z-30 bg-[#090d14]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-3 shadow-lg mb-6 -mx-1 px-4">
@@ -1539,6 +1543,7 @@
                     <div id="comp-list-container" class="grid grid-cols-1 gap-4 items-start w-full"></div>
                 `;
 
+                // --- HÀM RENDER ĐỘI HÌNH ---
                 const renderComps = () => {
                     const listContainer = document.getElementById('comp-list-container');
                     listContainer.innerHTML = '';
@@ -1557,7 +1562,6 @@
                         return;
                     }
 
-                    // TẠO NỀN LỤC GIÁC CHO BOARD
                     let emptyHexesHTML = '';
                     for (let r = 0; r < 4; r++) {
                         for (let c = 0; c < 7; c++) {
@@ -1613,20 +1617,16 @@
                                     }).join('');
                                 }
 
-                                // FIX CSS: Trang bị dùng Absolute, Tên tướng đẩy Size to hơn
                                 return `
                                     <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer" onclick="window.openChampModalFromComp('${unit.champion}')">
-                                        
                                         <div class="relative w-full mb-1.5 transition-transform duration-300 group-hover/unit:-translate-y-1">
                                             <div class="w-full aspect-square rounded-[6px] border-2 ${borderColor} overflow-hidden bg-black shadow-md">
-                                                <img src="${champImage}" class="w-full h-full object-cover object-top" title="${unit.champion}" ${onErrorFallback}>
+                                                <img src="${champImage}" class="w-full h-full object-cover object-[80%]" title="${unit.champion}" ${onErrorFallback}>
                                             </div>
-                                            
                                             <div class="absolute -bottom-2 left-0 w-full flex justify-center gap-[1.5px] z-10">
                                                 ${itemsHTML}
                                             </div>
                                         </div>
-                                        
                                         <span class="text-[10px] sm:text-[11px] text-slate-200 font-bold truncate w-full text-center mt-1 group-hover/unit:text-premium-gold transition-colors drop-shadow-md">${unit.champion}</span>
                                     </div>
                                 `;
@@ -1659,6 +1659,7 @@
                             }).join('') + `</div>`;
                         }
 
+                        // --- ĐÃ SỬA: ĐỘI HÌNH EARLY COMP TO RÕ, CÓ TÊN TƯỚNG BÊN DƯỚI ---
                         let earlyCompHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
                         if (comp.CompEarlyOptions?.length > 0) {
                             earlyCompHTML = comp.CompEarlyOptions.slice(0, 2).map(opt => {
@@ -1672,19 +1673,27 @@
                                         if(cData.cost===4) borderColor='border-purple-500';
                                         if(cData.cost===5) borderColor='border-yellow-400';
                                     }
-                                    return `<img src="${img}" class="w-6 h-6 rounded-[3px] border ${borderColor} object-cover shadow-sm bg-black shrink-0 cursor-pointer hover:scale-110 transition-transform" onclick="window.openChampModalFromComp('${c}')" ${onErrorFallback}>`;
+                                    return `
+                                        <div class="flex flex-col items-center w-9 sm:w-10 shrink-0 cursor-pointer group/early" onclick="window.openChampModalFromComp('${c}')">
+                                            <div class="w-full aspect-square rounded-[4px] border-[1.5px] ${borderColor} overflow-hidden bg-black shadow-md transition-transform group-hover/early:-translate-y-1">
+                                                <img src="${img}" class="w-full h-full object-cover object-[80%]" ${onErrorFallback}>
+                                            </div>
+                                            <span class="text-[8px] sm:text-[9px] text-slate-400 font-semibold truncate w-full text-center mt-1 group-hover/early:text-premium-gold transition-colors">${c}</span>
+                                        </div>
+                                    `;
                                 }).join('');
+                                
                                 return `
-                                    <div class="flex items-center justify-between bg-white/[0.02] p-1.5 rounded-lg border border-white/5">
-                                        <div class="flex gap-1 items-center flex-nowrap overflow-x-auto no-scrollbar pb-1 pt-1">${teamHTML}</div>
-                                        <div class="flex items-center gap-1 bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0 ml-2">
+                                    <div class="flex items-center justify-between bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                                        <div class="flex gap-2 items-start flex-nowrap overflow-x-auto no-scrollbar pb-1 pt-1">${teamHTML}</div>
+                                        <div class="flex items-center gap-1 bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0 ml-3 self-center">
                                             <i class="fa-solid fa-trophy text-[8px] text-emerald-400"></i>
                                             <span class="text-[9px] font-black text-emerald-400 leading-none">${opt.win_rate}</span>
                                         </div>
                                     </div>
                                 `;
                             }).join('');
-                            earlyCompHTML = `<div class="flex flex-col gap-1.5">${earlyCompHTML}</div>`;
+                            earlyCompHTML = `<div class="flex flex-col gap-2">${earlyCompHTML}</div>`;
                         }
 
                         let boardHTML = '<p class="text-[10px] text-slate-500 italic flex items-center justify-center h-full">Không có dữ liệu xếp cờ.</p>';
@@ -1707,7 +1716,7 @@
                                     <div class="absolute w-[13.33%] h-[30.76%] z-10 transition-transform hover:scale-110 scale-[0.92] drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] cursor-pointer" 
                                          style="left: ${left}%; top: ${top}%;" title="${pos.champion}" onclick="window.openChampModalFromComp('${pos.champion}')">
                                         <div class="w-full h-full p-[2px] ${bgBorder}" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-                                            <img src="${img}" class="w-full h-full object-cover bg-slate-900" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);" ${onErrorFallback}>
+                                            <img src="${img}" class="w-full h-full object-cover object-[80%] bg-slate-900" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);" ${onErrorFallback}>
                                         </div>
                                     </div>
                                 `;
@@ -1756,10 +1765,10 @@
                                     
                                     <div class="flex flex-col gap-1 xl:w-[180px] shrink-0 justify-center">
                                         <div class="flex gap-1.5 flex-wrap">${tagsHTML}</div>
-                                        <h3 class="text-[15px] font-black text-white group-hover:text-premium-gold transition-colors leading-tight tracking-wide drop-shadow-md">${comp.CompTitle}</h3>
+                                        <h3 class="text-[15px] font-black text-white transition-colors leading-tight tracking-wide drop-shadow-md">${comp.CompTitle}</h3>
                                     </div>
                                     
-                                    <div class="flex items-start gap-2 overflow-x-auto no-scrollbar flex-1 pt-1 pb-1 xl:pb-0">
+                                    <div class="flex items-start gap-1.5 overflow-x-auto no-scrollbar flex-1 pt-1 pb-1 xl:pb-0">
                                         ${unitsHTML}
                                     </div>
                                     
@@ -1780,15 +1789,9 @@
                                                 <div class="flex flex-wrap gap-1.5">${traitsHTML}</div>
                                             </div>
                                             
-                                            <div class="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-dots"></i> Nhịp Lên Cấp</div>
-                                                    ${levelingHTML}
-                                                </div>
-                                                <div>
-                                                    <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-ring"></i> Đi Chợ</div>
-                                                    ${carouselHTML}
-                                                </div>
+                                            <div>
+                                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-ring"></i> Đi Chợ</div>
+                                                ${carouselHTML}
                                             </div>
 
                                             <div>
@@ -1797,14 +1800,26 @@
                                             </div>
                                         </div>
 
-                                        <div class="xl:col-span-5 flex flex-col gap-2">
-                                            <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 xl:justify-center mb-1">
-                                                <i class="fa-solid fa-map-location-dot"></i> Xếp Vị Trí
-                                            </div>
+                                        <div class="xl:col-span-5 flex flex-col gap-5">
                                             
-                                            <div class="flex-1 flex items-start justify-center">
-                                                ${boardHTML}
+                                            <div class="flex flex-col gap-2">
+                                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 xl:justify-center mb-1">
+                                                    <i class="fa-solid fa-map-location-dot"></i> Xếp Vị Trí
+                                                </div>
+                                                <div class="flex-1 flex items-start justify-center">
+                                                    ${boardHTML}
+                                                </div>
                                             </div>
+
+                                            <div class="flex flex-col gap-2 pt-3 border-t border-white/5">
+                                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5 xl:justify-center">
+                                                    <i class="fa-solid fa-arrow-up-right-dots"></i> Nhịp Lên Cấp
+                                                </div>
+                                                <div class="xl:flex xl:justify-center">
+                                                    ${levelingHTML}
+                                                </div>
+                                            </div>
+
                                         </div>
 
                                     </div>
