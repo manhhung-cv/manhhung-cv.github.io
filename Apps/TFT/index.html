@@ -135,7 +135,7 @@
                     <i class="fa-solid fa-chess-knight text-black text-[15px]"></i>
                 </div>
                 <span class="font-black text-[17px] tracking-tight text-slate-800 dark:text-white transition-colors">
-                    TFT<span class="text-premium-gold">Pro</span>
+                    TFT<span class="text-premium-gold">Hunq</span>
                 </span>
             </div>
 
@@ -246,6 +246,7 @@
             { id: 'champions', name: 'Tướng', icon: 'fa-user-ninja' },
             { id: 'items', name: 'Trang bị', icon: 'fa-khanda' },
             { id: 'traits', name: 'Tộc hệ', icon: 'fa-shapes' },
+            { id: 'builder', name: 'Tạo Đội Hình', icon: 'fa-hammer' }
         ];
 
         let currentTabId = Tabs[0].id;
@@ -297,6 +298,7 @@
             loadChampionsData();
             loadItemsData();
             loadCompsData();
+            loadBuilderData(); // THÊM DÒNG NÀY
         }
 
         // ---------------------------------------------------------
@@ -523,29 +525,62 @@
         }
 
         // ---------------------------------------------------------
-        // HÀM FETCH VÀ RENDER DỮ LIỆU TỪ traits.json
+        // HÀM FETCH VÀ RENDER DỮ LIỆU TỪ traits.json (TÍCH HỢP MODAL TƯỚNG FULL CHI TIẾT)
         // ---------------------------------------------------------
         async function loadTraitsData() {
             const gridContainer = document.getElementById('grid-traits'); 
             if (!gridContainer) return;
 
             try {
-                const [resTraits, resChamps] = await Promise.all([
+                // 1. TẢI FULL 4 FILE DỮ LIỆU ĐỂ HỖ TRỢ MODAL TƯỚNG
+                const [resTraits, resChamps, resItems, resBuilds] = await Promise.all([
                     fetch('./asset/traits.json'),
-                    fetch('./asset/champions.json')
+                    fetch('./asset/champions.json'),
+                    fetch('./asset/items.json'),
+                    fetch('./asset/champion_builds.json').catch(() => null)
                 ]); 
 
-                if (!resTraits.ok || !resChamps.ok) {
-                    throw new Error('Không tìm thấy file dữ liệu Tộc Hệ hoặc Tướng.');
+                if (!resTraits.ok || !resChamps.ok || !resItems.ok) {
+                    throw new Error('Không tìm thấy file dữ liệu Tộc Hệ, Tướng hoặc Trang bị.');
                 }
 
                 const traitsData = await resTraits.json();
                 const champsData = await resChamps.json();
+                const itemsData = await resItems.json();
+                const buildsData = resBuilds && resBuilds.ok ? await resBuilds.json() : [];
 
+                // 2. MAP DỮ LIỆU TƯỚNG & TRANG BỊ
                 const masterChamps = {};
                 champsData.forEach(champ => {
-                    masterChamps[champ.name.toLowerCase()] = champ; 
+                    masterChamps[champ.name.toLowerCase().trim()] = champ; 
                 });
+
+                const masterItems = {};
+                for (const itemArray of Object.values(itemsData)) {
+                    if (Array.isArray(itemArray)) {
+                        itemArray.forEach(item => { masterItems[item.name.toLowerCase().trim()] = item; });
+                    }
+                }
+
+                window._masterBuildsForTraits = {};
+                if (Array.isArray(buildsData)) {
+                    buildsData.forEach(b => {
+                        const validBuilds = b.builds.filter(build => build.items && build.items.length > 0);
+                        if (validBuilds.length > 0) {
+                            window._masterBuildsForTraits[b.unit] = validBuilds; 
+                        }
+                    });
+                }
+
+                const cleanName = (rawName) => rawName ? rawName.replace(/<[^>]+>/g, '').trim().toLowerCase() : '';
+                const onErrorFallback = `onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSIjMWUyOTNiIiBzdHJva2U9IiM0NzU1NjkiIHN0cm9rZS13aWR0aD0iMiI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI0MCIgZmlsbD0iIzQ3NTU2OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+PzwvdGV4dD48L3N2Zz4='";`;
+
+                const getTraitIconName = (name) => {
+                    if (!name) return '';
+                    let str = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+                    str = str.replace(/[^a-zA-Z0-9\s]/g, ""); 
+                    return str.split(/\s+/).map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join('');
+                };
 
                 window.toggleTraitDetails = (headerElement) => {
                     const card = headerElement.closest('.group');
@@ -563,22 +598,149 @@
                     }
                 };
 
+                // --- 3. HÀM MODAL TƯỚNG (GIỐNG TAB ĐỘI HÌNH) ---
+                window.renderBuildTabInTrait = (champName, styleIndex) => {
+                    const builds = window._masterBuildsForTraits[champName];
+                    if (!builds || builds.length === 0) return '<p class="text-[10px] text-slate-500 text-center py-4 italic">Chưa có dữ liệu gợi ý.</p>';
+
+                    const currentBuild = builds[styleIndex];
+                    
+                    const itemsHTML = currentBuild.items.map(rawItemName => {
+                        const itemName = cleanName(rawItemName); 
+                        const itemData = masterItems[itemName];
+                        
+                        if (!itemData) {
+                            return `<div class="flex flex-col items-center flex-1 min-w-0 opacity-50"><div class="w-10 h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-1"><i class="fa-solid fa-question text-slate-400 dark:text-slate-500 text-xs"></i></div><span class="text-[8px] text-slate-500 dark:text-slate-400 font-medium truncate w-full text-center px-0.5">${rawItemName}</span></div>`;
+                        }
+
+                        let recipeHTML = '<div class="h-4 mt-1"></div>'; 
+                        if (itemData.recipe && itemData.recipe.length === 2) {
+                            recipeHTML = `
+                                <div class="flex items-center gap-[2px] mt-1 justify-center bg-slate-100 dark:bg-black/40 rounded px-1 py-0.5 border border-slate-200 dark:border-white/5">
+                                    <img src="${itemData.recipe[0].image}" class="w-3.5 h-3.5 rounded-sm object-cover opacity-80" ${onErrorFallback}>
+                                    <i class="fa-solid fa-plus text-[5px] text-slate-400 dark:text-slate-500"></i>
+                                    <img src="${itemData.recipe[1].image}" class="w-3.5 h-3.5 rounded-sm object-cover opacity-80" ${onErrorFallback}>
+                                </div>
+                            `;
+                        }
+
+                        const isRadiant = itemData.name.toLowerCase().includes('ánh sáng');
+                        const imgBorder = isRadiant ? 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'border-slate-300 dark:border-slate-600';
+
+                        return `<div class="flex flex-col items-center flex-1 min-w-0"><img src="${itemData.image}" class="w-10 h-10 rounded-lg border-[1.5px] ${imgBorder} object-cover bg-black shadow-md mb-1" ${onErrorFallback}><span class="text-[8px] md:text-[9.5px] ${isRadiant ? 'text-yellow-500 dark:text-yellow-400' : 'text-slate-700 dark:text-slate-300'} font-bold truncate w-full text-center px-0.5">${itemData.name}</span>${recipeHTML}</div>`;
+                    }).join('');
+
+                    const tabsHTML = builds.map((b, idx) => `
+                        <button onclick="document.getElementById('build-content-trait').innerHTML = window.renderBuildTabInTrait('${champName}', ${idx})" 
+                                class="px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all whitespace-nowrap shadow-sm border outline-none ${idx === styleIndex ? 'bg-premium-gold text-black border-transparent shadow-[0_0_5px_rgba(212,175,55,0.5)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'}">
+                            Cách ${idx + 1}
+                        </button>
+                    `).join('');
+
+                    const statsHTML = `
+                        <div class="flex items-center justify-center gap-3 mb-3 px-1">
+                            <span class="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-100 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-500/30 px-2.5 py-0.5 rounded shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-trophy"></i> Top TB: ${currentBuild.avg_place}
+                            </span>
+                            <span class="text-[9.5px] text-blue-600 dark:text-blue-400 font-bold bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-500/30 px-2.5 py-0.5 rounded shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-chart-line"></i> Thắng: ${currentBuild.win_rate}
+                            </span>
+                        </div>
+                    `;
+
+                    return `
+                        <div class="flex flex-col gap-2.5">
+                            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 border-b border-slate-200 dark:border-white/5 snap-x">${tabsHTML}</div>
+                            ${statsHTML}
+                            <div class="flex gap-2 justify-between items-start bg-slate-50 dark:bg-black/20 p-2 rounded-xl border border-slate-200 dark:border-white/5 shadow-inner">${itemsHTML}</div>
+                        </div>
+                    `;
+                };
+
+                window.openChampModalFromTrait = (champNameRaw) => {
+                    const champ = masterChamps[cleanName(champNameRaw)];
+                    if (!champ) return;
+
+                    let borderColor = 'border-slate-400'; let textColor = 'text-slate-500 dark:text-slate-300';
+                    if (champ.cost === 2) { borderColor = 'border-emerald-500'; textColor = 'text-emerald-600 dark:text-emerald-400'; }
+                    if (champ.cost === 3) { borderColor = 'border-blue-500'; textColor = 'text-blue-600 dark:text-blue-400'; }
+                    if (champ.cost === 4) { borderColor = 'border-purple-500'; textColor = 'text-purple-600 dark:text-purple-400'; }
+                    if (champ.cost === 5) { borderColor = 'border-yellow-500 dark:border-yellow-400'; textColor = 'text-yellow-600 dark:text-yellow-400'; }
+
+                    const titleHTML = `
+                        <div class="flex items-center justify-between w-full pr-4">
+                            <span class="text-slate-800 dark:text-white font-black drop-shadow-md text-[19px] tracking-tight">${champ.name}</span>
+                            <span class="text-xs font-black ${textColor} bg-slate-100 dark:bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-1">
+                                ${champ.cost} <i class="fa-solid fa-coins text-[10px]"></i>
+                            </span>
+                        </div>
+                    `;
+
+                    const traitPills = champ.traits.map(t => {
+                        const iconFilename = getTraitIconName(t.name);
+                        return `
+                            <span class="flex items-center gap-1 px-2 py-0.5 rounded border border-premium-accent/30 bg-premium-accent/10 text-premium-accent text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-wider drop-shadow-md backdrop-blur-md">
+                                <div class="w-3.5 h-3.5 bg-current shrink-0" 
+                                     style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
+                                </div>
+                                ${t.name}
+                            </span>
+                        `;
+                    }).join('');
+
+                    const buildsSectionHTML = `
+                        <div class="mt-2 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 p-3 shadow-lg relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-premium-gold via-transparent to-transparent opacity-50"></div>
+                            <div class="text-[10px] md:text-[11px] font-black text-premium-gold uppercase tracking-widest mb-3 flex items-center gap-2 drop-shadow-md">
+                                <i class="fa-solid fa-chart-pie"></i> Thống kê lên đồ
+                            </div>
+                            <div id="build-content-trait">${window.renderBuildTabInTrait(champ.name, 0)}</div>
+                        </div>
+                    `;
+
+                    const contentHTML = `
+                        <div class="flex flex-col gap-3 mt-2 text-left">
+                            <div class="w-full h-[100px] md:h-[120px] rounded-xl overflow-hidden border-2 ${borderColor} relative shadow-md">
+                                <img src="${champ.image}" class="w-full h-full object-cover object-[80%]" alt="${champ.name}" ${onErrorFallback}>
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                <div class="absolute bottom-2 left-2 flex flex-wrap gap-1.5">${traitPills}</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <div class="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 shadow-inner">
+                                    <i class="fa-solid fa-user-shield text-premium-accent text-sm md:text-base drop-shadow-md"></i>
+                                    <span class="text-[8.5px] md:text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">Vai trò</span>
+                                    <span class="text-[11px] md:text-[12px] font-bold text-slate-700 dark:text-slate-200 text-center leading-tight">${champ.role}</span>
+                                </div>
+                                <div class="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 shadow-inner">
+                                    <i class="fa-solid fa-crosshairs text-rose-500 dark:text-rose-400 text-sm md:text-base drop-shadow-md"></i>
+                                    <span class="text-[8.5px] md:text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tầm đánh</span>
+                                    <span class="text-[12px] md:text-[13px] font-bold text-slate-700 dark:text-slate-200">${champ.range} ô</span>
+                                </div>
+                            </div>
+                            ${buildsSectionHTML}
+                        </div>
+                    `;
+                    uiAlert(titleHTML, contentHTML);
+                };
+
+                // --- GIAO DIỆN CHÍNH (Đưa thanh search xuống bottom) ---
                 gridContainer.innerHTML = `
-                    <div class="flex flex-col relative pb-20 min-h-screen w-full">
-                        <div class="sticky top-14 z-30 bg-white/95 dark:bg-[#090d14]/95 backdrop-blur-xl border border-slate-200 dark:border-white/10 rounded-2xl p-3 shadow-lg mb-6 -mx-1 px-4 transition-colors">
-                            <div class="relative group flex items-center">
-                                <i class="fa-solid fa-magnifying-glass absolute left-4 text-slate-400 group-focus-within:text-premium-gold transition-colors text-[13px]"></i>
+                    <div class="flex flex-col relative pb-32 min-h-screen w-full">
+                        
+                        <div id="trait-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start w-full pt-4"></div>
+
+                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col gap-2.5 pointer-events-none">
+                            <div class="w-full group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/40 transition-colors relative">
+                                <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px] transition-colors drop-shadow"></i>
                                 <input type="text" id="search-trait" placeholder="Tìm tộc/hệ (VD: Can Trường)..." 
-                                    class="w-full bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/5 text-slate-800 dark:text-white text-[13px] rounded-xl pl-10 pr-4 py-2.5 focus:outline-none focus:ring-1 focus:ring-premium-gold/50 transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-inner">
+                                    class="w-full bg-transparent border-none text-slate-800 dark:text-white text-[13px] ml-2.5 pr-8 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500">
                                 
-                                <button id="clear-search-trait" class="absolute right-4 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1">
-                                    <i class="fa-solid fa-circle-xmark text-sm"></i>
+                                <button id="clear-search-trait" class="absolute right-4 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 flex items-center justify-center outline-none">
+                                    <i class="fa-solid fa-circle-xmark text-[14px]"></i>
                                 </button>
                             </div>
                         </div>
 
-                        <div id="trait-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start w-full">
-                        </div>
                     </div>
                 `;
 
@@ -599,8 +761,6 @@
                             </div>`;
                         return;
                     }
-
-                    const onErrorFallback = `onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSIjMWUyOTNiIiBzdHJva2U9IiM0NzU1NjkiIHN0cm9rZS13aWR0aD0iMiI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI0MCIgZmlsbD0iIzQ3NTU2OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+PzwvdGV4dD48L3N2Zz4='";`;
 
                     listContainer.innerHTML = filteredTraits.map(trait => {
                         
@@ -629,20 +789,29 @@
                                 if (hero.cost === 4) { borderColor = 'border-purple-500'; badgeBg = 'bg-purple-500 dark:bg-purple-600 text-white'; }
                                 if (hero.cost === 5) { borderColor = 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]'; badgeBg = 'bg-yellow-400 dark:bg-yellow-500 text-black'; }
 
+                                // CSS SỬA Ở ĐÂY: Thêm thẻ flex-col bọc ngoài để có chỗ để tên
                                 return `
-                                    <div class="relative w-10 h-10 rounded-lg border-[1.5px] ${borderColor} overflow-hidden shrink-0 hover:-translate-y-1 transition-transform cursor-pointer shadow-md bg-black" title="${hero.name}">
-                                        <img src="${hero.image}" class="w-full h-full object-cover object-[80%]" loading="lazy" ${onErrorFallback}>
-                                        <div class="absolute bottom-0 right-0 ${badgeBg} text-[8.5px] font-black px-1.5 py-[1px] leading-none rounded-tl-md border-t border-l border-white/20">
-                                            ${hero.cost}
+                                    <div class="flex flex-col items-center w-10 sm:w-11 shrink-0 cursor-pointer group/hero hover:-translate-y-1 transition-transform" 
+                                         onclick="event.stopPropagation(); window.openChampModalFromTrait('${hero.name}')" title="${hero.name}">
+                                         
+                                        <div class="relative w-full aspect-square rounded-lg border-[1.5px] ${borderColor} overflow-hidden shadow-md bg-black">
+                                            <img src="${hero.image}" class="w-full h-full object-cover object-[80%]" loading="lazy" ${onErrorFallback}>
+                                            <div class="absolute bottom-0 right-0 ${badgeBg} text-[8.5px] font-black px-1.5 py-[1px] leading-none rounded-tl-md border-t border-l border-white/20">
+                                                ${hero.cost}
+                                            </div>
                                         </div>
+
+                                        <span class="text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate w-full text-center mt-1 group-hover/hero:text-premium-gold transition-colors drop-shadow-sm">
+                                            ${hero.name}
+                                        </span>
                                     </div>
                                 `;
                             }).join('');
                         }
 
                         const traitIconHTML = trait.icon_file 
-                            ? `<img src="${trait.icon_file}" class="w-5 h-5 object-contain opacity-80 group-hover:opacity-100 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_rgba(212,175,55,0.8)] transition-all" ${onErrorFallback}>`
-                            : `<i class="fa-solid fa-shapes text-[16px] text-slate-400 group-hover:text-premium-gold transition-colors drop-shadow-md"></i>`;
+                            ? `<div class="w-5 h-5 bg-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" style="-webkit-mask-image: url('${trait.icon_file}'); mask-image: url('${trait.icon_file}'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div>`
+                            : `<i class="fa-solid fa-shapes text-[16px] bg-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300"></i>`;
 
                         return `
                             <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-white/10 hover:border-premium-gold/50 dark:hover:border-premium-gold/30 rounded-2xl p-4 flex flex-col transition-all duration-300 shadow-lg group relative overflow-hidden">
@@ -650,7 +819,7 @@
                                 
                                 <div class="flex items-center justify-between cursor-pointer z-10 outline-none" onclick="window.toggleTraitDetails(this)">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shrink-0">
+                                        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-premium-gold">
                                             ${traitIconHTML}
                                         </div>
                                         <h3 class="text-[16px] font-black text-slate-800 dark:text-white tracking-wide drop-shadow-md uppercase">${trait.trait_name}</h3>
@@ -707,9 +876,9 @@
                 gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Tộc Hệ: ${error.message}</div>`;
             }
         }
-
+        
         // ---------------------------------------------------------
-        // HÀM FETCH VÀ RENDER DỮ LIỆU TỪ champions.json
+        // 4. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ champions.json (MENU LỌC ẨN GỌN GÀNG)
         // ---------------------------------------------------------
         async function loadChampionsData() {
             const gridContainer = document.getElementById('grid-champions'); 
@@ -754,6 +923,13 @@
                     return rawName.replace(/<[^>]+>/g, '').trim(); 
                 };
 
+                const getTraitIconName = (name) => {
+                    if (!name) return '';
+                    let str = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+                    str = str.replace(/[^a-zA-Z0-9\s]/g, ""); 
+                    return str.split(/\s+/).map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join('');
+                };
+
                 let activeCosts = new Set();
                 let activeTraits = new Set();
                 let searchQuery = '';
@@ -764,41 +940,108 @@
                 const allTraits = [...new Set(champions.flatMap(c => c.traits.map(t => t.name)))].sort();
                 
                 const costButtonsHTML = [1, 2, 3, 4, 5].map(cost => `
-                    <button class="filter-cost-btn shrink-0 px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-[10.5px] hover:bg-slate-100 dark:hover:bg-white/10 transition-all shadow-md flex items-center gap-1 outline-none" data-cost="${cost}">
+                    <button class="filter-cost-btn shrink-0 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-[10.5px] hover:bg-slate-200 dark:hover:bg-white/10 transition-all shadow-sm flex items-center gap-1 outline-none" data-cost="${cost}">
                         ${cost} <i class="fa-solid fa-coins text-[8px] opacity-70"></i>
                     </button>
                 `).join('');
 
                 const traitButtonsHTML = allTraits.map(trait => `
-                    <button class="filter-trait-btn shrink-0 px-3.5 py-1.5 rounded-full bg-white dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-[10.5px] hover:bg-slate-100 dark:hover:bg-white/10 transition-all shadow-md outline-none" data-trait="${trait}">
+                    <button class="filter-trait-btn shrink-0 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-[10.5px] hover:bg-slate-200 dark:hover:bg-white/10 transition-all shadow-sm outline-none" data-trait="${trait}">
                         ${trait}
                     </button>
                 `).join('');
 
+                // --- GIAO DIỆN CHÍNH CỦA TAB TƯỚNG KÈM POPUP BỘ LỌC ---
                 gridContainer.innerHTML = `
                     <div class="flex flex-col relative pb-40 min-h-screen w-full">
-                        
-                        <div id="champ-list-container" class="w-full flex flex-col gap-8"></div>
+                        <div id="champ-list-container" class="w-full flex flex-col gap-8 pt-4"></div>
 
-                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col gap-2 pointer-events-none">
-                            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pointer-events-auto px-1 w-full snap-x">
-                                <span class="text-[9px] font-black text-premium-gold uppercase px-1 drop-shadow-md shrink-0 tracking-widest bg-white/50 dark:bg-transparent rounded px-1">Giá:</span>
-                                ${costButtonsHTML}
+                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col items-center pointer-events-none">
+                            
+                            <div id="champ-filters-wrapper" class="w-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] opacity-0 translate-y-4 pointer-events-none absolute bottom-full mb-3 left-0">
+                                <div class="bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-[0_15px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_15px_40px_rgba(0,0,0,0.8)] flex flex-col gap-3 relative overflow-hidden">
+                                    <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-300 dark:via-white/20 to-transparent"></div>
+
+                                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2 mb-1">
+                                        <span class="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5 drop-shadow-md">
+                                            <i class="fa-solid fa-filter text-premium-gold"></i> Tùy chỉnh Bộ lọc
+                                        </span>
+                                        <button id="close-filter-champ-btn" class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-colors pointer-events-auto outline-none">
+                                            <i class="fa-solid fa-xmark text-sm"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Lọc theo giá vàng:</span>
+                                        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto w-full pb-1">
+                                            ${costButtonsHTML}
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Lọc theo Tộc/Hệ:</span>
+                                        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto w-full pb-1">
+                                            ${traitButtonsHTML}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pointer-events-auto px-1 pb-1 w-full snap-x">
-                                <span class="text-[9px] font-black text-premium-accent uppercase px-1 drop-shadow-md shrink-0 tracking-widest bg-white/50 dark:bg-transparent rounded px-1">Hệ:</span>
-                                ${traitButtonsHTML}
-                            </div>
-                            <div class="group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.3)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.6)] overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/50 transition-colors relative">
-                                <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px]"></i>
-                                <input type="text" id="search-champ" placeholder="Tìm tướng (VD: Aatrox)..." class="w-full bg-transparent border-none text-slate-800 dark:text-white text-[13px] ml-2.5 pr-8 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500">
-                                <button id="clear-search-champ" class="absolute right-12 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 outline-none"><i class="fa-solid fa-circle-xmark text-sm"></i></button>
-                                <button id="toggle-view-champ" class="ml-2 w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-premium-gold transition-colors border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 outline-none"><i class="fa-solid fa-list" id="view-icon-champ"></i></button>
+
+                            <div class="w-full group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/40 transition-colors relative">
+                                <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px] transition-colors drop-shadow"></i>
+                                <input type="text" id="search-champ" placeholder="Tìm tướng..." class="w-full bg-transparent border-none text-slate-800 dark:text-white text-[13px] ml-2.5 pr-8 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500">
+                                
+                                <button id="clear-search-champ" class="absolute right-[88px] hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 flex items-center justify-center outline-none">
+                                    <i class="fa-solid fa-circle-xmark text-[14px]"></i>
+                                </button>
+                                
+                                <div class="w-[1px] h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
+                                
+                                <button id="toggle-view-champ" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-colors border border-transparent hover:bg-slate-200 dark:hover:bg-white/10 outline-none mx-1 relative">
+                                    <i class="fa-solid fa-list" id="view-icon-champ"></i>
+                                </button>
+
+                                <div class="w-[1px] h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
+                                
+                                <button id="toggle-filter-champ-btn" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-colors border border-transparent hover:bg-premium-gold hover:text-black outline-none relative">
+                                    <i class="fa-solid fa-sliders text-[12px]"></i>
+                                    <span id="champ-filter-indicator" class="absolute top-0 right-0 w-[9px] h-[9px] bg-rose-500 rounded-full border-[1.5px] border-white dark:border-slate-800 hidden shadow-sm"></span>
+                                </button>
                             </div>
                         </div>
-
                     </div>
                 `;
+
+                // Logic ẩn hiện bộ lọc
+                const toggleFilterBtn = document.getElementById('toggle-filter-champ-btn');
+                const closeFilterBtn = document.getElementById('close-filter-champ-btn');
+                const filtersWrapper = document.getElementById('champ-filters-wrapper');
+                let isFilterMenuOpen = false;
+
+                const toggleFilterMenu = () => {
+                    isFilterMenuOpen = !isFilterMenuOpen;
+                    if (isFilterMenuOpen) {
+                        filtersWrapper.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+                        filtersWrapper.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                        toggleFilterBtn.classList.add('bg-premium-gold', 'text-black', 'shadow-[0_0_8px_rgba(212,175,55,0.5)]');
+                        toggleFilterBtn.classList.remove('bg-slate-100', 'dark:bg-white/5', 'text-slate-600', 'dark:text-slate-300');
+                    } else {
+                        filtersWrapper.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+                        filtersWrapper.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                        toggleFilterBtn.classList.remove('bg-premium-gold', 'text-black', 'shadow-[0_0_8px_rgba(212,175,55,0.5)]');
+                        toggleFilterBtn.classList.add('bg-slate-100', 'dark:bg-white/5', 'text-slate-600', 'dark:text-slate-300');
+                    }
+                };
+
+                toggleFilterBtn.addEventListener('click', toggleFilterMenu);
+                closeFilterBtn.addEventListener('click', () => { if(isFilterMenuOpen) toggleFilterMenu(); });
+                document.getElementById('champ-list-container').addEventListener('click', () => { if (isFilterMenuOpen) toggleFilterMenu(); });
+
+                const updateFilterIndicator = () => {
+                    const indicator = document.getElementById('champ-filter-indicator');
+                    if (activeCosts.size > 0 || activeTraits.size > 0) indicator.classList.remove('hidden');
+                    else indicator.classList.add('hidden');
+                };
 
                 window.renderBuildTab = (champName, styleIndex) => {
                     const builds = window._masterBuilds[champName];
@@ -879,7 +1122,17 @@
                         </div>
                     `;
 
-                    const traitPills = champ.traits.map(t => `<span class="px-2 py-0.5 rounded border border-premium-accent/30 bg-premium-accent/10 text-premium-accent text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-wider drop-shadow-md backdrop-blur-md">${t.name}</span>`).join('');
+                    const traitPills = champ.traits.map(t => {
+                        const iconFilename = getTraitIconName(t.name);
+                        return `
+                            <span class="flex items-center gap-1 px-2 py-0.5 rounded border border-premium-accent/30 bg-premium-accent/10 text-premium-accent text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-wider drop-shadow-md backdrop-blur-md">
+                                <div class="w-3.5 h-3.5 bg-current shrink-0" 
+                                     style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
+                                </div>
+                                ${t.name}
+                            </span>
+                        `;
+                    }).join('');
 
                     const buildsSectionHTML = `
                         <div class="mt-2 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 p-3 shadow-lg relative overflow-hidden">
@@ -985,7 +1238,18 @@
 
                             if (isDetailedView) {
                                 const rangeDots = Array.from({length: 5}).map((_, i) => i < champ.range ? `<div class="w-1.5 h-1.5 rounded-full bg-slate-800 dark:bg-white shadow-[0_0_4px_rgba(255,255,255,0.8)]"></div>` : `<div class="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-white/10"></div>`).join('');
-                                const traitList = champ.traits.map(t => `<div class="flex items-center gap-1.5"><div class="w-1 h-3 rounded-full ${theme.bg} shadow-[0_0_5px_currentColor]"></div><span class="text-[11px] font-medium text-slate-800 dark:text-slate-200 drop-shadow-md">${t.name}</span></div>`).join('');
+                                
+                                const traitList = champ.traits.map(t => {
+                                    const iconFilename = getTraitIconName(t.name);
+                                    return `
+                                        <div class="flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+                                            <div class="w-3.5 h-3.5 bg-current shrink-0" 
+                                                 style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
+                                            </div>
+                                            <span class="text-[11px] font-medium drop-shadow-md">${t.name}</span>
+                                        </div>
+                                    `;
+                                }).join('');
 
                                 let buildIconsHTML = '';
                                 if (recommendedItemsArray.length > 0) {
@@ -998,7 +1262,7 @@
 
                                 return `
                                     <div class="relative h-[180px] rounded-2xl overflow-hidden bg-white dark:bg-premium-card ring-1 ${theme.ring} shadow-lg transition-all duration-500 hover:-translate-y-1.5 group cursor-pointer" onclick="window.openChampModal(${currentIndex})">
-                                        <img src="${champ.image}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700  alt="${champ.name}" loading="lazy" ${onErrorFallback}>
+                                        <img src="${champ.image}" class="absolute inset-0 w-full h-full object-cover object-[80%] transition-transform duration-700 group-hover:scale-110" alt="${champ.name}" loading="lazy" ${onErrorFallback}>
                                         <div class="absolute inset-0 bg-gradient-to-b from-white/70 dark:from-black/70 via-transparent to-transparent h-20"></div>
                                         <div class="absolute bottom-0 w-full bg-gradient-to-t from-white dark:from-[#090d14] via-white/80 dark:via-[#090d14]/80 to-transparent h-[120px]"></div>
                                         <div class="absolute bottom-0 w-full h-1/2 bg-gradient-to-t ${theme.gradient} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
@@ -1034,18 +1298,25 @@
                                     `;
                                 }
 
-                                return `
-                                    <div class="flex flex-col p-1 md:p-1.5 rounded-[10px] border-[1.5px] ${theme.border} bg-white dark:bg-[#0f172a]/80 cursor-pointer transition-all duration-200 hover:-translate-y-1 active:scale-95 shadow-md" 
-                                         onclick="window.openChampModal(${currentIndex})">
-                                        
-                                        <div class="relative w-full aspect-square">
-                                            <img src="${champ.image}" alt="${champ.name}" class="w-full h-full rounded-[7px] object-cover object-[80%] bg-black shadow-inner border border-slate-200 dark:border-slate-700" loading="lazy" ${onErrorFallback}>
-                                            <div class="absolute bottom-1 right-1 bg-white/90 dark:bg-black/80 backdrop-blur-sm rounded px-1.5 py-[1px] md:py-0.5 flex items-center justify-center border border-slate-300 dark:border-white/20 shadow-sm pointer-events-none">
-                                                <span class="text-[10px] md:text-[11.5px] font-black ${theme.text} leading-none">${champ.cost}</span>
-                                            </div>
-                                        </div>
+                                let thickBorder = 'border-slate-300 dark:border-slate-500';
+                                let nameColor = 'text-slate-700 dark:text-slate-300';
+                                
+                                if (champ.cost === 2) { thickBorder = 'border-emerald-400 dark:border-emerald-500'; nameColor = 'text-emerald-600 dark:text-emerald-400'; }
+                                if (champ.cost === 3) { thickBorder = 'border-blue-400 dark:border-blue-500'; nameColor = 'text-blue-600 dark:text-blue-400'; }
+                                if (champ.cost === 4) { thickBorder = 'border-purple-400 dark:border-purple-500'; nameColor = 'text-purple-600 dark:text-purple-400'; }
+                                if (champ.cost === 5) { thickBorder = 'border-yellow-400 dark:border-yellow-500 shadow-[0_0_5px_rgba(250,204,21,0.3)]'; nameColor = 'text-yellow-600 dark:text-yellow-400'; }
 
+                                return `
+                                    <div class="flex flex-col p-1.5 md:p-2 rounded-xl border-[1.5px] ${theme.border} bg-white dark:bg-[#0f172a]/80 cursor-pointer transition-all duration-200 hover:-translate-y-1 active:scale-95 shadow-md" 
+                                         onclick="window.openChampModal(${currentIndex})">
+                                        <div class="relative w-full aspect-square rounded-[8px] border-[2.5px] ${thickBorder} overflow-hidden bg-black">
+                                            <img src="${champ.image}" alt="${champ.name}" class="w-full h-full object-cover object-[80%]" loading="lazy" ${onErrorFallback}>
+                                        </div>
+                                        
                                         ${buildGridHTML}
+                                        <span class="text-[10px] md:text-[11px] font-black ${nameColor} w-full text-center mt-1.5  truncate tracking-wide drop-shadow-sm">
+                                            ${champ.name}
+                                        </span>
                                     </div>
                                 `;
                             }
@@ -1090,6 +1361,7 @@
                             e.currentTarget.classList.remove('bg-white', 'dark:bg-slate-800/90', 'border-slate-200', 'dark:border-white/10', 'text-slate-600', 'dark:text-slate-300');
                             e.currentTarget.classList.add('bg-premium-gold', 'text-black', 'border-transparent', 'shadow-[0_0_8px_rgba(212,175,55,0.6)]');
                         }
+                        updateFilterIndicator();
                         renderChampions();
                     });
                 });
@@ -1106,6 +1378,7 @@
                             e.currentTarget.classList.remove('bg-white', 'dark:bg-slate-800/90', 'border-slate-200', 'dark:border-white/10', 'text-slate-600', 'dark:text-slate-300');
                             e.currentTarget.classList.add('bg-premium-accent', 'text-black', 'border-transparent', 'shadow-[0_0_8px_rgba(56,189,248,0.6)]');
                         }
+                        updateFilterIndicator();
                         renderChampions();
                     });
                 });
@@ -1116,9 +1389,9 @@
                 gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Tướng: ${error.message}</div>`;
             }
         }
-        
+
         // ---------------------------------------------------------
-        // 5. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ items.json
+        // 5. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ items.json (MENU LỌC ẨN GỌN GÀNG)
         // ---------------------------------------------------------
         async function loadItemsData() {
             const gridContainer = document.getElementById('grid-items'); 
@@ -1166,32 +1439,91 @@
 
                 window._currentFilteredItemsForPopup = [];
                 
+                // --- GIAO DIỆN CHÍNH CỦA TAB TRANG BỊ KÈM POPUP BỘ LỌC ---
                 gridContainer.innerHTML = `
-                    <div class="flex flex-col relative pb-32 min-h-screen w-full">
-                        <div id="item-list-container" class="flex flex-col gap-8"></div>
+                    <div class="flex flex-col relative pb-40 min-h-screen w-full">
+                        <div id="item-list-container" class="flex flex-col gap-8 pt-4"></div>
 
-                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col gap-2.5 pointer-events-none">
+                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col items-center pointer-events-none">
                             
-                            <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto px-1 pb-1 w-full snap-x">
-                                ${filterButtonsHTML}
+                            <div id="item-filters-wrapper" class="w-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] opacity-0 translate-y-4 pointer-events-none absolute bottom-full mb-3 left-0">
+                                <div class="bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-[0_15px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_15px_40px_rgba(0,0,0,0.8)] flex flex-col gap-3 relative overflow-hidden">
+                                    <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-300 dark:via-white/20 to-transparent"></div>
+
+                                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2 mb-1">
+                                        <span class="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5 drop-shadow-md">
+                                            <i class="fa-solid fa-filter text-premium-gold"></i> Tùy chỉnh Bộ lọc
+                                        </span>
+                                        <button id="close-filter-item-btn" class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-colors pointer-events-auto outline-none">
+                                            <i class="fa-solid fa-xmark text-sm"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Loại trang bị:</span>
+                                        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto w-full pb-1">
+                                            ${filterButtonsHTML}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            
-                            <div class="group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-2xl overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/50 transition-colors relative">
-                                <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px]"></i>
+
+                            <div class="w-full group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/40 transition-colors relative">
+                                <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px] transition-colors drop-shadow"></i>
                                 <input type="text" id="search-item" placeholder="Tìm trang bị..." 
                                     class="w-full bg-transparent border-none text-slate-800 dark:text-white text-[13px] ml-2.5 pr-8 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500">
                                 
-                                <button id="clear-search-btn" class="absolute right-12 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 outline-none">
-                                    <i class="fa-solid fa-circle-xmark text-sm"></i>
+                                <button id="clear-search-btn" class="absolute right-24 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 flex items-center justify-center outline-none">
+                                    <i class="fa-solid fa-circle-xmark text-[14px]"></i>
                                 </button>
 
-                                <button id="toggle-view-btn" class="ml-2 w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-premium-gold transition-colors border border-slate-200 dark:border-white/10 hover:bg-slate-200 dark:hover:bg-white/10 outline-none">
+                                <div class="w-[1px] h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
+
+                                <button id="toggle-view-btn" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-colors border border-transparent hover:bg-slate-200 dark:hover:bg-white/10 outline-none mx-1 relative">
                                     <i class="fa-solid fa-list" id="view-icon"></i>
+                                </button>
+
+                                <div class="w-[1px] h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
+
+                                <button id="toggle-filter-item-btn" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-colors border border-transparent hover:bg-premium-gold hover:text-black outline-none relative">
+                                    <i class="fa-solid fa-sliders text-[12px]"></i>
+                                    <span id="item-filter-indicator" class="absolute top-0 right-0 w-[9px] h-[9px] bg-rose-500 rounded-full border-[1.5px] border-white dark:border-slate-800 hidden shadow-sm"></span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 `;
+
+                // Logic ẩn hiện bộ lọc
+                const toggleFilterBtn = document.getElementById('toggle-filter-item-btn');
+                const closeFilterBtn = document.getElementById('close-filter-item-btn');
+                const filtersWrapper = document.getElementById('item-filters-wrapper');
+                let isFilterMenuOpen = false;
+
+                const toggleFilterMenu = () => {
+                    isFilterMenuOpen = !isFilterMenuOpen;
+                    if (isFilterMenuOpen) {
+                        filtersWrapper.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+                        filtersWrapper.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                        toggleFilterBtn.classList.add('bg-premium-gold', 'text-black', 'shadow-[0_0_8px_rgba(212,175,55,0.5)]');
+                        toggleFilterBtn.classList.remove('bg-slate-100', 'dark:bg-white/5', 'text-slate-600', 'dark:text-slate-300');
+                    } else {
+                        filtersWrapper.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+                        filtersWrapper.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                        toggleFilterBtn.classList.remove('bg-premium-gold', 'text-black', 'shadow-[0_0_8px_rgba(212,175,55,0.5)]');
+                        toggleFilterBtn.classList.add('bg-slate-100', 'dark:bg-white/5', 'text-slate-600', 'dark:text-slate-300');
+                    }
+                };
+
+                toggleFilterBtn.addEventListener('click', toggleFilterMenu);
+                closeFilterBtn.addEventListener('click', () => { if(isFilterMenuOpen) toggleFilterMenu(); });
+                document.getElementById('item-list-container').addEventListener('click', () => { if (isFilterMenuOpen) toggleFilterMenu(); });
+
+                const updateFilterIndicator = () => {
+                    const indicator = document.getElementById('item-filter-indicator');
+                    if (activeCategory !== 'all') indicator.classList.remove('hidden');
+                    else indicator.classList.add('hidden');
+                };
 
                 const createBadgesHTML = (stats) => {
                     if (!stats || !Array.isArray(stats)) return '';
@@ -1363,6 +1695,7 @@
                             }
                         });
                         
+                        updateFilterIndicator();
                         renderItems();
                     });
                 });
@@ -1373,9 +1706,9 @@
                 gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Trang Bị: ${error.message}</div>`;
             }
         }
-        
+
        // ---------------------------------------------------------
-        // 6. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ comps.json (TỰ ĐỘNG XUỐNG HÀNG TƯỚNG)
+        // 6. HÀM FETCH VÀ RENDER DỮ LIỆU TỪ comps.json (FULL ĐỒNG BỘ ICON TỘC HỆ)
         // ---------------------------------------------------------
         async function loadCompsData() {
             const gridContainer = document.getElementById('grid-comps'); 
@@ -1430,6 +1763,14 @@
                 const cleanName = (rawName) => rawName ? rawName.replace(/<[^>]+>/g, '').trim().toLowerCase() : '';
                 const onErrorFallback = `onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSIjMWUyOTNiIiBzdHJva2U9IiM0NzU1NjkiIHN0cm9rZS13aWR0aD0iMiI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI0MCIgZmlsbD0iIzQ3NTU2OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+PzwvdGV4dD48L3N2Zz4='";`;
                 
+                // --- HÀM LẤY TÊN ICON TỘC HỆ ĐÃ FIX KÝ TỰ ĐẶC BIỆT ---
+                const getTraitIconName = (name) => {
+                    if (!name) return '';
+                    let str = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+                    str = str.replace(/[^a-zA-Z0-9\s]/g, ""); // Xóa chấm, phẩy, gạch...
+                    return str.split(/\s+/).map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join('');
+                };
+
                 let activeTags = new Set(); 
                 let searchQuery = '';
 
@@ -1526,7 +1867,18 @@
                         </div>
                     `;
 
-                    const traitPills = champ.traits.map(t => `<span class="px-2 py-0.5 rounded border border-premium-accent/30 bg-premium-accent/10 text-premium-accent text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-wider drop-shadow-md backdrop-blur-md">${t.name}</span>`).join('');
+                    // --- CẬP NHẬT TẠI ĐÂY: Hiển thị Icon Tộc/Hệ trong Modal bằng mask-image ---
+                    const traitPills = champ.traits.map(t => {
+                        const iconFilename = getTraitIconName(t.name);
+                        return `
+                            <span class="flex items-center gap-1 px-2 py-0.5 rounded border border-premium-accent/30 bg-premium-accent/10 text-premium-accent text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-wider drop-shadow-md backdrop-blur-md">
+                                <div class="w-3.5 h-3.5 bg-current shrink-0" 
+                                     style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
+                                </div>
+                                ${t.name}
+                            </span>
+                        `;
+                    }).join('');
 
                     const buildsSectionHTML = `
                         <div class="mt-2 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 p-3 shadow-lg relative overflow-hidden">
@@ -1784,9 +2136,8 @@
                                     }).join('');
                                 }
 
-                                // CSS SỬA Ở ĐÂY: DÙNG flex-wrap gap-x-1.5 gap-y-2 ĐỂ CHO TƯỚNG TỰ XUỐNG HÀNG
                                 return `
-                                    <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer" onclick="window.openChampModalFromComp('${unit.champion}')">
+                                    <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer mb-1" onclick="window.openChampModalFromComp('${unit.champion}')">
                                         <div class="relative w-full mb-1.5 transition-transform duration-300 group-hover/unit:-translate-y-1">
                                             <div class="w-full aspect-square rounded-[6px] border-2 ${borderColor} overflow-hidden bg-black shadow-md">
                                                 <img src="${champImage}" class="w-full h-full object-cover object-[80%]" title="${unit.champion}" ${onErrorFallback}>
@@ -1801,15 +2152,22 @@
                             }).join('');
                         }
 
+                        // --- CẬP NHẬT TẠI ĐÂY: Hiện icon svg trong danh sách Kích hoạt Tộc/Hệ của Đội hình ---
                         const sortedTraits = Object.entries(traitCounts).sort((a,b) => b[1] - a[1]);
-                        let traitsHTML = sortedTraits.map(([tName, tCount]) => `
-                            <div class="flex items-center gap-1.5 pl-2 pr-1 py-0.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-full shadow-sm">
-                                <span class="text-[10px] font-semibold text-slate-700 dark:text-slate-200">${tName}</span>
-                                <div class="w-4 h-4 rounded-full bg-premium-gold flex items-center justify-center shadow-inner border border-yellow-400 dark:border-yellow-300">
-                                    <span class="text-[9px] font-black text-black leading-none">${tCount}</span>
+                        let traitsHTML = sortedTraits.map(([tName, tCount]) => {
+                            const iconFilename = getTraitIconName(tName);
+                            return `
+                                <div class="flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-full shadow-sm text-slate-700 dark:text-slate-200">
+                                    <div class="w-3.5 h-3.5 bg-current shrink-0" 
+                                         style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
+                                    </div>
+                                    <span class="text-[10px] font-semibold">${tName}</span>
+                                    <div class="w-4 h-4 rounded-full bg-premium-gold flex items-center justify-center shadow-inner border border-yellow-400 dark:border-yellow-300 ml-0.5">
+                                        <span class="text-[9px] font-black text-black leading-none">${tCount}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
                         if (!traitsHTML) traitsHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu Tộc Hệ.</span>';
 
                         let carouselHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
@@ -1890,7 +2248,7 @@
                             }).join('');
 
                             boardHTML = `
-                                <div class="relative w-full max-w-full mx-auto aspect-[2/1] bg-slate-100 dark:bg-[#0B101A] rounded-xl overflow-hidden shadow-inner p-1.5 border border-slate-300 dark:border-white/5">
+                                <div class="relative w-full max-w-[340px] mx-auto aspect-[2/1] bg-slate-100 dark:bg-[#0B101A] rounded-xl overflow-hidden shadow-inner p-1.5 border border-slate-300 dark:border-white/5">
                                     ${emptyHexesHTML}
                                     ${champHexesHTML}
                                 </div>
@@ -1935,7 +2293,7 @@
                                         <h3 class="text-[15px] font-black text-slate-800 dark:text-white transition-colors leading-tight tracking-wide drop-shadow-sm">${comp.CompTitle}</h3>
                                     </div>
                                     
-                                    <div class="flex flex-wrap items-start gap-x-1.5 gap-y-2.5 flex-1 pt-1 pb-1 xl:pb-0">
+                                    <div class="flex flex-wrap items-start content-start gap-2 sm:gap-2.5 w-full xl:w-auto xl:flex-1 min-w-0 pt-1 pb-2 xl:pb-0">
                                         ${unitsHTML}
                                     </div>
                                     
@@ -2051,7 +2409,480 @@
                 gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Đội Hình: ${error.message}</div>`;
             }
         }
+        
+        // =========================================================
+        // 7. HÀM TEAM BUILDER (HIỂN THỊ TÊN TƯỚNG FULL WIDTH)
+        // =========================================================
+        async function loadBuilderData() {
+            const gridContainer = document.getElementById('grid-builder'); 
+            if (!gridContainer) return;
 
+            try {
+                const [resChamps, resItems] = await Promise.all([
+                    fetch('./asset/champions.json'),
+                    fetch('./asset/items.json')
+                ]);
+
+                if (!resChamps.ok || !resItems.ok) throw new Error('Lỗi tải dữ liệu cơ sở.');
+
+                const champsData = await resChamps.json();
+                const rawItemsData = await resItems.json();
+
+                window._builderMasterChamps = {};
+                champsData.forEach(c => window._builderMasterChamps[c.name] = c);
+
+                window._builderMasterItems = {};
+                let itemsList = [];
+                for (const arr of Object.values(rawItemsData)) {
+                    if (Array.isArray(arr)) {
+                        arr.forEach(i => {
+                            window._builderMasterItems[i.name] = i;
+                            itemsList.push(i);
+                        });
+                    }
+                }
+
+                // QUẢN LÝ TRẠNG THÁI (STATE)
+                window._builderBoardState = Array(4).fill(null).map(() => Array(7).fill(null));
+                window._builderActiveTool = null; // { type: 'champ'|'item'|'move', id: '...', r, c }
+                window._builderActiveTab = 'champ'; 
+                window._builderSearchQuery = '';
+
+                // HÀM FIX LỖI TÊN TƯỚNG CÓ DẤU NHÁY ĐƠN (VD: Kai'Sa, Cho'Gath)
+                const escapeJS = (str) => str ? str.replace(/'/g, "\\'") : '';
+
+                // --- HÀM RENDER KHUNG CHÍNH ---
+                const renderBuilderInterface = () => {
+                    gridContainer.className = "flex flex-col gap-5 w-full pb-20";
+                    gridContainer.innerHTML = `
+                        
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center justify-between px-1">
+                                <h3 class="text-[13px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                                    <i class="fa-solid fa-chess-board text-premium-gold"></i> Bàn Cờ
+                                </h3>
+                                <div class="flex gap-2">
+                                    <button onclick="window.clearBuilderBoard()" class="px-2.5 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/30 text-[10.5px] font-bold transition-colors shadow-sm outline-none">
+                                        <i class="fa-solid fa-trash-can"></i> Xóa
+                                    </button>
+                                    <button onclick="window.exportBuilderJSON()" class="px-2.5 py-1.5 rounded-lg bg-premium-gold text-black hover:bg-yellow-500 text-[10.5px] font-bold transition-colors shadow-md outline-none">
+                                        <i class="fa-solid fa-code"></i> Xuất JSON
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="relative w-full max-w-[420px] mx-auto aspect-[2/1] bg-slate-100 dark:bg-[#0B101A] rounded-xl overflow-hidden shadow-inner p-1.5 border border-slate-300 dark:border-white/10" id="builder-board-container">
+                                </div>
+                            
+                            <div id="builder-status-bar" class="min-h-[24px]"></div>
+                        </div>
+
+                        <div class="flex flex-col bg-white dark:bg-premium-card rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg overflow-hidden">
+                            
+                            <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/20">
+                                <div class="flex bg-slate-200 dark:bg-slate-800/80 p-1 rounded-lg gap-1 shrink-0">
+                                    <button onclick="window.setBuilderTab('champ')" class="flex-1 sm:flex-none px-4 py-1.5 rounded-md text-[11px] font-bold transition-all outline-none ${window._builderActiveTab === 'champ' ? 'bg-premium-gold text-black shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}">
+                                        <i class="fa-solid fa-users mr-1"></i> Tướng
+                                    </button>
+                                    <button onclick="window.setBuilderTab('item')" class="flex-1 sm:flex-none px-4 py-1.5 rounded-md text-[11px] font-bold transition-all outline-none ${window._builderActiveTab === 'item' ? 'bg-rose-400 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'}">
+                                        <i class="fa-solid fa-khanda mr-1"></i> Trang Bị
+                                    </button>
+                                </div>
+
+                                <div class="relative w-full flex-1">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
+                                    <input type="text" id="builder-search-input" value="${window._builderSearchQuery}" placeholder="Tìm kiếm..." oninput="window.updateBuilderSearch(this.value)"
+                                        class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-[11.5px] text-slate-800 dark:text-white focus:outline-none focus:border-premium-gold/50 shadow-inner">
+                                </div>
+                            </div>
+
+                            <div class="p-3">
+                                <div class="flex flex-col gap-4 max-h-[250px] overflow-y-auto no-scrollbar relative" id="builder-pool-container">
+                                    </div>
+                            </div>
+                        </div>
+                    `;
+
+                    renderBoard();
+                    renderPool();
+                };
+
+                // --- VẼ BÀN CỜ TỐI ƯU ---
+                const renderBoard = () => {
+                    const boardContainer = document.getElementById('builder-board-container');
+                    const statusBar = document.getElementById('builder-status-bar');
+                    if (!boardContainer) return;
+                    boardContainer.innerHTML = '';
+
+                    // Cập nhật thanh trạng thái
+                    if (window._builderActiveTool) {
+                        const toolName = window._builderActiveTool.id;
+                        const isMove = window._builderActiveTool.type === 'move';
+                        const isItem = window._builderActiveTool.type === 'item';
+                        let actionText = '';
+                        if (isMove) actionText = `Đang di chuyển: <b class="text-slate-800 dark:text-white">${toolName}</b> (Chạm ô khác để đặt)`;
+                        else if (isItem) actionText = `Đang ghép: <b class="text-slate-800 dark:text-white">${toolName}</b> (Chạm tướng để lắp)`;
+                        else actionText = `Đang chọn: <b class="text-slate-800 dark:text-white">${toolName}</b> (Chạm ô lục giác để thả)`;
+
+                        statusBar.innerHTML = `<div class="mx-auto mt-1 px-3 py-1.5 bg-premium-gold/20 border border-premium-gold/50 rounded-lg text-yellow-600 dark:text-premium-gold text-[10.5px] font-medium shadow-sm flex items-center justify-center gap-2 animate-pulse w-max max-w-full truncate"><i class="fa-solid fa-crosshairs"></i> ${actionText}</div>`;
+                    } else {
+                        statusBar.innerHTML = '<p class="text-center text-[10.5px] text-slate-500 dark:text-slate-400 italic mt-1 flex items-center justify-center gap-1.5"><i class="fa-solid fa-lightbulb text-yellow-500"></i> Chạm Tướng/Đồ rồi chạm Bàn cờ để xếp.</p>';
+                    }
+
+                    const onErrorFallback = `onerror="this.onerror=null; this.src='./asset/placeholder.png';"`;
+
+                    for (let r = 0; r < 4; r++) {
+                        for (let c = 0; c < 7; c++) {
+                            const isOddRow = r % 2 !== 0;
+                            const left = c * 13.33 + (isOddRow ? 6.66 : 0);
+                            const top = r * 23.07;
+                            
+                            const cellState = window._builderBoardState[r][c];
+                            let cellContentHTML = '';
+                            let deleteBtnHTML = '';
+                            
+                            const isSelectedToMove = window._builderActiveTool?.type === 'move' && window._builderActiveTool.r === r && window._builderActiveTool.c === c;
+                            const moveHighlight = isSelectedToMove ? 'ring-[2px] ring-premium-gold brightness-125 scale-105 z-30' : '';
+
+                            if (cellState) {
+                                const cData = window._builderMasterChamps[cellState.champ];
+                                const img = cData ? cData.image : './asset/placeholder.png';
+                                let bgBorder = 'bg-slate-400 dark:bg-slate-600';
+                                if(cData) {
+                                    if(cData.cost===2) bgBorder='bg-emerald-500';
+                                    if(cData.cost===3) bgBorder='bg-blue-500';
+                                    if(cData.cost===4) bgBorder='bg-purple-500';
+                                    if(cData.cost===5) bgBorder='bg-yellow-400';
+                                }
+
+                                let itemsHTML = '';
+                                if (cellState.items && cellState.items.length > 0) {
+                                    itemsHTML = `<div class="absolute -bottom-1.5 left-0 w-full flex justify-center gap-[1px] z-20 pointer-events-none">` + 
+                                        cellState.items.map(itemName => {
+                                            const iData = window._builderMasterItems[itemName];
+                                            const iImg = iData ? iData.image : './asset/placeholder.png';
+                                            return `<img src="${iImg}" class="w-[14px] h-[14px] rounded-[3px] border-[1.5px] border-slate-300 dark:border-[#0B101A] object-cover shadow-sm bg-black" ${onErrorFallback}>`;
+                                        }).join('') + `</div>`;
+                                }
+
+                                deleteBtnHTML = `
+                                    <div class="absolute -top-1 -right-0.5 z-40 cursor-pointer" onclick="event.stopPropagation(); window.removeBuilderEntity(${r}, ${c})">
+                                        <div class="w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center shadow-lg border border-white/20 hover:bg-rose-600 active:scale-90 transition-transform">
+                                            <i class="fa-solid fa-xmark text-white text-[9px]"></i>
+                                        </div>
+                                    </div>
+                                `;
+
+                                cellContentHTML = `
+                                    <div class="w-full h-full p-[2px] ${bgBorder} relative group transition-all duration-200 cursor-pointer ${moveHighlight}" 
+                                         style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"
+                                         draggable="true" 
+                                         ondragstart="window.handleBuilderDragStart(event, 'move', '${escapeJS(cellState.champ)}', ${r}, ${c})">
+                                        <img src="${img}" class="w-full h-full object-cover object-[80%] bg-slate-900 pointer-events-none" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);" ${onErrorFallback}>
+                                    </div>
+                                    ${itemsHTML}
+                                `;
+                            }
+
+                            boardContainer.innerHTML += `
+                                <div class="absolute w-[13.33%] h-[30.76%] z-10 transition-transform scale-[0.92] drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] ${cellState ? '' : 'bg-slate-300/40 dark:bg-white/5 border border-dashed border-slate-400/50 dark:border-white/20 hover:bg-slate-400/40 dark:hover:bg-white/10 cursor-pointer'}" 
+                                     style="left: ${left}%; top: ${top}%; ${cellState ? '' : 'clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);'}"
+                                     onclick="window.handleHexClick(${r}, ${c})"
+                                     ondragover="event.preventDefault(); this.classList.add('scale-105', 'brightness-125');"
+                                     ondragleave="this.classList.remove('scale-105', 'brightness-125');"
+                                     ondrop="window.handleBuilderDrop(event, ${r}, ${c}); this.classList.remove('scale-105', 'brightness-125');">
+                                    ${cellContentHTML}
+                                    ${deleteBtnHTML}
+                                </div>
+                            `;
+                        }
+                    }
+                };
+
+                // --- VẼ DANH SÁCH BỂ (TƯỚNG HOẶC TRANG BỊ) ĐƯỢC PHÂN NHÓM ---
+                const renderPool = () => {
+                    const pool = document.getElementById('builder-pool-container');
+                    if (!pool) return;
+                    
+                    const query = window._builderSearchQuery.toLowerCase();
+                    const onErrorFallback = `onerror="this.onerror=null; this.src='./asset/placeholder.png';"`;
+                    let poolHTML = '';
+
+                    if (window._builderActiveTab === 'champ') {
+                        const filtered = champsData.filter(c => c.name.toLowerCase().includes(query));
+                        
+                        if (filtered.length === 0) {
+                            poolHTML = '<p class="text-center text-[11px] text-slate-500 py-6">Không tìm thấy Tướng phù hợp.</p>';
+                        } else {
+                            const costTiers = [1, 2, 3, 4, 5];
+                            costTiers.forEach(tier => {
+                                const champsInTier = filtered.filter(c => c.cost === tier);
+                                if (champsInTier.length === 0) return;
+
+                                let tierColor = 'text-slate-600 dark:text-slate-400'; let tierBg = 'bg-slate-400';
+                                if (tier === 2) { tierColor = 'text-emerald-600 dark:text-emerald-400'; tierBg = 'bg-emerald-500'; }
+                                if (tier === 3) { tierColor = 'text-blue-600 dark:text-blue-400'; tierBg = 'bg-blue-500'; }
+                                if (tier === 4) { tierColor = 'text-purple-600 dark:text-purple-400'; tierBg = 'bg-purple-500'; }
+                                if (tier === 5) { tierColor = 'text-yellow-600 dark:text-yellow-400'; tierBg = 'bg-yellow-500'; }
+
+                                const champsGrid = champsInTier.map(champ => {
+                                    const isSelected = window._builderActiveTool?.id === champ.name;
+                                    const selectHighlight = isSelected ? 'ring-[2.5px] ring-premium-gold scale-105 shadow-lg z-10' : 'ring-[1px] ring-slate-300 dark:ring-white/20 hover:ring-premium-gold/50';
+                                    
+                                    // SỬA: Đổi giao diện, xóa cost, thêm tên gradient
+                                    return `
+                                        <div class="relative w-full aspect-square rounded-md overflow-hidden cursor-pointer transition-all ${selectHighlight}" title="${champ.name}"
+                                             onclick="window.selectBuilderTool('champ', '${escapeJS(champ.name)}')"
+                                             draggable="true" ondragstart="window.handleBuilderDragStart(event, 'champ', '${escapeJS(champ.name)}')">
+                                            <img src="${champ.image}" class="w-full h-full object-cover object-[80%] bg-black pointer-events-none" ${onErrorFallback}>
+                                            <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/70 to-transparent pt-4 pb-1 px-0.5 text-center pointer-events-none">
+                                                <span class="block text-[8.5px] font-bold text-white truncate drop-shadow-md leading-none">${champ.name}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('');
+
+                                poolHTML += `
+                                    <div class="flex flex-col gap-2.5 mb-2">
+                                        <div class="flex items-center gap-2 sticky top-0 bg-white/95 dark:bg-premium-card/95 backdrop-blur-md z-20 py-1">
+                                            <div class="w-1 h-3.5 rounded-full ${tierBg}"></div>
+                                            <h4 class="text-[10px] font-bold ${tierColor} uppercase tracking-wider">${tier} VÀNG</h4>
+                                            <div class="flex-1 h-[1px] bg-gradient-to-r from-slate-200 dark:from-white/10 to-transparent"></div>
+                                        </div>
+                                        <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-1.5 px-0.5">
+                                            ${champsGrid}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        }
+                    } else {
+                        // NHÓM TRANG BỊ
+                        const filtered = itemsList.filter(i => i.name.toLowerCase().includes(query));
+                        
+                        if (filtered.length === 0) {
+                            poolHTML = '<p class="text-center text-[11px] text-slate-500 py-6">Không tìm thấy Trang Bị phù hợp.</p>';
+                        } else {
+                            const categories = [
+                                { key: 'normal', name: 'Cơ Bản', color: 'text-slate-600 dark:text-slate-400', dot: 'bg-slate-400' },
+                                { key: 'emblem', name: 'Ấn Hệ Tộc', color: 'text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500' },
+                                { key: 'radiant', name: 'Ánh Sáng', color: 'text-yellow-600 dark:text-yellow-400', dot: 'bg-yellow-400' },
+                                { key: 'artifact', name: 'Tạo Tác', color: 'text-rose-600 dark:text-rose-400', dot: 'bg-rose-500' },
+                                { key: 'support', name: 'Hỗ Trợ', color: 'text-blue-600 dark:text-blue-400', dot: 'bg-blue-500' },
+                                { key: 'consumable', name: 'Tiêu Thụ', color: 'text-purple-600 dark:text-purple-400', dot: 'bg-purple-500' }
+                            ];
+
+                            categories.forEach(cat => {
+                                const itemsInCat = filtered.filter(i => {
+                                    let itemCat = i.category ? i.category.toLowerCase() : 'normal';
+                                    return itemCat === cat.key;
+                                });
+
+                                if (itemsInCat.length === 0) return;
+
+                                const itemsGrid = itemsInCat.map(item => {
+                                    const isSelected = window._builderActiveTool?.id === item.name;
+                                    const selectHighlight = isSelected ? 'ring-[2.5px] ring-rose-400 scale-105 shadow-lg z-10' : 'ring-[1px] ring-slate-300 dark:ring-white/20 hover:ring-rose-400/50';
+                                    const isRadiant = item.category === 'radiant' || item.name.toLowerCase().includes('ánh sáng');
+                                    
+                                    return `
+                                        <div class="relative w-full aspect-square rounded-md overflow-hidden cursor-pointer transition-all ${selectHighlight} ${isRadiant ? 'shadow-[0_0_5px_rgba(250,204,21,0.5)]' : ''}" title="${item.name}"
+                                             onclick="window.selectBuilderTool('item', '${escapeJS(item.name)}')"
+                                             draggable="true" ondragstart="window.handleBuilderDragStart(event, 'item', '${escapeJS(item.name)}')">
+                                            <img src="${item.image}" class="w-full h-full object-cover bg-black pointer-events-none" ${onErrorFallback}>
+                                        </div>
+                                    `;
+                                }).join('');
+
+                                poolHTML += `
+                                    <div class="flex flex-col gap-2.5 mb-2">
+                                        <div class="flex items-center gap-2 sticky top-0 bg-white/95 dark:bg-premium-card/95 backdrop-blur-md z-20 py-1">
+                                            <div class="w-1 h-3.5 rounded-full ${cat.dot}"></div>
+                                            <h4 class="text-[10px] font-bold ${cat.color} uppercase tracking-wider">${cat.name}</h4>
+                                            <div class="flex-1 h-[1px] bg-gradient-to-r from-slate-200 dark:from-white/10 to-transparent"></div>
+                                        </div>
+                                        <div class="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 gap-1.5 px-0.5">
+                                            ${itemsGrid}
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        }
+                    }
+
+                    pool.innerHTML = poolHTML;
+                };
+
+                // --- CÁC HÀM XỬ LÝ SỰ KIỆN GIAO DIỆN ---
+                window.setBuilderTab = (tab) => {
+                    window._builderActiveTab = tab;
+                    window._builderSearchQuery = '';
+                    document.getElementById('builder-search-input').value = '';
+                    window._builderActiveTool = null; // Chuyển tab thì hủy chọn
+                    renderBuilderInterface();
+                };
+
+                window.updateBuilderSearch = (val) => {
+                    window._builderSearchQuery = val;
+                    renderPool();
+                };
+
+                // CLICK CHỌN TỪ BỂ
+                window.selectBuilderTool = (type, id) => {
+                    if (window._builderActiveTool?.id === id) {
+                        window._builderActiveTool = null; 
+                    } else {
+                        window._builderActiveTool = { type, id, r: -1, c: -1 };
+                    }
+                    renderBoard();
+                    renderPool(); 
+                };
+
+                // CLICK VÀO Ô TRÊN BÀN CỜ
+                window.handleHexClick = (r, c) => {
+                    const tool = window._builderActiveTool;
+                    const cell = window._builderBoardState[r][c];
+
+                    if (tool) {
+                        if (tool.type === 'champ') {
+                            // TÌM XEM TƯỚNG NÀY ĐÃ CÓ TRÊN SÂN CHƯA
+                            let existingR = -1, existingC = -1;
+                            for (let i = 0; i < 4; i++) {
+                                for (let j = 0; j < 7; j++) {
+                                    if (window._builderBoardState[i][j]?.champ === tool.id) {
+                                        existingR = i; existingC = j;
+                                    }
+                                }
+                            }
+
+                            if (existingR !== -1 && existingC !== -1) {
+                                const temp = window._builderBoardState[r][c];
+                                window._builderBoardState[r][c] = window._builderBoardState[existingR][existingC];
+                                window._builderBoardState[existingR][existingC] = temp;
+                            } else {
+                                window._builderBoardState[r][c] = { champ: tool.id, items: [] }; 
+                            }
+                            window._builderActiveTool = null; 
+                        } else if (tool.type === 'item') {
+                            if (cell) { 
+                                if (cell.items.length < 3) cell.items.push(tool.id);
+                                else uiAlert('Đầy đồ', 'Một tướng chỉ mang tối đa 3 trang bị.', 'info');
+                                window._builderActiveTool = null; 
+                            }
+                        } else if (tool.type === 'move') {
+                            if (tool.r === r && tool.c === c) {
+                                window._builderActiveTool = null; 
+                            } else {
+                                const temp = window._builderBoardState[r][c];
+                                window._builderBoardState[r][c] = window._builderBoardState[tool.r][tool.c];
+                                window._builderBoardState[tool.r][tool.c] = temp;
+                                window._builderActiveTool = null; 
+                            }
+                        }
+                    } else {
+                        if (cell) {
+                            window._builderActiveTool = { type: 'move', id: cell.champ, r, c };
+                        }
+                    }
+                    
+                    renderBoard();
+                    renderPool();
+                };
+
+                // NÚT X - XÓA TƯỚNG
+                window.removeBuilderEntity = (r, c) => {
+                    window._builderBoardState[r][c] = null;
+                    if(window._builderActiveTool?.r === r && window._builderActiveTool?.c === c) {
+                        window._builderActiveTool = null;
+                    }
+                    renderBoard();
+                };
+
+                // DRAG START MÁY TÍNH
+                window.handleBuilderDragStart = (e, type, id, r = -1, c = -1) => {
+                    e.dataTransfer.setData('text/plain', JSON.stringify({ type, id, r, c }));
+                    window._builderActiveTool = { type, id, r, c }; 
+                    renderBoard();
+                    renderPool();
+                };
+
+                // DROP MÁY TÍNH
+                window.handleBuilderDrop = (e, r, c) => {
+                    e.preventDefault();
+                    try {
+                        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                        window._builderActiveTool = data; 
+                        window.handleHexClick(r, c); 
+                    } catch(err) { console.log("Lỗi thả Drop", err); }
+                };
+
+                // LÀM SẠCH BÀN CỜ
+                window.clearBuilderBoard = () => {
+                    uiConfirm('Làm Sạch Bàn Cờ', 'Bạn có chắc chắn muốn xóa toàn bộ đội hình hiện tại không?', () => {
+                        window._builderBoardState = Array(4).fill(null).map(() => Array(7).fill(null));
+                        window._builderActiveTool = null;
+                        renderBoard();
+                        renderPool();
+                    });
+                };
+
+                // XUẤT JSON
+                window.exportBuilderJSON = () => {
+                    const boardPos = [];
+                    const unitsMap = {}; 
+
+                    for (let r = 0; r < 4; r++) {
+                        for (let c = 0; c < 7; c++) {
+                            const cell = window._builderBoardState[r][c];
+                            if (cell) {
+                                boardPos.push({ champion: cell.champ, coordinates: { row: r, col: c } });
+                                
+                                if (!unitsMap[cell.champ]) {
+                                    unitsMap[cell.champ] = { champion: cell.champ, items: [...cell.items] };
+                                } else {
+                                    if(cell.items.length > unitsMap[cell.champ].items.length) {
+                                        unitsMap[cell.champ].items = [...cell.items];
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (boardPos.length === 0) {
+                        uiAlert('Bàn cờ trống', 'Hãy đặt ít nhất 1 tướng trước khi xuất JSON.', 'info');
+                        return;
+                    }
+
+                    const jsonOutput = {
+                        "CompTitle": "Đội hình Tự Tạo",
+                        "CompRowTags": ["Custom"],
+                        "CompEarlyOptions": [],
+                        "CompQuickStart": { "carousel": [], "leveling": [] },
+                        "BoardPositions": boardPos,
+                        "UnitsContainer": Object.values(unitsMap)
+                    };
+
+                    const jsonStr = JSON.stringify(jsonOutput, null, 4);
+
+                    const modalHTML = `
+                        <div class="flex flex-col gap-3">
+                            <p class="text-xs text-slate-600 dark:text-slate-400">Copy đoạn mã JSON dưới đây và dán vào mảng của file <code class="text-rose-500 font-bold">comps.json</code>:</p>
+                            <textarea id="builder-export-textarea" class="w-full h-48 bg-slate-100 dark:bg-black/50 border border-slate-300 dark:border-white/10 rounded-lg p-2 text-[10px] text-slate-800 dark:text-emerald-400 font-mono outline-none resize-none" readonly>${jsonStr}</textarea>
+                            <button onclick="window.copyToClipboard(document.getElementById('builder-export-textarea').value, 'copy-json-btn')" id="copy-json-btn" class="w-full py-2 bg-premium-gold hover:bg-yellow-500 text-black font-bold rounded-lg transition-colors text-sm shadow-md outline-none">
+                                <i class="fa-solid fa-copy mr-1"></i> Copy Mã JSON
+                            </button>
+                        </div>
+                    `;
+                    uiAlert('<span class="text-premium-gold font-black">Thành Công</span>', modalHTML);
+                };
+
+                // Khởi động
+                renderBuilderInterface();
+
+            } catch (error) {
+                gridContainer.innerHTML = `<div class="p-4 text-center text-red-500 text-sm border border-red-300 dark:border-red-900/50 bg-red-100 dark:bg-red-900/10 rounded-xl">Lỗi khởi tạo Builder: ${error.message}</div>`;
+            }
+        }
         // Hàm xử lý đóng/mở Card khi được nhấn
         function toggleCard(cardElement) {
             // Chỉ đơn giản là toggle class 'is-expanded' trên thẻ Card được nhấn
