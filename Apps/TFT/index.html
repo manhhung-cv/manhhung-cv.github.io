@@ -32,7 +32,7 @@
 
     <script>
         tailwind.config = {
-            darkMode: 'class', // QUAN TRỌNG ĐỂ DARK MODE HOẠT ĐỘNG
+            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
@@ -204,12 +204,12 @@
         </div>
     </div>
 
-    <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
-        // Cấu hình của bạn
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+        // THÊM: Import Firebase Auth
+        import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyDlJ3W2Z7wYgx550RG897Gn1Mtlo8mHZtA",
             authDomain: "database-8194f.firebaseapp.com",
@@ -218,20 +218,27 @@
             messagingSenderId: "204852175449",
             appId: "1:204852175449:web:27d5df0244a18026d70748"
         };
-        window._fsGetDocs = getDocs;
-        window._fsQuery = query;
-        window._fsOrderBy = orderBy;
 
-        // Khởi tạo Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app); // Khởi tạo Auth
 
-        // Đưa các hàm cần thiết ra global window để script.js có thể gọi được
         window._db = db;
+        window._auth = auth;
         window._fsSetDoc = setDoc;
         window._fsGetDoc = getDoc;
         window._fsDoc = doc;
         window._fsCol = collection;
+        window._fsGetDocs = getDocs;
+        window._fsQuery = query;
+        window._fsOrderBy = orderBy;
+        window._fsDeleteDoc = deleteDoc; // Hàm xóa
+
+        window._signIn = signInWithEmailAndPassword;
+        window._signOut = signOut;
+        window._onAuthStateChanged = onAuthStateChanged;
+        
+        window.escapeJS = (str) => str ? str.replace(/'/g, "\\'") : '';
     </script>
 
     <script>
@@ -301,6 +308,8 @@
             { id: 'champions', name: 'Tướng', icon: 'fa-user-ninja' },
             { id: 'items', name: 'Trang bị', icon: 'fa-khanda' },
             { id: 'traits', name: 'Tộc hệ', icon: 'fa-shapes' },
+            { id: 'donate', name: 'Ủng Hộ', icon: 'fa-heart' }, 
+            { id: 'admin', name: 'Quản lý', icon: 'fa-shield-halved' } 
         ];
 
         let currentTabId = Tabs[0].id;
@@ -352,7 +361,9 @@
             loadChampionsData();
             loadItemsData();
             loadCompsData();
-            loadBuilderData(); // THÊM DÒNG NÀY
+            loadBuilderData();
+            loadAdminData();
+            loadDonateData();
         }
 
         // ---------------------------------------------------------
@@ -515,7 +526,7 @@
                         championsHTML = validChampions.map(champ => {
                             return `
                                 <div class="flex flex-col items-center w-[46px] flex-shrink-0 cursor-pointer group" 
-                                     onclick="event.stopPropagation(); uiAlert('Thông tin Tướng', '<span class=\\'text-premium-gold font-bold\\'>${champ.name}</span>')">
+                                     onclick="event.stopPropagation(); uiAlert('Thông tin Tướng', '<span class=\\'text-premium-gold font-bold\\'>${window.escapeJS(champ.name)}</span>')">
                                     <img src="${champ.icon}" alt="${champ.name}" 
                                          class="w-10 h-10 rounded-[10px] border border-slate-300 dark:border-slate-600 object-cover bg-black shadow-sm group-hover:scale-105 group-hover:border-slate-400 transition-all">
                                     <span class="text-[8.5px] text-slate-500 dark:text-slate-400 font-medium text-center w-full truncate mt-1 group-hover:text-slate-800 dark:group-hover:text-white transition-colors">
@@ -616,12 +627,19 @@
                     }
                 }
 
-                window._masterBuildsForTraits = {};
+                // THÊM HÀM CHUẨN HÓA TÊN (Xóa dấu nháy, khoảng trắng, ký tự đặc biệt)
+                const normalizeBuildName = (name) => {
+                    if (!name) return '';
+                    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+                };
+
+                window._masterBuilds = {};
                 if (Array.isArray(buildsData)) {
                     buildsData.forEach(b => {
                         const validBuilds = b.builds.filter(build => build.items && build.items.length > 0);
                         if (validBuilds.length > 0) {
-                            window._masterBuildsForTraits[b.unit] = validBuilds;
+                            // Ép tên trong file builds (Kaisa, TwistedFate) về dạng chuẩn (kaisa, twistedfate)
+                            window._masterBuilds[normalizeBuildName(b.unit)] = validBuilds;
                         }
                     });
                 }
@@ -685,7 +703,7 @@
                     }).join('');
 
                     const tabsHTML = builds.map((b, idx) => `
-                        <button onclick="document.getElementById('build-content-trait').innerHTML = window.renderBuildTabInTrait('${champName}', ${idx})" 
+                        <button onclick="document.getElementById('build-content-trait').innerHTML = window.renderBuildTabInTrait('${window.escapeJS(champName)}', ${idx})" 
                                 class="px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all whitespace-nowrap shadow-sm border outline-none ${idx === styleIndex ? 'bg-premium-gold text-black border-transparent shadow-[0_0_5px_rgba(212,175,55,0.5)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'}">
                             Cách ${idx + 1}
                         </button>
@@ -843,10 +861,9 @@
                                 if (hero.cost === 4) { borderColor = 'border-purple-500'; badgeBg = 'bg-purple-500 dark:bg-purple-600 text-white'; }
                                 if (hero.cost === 5) { borderColor = 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]'; badgeBg = 'bg-yellow-400 dark:bg-yellow-500 text-black'; }
 
-                                // CSS SỬA Ở ĐÂY: Thêm thẻ flex-col bọc ngoài để có chỗ để tên
                                 return `
                                     <div class="flex flex-col items-center w-10 sm:w-11 shrink-0 cursor-pointer group/hero hover:-translate-y-1 transition-transform" 
-                                         onclick="event.stopPropagation(); window.openChampModalFromTrait('${hero.name}')" title="${hero.name}">
+                                         onclick="event.stopPropagation(); window.openChampModalFromTrait('${window.escapeJS(hero.name)}')" title="${hero.name}">
                                          
                                         <div class="relative w-full aspect-square rounded-lg border-[1.5px] ${borderColor} overflow-hidden shadow-md bg-black">
                                             <img src="${hero.image}" class="w-full h-full object-cover object-[80%]" loading="lazy" ${onErrorFallback}>
@@ -864,7 +881,7 @@
                         }
 
                         const traitIconHTML = trait.icon_file
-                            ? `<div class="w-5 h-5 bg-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" style="-webkit-mask-image: url('${trait.icon_file}'); mask-image: url('${trait.icon_file}'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div>`
+                            ? `<div class="w-5 h-5 bg-premium-gold  group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" style="-webkit-mask-image: url('${trait.icon_file}'); mask-image: url('${trait.icon_file}'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div>`
                             : `<i class="fa-solid fa-shapes text-[16px] bg-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300"></i>`;
 
                         return `
@@ -873,10 +890,10 @@
                                 
                                 <div class="flex items-center justify-between cursor-pointer z-10 outline-none" onclick="window.toggleTraitDetails(this)">
                                     <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-premium-gold">
+                                        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-premium-gold text-premium-gold">
                                             ${traitIconHTML}
                                         </div>
-                                        <h3 class="text-[16px] font-black text-slate-800 dark:text-white tracking-wide drop-shadow-md uppercase">${trait.trait_name}</h3>
+                                        <h3 class="text-[16px] font-black text-slate-800 dark:text-premium-gold tracking-wide drop-shadow-md uppercase">${trait.trait_name}</h3>
                                     </div>
                                     
                                     <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex items-center justify-center group-hover:bg-premium-gold/20 transition-colors shadow-sm shrink-0">
@@ -962,12 +979,19 @@
                     }
                 }
 
+                // ĐƯA HÀM CHUẨN HÓA LÊN WINDOW ĐỂ GỌI TỪ MỌI NƠI
+                window._normalizeBuildName = (name) => {
+                    if (!name) return '';
+                    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+                };
+
                 window._masterBuilds = {};
                 if (Array.isArray(buildsData)) {
                     buildsData.forEach(b => {
                         const validBuilds = b.builds.filter(build => build.items && build.items.length > 0);
                         if (validBuilds.length > 0) {
-                            window._masterBuilds[b.unit] = validBuilds;
+                            // Gọi hàm qua window._normalizeBuildName
+                            window._masterBuilds[window._normalizeBuildName(b.unit)] = validBuilds;
                         }
                     });
                 }
@@ -1098,11 +1122,11 @@
                 };
 
                 window.renderBuildTab = (champName, styleIndex) => {
-                    const builds = window._masterBuilds[champName];
+                    const builds = window._masterBuilds[window._normalizeBuildName(champName)];
                     if (!builds || builds.length === 0) return '<p class="text-[10px] text-slate-500 text-center py-4 italic">Chưa có dữ liệu gợi ý.</p>';
 
                     const currentBuild = builds[styleIndex];
-                    const onErrorFallback = `onerror="this.onerror=null; this.src='./asset/placeholder.png';"`;
+                    const onErrorFallback = `onerror="this.onerror=null; this.src='/Asset/logo/logo.png';"`;
 
                     const itemsHTML = currentBuild.items.map(rawItemName => {
                         const itemName = cleanItemName(rawItemName);
@@ -1131,7 +1155,7 @@
                     }).join('');
 
                     const tabsHTML = builds.map((b, idx) => `
-                        <button onclick="document.getElementById('build-content').innerHTML = window.renderBuildTab('${champName}', ${idx})" 
+                        <button onclick="document.getElementById('build-content').innerHTML = window.renderBuildTab('${window.escapeJS(champName)}', ${idx})" 
                                 class="px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all whitespace-nowrap shadow-sm border outline-none ${idx === styleIndex ? 'bg-premium-gold text-black border-transparent shadow-[0_0_5px_rgba(212,175,55,0.5)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'}">
                             Cách ${idx + 1}
                         </button>
@@ -1201,7 +1225,7 @@
                     const contentHTML = `
                         <div class="flex flex-col gap-3 mt-2 text-left">
                             <div class="w-full h-[100px] md:h-[120px] rounded-xl overflow-hidden border-2 ${borderColor} relative shadow-md">
-                                <img src="${champ.image}" class="w-full h-full object-cover object-[80%]" alt="${champ.name}" onerror="this.onerror=null; this.src='./asset/placeholder.png';">
+                                <img src="${champ.image}" class="w-full h-full object-cover object-[80%]" alt="${champ.name}" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">
                                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                                 <div class="absolute bottom-2 left-2 flex flex-wrap gap-1.5">${traitPills}</div>
                             </div>
@@ -1279,9 +1303,9 @@
                             if (champ.cost === 4) theme = { ring: 'ring-purple-500/40', text: 'text-purple-700 dark:text-purple-400', bg: 'bg-purple-500', gradient: 'from-purple-100 dark:from-purple-500/20', border: 'border-purple-400 dark:border-purple-500 hover:border-purple-500 dark:hover:border-purple-400' };
                             if (champ.cost === 5) theme = { ring: 'ring-yellow-500/40', text: 'text-yellow-700 dark:text-yellow-400', bg: 'bg-yellow-500', gradient: 'from-yellow-100 dark:from-yellow-500/20', border: 'border-yellow-400 dark:border-yellow-500 hover:border-yellow-500 dark:hover:border-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.2)] dark:shadow-[0_0_8px_rgba(234,179,8,0.3)]' };
 
-                            let recommendedItemsArray = [];
-                            const buildsForChamp = window._masterBuilds[champ.name];
-                            if (buildsForChamp && buildsForChamp.length > 0) {
+                           let recommendedItemsArray = [];
+                            const buildsForChamp = window._masterBuilds[window._normalizeBuildName(champ.name)];
+                             if (buildsForChamp && buildsForChamp.length > 0) {
                                 const firstBuildItems = buildsForChamp[0].items;
                                 firstBuildItems.forEach(rawItemName => {
                                     const cleanName = cleanItemName(rawItemName);
@@ -1593,9 +1617,9 @@
                     if (!recipe || recipe.length !== 2) return '';
                     return `
                         <div class="flex items-center gap-1 bg-slate-50 dark:bg-black/50 rounded p-1 shadow-inner border border-slate-200 dark:border-white/5">
-                            <img src="${recipe[0].image}" class="w-4 h-4 rounded-sm object-cover" alt="${recipe[0].name}" onerror="this.src='./asset/placeholder.png'; this.onerror=null;">
+                            <img src="${recipe[0].image}" class="w-4 h-4 rounded-sm object-cover" alt="${recipe[0].name}" onerror="this.src='/Asset/logo/logo.png'; this.onerror=null;">
                             <i class="fa-solid fa-plus text-[7px] text-slate-400"></i>
-                            <img src="${recipe[1].image}" class="w-4 h-4 rounded-sm object-cover" alt="${recipe[1].name}" onerror="this.src='./asset/placeholder.png'; this.onerror=null;">
+                            <img src="${recipe[1].image}" class="w-4 h-4 rounded-sm object-cover" alt="${recipe[1].name}" onerror="this.src='/Asset/logo/logo.png'; this.onerror=null;">
                         </div>
                     `;
                 };
@@ -1806,12 +1830,19 @@
                     }
                 }
 
+                // Đảm bảo hàm chuẩn hóa luôn tồn tại
+                window._normalizeBuildName = window._normalizeBuildName || ((name) => {
+                    if (!name) return '';
+                    return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+                });
+
                 window._masterBuildsForComps = {};
                 if (Array.isArray(buildsData)) {
                     buildsData.forEach(b => {
                         const validBuilds = b.builds.filter(build => build.items && build.items.length > 0);
                         if (validBuilds.length > 0) {
-                            window._masterBuildsForComps[b.unit] = validBuilds;
+                            // Ép tên về dạng chuẩn trước khi lưu
+                            window._masterBuildsForComps[window._normalizeBuildName(b.unit)] = validBuilds;
                         }
                     });
                 }
@@ -1845,9 +1876,8 @@
                     }
                 };
 
-                // (Các hàm window.renderBuildTabInComp và window.openChampModalFromComp giữ nguyên y hệt)
                 window.renderBuildTabInComp = (champName, styleIndex) => {
-                    const builds = window._masterBuildsForComps[champName];
+                    const builds = window._masterBuildsForComps[window._normalizeBuildName(champName)];
                     if (!builds || builds.length === 0) return '<p class="text-[10px] text-slate-500 text-center py-4 italic">Chưa có dữ liệu gợi ý.</p>';
 
                     const currentBuild = builds[styleIndex];
@@ -1878,7 +1908,7 @@
                     }).join('');
 
                     const tabsHTML = builds.map((b, idx) => `
-                        <button onclick="document.getElementById('build-content-comp').innerHTML = window.renderBuildTabInComp('${champName}', ${idx})" 
+                        <button onclick="document.getElementById('build-content-comp').innerHTML = window.renderBuildTabInComp('${window.escapeJS(champName)}', ${idx})" 
                                 class="px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all whitespace-nowrap shadow-sm border outline-none ${idx === styleIndex ? 'bg-premium-gold text-black border-transparent shadow-[0_0_5px_rgba(212,175,55,0.5)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'}">
                             Cách ${idx + 1}
                         </button>
@@ -1970,7 +2000,6 @@
                     uiAlert(titleHTML, contentHTML);
                 };
 
-                // 2. Thêm icon fa-cloud cho nguồn dữ liệu từ Firebase
                 const sourceButtonsHTML = compSources.map(src => `
                     <button class="filter-source-btn shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none
                         ${src.file === activeSourceUrl ? 'bg-rose-500 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'}" 
@@ -2089,7 +2118,6 @@
                     });
                 };
 
-                // 3. Tích hợp logic xử lý tải Data Firebase vs Fetch cục bộ
                 const fetchAndRenderComps = async (url) => {
                     const listContainer = document.getElementById('comp-list-container');
                     listContainer.innerHTML = `<div class="py-16 flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-3xl mb-4"></i><span class="text-[12px] font-medium">Đang tải dữ liệu...</span></div>`;
@@ -2180,7 +2208,7 @@
                             unitsHTML = sortedUnits.map(unit => {
                                 const cName = cleanName(unit.champion);
                                 const champData = masterChamps[cName];
-                                const champImage = champData ? champData.image : './asset/placeholder.png';
+                                const champImage = champData ? champData.image : '/Asset/logo/logo.png';
                                 const champCost = champData ? champData.cost : 1;
 
                                 if (champData && champData.traits) {
@@ -2198,13 +2226,13 @@
                                 if (items.length > 0) {
                                     itemsHTML = items.map(itemName => {
                                         const iData = masterItems[cleanName(itemName)];
-                                        const img = iData ? iData.image : './asset/placeholder.png';
+                                        const img = iData ? iData.image : '/Asset/logo/logo.png';
                                         return `<img src="${img}" class="w-[14px] h-[14px] sm:w-[15px] sm:h-[15px] rounded-[3px] border border-slate-200 dark:border-[#090d14] object-cover shadow-sm bg-black" title="${iData ? iData.name : itemName}" ${onErrorFallback}>`;
                                     }).join('');
                                 }
 
                                 return `
-                                    <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer mb-1" onclick="window.openChampModalFromComp('${unit.champion}')">
+                                    <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer mb-1" onclick="window.openChampModalFromComp('${window.escapeJS(unit.champion)}')">
                                         <div class="relative w-full mb-1.5 transition-transform duration-300 group-hover/unit:-translate-y-1">
                                             <div class="w-full h-12 sm:h-[50px] aspect-square rounded-[6px] border-2 ${borderColor} overflow-hidden bg-black shadow-md">
                                                 <img src="${champImage}" class="w-full h-full object-cover object-[80%]" title="${unit.champion}" ${onErrorFallback}>
@@ -2241,7 +2269,7 @@
                             carouselHTML = `<div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">` +
                                 comp.CompQuickStart.carousel.slice(0, 5).map((cItem, index) => {
                                     const iData = masterItems[cleanName(cItem.item)];
-                                    const img = iData ? iData.image : './asset/placeholder.png';
+                                    const img = iData ? iData.image : '/Asset/logo/logo.png';
                                     return `
                                     <div class="flex items-center">
                                         <img src="${img}" class="w-6 h-6 rounded border border-slate-300 dark:border-slate-600 bg-black object-cover shadow-sm" ${onErrorFallback}>
@@ -2256,7 +2284,7 @@
                             earlyCompHTML = comp.CompEarlyOptions.slice(0, 2).map(opt => {
                                 const teamHTML = opt.team_comp.map(c => {
                                     const cData = masterChamps[cleanName(c)];
-                                    const img = cData ? cData.image : './asset/placeholder.png';
+                                    const img = cData ? cData.image : '/Asset/logo/logo.png';
                                     let borderColor = 'border-slate-400 dark:border-slate-600';
                                     if (cData) {
                                         if (cData.cost === 2) borderColor = 'border-emerald-500';
@@ -2265,7 +2293,7 @@
                                         if (cData.cost === 5) borderColor = 'border-yellow-400';
                                     }
                                     return `
-                                        <div class="flex flex-col items-center w-9 sm:w-10 shrink-0 cursor-pointer group/early" onclick="window.openChampModalFromComp('${c}')">
+                                        <div class="flex flex-col items-center w-9 sm:w-10 shrink-0 cursor-pointer group/early" onclick="window.openChampModalFromComp('${window.escapeJS(c)}')">
                                         <div class="w-full h-9 sm:h-10 aspect-square rounded-[4px] border-[1.5px] ${borderColor} overflow-hidden bg-black shadow-md transition-transform group-hover/early:-translate-y-1">
                                                     <img src="${img}" class="w-full h-full object-cover object-[80%]" ${onErrorFallback}>
                                             </div>
@@ -2291,7 +2319,7 @@
                         if (comp.BoardPositions && comp.BoardPositions.length > 0) {
                             const champHexesHTML = comp.BoardPositions.map(pos => {
                                 const cData = masterChamps[cleanName(pos.champion)];
-                                const img = cData ? cData.image : './asset/placeholder.png';
+                                const img = cData ? cData.image : '/Asset/logo/logo.png';
                                 let bgBorder = 'bg-slate-400 dark:bg-slate-600';
                                 if (cData) {
                                     if (cData.cost === 2) bgBorder = 'bg-emerald-500';
@@ -2305,7 +2333,7 @@
 
                                 return `
                                     <div class="absolute w-[13.33%] h-[30.76%] z-10 transition-transform hover:scale-110 scale-[0.92] drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] cursor-pointer" 
-                                         style="left: ${left}%; top: ${top}%;" title="${pos.champion}" onclick="window.openChampModalFromComp('${pos.champion}')">
+                                         style="left: ${left}%; top: ${top}%;" title="${pos.champion}" onclick="window.openChampModalFromComp('${window.escapeJS(pos.champion)}')">
                                         <div class="w-full h-full p-[2px] ${bgBorder}" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
                                             <img src="${img}" class="w-full h-full object-cover object-[80%] bg-slate-900" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);" ${onErrorFallback}>
                                         </div>
@@ -2335,7 +2363,6 @@
                             `).join('') + `</div>`;
                         }
 
-                        // 4. Hỗ trợ hiển thị và Copy Code linh hoạt (ưu tiên Code JSON, fallback sang Code Firebase)
                         let copyCodeHTML = '';
                         const codeToCopy = comp.CopyTeamCode || comp.shareCode;
                         if (codeToCopy) {
@@ -2345,7 +2372,7 @@
                                     ${comp.shareCode ? `<span class="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/5 shadow-inner hidden sm:block">ID: ${comp.shareCode}</span>` : ''}
                                     <button id="${btnId}" onclick="window.copyToClipboard('${codeToCopy}', '${btnId}')" 
                                         class="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 hover:bg-premium-gold dark:hover:bg-premium-gold hover:text-slate-800 dark:hover:text-black text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10 px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all shadow-sm outline-none">
-                                        <i class="fa-regular fa-clone"></i>
+                                        <i class="fa-regular fa-clone"></i> Sao chép
                                     </button>
                                 </div>
                             `;
@@ -2355,14 +2382,14 @@
                             <div class="comp-card bg-white dark:bg-[#0e1420]/95 backdrop-blur-xl border border-slate-200 dark:border-white/5 hover:border-premium-gold/50 dark:hover:border-premium-gold/40 rounded-2xl shadow-xl transition-all duration-300 relative overflow-hidden group">
                                 <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 
-                                <div class="flex flex-col xl:flex-row gap-3 xl:gap-5 p-3.5 relative z-10">
+                                <div class="flex flex-col xl:flex-row gap-2 xl:gap-5 p-3.5 relative z-10">
                                     
                                     <div class="flex flex-col gap-1 xl:w-[180px] shrink-0 justify-center">
                                         <div class="flex gap-1.5 flex-wrap">${tagsHTML}</div>
                                         <h3 class="text-[15px] font-black text-slate-800 dark:text-white transition-colors leading-tight tracking-wide drop-shadow-sm">${comp.CompTitle}</h3>
                                     </div>
                                     
-                                    <div class="flex flex-wrap items-start content-start gap-2 sm:gap-2.5 w-full xl:w-auto xl:flex-1 min-w-0 pt-1 pb-2 xl:pb-0">
+                                    <div class="flex flex-wrap items-start content-start gap-2 sm:gap-2.5 w-full xl:w-auto xl:flex-1 min-w-0 pt-1  xl:pb-0">
                                         ${unitsHTML}
                                     </div>
                                     
@@ -2430,7 +2457,7 @@
                             const originalHTML = btn.innerHTML;
                             const originalClass = btn.className;
                             btn.className = "flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-emerald-400 px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all shadow-[0_0_8px_rgba(16,185,129,0.5)] z-20 relative";
-                            btn.innerHTML = `<i class="fa-solid fa-check"></i>`;
+                            btn.innerHTML = `<i class="fa-solid fa-check"></i> Đã chép`;
                             setTimeout(() => {
                                 btn.className = originalClass;
                                 btn.innerHTML = originalHTML;
@@ -2487,13 +2514,13 @@
             if (!gridContainer) return;
 
             try {
-                // --- 1. CẤU HÌNH & KHỞI TẠO DỮ LIỆU ---
-                const RECAPTCHA_SITE_KEY = "6Lfq0YQsAAAAAGwargZMaws6m9oLYXAR6BHF50O2"; // Thay key thật của bạn
+                const RECAPTCHA_SITE_KEY = "6Lfq0YQsAAAAAGwargZMaws6m9oLYXAR6BHF50O2";
 
-                const [resChamps, resItems, resTraits] = await Promise.all([
+                const [resChamps, resItems, resTraits, resPlanner] = await Promise.all([
                     fetch('./asset/champions.json'),
                     fetch('./asset/items.json'),
-                    fetch('./asset/traits.json')
+                    fetch('./asset/traits.json'),
+                    fetch('./asset/tft_planner.json').catch(() => null)
                 ]);
 
                 if (!resChamps.ok || !resItems.ok || !resTraits.ok) throw new Error('Lỗi tải dữ liệu hệ thống.');
@@ -2502,7 +2529,34 @@
                 const rawItemsData = await resItems.json();
                 const traitsData = await resTraits.json();
 
-                // Map dữ liệu để truy xuất nhanh
+                // KHỞI TẠO TỪ ĐIỂN MÃ HÓA TEAM PLANNER (ĐỌC CHUẨN TỪ RIOT)
+                window._tftHexMapping = {};
+                let plannerData = [];
+
+                if (resPlanner && resPlanner.ok) {
+                    try {
+                        const rawData = await resPlanner.json();
+                        // Trích xuất đúng mảng dữ liệu của Mùa 17
+                        plannerData = rawData["TFTSet17"] || [];
+                    } catch (e) { }
+                }
+
+                if (plannerData.length > 0) {
+                    plannerData.forEach(c => {
+                        const plannerCode = c.team_planner_code;
+                        if (plannerCode !== undefined && plannerCode !== null) {
+                            // Lấy tên tướng (VD: "TFT17_ChoGath" -> "chogath")
+                            let pureName = c.character_id && c.character_id.includes('_') ? c.character_id.split('_')[1] : c.display_name;
+                            if (pureName) {
+                                pureName = pureName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+                                // Đổi trực tiếp team_planner_code sang hệ Hex 3 ký tự (VD: 29 -> '01d')
+                                window._tftHexMapping[pureName] = Number(plannerCode).toString(16).padStart(3, '0').toLowerCase();
+                            }
+                        }
+                    });
+                }
+
+
                 window._builderMasterChamps = {};
                 champsData.forEach(c => window._builderMasterChamps[c.name] = c);
 
@@ -2520,14 +2574,16 @@
                     }
                 }
 
-                // QUẢN LÝ TRẠNG THÁI (STATE)
+                // KHỞI TẠO STATE
                 window._builderBoardState = Array(4).fill(null).map(() => Array(7).fill(null));
-                window._builderActiveTool = null; // { type, id, r, c }
+                window._builderActiveTool = null;
                 window._builderActiveTab = 'champ';
                 window._builderSearchQuery = '';
                 window._builderActiveTraits = new Set();
 
-                // --- 2. CÁC HÀM TIỆN ÍCH (HELPER) ---
+                // STATE CHO CẤU HÌNH THỦ CÔNG
+                window._manualData = { early: [], carousel: [] };
+
                 const escapeJS = (str) => str ? str.replace(/'/g, "\\'") : '';
 
                 const getTraitIconName = (name) => {
@@ -2585,51 +2641,259 @@
                     return activeTraitsArray.sort((a, b) => (a.isActive === b.isActive) ? b.count - a.count : (a.isActive ? -1 : 1));
                 };
 
-                // --- 3. GIAO DIỆN CHÍNH (RENDER) ---
+                // HÀM MỞ BẢNG CHỌN TRỰC QUAN (Tướng Đầu Game / Đi Chợ)
+                // HÀM MỞ BẢNG CHỌN TRỰC QUAN (Tướng Đầu Game / Đi Chợ)
+                window.openVisualSelector = (type) => {
+                    const isChamp = type === 'champ';
+                    const max = isChamp ? 5 : 10;
+                    const targetKey = isChamp ? 'early' : 'carousel'; // Fix lỗi không lưu được dữ liệu
+                    let selectedSet = new Set(window._manualData[targetKey]);
+
+                    window._vsSearchQuery = '';
+                    window._vsActiveFilter = 'all';
+
+                    // Xử lý chọn/bỏ chọn
+                    window._toggleSelection = (id) => {
+                        if (selectedSet.has(id)) {
+                            selectedSet.delete(id);
+                        } else {
+                            if (selectedSet.size >= max) return uiAlert('Giới hạn', `Chỉ được chọn tối đa ${max} mục!`, 'info');
+                            selectedSet.add(id);
+                        }
+                        window._renderVisualSelectorGrid(); // Cập nhật lại giao diện ngay lập tức
+                    };
+
+                    // Xử lý bộ lọc
+                    window._setVsFilter = (val) => {
+                        window._vsActiveFilter = val;
+                        document.querySelectorAll('.vs-filter-btn').forEach(btn => {
+                            if (btn.dataset.val === val) {
+                                btn.classList.add('bg-premium-gold', 'text-black', 'border-transparent');
+                                btn.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300');
+                            } else {
+                                btn.classList.remove('bg-premium-gold', 'text-black', 'border-transparent');
+                                btn.classList.add('bg-slate-100', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-300');
+                            }
+                        });
+                        window._renderVisualSelectorGrid();
+                    };
+
+                    // Hàm render lại danh sách lưới bên trong Modal
+                    window._renderVisualSelectorGrid = () => {
+                        const container = document.getElementById('vs-grid-container');
+                        const countText = document.getElementById('vs-count-text');
+                        if (!container) return;
+
+                        let items = [];
+                        if (isChamp) {
+                            items = Object.values(window._builderMasterChamps).sort((a, b) => a.cost - b.cost);
+                            if (window._vsActiveFilter !== 'all') {
+                                items = items.filter(c => c.cost === parseInt(window._vsActiveFilter));
+                            }
+                        } else {
+                            items = Object.values(window._builderMasterItems).filter(i => i.category !== 'emblem' && i.category !== 'consumable');
+                            if (window._vsActiveFilter !== 'all') {
+                                items = items.filter(i => i.category === window._vsActiveFilter);
+                            }
+                        }
+
+                        if (window._vsSearchQuery) {
+                            const q = window._vsSearchQuery.toLowerCase();
+                            items = items.filter(i => i.name.toLowerCase().includes(q));
+                        }
+
+                        if (items.length === 0) {
+                            container.innerHTML = '<p class="col-span-full text-center text-xs text-slate-500 py-6 italic">Không tìm thấy kết quả.</p>';
+                        } else {
+                            container.innerHTML = items.map(i => {
+                                const isSel = selectedSet.has(i.name);
+                                const ring = isSel ? 'ring-[2px] ring-premium-gold opacity-100 scale-105 shadow-md' : 'ring-1 ring-slate-300 dark:ring-slate-600 opacity-60 hover:opacity-100';
+                                const checkIcon = isSel ? `<div class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-premium-gold rounded-full flex items-center justify-center border border-black z-20 shadow-md"><i class="fa-solid fa-check text-[9px] text-black font-black"></i></div>` : '';
+
+                                return `
+                                    <div class="flex flex-col items-center relative gap-1 cursor-pointer transition-all" onclick="window._toggleSelection('${escapeJS(i.name)}')">
+                                        <div class="relative w-full aspect-square rounded-[6px] border-[1.5px] border-transparent transition-all duration-200 ${ring} bg-black">
+                                            <img src="${i.image}" class="w-full h-full object-cover object-[80%] rounded-[4px] pointer-events-none" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">
+                                            ${checkIcon}
+                                        </div>
+                                        <span class="text-[8.5px] font-bold ${isSel ? 'text-premium-gold drop-shadow-sm' : 'text-slate-600 dark:text-slate-400'} truncate w-full text-center transition-colors">${i.name}</span>
+                                    </div>
+                                `;
+                            }).join('');
+                        }
+                        if (countText) countText.innerHTML = `Đã chọn: <b class="text-premium-gold">${selectedSet.size} / ${max}</b>`;
+                    };
+
+                    const filtersHTML = isChamp
+                        ? `<div class="flex gap-2 overflow-x-auto no-scrollbar py-1 mb-1">
+                             <button onclick="window._setVsFilter('all')" class="vs-filter-btn px-3 py-1 rounded-full text-[10px] font-bold border transition-colors bg-premium-gold text-black border-transparent outline-none" data-val="all">Tất cả</button>
+                             ${[1, 2, 3, 4, 5].map(c => `<button onclick="window._setVsFilter('${c}')" class="vs-filter-btn px-3 py-1 rounded-full text-[10px] font-bold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 transition-colors outline-none" data-val="${c}">${c}$</button>`).join('')}
+                           </div>`
+                        : `<div class="flex gap-2 overflow-x-auto no-scrollbar py-1 mb-1">
+                             <button onclick="window._setVsFilter('all')" class="vs-filter-btn px-3 py-1 rounded-full text-[10px] font-bold border transition-colors bg-premium-gold text-black border-transparent outline-none" data-val="all">Tất cả</button>
+                             <button onclick="window._setVsFilter('normal')" class="vs-filter-btn px-3 py-1 rounded-full text-[10px] font-bold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 transition-colors outline-none" data-val="normal">Cơ bản</button>
+                             <button onclick="window._setVsFilter('artifact')" class="vs-filter-btn px-3 py-1 rounded-full text-[10px] font-bold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 transition-colors outline-none" data-val="artifact">Tạo Tác</button>
+                             <button onclick="window._setVsFilter('radiant')" class="vs-filter-btn px-3 py-1 rounded-full text-[10px] font-bold border bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 transition-colors outline-none" data-val="radiant">Ánh Sáng</button>
+                           </div>`;
+
+                    const html = `
+                        <div class="flex flex-col text-left">
+                            <div class="flex items-center justify-between mb-2 px-1">
+                                <span id="vs-count-text" class="text-[11px] text-slate-500 font-semibold">Đã chọn: <b class="text-premium-gold">0 / ${max}</b></span>
+                            </div>
+                            <div class="relative w-full mb-2">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[11px]"></i>
+                                <input type="text" placeholder="Tìm kiếm..." oninput="window._vsSearchQuery = this.value; window._renderVisualSelectorGrid()" class="w-full bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-lg pl-8 pr-3 py-2 text-[11px] text-slate-700 dark:text-white focus:outline-none focus:border-premium-gold/50 shadow-inner">
+                            </div>
+                            ${filtersHTML}
+                            <div id="vs-grid-container" class="grid grid-cols-5 sm:grid-cols-6 gap-x-2.5 gap-y-3 max-h-[300px] overflow-y-auto no-scrollbar p-1"></div>
+                        </div>
+                    `;
+
+                    uiConfirm(isChamp ? 'Chọn Tướng Đầu Game' : 'Chọn Trang Bị Đi Chợ', html, () => {
+                        window._manualData[targetKey] = Array.from(selectedSet);
+                        window.renderManualSelections();
+                    });
+
+                    setTimeout(() => { window._renderVisualSelectorGrid(); }, 50);
+                };
+
+                // HÀM RENDER LẠI CÁC MỤC ĐÃ CHỌN TRÊN GIAO DIỆN CHÍNH
+                window.renderManualSelections = () => {
+                    ['early', 'carousel'].forEach(type => {
+                        const container = document.getElementById(`manual-${type}-container`);
+                        if (!container) return;
+
+                        if (window._manualData[type].length > 0) {
+                            container.innerHTML = window._manualData[type].map(name => {
+                                const isChamp = type === 'early';
+                                const data = isChamp ? window._builderMasterChamps[name] : window._builderMasterItems[name];
+                                const img = data?.image || '/Asset/logo/logo.png';
+                                return `
+                                    <div class="flex flex-col items-center w-[34px] shrink-0 relative group cursor-pointer" onclick="window._manualData['${type}'] = window._manualData['${type}'].filter(x => x !== '${escapeJS(name)}'); window.renderManualSelections();" title="Bỏ chọn ${name}">
+                                        <div class="w-full aspect-square rounded-[5px] border-[1.5px] border-slate-300 dark:border-slate-600 bg-black overflow-hidden relative shadow-sm transition-colors group-hover:border-rose-500">
+                                            <img src="${img}" class="w-full h-full object-cover group-hover:opacity-30 transition-opacity">
+                                            <i class="fa-solid fa-xmark absolute inset-0 m-auto text-rose-500 text-[14px] opacity-0 group-hover:opacity-100 flex justify-center items-center font-black drop-shadow-md"></i>
+                                        </div>
+                                        <span class="text-[8px] font-bold text-slate-600 dark:text-slate-400 truncate w-full text-center mt-0.5 group-hover:text-rose-500 transition-colors">${name}</span>
+                                    </div>
+                                `;
+                            }).join('');
+                        } else {
+                            container.innerHTML = '<span class="text-[9.5px] text-slate-400 italic">Tự động tính từ Bàn Cờ...</span>';
+                        }
+                    });
+                };
+                // HÀM RENDER LẠI CÁC MỤC ĐÃ CHỌN TRÊN GIAO DIỆN CHÍNH
+                window.renderManualSelections = () => {
+                    ['early', 'carousel'].forEach(type => {
+                        const container = document.getElementById(`manual-${type}-container`);
+                        if (!container) return;
+
+                        if (window._manualData[type].length > 0) {
+                            container.innerHTML = window._manualData[type].map(name => {
+                                // SỬA LỖI Ở ĐÂY: Nhận diện đúng Tướng (early) thay vì (champ)
+                                const isChamp = type === 'early';
+                                const data = isChamp ? window._builderMasterChamps[name] : window._builderMasterItems[name];
+                                const img = data?.image || '/Asset/logo/logo.png';
+
+                                return `
+                                    <div class="flex flex-col items-center w-[34px] shrink-0 relative group cursor-pointer" onclick="window._manualData['${type}'] = window._manualData['${type}'].filter(x => x !== '${escapeJS(name)}'); window.renderManualSelections();" title="Bỏ chọn ${name}">
+                                        <div class="w-full aspect-square rounded-[5px] border-[1.5px] border-slate-300 dark:border-slate-600 bg-black overflow-hidden relative shadow-sm transition-colors group-hover:border-rose-500">
+                                            <img src="${img}" class="w-full h-full object-cover object-[80%] group-hover:opacity-30 transition-opacity">
+                                            <i class="fa-solid fa-xmark absolute inset-0 m-auto text-rose-500 text-[14px] opacity-0 group-hover:opacity-100 flex justify-center items-center font-black drop-shadow-md"></i>
+                                        </div>
+                                        <span class="text-[8px] font-bold text-slate-600 dark:text-slate-400 truncate w-full text-center mt-0.5 group-hover:text-rose-500 transition-colors">${name}</span>
+                                    </div>
+                                `;
+                            }).join('');
+                        } else {
+                            container.innerHTML = '<span class="text-[9.5px] text-slate-400 italic">Tự động tính từ Bàn Cờ...</span>';
+                        }
+                    });
+                };
+                // HÀM SET PRESET NHỊP LÊN CẤP (QUICK FILL)
+                window.setPresetLeveling = (preset) => {
+                    const presets = {
+                        'fast8': { 4: '2-1', 5: '2-5', 6: '3-2', 7: '3-5', 8: '4-2', 9: '5-1' },
+                        'reroll1': { 4: '3-1', 5: '3-5', 6: '4-1', 7: '4-5', 8: '5-1', 9: '' },
+                        'reroll2': { 4: '2-1', 5: '2-5', 6: '3-2', 7: '4-1', 8: '4-5', 9: '' },
+                        'reroll3': { 4: '2-1', 5: '2-5', 6: '3-2', 7: '3-5', 8: '4-5', 9: '5-5' },
+                        'clear': { 4: '', 5: '', 6: '', 7: '', 8: '', 9: '' }
+                    };
+                    const p = presets[preset];
+                    if (p) {
+                        for (let i = 4; i <= 9; i++) {
+                            const el = document.getElementById(`lvl-${i}`);
+                            if (el) el.value = p[i];
+                        }
+                    }
+                };
+
                 const renderBuilderInterface = () => {
                     const allTraits = [...new Set(champsData.flatMap(c => c.traits.map(t => t.name)))].sort();
                     const traitButtonsHTML = allTraits.map(trait => `
-                <button class="builder-filter-trait-btn shrink-0 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-[10.5px] hover:bg-slate-200 dark:hover:bg-white/10 transition-all shadow-sm outline-none flex items-center gap-1.5 ${window._builderActiveTraits.has(trait) ? 'bg-premium-gold !text-black border-transparent' : ''}" data-trait="${trait}">
-                    <div class="w-3.5 h-3.5 bg-current shrink-0" style="-webkit-mask-image: url('./asset/traits/${getTraitIconName(trait)}.svg'); mask-image: url('./asset/traits/${getTraitIconName(trait)}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div>
-                    ${trait}
-                </button>
-            `).join('');
+                        <button class="builder-filter-trait-btn shrink-0 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 font-bold text-[10.5px] hover:bg-slate-200 dark:hover:bg-white/10 transition-all shadow-sm outline-none flex items-center gap-1.5 ${window._builderActiveTraits.has(trait) ? 'bg-premium-gold !text-black border-transparent' : ''}" data-trait="${trait}">
+                            <div class="w-3.5 h-3.5 bg-current shrink-0" style="-webkit-mask-image: url('./asset/traits/${getTraitIconName(trait)}.svg'); mask-image: url('./asset/traits/${getTraitIconName(trait)}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div>
+                            ${trait}
+                        </button>
+                    `).join('');
 
                     gridContainer.className = "flex flex-col gap-5 w-full pb-20";
                     gridContainer.innerHTML = `
-                <div class="flex items-center justify-between px-1">
-                    <h3 class="text-[13px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5"><i class="fa-solid fa-chess-board text-premium-gold"></i> Bàn Cờ</h3>
-                   <div class="flex items-center gap-2">
-                        <div class="relative group z-50">
-                            <button class="px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white border border-blue-500/30 text-[10.5px] font-bold shadow-sm outline-none transition-colors flex items-center gap-1.5">
-                                <i class="fa-solid fa-cloud-arrow-down"></i> Tải <i class="fa-solid fa-caret-down text-[9px]"></i>
+                <div class="flex items-center justify-between px-1.5 mb-2 gap-2 h-9">
+                    <h3 class="text-[13px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5 shrink-0">
+                        <i class="fa-solid fa-chess-board text-premium-gold"></i> Bàn Cờ
+                    </h3>
+                    
+                    <div class="flex items-center gap-2 flex-1 justify-end max-w-[70%] sm:max-w-[80%]">
+                        <div class="flex items-center bg-slate-100 dark:bg-black/40 rounded-full border border-slate-200 dark:border-white/10 shadow-inner h-7 px-2.5 gap-1.5 flex-1 min-w-0 max-w-[320px]">
+                            <i class="fa-solid fa-barcode text-[10px] text-slate-400 dark:text-slate-500 shrink-0"></i>
+                            
+                            <input type="text" id="live-tft-code" readonly value="" placeholder="0 tướng..." 
+                                class="flex-1 bg-transparent text-[11px] font-mono font-bold text-slate-600 dark:text-premium-gold outline-none truncate shadow-none w-full min-w-0">
+                            
+                            <button onclick="window.copyLiveCode()" id="btn-copy-live" 
+                                class="text-slate-400 hover:text-blue-500 dark:text-slate-500 dark:hover:text-blue-400 transition-colors text-xs shrink-0 outline-none p-0 bg-transparent border-none" title="Sao chép">
+                                <i class="fa-regular fa-copy"></i>
                             </button>
-                            <div class="absolute left-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1.5">
-                                <button onclick="window.openLoadMenu()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors">
-                                    <i class="fa-solid fa-clock-rotate-left w-3"></i> Tải từ Local
-                                </button>
-                                <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
-                                <button onclick="window.openImportModal()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors">
-                                    <i class="fa-solid fa-file-code w-3"></i> Mã / JSON
-                                </button>
-                            </div>
                         </div>
 
-                        <div class="relative group z-40">
-                            <button class="px-2.5 py-1.5 rounded-lg bg-premium-gold text-black hover:bg-yellow-500 text-[10.5px] font-bold shadow-[0_0_8px_rgba(212,175,55,0.4)] flex items-center gap-1.5 outline-none transition-colors">
-                                <i class="fa-solid fa-floppy-disk"></i> Lưu <i class="fa-solid fa-caret-down text-[9px]"></i>
-                            </button>
-                            <div class="absolute right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1.5">
-                                <button onclick="window.saveLocalBoard()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors"><i class="fa-solid fa-bookmark w-3"></i> Lưu Tạm</button>
-                                <button onclick="window.downloadBoardJSON()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors"><i class="fa-solid fa-file-arrow-down w-3"></i> Tải JSON</button>
-                                <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
-                                <button onclick="window.shareToFirebase()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 outline-none transition-colors"><i class="fa-solid fa-share-nodes w-3"></i> Chia sẻ (Cloud)</button>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <div class="relative group z-20">
+                                <button class="w-7 h-7 flex items-center justify-center rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white border border-blue-500/20 outline-none transition-colors">
+                                    <i class="fa-solid fa-cloud-arrow-down text-[11px]"></i>
+                                </button>
+                                <div class="absolute right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1.5 z-20">
+                                    <button onclick="window.openLoadMenu()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors">
+                                        <i class="fa-solid fa-clock-rotate-left w-3"></i> Tải từ Local
+                                    </button>
+                                    <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
+                                    <button onclick="window.openImportModal()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors">
+                                        <i class="fa-solid fa-file-code w-3"></i> Mã Code / JSON
+                                    </button>
+                                </div>
                             </div>
+
+                           <div class="relative group z-20">
+                                <button class="w-7 h-7 flex items-center justify-center rounded-full bg-premium-gold/10 text-premium-gold hover:bg-premium-gold hover:text-black border border-premium-gold/30 outline-none transition-colors">
+                                    <i class="fa-solid fa-floppy-disk text-[11px]"></i>
+                                </button>
+                                <div class="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1.5 z-40">
+                                    <button onclick="window.saveLocalBoard()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors"><i class="fa-solid fa-bookmark w-3"></i> Lưu Tạm (Cá Nhân)</button>
+                                    <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
+                                    
+                                    <button onclick="window.shareToFirebase()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 outline-none transition-colors"><i class="fa-solid fa-share-nodes w-3"></i> Chia sẻ (Cộng Đồng)</button>
+                                    <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
+                                    
+                                    <button onclick="window.downloadBoardJSON()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors"><i class="fa-solid fa-file-arrow-down w-3"></i> Xuất File JSON</button>
+                                </div>
+                            </div>
+                            
+                            <button onclick="window.clearBuilderBoard()" class="w-7 h-7 flex items-center justify-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 outline-none transition-colors" title="Xóa bàn cờ">
+                                <i class="fa-solid fa-trash-can text-[11px]"></i>
+                            </button>
                         </div>
-                        
-                        <button onclick="window.clearBuilderBoard()" class="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/30 outline-none transition-colors z-30">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
                     </div>
                 </div>
 
@@ -2637,6 +2901,70 @@
                 <div class="relative w-full max-w-[460px] mx-auto aspect-[2/1] overflow-visible" id="builder-board-container"></div>
                 <div id="builder-status-bar" class="min-h-[24px]"></div>
 
+                <div class="mt-2 bg-white dark:bg-premium-card rounded-xl border border-slate-200 dark:border-white/10 shadow-sm p-3">
+                    <div class="flex justify-between items-center cursor-pointer select-none group" onclick="document.getElementById('manual-config-wrapper').classList.toggle('hidden')">
+                        <span class="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest group-hover:text-premium-gold transition-colors"><i class="fa-solid fa-sliders text-premium-gold mr-1"></i> Cấu Hình Nâng Cao (Tùy Chọn)</span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-[10px]"></i>
+                    </div>
+                    
+                    <div id="manual-config-wrapper" class="hidden mt-3 flex flex-col gap-4 border-t border-slate-100 dark:border-white/5 pt-3">
+                        
+                        <div class="flex gap-3">
+                            <label class="flex-1 flex flex-col gap-1.5">
+                                <span class="text-[10px] font-semibold text-slate-500 uppercase">Tên Đội Hình</span>
+                                <input type="text" id="builder-manual-title" placeholder="Tự động..." autocomplete="off" class="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded px-2.5 py-1.5 text-[11px] text-slate-700 dark:text-white focus:outline-none focus:border-premium-gold/50 shadow-inner">
+                            </label>
+                            <label class="flex-1 flex flex-col gap-1.5">
+                                <span class="text-[10px] font-semibold text-slate-500 uppercase">Nhãn (Fast 8, Reroll...)</span>
+                                <input type="text" id="builder-manual-tags" placeholder="Cách nhau dấu phẩy..." autocomplete="off" class="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded px-2.5 py-1.5 text-[11px] text-slate-700 dark:text-white focus:outline-none focus:border-premium-gold/50 shadow-inner">
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="flex flex-col gap-1.5">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-semibold text-slate-500 uppercase">Đi Chợ (Tối đa 10)</span>
+                                    <button onclick="window.openVisualSelector('carousel')" class="text-[9px] bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 hover:text-premium-gold dark:hover:text-premium-gold transition-colors outline-none"><i class="fa-solid fa-plus"></i> Chọn</button>
+                                </div>
+                                <div id="manual-carousel-container" class="flex flex-wrap gap-1.5 min-h-[34px] p-1 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg shadow-inner flex items-center">
+                                    <span class="text-[9.5px] text-slate-400 italic">Tự động tính từ Bàn Cờ...</span>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col gap-1.5">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-semibold text-slate-500 uppercase">Đầu Game (Tối đa 5)</span>
+                                    <button onclick="window.openVisualSelector('champ')" class="text-[9px] bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded border border-slate-200 dark:border-white/10 hover:text-premium-gold dark:hover:text-premium-gold transition-colors outline-none"><i class="fa-solid fa-plus"></i> Chọn</button>
+                                </div>
+                                <div id="manual-early-container" class="flex flex-wrap gap-1.5 min-h-[34px] p-1 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg shadow-inner flex items-center">
+                                    <span class="text-[9.5px] text-slate-400 italic">Tự động tính từ Bàn Cờ...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-1.5">
+                            <div class="flex flex-wrap justify-between items-end gap-2 mb-1">
+                                <span class="text-[10px] font-semibold text-slate-500 uppercase">Nhịp Lên Cấp (Điền Vòng đấu)</span>
+                                <div class="flex gap-1.5">
+                                    <button onclick="window.setPresetLeveling('fast8')" class="text-[8.5px] font-bold px-1.5 py-0.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/30 rounded hover:bg-blue-500 hover:text-white transition-colors outline-none">Fast 8/9</button>
+                                    <button onclick="window.setPresetLeveling('reroll1')" class="text-[8.5px] font-bold px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500 hover:text-white transition-colors outline-none">RR 1$</button>
+                                    <button onclick="window.setPresetLeveling('reroll2')" class="text-[8.5px] font-bold px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500 hover:text-white transition-colors outline-none">RR 2$</button>
+                                    <button onclick="window.setPresetLeveling('reroll3')" class="text-[8.5px] font-bold px-1.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500 hover:text-white transition-colors outline-none">RR 3$</button>
+                                    <button onclick="window.setPresetLeveling('clear')" class="text-[8.5px] font-bold px-1.5 py-0.5 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded hover:bg-rose-500 hover:text-white transition-colors outline-none"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                                ${[4, 5, 6, 7, 8, 9].map(lvl => `
+                                    <div class="flex flex-col border border-slate-200 dark:border-white/10 rounded overflow-hidden">
+                                        <span class="bg-slate-100 dark:bg-white/5 text-[9px] text-center font-bold text-slate-600 dark:text-slate-400 py-0.5 border-b border-slate-200 dark:border-white/10">Cấp ${lvl}</span>
+                                        <input type="text" id="lvl-${lvl}" placeholder="Trống" autocomplete="off" class="w-full text-center bg-transparent text-[11px] text-premium-gold font-bold py-1 focus:outline-none focus:bg-premium-gold/10 transition-colors placeholder:text-slate-300 dark:placeholder:text-slate-600/50">
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
                 <div class="flex flex-col bg-white dark:bg-premium-card rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg overflow-hidden mt-2">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-3 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/20">
                         <div class="flex items-center gap-4 shrink-0 px-2">
@@ -2658,9 +2986,43 @@
                 </div>
             `;
 
+                    window.renderManualSelections();
                     renderBoard();
                     renderPool();
                     attachFilterEvents();
+                };
+                // Tách riêng hàm sinh Code Riot để Live-update (Không cần xử lý Items/Level)
+                window.generateRiotCode = () => {
+                    let codeChunks = Array(10).fill('000');
+                    const uniqueTeamChamps = new Set();
+                    for (let r = 0; r < 4; r++) {
+                        for (let c = 0; c < 7; c++) {
+                            if (window._builderBoardState[r][c]) {
+                                uniqueTeamChamps.add(window._builderBoardState[r][c].champ);
+                            }
+                        }
+                    }
+
+                    const champsArray = [...uniqueTeamChamps].slice(0, 10);
+                    for (let i = 0; i < champsArray.length; i++) {
+                        const champName = champsArray[i];
+                        const normalizedChampName = champName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+                        const champData = window._builderMasterChamps[champName];
+
+                        if (champData && champData.plannerId) {
+                            codeChunks[i] = Number(champData.plannerId).toString(16).padStart(3, '0').toLowerCase();
+                        } else if (window._tftHexMapping && window._tftHexMapping[normalizedChampName]) {
+                            codeChunks[i] = window._tftHexMapping[normalizedChampName];
+                        }
+                    }
+
+                    return champsArray.length > 0 ? `02${codeChunks.join('')}TFTSet17` : '';
+                };
+
+                window.copyLiveCode = () => {
+                    const code = document.getElementById('live-tft-code')?.value;
+                    if (!code) return uiAlert('Lỗi', 'Bàn cờ đang trống, không có mã để sao chép!', 'info');
+                    window.copyToClipboard(code, 'btn-copy-live');
                 };
 
                 const renderBoard = () => {
@@ -2704,12 +3066,12 @@
                                 if (cData?.cost === 4) bgBorder = 'bg-purple-500';
                                 if (cData?.cost === 5) bgBorder = 'bg-yellow-400';
 
-                                const itemsHTML = `<div class="absolute -bottom-2.5 left-0 w-full flex justify-center gap-[2px] z-20 pointer-events-none">${cellState.items.map(itemName => `<img src="${window._builderMasterItems[itemName]?.image}" class="w-[18px] h-[18px] rounded-[4px] border-[1.5px] border-white dark:border-[#0B101A] object-cover shadow-lg bg-black" onerror="this.onerror=null; this.src='./asset/placeholder.png';">`).join('')}</div>`;
+                                const itemsHTML = `<div class="absolute -bottom-2.5 left-0 w-full flex justify-center gap-[2px] z-20 pointer-events-none">${cellState.items.map(itemName => `<img src="${window._builderMasterItems[itemName]?.image}" class="w-[18px] h-[18px] rounded-[4px] border-[1.5px] border-white dark:border-[#0B101A] object-cover shadow-lg bg-black" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">`).join('')}</div>`;
 
                                 boardContainer.innerHTML += `
                             <div class="absolute z-20 transition-all duration-300 cursor-pointer ${moveHighlight}" style="width: 13.333%; height: 30.769%; left: ${left}%; top: ${top}%;" draggable="true" ondragstart="window.handleBuilderDragStart(event, 'move', '${escapeJS(cellState.champ)}', ${r}, ${c})" onclick="window.handleHexClick(${r}, ${c})" ondragover="event.preventDefault(); this.classList.add('brightness-150');" ondragleave="this.classList.remove('brightness-150');" ondrop="window.handleBuilderDrop(event, ${r}, ${c}); this.classList.remove('brightness-150');">
                                 <div class="absolute inset-0 ${bgBorder}" style="${hexClip}"></div>
-                                <img src="${cData?.image}" class="absolute w-[92%] h-[92%] left-[4%] top-[4%] object-cover object-[80%] bg-slate-900 pointer-events-none" style="${hexClip}" onerror="this.onerror=null; this.src='./asset/placeholder.png';">
+                                <img src="${cData?.image}" class="absolute w-[92%] h-[92%] left-[4%] top-[4%] object-cover object-[80%] bg-slate-900 pointer-events-none" style="${hexClip}" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">
                                 ${itemsHTML}
                                 <div class="absolute -top-1.5 -right-1 z-40 cursor-pointer transition-transform hover:scale-110 active:scale-90" onclick="event.stopPropagation(); window.removeBuilderEntity(${r}, ${c})"><div class="w-[18px] h-[18px] bg-rose-600 rounded-full flex items-center justify-center shadow-lg border border-white dark:border-slate-800"><i class="fa-solid fa-xmark text-white text-[10px]"></i></div></div>
                             </div>`;
@@ -2717,7 +3079,9 @@
                                 boardContainer.innerHTML += `<div class="absolute z-10 transition-all duration-200 cursor-pointer scale-[0.95] group hover:scale-100 hover:z-20" style="width: 13.333%; height: 30.769%; left: ${left}%; top: ${top}%;" onclick="window.handleHexClick(${r}, ${c})" ondragover="event.preventDefault(); this.classList.add('scale-105', 'brightness-150');" ondragleave="this.classList.remove('scale-105', 'brightness-150');" ondrop="window.handleBuilderDrop(event, ${r}, ${c}); this.classList.remove('scale-105', 'brightness-150');"><div class="absolute inset-0 bg-slate-300 dark:bg-slate-700/60 opacity-60 group-hover:opacity-100 group-hover:bg-premium-gold/50 transition-colors" style="${hexClip}"></div><div class="absolute w-[94%] h-[94%] left-[3%] top-[3%] bg-slate-100 dark:bg-[#121a28] group-hover:bg-slate-200 transition-colors" style="${hexClip}"></div></div>`;
                             }
                         }
-                    }
+                    }// Live update mã Code
+                    const liveInput = document.getElementById('live-tft-code');
+                    if (liveInput) liveInput.value = window.generateRiotCode();
                 };
 
                 const renderPool = () => {
@@ -2747,7 +3111,6 @@
                     pool.innerHTML = poolHTML || '<p class="text-center text-[11.5px] text-slate-500 py-6">Không tìm thấy kết quả.</p>';
                 };
 
-                // --- 4. TƯƠNG TÁC & LOGIC ---
                 const attachFilterEvents = () => {
                     document.querySelectorAll('.builder-filter-trait-btn').forEach(btn => {
                         btn.onclick = (e) => {
@@ -2818,21 +3181,13 @@
                     try { window._builderActiveTool = JSON.parse(e.dataTransfer.getData('text/plain')); window.handleHexClick(r, c); } catch (err) { }
                 };
 
-                // (Chèn thêm nút này vào HTML của renderBuilderInterface, ngay cạnh nút Nhập)
-                // <button onclick="window.openLoadMenu()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white border border-emerald-500/30 text-[10.5px] font-bold shadow-sm outline-none transition-colors"><i class="fa-solid fa-folder-open"></i> Đã Lưu</button>
-
-                // =======================================================
-                // --- 5. HỆ THỐNG LƯU TRỮ (TỰ ĐỘNG + 5 SLOT THỦ CÔNG) ---
-                // =======================================================
                 const BUILDER_STORAGE_KEY = 'tft_builder_saves_v2';
 
-                // Lấy toàn bộ data
                 window.getAllSavedData = () => {
                     const data = localStorage.getItem(BUILDER_STORAGE_KEY);
                     return data ? JSON.parse(data) : { auto: null, manual: [] };
                 };
 
-                // Lưu TỰ ĐỘNG (Sẽ gọi ngầm khi có thay đổi trên bàn cờ)
                 window.autoSaveBoard = () => {
                     const data = window.getAllSavedData();
                     const now = new Date();
@@ -2844,7 +3199,6 @@
                     localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(data));
                 };
 
-                // Lưu THỦ CÔNG (Đổi nút "Lưu Tạm" thành lưu có tên)
                 window.saveLocalBoard = () => {
                     const data = window.getAllSavedData();
                     if (data.manual.length >= 5) {
@@ -2852,7 +3206,6 @@
                         return;
                     }
 
-                    // Xây dựng giao diện ô nhập liệu (Input) nhúng vào Modal
                     const inputHTML = `
                         <div class="flex flex-col gap-2 mt-1 text-left">
                             <p class="text-[11.5px] text-slate-500 dark:text-slate-400">Vui lòng đặt tên để dễ dàng quản lý (tối đa 5 bản lưu).</p>
@@ -2862,37 +3215,31 @@
                         </div>
                     `;
 
-                    // Tận dụng hàm uiConfirm có sẵn để làm Modal đặt tên
                     uiConfirm('Lưu Đội Hình', inputHTML, () => {
                         const nameInput = document.getElementById('custom-save-name');
                         const saveName = nameInput ? nameInput.value.trim() : '';
 
-                        // Kiểm tra nếu người dùng để trống
                         if (!saveName || saveName === "") {
-                            // Delay 100ms để modal cũ kịp đóng trước khi mở modal lỗi
                             setTimeout(() => uiAlert('Lỗi', 'Tên đội hình không được để trống!', 'error'), 100);
                             return;
                         }
 
-                        // Tiến hành lưu nếu hợp lệ
                         data.manual.push({
                             id: Date.now(),
                             name: saveName,
-                            board: JSON.parse(JSON.stringify(window._builderBoardState)) // Tránh dính reference
+                            board: JSON.parse(JSON.stringify(window._builderBoardState))
                         });
                         localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(data));
 
                         setTimeout(() => uiAlert('Thành công', `Đã lưu đội hình: <b class="text-premium-gold">${saveName}</b>`, 'info'), 100);
                     });
 
-                    // UX Trick: Tự động trỏ chuột (focus) vào ô nhập và bắt phím Enter
                     setTimeout(() => {
                         const inp = document.getElementById('custom-save-name');
                         if (inp) {
                             inp.focus();
                             inp.addEventListener('keypress', (e) => {
                                 if (e.key === 'Enter') {
-                                    // Tìm và bấm vào nút "Xác nhận" (nút thứ 2 trong modalActions)
                                     const confirmBtn = document.getElementById('modal-actions').querySelectorAll('button')[1];
                                     if (confirmBtn) confirmBtn.click();
                                 }
@@ -2901,7 +3248,6 @@
                     }, 100);
                 };
 
-                // Logic Tải Đội Hình Lên Bàn Cờ
                 window.loadSpecificBoard = (type, id) => {
                     const data = window.getAllSavedData();
                     if (type === 'auto' && data.auto) window._builderBoardState = data.auto.board;
@@ -2915,34 +3261,141 @@
                     uiAlert('Thành công', 'Đội hình đã được tải lên bàn cờ!', 'info');
                 };
 
-                // Logic Xóa Slot
                 window.deleteSpecificBoard = (id) => {
                     const data = window.getAllSavedData();
                     data.manual = data.manual.filter(x => x.id !== id);
                     localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(data));
-                    window.openLoadMenu(); // Gọi lại hàm để giao diện tự cập nhật lập tức
+                    window.openLoadMenu();
                 };
 
-
-                // --- CÁC HÀM XUẤT NHẬP CŨ & FIREBASE ---
+                // ===== HÀM ĐÓNG GÓI JSON XUẤT RA =====
                 const generateJSONPayload = () => {
-                    const boardPos = []; const unitsList = [];
+                    const boardPos = [];
+                    const unitsList = [];
+                    let hasHighCost = false;
+                    const componentCounts = {};
+
                     for (let r = 0; r < 4; r++) {
                         for (let c = 0; c < 7; c++) {
                             const cell = window._builderBoardState[r][c];
                             if (cell) {
-                                boardPos.push({ champion: cell.champ, coordinates: { row: r, col: c } });
-                                unitsList.push({ champion: cell.champ, items: [...cell.items] });
+                                const champName = cell.champ;
+                                boardPos.push({ champion: champName, hex_id: r * 7 + c, coordinates: { row: r, col: c } });
+                                unitsList.push({ champion: champName, items: [...cell.items] });
+
+                                const cData = window._builderMasterChamps[champName];
+                                if (cData && cData.cost >= 4) hasHighCost = true;
+
+                                cell.items.forEach(itemName => {
+                                    const iData = window._builderMasterItems[itemName];
+                                    if (iData) {
+                                        if (iData.recipe && iData.recipe.length === 2) {
+                                            iData.recipe.forEach(comp => {
+                                                if (comp.name) componentCounts[comp.name] = (componentCounts[comp.name] || 0) + 1;
+                                            });
+                                        } else if (iData.category === 'normal') {
+                                            componentCounts[iData.name] = (componentCounts[iData.name] || 0) + 1;
+                                        }
+                                    }
+                                });
                             }
                         }
                     }
-                    return boardPos.length === 0 ? null : { "CompTitle": "Custom", "CompRowTags": ["Custom"], "BoardPositions": boardPos, "UnitsContainer": unitsList };
+
+                    if (boardPos.length === 0) return null;
+
+                    // --- ƯU TIÊN ĐỌC TỪ CẤU HÌNH THỦ CÔNG ---
+                    const manualTitle = document.getElementById('builder-manual-title')?.value.trim();
+                    const finalTitle = manualTitle || "Đội Hình Tự Tạo";
+
+                    const manualTagsStr = document.getElementById('builder-manual-tags')?.value.trim();
+                    const compTags = manualTagsStr ? manualTagsStr.split(',').map(s => s.trim()).filter(Boolean) : (hasHighCost ? ["Fast 9"] : ["Fast 8"]);
+
+                    // Đọc Nhịp Lên Cấp
+                    let levelingPacing = [];
+                    let hasManualLevel = false;
+                    [4, 5, 6, 7, 8, 9].forEach(lvl => {
+                        const val = document.getElementById(`lvl-${lvl}`)?.value.trim();
+                        if (val) {
+                            levelingPacing.push({ level: `Cấp ${lvl}`, stage: val });
+                            hasManualLevel = true;
+                        }
+                    });
+
+                    if (!hasManualLevel) {
+                        levelingPacing = hasHighCost ? [
+                            { level: "Cấp 4", stage: "2-1" }, { level: "Cấp 5", stage: "2-5" },
+                            { level: "Cấp 6", stage: "3-2" }, { level: "Cấp 7", stage: "3-5" },
+                            { level: "Cấp 8", stage: "4-2" }, { level: "Cấp 9", stage: "5-1" }
+                        ] : [
+                            { level: "Cấp 4", stage: "2-1" }, { level: "Cấp 5", stage: "2-5" },
+                            { level: "Cấp 6", stage: "3-2" }, { level: "Cấp 7", stage: "3-5" },
+                            { level: "Cấp 8", stage: "4-1" }
+                        ];
+                    }
+
+                    // Đọc Đi chợ (Carousel)
+                    let carouselPrio = [];
+                    if (window._manualData.carousel.length > 0) {
+                        carouselPrio = window._manualData.carousel.map(i => ({ item: i, count: "x1" }));
+                    } else {
+                        carouselPrio = Object.entries(componentCounts)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([name, count]) => ({ item: name, count: `x${count}` }));
+                    }
+
+                    // Đọc Đầu game (Early Comp)
+                    let earlyTeam = [];
+                    if (window._manualData.early.length > 0) {
+                        earlyTeam = window._manualData.early;
+                    } else {
+                        const activeTraits = calculateActiveTraits().filter(t => t.isActive).map(t => t.name);
+                        if (activeTraits.length > 0) {
+                            earlyTeam = Object.values(window._builderMasterChamps)
+                                .filter(c => c.cost <= 2 && c.traits.some(t => activeTraits.includes(t.name)))
+                                .map(c => c.name)
+                                .slice(0, 5);
+                        }
+                    }
+
+                    // 4. Sinh Mã Đội Hình Chuẩn Client Riot V2
+                    let codeChunks = Array(10).fill('000'); // Mùa 17 khoảng trống là 3 số 0 ('000')
+                    const uniqueTeamChamps = [...new Set(boardPos.map(pos => pos.champion))];
+                    const maxChampsToEncode = Math.min(uniqueTeamChamps.length, 10);
+
+                    for (let i = 0; i < maxChampsToEncode; i++) {
+                        const champName = uniqueTeamChamps[i];
+
+                        // Chuẩn hóa tên tướng được xếp trên bàn cờ ("Cho'Gath" -> "chogath")
+                        const normalizedChampName = champName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+
+                        // Ghép mã Hex 3 ký tự vào chuỗi
+                        if (window._tftHexMapping && window._tftHexMapping[normalizedChampName]) {
+                            codeChunks[i] = window._tftHexMapping[normalizedChampName];
+                        }
+                    }
+
+                    // Ghép mã hoàn chỉnh: Tiền tố '02' + 10 Slot + Hậu tố Mùa
+                    const realTeamCode = `02${codeChunks.join('')}TFTSet17`;
+
+                    return {
+                        "CompTitle": finalTitle,
+                        "CompRowTags": compTags,
+                        "UnitsContainer": unitsList,
+                        "CopyTeamCode": realTeamCode,
+                        "CompEarlyOptions": earlyTeam.length > 0 ? [{ "win_rate": "Auto", "team_comp": earlyTeam }] : [],
+                        "CompQuickStart": {
+                            "leveling": levelingPacing,
+                            "carousel": carouselPrio
+                        },
+                        "BoardPositions": boardPos
+                    };
                 };
 
                 window.clearBuilderBoard = () => uiConfirm('Làm sạch', 'Xóa toàn bộ đội hình hiện tại trên bàn cờ?', () => {
                     window._builderBoardState = Array(4).fill(null).map(() => Array(7).fill(null));
                     window._builderActiveTool = null;
-                    window.autoSaveBoard(); // Lưu lại tự động bàn cờ trống
+                    window.autoSaveBoard();
                     renderBoard();
                     renderPool();
                 });
@@ -2952,49 +3405,121 @@
                 window.shareToFirebase = () => {
                     if (!generateJSONPayload()) { uiAlert('Lỗi', 'Bàn cờ trống!', 'info'); return; }
                     uiAlert('<span class="text-rose-500 font-black">Chia sẻ Cloud</span>', `
-                <div class="flex flex-col gap-3">
-                    <p class="text-xs text-slate-500">Đội hình sẽ được lưu vào Firestore công khai.</p>
-                    <div class="flex justify-center p-1 min-h-[78px]"><div id="recaptcha-container"></div></div>
-                    <button id="btn-upload-fs" onclick="window.processFS()" class="w-full py-2 bg-rose-500 text-white font-bold rounded-lg shadow-md transition-colors hover:bg-rose-600">Chia sẻ</button>
-                </div>
-            `);
+                        <div class="flex flex-col gap-3 text-left">
+                            <p class="text-xs text-slate-500">Đội hình sẽ được lưu vào Firestore công khai.</p>
+                            <div class="flex justify-center p-1 min-h-[78px]"><div id="recaptcha-container"></div></div>
+                            <button id="btn-upload-fs" onclick="window.processFS()" class="w-full py-2 bg-rose-500 text-white font-bold rounded-lg shadow-md transition-colors hover:bg-rose-600 outline-none">Chia sẻ Đội Hình</button>
+                        </div>
+                    `);
                     setTimeout(() => { if (window.grecaptcha) grecaptcha.render('recaptcha-container', { 'sitekey': RECAPTCHA_SITE_KEY, 'theme': 'dark' }); }, 100);
                 };
 
                 window.processFS = async () => {
                     if (!grecaptcha.getResponse()) return uiAlert('Lỗi', 'Xác nhận Captcha!', 'error');
-                    const btn = document.getElementById('btn-upload-fs'); btn.disabled = true; btn.innerText = 'Đang tải...';
+                    const btn = document.getElementById('btn-upload-fs'); 
+                    btn.disabled = true; 
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tải...';
                     const shareCode = 'TFT-' + Math.random().toString(36).substr(2, 6).toUpperCase();
                     try {
-                        await window._fsSetDoc(window._fsDoc(window._db, "shared_comps", shareCode), { ...generateJSONPayload(), shareCode, createdAt: new Date().toISOString() });
+                        const payload = generateJSONPayload();
+                        // Kẹp thêm shareCode và thời gian tạo vào JSON
+                        await window._fsSetDoc(window._fsDoc(window._db, "shared_comps", shareCode), { ...payload, shareCode, createdAt: new Date().toISOString() });
                         closeModal();
-                        uiAlert('Thành công', `Mã chia sẻ: <b class="text-xl text-premium-gold select-all">${shareCode}</b>`, 'info');
-                    } catch (e) { uiAlert('Lỗi', 'Không thể kết nối Firestore.', 'error'); btn.disabled = false; btn.innerText = 'Thử lại'; }
+                        uiAlert('Thành công', `Đội hình đã được đăng tải lên Cộng Đồng!<br>Mã truy cập nhanh: <b class="text-lg text-premium-gold select-all mt-2 block">${shareCode}</b>`, 'info');
+                    } catch (e) { 
+                        uiAlert('Lỗi', 'Không thể kết nối Firebase. Có thể do lỗi mạng hoặc cấu hình.', 'error'); 
+                        btn.disabled = false; 
+                        btn.innerText = 'Thử lại'; 
+                    }
                 };
 
                 window.openImportModal = () => {
                     uiAlert('<span class="text-blue-500 font-black">Nhập Đội Hình</span>', `
-                <div class="flex flex-col gap-3">
-                    <input type="file" id="fs-file" accept=".json" class="hidden" onchange="const r=new FileReader(); r.onload=e=>document.getElementById('imp-area').value=e.target.result; r.readAsText(this.files[0])">
-                    <button onclick="document.getElementById('fs-file').click()" class="w-full py-2 bg-slate-700 text-white rounded-lg text-xs font-bold">Chọn File JSON</button>
-                    <textarea id="imp-area" class="w-full h-32 bg-black/40 border border-slate-700 rounded-lg p-2 text-[10px] text-emerald-400 font-mono outline-none" placeholder="Dán mã TFT-XXXX hoặc JSON"></textarea>
-                    <button id="btn-imp" onclick="window.doImp()" class="w-full py-2 bg-blue-500 text-white font-bold rounded-lg">Xác nhận</button>
-                </div>
-            `);
+                        <div class="flex flex-col gap-3 text-left">
+                            <div class="flex flex-col gap-1.5">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Từ Game (Mã chuẩn Client)</span>
+                                <div class="flex gap-2">
+                                    <input type="text" id="imp-tft-code" class="w-full bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-[11px] text-slate-800 dark:text-white font-mono focus:outline-none focus:border-blue-500 shadow-inner" placeholder="VD: 0201d...">
+                                    <button onclick="window.doImpCode()" class="px-3 bg-blue-500 text-white font-bold rounded-lg text-[11px] whitespace-nowrap hover:bg-blue-600 outline-none">Nhập Mã</button>
+                                </div>
+                            </div>
+                            
+                            <div class="w-full h-[1px] bg-slate-200 dark:bg-white/10 my-0.5"></div>
+                            
+                            <div class="flex flex-col gap-1.5">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Từ Web (JSON Nâng Cao)</span>
+                                <input type="file" id="fs-file" accept=".json" class="hidden" onchange="const r=new FileReader(); r.onload=e=>document.getElementById('imp-area').value=e.target.result; r.readAsText(this.files[0])">
+                                <button onclick="document.getElementById('fs-file').click()" class="w-full py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white rounded text-[10px] font-bold mb-1 hover:bg-slate-300 dark:hover:bg-slate-600 outline-none"><i class="fa-solid fa-folder-open"></i> Chọn File JSON Đã Tải</button>
+                                <textarea id="imp-area" class="w-full h-16 bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-[9px] text-emerald-600 dark:text-emerald-400 font-mono outline-none shadow-inner" placeholder="Hoặc copy nội dung JSON dán vào đây..."></textarea>
+                                <button onclick="window.doImpJSON()" class="w-full py-2 bg-emerald-500 text-white font-bold rounded-lg text-[11px] mt-1 hover:bg-emerald-600 outline-none">Nhập JSON</button>
+                            </div>
+                        </div>
+                    `);
                 };
 
-                window.doImp = async () => {
-                    const val = document.getElementById('imp-area').value.trim(); if (!val) return;
-                    const btn = document.getElementById('btn-imp');
-                    try {
-                        let data;
-                        if (val.startsWith('TFT-')) {
-                            btn.innerText = 'Truy vấn...';
-                            const snap = await window._fsGetDoc(window._fsDoc(window._db, "shared_comps", val));
-                            if (!snap.exists()) return uiAlert('Lỗi', 'Mã không tồn tại!', 'error');
-                            data = snap.data();
-                        } else data = JSON.parse(val);
+                // Dịch ngược Mã Code Riot thành Tướng trên Bàn Cờ
+                window.doImpCode = () => {
+                    const val = document.getElementById('imp-tft-code').value.trim();
+                    if (!val) return uiAlert('Lỗi', 'Vui lòng dán mã TFT!', 'error');
 
+                    if (!val.startsWith('02') || !val.includes('TFTSet')) {
+                        return uiAlert('Lỗi', 'Mã TFT không hợp lệ! (Ví dụ chuẩn: 02...TFTSet17)', 'error');
+                    }
+
+                    try {
+                        const core = val.substring(2, val.indexOf('TFTSet'));
+                        const champsFound = [];
+
+                        // Tạo bảng tra ngược (Hex -> Tên Tướng)
+                        const reverseMap = {};
+                        Object.values(window._builderMasterChamps).forEach(c => {
+                            if (c.plannerId) reverseMap[Number(c.plannerId).toString(16).padStart(3, '0').toLowerCase()] = c.name;
+                        });
+                        for (const [nameKey, hexCode] of Object.entries(window._tftHexMapping)) {
+                            if (!reverseMap[hexCode]) {
+                                const realC = Object.values(window._builderMasterChamps).find(c =>
+                                    c.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase() === nameKey
+                                );
+                                if (realC) reverseMap[hexCode] = realC.name;
+                            }
+                        }
+
+                        // Đọc từng 3 ký tự Hex
+                        for (let i = 0; i < core.length; i += 3) {
+                            const hex = core.substring(i, i + 3);
+                            if (hex !== '000' && reverseMap[hex]) {
+                                champsFound.push(reverseMap[hex]);
+                            }
+                        }
+
+                        window._builderBoardState = Array(4).fill(null).map(() => Array(7).fill(null));
+
+                        let placed = 0;
+                        // Tự động xếp tướng từ hàng dưới cùng lên
+                        for (let r = 3; r >= 0; r--) {
+                            for (let c = 0; c < 7; c++) {
+                                if (placed < champsFound.length) {
+                                    window._builderBoardState[r][c] = { champ: champsFound[placed], items: [] };
+                                    placed++;
+                                }
+                            }
+                        }
+
+                        window.autoSaveBoard();
+                        closeModal();
+                        renderBoard();
+                        renderPool();
+                        uiAlert('Thành công', `Đã nhập mã TFT. Đã xếp <b>${champsFound.length}</b> tướng lên bàn cờ!`, 'info');
+                    } catch (e) {
+                        uiAlert('Lỗi', 'Có lỗi khi phân tích mã.', 'error');
+                    }
+                };
+
+                window.doImpJSON = () => {
+                    const val = document.getElementById('imp-area').value.trim();
+                    if (!val) return uiAlert('Lỗi', 'Vui lòng chọn file JSON hoặc dán mã JSON!', 'error');
+                    try {
+                        const data = JSON.parse(val);
                         const parsed = Array.isArray(data) ? data[0] : data;
                         window._builderBoardState = Array(4).fill(null).map(() => Array(7).fill(null));
                         const itemMap = {};
@@ -3008,12 +3533,64 @@
                                 count[p.champion]++;
                             }
                         });
-                        window.autoSaveBoard(); // Lưu tự động lại bản cờ vừa nạp
-                        closeModal(); renderBoard(); renderPool();
-                    } catch (e) { uiAlert('Lỗi', 'Dữ liệu không hợp lệ.', 'error'); }
+
+                        if (parsed.CompEarlyOptions && parsed.CompEarlyOptions.length > 0) {
+                            window._manualData.early = parsed.CompEarlyOptions[0].team_comp || [];
+                        }
+                        if (parsed.CompQuickStart && parsed.CompQuickStart.carousel) {
+                            window._manualData.carousel = parsed.CompQuickStart.carousel.map(x => x.item);
+                        }
+
+                        window.autoSaveBoard();
+                        closeModal();
+                        window.renderManualSelections();
+                        renderBoard();
+                        renderPool();
+                        uiAlert('Thành công', 'Đã tải Đội Hình đầy đủ (Trang bị & Vị trí) từ JSON!', 'info');
+                    } catch (e) { uiAlert('Lỗi', 'Dữ liệu JSON không hợp lệ.', 'error'); }
                 };
 
-                // RENDER GIAO DIỆN VÀ GẮN SỰ KIỆN
+                window.openLoadMenu = () => {
+                    const data = window.getAllSavedData();
+                    let listHTML = '';
+
+                    if (data.auto) {
+                        listHTML += `
+                            <div class="flex items-center justify-between p-2.5 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-xl mb-3 shadow-sm">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="fa-solid fa-robot text-blue-500"></i>
+                                    <span class="text-[12px] font-semibold text-slate-700 dark:text-slate-300">${data.auto.name}</span>
+                                </div>
+                                <button onclick="window.loadSpecificBoard('auto', null)" class="px-3 py-1.5 bg-blue-500 text-white text-[10px] font-bold rounded-lg shadow hover:bg-blue-600 transition-colors outline-none">Tải</button>
+                            </div>
+                        `;
+                    }
+
+                    if (data.manual.length > 0) {
+                        listHTML += `<div class="w-full h-[1px] bg-slate-200 dark:bg-white/10 my-3"></div>`;
+                        data.manual.forEach(item => {
+                            listHTML += `
+                                <div class="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl mb-2 shadow-sm group">
+                                    <div class="flex items-center gap-2.5 truncate pr-2">
+                                        <i class="fa-solid fa-bookmark text-premium-gold"></i>
+                                        <span class="text-[12px] font-semibold text-slate-700 dark:text-slate-300 truncate">${item.name}</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 shrink-0">
+                                        <button onclick="window.loadSpecificBoard('manual', ${item.id})" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white text-[10px] font-bold rounded-lg hover:bg-premium-gold hover:text-black transition-colors outline-none">Tải</button>
+                                        <button onclick="window.deleteSpecificBoard(${item.id})" class="w-7 h-7 flex items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors outline-none">
+                                            <i class="fa-solid fa-trash-can text-[10px]"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        listHTML += `<p class="text-center text-[11px] text-slate-500 py-3 italic">Chưa có đội hình nào được lưu thủ công.</p>`;
+                    }
+
+                    uiAlert('<span class="text-slate-800 dark:text-white font-black">Danh sách Đã Lưu</span>', `<div class="flex flex-col mt-2 max-h-[300px] overflow-y-auto no-scrollbar">${listHTML}</div>`);
+                };
+
                 renderBuilderInterface();
 
             } catch (error) {
@@ -3021,6 +3598,244 @@
             }
         }
 
+        // ---------------------------------------------------------
+        // 8. HÀM QUẢN LÝ (ADMIN) - FIREBASE AUTH & XÓA ĐỘI HÌNH
+        // ---------------------------------------------------------
+        async function loadAdminData() {
+            const container = document.getElementById('grid-admin');
+            if (!container) return;
+
+            // Xây dựng giao diện: 1 form đăng nhập (ẩn khi đã login), 1 danh sách đội hình (hiện khi đã login)
+            container.innerHTML = `
+                <div class="flex flex-col relative min-h-[60vh] w-full">
+                    
+                    <div id="admin-auth-section" class="w-full max-w-sm mx-auto mt-10 bg-white dark:bg-premium-card p-6 rounded-2xl shadow-xl border border-slate-200 dark:border-white/10 hidden transition-all">
+                        <div class="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-500/20">
+                            <i class="fa-solid fa-lock text-xl"></i>
+                        </div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white mb-5 text-center uppercase tracking-wider">Xác thực Quản trị</h2>
+                        
+                        <div class="flex flex-col gap-3">
+                            <input type="email" id="admin-email" placeholder="Email Admin" class="w-full px-4 py-2.5 bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:border-premium-gold dark:focus:border-premium-gold text-[13px] text-slate-800 dark:text-white shadow-inner transition-colors">
+                            <input type="password" id="admin-pw" placeholder="Mật khẩu" class="w-full px-4 py-2.5 bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-700 rounded-xl outline-none focus:border-premium-gold dark:focus:border-premium-gold text-[13px] text-slate-800 dark:text-white shadow-inner transition-colors">
+                            <button onclick="window.adminLogin()" id="btn-admin-login" class="w-full py-3 mt-2 bg-premium-gold text-black text-[13px] font-bold rounded-xl shadow-[0_0_15px_rgba(212,175,55,0.4)] hover:bg-yellow-500 hover:scale-[1.02] active:scale-[0.98] transition-all outline-none">
+                                Đăng Nhập
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="admin-dashboard-section" class="w-full hidden flex-col gap-4">
+                        <div class="flex justify-between items-center bg-white dark:bg-premium-card p-3 sm:p-4 rounded-xl border border-slate-200 dark:border-white/10 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-shield-halved text-emerald-500 text-lg"></i>
+                                <span class="font-black text-[13px] sm:text-sm text-slate-800 dark:text-white uppercase tracking-wide">Quản lý Cộng Đồng</span>
+                            </div>
+                            <button onclick="window.adminLogout()" class="px-3 py-1.5 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:bg-rose-500 hover:text-white hover:border-rose-500 dark:hover:bg-rose-500 border border-slate-200 dark:border-white/10 rounded-lg text-[10.5px] font-bold transition-colors outline-none shadow-sm">
+                                Đăng Xuất <i class="fa-solid fa-right-from-bracket ml-1"></i>
+                            </button>
+                        </div>
+
+                        <div class="bg-white dark:bg-premium-card rounded-xl border border-slate-200 dark:border-white/10 shadow-sm p-1">
+                            <div class="grid grid-cols-12 gap-2 p-3 border-b border-slate-100 dark:border-white/5 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                <div class="col-span-6 sm:col-span-5">Đội Hình</div>
+                                <div class="col-span-4 sm:col-span-3 text-center">ID / Mã code</div>
+                                <div class="hidden sm:block sm:col-span-3 text-right">Ngày Tạo</div>
+                                <div class="col-span-2 sm:col-span-1 text-center">Hành động</div>
+                            </div>
+                            <div id="admin-comps-list" class="flex flex-col max-h-[60vh] overflow-y-auto no-scrollbar"></div>
+                        </div>
+                    </div>
+
+                </div>
+            `;
+
+            const authSection = document.getElementById('admin-auth-section');
+            const dashSection = document.getElementById('admin-dashboard-section');
+            const compsList = document.getElementById('admin-comps-list');
+
+            // Lắng nghe trạng thái đăng nhập
+            window._onAuthStateChanged(window._auth, (user) => {
+                if (user) {
+                    authSection.classList.add('hidden');
+                    dashSection.classList.remove('hidden');
+                    dashSection.classList.add('flex');
+                    window.fetchAdminComps();
+                } else {
+                    authSection.classList.remove('hidden');
+                    dashSection.classList.add('hidden');
+                    dashSection.classList.remove('flex');
+                    compsList.innerHTML = '';
+                }
+            });
+
+            // Logic Đăng Nhập
+            window.adminLogin = async () => {
+                const email = document.getElementById('admin-email').value;
+                const pw = document.getElementById('admin-pw').value;
+                const btn = document.getElementById('btn-admin-login');
+                if (!email || !pw) return uiAlert('Lỗi', 'Vui lòng nhập Email và Mật khẩu!', 'error');
+
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang kết nối...';
+                try {
+                    await window._signIn(window._auth, email, pw);
+                    uiAlert('Thành công', 'Truy cập quyền Quản Trị Viên thành công!', 'info');
+                    document.getElementById('admin-pw').value = '';
+                } catch (e) {
+                    uiAlert('Lỗi Đăng Nhập', 'Sai tài khoản hoặc mật khẩu. Hoặc tài khoản chưa được tạo.', 'error');
+                }
+                btn.disabled = false;
+                btn.innerText = 'Đăng Nhập';
+            };
+
+            // Logic Đăng Xuất
+            window.adminLogout = async () => {
+                uiConfirm('Đăng Xuất', 'Bạn có chắc chắn muốn thoát quyền quản trị?', async () => {
+                    await window._signOut(window._auth);
+                });
+            };
+
+            // Lấy danh sách đội hình
+            window.fetchAdminComps = async () => {
+                compsList.innerHTML = '<div class="py-10 flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><span class="text-[11px]">Đang lấy dữ liệu...</span></div>';
+                try {
+                    const q = window._fsQuery(window._fsCol(window._db, "shared_comps"), window._fsOrderBy("createdAt", "desc"));
+                    const snap = await window._fsGetDocs(q);
+                    let html = '';
+
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        const date = new Date(data.createdAt).toLocaleDateString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                        const title = data.CompTitle || 'Đội Hình Tự Tạo';
+                        const code = data.shareCode || 'Unknown';
+
+                        html += `
+                            <div class="grid grid-cols-12 gap-2 items-center p-3 border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                <div class="col-span-6 sm:col-span-5 flex flex-col min-w-0 pr-2">
+                                    <span class="text-[12px] font-bold text-slate-800 dark:text-white truncate">${title}</span>
+                                    <span class="text-[9px] text-slate-400 sm:hidden block mt-0.5">${date}</span>
+                                </div>
+                                <div class="col-span-4 sm:col-span-3 text-center">
+                                    <span class="bg-slate-100 dark:bg-black/60 border border-slate-200 dark:border-white/10 px-2 py-1 rounded text-premium-gold font-mono text-[9px] select-all">${code}</span>
+                                </div>
+                                <div class="hidden sm:block sm:col-span-3 text-right">
+                                    <span class="text-[11px] text-slate-500 dark:text-slate-400 font-medium">${date}</span>
+                                </div>
+                                <div class="col-span-2 sm:col-span-1 flex justify-center">
+                                    <button onclick="window.deleteAdminComp('${doc.id}', '${window.escapeJS(title)}')" class="w-7 h-7 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-white/5 text-slate-400 hover:bg-rose-500 hover:text-white transition-colors outline-none shadow-sm group-hover:border-rose-500/30" title="Xóa">
+                                        <i class="fa-solid fa-trash-can text-[11px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    if (!html) html = '<div class="py-10 text-center"><i class="fa-solid fa-folder-open text-3xl text-slate-300 dark:text-slate-600 mb-2 block"></i><span class="text-[11px] text-slate-500">Chưa có đội hình nào.</span></div>';
+                    compsList.innerHTML = html;
+
+                } catch (e) {
+                    compsList.innerHTML = '<div class="py-10 flex flex-col items-center justify-center text-rose-500"><i class="fa-solid fa-circle-xmark text-2xl mb-2"></i><span class="text-[11px]">Lỗi kết nối hoặc không có quyền đọc Firestore!</span></div>';
+                }
+            };
+
+            // Logic Xóa 1 Đội hình
+            window.deleteAdminComp = (docId, title) => {
+                uiConfirm('Xóa Đội Hình', `Xóa vĩnh viễn đội hình <b class="text-rose-500">${title}</b> khỏi cơ sở dữ liệu cộng đồng?`, async () => {
+                    try {
+                        await window._fsDeleteDoc(window._fsDoc(window._db, "shared_comps", docId));
+                        uiAlert('Thành công', 'Đã xóa đội hình!', 'info');
+                        window.fetchAdminComps(); // Load lại bảng
+                    } catch (e) {
+                        uiAlert('Lỗi', 'Không thể xóa. Vui lòng kiểm tra Security Rules trên Firebase.', 'error');
+                    }
+                });
+            };
+        }
+
+        // ---------------------------------------------------------
+        // 9. HÀM ỦNG HỘ (DONATE) - QR, MOMO, PAYPAL
+        // ---------------------------------------------------------
+        function loadDonateData() {
+            const container = document.getElementById('grid-donate');
+            if (!container) return;
+
+            // DỮ LIỆU CỦA BẠN (Hãy thay đổi thông tin ở đây)
+            const donateInfo = {
+                momo: {
+                    name: "BVBank",
+                    number: "99MM24030M09540726",
+                    owner: "MOMO_DINH MANH HUNG",
+                    qr: "./Asset/QR/QR-VietQR-BVBank.png", // Đường dẫn ảnh QR của bạn
+                    color: "bg-[#A50064]"
+                },
+                // bank: {
+                //     name: "Ngân hàng (MB Bank)",
+                //     number: "123456789",
+                //     owner: "ĐINH MẠNH HÙNG",
+                //     qr: "./Asset/QR/bank_qr.png",
+                //     color: "bg-[#004A9C]"
+                // },
+                // paypal: {
+                //     name: "PayPal",
+                //     number: "your-email@gmail.com",
+                //     link: "https://paypal.me/yourid",
+                //     color: "bg-[#003087]"
+                // }
+            };
+
+            container.innerHTML = `
+                <div class="max-w-4xl mx-auto py-6 px-2 flex flex-col gap-8">
+                    <div class="text-center space-y-3">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 mb-2">
+                            <i class="fa-solid fa-heart text-3xl"></i>
+                        </div>
+                        <h2 class="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Ủng hộ dự án</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed italic">
+                            Sự đóng góp của bạn giúp mình có thêm động lực để duy trì server và cập nhật dữ liệu TFT Wiki mỗi mùa. Cảm ơn các bạn rất nhiều!
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        <div class="bg-white dark:bg-premium-card rounded-3xl border border-slate-200 dark:border-white/5 p-5 shadow-xl flex flex-col items-center text-center group">
+                            <div class="w-12 h-12 ${donateInfo.momo.color} rounded-xl flex items-center justify-center text-white mb-4 shadow-lg">
+                                <i class="fa-solid fa-mobile-screen-button text-xl"></i>
+                            </div>
+                            <h3 class="font-black text-slate-800 dark:text-white mb-1">${donateInfo.momo.name}</h3>
+                            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-4">${donateInfo.momo.owner}</p>
+                            
+                            <img src="${donateInfo.momo.qr}" class="w-40 h-40 rounded-xl mb-4 border-4 border-slate-100 dark:border-white/5 bg-white p-1" alt="Momo QR">
+                            
+                            <button onclick="window.copyDonateText('${donateInfo.momo.number}', 'btn-momo')" id="btn-momo" class="w-full py-2.5 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-black border border-slate-200 dark:border-white/10 hover:bg-rose-500 hover:text-white transition-all outline-none">
+                                ${donateInfo.momo.number} <i class="fa-regular fa-copy ml-1"></i>
+                            </button>
+                        </div>
+
+
+                        
+
+                    </div>
+
+                    <p class="text-center text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-4">
+                        Thank you for your support!
+                    </p>
+                </div>
+            `;
+
+            // Hàm copy chuyên dụng cho Donate
+            window.copyDonateText = (text, btnId) => {
+                navigator.clipboard.writeText(text).then(() => {
+                    const btn = document.getElementById(btnId);
+                    const oldHTML = btn.innerHTML;
+                    btn.classList.add('!bg-emerald-500', '!text-white', '!border-emerald-500');
+                    btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> ĐÃ SAO CHÉP';
+                    setTimeout(() => {
+                        btn.classList.remove('!bg-emerald-500', '!text-white', '!border-emerald-500');
+                        btn.innerHTML = oldHTML;
+                    }, 2000);
+                });
+            };
+        }
 
         // Hàm xử lý đóng/mở Card khi được nhấn
         function toggleCard(cardElement) {
@@ -3028,6 +3843,7 @@
             // CSS sẽ tự xử lý phần còn lại (xoay icon, trượt nội dung)
             cardElement.classList.toggle('is-expanded');
         }
+
         // Logic Chuyển Tab (Cập nhật cho kiểu dáng Pill)
         function switchTab(tabId) {
             currentTabId = tabId;
