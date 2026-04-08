@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fuji Kurashi Support</title>
+<meta name="description" content="Fuji Kurashi Support">
+<meta name="author" content="Hunq">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="index, follow">
+<link rel="icon" href="/Asset/logo/logo.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Fuji Kurashi Support">
+<meta property="og:description" content="Fuji Kurashi Support">
+<meta property="og:image" content="/Asset/Banner/Banner.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Fuji Kurashi Support">
+<meta name="twitter:description" content="Fuji Kurashi Support">
+<meta name="twitter:image" content="/Asset/Banner/Banner.png">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Fuji Kurashi Support">
+<link rel="apple-touch-icon" href="/Asset/logo/iconApps.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #f8fafc;
+            overscroll-behavior-y: none;
+        }
+        ::-webkit-scrollbar { display: none; }
+        .leaflet-control-zoom { display: none !important; }
+        .leaflet-control-layers { display: none !important; } /* Ẩn control mặc định, dùng nút custom */
+        .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.12); padding: 0px; }
+        .leaflet-popup-content { margin: 10px 12px; font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* Tối ưu cho màn hình nhỏ (iPhone SE) */
+        .sheet-half { height: 38dvh; transform: translateY(0); }
+        .sheet-full { height: 88dvh; transform: translateY(0); }
+        
+        .skeleton-text { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: loading 1.5s infinite; color: transparent; border-radius: 4px; }
+        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        select { -webkit-appearance: none; appearance: none; }
+    </style>
+</head>
+<body class="text-slate-800 overflow-hidden relative w-full h-[100dvh]">
+
+    <div id="map" class="absolute inset-0 z-0 bg-slate-100"></div>
+
+    <div class="absolute top-0 left-0 right-0 z-40 p-3 pointer-events-none">
+        <div class="bg-white/90 backdrop-blur-md shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-2xl p-2.5 pointer-events-auto border border-white/50">
+            
+            <div class="relative mb-2.5 flex gap-2 items-center">
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input type="text" id="searchInput" disabled placeholder="Tìm tên quán, địa chỉ..." class="w-full pl-9 pr-3 py-2.5 bg-slate-100/80 border-none rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium placeholder-slate-400">
+                </div>
+            </div>
+            
+            <div class="flex gap-1.5 items-center">
+                <div class="relative flex-1 min-w-0">
+                    <select id="categorySelect" disabled class="w-full pl-2.5 pr-6 py-2 bg-slate-100/80 rounded-xl text-[12px] font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none truncate cursor-pointer">
+                        <option value="all">Mọi danh mục</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[9px] pointer-events-none"></i>
+                </div>
+                
+                <div class="relative w-[80px] shrink-0">
+                    <select id="sortSelect" disabled class="w-full pl-2.5 pr-6 py-2 bg-blue-50 text-blue-600 rounded-xl text-[12px] font-semibold focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer">
+                        <option value="default">Mặc định</option>
+                        <option value="name">A-Z</option>
+                        <option value="distance">Gần tôi</option>
+                    </select>
+                    <i class="fa-solid fa-arrow-down-short-wide absolute right-2 top-1/2 -translate-y-1/2 text-blue-500 text-[9px] pointer-events-none"></i>
+                </div>
+
+                <button id="mapToggleBtn" class="w-[36px] h-[34px] shrink-0 flex justify-center items-center rounded-xl bg-slate-100/80 text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors" onclick="toggleMapLayer()" title="Đổi bản đồ">
+                    <i class="fa-solid fa-layer-group text-[13px]"></i>
+                </button>
+
+                <button id="favFilterBtn" class="w-[36px] h-[34px] shrink-0 flex justify-center items-center rounded-xl bg-slate-100/80 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors" onclick="toggleFavFilter()">
+                    <i class="fa-solid fa-heart text-[13px]"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <button id="gpsBtn" class="absolute right-3.5 z-40 w-11 h-11 bg-white text-blue-600 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex justify-center items-center text-lg transition-all active:scale-90 border border-slate-50" style="bottom: calc(38dvh + 12px);" onclick="locateUser()">
+        <i class="fa-solid fa-location-crosshairs"></i>
+    </button>
+
+    <div id="bottomSheet" class="absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.08)] flex flex-col transition-all duration-300 sheet-half">
+        <div class="w-full pt-3 pb-2 flex justify-center items-center cursor-pointer touch-none" id="dragHandle">
+            <div class="w-10 h-1.5 bg-slate-200 rounded-full"></div>
+        </div>
+
+        <div class="px-4 pb-2.5 border-b border-slate-100 flex justify-between items-end shrink-0">
+            <div>
+                <h2 class="text-[17px] font-bold text-slate-800 leading-tight" id="sheetTitle">Khám phá</h2>
+                <p id="resultCount" class="text-[11px] font-medium text-slate-500 mt-0.5">Đang tải...</p>
+            </div>
+            <button id="expandBtn" class="text-blue-500 text-[12px] font-semibold bg-blue-50 px-3 py-1.5 rounded-full" onclick="toggleSheetState()">Mở rộng</button>
+        </div>
+
+        <div id="resultsList" class="flex-1 overflow-y-auto px-3.5 py-2 space-y-2.5 bg-slate-50/50 pb-8"></div>
+        
+        <div id="scrollSentinel" class="h-10 w-full flex justify-center items-center text-slate-400 text-[11px] font-medium hidden shrink-0">
+            <i class="fa-solid fa-spinner fa-spin mr-2 text-blue-500"></i> Đang tải...
+        </div>
+    </div>
+
+    <script>
+        const VI_CATEGORIES = {
+            '飲食店': '🍽️ Nhà hàng', 'スーパー、コンビニ': '🛒 Siêu thị',
+            '衣料品、靴、クリーニング': '👕 Thời trang', 'ギフト、雑貨店': '🎁 Quà tặng',
+            '文具、印鑑、写真': '✂️ Văn phòng phẩm', 'ドラッグストア、薬局': '💊 Nhà thuốc',
+            'ガソリンスタンド、燃料': '⛽ Trạm xăng', 'その他': '📦 Khác'
+        };
+
+        let allData = [], filteredData = [], mapMarkers = [];
+        let currentPage = 1, ITEMS_PER_PAGE = 15, userLocation = null;
+        let isSheetExpanded = false, isFavFilterActive = false;
+
+        const getCache = (k) => JSON.parse(localStorage.getItem(k));
+        const setCache = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+        let recentStores = getCache('recentStores_mobile') || [];
+        let favorites = getCache('fav_stores_v1') || [];
+
+        // --- CẤU HÌNH MAP LAYERS ---
+        const streetLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 });
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+        let currentLayer = 'street';
+
+        let map = L.map('map', { zoomControl: false, layers: [streetLayer], tap: false }).setView([35.6895, 139.6917], 5);
+        
+        const defaultIcon = L.divIcon({ className: 'custom-icon', html: `<div class="bg-slate-400 w-3 h-3 rounded-full border-2 border-white shadow-sm"></div>`, iconSize: [12, 12]});
+        const activeIcon = L.divIcon({ className: 'custom-icon', html: `<div class="bg-blue-600 w-[18px] h-[18px] rounded-full border-2 border-white shadow-[0_0_12px_rgba(37,99,235,0.5)]"></div>`, iconSize: [18, 18]});
+
+        const sheet = document.getElementById('bottomSheet');
+        const expandBtn = document.getElementById('expandBtn');
+        const gpsBtn = document.getElementById('gpsBtn');
+        const resultsList = document.getElementById('resultsList');
+        const searchInput = document.getElementById('searchInput');
+
+        // --- CHUYỂN ĐỔI BẢN ĐỒ ---
+        function toggleMapLayer() {
+            const btn = document.getElementById('mapToggleBtn');
+            if(currentLayer === 'street') {
+                map.removeLayer(streetLayer);
+                map.addLayer(satelliteLayer);
+                currentLayer = 'satellite';
+                btn.classList.replace('bg-slate-100/80', 'bg-blue-100');
+                btn.classList.replace('text-slate-500', 'text-blue-600');
+            } else {
+                map.removeLayer(satelliteLayer);
+                map.addLayer(streetLayer);
+                currentLayer = 'street';
+                btn.classList.replace('bg-blue-100', 'bg-slate-100/80');
+                btn.classList.replace('text-blue-600', 'text-slate-500');
+            }
+        }
+
+        function toggleSheetState(forceState = null) {
+            isSheetExpanded = forceState !== null ? forceState : !isSheetExpanded;
+            if(isSheetExpanded) {
+                sheet.classList.replace('sheet-half', 'sheet-full');
+                expandBtn.innerText = "Thu nhỏ";
+                gpsBtn.style.bottom = "calc(88dvh + 12px)";
+            } else {
+                sheet.classList.replace('sheet-full', 'sheet-half');
+                expandBtn.innerText = "Mở rộng";
+                gpsBtn.style.bottom = "calc(38dvh + 12px)";
+            }
+        }
+        document.getElementById('dragHandle').onclick = () => toggleSheetState();
+
+        function toggleFavFilter() {
+            isFavFilterActive = !isFavFilterActive;
+            const btn = document.getElementById('favFilterBtn');
+            document.getElementById('sheetTitle').innerText = isFavFilterActive ? "Đã lưu" : "Khám phá";
+            if(isFavFilterActive) {
+                btn.classList.replace('bg-slate-100/80', 'bg-rose-100');
+                btn.classList.replace('text-slate-400', 'text-rose-500');
+            } else {
+                btn.classList.replace('bg-rose-100', 'bg-slate-100/80');
+                btn.classList.replace('text-rose-500', 'text-slate-400');
+            }
+            applyFilter();
+        }
+
+        window.toggleHeart = function(e, storeId) {
+            e.stopPropagation();
+            const icon = e.currentTarget.querySelector('i');
+            const idx = favorites.indexOf(storeId);
+            if(idx > -1) {
+                favorites.splice(idx, 1);
+                icon.className = 'fa-regular fa-heart text-slate-300';
+            } else {
+                favorites.push(storeId);
+                icon.className = 'fa-solid fa-heart text-rose-500';
+            }
+            setCache('fav_stores_v1', favorites);
+            if(isFavFilterActive) applyFilter();
+        }
+
+        async function translate(text) {
+            if(!text) return "";
+            const ck = `en_mob_${text}`;
+            if(getCache(ck)) return getCache(ck);
+            try {
+                const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ja|en`);
+                const d = await res.json();
+                setCache(ck, d.responseData.translatedText); return d.responseData.translatedText;
+            } catch(e) { return text; }
+        }
+
+        async function geocode(addr) {
+            const ck = `geo_mob_${addr}`;
+            if(getCache(ck)) return getCache(ck);
+            try {
+                const res = await fetch(`https://msearch.gsi.go.jp/address-search/AddressSearch?q=${encodeURIComponent(addr.replace(/株式会社|有限会社/g, ''))}`);
+                const d = await res.json();
+                if(d?.length) {
+                    const c = { lat: d[0].geometry.coordinates[1], lng: d[0].geometry.coordinates[0] };
+                    setCache(ck, c); return c;
+                }
+            } catch(e) {} return null;
+        }
+
+        function calcDist(lat1, lon1, lat2, lon2) {
+            const p = 0.0174532925;
+            const a = 0.5 - Math.cos((lat2 - lat1) * p)/2 + Math.cos(lat1 * p) * Math.cos(lat2 * p) * (1 - Math.cos((lon2 - lon1) * p))/2;
+            return 12742 * Math.asin(Math.sqrt(a)); 
+        }
+
+        function renderMap() {
+            mapMarkers.forEach(m => map.removeLayer(m.marker));
+            mapMarkers = [];
+            if(userLocation) {
+                L.marker([userLocation.lat, userLocation.lng], {
+                    icon: L.divIcon({className: 'user', html: '<div class="relative"><div class="w-3.5 h-3.5 bg-blue-500 rounded-full border-2 border-white shadow relative z-10"></div><div class="w-10 h-10 bg-blue-500/20 rounded-full animate-ping absolute -top-3.5 -left-3.5 z-0"></div></div>'})
+                }).addTo(map);
+            }
+            recentStores.forEach(s => {
+                let m = L.marker([s.lat, s.lng], {icon: defaultIcon}).addTo(map)
+                         .bindPopup(`<div class="font-sans text-[12px] font-bold text-slate-800">${s.name}</div>`);
+                mapMarkers.push({ id: s.id, marker: m });
+            });
+            if(mapMarkers.length) {
+                let g = new L.featureGroup(mapMarkers.map(m => m.marker));
+                if(userLocation) g.addLayer(L.marker([userLocation.lat, userLocation.lng]));
+                map.fitBounds(g.getBounds().pad(0.1));
+            }
+        }
+
+        async function onCardClick(item) {
+            if(isSheetExpanded) toggleSheetState(false);
+            let coords = (item.lat && item.lng) ? {lat: item.lat, lng: item.lng} : await geocode(item.address);
+            if(!coords) return alert("Không thể định vị địa điểm này.");
+
+            recentStores = recentStores.filter(s => s.id !== item.uid);
+            recentStores.unshift({ id: item.uid, name: item.store_name, ...coords });
+            if(recentStores.length > 15) recentStores.pop();
+            setCache('recentStores_mobile', recentStores);
+
+            renderMap();
+            let mObj = mapMarkers.find(m => m.id === item.uid);
+            if(mObj) {
+                mObj.marker.setIcon(activeIcon).setZIndexOffset(1000).openPopup();
+                map.flyTo([coords.lat - 0.002, coords.lng], 16, {duration: 1});
+            }
+        }
+
+        function createCard(item) {
+            const card = document.createElement('div');
+            card.className = "bg-white p-3 rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 mb-2.5 animate-fade-in relative";
+            
+            const catLabel = VI_CATEGORIES[item.store_type_name] || item.store_type_name || 'Khác';
+            let distBadge = item.distance ? `<span class="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[9px] font-bold">${item.distance.toFixed(1)} km</span>` : '';
+            
+            const isFav = favorites.includes(item.uid);
+            const heartIcon = isFav ? '<i class="fa-solid fa-heart text-rose-500"></i>' : '<i class="fa-regular fa-heart text-slate-300"></i>';
+
+            let webBtn = item.website_url ? `<a href="${item.website_url}" target="_blank" class="flex-1 flex justify-center items-center gap-1.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold transition-colors border border-slate-100"><i class="fa-solid fa-globe"></i> Web</a>` : '';
+            let originMapBtn = item.google_map_url ? `<a href="${item.google_map_url}" target="_blank" class="flex-1 flex justify-center items-center gap-1.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg text-[10px] font-bold transition-colors border border-emerald-100"><i class="fa-solid fa-map-location-dot"></i> Map Gốc</a>` : '';
+            
+            // Fix chuẩn link Google Maps API Search
+            const queryParam = encodeURIComponent(`${item.store_name} ${item.address}`);
+            let autoMapBtn = `<a href="https://www.google.com/maps/search/?api=1&query=${queryParam}" target="_blank" class="w-full mt-2 flex justify-center items-center gap-1.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-lg text-[10px] font-semibold transition-colors border border-slate-200 border-dashed"><i class="fa-brands fa-google text-[11px]"></i> Map Tự tạo (Có thể sai lệch)</a>`;
+
+            let row1Btns = (webBtn || originMapBtn) ? `<div class="flex gap-2 w-full mt-2.5 relative z-20">${webBtn}${originMapBtn}</div>` : '';
+
+            card.innerHTML = `
+                <button class="absolute top-2 right-2 text-base p-1.5 z-20" onclick="toggleHeart(event, '${item.uid}')">
+                    ${heartIcon}
+                </button>
+                <div class="flex gap-2.5 items-start cursor-pointer z-10" onclick="onCardClick(this.dataset)">
+                    <div class="flex-1 pr-6">
+                        <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                            <span class="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">${catLabel}</span>
+                            ${distBadge}
+                        </div>
+                        <h3 class="text-[13px] font-bold text-slate-900 leading-tight">${item.store_name}</h3>
+                        <p class="en-name text-[10px] text-slate-400 font-medium mt-0.5 skeleton-text w-2/3">Translating...</p>
+                        
+                        <div class="mt-1.5 text-[11px] text-slate-600 flex items-start gap-1">
+                            <i class="fa-solid fa-location-dot mt-[3px] text-slate-400 text-[10px]"></i>
+                            <span class="leading-tight truncate w-full pr-1">${item.address}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full relative z-20">
+                    ${row1Btns}
+                    ${autoMapBtn}
+                </div>
+            `;
+
+            const clickArea = card.querySelector('.cursor-pointer');
+            clickArea.dataset.uid = item.uid;
+            clickArea.onclick = () => onCardClick(item);
+
+            translate(item.store_name).then(t => { 
+                const el = card.querySelector('.en-name'); 
+                el.innerHTML = t; el.classList.remove('skeleton-text'); el.classList.add('text-blue-500');
+            });
+
+            return card;
+        }
+
+        function applyFilter() {
+            const term = searchInput.value.toLowerCase();
+            const cat = document.getElementById('categorySelect').value;
+            const sort = document.getElementById('sortSelect').value;
+
+            let res = allData.filter(i => {
+                const enName = getCache(`en_mob_${i.store_name}`) || "";
+                let matchText = i.store_name.toLowerCase().includes(term) || enName.toLowerCase().includes(term);
+                let matchCat = (cat === 'all' || i.store_type_name === cat);
+                let matchFav = isFavFilterActive ? favorites.includes(i.uid) : true;
+                return matchText && matchCat && matchFav;
+            });
+
+            if(sort === 'distance' && userLocation) {
+                res.forEach(item => {
+                    let c = getCache(`geo_mob_${item.address}`);
+                    let lat = item.lat || (c ? c.lat : null), lng = item.lng || (c ? c.lng : null);
+                    item.distance = (lat && lng) ? calcDist(userLocation.lat, userLocation.lng, lat, lng) : Infinity;
+                });
+                res.sort((a,b) => a.distance - b.distance);
+            }
+
+            filteredData = res; resultsList.innerHTML = ''; currentPage = 1;
+            document.getElementById('resultCount').innerHTML = `${res.length} địa điểm`;
+            
+            if(res.length === 0 && isFavFilterActive) {
+                resultsList.innerHTML = `<div class="text-center py-6 text-slate-400 text-[12px]"><i class="fa-regular fa-heart text-2xl mb-1.5 opacity-40 block"></i>Chưa có địa điểm yêu thích</div>`;
+            } else {
+                loadMore();
+            }
+            resultsList.scrollTo(0,0);
+        }
+
+        function loadMore() {
+            const chunk = filteredData.slice((currentPage-1)*ITEMS_PER_PAGE, currentPage*ITEMS_PER_PAGE);
+            if(!chunk.length) return document.getElementById('scrollSentinel').classList.add('hidden');
+            chunk.forEach(i => resultsList.appendChild(createCard(i)));
+            currentPage++;
+            document.getElementById('scrollSentinel').classList.toggle('hidden', (currentPage-1)*ITEMS_PER_PAGE >= filteredData.length);
+        }
+
+        function locateUser() {
+            const icon = gpsBtn.querySelector('i');
+            icon.className = 'fa-solid fa-spinner fa-spin text-base';
+            navigator.geolocation.getCurrentPosition(pos => {
+                userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                icon.className = 'fa-solid fa-location-crosshairs text-base';
+                document.getElementById('sortSelect').value = 'distance';
+                applyFilter(); renderMap();
+                map.flyTo([userLocation.lat, userLocation.lng], 15, {duration: 1});
+            }, () => {
+                alert("Vui lòng cho phép quyền Vị trí (GPS)."); icon.className = 'fa-solid fa-location-crosshairs text-base';
+            });
+        }
+
+        searchInput.oninput = () => { clearTimeout(this.t); this.t = setTimeout(applyFilter, 400); };
+        document.getElementById('categorySelect').onchange = applyFilter;
+        document.getElementById('sortSelect').onchange = applyFilter;
+
+        new IntersectionObserver(e => { if(e[0].isIntersecting) loadMore(); }, {root: resultsList}).observe(document.getElementById('scrollSentinel'));
+
+        async function init() {
+            try {
+                const r = await fetch('./data.json');
+                const rawData = await r.json();
+                
+                allData = rawData.map(item => {
+                    item.uid = item.id || btoa(unescape(encodeURIComponent(item.store_name + item.address))).substring(0, 16);
+                    return item;
+                });
+                
+                const catSel = document.getElementById('categorySelect');
+                Object.keys(VI_CATEGORIES).forEach(k => {
+                    let o = document.createElement('option'); o.value = k; o.textContent = VI_CATEGORIES[k];
+                    catSel.appendChild(o);
+                });
+
+                [searchInput, catSel, document.getElementById('sortSelect')].forEach(i => i.disabled = false);
+                applyFilter(); renderMap();
+            } catch(e) { document.getElementById('resultCount').textContent = "Lỗi tải dữ liệu."; }
+        }
+        
+        init();
+    </script>
+</body>
+</html>
