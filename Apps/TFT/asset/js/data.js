@@ -522,9 +522,7 @@ async function loadTraitsData() {
                     : `<i class="fa-solid fa-shapes text-[16px] bg-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300"></i>`;
 
                 return `
-                            <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-white/10 hover:border-premium-gold/50 dark:hover:border-premium-gold/30 rounded-2xl p-4 block transition-all duration-300 shadow-lg group relative overflow-hidden">
-                                <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                
+                        <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-white/10 hover:border-premium-gold/50 dark:hover:border-premium-gold/30 rounded-2xl p-4 grid grid-cols-1 gap-y-0 transition-all duration-300 shadow-lg group relative overflow-hidden h-auto">                                <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div class="relative flex items-center justify-between cursor-pointer z-10 outline-none" onclick="window.toggleTraitDetails(this)">
                                     <div class="flex items-center gap-3">
                                         <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-premium-gold text-premium-gold">
@@ -539,15 +537,15 @@ async function loadTraitsData() {
                                 </div>
                                 
                                 ${heroesHTML ? `
-                                    <div class="relative mt-3 z-10">
-                                        <div class="flex flex-wrap gap-2">
+                                    <div class="mt-3 z-10 w-full">
+                                        <div class="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-2 w-full">
                                             ${heroesHTML}
                                         </div>
                                     </div>
                                 ` : ''}
 
-                                <div class="trait-details hidden relative z-10">
-                                    <div class="flex flex-col gap-3 mt-4 pt-3 border-t border-slate-200 dark:border-white/5">
+                                <div class="trait-details hidden z-10 w-full h-auto">
+    <div class="flex flex-col gap-3 mt-4 pt-3 border-t border-slate-200 dark:border-white/5 w-full">
                                         ${trait.description ? `<p class="text-[11px] text-slate-500 dark:text-slate-400 italic leading-relaxed">${trait.description.replace(/\n/g, '<br>')}</p>` : ''}
                                         
                                         ${levelsHTML ? `
@@ -2328,80 +2326,112 @@ function loadDonateData() {
     const container = document.getElementById('grid-donate');
     if (!container) return;
 
-    // DỮ LIỆU CỦA BẠN (Hãy thay đổi thông tin ở đây)
-    const donateInfo = {
-        momo: {
-            name: "BVBank",
-            number: "99MM24030M09540726",
-            owner: "MOMO_DINH MANH HUNG",
-            qr: "./Asset/QR/QR-VietQR-BVBank.png", // Đường dẫn ảnh QR của bạn
-            color: "bg-[#A50064]"
-        },
-        // bank: {
-        //     name: "Ngân hàng (MB Bank)",
-        //     number: "123456789",
-        //     owner: "ĐINH MẠNH HÙNG",
-        //     qr: "./Asset/QR/bank_qr.png",
-        //     color: "bg-[#004A9C]"
-        // },
-        // paypal: {
-        //     name: "PayPal",
-        //     number: "your-email@gmail.com",
-        //     link: "https://paypal.me/yourid",
-        //     color: "bg-[#003087]"
-        // }
+    // 1. CẤU HÌNH DỮ LIỆU TẠI ĐÂY (Dễ dàng thêm mới sau này)
+    const donateConfig = {
+        cash: [
+            {
+                id: 'momo',
+                name: 'MoMo',
+                owner: 'ĐINH MẠNH HÙNG',
+                number: '99MM24030M09540726',
+                qr: './Asset/QR/QR-VietQR-BVBank.png',
+                color: 'bg-[#A50064]',
+                icon: 'fa-mobile-screen-button'
+            },
+            // {
+            //     id: 'buymeacoffee',
+            //     name: 'Buy Me a Coffee',
+            //     owner: 'Dinh Manh Hung',
+            //     number: 'buymeacoffee.com/hung', // Link hoặc username
+            //     qr: './Asset/QR/bmc_qr.png', // Thay bằng file QR của bạn
+            //     color: 'bg-[#FFDD00]',
+            //     icon: 'fa-coffee',
+            //     isLink: true, // Để JS biết đây là link thay vì copy
+            //     link: 'https://www.buymeacoffee.com/' 
+            // }
+        ],
+        love: [
+            {
+                id: 'facebook',
+                name: 'Facebook',
+                owner: 'Đinh Mạnh Hùng',
+                number: 'fb.com/hung.dinh',
+                qr: './Asset/QR/fb_qr.png',
+                color: 'bg-[#1877F2]',
+                icon: 'fa-brands fa-facebook-f',
+                isLink: true,
+                link: 'https://www.facebook.com/mhung.site/'
+            }
+        ]
     };
 
-    container.innerHTML = `
-                <div class="max-w-4xl mx-auto py-6 px-2 flex flex-col gap-8">
-                    <div class="text-center space-y-3">
-                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 mb-2">
-                            <i class="fa-solid fa-heart text-3xl"></i>
-                        </div>
-                        <h2 class="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Ủng hộ dự án</h2>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed italic">
-                            Sự đóng góp của bạn giúp mình có thêm động lực để duy trì server và cập nhật dữ liệu TFT Wiki mỗi mùa. Cảm ơn các bạn rất nhiều!
-                        </p>
+    // 2. LOGIC RENDER TỰ ĐỘNG
+    const renderSection = (title, icon, data) => {
+        const itemsHTML = data.map(item => {
+            const actionAttr = item.isLink 
+                ? `onclick="window.open('${item.link}', '_blank')"` 
+                : `onclick="window.copyDonateText('${item.number}', 'btn-${item.id}')"`;
+            
+            return `
+                <div class="bg-white dark:bg-premium-card rounded-3xl border border-slate-200 dark:border-white/5 p-5 shadow-xl flex flex-col items-center text-center group transition-transform hover:-translate-y-1">
+                    <div class="w-12 h-12 ${item.color} rounded-xl flex items-center justify-center text-white mb-4 shadow-lg ${item.id === 'buymeacoffee' ? '!text-black' : ''}">
+                        <i class="fa-solid ${item.icon} text-xl"></i>
                     </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        
-                        <div class="bg-white dark:bg-premium-card rounded-3xl border border-slate-200 dark:border-white/5 p-5 shadow-xl flex flex-col items-center text-center group">
-                            <div class="w-12 h-12 ${donateInfo.momo.color} rounded-xl flex items-center justify-center text-white mb-4 shadow-lg">
-                                <i class="fa-solid fa-mobile-screen-button text-xl"></i>
-                            </div>
-                            <h3 class="font-black text-slate-800 dark:text-white mb-1">${donateInfo.momo.name}</h3>
-                            <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-4">${donateInfo.momo.owner}</p>
-                            
-                            <img src="${donateInfo.momo.qr}" class="w-40 h-40 rounded-xl mb-4 border-4 border-slate-100 dark:border-white/5 bg-white p-1" alt="Momo QR">
-                            
-                            <button onclick="window.copyDonateText('${donateInfo.momo.number}', 'btn-momo')" id="btn-momo" class="w-full py-2.5 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-black border border-slate-200 dark:border-white/10 hover:bg-rose-500 hover:text-white transition-all outline-none">
-                                ${donateInfo.momo.number} <i class="fa-regular fa-copy ml-1"></i>
-                            </button>
-                        </div>
-
-
-                        
-
-                    </div>
-
-                    <p class="text-center text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-4">
-                        Thank you for your support!
-                    </p>
+                    <h3 class="font-black text-slate-800 dark:text-white mb-1">${item.name}</h3>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-2">${item.owner}</p>
+                    
+                    <img src="${item.qr}" class="w-40 h-40 rounded-xl mb-4  p-1 object-contain" alt="${item.name} QR" onerror="this.src='/Asset/logo/logo.png'">
+                    
+                    <button id="btn-${item.id}" ${actionAttr} class="w-full py-2.5 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-black border border-slate-200 dark:border-white/10 hover:bg-premium-gold hover:text-black transition-all outline-none">
+                        ${item.isLink ? 'Theo dõi ngay' : item.number} ${item.isLink ? '<i class="fa-solid fa-arrow-up-right-from-square ml-1"></i>' : '<i class="fa-regular fa-copy ml-1"></i>'}
+                    </button>
                 </div>
             `;
+        }).join('');
 
-    // Hàm copy chuyên dụng cho Donate
-    window.copyDonateText = (text, btnId) => {
-        navigator.clipboard.writeText(text).then(() => {
-            const btn = document.getElementById(btnId);
-            const oldHTML = btn.innerHTML;
-            btn.classList.add('!bg-emerald-500', '!text-white', '!border-emerald-500');
-            btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> ĐÃ SAO CHÉP';
-            setTimeout(() => {
-                btn.classList.remove('!bg-emerald-500', '!text-white', '!border-emerald-500');
-                btn.innerHTML = oldHTML;
-            }, 2000);
-        });
+        return `
+            <div class="space-y-5">
+                <div class="flex items-center gap-3 px-2">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10 text-premium-gold shadow-sm">
+                        <i class="fa-solid ${icon}"></i>
+                    </div>
+                    <h2 class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">${title}</h2>
+                </div>
+                <div class="grid grid-cols-1 gap-6">
+                    ${itemsHTML}
+                </div>
+            </div>
+        `;
     };
+
+    // 3. XUẤT RA GIAO DIỆN
+    container.innerHTML = `
+        <div class="max-w-5xl mx-auto py-6 px-2 flex flex-col gap-12">
+            <div class="text-center space-y-3 mb-4">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-500/10 text-rose-500 mb-2 animate-pulse">
+                    <i class="fa-solid fa-heart text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Cảm ơn sự đồng hành của bạn</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed italic">
+                    Dù là hiện kim hay tình cảm, mọi sự ủng hộ của bạn đều là động lực to lớn để mình phát triển dự án này.
+                </p>
+            </div>
+            ${renderSection('Ủng hộ tình cảm', 'fa-face-smile-wink', donateConfig.love)}
+            <div class="h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-white/5 to-transparent"></div>
+            ${renderSection('Ủng hộ hiện kim', 'fa-wallet', donateConfig.cash)}
+            </div>
+    `;
 }
+
+window.copyDonateText = (text, btnId) => {
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById(btnId);
+        const oldHTML = btn.innerHTML;
+        btn.classList.add('!bg-emerald-500', '!text-white', '!border-emerald-500');
+        btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> ĐÃ SAO CHÉP';
+        setTimeout(() => {
+            btn.classList.remove('!bg-emerald-500', '!text-white', '!border-emerald-500');
+            btn.innerHTML = oldHTML;
+        }, 2000);
+    });
+};
