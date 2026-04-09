@@ -2,10 +2,8 @@ if (typeof window.scraperProReady === 'undefined') {
     window.scraperProReady = true;
     window.cancelScrapePro = false;
 
-    // ==========================================
-    // 1A. TỪ ĐIỂN TRANG BỊ (ITEM DICT)
-    // ==========================================
-    const itemDict = {
+    // TỪ ĐIỂN TƯỚNG & TRANG BỊ (Nhớ paste full từ điển bạn đang dùng vào đây)
+ const itemDict = {
         // ==========================================
         // 1. THÀNH PHẦN (BASE ITEMS)
         // ==========================================
@@ -36,7 +34,7 @@ if (typeof window.scraperProReady === 'undefined') {
         "Guinsoo's Rageblade": "Cuồng Đao Guinsoo",
         "Void Staff": "Trượng Hư Vô", // Dựa theo file JSON của bạn
         "Titan's Resolve": "Quyền Năng Khổng Lồ",
-        "Kraken Slayer": "Thịnh Nộ Thủy Quái", // Dựa theo file JSON của bạn
+        "Kraken's Fury": "Thịnh Nộ Thủy Quái", // Dựa theo file JSON của bạn
         "Runaan's Hurricane": "Thịnh Nộ Thủy Quái", // Dự phòng nếu web dùng Runaan
         "Nashor's Tooth": "Nanh Nashor",
         "Last Whisper": "Cung Xanh",
@@ -80,7 +78,7 @@ if (typeof window.scraperProReady === 'undefined') {
         "Vanguard Emblem": "Ấn Tiên Phong",
         "Bastion Emblem": "Ấn Can Trường",
         "Diviner Emblem": "Ấn Chiêm Tinh",
-        "Astrologer Emblem": "Ấn Chiêm Tinh", // Dự phòng
+        "Stargazer Emblem": "Ấn Chiêm Tinh", // Dự phòng
         "Anima Squad Emblem": "Ấn Siêu Thú",
         "Cybernetic Emblem": "Ấn Siêu Linh",
         "Sniper Emblem": "Ấn Bắn Tỉa",
@@ -173,21 +171,13 @@ if (typeof window.scraperProReady === 'undefined') {
         "Royal Crownshield": "Vương Miện Hoàng Gia Ánh Sáng",
         "Target Lock Optics": "Kính Khóa Mục Tiêu"
     };
+        const translateItem = (name) => { if (!name) return name; return itemDict[name.trim()] || name.trim(); };
 
-    const translateItem = (name) => {
-        if (!name) return name;
-        return itemDict[name.trim()] || name.trim();
-    };
-
-    // ==========================================
-    // 1B. TỪ ĐIỂN TƯỚNG (CHAMP DICT)
-    // ==========================================
-    // Chuẩn hóa các tên tướng dễ bị web nguồn viết sai định dạng
-    const champDict = {
+const champDict = {
         "Kaisa": "Kai'Sa",
-        "Reksai": "Rek'Sai",
+        "RekSai": "Rek'Sai",
         "Chogath": "Cho'Gath",
-        "Khazix": "Kha'Zix",
+        "KhaZix": "Kha'Zix",
         "Velkoz": "Vel'Koz",
         "Belveth": "Bel'Veth",
         "Kogmaw": "Kog'Maw",
@@ -207,31 +197,19 @@ if (typeof window.scraperProReady === 'undefined') {
        
 
         // Thêm các tướng bị sai tên khác vào đây theo cú pháp: "Tên_Lỗi_Của_Web": "Tên_Chuẩn"
-    };
+    };    const translateChamp = (name) => { if (!name) return name; return champDict[name.trim()] || name.trim(); };
 
-    const translateChamp = (name) => {
-        if (!name) return name;
-        const cleanName = name.trim();
-        return champDict[cleanName] || cleanName;
-    };
-
-    // ==========================================
-    // 2. LẮNG NGHE LỆNH TỪ POPUP
-    // ==========================================
     chrome.runtime.onMessage.addListener((req, sender, sendResp) => {
         if (req.action === "start_PRO") {
             window.cancelScrapePro = false;
-            runScraperPRO(req.limit);
+            runScraperPRO(req.limit, req.options, req.customNote);
             sendResp({status: "started"});
         }
     });
 
     const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-    // ==========================================
-    // 3. LOGIC CÀO BẢN PRO
-    // ==========================================
-    async function runScraperPRO(limitStr) {
+    async function runScraperPRO(limitStr, options, customNote) {
         let limit = parseInt(limitStr);
         const wrappers = document.querySelectorAll('.team-portrait');
         if (wrappers.length === 0) { alert("❌ Lỗi: Không tìm thấy class .team-portrait (Sai web PRO?)"); return; }
@@ -253,77 +231,85 @@ if (typeof window.scraperProReady === 'undefined') {
                 const expandBtn = root.querySelector('.team-more');
                 if (expandBtn) { expandBtn.click(); await sleep(1000); }
 
-                let teamCode = "N/A";
-                const copyBtn = root.querySelector('.team-copy');
-                if (copyBtn) {
-                    copyBtn.click(); await sleep(400);
-                    try { teamCode = await navigator.clipboard.readText(); } catch (e) {}
-                }
+                let compData = {};
 
-                // 3.1. Lấy danh sách tướng chính (Đã áp dụng translateChamp)
-                const unitsContainer = [];
-                root.querySelectorAll('.team-characters > a.characters-item[href*="/champions/"]').forEach(charLink => {
-                    let rawName = charLink.querySelector('.team-character-name')?.textContent || charLink.querySelector('img.character-icon')?.getAttribute('alt');
-                    const name = translateChamp(rawName); // Dịch tên tướng
-                    
-                    if (name) {
-                        const items = Array.from(charLink.querySelectorAll('.character-items img'))
-                                           .map(img => translateItem(img.getAttribute('alt'))).filter(n => n);
-                        unitsContainer.push({ champion: name, items: items });
+                if (options.title) compData.CompTitle = root.querySelector('.team-name-elipsis')?.childNodes[0]?.textContent.trim() || "N/A";
+                if (options.tags) compData.CompRowTags = Array.from(root.querySelectorAll('.team-rank, .team-playstyle')).map(t => t.textContent.trim());
+                if (options.augments) compData.Augments = Array.from(root.querySelectorAll('.team-augments img, .augments-list img')).map(img => translateItem(img.getAttribute('alt'))).filter(n => n);
+
+                if (options.code) {
+                    let teamCode = "N/A";
+                    const copyBtn = root.querySelector('.team-copy');
+                    if (copyBtn) {
+                        copyBtn.click(); await sleep(400);
+                        try { teamCode = await navigator.clipboard.readText(); } catch (e) {}
                     }
-                });
-
-                // 3.2. Lấy Form Early Game (Đã áp dụng translateChamp)
-                const compEarlyOptions = [];
-                const earlyList = document.querySelector('.team-expanded-list');
-                if (earlyList) {
-                    const earlyChamps = Array.from(earlyList.querySelectorAll('a.characters-item[href*="/champions/"] img.character-icon'))
-                                             .map(img => translateChamp(img.getAttribute('alt'))).filter(n => n);
-                    if (earlyChamps.length > 0) compEarlyOptions.push({ win_rate: "N/A", team_comp: earlyChamps });
+                    compData.CopyTeamCode = teamCode;
                 }
 
-                // 3.3. Lấy vị trí bàn cờ (Đã áp dụng translateChamp)
-                const boardPositions = [];
-                const hexGrid = document.querySelector('#hexGrid');
-                if (hexGrid) {
-                    hexGrid.querySelectorAll('li.hex').forEach((hex, index) => {
-                        const img = hex.querySelector('a[href*="/champions/"] img.character-icon');
-                        if (img) {
-                            const champName = translateChamp(img.getAttribute('alt'));
-                            boardPositions.push({ champion: champName, hex_id: index, coordinates: { row: Math.floor(index / 7), col: index % 7 } });
+                if (options.units) {
+                    const unitsContainer = [];
+                    root.querySelectorAll('.team-characters > a.characters-item[href*="/champions/"]').forEach(charLink => {
+                        let rawName = charLink.querySelector('.team-character-name')?.textContent || charLink.querySelector('img.character-icon')?.getAttribute('alt');
+                        const name = translateChamp(rawName); 
+                        if (name) {
+                            const items = Array.from(charLink.querySelectorAll('.character-items img')).map(img => translateItem(img.getAttribute('alt'))).filter(n => n);
+                            unitsContainer.push({ champion: name, items: items });
                         }
                     });
+                    compData.UnitsContainer = unitsContainer;
                 }
 
-                // 3.4. Lấy thông tin chung
-                const title = root.querySelector('.team-name-elipsis')?.childNodes[0]?.textContent.trim() || "N/A";
-                const tags = Array.from(root.querySelectorAll('.team-rank, .team-playstyle')).map(t => t.textContent.trim());
-                const augments = Array.from(root.querySelectorAll('.team-augments img, .augments-list img')).map(img => translateItem(img.getAttribute('alt'))).filter(n => n);
+                if (options.early) {
+                    const compEarlyOptions = [];
+                    const earlyList = document.querySelector('.team-expanded-list');
+                    if (earlyList) {
+                        const earlyChamps = Array.from(earlyList.querySelectorAll('a.characters-item[href*="/champions/"] img.character-icon')).map(img => translateChamp(img.getAttribute('alt'))).filter(n => n);
+                        if (earlyChamps.length > 0) compEarlyOptions.push({ win_rate: "N/A", team_comp: earlyChamps });
+                    }
+                    compData.CompEarlyOptions = compEarlyOptions;
+                }
 
-                allCompsData.push({
-                    CompTitle: title, CompRowTags: tags, Augments: augments, UnitsContainer: unitsContainer,
-                    CopyTeamCode: teamCode, CompEarlyOptions: compEarlyOptions, CompQuickStart: { leveling: [], carousel: [] }, BoardPositions: boardPositions
-                });
+                if (options.quick) compData.CompQuickStart = { leveling: [], carousel: [] };
 
+                if (options.board) {
+                    const boardPositions = [];
+                    const hexGrid = document.querySelector('#hexGrid');
+                    if (hexGrid) {
+                        hexGrid.querySelectorAll('li.hex').forEach((hex, index) => {
+                            const img = hex.querySelector('a[href*="/champions/"] img.character-icon');
+                            if (img) {
+                                const champName = translateChamp(img.getAttribute('alt'));
+                                boardPositions.push({ champion: champName, hex_id: index, coordinates: { row: Math.floor(index / 7), col: index % 7 } });
+                            }
+                        });
+                    }
+                    compData.BoardPositions = boardPositions;
+                }
+
+                allCompsData.push(compData);
             } catch (err) { console.error(`Lỗi đội hình ${i+1}:`, err); }
         }
         
         statusPanel.remove();
-        renderResult(allCompsData, 'PRO', window.cancelScrapePro);
+
+        // GOM DỮ LIỆU CHUNG
+        const finalJsonData = {
+            MetaData: {
+                ScrapeTime: new Date().toLocaleString('vi-VN'),
+                CustomNote: customNote || "",
+                TotalComps: allCompsData.length
+            },
+            Data: allCompsData
+        };
+
+        renderResult(finalJsonData, 'PRO', window.cancelScrapePro);
     }
 
-    // ==========================================
-    // 4. CÁC HÀM UI DÙNG CHUNG
-    // ==========================================
     function createStatusPanel(version, total, onStopCb) {
         const p = document.createElement('div');
         p.id = "tftScraperPanel";
-        Object.assign(p.style, {
-            position: 'fixed', bottom: '24px', right: '24px', zIndex: '9999999', background: '#fff', 
-            border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', 
-            boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontFamily: '-apple-system, BlinkMacSystemFont, Arial, sans-serif', 
-            display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '250px'
-        });
+        Object.assign(p.style, { position: 'fixed', bottom: '24px', right: '24px', zIndex: '9999999', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px 20px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontFamily: 'Arial, sans-serif', display: 'flex', flexDirection: 'column', gap: '12px', minWidth: '250px' });
         p.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div style="font-weight:bold; color:#1e293b; font-size:14px;">⚡ Đang cào ${version}</div>
@@ -335,38 +321,27 @@ if (typeof window.scraperProReady === 'undefined') {
             <button id="stopScrapeBtn" style="padding:10px; background:#ef4444; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer; margin-top:4px; transition:0.2s;">🛑 DỪNG & LẤY DỮ LIỆU</button>
         `;
         document.body.appendChild(p);
-        document.getElementById('stopScrapeBtn').onclick = () => {
-            onStopCb();
-            document.getElementById('stopScrapeBtn').innerText = "⏳ Đang kết thúc...";
-            document.getElementById('stopScrapeBtn').style.background = "#94a3b8";
-        };
+        document.getElementById('stopScrapeBtn').onclick = () => { onStopCb(); document.getElementById('stopScrapeBtn').innerText = "⏳ Đang kết thúc..."; document.getElementById('stopScrapeBtn').style.background = "#94a3b8"; };
         return p;
     }
 
     function updateProgress(current, total) {
-        const pt = document.getElementById('scrapeProgress');
-        const pb = document.getElementById('scrapeProgressBar');
-        if (pt) pt.innerText = `${current}/${total}`;
-        if (pb) pb.style.width = `${(current / total) * 100}%`;
+        const pt = document.getElementById('scrapeProgress'); const pb = document.getElementById('scrapeProgressBar');
+        if (pt) pt.innerText = `${current}/${total}`; if (pb) pb.style.width = `${(current / total) * 100}%`;
     }
 
-    function renderResult(data, versionLabel, isStopped) {
+    function renderResult(finalData, versionLabel, isStopped) {
         const overlay = document.createElement('div');
-        Object.assign(overlay.style, {
-            position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh',
-            backgroundColor: 'rgba(15, 23, 42, 0.85)', zIndex: '2000000', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', fontFamily: '-apple-system, BlinkMacSystemFont, Arial, sans-serif'
-        });
+        Object.assign(overlay.style, { position: 'fixed', top: '0', left: '0', width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.85)', zIndex: '2000000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Arial, sans-serif' });
         
-        const titleText = isStopped ? `⚠️ Đã dừng (${data.length} đội hình)` : `✅ Hoàn tất (${data.length} đội hình)`;
+        const count = finalData.MetaData.TotalComps;
+        const titleText = isStopped ? `⚠️ Đã dừng (${count} đội hình)` : `✅ Hoàn tất (${count} đội hình)`;
         const titleColor = isStopped ? '#f59e0b' : '#10b981';
 
         overlay.innerHTML = `
             <div style="background:#1e293b; width:80%; max-width:900px; height:85%; padding:24px; display:flex; flex-direction:column; border-radius:16px; border:1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                    <h2 style="margin:0; color:${titleColor}; font-size:20px;">${titleText} - Bản ${versionLabel}</h2>
-                </div>
-                <textarea id="jsonOut" style="flex:1; background:#0f172a; color:#a5b4fc; font-family:monospace; font-size:13px; padding:16px; border:1px solid #334155; border-radius:8px; resize:none;" readonly>${JSON.stringify(data, null, 2)}</textarea>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;"><h2 style="margin:0; color:${titleColor}; font-size:20px;">${titleText} - Bản ${versionLabel}</h2></div>
+                <textarea id="jsonOut" style="flex:1; background:#0f172a; color:#a5b4fc; font-family:monospace; font-size:13px; padding:16px; border:1px solid #334155; border-radius:8px; resize:none;" readonly>${JSON.stringify(finalData, null, 2)}</textarea>
                 <div style="margin-top:20px; display:flex; gap:12px; justify-content:flex-end;">
                     <button id="btnDownload" style="padding:12px 24px; background:#3b82f6; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">⬇️ TẢI JSON</button>
                     <button id="btnCp" style="padding:12px 24px; background:#10b981; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">📋 COPY DỮ LIỆU</button>
@@ -376,14 +351,7 @@ if (typeof window.scraperProReady === 'undefined') {
         `;
         document.body.appendChild(overlay);
 
-        document.getElementById('btnCp').onclick = function() { 
-            document.getElementById('jsonOut').select(); document.execCommand('copy'); 
-            this.innerHTML = "✅ ĐÃ COPY!"; setTimeout(() => this.innerHTML = "📋 COPY DỮ LIỆU", 2000);
-        };
-        document.getElementById('btnDownload').onclick = () => {
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-            a.download = `TFT_${versionLabel}_${data.length}Comps.json`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        };
+        document.getElementById('btnCp').onclick = function() { document.getElementById('jsonOut').select(); document.execCommand('copy'); this.innerHTML = "✅ ĐÃ COPY!"; setTimeout(() => this.innerHTML = "📋 COPY DỮ LIỆU", 2000); };
+        document.getElementById('btnDownload').onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(finalData, null, 2)], { type: "application/json" })); a.download = `TFT_${versionLabel}_${count}Comps.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); };
     }
 }

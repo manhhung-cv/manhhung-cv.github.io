@@ -1453,6 +1453,7 @@ async function loadCompsData() {
         let champsData = [];
         let itemsData = {};
         let buildsData = [];
+        let currentMetaData = null;
 
         const [resChamps, resItems, resBuilds] = await Promise.all([
             fetch('./asset/data/champions.json'),
@@ -1659,7 +1660,7 @@ async function loadCompsData() {
         gridContainer.className = "flex flex-col relative pb-20 min-h-screen w-full";
         gridContainer.innerHTML = `
                     <div class="flex flex-col relative pb-40 min-h-screen w-full">
-                        <div id="comp-list-container" class="flex flex-col gap-4 w-full pt-4"></div>
+                        <div id="comp-list-container" class="flex flex-col gap-4 w-full"></div>
                         <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col items-center pointer-events-none">
                             
                             <div id="comp-filters-wrapper" class="w-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] opacity-0 translate-y-4 pointer-events-none absolute bottom-full mb-3 left-0">
@@ -1766,6 +1767,32 @@ async function loadCompsData() {
             });
         };
 
+        window.getRelativeTimeVn = (timeStr) => {
+            if (!timeStr) return 'Không rõ';
+            try {
+                // Cắt chuỗi "18:06:52 9/4/2026"
+                const parts = timeStr.split(' ');
+                if (parts.length !== 2) return timeStr;
+
+                const timeParts = parts[0].split(':');
+                const dateParts = parts[1].split('/');
+
+                // Tạo object Date: new Date(year, monthIndex, day, hours, minutes, seconds)
+                const date = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]);
+                const now = new Date();
+                const diffInSeconds = Math.floor((now - date) / 1000);
+
+                if (diffInSeconds < 60) return `Vừa xong`;
+                if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} phút trước`;
+                if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} giờ trước`;
+                if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} ngày trước`;
+
+                return parts[1]; // Nếu quá 30 ngày thì hiển thị luôn ngày tháng gốc
+            } catch (e) {
+                return timeStr;
+            }
+        };
+
         const fetchAndRenderComps = async (url) => {
             const listContainer = document.getElementById('comp-list-container');
             listContainer.innerHTML = `<div class="py-16 flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-3xl mb-4"></i><span class="text-[12px] font-medium">Đang tải dữ liệu...</span></div>`;
@@ -1783,7 +1810,27 @@ async function loadCompsData() {
                 } else {
                     const res = await fetch(url);
                     if (!res.ok) throw new Error('Chưa có dữ liệu cho Mùa này.');
-                    compsData = await res.json();
+
+                    // 1. Nhận dữ liệu thô từ file JSON
+                    const rawData = await res.json();
+                    if (rawData && rawData.Data && Array.isArray(rawData.Data)) {
+                        compsData = rawData.Data;
+                        currentMetaData = rawData.MetaData; // Lưu MetaData vào biến
+                    } else if (Array.isArray(rawData)) {
+                        compsData = rawData;
+                        currentMetaData = null; // Trả về null nếu file kiểu cũ không có MetaData
+                    }
+
+                    // 2. Trích xuất đúng mảng chứa danh sách tướng
+                    if (rawData && rawData.Data && Array.isArray(rawData.Data)) {
+                        // Dành cho cấu trúc JSON mới (có bọc MetaData và Data)
+                        compsData = rawData.Data;
+                    } else if (Array.isArray(rawData)) {
+                        // Dành cho cấu trúc JSON cũ (nếu bạn vẫn dùng mảng trực tiếp ở file khác)
+                        compsData = rawData;
+                    } else {
+                        throw new Error('Cấu trúc dữ liệu JSON không hợp lệ.');
+                    }
                 }
 
                 activeTags.clear();
@@ -1803,8 +1850,41 @@ async function loadCompsData() {
 
         const renderComps = () => {
             const listContainer = document.getElementById('comp-list-container');
-            listContainer.innerHTML = '';
 
+            // ==========================================
+            // 1. TẠO HEADER (THỜI GIAN & NÚT NGUỒN)
+            // ==========================================
+            let updateTimeText = 'Đang cập nhật...';
+            if (currentMetaData && currentMetaData.ScrapeTime) {
+                // Gọi hàm tính thời gian tương đối (bạn nhớ thêm hàm getRelativeTimeVn ở ngoài nhé)
+                updateTimeText = window.getRelativeTimeVn(currentMetaData.ScrapeTime);
+            }
+
+            const sourceButtonsHTML_Main = compSources.map(src => `
+                <button class="filter-source-btn-main shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none
+                    ${src.file === activeSourceUrl ? 'bg-rose-500 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'}" 
+                    data-url="${src.file}">
+                    <i class="fa-solid ${src.file === 'firestore' ? 'fa-cloud' : 'fa-database'} text-[10px] opacity-80"></i> ${src.name}
+                </button>
+            `).join('');
+
+            const headerHTML = `
+                <div class="flex flex-col gap-3 px-1 mb-2 mt-2">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Dữ liệu đội hình</p>
+                        <span class="text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10 flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Cập nhật: <span class="font-bold text-slate-700 dark:text-slate-300">${updateTimeText}</span>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full pb-1">
+                        ${sourceButtonsHTML_Main}
+                    </div>
+                </div>
+            `;
+
+            // ==========================================
+            // 2. LỌC DỮ LIỆU ĐỘI HÌNH
+            // ==========================================
             const filteredComps = compsData.filter(comp => {
                 const matchSearch = comp.CompTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     (comp.UnitsContainer && comp.UnitsContainer.some(u => u.champion.toLowerCase().includes(searchQuery.toLowerCase())));
@@ -1815,15 +1895,21 @@ async function loadCompsData() {
                 return matchSearch && matchTag;
             });
 
+            // ==========================================
+            // 3. XỬ LÝ KHI KHÔNG TÌM THẤY ĐỘI HÌNH
+            // ==========================================
             if (filteredComps.length === 0) {
-                listContainer.innerHTML = `
-                            <div class="py-16 flex flex-col items-center justify-center text-slate-500">
-                                <i class="fa-solid fa-ghost text-4xl mb-3 opacity-20"></i>
-                                <span class="text-[12px] font-medium">Không tìm thấy Đội Hình phù hợp.</span>
-                            </div>`;
+                listContainer.innerHTML = headerHTML + `
+                    <div class="py-16 flex flex-col items-center justify-center text-slate-500">
+                        <i class="fa-solid fa-ghost text-4xl mb-3 opacity-20"></i>
+                        <span class="text-[12px] font-medium">Không tìm thấy Đội Hình phù hợp.</span>
+                    </div>`;
                 return;
             }
 
+            // ==========================================
+            // 4. VẼ LƯỚI BÀN CỜ TRỐNG (HEXES)
+            // ==========================================
             let emptyHexesHTML = '';
             for (let r = 0; r < 4; r++) {
                 for (let c = 0; c < 7; c++) {
@@ -1831,15 +1917,19 @@ async function loadCompsData() {
                     const left = c * 13.33 + (isOddRow ? 6.66 : 0);
                     const top = r * 23.07;
                     emptyHexesHTML += `
-                                <div class="absolute w-[13.33%] h-[30.76%] bg-slate-200/50 dark:bg-[#112233]/80 scale-[0.92] transition-colors" 
-                                     style="left: ${left}%; top: ${top}%; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-                                </div>
-                            `;
+                        <div class="absolute w-[13.33%] h-[30.76%] bg-slate-200/50 dark:bg-[#112233]/80 scale-[0.92] transition-colors" 
+                             style="left: ${left}%; top: ${top}%; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+                        </div>
+                    `;
                 }
             }
 
-            listContainer.innerHTML = filteredComps.map((comp, compIndex) => {
+            // ==========================================
+            // 5. RENDER DANH SÁCH ĐỘI HÌNH THỰC TẾ
+            // ==========================================
+            const compsHTML = filteredComps.map((comp, compIndex) => {
 
+                // --- 5.1 Render Tags ---
                 let tagsHTML = '';
                 if (comp.CompRowTags && comp.CompRowTags.length > 0) {
                     tagsHTML = comp.CompRowTags.map(tag =>
@@ -1847,6 +1937,7 @@ async function loadCompsData() {
                     ).join('');
                 }
 
+                // --- 5.2 Render Tướng & Đếm Tộc Hệ ---
                 let unitsHTML = '';
                 let traitCounts = {};
 
@@ -1875,12 +1966,11 @@ async function loadCompsData() {
                             itemsHTML = items.map(itemName => {
                                 const iData = masterItems[cleanName(itemName)];
                                 const img = iData ? iData.image : '/Asset/logo/logo.png';
-                                const iName = iData ? iData.name : itemName; // Lấy tên trang bị
+                                const iName = iData ? iData.name : itemName;
 
                                 return `
                                 <div class="relative group/tooltip cursor-pointer">
                                     <img src="${img}" class="w-[14px] h-[14px] sm:w-[15px] sm:h-[15px] rounded-[3px] border border-slate-300 dark:border-slate-800 object-cover shadow-sm bg-black hover:scale-110 transition-transform" ${onErrorFallback}>
-                                    
                                     <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[150px] px-2.5 py-1.5 bg-slate-900 dark:bg-black text-white rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-[100] pointer-events-none border border-slate-700 dark:border-white/10 scale-95 group-hover/tooltip:scale-100 origin-bottom">
                                         <span class="text-[9px] font-bold text-premium-gold block text-center truncate">${window.escapeHTML(iName)}</span>
                                         <div class="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900 dark:border-t-black"></div>
@@ -1891,38 +1981,40 @@ async function loadCompsData() {
                         }
 
                         return `
-                                    <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer mb-1" onclick="window.openChampModalFromComp('${window.escapeJS(unit.champion)}')">
-                                        <div class="relative w-full mb-1.5 transition-transform duration-300 group-hover/unit:-translate-y-1">
-                                            <div class="w-full h-12 sm:h-[50px] aspect-square rounded-[6px] border-2 ${borderColor} overflow-hidden bg-black shadow-md">
-                                                <img src="${champImage}" class="w-full h-full object-cover object-[80%]" title="${window.escapeHTML(unit.champion)}" ${onErrorFallback}>
-                                            </div>
-                                            <div class="absolute -bottom-2 left-0 w-full flex justify-center gap-[1.5px] z-10">
-                                                ${itemsHTML}
-                                            </div>
-                                        </div>
-                                        <span class="text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-200 font-bold truncate w-full text-center mt-1 group-hover/unit:text-premium-gold transition-colors drop-shadow-sm">${window.escapeHTML(unit.champion)}</span>
+                            <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer mb-1" onclick="window.openChampModalFromComp('${window.escapeJS(unit.champion)}')">
+                                <div class="relative w-full mb-1.5 transition-transform duration-300 group-hover/unit:-translate-y-1">
+                                    <div class="w-full h-12 sm:h-[50px] aspect-square rounded-[6px] border-2 ${borderColor} overflow-hidden bg-black shadow-md">
+                                        <img src="${champImage}" class="w-full h-full object-cover object-[80%]" title="${window.escapeHTML(unit.champion)}" ${onErrorFallback}>
                                     </div>
-                                `;
+                                    <div class="absolute -bottom-2 left-0 w-full flex justify-center gap-[1.5px] z-10">
+                                        ${itemsHTML}
+                                    </div>
+                                </div>
+                                <span class="text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-200 font-bold truncate w-full text-center mt-1 group-hover/unit:text-premium-gold transition-colors drop-shadow-sm">${window.escapeHTML(unit.champion)}</span>
+                            </div>
+                        `;
                     }).join('');
                 }
 
+                // --- 5.3 Render Tộc Hệ ---
                 const sortedTraits = Object.entries(traitCounts).sort((a, b) => b[1] - a[1]);
                 let traitsHTML = sortedTraits.map(([tName, tCount]) => {
                     const iconFilename = getTraitIconName(tName);
                     return `
-                                <div class="flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-full shadow-sm text-slate-700 dark:text-slate-200">
-                                    <div class="w-3.5 h-3.5 bg-current shrink-0" 
-                                         style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
-                                    </div>
-                                    <span class="text-[10px] font-semibold">${tName}</span>
-                                    <div class="w-4 h-4 rounded-full bg-premium-gold flex items-center justify-center shadow-inner border border-yellow-400 dark:border-yellow-300 ml-0.5">
-                                        <span class="text-[9px] font-black text-black leading-none">${tCount}</span>
-                                    </div>
-                                </div>
-                            `;
+                        <div class="flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-full shadow-sm text-slate-700 dark:text-slate-200">
+                            <div class="w-3.5 h-3.5 bg-current shrink-0" 
+                                 style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
+                            </div>
+                            <span class="text-[10px] font-semibold">${tName}</span>
+                            <div class="w-4 h-4 rounded-full bg-premium-gold flex items-center justify-center shadow-inner border border-yellow-400 dark:border-yellow-300 ml-0.5">
+                                <span class="text-[9px] font-black text-black leading-none">${tCount}</span>
+                            </div>
+                        </div>
+                    `;
                 }).join('');
                 if (!traitsHTML) traitsHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu Tộc Hệ.</span>';
 
+                // --- 5.4 Render Đồ Đi Chợ (Carousel) ---
                 let carouselHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
                 if (comp.CompQuickStart?.carousel?.length > 0) {
                     carouselHTML = `<div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">` +
@@ -1930,14 +2022,15 @@ async function loadCompsData() {
                             const iData = masterItems[cleanName(cItem.item)];
                             const img = iData ? iData.image : '/Asset/logo/logo.png';
                             return `
-                                    <div class="flex items-center">
-                                        <img src="${img}" class="w-6 h-6 rounded border border-slate-300 dark:border-slate-600 bg-black object-cover shadow-sm" ${onErrorFallback}>
-                                        ${index < Math.min(4, comp.CompQuickStart.carousel.length - 1) ? `<i class="fa-solid fa-angle-right text-[8px] text-slate-400 dark:text-slate-600 mx-1"></i>` : ''}
-                                    </div>
-                                `;
+                                <div class="flex items-center">
+                                    <img src="${img}" class="w-6 h-6 rounded border border-slate-300 dark:border-slate-600 bg-black object-cover shadow-sm" ${onErrorFallback}>
+                                    ${index < Math.min(4, comp.CompQuickStart.carousel.length - 1) ? `<i class="fa-solid fa-angle-right text-[8px] text-slate-400 dark:text-slate-600 mx-1"></i>` : ''}
+                                </div>
+                            `;
                         }).join('') + `</div>`;
                 }
 
+                // --- 5.5 Render Form Đầu Game ---
                 let earlyCompHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
                 if (comp.CompEarlyOptions?.length > 0) {
                     earlyCompHTML = comp.CompEarlyOptions.slice(0, 2).map(opt => {
@@ -1952,28 +2045,29 @@ async function loadCompsData() {
                                 if (cData.cost === 5) borderColor = 'border-yellow-400';
                             }
                             return `
-                                        <div class="flex flex-col items-center w-9 sm:w-10 shrink-0 cursor-pointer group/early" onclick="window.openChampModalFromComp('${window.escapeJS(c)}')">
-                                        <div class="w-full h-9 sm:h-10 aspect-square rounded-[4px] border-[1.5px] ${borderColor} overflow-hidden bg-black shadow-md transition-transform group-hover/early:-translate-y-1">
-                                                    <img src="${img}" class="w-full h-full object-cover object-[80%]" ${onErrorFallback}>
-                                            </div>
-                                            <span class="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate w-full text-center mt-1 group-hover/early:text-premium-gold transition-colors">${c}</span>
-                                        </div>
-                                    `;
+                                <div class="flex flex-col items-center w-9 sm:w-10 shrink-0 cursor-pointer group/early" onclick="window.openChampModalFromComp('${window.escapeJS(c)}')">
+                                    <div class="w-full h-9 sm:h-10 aspect-square rounded-[4px] border-[1.5px] ${borderColor} overflow-hidden bg-black shadow-md transition-transform group-hover/early:-translate-y-1">
+                                        <img src="${img}" class="w-full h-full object-cover object-[80%]" ${onErrorFallback}>
+                                    </div>
+                                    <span class="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate w-full text-center mt-1 group-hover/early:text-premium-gold transition-colors">${c}</span>
+                                </div>
+                            `;
                         }).join('');
 
                         return `
-                                    <div class="flex items-center justify-between bg-slate-50 dark:bg-white/[0.02] p-2 rounded-lg border border-slate-200 dark:border-white/5">
-                                        <div class="flex gap-2 items-start flex-nowrap overflow-x-auto no-scrollbar pb-1 pt-1">${teamHTML}</div>
-                                        <div class="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/20 shrink-0 ml-3 self-center">
-                                            <i class="fa-solid fa-trophy text-[8px] text-emerald-600 dark:text-emerald-400"></i>
-                                            <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 leading-none">${opt.win_rate}</span>
-                                        </div>
-                                    </div>
-                                `;
+                            <div class="flex items-center justify-between bg-slate-50 dark:bg-white/[0.02] p-2 rounded-lg border border-slate-200 dark:border-white/5">
+                                <div class="flex gap-2 items-start flex-nowrap overflow-x-auto no-scrollbar pb-1 pt-1">${teamHTML}</div>
+                                <div class="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/20 shrink-0 ml-3 self-center">
+                                    <i class="fa-solid fa-trophy text-[8px] text-emerald-600 dark:text-emerald-400"></i>
+                                    <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 leading-none">${opt.win_rate}</span>
+                                </div>
+                            </div>
+                        `;
                     }).join('');
                     earlyCompHTML = `<div class="flex flex-col gap-2">${earlyCompHTML}</div>`;
                 }
 
+                // --- 5.6 Render Xếp Cờ (Board) ---
                 let boardHTML = '<p class="text-[10px] text-slate-500 italic flex items-center justify-center h-full">Không có dữ liệu xếp cờ.</p>';
                 if (comp.BoardPositions && comp.BoardPositions.length > 0) {
                     const champHexesHTML = comp.BoardPositions.map(pos => {
@@ -1991,123 +2085,139 @@ async function loadCompsData() {
                         const top = pos.coordinates.row * 23.07;
 
                         return `
-                                    <div class="absolute w-[13.33%] h-[30.76%] z-10 transition-transform hover:scale-110 scale-[0.92] drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] cursor-pointer" 
-                                         style="left: ${left}%; top: ${top}%;" title="${pos.champion}" onclick="window.openChampModalFromComp('${window.escapeJS(pos.champion)}')">
-                                        <div class="w-full h-full p-[2px] ${bgBorder}" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-                                            <img src="${img}" class="w-full h-full object-cover object-[80%] bg-slate-900" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);" ${onErrorFallback}>
-                                        </div>
-                                    </div>
-                                `;
+                            <div class="absolute w-[13.33%] h-[30.76%] z-10 transition-transform hover:scale-110 scale-[0.92] drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] cursor-pointer" 
+                                 style="left: ${left}%; top: ${top}%;" title="${pos.champion}" onclick="window.openChampModalFromComp('${window.escapeJS(pos.champion)}')">
+                                <div class="w-full h-full p-[2px] ${bgBorder}" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+                                    <img src="${img}" class="w-full h-full object-cover object-[80%] bg-slate-900" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);" ${onErrorFallback}>
+                                </div>
+                            </div>
+                        `;
                     }).join('');
 
                     boardHTML = `
-                                <div class="relative w-full max-w-[340px] mx-auto aspect-[2/1] bg-slate-100 dark:bg-[#0B101A] rounded-xl overflow-hidden shadow-inner p-1.5 border border-slate-300 dark:border-white/5">
-                                    ${emptyHexesHTML}
-                                    ${champHexesHTML}
-                                </div>
-                            `;
+                        <div class="relative w-full max-w-[340px] mx-auto aspect-[2/1] bg-slate-100 dark:bg-[#0B101A] rounded-xl overflow-hidden shadow-inner p-1.5 border border-slate-300 dark:border-white/5">
+                            ${emptyHexesHTML}
+                            ${champHexesHTML}
+                        </div>
+                    `;
                 }
 
+                // --- 5.7 Render Nhịp Lên Cấp (Leveling) ---
                 let levelingHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
                 if (comp.CompQuickStart?.leveling?.length > 0) {
                     levelingHTML = `<div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">` +
                         comp.CompQuickStart.leveling.map((lvl, index) => `
-                                <div class="flex items-center">
-                                    <div class="flex flex-col items-center bg-slate-100 dark:bg-black/40 px-1.5 py-0.5 rounded shadow-inner border border-slate-200 dark:border-white/5">
-                                        <span class="text-[8.5px] font-bold text-slate-800 dark:text-slate-300 leading-tight">${lvl.level}</span>
-                                        <span class="text-[9px] text-premium-gold font-black leading-tight">${lvl.stage}</span>
-                                    </div>
-                                    ${index < comp.CompQuickStart.leveling.length - 1 ? `<div class="w-2 h-[1px] bg-slate-300 dark:bg-slate-700 mx-1"></div>` : ''}
+                            <div class="flex items-center">
+                                <div class="flex flex-col items-center bg-slate-100 dark:bg-black/40 px-1.5 py-0.5 rounded shadow-inner border border-slate-200 dark:border-white/5">
+                                    <span class="text-[8.5px] font-bold text-slate-800 dark:text-slate-300 leading-tight">${lvl.level}</span>
+                                    <span class="text-[9px] text-premium-gold font-black leading-tight">${lvl.stage}</span>
                                 </div>
-                            `).join('') + `</div>`;
+                                ${index < comp.CompQuickStart.leveling.length - 1 ? `<div class="w-2 h-[1px] bg-slate-300 dark:bg-slate-700 mx-1"></div>` : ''}
+                            </div>
+                        `).join('') + `</div>`;
                 }
 
+                // --- 5.8 Render Nút Copy Code ---
                 let copyCodeHTML = '';
                 const codeToCopy = comp.CopyTeamCode || comp.shareCode;
                 if (codeToCopy) {
                     const btnId = `copy-btn-${compIndex}`;
                     copyCodeHTML = `
-                                <div class="flex items-center gap-2 copy-btn-container shrink-0 lg:ml-auto z-20">
-                                    ${comp.shareCode ? `<span class="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/5 shadow-inner hidden sm:block">ID: ${window.escapeHTML(comp.shareCode)}</span>` : ''}
-                                    <button id="${btnId}" onclick="window.copyToClipboard('${window.escapeJS(window.escapeHTML(codeToCopy))}', '${btnId}')" 
-                                        class="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 hover:bg-premium-gold dark:hover:bg-premium-gold hover:text-slate-800 dark:hover:text-black text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10 px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all shadow-sm outline-none">
-                                        <i class="fa-regular fa-clone"></i> Sao chép
-                                    </button>
-                                </div>
-                            `;
+                        <div class="flex items-center gap-2 copy-btn-container shrink-0 lg:ml-auto z-20">
+                            ${comp.shareCode ? `<span class="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/5 shadow-inner hidden sm:block">ID: ${window.escapeHTML(comp.shareCode)}</span>` : ''}
+                            <button id="${btnId}" onclick="window.copyToClipboard('${window.escapeJS(window.escapeHTML(codeToCopy))}', '${btnId}')" 
+                                class="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 hover:bg-premium-gold dark:hover:bg-premium-gold hover:text-slate-800 dark:hover:text-black text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10 px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all shadow-sm outline-none">
+                                <i class="fa-regular fa-clone"></i> Sao chép
+                            </button>
+                        </div>
+                    `;
                 }
 
+                // --- Lắp ráp HTML Thẻ Đội Hình ---
                 return `
-                            <div class="comp-card bg-white dark:bg-[#0e1420]/95 backdrop-blur-xl border border-slate-200 dark:border-white/5 hover:border-premium-gold/50 dark:hover:border-premium-gold/40 rounded-2xl shadow-xl transition-all duration-300 relative overflow-hidden group">
-                                <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="comp-card bg-white dark:bg-[#0e1420]/95 backdrop-blur-xl border border-slate-200 dark:border-white/5 hover:border-premium-gold/50 dark:hover:border-premium-gold/40 rounded-2xl shadow-xl transition-all duration-300 relative overflow-hidden group">
+                        <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        
+                        <div class="flex flex-col xl:flex-row gap-2 xl:gap-5 p-3.5 relative z-10">
+                            
+                            <div class="flex flex-col gap-1 xl:w-[180px] shrink-0 justify-center">
+                                <div class="flex gap-1.5 flex-wrap">${tagsHTML}</div>
+                                <h3 class="text-[15px] font-black text-slate-800 dark:text-white transition-colors leading-tight tracking-wide drop-shadow-sm">${window.escapeHTML(comp.CompTitle)}</h3>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-start content-start gap-2 sm:gap-2.5 w-full xl:w-auto xl:flex-1 min-w-0 pt-1 xl:pb-0">
+                                ${unitsHTML}
+                            </div>
+                            
+                            <div class="flex items-center gap-2 shrink-0 ml-auto border-t xl:border-t-0 border-slate-100 dark:border-white/5 pt-2 xl:pt-0 w-full xl:w-auto justify-between xl:justify-end">
+                               ${copyCodeHTML}
+                               <button onclick="window.toggleCompDetails(this)" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center transition-colors hover:bg-premium-gold/20 outline-none">
+                                    <i class="fa-solid fa-chevron-down text-slate-500 dark:text-slate-400 text-[11px] expand-icon transition-transform duration-300 hover:text-premium-gold"></i>
+                               </button>
+                            </div>
+                        </div>
+                        
+                        <div class="comp-details hidden border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#05080d]/60 p-4 relative z-10 transition-colors">
+                            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8">
                                 
-                                <div class="flex flex-col xl:flex-row gap-2 xl:gap-5 p-3.5 relative z-10">
-                                    
-                                    <div class="flex flex-col gap-1 xl:w-[180px] shrink-0 justify-center">
-                                        <div class="flex gap-1.5 flex-wrap">${tagsHTML}</div>
-                                        <h3 class="text-[15px] font-black text-slate-800 dark:text-white transition-colors leading-tight tracking-wide drop-shadow-sm">${window.escapeHTML(comp.CompTitle)}</h3>
+                                <div class="xl:col-span-7 flex flex-col gap-5">
+                                    <div>
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-shapes"></i> Kích hoạt Tộc Hệ</div>
+                                        <div class="flex flex-wrap gap-1.5">${traitsHTML}</div>
                                     </div>
                                     
-                                    <div class="flex flex-wrap items-start content-start gap-2 sm:gap-2.5 w-full xl:w-auto xl:flex-1 min-w-0 pt-1  xl:pb-0">
-                                        ${unitsHTML}
+                                    <div>
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-ring"></i> Đi Chợ</div>
+                                        ${carouselHTML}
                                     </div>
-                                    
-                                    <div class="flex items-center gap-2 shrink-0 ml-auto border-t xl:border-t-0 border-slate-100 dark:border-white/5 pt-2 xl:pt-0 w-full xl:w-auto justify-between xl:justify-end">
-                                       ${copyCodeHTML}
-                                       <button onclick="window.toggleCompDetails(this)" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center transition-colors hover:bg-premium-gold/20 outline-none">
-                                            <i class="fa-solid fa-chevron-down text-slate-500 dark:text-slate-400 text-[11px] expand-icon transition-transform duration-300 hover:text-premium-gold"></i>
-                                       </button>
+
+                                    <div>
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-chess-board"></i> Đội Hình Đầu Game</div>
+                                        ${earlyCompHTML}
                                     </div>
                                 </div>
-                                
-                                <div class="comp-details hidden border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#05080d]/60 p-4 relative z-10 transition-colors">
-                                    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8">
-                                        
-                                        <div class="xl:col-span-7 flex flex-col gap-5">
-                                            <div>
-                                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-shapes"></i> Kích hoạt Tộc Hệ</div>
-                                                <div class="flex flex-wrap gap-1.5">${traitsHTML}</div>
-                                            </div>
-                                            
-                                            <div>
-                                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-ring"></i> Đi Chợ</div>
-                                                ${carouselHTML}
-                                            </div>
 
-                                            <div>
-                                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-chess-board"></i> Đội Hình Đầu Game</div>
-                                                ${earlyCompHTML}
-                                            </div>
+                                <div class="xl:col-span-5 flex flex-col gap-5">
+                                    
+                                    <div class="flex flex-col gap-2">
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 xl:justify-center mb-1">
+                                            <i class="fa-solid fa-map-location-dot"></i> Xếp Vị Trí
                                         </div>
-
-                                        <div class="xl:col-span-5 flex flex-col gap-5">
-                                            
-                                            <div class="flex flex-col gap-2">
-                                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 xl:justify-center mb-1">
-                                                    <i class="fa-solid fa-map-location-dot"></i> Xếp Vị Trí
-                                                </div>
-                                                <div class="flex-1 flex items-start justify-center">
-                                                    ${boardHTML}
-                                                </div>
-                                            </div>
-
-                                            <div class="flex flex-col gap-2 pt-3 border-t border-slate-200 dark:border-white/5">
-                                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5 xl:justify-center">
-                                                    <i class="fa-solid fa-arrow-up-right-dots"></i> Nhịp Lên Cấp
-                                                </div>
-                                                <div class="xl:flex xl:justify-center">
-                                                    ${levelingHTML}
-                                                </div>
-                                            </div>
-
+                                        <div class="flex-1 flex items-start justify-center">
+                                            ${boardHTML}
                                         </div>
-
                                     </div>
+
+                                    <div class="flex flex-col gap-2 pt-3 border-t border-slate-200 dark:border-white/5">
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5 xl:justify-center">
+                                            <i class="fa-solid fa-arrow-up-right-dots"></i> Nhịp Lên Cấp
+                                        </div>
+                                        <div class="xl:flex xl:justify-center">
+                                            ${levelingHTML}
+                                        </div>
+                                    </div>
+
                                 </div>
                             </div>
-                        `;
+                        </div>
+                    </div>
+                `;
             }).join('');
+
+            // Gắn Header và Danh sách đội hình vào Container
+            listContainer.innerHTML = headerHTML + compsHTML;
         };
+
+        document.getElementById('comp-list-container').addEventListener('click', (e) => {
+            const btn = e.target.closest('.filter-source-btn-main');
+            if (!btn) return;
+
+            const url = btn.dataset.url;
+            if (activeSourceUrl === url) return;
+
+            activeSourceUrl = url;
+            fetchAndRenderComps(url);
+        });
 
         window.copyToClipboard = (text, btnId) => {
             navigator.clipboard.writeText(text).then(() => {
@@ -2368,10 +2478,10 @@ function loadDonateData() {
     // 2. LOGIC RENDER TỰ ĐỘNG
     const renderSection = (title, icon, data) => {
         const itemsHTML = data.map(item => {
-            const actionAttr = item.isLink 
-                ? `onclick="window.open('${item.link}', '_blank')"` 
+            const actionAttr = item.isLink
+                ? `onclick="window.open('${item.link}', '_blank')"`
                 : `onclick="window.copyDonateText('${item.number}', 'btn-${item.id}')"`;
-            
+
             return `
                 <div class="bg-white dark:bg-premium-card rounded-3xl border border-slate-200 dark:border-white/5 p-5 shadow-xl flex flex-col items-center text-center group transition-transform hover:-translate-y-1">
                     <div class="w-12 h-12 ${item.color} rounded-xl flex items-center justify-center text-white mb-4 shadow-lg ${item.id === 'buymeacoffee' ? '!text-black' : ''}">

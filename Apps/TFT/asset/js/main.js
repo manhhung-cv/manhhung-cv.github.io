@@ -2,10 +2,13 @@
 // HỆ THỐNG QUẢN LÝ GIAO DIỆN (DARK MODE)
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
+    const themeBtn = document.getElementById('theme-toggle-btn');
     const themeIcon = document.getElementById('theme-current-icon');
+    const themeMenu = document.getElementById('theme-menu-container'); 
     const htmlElement = document.documentElement;
     const themeOptions = document.querySelectorAll('.theme-option');
 
+    // Hàm thay đổi giao diện và icon
     function applyTheme(theme) {
         let isDark = false;
 
@@ -42,13 +45,46 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem('tft_theme_pref') || 'dark';
     applyTheme(savedTheme);
 
+    // ==========================================
+    // LOGIC ĐÓNG/MỞ MENU CÓ HIỆU ỨNG (TAILWIND)
+    // ==========================================
+    function toggleMenu(show) {
+        if (!themeMenu) return;
+        if (show) {
+            themeMenu.classList.remove('opacity-0', 'invisible', 'scale-95');
+            themeMenu.classList.add('opacity-100', 'visible', 'scale-100');
+        } else {
+            themeMenu.classList.remove('opacity-100', 'visible', 'scale-100');
+            themeMenu.classList.add('opacity-0', 'invisible', 'scale-95');
+        }
+    }
+
+    if (themeBtn && themeMenu) {
+        // Click vào nút để bật/tắt menu
+        themeBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); 
+            const isHidden = themeMenu.classList.contains('opacity-0');
+            toggleMenu(isHidden); // Mở nếu đang ẩn, ẩn nếu đang mở
+        });
+
+        // Click ra ngoài để đóng menu
+        document.addEventListener('click', (e) => {
+            if (!themeBtn.contains(e.target) && !themeMenu.contains(e.target)) {
+                toggleMenu(false);
+            }
+        });
+    }
+
+    // Đóng menu sau khi chọn 1 option
     themeOptions.forEach(btn => {
         btn.addEventListener('click', (e) => {
             const selectedTheme = e.currentTarget.dataset.theme;
             applyTheme(selectedTheme);
+            toggleMenu(false); // Ẩn menu đi sau khi chọn
         });
     });
 
+    // Lắng nghe thay đổi theme từ hệ thống
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
         if (localStorage.getItem('tft_theme_pref') === 'system') {
             applyTheme('system');
