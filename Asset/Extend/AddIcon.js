@@ -23,7 +23,7 @@
                     z-index: 999998; display: none; opacity: 0; transition: opacity 0.3s ease;
                 }
                 .pwa-modal {
-                    position: fixed; bottom: 20px; left: 50%;
+                    position: fixed; bottom: -10px; left: 50%;
                     transform: translateX(-50%) translateY(100%);
                     width: 90%; max-width: 400px; background: var(--pwa-bg);
                     border-radius: 20px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
