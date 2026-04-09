@@ -435,9 +435,7 @@ async function loadTraitsData() {
         // --- GIAO DIỆN CHÍNH (Đưa thanh search xuống bottom) ---
         gridContainer.innerHTML = `
                     <div class="flex flex-col relative pb-32 min-h-screen w-full">
-                        
-                        <div id="trait-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start w-full pt-4"></div>
-
+                    <div id="trait-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full pt-4"></div>
                         <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col gap-2.5 pointer-events-none">
                             <div class="w-full group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/40 transition-colors relative">
                                 <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px] transition-colors drop-shadow"></i>
@@ -522,7 +520,7 @@ async function loadTraitsData() {
                     : `<i class="fa-solid fa-shapes text-[16px] bg-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300"></i>`;
 
                 return `
-                        <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-white/10 hover:border-premium-gold/50 dark:hover:border-premium-gold/30 rounded-2xl p-4 grid grid-cols-1 gap-y-0 transition-all duration-300 shadow-lg group relative overflow-hidden h-auto">                                <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-white/10 hover:border-premium-gold/50 dark:hover:border-premium-gold/30 rounded-2xl p-4 flex flex-col gap-1 transition-all duration-300 shadow-lg group relative overflow-hidden transform-gpu w-full">                                <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                 <div class="relative flex items-center justify-between cursor-pointer z-10 outline-none" onclick="window.toggleTraitDetails(this)">
                                     <div class="flex items-center gap-3">
                                         <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-premium-gold text-premium-gold">
