@@ -351,40 +351,40 @@ async function loadBuilderData() {
                         </div>
 
                         <div class="flex items-center gap-1.5 shrink-0">
-                            <div class="relative group z-20">
-                                <button class="w-7 h-7 flex items-center justify-center rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white border border-blue-500/20 outline-none transition-colors">
-                                    <i class="fa-solid fa-cloud-arrow-down text-[11px]"></i>
-                                </button>
-                                <div class="absolute right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1.5 z-20">
-                                    <button onclick="window.openLoadMenu()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors">
-                                        <i class="fa-solid fa-clock-rotate-left w-3"></i> Tải từ Local
-                                    </button>
-                                    <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
-                                    <button onclick="window.openImportModal()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors">
-                                        <i class="fa-solid fa-file-code w-3"></i> Mã Code / JSON
-                                    </button>
-                                </div>
-                            </div>
+    <div class="relative z-20">
+        <button onclick="document.getElementById('dropdown-load-menu').classList.toggle('hidden'); document.getElementById('dropdown-save-menu').classList.add('hidden');" class="w-7 h-7 flex items-center justify-center rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 active:bg-blue-500 active:text-white border border-blue-500/20 outline-none transition-colors">
+            <i class="fa-solid fa-cloud-arrow-down text-[11px]"></i>
+        </button>
+        <div id="dropdown-load-menu" class="hidden absolute right-0 mt-2 w-36 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 transition-all flex flex-col p-1.5 z-50">
+            <button onclick="window.openLoadMenu(); this.parentElement.classList.add('hidden');" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors">
+                <i class="fa-solid fa-clock-rotate-left w-3"></i> Tải từ Local
+            </button>
+            <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
+            <button onclick="window.openImportModal(); this.parentElement.classList.add('hidden');" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors">
+                <i class="fa-solid fa-file-code w-3"></i> Mã Code / JSON
+            </button>
+        </div>
+    </div>
 
-                           <div class="relative group z-20">
-                                <button class="w-7 h-7 flex items-center justify-center rounded-full bg-premium-gold/10 text-premium-gold hover:bg-premium-gold hover:text-black border border-premium-gold/30 outline-none transition-colors">
-                                    <i class="fa-solid fa-floppy-disk text-[11px]"></i>
-                                </button>
-                                <div class="absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-1.5 z-40">
-                                    <button onclick="window.saveLocalBoard()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors"><i class="fa-solid fa-bookmark w-3"></i> Lưu Tạm (Cá Nhân)</button>
-                                    <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
-                                    
-                                    <button onclick="window.shareToFirebase()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 outline-none transition-colors"><i class="fa-solid fa-share-nodes w-3"></i> Chia sẻ (Cộng Đồng)</button>
-                                    <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
-                                    
-                                    <button onclick="window.downloadBoardJSON()" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors"><i class="fa-solid fa-file-arrow-down w-3"></i> Xuất File JSON</button>
-                                </div>
-                            </div>
-                            
-                            <button onclick="window.clearBuilderBoard()" class="w-7 h-7 flex items-center justify-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 outline-none transition-colors" title="Xóa bàn cờ">
-                                <i class="fa-solid fa-trash-can text-[11px]"></i>
-                            </button>
-                        </div>
+    <div class="relative z-20">
+        <button onclick="document.getElementById('dropdown-save-menu').classList.toggle('hidden'); document.getElementById('dropdown-load-menu').classList.add('hidden');" class="w-7 h-7 flex items-center justify-center rounded-full bg-premium-gold/10 text-premium-gold active:bg-premium-gold active:text-black border border-premium-gold/30 outline-none transition-colors">
+            <i class="fa-solid fa-floppy-disk text-[11px]"></i>
+        </button>
+        <div id="dropdown-save-menu" class="hidden absolute right-0 mt-2 w-40 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 transition-all flex flex-col p-1.5 z-50">
+            <button onclick="window.saveLocalBoard(); this.parentElement.classList.add('hidden');" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors"><i class="fa-solid fa-bookmark w-3"></i> Lưu Tạm (Cá Nhân)</button>
+            <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
+            
+            <button onclick="window.shareToFirebase(); this.parentElement.classList.add('hidden');" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 outline-none transition-colors"><i class="fa-solid fa-share-nodes w-3"></i> Chia sẻ (Cộng Đồng)</button>
+            <div class="h-[1px] bg-slate-200 dark:bg-slate-700 my-1"></div>
+            
+            <button onclick="window.downloadBoardJSON(); this.parentElement.classList.add('hidden');" class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-700 outline-none transition-colors"><i class="fa-solid fa-file-arrow-down w-3"></i> Xuất File JSON</button>
+        </div>
+    </div>
+    
+    <button onclick="window.clearBuilderBoard()" class="w-7 h-7 flex items-center justify-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500 hover:text-white border border-rose-500/20 outline-none transition-colors" title="Xóa bàn cờ">
+        <i class="fa-solid fa-trash-can text-[11px]"></i>
+    </button>
+</div>
                     </div>
                 </div>
 
@@ -677,11 +677,29 @@ async function loadBuilderData() {
 
         const BUILDER_STORAGE_KEY = 'tft_builder_saves_v2';
 
+        // Cập nhật cấu trúc bộ nhớ: Thêm mảng 'shared' để lưu lịch sử
         window.getAllSavedData = () => {
             const data = localStorage.getItem(BUILDER_STORAGE_KEY);
-            return data ? JSON.parse(data) : { auto: null, manual: [] };
+            const parsed = data ? JSON.parse(data) : { auto: null, manual: [], shared: [] };
+            if (!parsed.shared) parsed.shared = []; // Tương thích ngược với dữ liệu cũ
+            return parsed;
         };
 
+        // Hàm tiện ích: Copy text và đổi nội dung nút tạm thời
+        window.copyShareCode = (text, btnId) => {
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    btn.classList.add('text-emerald-500', 'dark:text-emerald-400');
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.classList.remove('text-emerald-500', 'dark:text-emerald-400');
+                    }, 1500);
+                }
+            }).catch(() => uiAlert('Lỗi', 'Không thể copy, vui lòng bôi đen thủ công!', 'error'));
+        };
         window.autoSaveBoard = () => {
             const data = window.getAllSavedData();
             const now = new Date();
@@ -901,6 +919,12 @@ async function loadBuilderData() {
             uiAlert('<span class="text-rose-500 font-black">Chia sẻ Cloud</span>', `
                         <div class="flex flex-col gap-3 text-left">
                             <p class="text-xs text-slate-500">Đội hình sẽ được lưu vào Firestore công khai.</p>
+                            
+                            <label class="flex flex-col gap-1.5">
+                                <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Tên Tác Giả / Người Chia Sẻ</span>
+                                <input type="text" id="share-author-name" placeholder="Nhập tên của bạn (Tùy chọn)..." autocomplete="off" class="w-full bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded px-2.5 py-1.5 text-[12px] text-slate-700 dark:text-white focus:outline-none focus:border-rose-500/50 shadow-inner">
+                            </label>
+
                             <div class="flex justify-center p-1 min-h-[78px]"><div id="recaptcha-container"></div></div>
                             <button id="btn-upload-fs" onclick="window.processFS()" class="w-full py-2 bg-rose-500 text-white font-bold rounded-lg shadow-md transition-colors hover:bg-rose-600 outline-none">Chia sẻ Đội Hình</button>
                         </div>
@@ -908,20 +932,71 @@ async function loadBuilderData() {
             setTimeout(() => { if (window.grecaptcha) grecaptcha.render('recaptcha-container', { 'sitekey': RECAPTCHA_SITE_KEY, 'theme': 'dark' }); }, 100);
         };
 
-        window.processFS = async () => {
+       window.processFS = async () => {
             if (!grecaptcha.getResponse()) return uiAlert('Lỗi', 'Xác nhận Captcha!', 'error');
             const btn = document.getElementById('btn-upload-fs');
+            
+            const authorInput = document.getElementById('share-author-name');
+            const authorName = (authorInput && authorInput.value.trim() !== '') ? authorInput.value.trim() : 'Ẩn danh';
+
             btn.disabled = true;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang tải...';
-            const shareCode = 'TFT-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+            
+            const randomStr = Math.random().toString(36).substring(2, 9).toUpperCase().padStart(7, '0');
+            const shareCode = 'TFTH-' + randomStr;
+            
             try {
                 const payload = generateJSONPayload();
-                // Kẹp thêm shareCode và thời gian tạo vào JSON
-                await window._fsSetDoc(window._fsDoc(window._db, "shared_comps", shareCode), { ...payload, shareCode, createdAt: new Date().toISOString() });
+                const riotCode = payload.CopyTeamCode || ""; 
+
+                await window._fsSetDoc(window._fsDoc(window._db, "shared_comps", shareCode), { 
+                    ...payload, 
+                    shareCode: shareCode, 
+                    author: authorName, 
+                    createdAt: new Date().toISOString() 
+                });
+                
+                // MỚI: LƯU VÀO LỊCH SỬ CHIA SẺ LOCAL
+                const data = window.getAllSavedData();
+                data.shared.push({
+                    id: shareCode,
+                    name: payload.CompTitle || "Đội Hình Tự Tạo",
+                    author: authorName,
+                    time: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+                });
+                if (data.shared.length > 15) data.shared.shift(); // Chỉ giữ lại 15 mã gần nhất cho nhẹ
+                localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(data));
+
                 closeModal();
-                uiAlert('Thành công', `Đội hình đã được đăng tải lên Cộng Đồng!<br>Mã truy cập nhanh: <b class="text-lg text-premium-gold select-all mt-2 block">${shareCode}</b>`, 'info');
+                
+                // CẬP NHẬT GIAO DIỆN: THÊM NÚT COPY
+                uiAlert('Thành công', `
+                    <div class="text-left flex flex-col gap-3 mt-1">
+                        <p class="text-[11.5px] text-slate-600 dark:text-slate-300">Đội hình của <b>${window.escapeHTML(authorName)}</b> đã được đăng tải!</p>
+                        
+                        <div class="flex flex-col gap-1 relative">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Mã Đầy Đủ (Web)</span>
+                            <div class="flex items-center bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-600 p-1.5 rounded-lg">
+                                <b class="text-rose-500 select-all font-mono text-[14px] tracking-wider flex-1 text-center pl-6">${shareCode}</b>
+                                <button id="btn-cp-web" onclick="window.copyShareCode('${shareCode}', 'btn-cp-web')" class="w-8 h-8 flex items-center justify-center shrink-0 bg-white dark:bg-slate-700 text-slate-500 hover:text-rose-500 rounded border border-slate-200 dark:border-slate-600 shadow-sm transition-colors outline-none"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="w-full h-[1px] bg-slate-200 dark:bg-white/10 my-0.5"></div>
+
+                        <div class="flex flex-col gap-1 relative">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">Mã Chuẩn (Client Game)</span>
+                            <div class="flex items-center bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-600 p-1.5 rounded-lg overflow-hidden">
+                                <div class="flex-1 overflow-hidden pl-2 pr-2">
+                                    <b class="text-premium-gold select-all font-mono text-[11px] block truncate">${riotCode}</b>
+                                </div>
+                                <button id="btn-cp-riot" onclick="window.copyShareCode('${riotCode}', 'btn-cp-riot')" class="w-8 h-8 flex items-center justify-center shrink-0 bg-white dark:bg-slate-700 text-slate-500 hover:text-premium-gold rounded border border-slate-200 dark:border-slate-600 shadow-sm transition-colors outline-none"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                `, 'info');
             } catch (e) {
-                uiAlert('Lỗi', 'Không thể kết nối Firebase. Có thể do lỗi mạng hoặc cấu hình.', 'error');
+                uiAlert('Lỗi', 'Không thể kết nối Firebase. Có thể do lỗi mạng.', 'error');
                 btn.disabled = false;
                 btn.innerText = 'Thử lại';
             }
@@ -930,11 +1005,22 @@ async function loadBuilderData() {
         window.openImportModal = () => {
             uiAlert('<span class="text-blue-500 font-black">Nhập Đội Hình</span>', `
                         <div class="flex flex-col gap-3 text-left">
+                            
+                            <div class="flex flex-col gap-1.5">
+                                <span class="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Từ Cộng Đồng (Mã TFTH)</span>
+                                <div class="flex gap-2">
+                                    <input type="text" id="imp-cloud-code" class="w-full bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-[11px] text-slate-800 dark:text-white font-mono focus:outline-none focus:border-rose-500 shadow-inner" placeholder="VD: TFTH-XXXXXXX">
+                                    <button id="btn-imp-cloud" onclick="window.doImpCloud()" class="px-3 bg-rose-500 text-white font-bold rounded-lg text-[11px] whitespace-nowrap hover:bg-rose-600 outline-none transition-colors">Tải Về</button>
+                                </div>
+                            </div>
+
+                            <div class="w-full h-[1px] bg-slate-200 dark:bg-white/10 my-0.5"></div>
+
                             <div class="flex flex-col gap-1.5">
                                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Từ Game (Mã chuẩn Client)</span>
                                 <div class="flex gap-2">
                                     <input type="text" id="imp-tft-code" class="w-full bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-[11px] text-slate-800 dark:text-white font-mono focus:outline-none focus:border-blue-500 shadow-inner" placeholder="VD: 0201d...">
-                                    <button onclick="window.doImpCode()" class="px-3 bg-blue-500 text-white font-bold rounded-lg text-[11px] whitespace-nowrap hover:bg-blue-600 outline-none">Nhập Mã</button>
+                                    <button onclick="window.doImpCode()" class="px-3 bg-blue-500 text-white font-bold rounded-lg text-[11px] whitespace-nowrap hover:bg-blue-600 outline-none transition-colors">Nhập Mã</button>
                                 </div>
                             </div>
                             
@@ -943,14 +1029,13 @@ async function loadBuilderData() {
                             <div class="flex flex-col gap-1.5">
                                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Từ Web (JSON Nâng Cao)</span>
                                 <input type="file" id="fs-file" accept=".json" class="hidden" onchange="const r=new FileReader(); r.onload=e=>document.getElementById('imp-area').value=e.target.result; r.readAsText(this.files[0])">
-                                <button onclick="document.getElementById('fs-file').click()" class="w-full py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white rounded text-[10px] font-bold mb-1 hover:bg-slate-300 dark:hover:bg-slate-600 outline-none"><i class="fa-solid fa-folder-open"></i> Chọn File JSON Đã Tải</button>
+                                <button onclick="document.getElementById('fs-file').click()" class="w-full py-1.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-white rounded text-[10px] font-bold mb-1 hover:bg-slate-300 dark:hover:bg-slate-600 outline-none transition-colors"><i class="fa-solid fa-folder-open"></i> Chọn File JSON Đã Tải</button>
                                 <textarea id="imp-area" class="w-full h-16 bg-slate-100 dark:bg-black/40 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-[9px] text-emerald-600 dark:text-emerald-400 font-mono outline-none shadow-inner" placeholder="Hoặc copy nội dung JSON dán vào đây..."></textarea>
-                                <button onclick="window.doImpJSON()" class="w-full py-2 bg-emerald-500 text-white font-bold rounded-lg text-[11px] mt-1 hover:bg-emerald-600 outline-none">Nhập JSON</button>
+                                <button onclick="window.doImpJSON()" class="w-full py-2 bg-emerald-500 text-white font-bold rounded-lg text-[11px] mt-1 hover:bg-emerald-600 outline-none transition-colors">Nhập JSON</button>
                             </div>
                         </div>
                     `);
         };
-
         // Dịch ngược Mã Code Riot thành Tướng trên Bàn Cờ
         window.doImpCode = () => {
             const val = document.getElementById('imp-tft-code').value.trim();
@@ -1044,10 +1129,108 @@ async function loadBuilderData() {
             } catch (e) { uiAlert('Lỗi', 'Dữ liệu JSON không hợp lệ.', 'error'); }
         };
 
+        // Xử lý tải Đội hình từ Cloud Cộng Đồng (Mã TFTH)
+        window.doImpCloud = async () => {
+            const codeInput = document.getElementById('imp-cloud-code');
+            const val = codeInput ? codeInput.value.trim().toUpperCase() : '';
+            
+            if (!val) return uiAlert('Lỗi', 'Vui lòng nhập mã chia sẻ!', 'error');
+            if (!val.startsWith('TFTH-')) return uiAlert('Lỗi', 'Mã không hợp lệ! Mã cộng đồng phải có dạng TFTH-...', 'error');
+
+            const btn = document.getElementById('btn-imp-cloud');
+            const oldText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+            try {
+                // Truy vấn dữ liệu từ Firestore (Sử dụng hàm bọc Firestore sẵn có của bạn)
+                const docRef = window._fsDoc(window._db, "shared_comps", val);
+                const docSnap = await window._fsGetDoc(docRef); // Yêu cầu bạn đã khai báo _fsGetDoc (VD: import { getDoc }...)
+
+                if (!docSnap.exists()) {
+                    btn.disabled = false;
+                    btn.innerHTML = oldText;
+                    return uiAlert('Lỗi', 'Không tìm thấy đội hình! Mã này không tồn tại hoặc đã bị xóa.', 'error');
+                }
+
+                const parsed = docSnap.data();
+
+                // 1. Dọn dẹp bàn cờ hiện tại
+                window._builderBoardState = Array(4).fill(null).map(() => Array(7).fill(null));
+                
+                // 2. Map Trang bị cho Tướng
+                const itemMap = {};
+                if (parsed.UnitsContainer) {
+                    parsed.UnitsContainer.forEach((u, i) => { 
+                        itemMap[u.champion + '_' + i] = u.items || []; 
+                        itemMap[u.champion] = u.items || []; 
+                    });
+                }
+                
+                // 3. Xếp tướng lên bàn cờ
+                let count = {};
+                if (parsed.BoardPositions) {
+                    parsed.BoardPositions.forEach(p => {
+                        const r = p.coordinates.row, c = p.coordinates.col;
+                        if (r < 4 && c < 7) {
+                            count[p.champion] = (count[p.champion] || 0);
+                            window._builderBoardState[r][c] = { 
+                                champ: p.champion, 
+                                items: [...(itemMap[p.champion + '_' + count[p.champion]] || itemMap[p.champion] || [])] 
+                            };
+                            count[p.champion]++;
+                        }
+                    });
+                }
+
+                // 4. Phục hồi Cấu hình Nâng Cao (Early, Carousel)
+                window._manualData.early = (parsed.CompEarlyOptions && parsed.CompEarlyOptions.length > 0) 
+                    ? (parsed.CompEarlyOptions[0].team_comp || []) : [];
+                    
+                window._manualData.carousel = (parsed.CompQuickStart && parsed.CompQuickStart.carousel) 
+                    ? parsed.CompQuickStart.carousel.map(x => x.item) : [];
+
+                // 5. Phục hồi Thông tin Form (Title, Tags, Leveling)
+                const titleInput = document.getElementById('builder-manual-title');
+                if (titleInput) titleInput.value = parsed.CompTitle || "";
+                
+                const tagsInput = document.getElementById('builder-manual-tags');
+                if (tagsInput) tagsInput.value = (parsed.CompRowTags && Array.isArray(parsed.CompRowTags)) ? parsed.CompRowTags.join(', ') : "";
+
+                if (parsed.CompQuickStart && parsed.CompQuickStart.leveling) {
+                    [4, 5, 6, 7, 8, 9].forEach(lvl => {
+                        const el = document.getElementById(`lvl-${lvl}`);
+                        if (el) el.value = ""; // Clear trước
+                    });
+                    parsed.CompQuickStart.leveling.forEach(l => {
+                        const lvlNum = l.level.replace(/\D/g, ''); // Extract số cấp độ
+                        const el = document.getElementById(`lvl-${lvlNum}`);
+                        if (el) el.value = l.stage || "";
+                    });
+                }
+
+                window.autoSaveBoard();
+                closeModal();
+                window.renderManualSelections();
+                renderBoard();
+                renderPool();
+                
+                // Thông báo thành công kèm tên tác giả
+                uiAlert('Tải Thành Công', `Đã tải xuống đội hình từ tác giả: <b class="text-premium-gold text-lg block mt-1">${parsed.author || 'Ẩn danh'}</b>`, 'info');
+
+            } catch (e) {
+                console.error(e);
+                btn.disabled = false;
+                btn.innerHTML = oldText;
+                uiAlert('Lỗi Kết Nối', 'Không thể lấy dữ liệu từ Cloud lúc này.', 'error');
+            }
+        };
+
         window.openLoadMenu = () => {
             const data = window.getAllSavedData();
             let listHTML = '';
 
+            // 1. Bản lưu tự động
             if (data.auto) {
                 listHTML += `
                             <div class="flex items-center justify-between p-2.5 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-xl mb-3 shadow-sm">
@@ -1060,8 +1243,10 @@ async function loadBuilderData() {
                         `;
             }
 
-            if (data.manual.length > 0) {
-                listHTML += `<div class="w-full h-[1px] bg-slate-200 dark:bg-white/10 my-3"></div>`;
+            // 2. Các bản lưu cá nhân
+            if (data.manual && data.manual.length > 0) {
+                listHTML += `<div class="w-full h-[1px] bg-slate-200 dark:bg-white/10 my-3"></div>
+                             <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 block">Đã Lưu Thủ Công</span>`;
                 data.manual.forEach(item => {
                     listHTML += `
                                 <div class="flex items-center justify-between p-2.5 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl mb-2 shadow-sm group">
@@ -1078,16 +1263,51 @@ async function loadBuilderData() {
                                 </div>
                             `;
                 });
-            } else {
-                listHTML += `<p class="text-center text-[11px] text-slate-500 py-3 italic">Chưa có đội hình nào được lưu thủ công.</p>`;
             }
 
-            uiAlert('<span class="text-slate-800 dark:text-white font-black">Danh sách Đã Lưu</span>', `<div class="flex flex-col mt-2 max-h-[300px] overflow-y-auto no-scrollbar">${listHTML}</div>`);
-        };
+            // 3. MỚI: Lịch sử đội hình đã chia sẻ (Mã Cloud)
+            if (data.shared && data.shared.length > 0) {
+                listHTML += `<div class="w-full h-[1px] bg-slate-200 dark:bg-white/10 my-3"></div>
+                             <span class="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-2 block">Đội Hình Đã Chia Sẻ (Cloud)</span>`;
+                
+                // Đảo ngược mảng để hiện mã mới nhất lên đầu
+                [...data.shared].reverse().forEach(item => {
+                    listHTML += `
+                        <div class="flex items-center justify-between p-2.5 bg-rose-50 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800/30 rounded-xl mb-2 shadow-sm group">
+                            <div class="flex flex-col gap-0.5 truncate pr-2">
+                                <span class="text-[11.5px] font-bold text-rose-600 dark:text-rose-400 truncate">${window.escapeHTML(item.name)}</span>
+                                <div class="flex items-center gap-2 text-[9px] text-slate-500 font-mono">
+                                    <span class="text-rose-500 bg-rose-500/10 px-1 rounded">${item.id}</span> • ${item.time}
+                                </div>
+                            </div>
+                            <button onclick="window.copyShareCode('${item.id}', 'btn-hist-${item.id}')" id="btn-hist-${item.id}" class="px-2.5 py-1.5 bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] font-bold rounded-lg hover:bg-rose-500 hover:text-white transition-colors outline-none flex items-center gap-1 shrink-0"><i class="fa-regular fa-copy"></i> Copy Mã</button>
+                        </div>
+                    `;
+                });
+            }
 
+            if (!data.auto && data.manual.length === 0 && (!data.shared || data.shared.length === 0)) {
+                listHTML += `<p class="text-center text-[11px] text-slate-500 py-3 italic">Chưa có đội hình nào được lưu hoặc chia sẻ.</p>`;
+            }
+
+            uiAlert('<span class="text-slate-800 dark:text-white font-black">Danh sách Đã Lưu</span>', `<div class="flex flex-col mt-2 max-h-[350px] overflow-y-auto no-scrollbar">${listHTML}</div>`);
+        };
+        
         renderBuilderInterface();
 
     } catch (error) {
         gridContainer.innerHTML = `<div class="p-4 text-center text-red-500 text-sm bg-red-100 rounded-xl">Lỗi Builder: ${error.message}</div>`;
     }
 }
+
+// Đóng các menu thả xuống khi người dùng chạm vào một khu vực khác trên màn hình
+document.addEventListener('click', (e) => {
+    // Nếu điểm chạm không nằm trong menu Tải và không phải là nút mở Tải
+    if (!e.target.closest('#dropdown-load-menu') && !e.target.closest('[onclick*="dropdown-load-menu"]')) {
+        document.getElementById('dropdown-load-menu')?.classList.add('hidden');
+    }
+    // Nếu điểm chạm không nằm trong menu Lưu và không phải là nút mở Lưu
+    if (!e.target.closest('#dropdown-save-menu') && !e.target.closest('[onclick*="dropdown-save-menu"]')) {
+        document.getElementById('dropdown-save-menu')?.classList.add('hidden');
+    }
+});

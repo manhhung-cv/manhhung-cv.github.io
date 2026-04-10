@@ -1,4 +1,846 @@
 // ---------------------------------------------------------
+// HÀM FETCH VÀ RENDER DỮ LIỆU TỪ comps.json & FIREBASE (FULL ĐỒNG BỘ ICON TỘC HỆ)
+// ---------------------------------------------------------
+async function loadCompsData() {
+    const gridContainer = document.getElementById('grid-comps');
+    if (!gridContainer) return;
+
+    try {
+        // 1. Thêm nguồn Firestore vào danh sách
+        const compSources = [
+            { id: 'source1', name: 'TFT 1', file: './asset/data/comps.json' },
+            { id: 'source2', name: 'TFT 2', file: './asset/data/compsS2.json' },
+            { id: 'source_fb', name: 'Cộng Đồng', file: 'firestore' } // Nguồn Firebase
+        ];
+
+        let activeSourceUrl = compSources[0].file;
+        let compsData = [];
+        let champsData = [];
+        let itemsData = {};
+        let buildsData = [];
+        let currentMetaData = null;
+
+        const [resChamps, resItems, resBuilds] = await Promise.all([
+            fetch('./asset/data/champions.json'),
+            fetch('./asset/data/items.json'),
+            fetch('./asset/data/champion_builds.json').catch(() => null)
+        ]);
+
+        if (!resChamps.ok || !resItems.ok) {
+            throw new Error('Không thể tải dữ liệu Tướng hoặc Trang Bị nền tảng.');
+        }
+
+        champsData = await resChamps.json();
+        itemsData = await resItems.json();
+        if (resBuilds && resBuilds.ok) buildsData = await resBuilds.json();
+
+        const masterChamps = {};
+        champsData.forEach(champ => { masterChamps[champ.name.toLowerCase().trim()] = champ; });
+
+        const masterItems = {};
+        for (const itemArray of Object.values(itemsData)) {
+            if (Array.isArray(itemArray)) {
+                itemArray.forEach(item => { masterItems[item.name.toLowerCase().trim()] = item; });
+            }
+        }
+
+        // Đảm bảo hàm chuẩn hóa luôn tồn tại
+        window._normalizeBuildName = window._normalizeBuildName || ((name) => {
+            if (!name) return '';
+            return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+        });
+
+        window._masterBuildsForComps = {};
+        if (Array.isArray(buildsData)) {
+            buildsData.forEach(b => {
+                const validBuilds = b.builds.filter(build => build.items && build.items.length > 0);
+                if (validBuilds.length > 0) {
+                    // Ép tên về dạng chuẩn trước khi lưu
+                    window._masterBuildsForComps[window._normalizeBuildName(b.unit)] = validBuilds;
+                }
+            });
+        }
+
+        const cleanName = (rawName) => rawName ? rawName.replace(/<[^>]+>/g, '').trim().toLowerCase() : '';
+        const onErrorFallback = `onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSIjMWUyOTNiIiBzdHJva2U9IiM0NzU1NjkiIHN0cm9rZS13aWR0aD0iMiI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI0MCIgZmlsbD0iIzQ3NTU2OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+PzwvdGV4dD48L3N2Zz4='";`;
+
+        const getTraitIconName = (name) => {
+            if (!name) return '';
+            let str = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
+            str = str.replace(/[^a-zA-Z0-9\s]/g, "");
+            return str.split(/\s+/).map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join('');
+        };
+
+        let activeTags = new Set();
+        let searchQuery = '';
+
+        window.toggleCompDetails = (btnElement) => {
+            const card = btnElement.closest('.comp-card');
+            const detailsWrapper = card.querySelector('.comp-details');
+            const chevronIcon = btnElement.querySelector('.expand-icon');
+
+            if (detailsWrapper.classList.contains('hidden')) {
+                detailsWrapper.classList.remove('hidden');
+                chevronIcon.classList.add('rotate-180');
+                card.classList.add('border-premium-gold/40');
+            } else {
+                detailsWrapper.classList.add('hidden');
+                chevronIcon.classList.remove('rotate-180');
+                card.classList.remove('border-premium-gold/40');
+            }
+        };
+
+        window.renderBuildTabInComp = (champName, styleIndex) => {
+            const builds = window._masterBuildsForComps[window._normalizeBuildName(champName)];
+            if (!builds || builds.length === 0) return '<p class="text-[10px] text-slate-500 text-center py-4 italic">Chưa có dữ liệu gợi ý.</p>';
+
+            const currentBuild = builds[styleIndex];
+
+            const itemsHTML = currentBuild.items.map(rawItemName => {
+                const itemName = cleanName(rawItemName);
+                const itemData = masterItems[itemName];
+
+                if (!itemData) {
+                    return `<div class="flex flex-col items-center flex-1 min-w-0 opacity-50"><div class="w-10 h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-1"><i class="fa-solid fa-question text-slate-400 dark:text-slate-500 text-xs"></i></div><span class="text-[8px] text-slate-500 dark:text-slate-400 font-medium truncate w-full text-center px-0.5">${rawItemName}</span></div>`;
+                }
+
+                let recipeHTML = '<div class="h-4 mt-1"></div>';
+                if (itemData.recipe && itemData.recipe.length === 2) {
+                    recipeHTML = `
+                                <div class="flex items-center gap-[2px] mt-1 justify-center bg-slate-100 dark:bg-black/40 rounded px-1 py-0.5 border border-slate-200 dark:border-white/5">
+                                    <img src="${itemData.recipe[0].image}" class="w-3.5 h-3.5 rounded-sm object-cover opacity-80" ${onErrorFallback}>
+                                    <i class="fa-solid fa-plus text-[5px] text-slate-400 dark:text-slate-500"></i>
+                                    <img src="${itemData.recipe[1].image}" class="w-3.5 h-3.5 rounded-sm object-cover opacity-80" ${onErrorFallback}>
+                                </div>
+                            `;
+                }
+
+                const isRadiant = itemData.name.toLowerCase().includes('ánh sáng');
+                const imgBorder = isRadiant ? 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'border-slate-300 dark:border-slate-600';
+
+                return `<div class="flex flex-col items-center flex-1 min-w-0"><img src="${itemData.image}" class="w-10 h-10 rounded-lg border-[1.5px] ${imgBorder} object-cover bg-black shadow-md mb-1" ${onErrorFallback}><span class="text-[8px] md:text-[9.5px] ${isRadiant ? 'text-yellow-500 dark:text-yellow-400' : 'text-slate-700 dark:text-slate-300'} font-bold truncate w-full text-center px-0.5">${itemData.name}</span>${recipeHTML}</div>`;
+            }).join('');
+
+            const tabsHTML = builds.map((b, idx) => `
+                        <button onclick="document.getElementById('build-content-comp').innerHTML = window.renderBuildTabInComp('${window.escapeJS(champName)}', ${idx})" 
+                                class="px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all whitespace-nowrap shadow-sm border outline-none ${idx === styleIndex ? 'bg-premium-gold text-black border-transparent shadow-[0_0_5px_rgba(212,175,55,0.5)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'}">
+                            Cách ${idx + 1}
+                        </button>
+                    `).join('');
+
+            const statsHTML = `
+                        <div class="flex items-center justify-center gap-3 mb-3 px-1">
+                            <span class="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-100 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-500/30 px-2.5 py-0.5 rounded shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-trophy"></i> Top TB: ${currentBuild.avg_place}
+                            </span>
+                            <span class="text-[9.5px] text-blue-600 dark:text-blue-400 font-bold bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-500/30 px-2.5 py-0.5 rounded shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-chart-line"></i> Thắng: ${currentBuild.win_rate}
+                            </span>
+                        </div>
+                    `;
+
+            return `
+                        <div class="flex flex-col gap-2.5">
+                            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 border-b border-slate-200 dark:border-white/5 snap-x">${tabsHTML}</div>
+                            ${statsHTML}
+                            <div class="flex gap-2 justify-between items-start bg-slate-50 dark:bg-black/20 p-2 rounded-xl border border-slate-200 dark:border-white/5 shadow-inner">${itemsHTML}</div>
+                        </div>
+                    `;
+        };
+
+        window.openChampModalFromComp = (champNameRaw) => {
+            const champ = masterChamps[cleanName(champNameRaw)];
+            if (!champ) return;
+
+            let borderColor = 'border-slate-400'; let textColor = 'text-slate-500 dark:text-slate-300';
+            if (champ.cost === 2) { borderColor = 'border-emerald-500'; textColor = 'text-emerald-600 dark:text-emerald-400'; }
+            if (champ.cost === 3) { borderColor = 'border-blue-500'; textColor = 'text-blue-600 dark:text-blue-400'; }
+            if (champ.cost === 4) { borderColor = 'border-purple-500'; textColor = 'text-purple-600 dark:text-purple-400'; }
+            if (champ.cost === 5) { borderColor = 'border-yellow-500 dark:border-yellow-400'; textColor = 'text-yellow-600 dark:text-yellow-400'; }
+
+            const titleHTML = `
+                        <div class="flex items-center justify-between w-full pr-4">
+                            <span class="text-slate-800 dark:text-white font-black drop-shadow-md text-[19px] tracking-tight">${window.escapeHTML(champ.name)}</span>
+                            <span class="text-xs font-black ${textColor} bg-slate-100 dark:bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-1">
+                                ${champ.cost} <i class="fa-solid fa-coins text-[10px]"></i>
+                            </span>
+                        </div>
+                    `;
+
+            const traitPills = champ.traits.map(t => {
+                const iconFilename = getTraitIconName(t.name);
+                return `
+                            <span class="flex items-center gap-1 px-2 py-0.5 rounded border border-premium-accent/30 bg-premium-accent/10 text-premium-accent text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-wider drop-shadow-md backdrop-blur-md">
+                                <div class="w-3.5 h-3.5 bg-current shrink-0" 
+                                     style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
+                                </div>
+                                ${t.name}
+                            </span>
+                        `;
+            }).join('');
+
+            const buildsSectionHTML = `
+                        <div class="mt-2 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 p-3 shadow-lg relative overflow-hidden">
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-premium-gold via-transparent to-transparent opacity-50"></div>
+                            <div class="text-[10px] md:text-[11px] font-black text-premium-gold uppercase tracking-widest mb-3 flex items-center gap-2 drop-shadow-md">
+                                <i class="fa-solid fa-chart-pie"></i> Thống kê lên đồ
+                            </div>
+                            <div id="build-content-comp">${window.renderBuildTabInComp(champ.name, 0)}</div>
+                        </div>
+                    `;
+
+            const contentHTML = `
+                        <div class="flex flex-col gap-3 mt-2 text-left">
+                            <div class="w-full h-[100px] md:h-[120px] rounded-xl overflow-hidden border-2 ${borderColor} relative shadow-md">
+                                <img src="${champ.image}" class="w-full h-full object-cover object-[80%]" alt="${window.escapeHTML(champ.name)}" ${onErrorFallback}>
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                                <div class="absolute bottom-2 left-2 flex flex-wrap gap-1.5">${traitPills}</div>
+                            </div>
+                            <div class="flex gap-2">
+                                <div class="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 shadow-inner">
+                                    <i class="fa-solid fa-user-shield text-premium-accent text-sm md:text-base drop-shadow-md"></i>
+                                    <span class="text-[8.5px] md:text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">Vai trò</span>
+                                    <span class="text-[11px] md:text-[12px] font-bold text-slate-700 dark:text-slate-200 text-center leading-tight">${champ.role}</span>
+                                </div>
+                                <div class="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 shadow-inner">
+                                    <i class="fa-solid fa-crosshairs text-rose-500 dark:text-rose-400 text-sm md:text-base drop-shadow-md"></i>
+                                    <span class="text-[8.5px] md:text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tầm đánh</span>
+                                    <span class="text-[12px] md:text-[13px] font-bold text-slate-700 dark:text-slate-200">${champ.range} ô</span>
+                                </div>
+                            </div>
+                            ${buildsSectionHTML}
+                        </div>
+                    `;
+            uiAlert(titleHTML, contentHTML);
+        };
+
+        const sourceButtonsHTML = compSources.map(src => `
+                    <button class="filter-source-btn shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none
+                        ${src.file === activeSourceUrl ? 'bg-rose-500 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'}" 
+                        data-url="${src.file}">
+                        <i class="fa-solid ${src.file === 'firestore' ? 'fa-cloud' : 'fa-database'} text-[10px] opacity-80"></i> ${src.name}
+                    </button>
+                `).join('');
+
+        gridContainer.className = "flex flex-col relative pb-20 min-h-screen w-full";
+        gridContainer.innerHTML = `
+                    <div class="flex flex-col relative pb-40 min-h-screen w-full">
+                        <div id="comp-list-container" class="flex flex-col gap-4 w-full"></div>
+                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col items-center pointer-events-none">
+                            
+                            <div id="comp-filters-wrapper" class="w-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] opacity-0 translate-y-4 pointer-events-none absolute bottom-full mb-3 left-0">
+                                <div class="bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-[0_15px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_15px_40px_rgba(0,0,0,0.8)] flex flex-col gap-3 relative overflow-hidden">
+                                    <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-300 dark:via-white/20 to-transparent"></div>
+
+                                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2 mb-1">
+                                        <span class="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5 drop-shadow-md">
+                                            <i class="fa-solid fa-filter text-premium-gold"></i> Tùy chỉnh Bộ lọc
+                                        </span>
+                                        <button id="close-filter-comp-btn" class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-colors pointer-events-auto outline-none">
+                                            <i class="fa-solid fa-xmark text-sm"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Nguồn dữ liệu:</span>
+                                        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto w-full pb-1">
+                                            ${sourceButtonsHTML}
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1.5">
+                                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Lọc theo Nhãn Đội Hình:</span>
+                                        <div id="dynamic-tags-container" class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto w-full pb-1">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="w-full group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/40 transition-colors relative">
+                                <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px] transition-colors drop-shadow"></i>
+                                <input type="text" id="search-comp" placeholder="Tìm đội hình..." class="w-full bg-transparent border-none text-slate-800 dark:text-white text-[13px] ml-2.5 pr-8 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500">
+                                <button id="clear-search-comp" class="absolute right-12 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 flex items-center justify-center outline-none">
+                                    <i class="fa-solid fa-circle-xmark text-[14px]"></i>
+                                </button>
+                                <div class="w-[1px] h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
+                                <button id="toggle-filter-comp-btn" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-colors border border-transparent hover:bg-premium-gold hover:text-black outline-none relative">
+                                    <i class="fa-solid fa-sliders text-[12px]"></i>
+                                    <span id="comp-filter-indicator" class="absolute top-0 right-0 w-[9px] h-[9px] bg-rose-500 rounded-full border-[1.5px] border-white dark:border-slate-800 hidden shadow-sm"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+        const toggleFilterBtn = document.getElementById('toggle-filter-comp-btn');
+        const closeFilterBtn = document.getElementById('close-filter-comp-btn');
+        const filtersWrapper = document.getElementById('comp-filters-wrapper');
+        let isFilterMenuOpen = false;
+
+        const toggleFilterMenu = () => {
+            isFilterMenuOpen = !isFilterMenuOpen;
+            if (isFilterMenuOpen) {
+                filtersWrapper.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+                filtersWrapper.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                toggleFilterBtn.classList.add('bg-premium-gold', 'text-black', 'shadow-[0_0_8px_rgba(212,175,55,0.5)]');
+                toggleFilterBtn.classList.remove('bg-slate-100', 'dark:bg-white/5', 'text-slate-600', 'dark:text-slate-300');
+            } else {
+                filtersWrapper.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+                filtersWrapper.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+                toggleFilterBtn.classList.remove('bg-premium-gold', 'text-black', 'shadow-[0_0_8px_rgba(212,175,55,0.5)]');
+                toggleFilterBtn.classList.add('bg-slate-100', 'dark:bg-white/5', 'text-slate-600', 'dark:text-slate-300');
+            }
+        };
+
+        toggleFilterBtn.addEventListener('click', toggleFilterMenu);
+        closeFilterBtn.addEventListener('click', () => { if (isFilterMenuOpen) toggleFilterMenu(); });
+        document.getElementById('comp-list-container').addEventListener('click', () => { if (isFilterMenuOpen) toggleFilterMenu(); });
+
+        const updateFilterIndicator = () => {
+            const indicator = document.getElementById('comp-filter-indicator');
+            if (activeTags.size > 0) indicator.classList.remove('hidden');
+            else indicator.classList.add('hidden');
+        };
+
+        const renderDynamicTagsFilter = () => {
+            const tagsContainer = document.getElementById('dynamic-tags-container');
+            if (!tagsContainer) return;
+
+            const allCompTags = [...new Set(compsData.flatMap(comp => comp.CompRowTags || []))].sort();
+
+            if (allCompTags.length === 0) {
+                tagsContainer.innerHTML = '<span class="text-[10px] text-slate-500 italic">Không có nhãn phân loại.</span>';
+                return;
+            }
+
+            tagsContainer.innerHTML = allCompTags.map(tag => `
+                        <button class="filter-dynamic-tag-btn shrink-0 px-3.5 py-1.5 rounded-full font-bold text-[10.5px] transition-all shadow-sm outline-none ${activeTags.has(tag) ? 'bg-premium-gold text-black border-transparent shadow-[0_0_8px_rgba(212,175,55,0.6)]' : 'bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'}" data-tag="${tag}">
+                            ${tag}
+                        </button>
+                    `).join('');
+
+            document.querySelectorAll('.filter-dynamic-tag-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const tag = e.currentTarget.dataset.tag;
+                    if (activeTags.has(tag)) activeTags.delete(tag);
+                    else activeTags.add(tag);
+
+                    updateFilterIndicator();
+                    renderDynamicTagsFilter();
+                    renderComps();
+                });
+            });
+        };
+
+        window.getRelativeTimeVn = (timeStr) => {
+            if (!timeStr) return 'Không rõ';
+            try {
+                // Cắt chuỗi "18:06:52 9/4/2026"
+                const parts = timeStr.split(' ');
+                if (parts.length !== 2) return timeStr;
+
+                const timeParts = parts[0].split(':');
+                const dateParts = parts[1].split('/');
+
+                // Tạo object Date: new Date(year, monthIndex, day, hours, minutes, seconds)
+                const date = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]);
+                const now = new Date();
+                const diffInSeconds = Math.floor((now - date) / 1000);
+
+                if (diffInSeconds < 60) return `Vừa xong`;
+                if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} phút trước`;
+                if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} giờ trước`;
+                if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} ngày trước`;
+
+                return parts[1]; // Nếu quá 30 ngày thì hiển thị luôn ngày tháng gốc
+            } catch (e) {
+                return timeStr;
+            }
+        };
+
+        const fetchAndRenderComps = async (url) => {
+            const listContainer = document.getElementById('comp-list-container');
+            listContainer.innerHTML = `<div class="py-16 flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-3xl mb-4"></i><span class="text-[12px] font-medium">Đang tải dữ liệu...</span></div>`;
+
+            try {
+                if (url === 'firestore') {
+                    if (!window._db) throw new Error("Kết nối Firebase chưa sẵn sàng.");
+                    const q = window._fsQuery(window._fsCol(window._db, "shared_comps"), window._fsOrderBy("createdAt", "desc"));
+                    const querySnapshot = await window._fsGetDocs(q);
+                    compsData = [];
+                    querySnapshot.forEach((doc) => {
+                        compsData.push(doc.data());
+                    });
+                    if (compsData.length === 0) throw new Error('Chưa có đội hình cộng đồng nào được chia sẻ.');
+                } else {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('Chưa có dữ liệu cho Mùa này.');
+
+                    // 1. Nhận dữ liệu thô từ file JSON
+                    const rawData = await res.json();
+                    if (rawData && rawData.Data && Array.isArray(rawData.Data)) {
+                        compsData = rawData.Data;
+                        currentMetaData = rawData.MetaData; // Lưu MetaData vào biến
+                    } else if (Array.isArray(rawData)) {
+                        compsData = rawData;
+                        currentMetaData = null; // Trả về null nếu file kiểu cũ không có MetaData
+                    }
+
+                    // 2. Trích xuất đúng mảng chứa danh sách tướng
+                    if (rawData && rawData.Data && Array.isArray(rawData.Data)) {
+                        // Dành cho cấu trúc JSON mới (có bọc MetaData và Data)
+                        compsData = rawData.Data;
+                    } else if (Array.isArray(rawData)) {
+                        // Dành cho cấu trúc JSON cũ (nếu bạn vẫn dùng mảng trực tiếp ở file khác)
+                        compsData = rawData;
+                    } else {
+                        throw new Error('Cấu trúc dữ liệu JSON không hợp lệ.');
+                    }
+                }
+
+                activeTags.clear();
+                updateFilterIndicator();
+                renderDynamicTagsFilter();
+                renderComps();
+            } catch (error) {
+                compsData = [];
+                renderDynamicTagsFilter();
+                listContainer.innerHTML = `
+                            <div class="py-16 flex flex-col items-center justify-center text-slate-500">
+                                <i class="fa-solid fa-file-circle-xmark text-4xl mb-3 opacity-30"></i>
+                                <span class="text-[12px] font-medium text-rose-500 dark:text-rose-400/80">${error.message}</span>
+                            </div>`;
+            }
+        };
+
+        const renderComps = () => {
+            const listContainer = document.getElementById('comp-list-container');
+
+            // ==========================================
+            // 1. TẠO HEADER (THỜI GIAN & NÚT NGUỒN)
+            // ==========================================
+            let updateTimeText = 'Đang cập nhật...';
+            if (currentMetaData && currentMetaData.ScrapeTime) {
+                // Gọi hàm tính thời gian tương đối (bạn nhớ thêm hàm getRelativeTimeVn ở ngoài nhé)
+                updateTimeText = window.getRelativeTimeVn(currentMetaData.ScrapeTime);
+            }
+
+            const sourceButtonsHTML_Main = compSources.map(src => `
+                <button class="filter-source-btn-main shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none
+                    ${src.file === activeSourceUrl ? 'bg-rose-500 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'}" 
+                    data-url="${src.file}">
+                    <i class="fa-solid ${src.file === 'firestore' ? 'fa-cloud' : 'fa-database'} text-[10px] opacity-80"></i> ${src.name}
+                </button>
+            `).join('');
+
+            const headerHTML = `
+                <div class="flex flex-col gap-3 px-1 mb-2 mt-2">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Dữ liệu đội hình</p>
+                        <span class="text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10 flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-clock-rotate-left"></i> Cập nhật: <span class="font-bold text-slate-700 dark:text-slate-300">${updateTimeText}</span>
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full pb-1">
+                        ${sourceButtonsHTML_Main}
+                    </div>
+                </div>
+            `;
+
+            // ==========================================
+            // 2. LỌC DỮ LIỆU ĐỘI HÌNH
+            // ==========================================
+            const filteredComps = compsData.filter(comp => {
+                const matchSearch = comp.CompTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    (comp.UnitsContainer && comp.UnitsContainer.some(u => u.champion.toLowerCase().includes(searchQuery.toLowerCase())));
+
+                const compTags = comp.CompRowTags || [];
+                const matchTag = activeTags.size === 0 || [...activeTags].every(tag => compTags.includes(tag));
+
+                return matchSearch && matchTag;
+            });
+
+            // ==========================================
+            // 3. XỬ LÝ KHI KHÔNG TÌM THẤY ĐỘI HÌNH
+            // ==========================================
+            if (filteredComps.length === 0) {
+                listContainer.innerHTML = headerHTML + `
+                    <div class="py-16 flex flex-col items-center justify-center text-slate-500">
+                        <i class="fa-solid fa-ghost text-4xl mb-3 opacity-20"></i>
+                        <span class="text-[12px] font-medium">Không tìm thấy Đội Hình phù hợp.</span>
+                    </div>`;
+                return;
+            }
+
+            // ==========================================
+            // 4. VẼ LƯỚI BÀN CỜ TRỐNG (HEXES)
+            // ==========================================
+            let emptyHexesHTML = '';
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 7; c++) {
+                    const isOddRow = r % 2 !== 0;
+                    const left = c * 13.33 + (isOddRow ? 6.66 : 0);
+                    const top = r * 23.07;
+                    emptyHexesHTML += `
+                        <div class="absolute w-[13.33%] h-[30.76%] bg-slate-200/50 dark:bg-[#112233]/80 scale-[0.92] transition-colors" 
+                             style="left: ${left}%; top: ${top}%; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+                        </div>
+                    `;
+                }
+            }
+
+            // ==========================================
+            // 5. RENDER DANH SÁCH ĐỘI HÌNH THỰC TẾ
+            // ==========================================
+            const compsHTML = filteredComps.map((comp, compIndex) => {
+
+                // --- 5.1 Render Tags ---
+                let tagsHTML = '';
+                if (comp.CompRowTags && comp.CompRowTags.length > 0) {
+                    tagsHTML = comp.CompRowTags.map(tag =>
+                        `<span class="px-2 py-[1px] rounded bg-premium-gold/10 border border-premium-gold/30 dark:border-premium-gold/20 text-premium-gold text-[9px] font-bold uppercase tracking-wider">${window.escapeHTML(tag)}</span>`
+                    ).join('');
+                }
+
+                // --- 5.2 Render Tướng & Đếm Tộc Hệ ---
+                let unitsHTML = '';
+                let traitCounts = {};
+
+                if (comp.UnitsContainer && comp.UnitsContainer.length > 0) {
+                    const sortedUnits = [...comp.UnitsContainer].sort((a, b) => (b.items?.length || 0) - (a.items?.length || 0));
+
+                    unitsHTML = sortedUnits.map(unit => {
+                        const cName = cleanName(unit.champion);
+                        const champData = masterChamps[cName];
+                        const champImage = champData ? champData.image : '/Asset/logo/logo.png';
+                        const champCost = champData ? champData.cost : 1;
+
+                        if (champData && champData.traits) {
+                            champData.traits.forEach(t => { traitCounts[t.name] = (traitCounts[t.name] || 0) + 1; });
+                        }
+
+                        let borderColor = 'border-slate-400 dark:border-slate-600';
+                        if (champCost === 2) borderColor = 'border-emerald-500';
+                        if (champCost === 3) borderColor = 'border-blue-500';
+                        if (champCost === 4) borderColor = 'border-purple-500';
+                        if (champCost === 5) borderColor = 'border-yellow-400';
+
+                        const items = unit.items || [];
+                        let itemsHTML = '';
+                        if (items.length > 0) {
+                            itemsHTML = items.map(itemName => {
+                                const iData = masterItems[cleanName(itemName)];
+                                const img = iData ? iData.image : '/Asset/logo/logo.png';
+                                const iName = iData ? iData.name : itemName;
+
+                                return `
+                                <div class="relative group/tooltip cursor-pointer">
+                                    <img src="${img}" class="w-[14px] h-[14px] sm:w-[15px] sm:h-[15px] rounded-[3px] border border-slate-300 dark:border-slate-800 object-cover shadow-sm bg-black hover:scale-110 transition-transform" ${onErrorFallback}>
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[150px] px-2.5 py-1.5 bg-slate-900 dark:bg-black text-white rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-[100] pointer-events-none border border-slate-700 dark:border-white/10 scale-95 group-hover/tooltip:scale-100 origin-bottom">
+                                        <span class="text-[9px] font-bold text-premium-gold block text-center truncate">${window.escapeHTML(iName)}</span>
+                                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900 dark:border-t-black"></div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('');
+                        }
+
+                        return `
+                            <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer mb-1" onclick="window.openChampModalFromComp('${window.escapeJS(unit.champion)}')">
+                                <div class="relative w-full mb-1.5 transition-transform duration-300 group-hover/unit:-translate-y-1">
+                                    <div class="w-full h-12 sm:h-[50px] aspect-square rounded-[6px] border-2 ${borderColor} overflow-hidden bg-black shadow-md">
+                                        <img src="${champImage}" class="w-full h-full object-cover object-[80%]" title="${window.escapeHTML(unit.champion)}" ${onErrorFallback}>
+                                    </div>
+                                    <div class="absolute -bottom-2 left-0 w-full flex justify-center gap-[1.5px] z-10">
+                                        ${itemsHTML}
+                                    </div>
+                                </div>
+                                <span class="text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-200 font-bold truncate w-full text-center mt-1 group-hover/unit:text-premium-gold transition-colors drop-shadow-sm">${window.escapeHTML(unit.champion)}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                // --- 5.3 Render Tộc Hệ ---
+                const sortedTraits = Object.entries(traitCounts).sort((a, b) => b[1] - a[1]);
+                let traitsHTML = sortedTraits.map(([tName, tCount]) => {
+                    const iconFilename = getTraitIconName(tName);
+                    return `
+                        <div class="flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-full shadow-sm text-slate-700 dark:text-slate-200">
+                            <div class="w-3.5 h-3.5 bg-current shrink-0" 
+                                 style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
+                            </div>
+                            <span class="text-[10px] font-semibold">${tName}</span>
+                            <div class="w-4 h-4 rounded-full bg-premium-gold flex items-center justify-center shadow-inner border border-yellow-400 dark:border-yellow-300 ml-0.5">
+                                <span class="text-[9px] font-black text-black leading-none">${tCount}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                if (!traitsHTML) traitsHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu Tộc Hệ.</span>';
+
+                // --- 5.4 Render Đồ Đi Chợ (Carousel) ---
+                let carouselHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
+                if (comp.CompQuickStart?.carousel?.length > 0) {
+                    carouselHTML = `<div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">` +
+                        comp.CompQuickStart.carousel.slice(0, 5).map((cItem, index) => {
+                            const iData = masterItems[cleanName(cItem.item)];
+                            const img = iData ? iData.image : '/Asset/logo/logo.png';
+                            return `
+                                <div class="flex items-center">
+                                    <img src="${img}" class="w-6 h-6 rounded border border-slate-300 dark:border-slate-600 bg-black object-cover shadow-sm" ${onErrorFallback}>
+                                    ${index < Math.min(4, comp.CompQuickStart.carousel.length - 1) ? `<i class="fa-solid fa-angle-right text-[8px] text-slate-400 dark:text-slate-600 mx-1"></i>` : ''}
+                                </div>
+                            `;
+                        }).join('') + `</div>`;
+                }
+
+                // --- 5.5 Render Form Đầu Game ---
+                let earlyCompHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
+                if (comp.CompEarlyOptions?.length > 0) {
+                    earlyCompHTML = comp.CompEarlyOptions.slice(0, 2).map(opt => {
+                        const teamHTML = opt.team_comp.map(c => {
+                            const cData = masterChamps[cleanName(c)];
+                            const img = cData ? cData.image : '/Asset/logo/logo.png';
+                            let borderColor = 'border-slate-400 dark:border-slate-600';
+                            if (cData) {
+                                if (cData.cost === 2) borderColor = 'border-emerald-500';
+                                if (cData.cost === 3) borderColor = 'border-blue-500';
+                                if (cData.cost === 4) borderColor = 'border-purple-500';
+                                if (cData.cost === 5) borderColor = 'border-yellow-400';
+                            }
+                            return `
+                                <div class="flex flex-col items-center w-9 sm:w-10 shrink-0 cursor-pointer group/early" onclick="window.openChampModalFromComp('${window.escapeJS(c)}')">
+                                    <div class="w-full h-9 sm:h-10 aspect-square rounded-[4px] border-[1.5px] ${borderColor} overflow-hidden bg-black shadow-md transition-transform group-hover/early:-translate-y-1">
+                                        <img src="${img}" class="w-full h-full object-cover object-[80%]" ${onErrorFallback}>
+                                    </div>
+                                    <span class="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate w-full text-center mt-1 group-hover/early:text-premium-gold transition-colors">${c}</span>
+                                </div>
+                            `;
+                        }).join('');
+
+                        return `
+                            <div class="flex items-center justify-between bg-slate-50 dark:bg-white/[0.02] p-2 rounded-lg border border-slate-200 dark:border-white/5">
+                                <div class="flex gap-2 items-start flex-nowrap overflow-x-auto no-scrollbar pb-1 pt-1">${teamHTML}</div>
+                                <div class="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/20 shrink-0 ml-3 self-center">
+                                    <i class="fa-solid fa-trophy text-[8px] text-emerald-600 dark:text-emerald-400"></i>
+                                    <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 leading-none">${opt.win_rate}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    earlyCompHTML = `<div class="flex flex-col gap-2">${earlyCompHTML}</div>`;
+                }
+
+                // --- 5.6 Render Xếp Cờ (Board) ---
+                let boardHTML = '<p class="text-[10px] text-slate-500 italic flex items-center justify-center h-full">Không có dữ liệu xếp cờ.</p>';
+                if (comp.BoardPositions && comp.BoardPositions.length > 0) {
+                    const champHexesHTML = comp.BoardPositions.map(pos => {
+                        const cData = masterChamps[cleanName(pos.champion)];
+                        const img = cData ? cData.image : '/Asset/logo/logo.png';
+                        let bgBorder = 'bg-slate-400 dark:bg-slate-600';
+                        if (cData) {
+                            if (cData.cost === 2) bgBorder = 'bg-emerald-500';
+                            if (cData.cost === 3) bgBorder = 'bg-blue-500';
+                            if (cData.cost === 4) bgBorder = 'bg-purple-500';
+                            if (cData.cost === 5) bgBorder = 'bg-yellow-400';
+                        }
+                        const isOddRow = pos.coordinates.row % 2 !== 0;
+                        const left = pos.coordinates.col * 13.33 + (isOddRow ? 6.66 : 0);
+                        const top = pos.coordinates.row * 23.07;
+
+                        return `
+                            <div class="absolute w-[13.33%] h-[30.76%] z-10 transition-transform hover:scale-110 scale-[0.92] drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] cursor-pointer" 
+                                 style="left: ${left}%; top: ${top}%;" title="${pos.champion}" onclick="window.openChampModalFromComp('${window.escapeJS(pos.champion)}')">
+                                <div class="w-full h-full p-[2px] ${bgBorder}" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
+                                    <img src="${img}" class="w-full h-full object-cover object-[80%] bg-slate-900" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);" ${onErrorFallback}>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    boardHTML = `
+                        <div class="relative w-full max-w-[340px] mx-auto aspect-[2/1] bg-slate-100 dark:bg-[#0B101A] rounded-xl overflow-hidden shadow-inner p-1.5 border border-slate-300 dark:border-white/5">
+                            ${emptyHexesHTML}
+                            ${champHexesHTML}
+                        </div>
+                    `;
+                }
+
+                // --- 5.7 Render Nhịp Lên Cấp (Leveling) ---
+                let levelingHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
+                if (comp.CompQuickStart?.leveling?.length > 0) {
+                    levelingHTML = `<div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">` +
+                        comp.CompQuickStart.leveling.map((lvl, index) => `
+                            <div class="flex items-center">
+                                <div class="flex flex-col items-center bg-slate-100 dark:bg-black/40 px-1.5 py-0.5 rounded shadow-inner border border-slate-200 dark:border-white/5">
+                                    <span class="text-[8.5px] font-bold text-slate-800 dark:text-slate-300 leading-tight">${lvl.level}</span>
+                                    <span class="text-[9px] text-premium-gold font-black leading-tight">${lvl.stage}</span>
+                                </div>
+                                ${index < comp.CompQuickStart.leveling.length - 1 ? `<div class="w-2 h-[1px] bg-slate-300 dark:bg-slate-700 mx-1"></div>` : ''}
+                            </div>
+                        `).join('') + `</div>`;
+                }
+
+                // --- 5.8 Render Nút Copy Code ---
+                let copyCodeHTML = '';
+                const codeToCopy = comp.CopyTeamCode || comp.shareCode;
+                if (codeToCopy) {
+                    const btnId = `copy-btn-${compIndex}`;
+                    copyCodeHTML = `
+                        <div class="flex items-center gap-2 copy-btn-container shrink-0 lg:ml-auto z-20">
+                            ${comp.shareCode ? `<span class="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/5 shadow-inner hidden sm:block">ID: ${window.escapeHTML(comp.shareCode)}</span>` : ''}
+                            <button id="${btnId}" onclick="window.copyToClipboard('${window.escapeJS(window.escapeHTML(codeToCopy))}', '${btnId}')" 
+                                class="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 hover:bg-premium-gold dark:hover:bg-premium-gold hover:text-slate-800 dark:hover:text-black text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10 px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all shadow-sm outline-none">
+                                <i class="fa-regular fa-clone"></i> Sao chép
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // --- Lắp ráp HTML Thẻ Đội Hình ---
+                return `
+                    <div class="comp-card bg-white dark:bg-[#0e1420]/95 backdrop-blur-xl border border-slate-200 dark:border-white/5 hover:border-premium-gold/50 dark:hover:border-premium-gold/40 rounded-2xl shadow-xl transition-all duration-300 relative overflow-hidden group">
+                        <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        
+                        <div class="flex flex-col xl:flex-row gap-2 xl:gap-5 p-3.5 relative z-10">
+                            
+                            <div class="flex flex-col gap-1 xl:w-[180px] shrink-0 justify-center">
+                                <div class="flex gap-1.5 flex-wrap">${tagsHTML}</div>
+                                <h3 class="text-[15px] font-black text-slate-800 dark:text-white transition-colors leading-tight tracking-wide drop-shadow-sm">${window.escapeHTML(comp.CompTitle)}</h3>
+                            </div>
+                            
+                            <div class="flex flex-wrap items-start content-start gap-2 sm:gap-2.5 w-full xl:w-auto xl:flex-1 min-w-0 pt-1 xl:pb-0">
+                                ${unitsHTML}
+                            </div>
+                            
+                            <div class="flex items-center gap-2 shrink-0 ml-auto border-t xl:border-t-0 border-slate-100 dark:border-white/5 pt-2 xl:pt-0 w-full xl:w-auto justify-between xl:justify-end">
+                               ${copyCodeHTML}
+                               <button onclick="window.toggleCompDetails(this)" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center transition-colors hover:bg-premium-gold/20 outline-none">
+                                    <i class="fa-solid fa-chevron-down text-slate-500 dark:text-slate-400 text-[11px] expand-icon transition-transform duration-300 hover:text-premium-gold"></i>
+                               </button>
+                            </div>
+                        </div>
+                        
+                        <div class="comp-details hidden border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#05080d]/60 p-4 relative z-10 transition-colors">
+                            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8">
+                                
+                                <div class="xl:col-span-7 flex flex-col gap-5">
+                                    <div>
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-shapes"></i> Kích hoạt Tộc Hệ</div>
+                                        <div class="flex flex-wrap gap-1.5">${traitsHTML}</div>
+                                    </div>
+                                    
+                                    <div>
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-ring"></i> Đi Chợ</div>
+                                        ${carouselHTML}
+                                    </div>
+
+                                    <div>
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-chess-board"></i> Đội Hình Đầu Game</div>
+                                        ${earlyCompHTML}
+                                    </div>
+                                </div>
+
+                                <div class="xl:col-span-5 flex flex-col gap-5">
+                                    
+                                    <div class="flex flex-col gap-2">
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 xl:justify-center mb-1">
+                                            <i class="fa-solid fa-map-location-dot"></i> Xếp Vị Trí
+                                        </div>
+                                        <div class="flex-1 flex items-start justify-center">
+                                            ${boardHTML}
+                                        </div>
+                                    </div>
+
+                                    <div class="flex flex-col gap-2 pt-3 border-t border-slate-200 dark:border-white/5">
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5 xl:justify-center">
+                                            <i class="fa-solid fa-arrow-up-right-dots"></i> Nhịp Lên Cấp
+                                        </div>
+                                        <div class="xl:flex xl:justify-center">
+                                            ${levelingHTML}
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Gắn Header và Danh sách đội hình vào Container
+            listContainer.innerHTML = headerHTML + compsHTML;
+        };
+
+        document.getElementById('comp-list-container').addEventListener('click', (e) => {
+            const btn = e.target.closest('.filter-source-btn-main');
+            if (!btn) return;
+
+            const url = btn.dataset.url;
+            if (activeSourceUrl === url) return;
+
+            activeSourceUrl = url;
+            fetchAndRenderComps(url);
+        });
+
+        window.copyToClipboard = (text, btnId) => {
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    const originalHTML = btn.innerHTML;
+                    const originalClass = btn.className;
+                    btn.className = "flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-emerald-400 px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all shadow-[0_0_8px_rgba(16,185,129,0.5)] z-20 relative";
+                    btn.innerHTML = `<i class="fa-solid fa-check"></i> Đã chép`;
+                    setTimeout(() => {
+                        btn.className = originalClass;
+                        btn.innerHTML = originalHTML;
+                    }, 1500);
+                }
+            }).catch(err => console.error('Lỗi Copy: ', err));
+        };
+
+        const searchInput = document.getElementById('search-comp');
+        const clearBtn = document.getElementById('clear-search-comp');
+
+        searchInput.addEventListener('input', window.debounce((e) => {
+            const val = e.target.value;
+            searchQuery = val;
+            clearBtn.classList.toggle('hidden', val.length === 0);
+            renderComps();
+        }, 300));
+
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            searchQuery = '';
+            clearBtn.classList.add('hidden');
+            searchInput.focus();
+            renderComps();
+        });
+
+        document.querySelectorAll('.filter-source-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const url = e.currentTarget.dataset.url;
+                if (activeSourceUrl === url) return;
+
+                activeSourceUrl = url;
+                document.querySelectorAll('.filter-source-btn').forEach(b => {
+                    b.className = "filter-source-btn shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10";
+                });
+                e.currentTarget.className = "filter-source-btn shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none bg-rose-500 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]";
+
+                fetchAndRenderComps(url);
+            });
+        });
+
+        fetchAndRenderComps(activeSourceUrl);
+
+    } catch (error) {
+        gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Đội Hình: ${error.message}</div>`;
+    }
+}
+
+// ---------------------------------------------------------
 // HÀM FETCH VÀ RENDER DỮ LIỆU TỪ gods.json
 // ---------------------------------------------------------
 async function loadGodsData() {
@@ -135,449 +977,6 @@ async function loadGodsData() {
 
     } catch (error) {
         gridContainer.innerHTML = `<div class="col-span-full text-center py-8 text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Thần: ${error.message}</div>`;
-    }
-}
-
-// ---------------------------------------------------------
-// HÀM FETCH VÀ RENDER DỮ LIỆU TỪ origin.json
-// ---------------------------------------------------------
-async function loadOriginData() {
-    const gridContainer = document.getElementById('grid-origin-synergies');
-    if (!gridContainer) return;
-
-    try {
-        const response = await fetch('./asset/data/origin.json');
-        if (!response.ok) throw new Error('Không tìm thấy file origin.json');
-
-        const origins = await response.json();
-        gridContainer.innerHTML = '';
-        gridContainer.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start w-full";
-
-        let originsHTML = '';
-        origins.forEach(origin => {
-            const validChampions = origin.champions ? origin.champions.filter(champ => champ.name !== origin.traitName) : [];
-            let championsHTML = '';
-
-            if (validChampions.length > 0) {
-                championsHTML = validChampions.map(champ => {
-                    return `
-                                <div class="flex flex-col items-center w-[46px] flex-shrink-0 cursor-pointer group" 
-                                     onclick="event.stopPropagation(); uiAlert('Thông tin Tướng', '<span class=\\'text-premium-gold font-bold\\'>${window.escapeJS(champ.name)}</span>')">
-                                    <img src="${champ.icon}" alt="${window.escapeHTML(champ.name)}" 
-                                         class="w-10 h-10 rounded-[10px] border border-slate-300 dark:border-slate-600 object-cover bg-black shadow-sm group-hover:scale-105 group-hover:border-slate-400 transition-all">
-                                    <span class="text-[8.5px] text-slate-500 dark:text-slate-400 font-medium text-center w-full truncate mt-1 group-hover:text-slate-800 dark:group-hover:text-white transition-colors">
-                                        ${window.escapeHTML(champ.name)}
-                                    </span>
-                                </div>
-                            `;
-                }).join('');
-            }
-
-            let statsHTML = '';
-            if (origin.stats && origin.stats.length > 0) {
-                statsHTML = origin.stats.map(stat => {
-                    return `
-                                <div class="flex items-start gap-2">
-                                    <span class="shrink-0 min-w-[20px] px-1 py-0.5 rounded bg-premium-gold/10 border border-premium-gold/30 text-premium-gold text-[9px] font-bold text-center mt-0.5">
-                                        ${stat.count}
-                                    </span>
-                                    <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">${stat.effect}</p>
-                                </div>
-                            `;
-                }).join('');
-            }
-
-            const cardHTML = `
-                        <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-premium-border rounded-xl overflow-hidden block h-full shadow-lg transition-colors hover:border-slate-400 dark:hover:border-slate-600 cursor-pointer"
-                             onclick="toggleCard(this)">
-                            
-                            <div class="p-3.5 flex items-center gap-3 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-gradient-to-r dark:from-white/[0.03] dark:to-transparent transition-colors">
-                                <div class="w-10 h-10 flex items-center justify-center shrink-0">
-                                    <div class="w-full h-full bg-premium-gold" 
-                                         style="-webkit-mask-image: url('${origin.traitIcon}'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-image: url('${origin.traitIcon}'); mask-size: contain; mask-repeat: no-repeat; mask-position: center;">
-                                    </div>
-                                </div>
-                                <div class="flex-1">
-                                    <h3 class="text-base font-bold text-slate-800 dark:text-white leading-tight transition-colors">${origin.traitName}</h3>
-                                    <p class="text-[9px] font-semibold text-premium-accent uppercase tracking-wider">Origin</p>
-                                </div>
-                                <i class="fa-solid fa-chevron-down expand-chevron text-slate-400 dark:text-slate-600 text-sm p-1"></i>
-                            </div>
-                            
-                            <div class="card-expandable-body p-3.5 flex flex-col gap-3 bg-white dark:bg-transparent">
-                                ${origin.description ? `<p class="text-[11px] text-slate-500 dark:text-slate-400 italic leading-relaxed">"${origin.description}"</p>` : ''}
-                                ${statsHTML ? `<div class="flex flex-col gap-2 pt-1">${statsHTML}</div>` : ''}
-                            </div>
-
-                            <div class="p-3 bg-slate-50 dark:bg-black/40 border-t border-slate-100 dark:border-white/5 transition-colors" onclick="event.stopPropagation();">
-                                <div class="flex flex-wrap items-start justify-between gap-y-3">
-                                    ${championsHTML}
-                                    <div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-            originsHTML += cardHTML;
-        });
-        gridContainer.innerHTML = originsHTML;
-
-    } catch (error) {
-        gridContainer.innerHTML = `<div class="col-span-full text-center py-8 text-red-400 text-sm">Lỗi tải dữ liệu Origin. ${error.message}</div>`;
-    }
-}
-
-// ---------------------------------------------------------
-// HÀM FETCH VÀ RENDER DỮ LIỆU TỪ traits.json (TÍCH HỢP MODAL TƯỚNG FULL CHI TIẾT)
-// ---------------------------------------------------------
-async function loadTraitsData() {
-    const gridContainer = document.getElementById('grid-traits');
-    if (!gridContainer) return;
-
-    try {
-        // 1. TẢI FULL 4 FILE DỮ LIỆU ĐỂ HỖ TRỢ MODAL TƯỚNG
-        const [resTraits, resChamps, resItems, resBuilds] = await Promise.all([
-            fetch('./asset/data/traits.json'),
-            fetch('./asset/data/champions.json'),
-            fetch('./asset/data/items.json'),
-            fetch('./asset/data/champion_builds.json').catch(() => null)
-        ]);
-
-        if (!resTraits.ok || !resChamps.ok || !resItems.ok) {
-            throw new Error('Không tìm thấy file dữ liệu Tộc Hệ, Tướng hoặc Trang bị.');
-        }
-
-        const traitsData = await resTraits.json();
-        const champsData = await resChamps.json();
-        const itemsData = await resItems.json();
-        const buildsData = resBuilds && resBuilds.ok ? await resBuilds.json() : [];
-
-        // 2. MAP DỮ LIỆU TƯỚNG & TRANG BỊ
-        const masterChamps = {};
-        champsData.forEach(champ => {
-            masterChamps[champ.name.toLowerCase().trim()] = champ;
-        });
-
-        const masterItems = {};
-        for (const itemArray of Object.values(itemsData)) {
-            if (Array.isArray(itemArray)) {
-                itemArray.forEach(item => { masterItems[item.name.toLowerCase().trim()] = item; });
-            }
-        }
-
-        // THÊM HÀM CHUẨN HÓA TÊN (Xóa dấu nháy, khoảng trắng, ký tự đặc biệt)
-        const normalizeBuildName = (name) => {
-            if (!name) return '';
-            return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-        };
-
-        window._masterBuilds = {};
-        if (Array.isArray(buildsData)) {
-            buildsData.forEach(b => {
-                const validBuilds = b.builds.filter(build => build.items && build.items.length > 0);
-                if (validBuilds.length > 0) {
-                    // Ép tên trong file builds (Kaisa, TwistedFate) về dạng chuẩn (kaisa, twistedfate)
-                    window._masterBuilds[normalizeBuildName(b.unit)] = validBuilds;
-                }
-            });
-        }
-
-        const cleanName = (rawName) => rawName ? rawName.replace(/<[^>]+>/g, '').trim().toLowerCase() : '';
-        const onErrorFallback = `onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSIjMWUyOTNiIiBzdHJva2U9IiM0NzU1NjkiIHN0cm9rZS13aWR0aD0iMiI+PHJlY3QgeD0iMCIgeT0iMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiLz48dGV4dCB4PSI1MCIgeT0iNTUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSI0MCIgZmlsbD0iIzQ3NTU2OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+PzwvdGV4dD48L3N2Zz4='";`;
-
-        const getTraitIconName = (name) => {
-            if (!name) return '';
-            let str = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
-            str = str.replace(/[^a-zA-Z0-9\s]/g, "");
-            return str.split(/\s+/).map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join('');
-        };
-
-        window.toggleTraitDetails = (headerElement) => {
-            const card = headerElement.closest('.group');
-            const detailsWrapper = card.querySelector('.trait-details');
-            const chevronIcon = card.querySelector('.expand-icon');
-
-            if (detailsWrapper.classList.contains('hidden')) {
-                detailsWrapper.classList.remove('hidden');
-                chevronIcon.classList.add('rotate-180');
-                card.classList.add('border-premium-gold/50');
-            } else {
-                detailsWrapper.classList.add('hidden');
-                chevronIcon.classList.remove('rotate-180');
-                card.classList.remove('border-premium-gold/50');
-            }
-        };
-
-        // --- 3. HÀM MODAL TƯỚNG (GIỐNG TAB ĐỘI HÌNH) ---
-        window.renderBuildTabInTrait = (champName, styleIndex) => {
-            const builds = window._masterBuildsForTraits[champName];
-            if (!builds || builds.length === 0) return '<p class="text-[10px] text-slate-500 text-center py-4 italic">Chưa có dữ liệu gợi ý.</p>';
-
-            const currentBuild = builds[styleIndex];
-
-            const itemsHTML = currentBuild.items.map(rawItemName => {
-                const itemName = cleanName(rawItemName);
-                const itemData = masterItems[itemName];
-
-                if (!itemData) {
-                    return `<div class="flex flex-col items-center flex-1 min-w-0 opacity-50"><div class="w-10 h-10 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-1"><i class="fa-solid fa-question text-slate-400 dark:text-slate-500 text-xs"></i></div><span class="text-[8px] text-slate-500 dark:text-slate-400 font-medium truncate w-full text-center px-0.5">${rawItemName}</span></div>`;
-                }
-
-                let recipeHTML = '<div class="h-4 mt-1"></div>';
-                if (itemData.recipe && itemData.recipe.length === 2) {
-                    recipeHTML = `
-                                <div class="flex items-center gap-[2px] mt-1 justify-center bg-slate-100 dark:bg-black/40 rounded px-1 py-0.5 border border-slate-200 dark:border-white/5">
-                                    <img src="${itemData.recipe[0].image}" class="w-3.5 h-3.5 rounded-sm object-cover opacity-80" ${onErrorFallback}>
-                                    <i class="fa-solid fa-plus text-[5px] text-slate-400 dark:text-slate-500"></i>
-                                    <img src="${itemData.recipe[1].image}" class="w-3.5 h-3.5 rounded-sm object-cover opacity-80" ${onErrorFallback}>
-                                </div>
-                            `;
-                }
-
-                const isRadiant = itemData.name.toLowerCase().includes('ánh sáng');
-                const imgBorder = isRadiant ? 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]' : 'border-slate-300 dark:border-slate-600';
-
-                return `<div class="flex flex-col items-center flex-1 min-w-0"><img src="${itemData.image}" class="w-10 h-10 rounded-lg border-[1.5px] ${imgBorder} object-cover bg-black shadow-md mb-1" ${onErrorFallback}><span class="text-[8px] md:text-[9.5px] ${isRadiant ? 'text-yellow-500 dark:text-yellow-400' : 'text-slate-700 dark:text-slate-300'} font-bold truncate w-full text-center px-0.5">${itemData.name}</span>${recipeHTML}</div>`;
-            }).join('');
-
-            const tabsHTML = builds.map((b, idx) => `
-                        <button onclick="document.getElementById('build-content-trait').innerHTML = window.renderBuildTabInTrait('${window.escapeJS(champName)}', ${idx})" 
-                                class="px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all whitespace-nowrap shadow-sm border outline-none ${idx === styleIndex ? 'bg-premium-gold text-black border-transparent shadow-[0_0_5px_rgba(212,175,55,0.5)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'}">
-                            Cách ${idx + 1}
-                        </button>
-                    `).join('');
-
-            const statsHTML = `
-                        <div class="flex items-center justify-center gap-3 mb-3 px-1">
-                            <span class="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-100 dark:bg-emerald-900/20 border border-emerald-300 dark:border-emerald-500/30 px-2.5 py-0.5 rounded shadow-sm flex items-center gap-1.5">
-                                <i class="fa-solid fa-trophy"></i> Top TB: ${currentBuild.avg_place}
-                            </span>
-                            <span class="text-[9.5px] text-blue-600 dark:text-blue-400 font-bold bg-blue-100 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-500/30 px-2.5 py-0.5 rounded shadow-sm flex items-center gap-1.5">
-                                <i class="fa-solid fa-chart-line"></i> Thắng: ${currentBuild.win_rate}
-                            </span>
-                        </div>
-                    `;
-
-            return `
-                        <div class="flex flex-col gap-2.5">
-                            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 border-b border-slate-200 dark:border-white/5 snap-x">${tabsHTML}</div>
-                            ${statsHTML}
-                            <div class="flex gap-2 justify-between items-start bg-slate-50 dark:bg-black/20 p-2 rounded-xl border border-slate-200 dark:border-white/5 shadow-inner">${itemsHTML}</div>
-                        </div>
-                    `;
-        };
-
-        window.openChampModalFromTrait = (champNameRaw) => {
-            const champ = masterChamps[cleanName(champNameRaw)];
-            if (!champ) return;
-
-            let borderColor = 'border-slate-400'; let textColor = 'text-slate-500 dark:text-slate-300';
-            if (champ.cost === 2) { borderColor = 'border-emerald-500'; textColor = 'text-emerald-600 dark:text-emerald-400'; }
-            if (champ.cost === 3) { borderColor = 'border-blue-500'; textColor = 'text-blue-600 dark:text-blue-400'; }
-            if (champ.cost === 4) { borderColor = 'border-purple-500'; textColor = 'text-purple-600 dark:text-purple-400'; }
-            if (champ.cost === 5) { borderColor = 'border-yellow-500 dark:border-yellow-400'; textColor = 'text-yellow-600 dark:text-yellow-400'; }
-
-            const titleHTML = `
-                        <div class="flex items-center justify-between w-full pr-4">
-                            <span class="text-slate-800 dark:text-white font-black drop-shadow-md text-[19px] tracking-tight">${window.escapeHTML(champ.name)}</span>
-                            <span class="text-xs font-black ${textColor} bg-slate-100 dark:bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-1">
-                                ${champ.cost} <i class="fa-solid fa-coins text-[10px]"></i>
-                            </span>
-                        </div>
-                    `;
-
-            const traitPills = champ.traits.map(t => {
-                const iconFilename = getTraitIconName(t.name);
-                return `
-                            <span class="flex items-center gap-1 px-2 py-0.5 rounded border border-premium-accent/30 bg-premium-accent/10 text-premium-accent text-[9.5px] md:text-[10.5px] font-bold uppercase tracking-wider drop-shadow-md backdrop-blur-md">
-                                <div class="w-3.5 h-3.5 bg-current shrink-0" 
-                                     style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
-                                </div>
-                                ${t.name}
-                            </span>
-                        `;
-            }).join('');
-
-            const buildsSectionHTML = `
-                        <div class="mt-2 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-white/10 p-3 shadow-lg relative overflow-hidden">
-                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-premium-gold via-transparent to-transparent opacity-50"></div>
-                            <div class="text-[10px] md:text-[11px] font-black text-premium-gold uppercase tracking-widest mb-3 flex items-center gap-2 drop-shadow-md">
-                                <i class="fa-solid fa-chart-pie"></i> Thống kê lên đồ
-                            </div>
-                            <div id="build-content-trait">${window.renderBuildTabInTrait(champ.name, 0)}</div>
-                        </div>
-                    `;
-
-            const contentHTML = `
-                        <div class="flex flex-col gap-3 mt-2 text-left">
-                            <div class="w-full h-[100px] md:h-[120px] rounded-xl overflow-hidden border-2 ${borderColor} relative shadow-md">
-                                <img src="${champ.image}" class="w-full h-full object-cover object-[80%]" alt="${window.escapeHTML(champ.name)}" ${onErrorFallback}>
-                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                                <div class="absolute bottom-2 left-2 flex flex-wrap gap-1.5">${traitPills}</div>
-                            </div>
-                            <div class="flex gap-2">
-                                <div class="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 shadow-inner">
-                                    <i class="fa-solid fa-user-shield text-premium-accent text-sm md:text-base drop-shadow-md"></i>
-                                    <span class="text-[8.5px] md:text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">Vai trò</span>
-                                    <span class="text-[11px] md:text-[12px] font-bold text-slate-700 dark:text-slate-200 text-center leading-tight">${champ.role}</span>
-                                </div>
-                                <div class="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-2.5 flex flex-col items-center justify-center gap-1 shadow-inner">
-                                    <i class="fa-solid fa-crosshairs text-rose-500 dark:text-rose-400 text-sm md:text-base drop-shadow-md"></i>
-                                    <span class="text-[8.5px] md:text-[10px] text-slate-500 dark:text-slate-400 uppercase tracking-widest">Tầm đánh</span>
-                                    <span class="text-[12px] md:text-[13px] font-bold text-slate-700 dark:text-slate-200">${champ.range} ô</span>
-                                </div>
-                            </div>
-                            ${buildsSectionHTML}
-                        </div>
-                    `;
-            uiAlert(titleHTML, contentHTML);
-        };
-
-        // --- GIAO DIỆN CHÍNH (Đưa thanh search xuống bottom) ---
-        gridContainer.innerHTML = `
-                    <div class="flex flex-col relative pb-32 min-h-screen w-full">
-                    <div id="trait-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full pt-4"></div>
-                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col gap-2.5 pointer-events-none">
-                            <div class="w-full group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/40 transition-colors relative">
-                                <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px] transition-colors drop-shadow"></i>
-                                <input type="text" id="search-trait" placeholder="Tìm tộc/hệ (VD: Can Trường)..." 
-                                    class="w-full bg-transparent border-none text-slate-800 dark:text-white text-[13px] ml-2.5 pr-8 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500">
-                                
-                                <button id="clear-search-trait" class="absolute right-4 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 flex items-center justify-center outline-none">
-                                    <i class="fa-solid fa-circle-xmark text-[14px]"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                    </div>
-                `;
-
-        const renderTraits = (searchQuery = '') => {
-            const listContainer = document.getElementById('trait-list-container');
-            listContainer.innerHTML = '';
-
-            const filteredTraits = traitsData.filter(t =>
-                t.trait_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()))
-            );
-
-            if (filteredTraits.length === 0) {
-                listContainer.innerHTML = `
-                            <div class="col-span-full py-16 flex flex-col items-center justify-center text-slate-500">
-                                <i class="fa-solid fa-ghost text-4xl mb-3 opacity-20"></i>
-                                <span class="text-[12px] font-medium">Không tìm thấy Tộc/Hệ phù hợp.</span>
-                            </div>`;
-                return;
-            }
-
-            listContainer.innerHTML = filteredTraits.map(trait => {
-
-                let levelsHTML = '';
-                if (trait.levels && trait.levels.length > 0) {
-                    levelsHTML = trait.levels.map(lvl => `
-                                <div class="flex items-start gap-2.5">
-                                    <span class="bg-slate-200 dark:bg-black/60 text-premium-gold font-black text-[10px] min-w-[22px] text-center py-[3px] rounded border border-slate-300 dark:border-white/10 shrink-0 mt-0.5 shadow-sm">${lvl.milestone}</span>
-                                    <p class="text-[11.5px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium">${lvl.description.replace(/\n/g, '<br>')}</p>
-                                </div>
-                            `).join('');
-                }
-
-                let heroesHTML = '';
-                if (trait.heroes && trait.heroes.length > 0) {
-                    let mappedHeroes = trait.heroes.map(heroObj => {
-                        return masterChamps[heroObj.name.toLowerCase()];
-                    }).filter(champData => champData !== undefined);
-
-                    mappedHeroes.sort((a, b) => a.cost - b.cost);
-
-                    heroesHTML = mappedHeroes.map(hero => {
-                        let borderColor = 'border-slate-400 dark:border-slate-500'; let badgeBg = 'bg-slate-500 dark:bg-slate-700 text-white';
-                        if (hero.cost === 2) { borderColor = 'border-emerald-500'; badgeBg = 'bg-emerald-500 dark:bg-emerald-600 text-white'; }
-                        if (hero.cost === 3) { borderColor = 'border-blue-500'; badgeBg = 'bg-blue-500 dark:bg-blue-600 text-white'; }
-                        if (hero.cost === 4) { borderColor = 'border-purple-500'; badgeBg = 'bg-purple-500 dark:bg-purple-600 text-white'; }
-                        if (hero.cost === 5) { borderColor = 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]'; badgeBg = 'bg-yellow-400 dark:bg-yellow-500 text-black'; }
-
-                        return `
-                                    <div class="flex flex-col items-center w-10 sm:w-11 shrink-0 cursor-pointer group/hero hover:-translate-y-1 transition-transform" 
-                                         onclick="event.stopPropagation(); window.openChampModalFromTrait('${window.escapeJS(hero.name)}')" title="${hero.name}">
-                                         
-                                        <div class="relative w-full aspect-square rounded-lg border-[1.5px] ${borderColor} overflow-hidden shadow-md bg-black">
-                                            <img src="${hero.image}" class="w-full h-full object-cover object-[80%]" loading="lazy" ${onErrorFallback}>
-                                            <div class="absolute bottom-0 right-0 ${badgeBg} text-[8.5px] font-black px-1.5 py-[1px] leading-none rounded-tl-md border-t border-l border-white/20">
-                                                ${hero.cost}
-                                            </div>
-                                        </div>
-
-                                        <span class="text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate w-full text-center mt-1 group-hover/hero:text-premium-gold transition-colors drop-shadow-sm">
-                                            ${hero.name}
-                                        </span>
-                                    </div>
-                                `;
-                    }).join('');
-                }
-
-                const traitIconHTML = trait.icon_file
-                    ? `<div class="w-5 h-5 bg-premium-gold  group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" style="-webkit-mask-image: url('${trait.icon_file}'); mask-image: url('${trait.icon_file}'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div>`
-                    : `<i class="fa-solid fa-shapes text-[16px] bg-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300"></i>`;
-
-                return `
-                        <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-white/10 hover:border-premium-gold/50 dark:hover:border-premium-gold/30 rounded-2xl p-4 flex flex-col gap-1 transition-all duration-300 shadow-lg group relative overflow-hidden transform-gpu w-full">                                <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <div class="relative flex items-center justify-between cursor-pointer z-10 outline-none" onclick="window.toggleTraitDetails(this)">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-premium-gold text-premium-gold">
-                                            ${traitIconHTML}
-                                        </div>
-                                        <h3 class="text-[16px] font-black text-slate-800 dark:text-premium-gold tracking-wide drop-shadow-md uppercase">${window.escapeHTML(trait.trait_name)}</h3>
-                                    </div>
-                                    
-                                    <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex items-center justify-center group-hover:bg-premium-gold/20 transition-colors shadow-sm shrink-0">
-                                        <i class="fa-solid fa-chevron-down text-slate-400 dark:text-slate-400 text-sm expand-icon transition-transform duration-300 group-hover:text-premium-gold"></i>
-                                    </div>
-                                </div>
-                                
-                                ${heroesHTML ? `
-                                    <div class="mt-3 z-10 w-full">
-                                        <div class="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-2 w-full">
-                                            ${heroesHTML}
-                                        </div>
-                                    </div>
-                                ` : ''}
-
-                                <div class="trait-details hidden z-10 w-full h-auto">
-    <div class="flex flex-col gap-3 mt-4 pt-3 border-t border-slate-200 dark:border-white/5 w-full">
-                                        ${trait.description ? `<p class="text-[11px] text-slate-500 dark:text-slate-400 italic leading-relaxed">${trait.description.replace(/\n/g, '<br>')}</p>` : ''}
-                                        
-                                        ${levelsHTML ? `
-                                            <div class="flex flex-col gap-2 bg-slate-50 dark:bg-black/30 p-3 rounded-xl border border-slate-200 dark:border-white/5 shadow-inner">
-                                                ${levelsHTML}
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-            }).join('');
-        };
-
-        const searchInput = document.getElementById('search-trait');
-        const clearBtn = document.getElementById('clear-search-trait');
-
-        searchInput.addEventListener('input', window.debounce((e) => {
-            const val = e.target.value;
-            clearBtn.classList.toggle('hidden', val.length === 0);
-            renderTraits(val);
-        }, 300));
-
-        clearBtn.addEventListener('click', () => {
-            searchInput.value = '';
-            clearBtn.classList.add('hidden');
-            searchInput.focus();
-            renderTraits('');
-        });
-
-        renderTraits();
-
-    } catch (error) {
-        gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Tộc Hệ: ${error.message}</div>`;
     }
 }
 
@@ -1432,43 +1831,123 @@ async function loadItemsData() {
 }
 
 // ---------------------------------------------------------
-// HÀM FETCH VÀ RENDER DỮ LIỆU TỪ comps.json & FIREBASE (FULL ĐỒNG BỘ ICON TỘC HỆ)
+// HÀM FETCH VÀ RENDER DỮ LIỆU TỪ origin.json
 // ---------------------------------------------------------
-async function loadCompsData() {
-    const gridContainer = document.getElementById('grid-comps');
+async function loadOriginData() {
+    const gridContainer = document.getElementById('grid-origin-synergies');
     if (!gridContainer) return;
 
     try {
-        // 1. Thêm nguồn Firestore vào danh sách
-        const compSources = [
-            { id: 'source1', name: 'TFT 1', file: './asset/data/comps.json' },
-            { id: 'source2', name: 'TFT 2', file: './asset/data/compsS2.json' },
-            { id: 'source_fb', name: 'Cộng Đồng', file: 'firestore' } // Nguồn Firebase
-        ];
+        const response = await fetch('./asset/data/origin.json');
+        if (!response.ok) throw new Error('Không tìm thấy file origin.json');
 
-        let activeSourceUrl = compSources[0].file;
-        let compsData = [];
-        let champsData = [];
-        let itemsData = {};
-        let buildsData = [];
-        let currentMetaData = null;
+        const origins = await response.json();
+        gridContainer.innerHTML = '';
+        gridContainer.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-start w-full";
 
-        const [resChamps, resItems, resBuilds] = await Promise.all([
+        let originsHTML = '';
+        origins.forEach(origin => {
+            const validChampions = origin.champions ? origin.champions.filter(champ => champ.name !== origin.traitName) : [];
+            let championsHTML = '';
+
+            if (validChampions.length > 0) {
+                championsHTML = validChampions.map(champ => {
+                    return `
+                                <div class="flex flex-col items-center w-[46px] flex-shrink-0 cursor-pointer group" 
+                                     onclick="event.stopPropagation(); uiAlert('Thông tin Tướng', '<span class=\\'text-premium-gold font-bold\\'>${window.escapeJS(champ.name)}</span>')">
+                                    <img src="${champ.icon}" alt="${window.escapeHTML(champ.name)}" 
+                                         class="w-10 h-10 rounded-[10px] border border-slate-300 dark:border-slate-600 object-cover bg-black shadow-sm group-hover:scale-105 group-hover:border-slate-400 transition-all">
+                                    <span class="text-[8.5px] text-slate-500 dark:text-slate-400 font-medium text-center w-full truncate mt-1 group-hover:text-slate-800 dark:group-hover:text-white transition-colors">
+                                        ${window.escapeHTML(champ.name)}
+                                    </span>
+                                </div>
+                            `;
+                }).join('');
+            }
+
+            let statsHTML = '';
+            if (origin.stats && origin.stats.length > 0) {
+                statsHTML = origin.stats.map(stat => {
+                    return `
+                                <div class="flex items-start gap-2">
+                                    <span class="shrink-0 min-w-[20px] px-1 py-0.5 rounded bg-premium-gold/10 border border-premium-gold/30 text-premium-gold text-[9px] font-bold text-center mt-0.5">
+                                        ${stat.count}
+                                    </span>
+                                    <p class="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">${stat.effect}</p>
+                                </div>
+                            `;
+                }).join('');
+            }
+
+            const cardHTML = `
+                        <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-premium-border rounded-xl overflow-hidden block h-full shadow-lg transition-colors hover:border-slate-400 dark:hover:border-slate-600 cursor-pointer"
+                             onclick="toggleCard(this)">
+                            
+                            <div class="p-3.5 flex items-center gap-3 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-gradient-to-r dark:from-white/[0.03] dark:to-transparent transition-colors">
+                                <div class="w-10 h-10 flex items-center justify-center shrink-0">
+                                    <div class="w-full h-full bg-premium-gold" 
+                                         style="-webkit-mask-image: url('${origin.traitIcon}'); -webkit-mask-size: contain; -webkit-mask-repeat: no-repeat; -webkit-mask-position: center; mask-image: url('${origin.traitIcon}'); mask-size: contain; mask-repeat: no-repeat; mask-position: center;">
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <h3 class="text-base font-bold text-slate-800 dark:text-white leading-tight transition-colors">${origin.traitName}</h3>
+                                    <p class="text-[9px] font-semibold text-premium-accent uppercase tracking-wider">Origin</p>
+                                </div>
+                                <i class="fa-solid fa-chevron-down expand-chevron text-slate-400 dark:text-slate-600 text-sm p-1"></i>
+                            </div>
+                            
+                            <div class="card-expandable-body p-3.5 flex flex-col gap-3 bg-white dark:bg-transparent">
+                                ${origin.description ? `<p class="text-[11px] text-slate-500 dark:text-slate-400 italic leading-relaxed">"${origin.description}"</p>` : ''}
+                                ${statsHTML ? `<div class="flex flex-col gap-2 pt-1">${statsHTML}</div>` : ''}
+                            </div>
+
+                            <div class="p-3 bg-slate-50 dark:bg-black/40 border-t border-slate-100 dark:border-white/5 transition-colors" onclick="event.stopPropagation();">
+                                <div class="flex flex-wrap items-start justify-between gap-y-3">
+                                    ${championsHTML}
+                                    <div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div><div class="w-[46px] h-0"></div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+            originsHTML += cardHTML;
+        });
+        gridContainer.innerHTML = originsHTML;
+
+    } catch (error) {
+        gridContainer.innerHTML = `<div class="col-span-full text-center py-8 text-red-400 text-sm">Lỗi tải dữ liệu Origin. ${error.message}</div>`;
+    }
+}
+
+// ---------------------------------------------------------
+// HÀM FETCH VÀ RENDER DỮ LIỆU TỪ traits.json (TÍCH HỢP MODAL TƯỚNG FULL CHI TIẾT)
+// ---------------------------------------------------------
+async function loadTraitsData() {
+    const gridContainer = document.getElementById('grid-traits');
+    if (!gridContainer) return;
+
+    try {
+        // 1. TẢI FULL 4 FILE DỮ LIỆU ĐỂ HỖ TRỢ MODAL TƯỚNG
+        const [resTraits, resChamps, resItems, resBuilds] = await Promise.all([
+            fetch('./asset/data/traits.json'),
             fetch('./asset/data/champions.json'),
             fetch('./asset/data/items.json'),
             fetch('./asset/data/champion_builds.json').catch(() => null)
         ]);
 
-        if (!resChamps.ok || !resItems.ok) {
-            throw new Error('Không thể tải dữ liệu Tướng hoặc Trang Bị nền tảng.');
+        if (!resTraits.ok || !resChamps.ok || !resItems.ok) {
+            throw new Error('Không tìm thấy file dữ liệu Tộc Hệ, Tướng hoặc Trang bị.');
         }
 
-        champsData = await resChamps.json();
-        itemsData = await resItems.json();
-        if (resBuilds && resBuilds.ok) buildsData = await resBuilds.json();
+        const traitsData = await resTraits.json();
+        const champsData = await resChamps.json();
+        const itemsData = await resItems.json();
+        const buildsData = resBuilds && resBuilds.ok ? await resBuilds.json() : [];
 
+        // 2. MAP DỮ LIỆU TƯỚNG & TRANG BỊ
         const masterChamps = {};
-        champsData.forEach(champ => { masterChamps[champ.name.toLowerCase().trim()] = champ; });
+        champsData.forEach(champ => {
+            masterChamps[champ.name.toLowerCase().trim()] = champ;
+        });
 
         const masterItems = {};
         for (const itemArray of Object.values(itemsData)) {
@@ -1477,19 +1956,19 @@ async function loadCompsData() {
             }
         }
 
-        // Đảm bảo hàm chuẩn hóa luôn tồn tại
-        window._normalizeBuildName = window._normalizeBuildName || ((name) => {
+        // THÊM HÀM CHUẨN HÓA TÊN (Xóa dấu nháy, khoảng trắng, ký tự đặc biệt)
+        const normalizeBuildName = (name) => {
             if (!name) return '';
             return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-        });
+        };
 
-        window._masterBuildsForComps = {};
+        window._masterBuilds = {};
         if (Array.isArray(buildsData)) {
             buildsData.forEach(b => {
                 const validBuilds = b.builds.filter(build => build.items && build.items.length > 0);
                 if (validBuilds.length > 0) {
-                    // Ép tên về dạng chuẩn trước khi lưu
-                    window._masterBuildsForComps[window._normalizeBuildName(b.unit)] = validBuilds;
+                    // Ép tên trong file builds (Kaisa, TwistedFate) về dạng chuẩn (kaisa, twistedfate)
+                    window._masterBuilds[normalizeBuildName(b.unit)] = validBuilds;
                 }
             });
         }
@@ -1504,27 +1983,25 @@ async function loadCompsData() {
             return str.split(/\s+/).map(word => word ? word.charAt(0).toUpperCase() + word.slice(1).toLowerCase() : '').join('');
         };
 
-        let activeTags = new Set();
-        let searchQuery = '';
-
-        window.toggleCompDetails = (btnElement) => {
-            const card = btnElement.closest('.comp-card');
-            const detailsWrapper = card.querySelector('.comp-details');
-            const chevronIcon = btnElement.querySelector('.expand-icon');
+        window.toggleTraitDetails = (headerElement) => {
+            const card = headerElement.closest('.group');
+            const detailsWrapper = card.querySelector('.trait-details');
+            const chevronIcon = card.querySelector('.expand-icon');
 
             if (detailsWrapper.classList.contains('hidden')) {
                 detailsWrapper.classList.remove('hidden');
                 chevronIcon.classList.add('rotate-180');
-                card.classList.add('border-premium-gold/40');
+                card.classList.add('border-premium-gold/50');
             } else {
                 detailsWrapper.classList.add('hidden');
                 chevronIcon.classList.remove('rotate-180');
-                card.classList.remove('border-premium-gold/40');
+                card.classList.remove('border-premium-gold/50');
             }
         };
 
-        window.renderBuildTabInComp = (champName, styleIndex) => {
-            const builds = window._masterBuildsForComps[window._normalizeBuildName(champName)];
+        // --- 3. HÀM MODAL TƯỚNG (GIỐNG TAB ĐỘI HÌNH) ---
+        window.renderBuildTabInTrait = (champName, styleIndex) => {
+            const builds = window._masterBuildsForTraits[champName];
             if (!builds || builds.length === 0) return '<p class="text-[10px] text-slate-500 text-center py-4 italic">Chưa có dữ liệu gợi ý.</p>';
 
             const currentBuild = builds[styleIndex];
@@ -1555,7 +2032,7 @@ async function loadCompsData() {
             }).join('');
 
             const tabsHTML = builds.map((b, idx) => `
-                        <button onclick="document.getElementById('build-content-comp').innerHTML = window.renderBuildTabInComp('${window.escapeJS(champName)}', ${idx})" 
+                        <button onclick="document.getElementById('build-content-trait').innerHTML = window.renderBuildTabInTrait('${window.escapeJS(champName)}', ${idx})" 
                                 class="px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all whitespace-nowrap shadow-sm border outline-none ${idx === styleIndex ? 'bg-premium-gold text-black border-transparent shadow-[0_0_5px_rgba(212,175,55,0.5)]' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-white'}">
                             Cách ${idx + 1}
                         </button>
@@ -1581,7 +2058,7 @@ async function loadCompsData() {
                     `;
         };
 
-        window.openChampModalFromComp = (champNameRaw) => {
+        window.openChampModalFromTrait = (champNameRaw) => {
             const champ = masterChamps[cleanName(champNameRaw)];
             if (!champ) return;
 
@@ -1618,7 +2095,7 @@ async function loadCompsData() {
                             <div class="text-[10px] md:text-[11px] font-black text-premium-gold uppercase tracking-widest mb-3 flex items-center gap-2 drop-shadow-md">
                                 <i class="fa-solid fa-chart-pie"></i> Thống kê lên đồ
                             </div>
-                            <div id="build-content-comp">${window.renderBuildTabInComp(champ.name, 0)}</div>
+                            <div id="build-content-trait">${window.renderBuildTabInTrait(champ.name, 0)}</div>
                         </div>
                     `;
 
@@ -1647,631 +2124,157 @@ async function loadCompsData() {
             uiAlert(titleHTML, contentHTML);
         };
 
-        const sourceButtonsHTML = compSources.map(src => `
-                    <button class="filter-source-btn shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none
-                        ${src.file === activeSourceUrl ? 'bg-rose-500 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'}" 
-                        data-url="${src.file}">
-                        <i class="fa-solid ${src.file === 'firestore' ? 'fa-cloud' : 'fa-database'} text-[10px] opacity-80"></i> ${src.name}
-                    </button>
-                `).join('');
-
-        gridContainer.className = "flex flex-col relative pb-20 min-h-screen w-full";
+        // --- GIAO DIỆN CHÍNH (Đưa thanh search xuống bottom) ---
         gridContainer.innerHTML = `
-                    <div class="flex flex-col relative pb-40 min-h-screen w-full">
-                        <div id="comp-list-container" class="flex flex-col gap-4 w-full"></div>
-                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col items-center pointer-events-none">
-                            
-                            <div id="comp-filters-wrapper" class="w-full transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] opacity-0 translate-y-4 pointer-events-none absolute bottom-full mb-3 left-0">
-                                <div class="bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-2xl border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-[0_15px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_15px_40px_rgba(0,0,0,0.8)] flex flex-col gap-3 relative overflow-hidden">
-                                    <div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-300 dark:via-white/20 to-transparent"></div>
-
-                                    <div class="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-2 mb-1">
-                                        <span class="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5 drop-shadow-md">
-                                            <i class="fa-solid fa-filter text-premium-gold"></i> Tùy chỉnh Bộ lọc
-                                        </span>
-                                        <button id="close-filter-comp-btn" class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-colors pointer-events-auto outline-none">
-                                            <i class="fa-solid fa-xmark text-sm"></i>
-                                        </button>
-                                    </div>
-
-                                    <div class="flex flex-col gap-1.5">
-                                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Nguồn dữ liệu:</span>
-                                        <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto w-full pb-1">
-                                            ${sourceButtonsHTML}
-                                        </div>
-                                    </div>
-
-                                    <div class="flex flex-col gap-1.5">
-                                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Lọc theo Nhãn Đội Hình:</span>
-                                        <div id="dynamic-tags-container" class="flex items-center gap-2 overflow-x-auto no-scrollbar pointer-events-auto w-full pb-1">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
+                    <div class="flex flex-col relative pb-32 min-h-screen w-full">
+                    <div id="trait-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 w-full pt-4"></div>
+                        <div class="fixed bottom-5 left-1/2 -translate-x-1/2 w-[94%] max-w-[420px] z-50 flex flex-col gap-2.5 pointer-events-none">
                             <div class="w-full group bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200 dark:border-white/20 rounded-full shadow-[0_15px_35px_rgba(0,0,0,0.1)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] overflow-hidden flex items-center pl-4 pr-2 py-2 pointer-events-auto hover:border-premium-gold/40 transition-colors relative">
                                 <i class="fa-solid fa-magnifying-glass text-slate-400 group-focus-within:text-premium-gold text-[13px] transition-colors drop-shadow"></i>
-                                <input type="text" id="search-comp" placeholder="Tìm đội hình..." class="w-full bg-transparent border-none text-slate-800 dark:text-white text-[13px] ml-2.5 pr-8 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500">
-                                <button id="clear-search-comp" class="absolute right-12 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 flex items-center justify-center outline-none">
+                                <input type="text" id="search-trait" placeholder="Tìm tộc/hệ (VD: Can Trường)..." 
+                                    class="w-full bg-transparent border-none text-slate-800 dark:text-white text-[13px] ml-2.5 pr-8 focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500">
+                                
+                                <button id="clear-search-trait" class="absolute right-4 hidden text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors p-1 flex items-center justify-center outline-none">
                                     <i class="fa-solid fa-circle-xmark text-[14px]"></i>
                                 </button>
-                                <div class="w-[1px] h-5 bg-slate-200 dark:bg-white/10 mx-1"></div>
-                                <button id="toggle-filter-comp-btn" class="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 transition-colors border border-transparent hover:bg-premium-gold hover:text-black outline-none relative">
-                                    <i class="fa-solid fa-sliders text-[12px]"></i>
-                                    <span id="comp-filter-indicator" class="absolute top-0 right-0 w-[9px] h-[9px] bg-rose-500 rounded-full border-[1.5px] border-white dark:border-slate-800 hidden shadow-sm"></span>
-                                </button>
                             </div>
                         </div>
+
                     </div>
                 `;
 
-        const toggleFilterBtn = document.getElementById('toggle-filter-comp-btn');
-        const closeFilterBtn = document.getElementById('close-filter-comp-btn');
-        const filtersWrapper = document.getElementById('comp-filters-wrapper');
-        let isFilterMenuOpen = false;
+        const renderTraits = (searchQuery = '') => {
+            const listContainer = document.getElementById('trait-list-container');
+            listContainer.innerHTML = '';
 
-        const toggleFilterMenu = () => {
-            isFilterMenuOpen = !isFilterMenuOpen;
-            if (isFilterMenuOpen) {
-                filtersWrapper.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
-                filtersWrapper.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
-                toggleFilterBtn.classList.add('bg-premium-gold', 'text-black', 'shadow-[0_0_8px_rgba(212,175,55,0.5)]');
-                toggleFilterBtn.classList.remove('bg-slate-100', 'dark:bg-white/5', 'text-slate-600', 'dark:text-slate-300');
-            } else {
-                filtersWrapper.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
-                filtersWrapper.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
-                toggleFilterBtn.classList.remove('bg-premium-gold', 'text-black', 'shadow-[0_0_8px_rgba(212,175,55,0.5)]');
-                toggleFilterBtn.classList.add('bg-slate-100', 'dark:bg-white/5', 'text-slate-600', 'dark:text-slate-300');
-            }
-        };
+            const filteredTraits = traitsData.filter(t =>
+                t.trait_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (t.description && t.description.toLowerCase().includes(searchQuery.toLowerCase()))
+            );
 
-        toggleFilterBtn.addEventListener('click', toggleFilterMenu);
-        closeFilterBtn.addEventListener('click', () => { if (isFilterMenuOpen) toggleFilterMenu(); });
-        document.getElementById('comp-list-container').addEventListener('click', () => { if (isFilterMenuOpen) toggleFilterMenu(); });
-
-        const updateFilterIndicator = () => {
-            const indicator = document.getElementById('comp-filter-indicator');
-            if (activeTags.size > 0) indicator.classList.remove('hidden');
-            else indicator.classList.add('hidden');
-        };
-
-        const renderDynamicTagsFilter = () => {
-            const tagsContainer = document.getElementById('dynamic-tags-container');
-            if (!tagsContainer) return;
-
-            const allCompTags = [...new Set(compsData.flatMap(comp => comp.CompRowTags || []))].sort();
-
-            if (allCompTags.length === 0) {
-                tagsContainer.innerHTML = '<span class="text-[10px] text-slate-500 italic">Không có nhãn phân loại.</span>';
-                return;
-            }
-
-            tagsContainer.innerHTML = allCompTags.map(tag => `
-                        <button class="filter-dynamic-tag-btn shrink-0 px-3.5 py-1.5 rounded-full font-bold text-[10.5px] transition-all shadow-sm outline-none ${activeTags.has(tag) ? 'bg-premium-gold text-black border-transparent shadow-[0_0_8px_rgba(212,175,55,0.6)]' : 'bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'}" data-tag="${tag}">
-                            ${tag}
-                        </button>
-                    `).join('');
-
-            document.querySelectorAll('.filter-dynamic-tag-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const tag = e.currentTarget.dataset.tag;
-                    if (activeTags.has(tag)) activeTags.delete(tag);
-                    else activeTags.add(tag);
-
-                    updateFilterIndicator();
-                    renderDynamicTagsFilter();
-                    renderComps();
-                });
-            });
-        };
-
-        window.getRelativeTimeVn = (timeStr) => {
-            if (!timeStr) return 'Không rõ';
-            try {
-                // Cắt chuỗi "18:06:52 9/4/2026"
-                const parts = timeStr.split(' ');
-                if (parts.length !== 2) return timeStr;
-
-                const timeParts = parts[0].split(':');
-                const dateParts = parts[1].split('/');
-
-                // Tạo object Date: new Date(year, monthIndex, day, hours, minutes, seconds)
-                const date = new Date(dateParts[2], dateParts[1] - 1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]);
-                const now = new Date();
-                const diffInSeconds = Math.floor((now - date) / 1000);
-
-                if (diffInSeconds < 60) return `Vừa xong`;
-                if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} phút trước`;
-                if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} giờ trước`;
-                if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} ngày trước`;
-
-                return parts[1]; // Nếu quá 30 ngày thì hiển thị luôn ngày tháng gốc
-            } catch (e) {
-                return timeStr;
-            }
-        };
-
-        const fetchAndRenderComps = async (url) => {
-            const listContainer = document.getElementById('comp-list-container');
-            listContainer.innerHTML = `<div class="py-16 flex flex-col items-center justify-center text-slate-500"><i class="fa-solid fa-spinner fa-spin text-3xl mb-4"></i><span class="text-[12px] font-medium">Đang tải dữ liệu...</span></div>`;
-
-            try {
-                if (url === 'firestore') {
-                    if (!window._db) throw new Error("Kết nối Firebase chưa sẵn sàng.");
-                    const q = window._fsQuery(window._fsCol(window._db, "shared_comps"), window._fsOrderBy("createdAt", "desc"));
-                    const querySnapshot = await window._fsGetDocs(q);
-                    compsData = [];
-                    querySnapshot.forEach((doc) => {
-                        compsData.push(doc.data());
-                    });
-                    if (compsData.length === 0) throw new Error('Chưa có đội hình cộng đồng nào được chia sẻ.');
-                } else {
-                    const res = await fetch(url);
-                    if (!res.ok) throw new Error('Chưa có dữ liệu cho Mùa này.');
-
-                    // 1. Nhận dữ liệu thô từ file JSON
-                    const rawData = await res.json();
-                    if (rawData && rawData.Data && Array.isArray(rawData.Data)) {
-                        compsData = rawData.Data;
-                        currentMetaData = rawData.MetaData; // Lưu MetaData vào biến
-                    } else if (Array.isArray(rawData)) {
-                        compsData = rawData;
-                        currentMetaData = null; // Trả về null nếu file kiểu cũ không có MetaData
-                    }
-
-                    // 2. Trích xuất đúng mảng chứa danh sách tướng
-                    if (rawData && rawData.Data && Array.isArray(rawData.Data)) {
-                        // Dành cho cấu trúc JSON mới (có bọc MetaData và Data)
-                        compsData = rawData.Data;
-                    } else if (Array.isArray(rawData)) {
-                        // Dành cho cấu trúc JSON cũ (nếu bạn vẫn dùng mảng trực tiếp ở file khác)
-                        compsData = rawData;
-                    } else {
-                        throw new Error('Cấu trúc dữ liệu JSON không hợp lệ.');
-                    }
-                }
-
-                activeTags.clear();
-                updateFilterIndicator();
-                renderDynamicTagsFilter();
-                renderComps();
-            } catch (error) {
-                compsData = [];
-                renderDynamicTagsFilter();
+            if (filteredTraits.length === 0) {
                 listContainer.innerHTML = `
-                            <div class="py-16 flex flex-col items-center justify-center text-slate-500">
-                                <i class="fa-solid fa-file-circle-xmark text-4xl mb-3 opacity-30"></i>
-                                <span class="text-[12px] font-medium text-rose-500 dark:text-rose-400/80">${error.message}</span>
+                            <div class="col-span-full py-16 flex flex-col items-center justify-center text-slate-500">
+                                <i class="fa-solid fa-ghost text-4xl mb-3 opacity-20"></i>
+                                <span class="text-[12px] font-medium">Không tìm thấy Tộc/Hệ phù hợp.</span>
                             </div>`;
-            }
-        };
-
-        const renderComps = () => {
-            const listContainer = document.getElementById('comp-list-container');
-
-            // ==========================================
-            // 1. TẠO HEADER (THỜI GIAN & NÚT NGUỒN)
-            // ==========================================
-            let updateTimeText = 'Đang cập nhật...';
-            if (currentMetaData && currentMetaData.ScrapeTime) {
-                // Gọi hàm tính thời gian tương đối (bạn nhớ thêm hàm getRelativeTimeVn ở ngoài nhé)
-                updateTimeText = window.getRelativeTimeVn(currentMetaData.ScrapeTime);
-            }
-
-            const sourceButtonsHTML_Main = compSources.map(src => `
-                <button class="filter-source-btn-main shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none
-                    ${src.file === activeSourceUrl ? 'bg-rose-500 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'}" 
-                    data-url="${src.file}">
-                    <i class="fa-solid ${src.file === 'firestore' ? 'fa-cloud' : 'fa-database'} text-[10px] opacity-80"></i> ${src.name}
-                </button>
-            `).join('');
-
-            const headerHTML = `
-                <div class="flex flex-col gap-3 px-1 mb-2 mt-2">
-                    <div class="flex items-center justify-between">
-                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider">Dữ liệu đội hình</p>
-                        <span class="text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10 flex items-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-clock-rotate-left"></i> Cập nhật: <span class="font-bold text-slate-700 dark:text-slate-300">${updateTimeText}</span>
-                        </span>
-                    </div>
-                    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar w-full pb-1">
-                        ${sourceButtonsHTML_Main}
-                    </div>
-                </div>
-            `;
-
-            // ==========================================
-            // 2. LỌC DỮ LIỆU ĐỘI HÌNH
-            // ==========================================
-            const filteredComps = compsData.filter(comp => {
-                const matchSearch = comp.CompTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                    (comp.UnitsContainer && comp.UnitsContainer.some(u => u.champion.toLowerCase().includes(searchQuery.toLowerCase())));
-
-                const compTags = comp.CompRowTags || [];
-                const matchTag = activeTags.size === 0 || [...activeTags].every(tag => compTags.includes(tag));
-
-                return matchSearch && matchTag;
-            });
-
-            // ==========================================
-            // 3. XỬ LÝ KHI KHÔNG TÌM THẤY ĐỘI HÌNH
-            // ==========================================
-            if (filteredComps.length === 0) {
-                listContainer.innerHTML = headerHTML + `
-                    <div class="py-16 flex flex-col items-center justify-center text-slate-500">
-                        <i class="fa-solid fa-ghost text-4xl mb-3 opacity-20"></i>
-                        <span class="text-[12px] font-medium">Không tìm thấy Đội Hình phù hợp.</span>
-                    </div>`;
                 return;
             }
 
-            // ==========================================
-            // 4. VẼ LƯỚI BÀN CỜ TRỐNG (HEXES)
-            // ==========================================
-            let emptyHexesHTML = '';
-            for (let r = 0; r < 4; r++) {
-                for (let c = 0; c < 7; c++) {
-                    const isOddRow = r % 2 !== 0;
-                    const left = c * 13.33 + (isOddRow ? 6.66 : 0);
-                    const top = r * 23.07;
-                    emptyHexesHTML += `
-                        <div class="absolute w-[13.33%] h-[30.76%] bg-slate-200/50 dark:bg-[#112233]/80 scale-[0.92] transition-colors" 
-                             style="left: ${left}%; top: ${top}%; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-                        </div>
-                    `;
-                }
-            }
+            listContainer.innerHTML = filteredTraits.map(trait => {
 
-            // ==========================================
-            // 5. RENDER DANH SÁCH ĐỘI HÌNH THỰC TẾ
-            // ==========================================
-            const compsHTML = filteredComps.map((comp, compIndex) => {
-
-                // --- 5.1 Render Tags ---
-                let tagsHTML = '';
-                if (comp.CompRowTags && comp.CompRowTags.length > 0) {
-                    tagsHTML = comp.CompRowTags.map(tag =>
-                        `<span class="px-2 py-[1px] rounded bg-premium-gold/10 border border-premium-gold/30 dark:border-premium-gold/20 text-premium-gold text-[9px] font-bold uppercase tracking-wider">${window.escapeHTML(tag)}</span>`
-                    ).join('');
-                }
-
-                // --- 5.2 Render Tướng & Đếm Tộc Hệ ---
-                let unitsHTML = '';
-                let traitCounts = {};
-
-                if (comp.UnitsContainer && comp.UnitsContainer.length > 0) {
-                    const sortedUnits = [...comp.UnitsContainer].sort((a, b) => (b.items?.length || 0) - (a.items?.length || 0));
-
-                    unitsHTML = sortedUnits.map(unit => {
-                        const cName = cleanName(unit.champion);
-                        const champData = masterChamps[cName];
-                        const champImage = champData ? champData.image : '/Asset/logo/logo.png';
-                        const champCost = champData ? champData.cost : 1;
-
-                        if (champData && champData.traits) {
-                            champData.traits.forEach(t => { traitCounts[t.name] = (traitCounts[t.name] || 0) + 1; });
-                        }
-
-                        let borderColor = 'border-slate-400 dark:border-slate-600';
-                        if (champCost === 2) borderColor = 'border-emerald-500';
-                        if (champCost === 3) borderColor = 'border-blue-500';
-                        if (champCost === 4) borderColor = 'border-purple-500';
-                        if (champCost === 5) borderColor = 'border-yellow-400';
-
-                        const items = unit.items || [];
-                        let itemsHTML = '';
-                        if (items.length > 0) {
-                            itemsHTML = items.map(itemName => {
-                                const iData = masterItems[cleanName(itemName)];
-                                const img = iData ? iData.image : '/Asset/logo/logo.png';
-                                const iName = iData ? iData.name : itemName;
-
-                                return `
-                                <div class="relative group/tooltip cursor-pointer">
-                                    <img src="${img}" class="w-[14px] h-[14px] sm:w-[15px] sm:h-[15px] rounded-[3px] border border-slate-300 dark:border-slate-800 object-cover shadow-sm bg-black hover:scale-110 transition-transform" ${onErrorFallback}>
-                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[150px] px-2.5 py-1.5 bg-slate-900 dark:bg-black text-white rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-[100] pointer-events-none border border-slate-700 dark:border-white/10 scale-95 group-hover/tooltip:scale-100 origin-bottom">
-                                        <span class="text-[9px] font-bold text-premium-gold block text-center truncate">${window.escapeHTML(iName)}</span>
-                                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900 dark:border-t-black"></div>
-                                    </div>
+                let levelsHTML = '';
+                if (trait.levels && trait.levels.length > 0) {
+                    levelsHTML = trait.levels.map(lvl => `
+                                <div class="flex items-start gap-2.5">
+                                    <span class="bg-slate-200 dark:bg-black/60 text-premium-gold font-black text-[10px] min-w-[22px] text-center py-[3px] rounded border border-slate-300 dark:border-white/10 shrink-0 mt-0.5 shadow-sm">${lvl.milestone}</span>
+                                    <p class="text-[11.5px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium">${lvl.description.replace(/\n/g, '<br>')}</p>
                                 </div>
+                            `).join('');
+                }
+
+                let heroesHTML = '';
+                if (trait.heroes && trait.heroes.length > 0) {
+                    let mappedHeroes = trait.heroes.map(heroObj => {
+                        return masterChamps[heroObj.name.toLowerCase()];
+                    }).filter(champData => champData !== undefined);
+
+                    mappedHeroes.sort((a, b) => a.cost - b.cost);
+
+                    heroesHTML = mappedHeroes.map(hero => {
+                        let borderColor = 'border-slate-400 dark:border-slate-500'; let badgeBg = 'bg-slate-500 dark:bg-slate-700 text-white';
+                        if (hero.cost === 2) { borderColor = 'border-emerald-500'; badgeBg = 'bg-emerald-500 dark:bg-emerald-600 text-white'; }
+                        if (hero.cost === 3) { borderColor = 'border-blue-500'; badgeBg = 'bg-blue-500 dark:bg-blue-600 text-white'; }
+                        if (hero.cost === 4) { borderColor = 'border-purple-500'; badgeBg = 'bg-purple-500 dark:bg-purple-600 text-white'; }
+                        if (hero.cost === 5) { borderColor = 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]'; badgeBg = 'bg-yellow-400 dark:bg-yellow-500 text-black'; }
+
+                        return `
+                                    <div class="flex flex-col items-center w-10 sm:w-11 shrink-0 cursor-pointer group/hero hover:-translate-y-1 transition-transform" 
+                                         onclick="event.stopPropagation(); window.openChampModalFromTrait('${window.escapeJS(hero.name)}')" title="${hero.name}">
+                                         
+                                        <div class="relative w-full aspect-square rounded-lg border-[1.5px] ${borderColor} overflow-hidden shadow-md bg-black">
+                                            <img src="${hero.image}" class="w-full h-full object-cover object-[80%]" loading="lazy" ${onErrorFallback}>
+                                            <div class="absolute bottom-0 right-0 ${badgeBg} text-[8.5px] font-black px-1.5 py-[1px] leading-none rounded-tl-md border-t border-l border-white/20">
+                                                ${hero.cost}
+                                            </div>
+                                        </div>
+
+                                        <span class="text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate w-full text-center mt-1 group-hover/hero:text-premium-gold transition-colors drop-shadow-sm">
+                                            ${hero.name}
+                                        </span>
+                                    </div>
                                 `;
-                            }).join('');
-                        }
-
-                        return `
-                            <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer mb-1" onclick="window.openChampModalFromComp('${window.escapeJS(unit.champion)}')">
-                                <div class="relative w-full mb-1.5 transition-transform duration-300 group-hover/unit:-translate-y-1">
-                                    <div class="w-full h-12 sm:h-[50px] aspect-square rounded-[6px] border-2 ${borderColor} overflow-hidden bg-black shadow-md">
-                                        <img src="${champImage}" class="w-full h-full object-cover object-[80%]" title="${window.escapeHTML(unit.champion)}" ${onErrorFallback}>
-                                    </div>
-                                    <div class="absolute -bottom-2 left-0 w-full flex justify-center gap-[1.5px] z-10">
-                                        ${itemsHTML}
-                                    </div>
-                                </div>
-                                <span class="text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-200 font-bold truncate w-full text-center mt-1 group-hover/unit:text-premium-gold transition-colors drop-shadow-sm">${window.escapeHTML(unit.champion)}</span>
-                            </div>
-                        `;
                     }).join('');
                 }
 
-                // --- 5.3 Render Tộc Hệ ---
-                const sortedTraits = Object.entries(traitCounts).sort((a, b) => b[1] - a[1]);
-                let traitsHTML = sortedTraits.map(([tName, tCount]) => {
-                    const iconFilename = getTraitIconName(tName);
-                    return `
-                        <div class="flex items-center gap-1.5 pl-1.5 pr-1 py-0.5 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded-full shadow-sm text-slate-700 dark:text-slate-200">
-                            <div class="w-3.5 h-3.5 bg-current shrink-0" 
-                                 style="-webkit-mask-image: url('./asset/traits/${iconFilename}.svg'); mask-image: url('./asset/traits/${iconFilename}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;">
-                            </div>
-                            <span class="text-[10px] font-semibold">${tName}</span>
-                            <div class="w-4 h-4 rounded-full bg-premium-gold flex items-center justify-center shadow-inner border border-yellow-400 dark:border-yellow-300 ml-0.5">
-                                <span class="text-[9px] font-black text-black leading-none">${tCount}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                if (!traitsHTML) traitsHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu Tộc Hệ.</span>';
+                const traitIconHTML = trait.icon_file
+                    ? `<div class="w-5 h-5 bg-premium-gold  group-hover:opacity-100 group-hover:scale-110 transition-all duration-300" style="-webkit-mask-image: url('${trait.icon_file}'); mask-image: url('${trait.icon_file}'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div>`
+                    : `<i class="fa-solid fa-shapes text-[16px] bg-current opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300"></i>`;
 
-                // --- 5.4 Render Đồ Đi Chợ (Carousel) ---
-                let carouselHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
-                if (comp.CompQuickStart?.carousel?.length > 0) {
-                    carouselHTML = `<div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">` +
-                        comp.CompQuickStart.carousel.slice(0, 5).map((cItem, index) => {
-                            const iData = masterItems[cleanName(cItem.item)];
-                            const img = iData ? iData.image : '/Asset/logo/logo.png';
-                            return `
-                                <div class="flex items-center">
-                                    <img src="${img}" class="w-6 h-6 rounded border border-slate-300 dark:border-slate-600 bg-black object-cover shadow-sm" ${onErrorFallback}>
-                                    ${index < Math.min(4, comp.CompQuickStart.carousel.length - 1) ? `<i class="fa-solid fa-angle-right text-[8px] text-slate-400 dark:text-slate-600 mx-1"></i>` : ''}
-                                </div>
-                            `;
-                        }).join('') + `</div>`;
-                }
-
-                // --- 5.5 Render Form Đầu Game ---
-                let earlyCompHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
-                if (comp.CompEarlyOptions?.length > 0) {
-                    earlyCompHTML = comp.CompEarlyOptions.slice(0, 2).map(opt => {
-                        const teamHTML = opt.team_comp.map(c => {
-                            const cData = masterChamps[cleanName(c)];
-                            const img = cData ? cData.image : '/Asset/logo/logo.png';
-                            let borderColor = 'border-slate-400 dark:border-slate-600';
-                            if (cData) {
-                                if (cData.cost === 2) borderColor = 'border-emerald-500';
-                                if (cData.cost === 3) borderColor = 'border-blue-500';
-                                if (cData.cost === 4) borderColor = 'border-purple-500';
-                                if (cData.cost === 5) borderColor = 'border-yellow-400';
-                            }
-                            return `
-                                <div class="flex flex-col items-center w-9 sm:w-10 shrink-0 cursor-pointer group/early" onclick="window.openChampModalFromComp('${window.escapeJS(c)}')">
-                                    <div class="w-full h-9 sm:h-10 aspect-square rounded-[4px] border-[1.5px] ${borderColor} overflow-hidden bg-black shadow-md transition-transform group-hover/early:-translate-y-1">
-                                        <img src="${img}" class="w-full h-full object-cover object-[80%]" ${onErrorFallback}>
-                                    </div>
-                                    <span class="text-[8px] sm:text-[9px] text-slate-500 dark:text-slate-400 font-semibold truncate w-full text-center mt-1 group-hover/early:text-premium-gold transition-colors">${c}</span>
-                                </div>
-                            `;
-                        }).join('');
-
-                        return `
-                            <div class="flex items-center justify-between bg-slate-50 dark:bg-white/[0.02] p-2 rounded-lg border border-slate-200 dark:border-white/5">
-                                <div class="flex gap-2 items-start flex-nowrap overflow-x-auto no-scrollbar pb-1 pt-1">${teamHTML}</div>
-                                <div class="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-500/20 shrink-0 ml-3 self-center">
-                                    <i class="fa-solid fa-trophy text-[8px] text-emerald-600 dark:text-emerald-400"></i>
-                                    <span class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 leading-none">${opt.win_rate}</span>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-                    earlyCompHTML = `<div class="flex flex-col gap-2">${earlyCompHTML}</div>`;
-                }
-
-                // --- 5.6 Render Xếp Cờ (Board) ---
-                let boardHTML = '<p class="text-[10px] text-slate-500 italic flex items-center justify-center h-full">Không có dữ liệu xếp cờ.</p>';
-                if (comp.BoardPositions && comp.BoardPositions.length > 0) {
-                    const champHexesHTML = comp.BoardPositions.map(pos => {
-                        const cData = masterChamps[cleanName(pos.champion)];
-                        const img = cData ? cData.image : '/Asset/logo/logo.png';
-                        let bgBorder = 'bg-slate-400 dark:bg-slate-600';
-                        if (cData) {
-                            if (cData.cost === 2) bgBorder = 'bg-emerald-500';
-                            if (cData.cost === 3) bgBorder = 'bg-blue-500';
-                            if (cData.cost === 4) bgBorder = 'bg-purple-500';
-                            if (cData.cost === 5) bgBorder = 'bg-yellow-400';
-                        }
-                        const isOddRow = pos.coordinates.row % 2 !== 0;
-                        const left = pos.coordinates.col * 13.33 + (isOddRow ? 6.66 : 0);
-                        const top = pos.coordinates.row * 23.07;
-
-                        return `
-                            <div class="absolute w-[13.33%] h-[30.76%] z-10 transition-transform hover:scale-110 scale-[0.92] drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] cursor-pointer" 
-                                 style="left: ${left}%; top: ${top}%;" title="${pos.champion}" onclick="window.openChampModalFromComp('${window.escapeJS(pos.champion)}')">
-                                <div class="w-full h-full p-[2px] ${bgBorder}" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);">
-                                    <img src="${img}" class="w-full h-full object-cover object-[80%] bg-slate-900" style="clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);" ${onErrorFallback}>
-                                </div>
-                            </div>
-                        `;
-                    }).join('');
-
-                    boardHTML = `
-                        <div class="relative w-full max-w-[340px] mx-auto aspect-[2/1] bg-slate-100 dark:bg-[#0B101A] rounded-xl overflow-hidden shadow-inner p-1.5 border border-slate-300 dark:border-white/5">
-                            ${emptyHexesHTML}
-                            ${champHexesHTML}
-                        </div>
-                    `;
-                }
-
-                // --- 5.7 Render Nhịp Lên Cấp (Leveling) ---
-                let levelingHTML = '<span class="text-[10px] text-slate-500 italic">Không có dữ liệu.</span>';
-                if (comp.CompQuickStart?.leveling?.length > 0) {
-                    levelingHTML = `<div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1">` +
-                        comp.CompQuickStart.leveling.map((lvl, index) => `
-                            <div class="flex items-center">
-                                <div class="flex flex-col items-center bg-slate-100 dark:bg-black/40 px-1.5 py-0.5 rounded shadow-inner border border-slate-200 dark:border-white/5">
-                                    <span class="text-[8.5px] font-bold text-slate-800 dark:text-slate-300 leading-tight">${lvl.level}</span>
-                                    <span class="text-[9px] text-premium-gold font-black leading-tight">${lvl.stage}</span>
-                                </div>
-                                ${index < comp.CompQuickStart.leveling.length - 1 ? `<div class="w-2 h-[1px] bg-slate-300 dark:bg-slate-700 mx-1"></div>` : ''}
-                            </div>
-                        `).join('') + `</div>`;
-                }
-
-                // --- 5.8 Render Nút Copy Code ---
-                let copyCodeHTML = '';
-                const codeToCopy = comp.CopyTeamCode || comp.shareCode;
-                if (codeToCopy) {
-                    const btnId = `copy-btn-${compIndex}`;
-                    copyCodeHTML = `
-                        <div class="flex items-center gap-2 copy-btn-container shrink-0 lg:ml-auto z-20">
-                            ${comp.shareCode ? `<span class="text-[10px] font-black text-slate-400 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-lg border border-slate-200 dark:border-white/5 shadow-inner hidden sm:block">ID: ${window.escapeHTML(comp.shareCode)}</span>` : ''}
-                            <button id="${btnId}" onclick="window.copyToClipboard('${window.escapeJS(window.escapeHTML(codeToCopy))}', '${btnId}')" 
-                                class="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 hover:bg-premium-gold dark:hover:bg-premium-gold hover:text-slate-800 dark:hover:text-black text-slate-500 dark:text-slate-300 border border-slate-200 dark:border-white/10 px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all shadow-sm outline-none">
-                                <i class="fa-regular fa-clone"></i> Sao chép
-                            </button>
-                        </div>
-                    `;
-                }
-
-                // --- Lắp ráp HTML Thẻ Đội Hình ---
                 return `
-                    <div class="comp-card bg-white dark:bg-[#0e1420]/95 backdrop-blur-xl border border-slate-200 dark:border-white/5 hover:border-premium-gold/50 dark:hover:border-premium-gold/40 rounded-2xl shadow-xl transition-all duration-300 relative overflow-hidden group">
-                        <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        
-                        <div class="flex flex-col xl:flex-row gap-2 xl:gap-5 p-3.5 relative z-10">
-                            
-                            <div class="flex flex-col gap-1 xl:w-[180px] shrink-0 justify-center">
-                                <div class="flex gap-1.5 flex-wrap">${tagsHTML}</div>
-                                <h3 class="text-[15px] font-black text-slate-800 dark:text-white transition-colors leading-tight tracking-wide drop-shadow-sm">${window.escapeHTML(comp.CompTitle)}</h3>
-                            </div>
-                            
-                            <div class="flex flex-wrap items-start content-start gap-2 sm:gap-2.5 w-full xl:w-auto xl:flex-1 min-w-0 pt-1 xl:pb-0">
-                                ${unitsHTML}
-                            </div>
-                            
-                            <div class="flex items-center gap-2 shrink-0 ml-auto border-t xl:border-t-0 border-slate-100 dark:border-white/5 pt-2 xl:pt-0 w-full xl:w-auto justify-between xl:justify-end">
-                               ${copyCodeHTML}
-                               <button onclick="window.toggleCompDetails(this)" class="w-7 h-7 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center transition-colors hover:bg-premium-gold/20 outline-none">
-                                    <i class="fa-solid fa-chevron-down text-slate-500 dark:text-slate-400 text-[11px] expand-icon transition-transform duration-300 hover:text-premium-gold"></i>
-                               </button>
-                            </div>
-                        </div>
-                        
-                        <div class="comp-details hidden border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#05080d]/60 p-4 relative z-10 transition-colors">
-                            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8">
+                        <div class="bg-white dark:bg-premium-card border border-slate-200 dark:border-white/10 hover:border-premium-gold/50 dark:hover:border-premium-gold/30 rounded-2xl p-4 flex flex-col gap-1 transition-all duration-300 shadow-lg group relative overflow-hidden transform-gpu w-full">                                <div class="absolute -inset-10 bg-premium-gold/5 blur-3xl z-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <div class="relative flex items-center justify-between cursor-pointer z-10 outline-none" onclick="window.toggleTraitDetails(this)">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-inner group-hover:bg-premium-gold/20 group-hover:border-premium-gold/50 transition-colors shrink-0 text-slate-500 dark:text-slate-400 group-hover:text-premium-gold text-premium-gold">
+                                            ${traitIconHTML}
+                                        </div>
+                                        <h3 class="text-[16px] font-black text-slate-800 dark:text-premium-gold tracking-wide drop-shadow-md uppercase">${window.escapeHTML(trait.trait_name)}</h3>
+                                    </div>
+                                    
+                                    <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-black/40 border border-slate-200 dark:border-white/10 flex items-center justify-center group-hover:bg-premium-gold/20 transition-colors shadow-sm shrink-0">
+                                        <i class="fa-solid fa-chevron-down text-slate-400 dark:text-slate-400 text-sm expand-icon transition-transform duration-300 group-hover:text-premium-gold"></i>
+                                    </div>
+                                </div>
                                 
-                                <div class="xl:col-span-7 flex flex-col gap-5">
-                                    <div>
-                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-shapes"></i> Kích hoạt Tộc Hệ</div>
-                                        <div class="flex flex-wrap gap-1.5">${traitsHTML}</div>
-                                    </div>
-                                    
-                                    <div>
-                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-ring"></i> Đi Chợ</div>
-                                        ${carouselHTML}
-                                    </div>
-
-                                    <div>
-                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-1.5"><i class="fa-solid fa-chess-board"></i> Đội Hình Đầu Game</div>
-                                        ${earlyCompHTML}
-                                    </div>
-                                </div>
-
-                                <div class="xl:col-span-5 flex flex-col gap-5">
-                                    
-                                    <div class="flex flex-col gap-2">
-                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5 xl:justify-center mb-1">
-                                            <i class="fa-solid fa-map-location-dot"></i> Xếp Vị Trí
-                                        </div>
-                                        <div class="flex-1 flex items-start justify-center">
-                                            ${boardHTML}
+                                ${heroesHTML ? `
+                                    <div class="mt-3 z-10 w-full">
+                                        <div class="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(44px,1fr))] gap-2 w-full">
+                                            ${heroesHTML}
                                         </div>
                                     </div>
+                                ` : ''}
 
-                                    <div class="flex flex-col gap-2 pt-3 border-t border-slate-200 dark:border-white/5">
-                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1 flex items-center gap-1.5 xl:justify-center">
-                                            <i class="fa-solid fa-arrow-up-right-dots"></i> Nhịp Lên Cấp
-                                        </div>
-                                        <div class="xl:flex xl:justify-center">
-                                            ${levelingHTML}
-                                        </div>
+                                <div class="trait-details hidden z-10 w-full h-auto">
+    <div class="flex flex-col gap-3 mt-4 pt-3 border-t border-slate-200 dark:border-white/5 w-full">
+                                        ${trait.description ? `<p class="text-[11px] text-slate-500 dark:text-slate-400 italic leading-relaxed">${trait.description.replace(/\n/g, '<br>')}</p>` : ''}
+                                        
+                                        ${levelsHTML ? `
+                                            <div class="flex flex-col gap-2 bg-slate-50 dark:bg-black/30 p-3 rounded-xl border border-slate-200 dark:border-white/5 shadow-inner">
+                                                ${levelsHTML}
+                                            </div>
+                                        ` : ''}
                                     </div>
-
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                `;
+                        `;
             }).join('');
-
-            // Gắn Header và Danh sách đội hình vào Container
-            listContainer.innerHTML = headerHTML + compsHTML;
         };
 
-        document.getElementById('comp-list-container').addEventListener('click', (e) => {
-            const btn = e.target.closest('.filter-source-btn-main');
-            if (!btn) return;
-
-            const url = btn.dataset.url;
-            if (activeSourceUrl === url) return;
-
-            activeSourceUrl = url;
-            fetchAndRenderComps(url);
-        });
-
-        window.copyToClipboard = (text, btnId) => {
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = document.getElementById(btnId);
-                if (btn) {
-                    const originalHTML = btn.innerHTML;
-                    const originalClass = btn.className;
-                    btn.className = "flex items-center justify-center gap-1.5 bg-emerald-500 text-white border border-emerald-400 px-2.5 py-1.5 rounded-lg text-[9.5px] font-bold transition-all shadow-[0_0_8px_rgba(16,185,129,0.5)] z-20 relative";
-                    btn.innerHTML = `<i class="fa-solid fa-check"></i> Đã chép`;
-                    setTimeout(() => {
-                        btn.className = originalClass;
-                        btn.innerHTML = originalHTML;
-                    }, 1500);
-                }
-            }).catch(err => console.error('Lỗi Copy: ', err));
-        };
-
-        const searchInput = document.getElementById('search-comp');
-        const clearBtn = document.getElementById('clear-search-comp');
+        const searchInput = document.getElementById('search-trait');
+        const clearBtn = document.getElementById('clear-search-trait');
 
         searchInput.addEventListener('input', window.debounce((e) => {
             const val = e.target.value;
-            searchQuery = val;
             clearBtn.classList.toggle('hidden', val.length === 0);
-            renderComps();
+            renderTraits(val);
         }, 300));
 
         clearBtn.addEventListener('click', () => {
             searchInput.value = '';
-            searchQuery = '';
             clearBtn.classList.add('hidden');
             searchInput.focus();
-            renderComps();
+            renderTraits('');
         });
 
-        document.querySelectorAll('.filter-source-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const url = e.currentTarget.dataset.url;
-                if (activeSourceUrl === url) return;
-
-                activeSourceUrl = url;
-                document.querySelectorAll('.filter-source-btn').forEach(b => {
-                    b.className = "filter-source-btn shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/5 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10";
-                });
-                e.currentTarget.className = "filter-source-btn shrink-0 px-3.5 py-1.5 rounded-full border text-[10.5px] font-bold transition-all shadow-sm flex items-center gap-1.5 outline-none bg-rose-500 border-rose-400 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]";
-
-                fetchAndRenderComps(url);
-            });
-        });
-
-        fetchAndRenderComps(activeSourceUrl);
+        renderTraits();
 
     } catch (error) {
-        gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Đội Hình: ${error.message}</div>`;
+        gridContainer.innerHTML = `<div class="p-4 text-center text-red-400 text-sm border border-red-900/50 bg-red-900/10 rounded-xl">Lỗi tải dữ liệu Tộc Hệ: ${error.message}</div>`;
     }
 }
+
+
+
 
 // ---------------------------------------------------------
 // HÀM QUẢN LÝ (ADMIN) - FIREBASE AUTH & XÓA ĐỘI HÌNH
