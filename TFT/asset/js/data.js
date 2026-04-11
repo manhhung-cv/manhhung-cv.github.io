@@ -519,11 +519,11 @@ async function loadCompsData() {
                             champData.traits.forEach(t => { traitCounts[t.name] = (traitCounts[t.name] || 0) + 1; });
                         }
 
-                        let borderColor = 'border-slate-400 dark:border-slate-600';
-                        if (champCost === 2) borderColor = 'border-emerald-500';
-                        if (champCost === 3) borderColor = 'border-blue-500';
-                        if (champCost === 4) borderColor = 'border-purple-500';
-                        if (champCost === 5) borderColor = 'border-yellow-400';
+                        let borderColor = 'border-slate-400 dark:border-slate-500 shadow-[0_0_8px_rgba(148,163,184,0.3)]';
+                        if (champCost === 2) borderColor = 'border-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.4)]';
+                        if (champCost === 3) borderColor = 'border-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.4)]';
+                        if (champCost === 4) borderColor = 'border-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.4)]';
+                        if (champCost === 5) borderColor = 'border-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)]';
 
                         const items = unit.items || [];
                         let itemsHTML = '';
@@ -534,11 +534,11 @@ async function loadCompsData() {
                                 const iName = iData ? iData.name : itemName;
 
                                 return `
-                                <div class="relative group/tooltip cursor-pointer">
-                                    <img src="${img}" class="w-[14px] h-[14px] sm:w-[15px] sm:h-[15px] rounded-[3px] border border-slate-300 dark:border-slate-800 object-cover shadow-sm bg-black hover:scale-110 transition-transform" ${onErrorFallback}>
-                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[150px] px-2.5 py-1.5 bg-slate-900 dark:bg-black text-white rounded-lg shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-[100] pointer-events-none border border-slate-700 dark:border-white/10 scale-95 group-hover/tooltip:scale-100 origin-bottom">
-                                        <span class="text-[9px] font-bold text-premium-gold block text-center truncate">${window.escapeHTML(iName)}</span>
-                                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900 dark:border-t-black"></div>
+                                <div class="relative group/tooltip cursor-pointer transform transition-all duration-200 hover:scale-125 hover:z-20">
+                                    <img src="${img}" class="w-[18px] h-[18px] sm:w-[22px] sm:h-[22px] rounded-[4px] border-[1.5px] border-slate-900 object-cover shadow-sm bg-black" ${onErrorFallback}>
+                                    <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[150px] px-2.5 py-1 bg-slate-900/95 dark:bg-black/95 backdrop-blur-sm text-white rounded-md shadow-xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-[100] pointer-events-none border border-slate-700 dark:border-white/10 scale-95 group-hover/tooltip:scale-100 origin-bottom">
+                                        <span class="text-[10px] sm:text-[11px] font-bold text-amber-400 block text-center truncate">${window.escapeHTML(iName)}</span>
+                                        <div class="absolute top-full left-1/2 -translate-x-1/2 border-[5px] border-transparent border-t-slate-900/95 dark:border-t-black/95"></div>
                                     </div>
                                 </div>
                                 `;
@@ -546,16 +546,24 @@ async function loadCompsData() {
                         }
 
                         return `
-                            <div class="flex flex-col items-center w-12 sm:w-[50px] shrink-0 group/unit cursor-pointer mb-1" onclick="window.openChampModalFromComp('${window.escapeJS(unit.champion)}')">
-                                <div class="relative w-full mb-1.5 transition-transform duration-300 group-hover/unit:-translate-y-1">
-                                    <div class="w-full h-12 sm:h-[50px] aspect-square rounded-[6px] border-2 ${borderColor} overflow-hidden bg-black shadow-md">
-                                        <img src="${champImage}" class="w-full h-full object-cover object-[80%]" title="${window.escapeHTML(unit.champion)}" ${onErrorFallback}>
+                            <div class="flex flex-col items-center w-[56px] sm:w-[60px] shrink-0 group/unit cursor-pointer mb-2" onclick="window.openChampModalFromComp('${window.escapeJS(unit.champion)}')">
+                                
+                                <div class="relative w-full">
+                                    
+                                    <div class="w-full aspect-square rounded-[8px] border-[2px] ${borderColor} overflow-hidden bg-slate-900 relative">
+                                        <img src="${champImage}" class="w-full h-full object-cover object-[80%] transform group-hover/unit:scale-110 scale-140 transition-transform duration-500" title="${window.escapeHTML(unit.champion)}" ${onErrorFallback}>
+                                        
+                                        <div class="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none"></div>
                                     </div>
-                                    <div class="absolute -bottom-2 left-0 w-full flex justify-center gap-[1.5px] z-10">
+                                    
+                                    <div class="absolute -bottom-2.5 left-1/2 -translate-x-1/2 flex justify-center gap-[2px] z-10 w-[120%]">
                                         ${itemsHTML}
                                     </div>
                                 </div>
-                                <span class="text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-200 font-bold truncate w-full text-center mt-1 group-hover/unit:text-premium-gold transition-colors drop-shadow-sm">${window.escapeHTML(unit.champion)}</span>
+                                
+                                <div class="mt-3.5 px-1 w-full text-center">
+                                    <span class="text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-200 font-bold truncate w-full inline-block group-hover/unit:text-premium-gold transition-colors drop-shadow-sm">${window.escapeHTML(unit.champion)}</span>
+                                </div>
                             </div>
                         `;
                     }).join('');
@@ -710,7 +718,7 @@ async function loadCompsData() {
                                 <h3 class="text-[15px] font-black text-slate-800 dark:text-white transition-colors leading-tight tracking-wide drop-shadow-sm">${window.escapeHTML(comp.CompTitle)}</h3>
                             </div>
                             
-                            <div class="flex flex-wrap items-start content-start gap-2 sm:gap-2.5 w-full xl:w-auto xl:flex-1 min-w-0 pt-1 xl:pb-0">
+                            <div class="flex flex-wrap items-start content-start gap-3 sm:gap-4 w-full xl:w-auto xl:flex-1 min-w-0 pt-1 xl:pb-0">
                                 ${unitsHTML}
                             </div>
                             
@@ -785,7 +793,8 @@ async function loadCompsData() {
         });
 
         window.copyToClipboard = (text, btnId) => {
-            navigator.clipboard.writeText(text).then(() => {
+            // Hàm xử lý đổi UI sau khi copy thành công
+            const showSuccessState = () => {
                 const btn = document.getElementById(btnId);
                 if (btn) {
                     const originalHTML = btn.innerHTML;
@@ -797,7 +806,64 @@ async function loadCompsData() {
                         btn.innerHTML = originalHTML;
                     }, 1500);
                 }
-            }).catch(err => console.error('Lỗi Copy: ', err));
+            };
+
+            // Hàm Fallback cổ điển dùng cho Safari iOS cũ
+            const fallbackCopyTextToClipboard = (textToCopy) => {
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                
+                // CSS để giấu hoàn toàn textarea, tránh việc màn hình bị nhảy xuống cuối (scroll jump)
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.position = "fixed";
+                textArea.style.opacity = "0"; 
+                textArea.setAttribute('readonly', ''); // Ngăn bàn phím ảo bật lên trên điện thoại
+
+                document.body.appendChild(textArea);
+
+                // Trick "thần thánh" dành riêng cho iOS Safari 
+                if (navigator.userAgent.match(/ipad|iphone/i)) {
+                    textArea.contentEditable = true;
+                    textArea.readOnly = false;
+                    const range = document.createRange();
+                    range.selectNodeContents(textArea);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                    textArea.setSelectionRange(0, 999999); // Chọn toàn bộ text
+                } else {
+                    textArea.focus();
+                    textArea.select();
+                }
+
+                try {
+                    const successful = document.execCommand('copy');
+                    if (successful) {
+                        showSuccessState();
+                    } else {
+                        console.error('Fallback copy thất bại.');
+                    }
+                } catch (err) {
+                    console.error('Không thể copy text: ', err);
+                }
+
+                document.body.removeChild(textArea);
+            };
+
+            // Ưu tiên dùng API hiện đại nếu trình duyệt hỗ trợ
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showSuccessState();
+                }).catch(err => {
+                    // Nếu lỗi (ví dụ do policy của Apple), tự động lùi về xài fallback
+                    console.warn('Clipboard API lỗi, đang chuyển sang Fallback...', err);
+                    fallbackCopyTextToClipboard(text);
+                });
+            } else {
+                // Nếu trình duyệt quá cũ không có navigator.clipboard, ép xài fallback ngay
+                fallbackCopyTextToClipboard(text);
+            }
         };
 
         const searchInput = document.getElementById('search-comp');
