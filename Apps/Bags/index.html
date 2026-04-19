@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Inventory</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        zinc: {
+                            850: '#1f1f22',
+                            900: '#18181b',
+                            950: '#09090b',
+                        }
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 40px -2px rgba(0, 0, 0, 0.05)',
+                        'soft-dark': '0 4px 40px -2px rgba(0, 0, 0, 0.5)',
+                        'fab': '0 10px 25px -5px rgba(0, 0, 0, 0.2)',
+                        'nav': '0 -4px 20px rgba(0, 0, 0, 0.03)',
+                        'nav-dark': '0 -4px 20px rgba(0, 0, 0, 0.3)',
+                    }
+                }
+            }
+        }
+
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none; 
+        }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .sheet-enter { transform: translateY(100%); opacity: 0; }
+        .sheet-enter-active { transform: translateY(0); opacity: 1; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .sheet-exit { transform: translateY(0); opacity: 1; }
+        .sheet-exit-active { transform: translateY(100%); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+
+        .backdrop-enter { opacity: 0; }
+        .backdrop-enter-active { opacity: 1; transition: opacity 0.3s ease; }
+        .backdrop-exit { opacity: 1; }
+        .backdrop-exit-active { opacity: 0; transition: opacity 0.3s ease; }
+
+        /* Custom Radio Style */
+        .picker-radio:checked + div {
+            border-color: #18181b;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .dark .picker-radio:checked + div {
+            border-color: #ffffff;
+            box-shadow: 0 4px 12px rgba(255,255,255,0.1);
+        }
+        
+        /* Timeline Dot */
+        .timeline-dot::before {
+            content: '';
+            position: absolute;
+            left: -21px;
+            top: 6px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: currentColor;
+            border: 2px solid #fff;
+        }
+        .dark .timeline-dot::before { border-color: #18181b; }
+    </style>
+</head>
+<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans h-screen w-screen overflow-hidden flex selection:bg-zinc-300 dark:selection:bg-zinc-700">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="hidden md:flex flex-col w-72 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 p-6 z-10 shrink-0">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-xl font-bold tracking-tight">Inventory.</h1>
+            <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition">
+                <i class="ph ph-moon dark:hidden text-xl"></i>
+                <i class="ph ph-sun hidden dark:block text-xl text-yellow-400"></i>
+            </button>
+        </div>
+
+        <!-- Desktop Tabs -->
+        <div class="space-y-1 mb-8">
+            <button onclick="switchTab('inventory')" id="tab-inventory-desktop" class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white">
+                <i class="ph-fill ph-package text-lg"></i> Kho đồ
+            </button>
+            <button onclick="switchTab('history')" id="tab-history-desktop" class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50">
+                <i class="ph-fill ph-clock-counter-clockwise text-lg"></i> Nhật ký
+            </button>
+        </div>
+
+        <nav class="space-y-2 flex-1 flex flex-col min-h-0" id="desktopFilterNav">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Danh mục</h2>
+                <button onclick="openCategorySheet()" class="text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors" title="Quản lý danh mục">
+                    <i class="ph-fill ph-gear text-lg"></i>
+                </button>
+            </div>
+            <div id="desktopFilterContainer" class="space-y-1 overflow-y-auto hide-scrollbar pb-4">
+                <!-- JS Render -->
+            </div>
+        </nav>
+
+        <div class="pt-6 border-t border-zinc-100 dark:border-zinc-800 mt-auto shrink-0">
+            <div class="bg-zinc-50 dark:bg-zinc-850 rounded-2xl p-4 flex items-center justify-between mb-4">
+                <div>
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Tổng vật phẩm</p>
+                    <p id="desktopTotalCount" class="text-2xl font-bold">0</p>
+                </div>
+                <div class="w-12 h-12 bg-white dark:bg-zinc-800 rounded-full flex items-center justify-center shadow-sm">
+                    <i class="ph ph-archive-box text-xl"></i>
+                </div>
+            </div>
+            <button onclick="openSheet()" class="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold py-3.5 px-4 rounded-2xl shadow-fab transform active:scale-95 transition-all flex items-center justify-center gap-2">
+                <i class="ph-bold ph-plus"></i> Thêm vật phẩm
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        
+        <!-- HEADER MOBILE -->
+        <header class="md:hidden flex items-center justify-between p-5 pt-12 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-10">
+            <div>
+                <p id="mobileHeaderSubtitle" class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Quản lý</p>
+                <h1 id="mobileHeaderTitle" class="text-2xl font-bold tracking-tight mt-0.5">Kho đồ</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="openCategorySheet()" class="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform" id="mobileCatBtn">
+                    <i class="ph-fill ph-gear text-xl"></i>
+                </button>
+                <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform">
+                    <i class="ph ph-moon dark:hidden text-xl"></i>
+                    <i class="ph ph-sun hidden dark:block text-xl text-yellow-400"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- VIEW 1: KHO ĐỒ (INVENTORY) -->
+        <div id="inventoryView" class="flex-1 flex flex-col h-full overflow-hidden">
+            <!-- SEARCH & CHIPS -->
+            <div class="px-5 md:px-8 py-2 md:pt-8 shrink-0 z-10 bg-zinc-50 dark:bg-zinc-950">
+                <div class="relative group">
+                    <i class="ph ph-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-zinc-400 text-lg group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors"></i>
+                    <input type="text" id="searchInput" placeholder="Tìm tên, vị trí..." 
+                        class="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-zinc-900 border-none rounded-2xl shadow-soft dark:shadow-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-[15px] outline-none placeholder-zinc-400">
+                </div>
+                <!-- Mobile Category Chips -->
+                <div class="md:hidden mt-5 overflow-x-auto hide-scrollbar -mx-5 px-5">
+                    <div class="flex gap-2 w-max" id="mobileFilterContainer"></div>
+                </div>
+            </div>
+
+            <!-- LIST ITEMS -->
+            <div class="flex-1 overflow-y-auto px-5 md:px-8 pt-5 md:pt-6 pb-28 md:pb-8 hide-scrollbar relative">
+                <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-max"></div>
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
+                    <div class="w-20 h-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4">
+                        <i class="ph ph-package text-3xl text-zinc-400 dark:text-zinc-600"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Chưa có gì ở đây</h3>
+                    <p class="text-sm text-zinc-500 mt-1">Bấm nút + để thêm vật phẩm mới</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: NHẬT KÝ (HISTORY) -->
+        <div id="historyView" class="hidden flex-1 flex-col h-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+            <div class="px-5 md:px-8 py-4 md:pt-8 shrink-0 border-b border-zinc-200/50 dark:border-zinc-800/50">
+                <h2 class="text-xl font-bold hidden md:block">Nhật ký hoạt động</h2>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">Theo dõi lịch sử nhập thêm và sử dụng vật phẩm.</p>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto px-5 md:px-8 py-6 pb-28 md:pb-8 hide-scrollbar">
+                <div id="historyTimeline" class="relative border-l-2 border-zinc-200 dark:border-zinc-800 ml-3 md:ml-4 space-y-8 pb-10">
+                    <!-- JS Render Timeline -->
+                </div>
+                
+                <div id="historyEmptyState" class="hidden flex flex-col items-center justify-center py-20 opacity-60">
+                    <i class="ph-fill ph-clock-counter-clockwise text-4xl text-zinc-400 mb-3"></i>
+                    <p class="text-sm text-zinc-500">Chưa có hoạt động nào được ghi nhận.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MOBILE BOTTOM NAVIGATION -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 shadow-nav dark:shadow-nav-dark z-40 flex justify-around items-center h-16 px-4" style="padding-bottom: env(safe-area-inset-bottom);">
+            <button onclick="switchTab('inventory')" id="tab-inventory-mobile" class="flex flex-col items-center justify-center w-16 h-full text-zinc-900 dark:text-white transition-colors">
+                <i class="ph-fill ph-package text-2xl mb-0.5"></i>
+                <span class="text-[10px] font-medium">Kho đồ</span>
+            </button>
+            
+            <!-- Central FAB -->
+            <div class="relative -top-5">
+                <button onclick="openSheet()" class="w-14 h-14 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full shadow-fab flex items-center justify-center text-2xl transform active:scale-90 transition-transform border-4 border-zinc-50 dark:border-zinc-950">
+                    <i class="ph-bold ph-plus"></i>
+                </button>
+            </div>
+
+            <button onclick="switchTab('history')" id="tab-history-mobile" class="flex flex-col items-center justify-center w-16 h-full text-zinc-400 dark:text-zinc-500 transition-colors">
+                <i class="ph-fill ph-clock-counter-clockwise text-2xl mb-0.5"></i>
+                <span class="text-[10px] font-medium">Nhật ký</span>
+            </button>
+        </nav>
+
+    </main>
+
+    <!-- 1. BOTTOM SHEET: THÊM / SỬA VẬT PHẨM -->
+    <div id="formSheet" class="fixed inset-0 z-50 hidden pointer-events-none">
+        <div id="sheetBackdrop" class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active" onclick="closeSheet('formSheet')"></div>
+        
+        <div id="sheetContent" class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300">
+            
+            <div id="sheetHeaderArea" class="shrink-0 md:cursor-default cursor-grab active:cursor-grabbing" data-sheet="formSheet">
+                <div class="md:hidden flex justify-center pt-3 pb-2" onclick="closeSheet('formSheet')">
+                    <div class="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full pointer-events-none"></div>
+                </div>
+                <div class="px-6 py-4 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pointer-events-none">
+                    <h3 id="sheetTitle" class="text-xl font-bold">Thêm vật phẩm</h3>
+                    <button onclick="closeSheet('formSheet')" class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 pointer-events-auto active:scale-95 transition-transform">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <form id="itemForm" class="p-6 overflow-y-auto hide-scrollbar flex-1 space-y-5">
+                <input type="hidden" id="itemId">
+                
+                <div>
+                    <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Tên vật phẩm *</label>
+                    <input type="text" id="itemName" required placeholder="Ví dụ: Tài liệu dự án..." 
+                        class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Số lượng *</label>
+                        <input type="number" id="itemQuantity" required min="0" step="any" placeholder="0" value="1"
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Đơn vị *</label>
+                        <input type="text" id="itemUnit" required list="unitList" placeholder="Cái, kg, hộp..." value="Cái"
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
+                        <datalist id="unitList">
+                            <option value="Cái"> <option value="Hộp"> <option value="Chai">
+                            <option value="Túi"> <option value="Kg"> <option value="g">
+                            <option value="Lít"> <option value="ml"> <option value="Cuộn">
+                        </datalist>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Ngày nhập</label>
+                        <input type="date" id="itemAddedDate" required
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]">
+                    </div>
+                    <div>
+                        <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Hạn sử dụng</label>
+                        <input type="date" id="itemExpiry" 
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Danh mục</label>
+                        <div class="relative">
+                            <select id="itemCategory" required class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white appearance-none pr-10">
+                                <!-- JS Populate -->
+                            </select>
+                            <i class="ph ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Vị trí *</label>
+                        <input type="text" id="itemLocation" required placeholder="Tủ lạnh..." autocomplete="off"
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
+                        <div id="locationSuggestions" class="mt-2 flex flex-wrap gap-1.5 hidden"></div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Ghi chú</label>
+                    <textarea id="itemNotes" rows="2" placeholder="Tình trạng, lưu ý..." 
+                        class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white resize-none"></textarea>
+                </div>
+            </form>
+
+            <div class="p-6 pt-2 bg-white dark:bg-zinc-900 shrink-0 border-t border-zinc-100 dark:border-zinc-800 md:rounded-b-[32px]">
+                <button type="button" onclick="submitForm()" class="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform flex justify-center items-center gap-2">
+                    <i class="ph-bold ph-check"></i> Lưu hoàn tất
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. BOTTOM SHEET: QUẢN LÝ DANH MỤC CÓ EMOJI VÀ MÀU CUSTOM -->
+    <div id="categorySheet" class="fixed inset-0 z-50 hidden pointer-events-none">
+        <div id="catBackdrop" class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active" onclick="closeSheet('categorySheet')"></div>
+        
+        <div id="catContent" class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300">
+            
+            <div id="catHeaderArea" class="shrink-0 md:cursor-default cursor-grab active:cursor-grabbing" data-sheet="categorySheet">
+                <div class="md:hidden flex justify-center pt-3 pb-2" onclick="closeSheet('categorySheet')">
+                    <div class="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full pointer-events-none"></div>
+                </div>
+                <div class="px-6 py-4 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pointer-events-none">
+                    <h3 class="text-xl font-bold">Quản lý danh mục</h3>
+                    <button onclick="closeSheet('categorySheet')" class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 pointer-events-auto active:scale-95 transition-transform">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6 overflow-y-auto hide-scrollbar flex-1 flex flex-col gap-6">
+                <!-- Form Thêm/Sửa Category -->
+                <div class="bg-zinc-50 dark:bg-zinc-850 p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800">
+                    <h4 id="catFormTitle" class="font-bold text-sm mb-4">Thêm danh mục mới</h4>
+                    <form id="catForm" class="space-y-5">
+                        <input type="hidden" id="editCatId">
+                        
+                        <div>
+                            <input type="text" id="catNameInput" required placeholder="Tên danh mục..." 
+                                class="w-full px-4 py-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-sm dark:text-white">
+                        </div>
+                        
+                        <!-- Custom Icon / Emoji -->
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-500 mb-2 uppercase tracking-wide">Biểu tượng (Hoặc nhập Emoji)</label>
+                            <div class="flex gap-2 mb-3">
+                                <input type="text" id="catEmojiInput" maxlength="2" placeholder="🍎" title="Nhập 1 Emoji"
+                                    class="w-12 h-12 text-center text-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none shrink-0"
+                                    oninput="clearIconRadios()">
+                                <div class="flex items-center text-xs text-zinc-400">Gõ Emoji riêng biệt vào ô bên cạnh để thay thế Icon.</div>
+                            </div>
+                            <div class="flex flex-wrap gap-2" id="iconPicker"></div>
+                        </div>
+
+                        <!-- Custom Color / Hex -->
+                        <div>
+                            <label class="block text-xs font-semibold text-zinc-500 mb-2 uppercase tracking-wide">Màu sắc (Hoặc mã HEX)</label>
+                            <div class="flex gap-2 mb-3 items-center">
+                                <div class="w-10 h-10 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-sm shrink-0 transition-colors" id="hexColorPreview" style="background-color: #3b82f6;"></div>
+                                <input type="text" id="catHexInput" placeholder="#FF5733" maxlength="7"
+                                    class="flex-1 px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-sm font-mono uppercase dark:text-white"
+                                    oninput="updateHexPreview()">
+                            </div>
+                            <div class="flex flex-wrap gap-3" id="colorPicker"></div>
+                        </div>
+
+                        <div class="flex gap-2 pt-2">
+                            <button type="button" onclick="resetCatForm()" class="px-4 py-3 bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl text-sm font-medium w-full hidden transition-colors" id="btnCancelCat">Hủy</button>
+                            <button type="button" onclick="saveCategory()" class="px-4 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-sm font-semibold w-full shadow-sm active:scale-[0.98] transition-transform">Lưu danh mục</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Danh sách Category -->
+                <div>
+                    <h4 class="text-[13px] font-semibold text-zinc-500 mb-3 uppercase tracking-wide">Danh mục hiện có</h4>
+                    <div id="manageCategoryList" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-5 py-3.5 rounded-full shadow-fab -translate-y-24 opacity-0 transition-all duration-300 z-[60] flex items-center gap-3 font-medium text-sm">
+        <i id="toastIcon" class="ph-fill ph-check-circle text-xl text-emerald-400 dark:text-emerald-500"></i>
+        <span id="toastMessage">Thành công!</span>
+    </div>
+
+    <!-- ỨNG DỤNG JAVASCRIPT -->
+    <script>
+        /**
+         * KHO ĐỒ THÔNG MINH - MINIMAL PREMIUM V4
+         * Tính năng mới: Nhật ký, Emojis, Custom Color Picker (Không dùng input color native), Bottom Nav
+         */
+        const STORAGE_KEY = 'smart_inventory_v4';
+        const CAT_STORAGE_KEY = 'smart_categories_v4';
+        const LOGS_STORAGE_KEY = 'smart_logs_v4';
+        
+        let items = [];
+        let customCategories = [];
+        let actionLogs = [];
+        let currentFilter = 'all'; 
+        let searchQuery = '';
+        let activeTab = 'inventory';
+
+        // Danh sách Icon & Color Premium preset
+        const ICONS_LIST = ['ph-package', 'ph-file-text', 'ph-apple-pod', 'ph-laptop', 'ph-t-shirt', 'ph-pill', 'ph-books', 'ph-wrench', 'ph-car', 'ph-house'];
+        const COLORS_LIST = ['#71717a', '#3b82f6', '#10b981', '#a855f7', '#f43f5e', '#f59e0b', '#06b6d4'];
+        
+        const DEFAULT_CATEGORIES = [
+            { id: 'cat_1', name: 'Tài liệu', icon: 'ph-file-text', color: '#3b82f6' },
+            { id: 'cat_2', name: 'Thực phẩm', icon: 'ph-apple-pod', color: '#10b981' },
+            { id: 'cat_3', name: 'Đồ điện tử', icon: 'ph-laptop', color: '#a855f7' },
+            { id: 'cat_4', name: 'Khác', icon: 'ph-package', color: '#71717a' }
+        ];
+
+        // --- THEME ---
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // --- INIT ---
+        function init() {
+            const storedItems = localStorage.getItem(STORAGE_KEY);
+            items = storedItems ? JSON.parse(storedItems) : [];
+            
+            const storedCats = localStorage.getItem(CAT_STORAGE_KEY);
+            customCategories = storedCats ? JSON.parse(storedCats) : [...DEFAULT_CATEGORIES];
+
+            const storedLogs = localStorage.getItem(LOGS_STORAGE_KEY);
+            actionLogs = storedLogs ? JSON.parse(storedLogs) : [];
+            
+            initPickers();
+            setupEvents();
+            updateUI();
+            switchTab('inventory'); // Mặc định mở tab kho đồ
+        }
+
+        function setupEvents() {
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                searchQuery = e.target.value.toLowerCase();
+                updateUI();
+            });
+            const locInput = document.getElementById('itemLocation');
+            locInput.addEventListener('focus', renderLocationSuggestions);
+            locInput.addEventListener('input', renderLocationSuggestions);
+        }
+
+        // --- TAB SWITCHING (ROUTING) ---
+        function switchTab(tab) {
+            activeTab = tab;
+            
+            // Toggle Views
+            document.getElementById('inventoryView').classList.toggle('hidden', tab !== 'inventory');
+            document.getElementById('historyView').classList.toggle('hidden', tab !== 'history');
+            
+            // Toggle Mobile Nav Styles
+            document.getElementById('tab-inventory-mobile').className = `flex flex-col items-center justify-center w-16 h-full transition-colors ${tab === 'inventory' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-500'}`;
+            document.getElementById('tab-history-mobile').className = `flex flex-col items-center justify-center w-16 h-full transition-colors ${tab === 'history' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-500'}`;
+            
+            // Toggle Desktop Nav Styles
+            const actCls = 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white';
+            const inactCls = 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50';
+            document.getElementById('tab-inventory-desktop').className = `w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${tab === 'inventory' ? actCls : inactCls}`;
+            document.getElementById('tab-history-desktop').className = `w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${tab === 'history' ? actCls : inactCls}`;
+
+            // Toggle Mobile Header specific buttons
+            document.getElementById('mobileCatBtn').classList.toggle('hidden', tab !== 'inventory');
+            document.getElementById('mobileHeaderTitle').innerText = tab === 'inventory' ? 'Kho đồ' : 'Nhật ký';
+            document.getElementById('mobileHeaderSubtitle').innerText = tab === 'inventory' ? 'Quản lý' : 'Lịch sử';
+
+            // Toggle Desktop Filters Nav
+            document.getElementById('desktopFilterNav').style.display = tab === 'inventory' ? 'flex' : 'none';
+
+            if (tab === 'history') {
+                renderHistory();
+            }
+        }
+
+        // --- DATA LAYER ---
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+            localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(customCategories));
+            localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(actionLogs));
+            updateUI();
+            if (activeTab === 'history') renderHistory();
+        }
+
+        function logAction(actionType, itemName, qty, unit, hexColor) {
+            const log = {
+                id: 'log_' + Date.now(),
+                date: new Date().toISOString(),
+                action: actionType, // 'Thêm mới', 'Nhập thêm', 'Sử dụng', 'Xóa'
+                itemName,
+                qty,
+                unit,
+                color: hexColor || '#71717a'
+            };
+            actionLogs.unshift(log); // Đầu mảng là mới nhất
+            if (actionLogs.length > 200) actionLogs.pop(); // Giới hạn 200 log
+        }
+
+        function getStatus(dateStr) {
+            if (!dateStr) return { type: 'none' };
+            const today = new Date(); today.setHours(0,0,0,0);
+            const exp = new Date(dateStr);
+            const diffDays = Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) return { type: 'expired', text: 'Hết hạn', style: 'text-rose-600 bg-rose-100 dark:bg-rose-500/10 dark:text-rose-400' };
+            if (diffDays <= 7) return { type: 'soon', text: `Còn ${diffDays} ngày`, style: 'text-amber-600 bg-amber-100 dark:bg-amber-500/10 dark:text-amber-400' };
+            return { type: 'good', text: `Còn ${diffDays} ngày`, style: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400' };
+        }
+
+        // Helper gen style linh hoạt cho Emoji & Mã HEX
+        function getCatStyleDef(catName) {
+            const cat = customCategories.find(c => c.name === catName) || { icon: 'ph-package', color: '#71717a' };
+            const isEmoji = !cat.icon.startsWith('ph-');
+            const iconHtml = isEmoji ? `<span class="text-xl leading-none">${cat.icon}</span>` : `<i class="ph-fill ${cat.icon} text-xl" style="color: ${cat.color}"></i>`;
+            return {
+                iconHtml,
+                colorStr: cat.color,
+                bgStyle: `background-color: ${cat.color}15;`, // 15% opacity hex (tailwind style pseudo)
+                textColor: cat.color
+            };
+        }
+
+        // --- UI UPDATES: CORE ---
+        function updateUI() {
+            renderFilters();
+            renderItemsGrid();
+            renderManageCategoryList();
+            populateCategoryDropdown();
+        }
+
+        function renderFilters() {
+            const mContainer = document.getElementById('mobileFilterContainer');
+            const dContainer = document.getElementById('desktopFilterContainer');
+            mContainer.innerHTML = ''; dContainer.innerHTML = '';
+
+            const systemFilters = [
+                { id: 'all', label: 'Tất cả', isSystem: true, iconHtml: '<i class="ph ph-squares-four text-lg"></i>' },
+                { id: 'Sắp hết hạn', label: 'Sắp hết hạn', isSystem: true, iconHtml: '<i class="ph ph-clock-countdown text-lg text-amber-500"></i>' }
+            ];
+
+            const allFilters = [...systemFilters, ...customCategories.map(c => {
+                const s = getCatStyleDef(c.name);
+                // Giảm font-size icon để vừa chip
+                const iHtml = s.iconHtml.replace('text-xl', 'text-lg');
+                return { id: c.name, label: c.name, isSystem: false, iconHtml: iHtml, color: s.colorStr };
+            })];
+
+            allFilters.forEach(cat => {
+                const isActive = currentFilter === cat.id;
+                
+                // Mobile Chip
+                const mBtn = document.createElement('button');
+                mBtn.onclick = () => { currentFilter = cat.id; renderFilters(); renderItemsGrid(); };
+                mBtn.className = `flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[14px] font-medium transition-all whitespace-nowrap border ${isActive ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 dark:border-white' : 'bg-white text-zinc-600 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400'}`;
+                mBtn.innerHTML = `${cat.iconHtml} ${cat.label}`;
+                mContainer.appendChild(mBtn);
+
+                // Desktop Sidebar Link
+                const dBtn = document.createElement('button');
+                dBtn.onclick = () => { currentFilter = cat.id; renderFilters(); renderItemsGrid(); };
+                dBtn.className = `w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-all ${isActive ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50'}`;
+                
+                let countHTML = '';
+                if (cat.id === 'Sắp hết hạn') {
+                    const soonCount = items.filter(i => getStatus(i.expiryDate).type === 'soon').length;
+                    if(soonCount > 0) countHTML = `<span class="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 py-0.5 px-2 rounded-full text-xs font-bold">${soonCount}</span>`;
+                }
+
+                dBtn.innerHTML = `<div class="flex items-center gap-3">${cat.iconHtml} <span ${isActive?'':(cat.color?`style="color:${cat.color}"`:'')}>${cat.label}</span></div> ${countHTML}`;
+                dContainer.appendChild(dBtn);
+            });
+        }
+
+        function renderItemsGrid() {
+            const grid = document.getElementById('itemsGrid');
+            const empty = document.getElementById('emptyState');
+            
+            const desktopCountEl = document.getElementById('desktopTotalCount');
+            if (desktopCountEl) {
+                desktopCountEl.innerText = items.length;
+            }
+
+            let filtered = items.filter(item => {
+                const matchSearch = item.name.toLowerCase().includes(searchQuery) || item.location.toLowerCase().includes(searchQuery);
+                let matchCat = true;
+                if (currentFilter === 'Sắp hết hạn') matchCat = getStatus(item.expiryDate).type === 'soon';
+                else if (currentFilter !== 'all') matchCat = item.category === currentFilter;
+                return matchSearch && matchCat;
+            });
+
+            filtered.sort((a, b) => {
+                const statA = getStatus(a.expiryDate).type;
+                const statB = getStatus(b.expiryDate).type;
+                if (statA === 'soon' && statB !== 'soon') return -1;
+                if (statB === 'soon' && statA !== 'soon') return 1;
+                // Ưu tiên ngày thêm (addedDate), nếu không có thì fallback createdAt
+                const dateA = a.addedDate ? new Date(a.addedDate) : new Date(a.createdAt);
+                const dateB = b.addedDate ? new Date(b.addedDate) : new Date(b.createdAt);
+                return dateB - dateA; 
+            });
+
+            grid.innerHTML = '';
+            
+            if (filtered.length === 0) {
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+                
+                filtered.forEach(item => {
+                    const status = getStatus(item.expiryDate);
+                    const style = getCatStyleDef(item.category);
+                    const qty = item.quantity !== undefined ? item.quantity : 1;
+                    const unit = item.unit || 'Cái';
+                    
+                    const card = document.createElement('div');
+                    card.className = "bg-white dark:bg-zinc-900 p-5 rounded-[24px] shadow-soft dark:shadow-none border border-zinc-100 dark:border-zinc-800/60 relative group flex flex-col transition-all hover:shadow-md";
+                    
+                    card.innerHTML = `
+                        <!-- Action Menu -->
+                        <div class="absolute top-4 right-4 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <button onclick="editItem('${item.id}')" class="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center transition">
+                                <i class="ph ph-pencil-simple"></i>
+                            </button>
+                            <button onclick="deleteItem('${item.id}')" class="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-800 text-zinc-500 hover:text-rose-500 flex items-center justify-center transition">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </div>
+
+                        <!-- Card Header -->
+                        <div class="flex items-start gap-4 mb-4 pr-16">
+                            <div class="w-12 h-12 rounded-[18px] flex items-center justify-center shrink-0" style="${style.bg}">
+                                ${style.iconHtml}
+                            </div>
+                            <div class="min-w-0">
+                                <h3 class="font-bold text-base leading-tight text-zinc-900 dark:text-white line-clamp-2" title="${item.name}">${item.name}</h3>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <p class="text-[10px] font-bold uppercase tracking-wide" style="color: ${style.textColor}">${item.category}</p>
+                                    ${item.addedDate ? `<span class="text-[10px] text-zinc-400 font-medium border-l border-zinc-200 dark:border-zinc-700 pl-2">Nhập: ${new Date(item.addedDate).toLocaleDateString('vi-VN')}</span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1"></div>
+
+                        <!-- Bottom Controls -->
+                        <div class="flex items-end justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800/80 mt-auto">
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 text-sm font-medium">
+                                    <i class="ph-fill ph-map-pin"></i>
+                                    <span class="truncate max-w-[100px]" title="${item.location}">${item.location}</span>
+                                </div>
+                                ${status.type !== 'none' ? `
+                                    <div class="px-2 py-0.5 rounded-md text-[10px] w-fit font-bold tracking-wide uppercase ${status.style}">
+                                        ${status.text}
+                                    </div>
+                                ` : '<div class="h-5"></div>'}
+                            </div>
+                            
+                            <!-- Bảng điều khiển số lượng mini -->
+                            <div class="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 shrink-0 border border-zinc-200/50 dark:border-zinc-700/50">
+                                <button onclick="updateQty('${item.id}', -1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors active:scale-90">
+                                    <i class="ph-bold ph-minus"></i>
+                                </button>
+                                <div class="flex flex-col items-center justify-center px-1.5 min-w-[3rem]">
+                                    <span class="text-xs font-bold leading-none text-zinc-900 dark:text-white">${qty}</span>
+                                    <span class="text-[9px] font-semibold text-zinc-500 uppercase mt-0.5">${unit}</span>
+                                </div>
+                                <button onclick="updateQty('${item.id}', 1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors active:scale-90">
+                                    <i class="ph-bold ph-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyTimeline');
+            const emptyState = document.getElementById('historyEmptyState');
+            container.innerHTML = '';
+
+            if (actionLogs.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            // Group by Date
+            const groups = {};
+            actionLogs.forEach(log => {
+                const dateKey = new Date(log.date).toLocaleDateString('vi-VN');
+                if(!groups[dateKey]) groups[dateKey] = [];
+                groups[dateKey].push(log);
+            });
+
+            for (const [dateStr, logs] of Object.entries(groups)) {
+                // Header ngày
+                let displayDate = dateStr;
+                const todayStr = new Date().toLocaleDateString('vi-VN');
+                if (dateStr === todayStr) displayDate = 'Hôm nay';
+
+                const dayGroup = document.createElement('div');
+                dayGroup.className = 'relative';
+                
+                let html = `<h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-4 bg-zinc-50 dark:bg-zinc-950 inline-block pr-3 -ml-1">${displayDate}</h4><div class="space-y-5">`;
+                
+                logs.forEach(log => {
+                    const timeStr = new Date(log.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    
+                    let actionIcon = '', actionText = '', textCol = '';
+                    if (log.action === 'Thêm mới') { actionIcon = 'ph-plus-circle'; actionText = 'Đã thêm mới'; textCol = 'text-blue-500'; }
+                    else if (log.action === 'Nhập thêm') { actionIcon = 'ph-trend-up'; actionText = 'Đã nhập thêm'; textCol = 'text-emerald-500'; }
+                    else if (log.action === 'Sử dụng') { actionIcon = 'ph-trend-down'; actionText = 'Đã sử dụng'; textCol = 'text-amber-500'; }
+                    else { actionIcon = 'ph-trash'; actionText = 'Đã xóa'; textCol = 'text-rose-500'; }
+
+                    html += `
+                        <div class="relative timeline-dot" style="color: ${log.color}">
+                            <div class="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-4 shadow-sm flex items-start gap-3">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${log.color}15; color: ${log.color}">
+                                    <i class="ph-fill ${actionIcon} text-lg"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-[13px] font-bold ${textCol}">${actionText}</span>
+                                        <span class="text-[11px] font-medium text-zinc-400">• ${timeStr}</span>
+                                    </div>
+                                    <p class="text-sm font-semibold text-zinc-900 dark:text-white leading-snug">${log.qty} ${log.unit} <span class="font-normal text-zinc-500">${log.itemName}</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                dayGroup.innerHTML = html;
+                container.appendChild(dayGroup);
+            }
+        }
+
+        // --- QUANTITY LOGIC ---
+        function updateQty(id, delta) {
+            const idx = items.findIndex(i => i.id === id);
+            if (idx > -1) {
+                const item = items[idx];
+                const catStyle = getCatStyleDef(item.category);
+                let currentQty = parseFloat(item.quantity) || 0;
+                let newQty = currentQty + delta;
+                
+                if (newQty < 0) newQty = 0;
+                newQty = Math.round(newQty * 100) / 100; 
+
+                const actualDelta = Math.abs(newQty - currentQty);
+                if (actualDelta > 0) {
+                    if (delta > 0) logAction('Nhập thêm', item.name, actualDelta, item.unit, catStyle.colorStr);
+                    else logAction('Sử dụng', item.name, actualDelta, item.unit, catStyle.colorStr);
+                    
+                    item.quantity = newQty;
+                    saveData();
+                }
+            }
+        }
+
+        // --- SMART LOCATION LOGIC ---
+        function renderLocationSuggestions() {
+            const inputVal = document.getElementById('itemLocation').value.toLowerCase();
+            const container = document.getElementById('locationSuggestions');
+            const allLocations = [...new Set(items.map(i => i.location.trim()).filter(l => l !== ''))];
+            const matched = allLocations.filter(l => l.toLowerCase().includes(inputVal)).slice(0, 5); 
+
+            container.innerHTML = '';
+            if (matched.length > 0) {
+                container.classList.remove('hidden');
+                matched.forEach(loc => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg text-xs font-medium text-zinc-700 dark:text-zinc-300 transition-colors whitespace-nowrap';
+                    chip.innerText = loc;
+                    chip.onclick = () => {
+                        document.getElementById('itemLocation').value = loc;
+                        container.classList.add('hidden');
+                    };
+                    container.appendChild(chip);
+                });
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+        document.addEventListener('click', (e) => {
+            const locInput = document.getElementById('itemLocation');
+            const locSuggs = document.getElementById('locationSuggestions');
+            if(e.target !== locInput && !locSuggs.contains(e.target)) locSuggs.classList.add('hidden');
+        });
+
+        // --- CUSTOM CATEGORY PICKERS ---
+        function initPickers() {
+            const iconC = document.getElementById('iconPicker');
+            const colorC = document.getElementById('colorPicker');
+            iconC.innerHTML = ''; colorC.innerHTML = '';
+
+            ICONS_LIST.forEach((icon, idx) => {
+                const checked = idx === 0 ? 'checked' : '';
+                iconC.innerHTML += `
+                    <label class="cursor-pointer relative" onclick="clearEmojiInput()">
+                        <input type="radio" name="catIcon" value="${icon}" class="picker-radio sr-only" ${checked}>
+                        <div class="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 border-2 border-transparent flex items-center justify-center text-zinc-600 dark:text-zinc-400 transition-all hover:bg-zinc-100 dark:hover:bg-zinc-700">
+                            <i class="ph ${icon} text-2xl"></i>
+                        </div>
+                    </label>
+                `;
+            });
+
+            COLORS_LIST.forEach((hex, idx) => {
+                const checked = idx === 0 ? 'checked' : '';
+                colorC.innerHTML += `
+                    <label class="cursor-pointer relative" onclick="setHexFromPreset('${hex}')">
+                        <input type="radio" name="catColor" value="${hex}" class="picker-radio sr-only" ${checked}>
+                        <div class="w-10 h-10 rounded-full border-2 border-transparent transition-all flex items-center justify-center p-[2px]" style="background-color: ${hex}30">
+                            <div class="w-full h-full rounded-full shadow-sm" style="background-color: ${hex}"></div>
+                        </div>
+                    </label>
+                `;
+            });
+            
+            // Set initial color preview
+            updateHexPreview(COLORS_LIST[0]);
+        }
+
+        function clearEmojiInput() {
+            document.getElementById('catEmojiInput').value = '';
+        }
+        function clearIconRadios() {
+            document.querySelectorAll('input[name="catIcon"]').forEach(r => r.checked = false);
+        }
+        
+        function updateHexPreview(forceVal = null) {
+            const hexInput = document.getElementById('catHexInput');
+            if (forceVal) hexInput.value = forceVal;
+            let val = hexInput.value.trim();
+            if(!val.startsWith('#') && val.length > 0) val = '#' + val;
+            
+            // Basic valid hex check (3 or 6 chars)
+            if(/^#[0-9A-F]{3,6}$/i.test(val)) {
+                document.getElementById('hexColorPreview').style.backgroundColor = val;
+                // Uncheck preset radios if typed manually
+                if(!forceVal) document.querySelectorAll('input[name="catColor"]').forEach(r => r.checked = false);
+            }
+        }
+        function setHexFromPreset(hex) {
+            updateHexPreview(hex);
+        }
+
+        function renderManageCategoryList() {
+            const container = document.getElementById('manageCategoryList');
+            if(!container) return;
+            container.innerHTML = '';
+
+            customCategories.forEach(cat => {
+                const style = getCatStyleDef(cat.name);
+                container.innerHTML += `
+                    <div class="flex items-center justify-between bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="${style.bg}">
+                                ${style.iconHtml}
+                            </div>
+                            <span class="font-semibold text-sm">${cat.name}</span>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="editCategory('${cat.id}')" class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                                <i class="ph ph-pencil-simple"></i>
+                            </button>
+                            <button onclick="deleteCategory('${cat.id}')" class="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-rose-500 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function populateCategoryDropdown() {
+            const select = document.getElementById('itemCategory');
+            if(!select) return;
+            const currentVal = select.value;
+            select.innerHTML = '';
+            customCategories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.name; opt.text = cat.name;
+                select.appendChild(opt);
+            });
+            if(customCategories.some(c => c.name === currentVal)) select.value = currentVal;
+        }
+
+        function saveCategory() {
+            const idInput = document.getElementById('editCatId').value;
+            const nameInput = document.getElementById('catNameInput').value.trim();
+            const emojiInput = document.getElementById('catEmojiInput').value.trim();
+            const hexInput = document.getElementById('catHexInput').value.trim() || '#71717a';
+            
+            let finalIcon = emojiInput;
+            if(!finalIcon) {
+                const rIcon = document.querySelector('input[name="catIcon"]:checked');
+                finalIcon = rIcon ? rIcon.value : 'ph-package';
+            }
+
+            if(!nameInput) return showToast('Vui lòng nhập tên danh mục', 'error');
+
+            if(idInput) {
+                const idx = customCategories.findIndex(c => c.id === idInput);
+                if(idx > -1) {
+                    const oldName = customCategories[idx].name;
+                    customCategories[idx] = { ...customCategories[idx], name: nameInput, icon: finalIcon, color: hexInput };
+                    items.forEach(i => { if(i.category === oldName) i.category = nameInput; });
+                }
+                showToast('Đã cập nhật danh mục');
+            } else {
+                if(customCategories.some(c => c.name.toLowerCase() === nameInput.toLowerCase())) return showToast('Tên danh mục tồn tại', 'error');
+                customCategories.push({ id: 'cat_' + Date.now(), name: nameInput, icon: finalIcon, color: hexInput });
+                showToast('Đã thêm danh mục mới');
+            }
+
+            saveData();
+            resetCatForm();
+        }
+
+        function editCategory(id) {
+            const cat = customCategories.find(c => c.id === id);
+            if(!cat) return;
+
+            document.getElementById('catFormTitle').innerText = 'Sửa danh mục';
+            document.getElementById('editCatId').value = cat.id;
+            document.getElementById('catNameInput').value = cat.name;
+            
+            if (!cat.icon.startsWith('ph-')) {
+                document.getElementById('catEmojiInput').value = cat.icon;
+                clearIconRadios();
+            } else {
+                clearEmojiInput();
+                const icRadio = document.querySelector(`input[name="catIcon"][value="${cat.icon}"]`);
+                if(icRadio) icRadio.checked = true;
+            }
+            
+            updateHexPreview(cat.color);
+            const clRadio = document.querySelector(`input[name="catColor"][value="${cat.color}"]`);
+            if(clRadio) clRadio.checked = true;
+            
+            document.getElementById('btnCancelCat').classList.remove('hidden');
+        }
+
+        function deleteCategory(id) {
+            const cat = customCategories.find(c => c.id === id);
+            if(!cat) return;
+            if(customCategories.length <= 1) return showToast('Phải giữ lại ít nhất 1 danh mục', 'error');
+
+            if(confirm(`Xóa danh mục "${cat.name}"?\nVật phẩm bên trong sẽ chuyển sang danh mục khác.`)) {
+                const fallbackCat = customCategories.find(c => c.id !== id).name;
+                items.forEach(i => { if(i.category === cat.name) i.category = fallbackCat; });
+                customCategories = customCategories.filter(c => c.id !== id);
+                if(currentFilter === cat.name) currentFilter = 'all';
+
+                saveData();
+                showToast('Đã xóa danh mục');
+                resetCatForm();
+            }
+        }
+
+        function resetCatForm() {
+            document.getElementById('catForm').reset();
+            document.getElementById('editCatId').value = '';
+            document.getElementById('catFormTitle').innerText = 'Thêm danh mục mới';
+            document.getElementById('btnCancelCat').classList.add('hidden');
+            
+            document.querySelector('input[name="catIcon"]').checked = true;
+            document.querySelector('input[name="catColor"]').checked = true;
+            updateHexPreview(COLORS_LIST[0]);
+        }
+
+        // --- FORM ITEM LOGIC ---
+        function submitForm() {
+            const form = document.getElementById('itemForm');
+            if(!form.checkValidity()) { form.reportValidity(); return; }
+
+            const id = document.getElementById('itemId').value;
+            const newItem = {
+                id: id ? id : 'id_' + Date.now(),
+                name: document.getElementById('itemName').value.trim(),
+                quantity: parseFloat(document.getElementById('itemQuantity').value) || 0,
+                unit: document.getElementById('itemUnit').value.trim() || 'Cái',
+                category: document.getElementById('itemCategory').value,
+                location: document.getElementById('itemLocation').value.trim(),
+                addedDate: document.getElementById('itemAddedDate').value,
+                expiryDate: document.getElementById('itemExpiry').value,
+                notes: document.getElementById('itemNotes').value.trim(),
+                createdAt: id ? items.find(i=>i.id===id).createdAt : new Date().toISOString()
+            };
+            
+            const catStyle = getCatStyleDef(newItem.category);
+
+            if (id) {
+                const idx = items.findIndex(i => i.id === id);
+                if(idx > -1) items[idx] = newItem;
+                showToast('Đã lưu thay đổi');
+            } else {
+                items.push(newItem);
+                logAction('Thêm mới', newItem.name, newItem.quantity, newItem.unit, catStyle.colorStr);
+                showToast('Đã thêm vật phẩm');
+            }
+
+            saveData();
+            closeSheet('formSheet');
+        }
+
+        function editItem(id) {
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('sheetTitle').innerText = 'Sửa vật phẩm';
+            document.getElementById('itemId').value = item.id;
+            document.getElementById('itemName').value = item.name;
+            document.getElementById('itemQuantity').value = item.quantity !== undefined ? item.quantity : 1;
+            document.getElementById('itemUnit').value = item.unit || 'Cái';
+            document.getElementById('itemCategory').value = item.category;
+            document.getElementById('itemLocation').value = item.location;
+            
+            const addedDateFormatted = item.addedDate ? item.addedDate : new Date(item.createdAt).toISOString().split('T')[0];
+            document.getElementById('itemAddedDate').value = addedDateFormatted;
+            
+            document.getElementById('itemExpiry').value = item.expiryDate || '';
+            document.getElementById('itemNotes').value = item.notes || '';
+
+            openSheet(false);
+        }
+
+        function deleteItem(id) {
+            const item = items.find(i => i.id === id);
+            if(item && confirm('Xóa vật phẩm này khỏi kho?')) {
+                const catStyle = getCatStyleDef(item.category);
+                logAction('Xóa', item.name, item.quantity, item.unit, catStyle.colorStr);
+                
+                items = items.filter(i => i.id !== id);
+                saveData();
+                showToast('Đã xóa', 'error');
+            }
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            const icon = document.getElementById('toastIcon');
+            if(type === 'error') icon.className = 'ph-fill ph-warning-circle text-xl text-rose-500';
+            else icon.className = 'ph-fill ph-check-circle text-xl text-emerald-500';
+
+            toast.classList.remove('-translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        // --- SHEET UTILS ---
+        function openSheet(reset = true) {
+            if(reset) {
+                document.getElementById('sheetTitle').innerText = 'Thêm vật phẩm';
+                document.getElementById('itemForm').reset();
+                document.getElementById('itemId').value = '';
+                document.getElementById('itemQuantity').value = '1';
+                document.getElementById('itemUnit').value = 'Cái';
+                // Đặt mặc định Ngày nhập = Hôm nay
+                document.getElementById('itemAddedDate').value = new Date().toISOString().split('T')[0];
+                populateCategoryDropdown();
+            }
+            toggleSheetVisibility('formSheet', true);
+        }
+
+        function openCategorySheet() { toggleSheetVisibility('categorySheet', true); }
+
+        function closeSheet(sheetId) {
+            toggleSheetVisibility(sheetId, false);
+            if(sheetId === 'categorySheet') resetCatForm();
+            if(sheetId === 'formSheet') document.getElementById('itemId').value = '';
+        }
+
+        function toggleSheetVisibility(sheetId, isShow) {
+            const sheet = document.getElementById(sheetId);
+            const content = sheet.querySelector('.absolute.bottom-0');
+            const backdrop = sheet.querySelector('.absolute.inset-0');
+
+            if (isShow) {
+                sheet.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    backdrop.classList.remove('backdrop-exit-active');
+                    backdrop.classList.add('backdrop-enter-active');
+                    content.classList.remove('sheet-exit-active');
+                    content.classList.add('sheet-enter-active');
+                });
+            } else {
+                backdrop.classList.remove('backdrop-enter-active');
+                backdrop.classList.add('backdrop-exit-active');
+                content.classList.remove('sheet-enter-active');
+                content.classList.add('sheet-exit-active');
+                setTimeout(() => { sheet.classList.add('hidden'); }, 300);
+            }
+        }
+
+        // --- DRAG TO DISMISS ---
+        let startY = 0, currentY = 0, isDragging = false, activeSheetContent = null;
+        document.querySelectorAll('[data-sheet]').forEach(header => {
+            header.addEventListener('touchstart', (e) => {
+                if (window.innerWidth >= 768) return; 
+                startY = e.touches[0].clientY; currentY = startY; isDragging = true;
+                const sheetId = header.getAttribute('data-sheet');
+                activeSheetContent = document.getElementById(sheetId).querySelector('.absolute.bottom-0');
+                activeSheetContent.style.transition = 'none'; 
+            }, { passive: true });
+            header.addEventListener('touchmove', (e) => {
+                if (!isDragging || !activeSheetContent) return;
+                currentY = e.touches[0].clientY;
+                if (currentY - startY > 0) activeSheetContent.style.transform = `translateY(${currentY - startY}px)`;
+            }, { passive: true });
+            header.addEventListener('touchend', (e) => {
+                if (!isDragging || !activeSheetContent) return;
+                isDragging = false; activeSheetContent.style.transition = ''; 
+                if (currentY - startY > 60) {
+                    activeSheetContent.style.transform = '';
+                    closeSheet(header.getAttribute('data-sheet'));
+                } else activeSheetContent.style.transform = ''; 
+                activeSheetContent = null;
+            });
+        });
+
+        // Run
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
