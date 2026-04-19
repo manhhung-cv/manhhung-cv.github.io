@@ -52,9 +52,9 @@
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
         .sheet-enter { transform: translateY(100%); opacity: 0; }
-        .sheet-enter-active { transform: translateY(0); opacity: 1; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        .sheet-enter-active { transform: translateY(0); opacity: 1; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s; }
         .sheet-exit { transform: translateY(0); opacity: 1; }
-        .sheet-exit-active { transform: translateY(100%); opacity: 0; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .sheet-exit-active { transform: translateY(100%); opacity: 0; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s; }
 
         .backdrop-enter { opacity: 0; }
         .backdrop-enter-active { opacity: 1; transition: opacity 0.3s ease; }
@@ -107,6 +107,9 @@
             <button onclick="switchTab('history')" id="tab-history-desktop" class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50">
                 <i class="ph-fill ph-clock-counter-clockwise text-lg"></i> Nhật ký
             </button>
+            <button onclick="switchTab('settings')" id="tab-settings-desktop" class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50">
+                <i class="ph-fill ph-cloud-arrow-up text-lg"></i> Cài đặt & Đồng bộ
+            </button>
         </div>
 
         <nav class="space-y-2 flex-1 flex flex-col min-h-0" id="desktopFilterNav">
@@ -131,9 +134,6 @@
                     <i class="ph ph-archive-box text-xl"></i>
                 </div>
             </div>
-            <button onclick="openSheet()" class="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold py-3.5 px-4 rounded-2xl shadow-fab transform active:scale-95 transition-all flex items-center justify-center gap-2">
-                <i class="ph-bold ph-plus"></i> Thêm vật phẩm
-            </button>
         </div>
     </aside>
 
@@ -141,15 +141,12 @@
     <main class="flex-1 flex flex-col h-full relative overflow-hidden">
         
         <!-- HEADER MOBILE -->
-        <header class="md:hidden flex items-center justify-between p-5 pt-12 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-10">
+        <header class="md:hidden flex items-center justify-between p-5 pt-12 shrink-0 bg-zinc-50 dark:bg-zinc-950 z-10 border-b border-transparent transition-all" id="mobileHeader">
             <div>
                 <p id="mobileHeaderSubtitle" class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Quản lý</p>
                 <h1 id="mobileHeaderTitle" class="text-2xl font-bold tracking-tight mt-0.5">Kho đồ</h1>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="openCategorySheet()" class="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform" id="mobileCatBtn">
-                    <i class="ph-fill ph-gear text-xl"></i>
-                </button>
                 <button onclick="toggleTheme()" class="w-10 h-10 rounded-full bg-white dark:bg-zinc-900 shadow-sm flex items-center justify-center text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform">
                     <i class="ph ph-moon dark:hidden text-xl"></i>
                     <i class="ph ph-sun hidden dark:block text-xl text-yellow-400"></i>
@@ -160,20 +157,23 @@
         <!-- VIEW 1: KHO ĐỒ (INVENTORY) -->
         <div id="inventoryView" class="flex-1 flex flex-col h-full overflow-hidden">
             <!-- SEARCH & CHIPS -->
-            <div class="px-5 md:px-8 py-2 md:pt-8 shrink-0 z-10 bg-zinc-50 dark:bg-zinc-950">
-                <div class="relative group">
+            <div class="px-5 md:px-8 py-2 md:pt-8 shrink-0 z-10 bg-zinc-50 dark:bg-zinc-950 flex items-center gap-3">
+                <div class="relative group flex-1">
                     <i class="ph ph-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-zinc-400 text-lg group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors"></i>
                     <input type="text" id="searchInput" placeholder="Tìm tên, vị trí..." 
                         class="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-zinc-900 border-none rounded-2xl shadow-soft dark:shadow-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-[15px] outline-none placeholder-zinc-400">
                 </div>
-                <!-- Mobile Category Chips -->
-                <div class="md:hidden mt-5 overflow-x-auto hide-scrollbar -mx-5 px-5">
-                    <div class="flex gap-2 w-max" id="mobileFilterContainer"></div>
-                </div>
+                <button id="mobileCatBtn" onclick="openCategorySheet()" class="md:hidden w-12 h-12 shrink-0 rounded-2xl bg-white dark:bg-zinc-900 shadow-soft dark:shadow-none flex items-center justify-center text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform">
+                    <i class="ph-fill ph-funnel text-xl"></i>
+                </button>
+            </div>
+            <!-- Mobile Category Chips -->
+            <div class="md:hidden pt-4 pb-2 overflow-x-auto hide-scrollbar px-5 bg-zinc-50 dark:bg-zinc-950 shrink-0">
+                <div class="flex gap-2 w-max" id="mobileFilterContainer"></div>
             </div>
 
             <!-- LIST ITEMS -->
-            <div class="flex-1 overflow-y-auto px-5 md:px-8 pt-5 md:pt-6 pb-28 md:pb-8 hide-scrollbar relative">
+            <div class="flex-1 overflow-y-auto px-5 md:px-8 pt-4 md:pt-6 pb-28 md:pb-8 hide-scrollbar relative">
                 <div id="itemsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-max"></div>
                 <!-- Empty State -->
                 <div id="emptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
@@ -188,16 +188,15 @@
 
         <!-- VIEW 2: NHẬT KÝ (HISTORY) -->
         <div id="historyView" class="hidden flex-1 flex-col h-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
-            <div class="px-5 md:px-8 py-4 md:pt-8 shrink-0 border-b border-zinc-200/50 dark:border-zinc-800/50">
-                <h2 class="text-xl font-bold hidden md:block">Nhật ký hoạt động</h2>
-                <p class="text-sm text-zinc-500 dark:text-zinc-400">Theo dõi lịch sử nhập thêm và sử dụng vật phẩm.</p>
+            <div class="px-5 md:px-8 py-4 md:pt-8 shrink-0 border-b border-zinc-200/50 dark:border-zinc-800/50 hidden md:block">
+                <h2 class="text-xl font-bold">Nhật ký hoạt động</h2>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Theo dõi lịch sử nhập thêm và sử dụng vật phẩm.</p>
             </div>
             
             <div class="flex-1 overflow-y-auto px-5 md:px-8 py-6 pb-28 md:pb-8 hide-scrollbar">
                 <div id="historyTimeline" class="relative border-l-2 border-zinc-200 dark:border-zinc-800 ml-3 md:ml-4 space-y-8 pb-10">
                     <!-- JS Render Timeline -->
                 </div>
-                
                 <div id="historyEmptyState" class="hidden flex flex-col items-center justify-center py-20 opacity-60">
                     <i class="ph-fill ph-clock-counter-clockwise text-4xl text-zinc-400 mb-3"></i>
                     <p class="text-sm text-zinc-500">Chưa có hoạt động nào được ghi nhận.</p>
@@ -205,23 +204,104 @@
             </div>
         </div>
 
-        <!-- MOBILE BOTTOM NAVIGATION -->
-        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 shadow-nav dark:shadow-nav-dark z-40 flex justify-around items-center h-16 px-4" style="padding-bottom: env(safe-area-inset-bottom);">
-            <button onclick="switchTab('inventory')" id="tab-inventory-mobile" class="flex flex-col items-center justify-center w-16 h-full text-zinc-900 dark:text-white transition-colors">
-                <i class="ph-fill ph-package text-2xl mb-0.5"></i>
-                <span class="text-[10px] font-medium">Kho đồ</span>
-            </button>
-            
-            <!-- Central FAB -->
-            <div class="relative -top-5">
-                <button onclick="openSheet()" class="w-14 h-14 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full shadow-fab flex items-center justify-center text-2xl transform active:scale-90 transition-transform border-4 border-zinc-50 dark:border-zinc-950">
-                    <i class="ph-bold ph-plus"></i>
-                </button>
+        <!-- VIEW 3: CÀI ĐẶT & ĐỒNG BỘ (SETTINGS) -->
+        <div id="settingsView" class="hidden flex-1 flex-col h-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+            <div class="px-5 md:px-8 py-4 md:pt-8 shrink-0 border-b border-zinc-200/50 dark:border-zinc-800/50 hidden md:block">
+                <h2 class="text-xl font-bold">Cài đặt & Đồng bộ</h2>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Quản lý tệp JSON và đồng bộ đám mây Firebase.</p>
             </div>
+            
+            <div class="flex-1 overflow-y-auto px-5 md:px-8 py-6 pb-28 md:pb-8 hide-scrollbar space-y-8">
+                
+                <!-- JSON Section -->
+                <section>
+                    <h3 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase tracking-widest">Dữ liệu nội bộ (JSON)</h3>
+                    <div class="flex gap-3">
+                        <button onclick="exportJSON()" class="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-sm font-semibold active:scale-95 transition-transform">
+                            <i class="ph-bold ph-export"></i> Xuất File
+                        </button>
+                        <label class="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-sm font-semibold cursor-pointer active:scale-95 transition-transform">
+                            <i class="ph-bold ph-import"></i> Nhập File
+                            <input type="file" id="importJsonFile" accept=".json" class="hidden" onchange="importJSON(event)">
+                        </label>
+                    </div>
+                </section>
 
-            <button onclick="switchTab('history')" id="tab-history-mobile" class="flex flex-col items-center justify-center w-16 h-full text-zinc-400 dark:text-zinc-500 transition-colors">
-                <i class="ph-fill ph-clock-counter-clockwise text-2xl mb-0.5"></i>
-                <span class="text-[10px] font-medium">Nhật ký</span>
+                <!-- Cloud Sync & Auth Section -->
+                <section>
+                    <h3 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 mb-3 uppercase tracking-widest">Đồng bộ Cloud (Firebase)</h3>
+                    
+                    <!-- Chưa đăng nhập -->
+                    <div id="authSection" class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-3xl shadow-sm space-y-4">
+                        <p class="text-sm text-zinc-500 dark:text-zinc-400 mb-2">Đăng nhập để đồng bộ dữ liệu online giữa các thiết bị và tạo bản sao lưu an toàn.</p>
+                        
+                        <div class="space-y-3">
+                            <input type="email" id="authEmail" placeholder="Email của bạn" autocomplete="email"
+                                class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-transparent dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all">
+                            <input type="password" id="authPassword" placeholder="Mật khẩu (từ 6 ký tự)" autocomplete="current-password"
+                                class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-transparent dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white transition-all">
+                        </div>
+
+                        <div class="flex gap-3 pt-1">
+                            <button onclick="handleLogin()" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-bold shadow-sm active:scale-95 transition-all">Đăng nhập</button>
+                            <button onclick="handleRegister()" class="flex-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white py-3 rounded-xl font-bold active:scale-95 transition-all">Đăng ký</button>
+                        </div>
+                        
+                        <div class="text-center pt-2">
+                            <button onclick="handleResetPassword()" class="text-xs font-semibold text-blue-500 hover:text-blue-600 transition-colors">Quên mật khẩu?</button>
+                        </div>
+                    </div>
+
+                    <!-- Đã đăng nhập -->
+                    <div id="authLoggedInSection" class="hidden bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-5 rounded-3xl shadow-sm">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-2xl shrink-0">
+                                    <i class="ph-fill ph-user-circle"></i>
+                                </div>
+                                <div class="min-w-0 pr-2">
+                                    <p class="font-bold text-sm truncate" id="loggedInEmail">user@email.com</p>
+                                    <p class="text-[11px] text-emerald-500 font-medium flex items-center gap-1 mt-0.5"><i class="ph-fill ph-cloud-check"></i> Đã kết nối Cloud</p>
+                                </div>
+                            </div>
+                            <button onclick="handleLogout()" class="shrink-0 text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 px-3 py-2 rounded-xl transition-colors active:scale-95">Đăng xuất</button>
+                        </div>
+                        
+                        <div id="backupSection" class="border-t border-zinc-100 dark:border-zinc-800 pt-5">
+                            <div class="flex items-center justify-between mb-4">
+                                <span class="font-bold text-sm">Các bản sao lưu đám mây</span>
+                                <button onclick="promptCreateBackup()" class="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 active:scale-95">
+                                    <i class="ph-bold ph-plus"></i> Tạo mới
+                                </button>
+                            </div>
+                            <div id="cloudBackupsList" class="space-y-2">
+                                <p class="text-xs text-zinc-500 py-2">Đang tải...</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+
+        <!-- FAB (Floating Action Button) - Cố định góc phải cho cả Mobile và Desktop -->
+        <button onclick="openSheet()" class="fixed md:hidden bottom-24 right-5 w-14 h-14 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full shadow-fab flex items-center justify-center text-2xl z-40 transform active:scale-90 transition-transform">
+            <i class="ph-bold ph-plus"></i>
+        </button>
+
+        <!-- MOBILE BOTTOM NAVIGATION (3 Tabs) -->
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 shadow-nav dark:shadow-nav-dark z-30 flex justify-around items-center h-[72px] pb-safe" style="padding-bottom: env(safe-area-inset-bottom);">
+            <button onclick="switchTab('inventory')" id="tab-inventory-mobile" class="flex flex-col items-center justify-center flex-1 h-full text-zinc-900 dark:text-white transition-colors">
+                <i class="ph-fill ph-package text-2xl mb-1"></i>
+                <span class="text-[10px] font-semibold">Kho đồ</span>
+            </button>
+            <button onclick="switchTab('history')" id="tab-history-mobile" class="flex flex-col items-center justify-center flex-1 h-full text-zinc-400 dark:text-zinc-500 transition-colors">
+                <i class="ph-fill ph-clock-counter-clockwise text-2xl mb-1"></i>
+                <span class="text-[10px] font-semibold">Nhật ký</span>
+            </button>
+            <button onclick="switchTab('settings')" id="tab-settings-mobile" class="flex flex-col items-center justify-center flex-1 h-full text-zinc-400 dark:text-zinc-500 transition-colors">
+                <i class="ph-fill ph-cloud-arrow-up text-2xl mb-1"></i>
+                <span class="text-[10px] font-semibold">Cài đặt</span>
             </button>
         </nav>
 
@@ -229,11 +309,10 @@
 
     <!-- 1. BOTTOM SHEET: THÊM / SỬA VẬT PHẨM -->
     <div id="formSheet" class="fixed inset-0 z-50 hidden pointer-events-none">
-        <div id="sheetBackdrop" class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active" onclick="closeSheet('formSheet')"></div>
-        
-        <div id="sheetContent" class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300">
+        <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closeSheet('formSheet')"></div>
+        <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300 sheet-content">
             
-            <div id="sheetHeaderArea" class="shrink-0 md:cursor-default cursor-grab active:cursor-grabbing" data-sheet="formSheet">
+            <div class="shrink-0 md:cursor-default cursor-grab active:cursor-grabbing handle-area" data-sheet="formSheet">
                 <div class="md:hidden flex justify-center pt-3 pb-2" onclick="closeSheet('formSheet')">
                     <div class="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full pointer-events-none"></div>
                 </div>
@@ -320,11 +399,10 @@
 
     <!-- 2. BOTTOM SHEET: QUẢN LÝ DANH MỤC CÓ EMOJI VÀ MÀU CUSTOM -->
     <div id="categorySheet" class="fixed inset-0 z-50 hidden pointer-events-none">
-        <div id="catBackdrop" class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active" onclick="closeSheet('categorySheet')"></div>
-        
-        <div id="catContent" class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300">
+        <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closeSheet('categorySheet')"></div>
+        <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300 sheet-content">
             
-            <div id="catHeaderArea" class="shrink-0 md:cursor-default cursor-grab active:cursor-grabbing" data-sheet="categorySheet">
+            <div class="shrink-0 md:cursor-default cursor-grab active:cursor-grabbing handle-area" data-sheet="categorySheet">
                 <div class="md:hidden flex justify-center pt-3 pb-2" onclick="closeSheet('categorySheet')">
                     <div class="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full pointer-events-none"></div>
                 </div>
@@ -388,36 +466,69 @@
         </div>
     </div>
 
+    <!-- 3. CUSTOM DIALOGS: THAY THẾ ALERT/CONFIRM/PROMPT -->
+    <!-- Confirm Dialog -->
+    <div id="confirmSheet" class="fixed inset-0 z-[60] hidden pointer-events-none">
+        <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closeConfirm()"></div>
+        <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[400px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] p-6 pointer-events-auto sheet-exit-active transition-all duration-300 sheet-content">
+            <h3 id="confirmTitle" class="text-xl font-bold mb-2">Xác nhận</h3>
+            <p id="confirmMessage" class="text-sm text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">Bạn có chắc chắn?</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirm()" class="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white py-3.5 rounded-2xl font-bold active:scale-95 transition-transform">Hủy</button>
+                <button id="confirmBtn" class="flex-1 bg-rose-500 text-white py-3.5 rounded-2xl font-bold shadow-sm active:scale-95 transition-transform">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompt Dialog (For Backups) -->
+    <div id="promptSheet" class="fixed inset-0 z-[60] hidden pointer-events-none">
+        <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closePrompt()"></div>
+        <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[400px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] p-6 pointer-events-auto sheet-exit-active transition-all duration-300 sheet-content">
+            <h3 id="promptTitle" class="text-xl font-bold mb-4">Nhập thông tin</h3>
+            <input type="text" id="promptInput" class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white mb-6" autocomplete="off">
+            <div class="flex gap-3">
+                <button onclick="closePrompt()" class="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white py-3.5 rounded-2xl font-bold active:scale-95 transition-transform">Hủy</button>
+                <button id="promptBtn" class="flex-1 bg-blue-500 text-white py-3.5 rounded-2xl font-bold shadow-sm active:scale-95 transition-transform">Lưu</button>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST NOTIFICATION -->
-    <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-5 py-3.5 rounded-full shadow-fab -translate-y-24 opacity-0 transition-all duration-300 z-[60] flex items-center gap-3 font-medium text-sm">
+    <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-5 py-3.5 rounded-full shadow-fab -translate-y-24 opacity-0 transition-all duration-300 z-[70] flex items-center gap-3 font-medium text-sm">
         <i id="toastIcon" class="ph-fill ph-check-circle text-xl text-emerald-400 dark:text-emerald-500"></i>
         <span id="toastMessage">Thành công!</span>
     </div>
 
-    <!-- ỨNG DỤNG JAVASCRIPT -->
+    <!-- ỨNG DỤNG JAVASCRIPT & FIREBASE -->
     <script>
         /**
-         * KHO ĐỒ THÔNG MINH - MINIMAL PREMIUM V4
-         * Tính năng mới: Nhật ký, Emojis, Custom Color Picker (Không dùng input color native), Bottom Nav
+         * KHO ĐỒ THÔNG MINH - MINIMAL PREMIUM V5
+         * Sửa lỗi Icon, Thêm Import/Export JSON, Firebase Sync & Backups, Bỏ Confirm Native
          */
-        const STORAGE_KEY = 'smart_inventory_v4';
-        const CAT_STORAGE_KEY = 'smart_categories_v4';
-        const LOGS_STORAGE_KEY = 'smart_logs_v4';
+        const STORAGE_KEY = 'smart_inventory_v5';
+        const CAT_STORAGE_KEY = 'smart_categories_v5';
+        const LOGS_STORAGE_KEY = 'smart_logs_v5';
         
-        let items = [];
-        let customCategories = [];
-        let actionLogs = [];
+        window.items = [];
+        window.customCategories = [];
+        window.actionLogs = [];
         let currentFilter = 'all'; 
         let searchQuery = '';
         let activeTab = 'inventory';
 
-        // Danh sách Icon & Color Premium preset
-        const ICONS_LIST = ['ph-package', 'ph-file-text', 'ph-apple-pod', 'ph-laptop', 'ph-t-shirt', 'ph-pill', 'ph-books', 'ph-wrench', 'ph-car', 'ph-house'];
+        // Firebase Globals
+        window.db = null;
+        window.currentUser = null;
+        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-smart-inv';
+        window.fb = {};
+
+        // Sửa ph-apple-pod thành ph-bowl-food
+        const ICONS_LIST = ['ph-package', 'ph-file-text', 'ph-bowl-food', 'ph-laptop', 'ph-t-shirt', 'ph-pill', 'ph-books', 'ph-wrench', 'ph-car', 'ph-house'];
         const COLORS_LIST = ['#71717a', '#3b82f6', '#10b981', '#a855f7', '#f43f5e', '#f59e0b', '#06b6d4'];
         
         const DEFAULT_CATEGORIES = [
             { id: 'cat_1', name: 'Tài liệu', icon: 'ph-file-text', color: '#3b82f6' },
-            { id: 'cat_2', name: 'Thực phẩm', icon: 'ph-apple-pod', color: '#10b981' },
+            { id: 'cat_2', name: 'Thực phẩm', icon: 'ph-bowl-food', color: '#10b981' },
             { id: 'cat_3', name: 'Đồ điện tử', icon: 'ph-laptop', color: '#a855f7' },
             { id: 'cat_4', name: 'Khác', icon: 'ph-package', color: '#71717a' }
         ];
@@ -435,20 +546,23 @@
         }
 
         // --- INIT ---
-        function init() {
+        async function init() {
             const storedItems = localStorage.getItem(STORAGE_KEY);
-            items = storedItems ? JSON.parse(storedItems) : [];
+            window.items = storedItems ? JSON.parse(storedItems) : [];
             
             const storedCats = localStorage.getItem(CAT_STORAGE_KEY);
-            customCategories = storedCats ? JSON.parse(storedCats) : [...DEFAULT_CATEGORIES];
+            window.customCategories = storedCats ? JSON.parse(storedCats) : [...DEFAULT_CATEGORIES];
 
             const storedLogs = localStorage.getItem(LOGS_STORAGE_KEY);
-            actionLogs = storedLogs ? JSON.parse(storedLogs) : [];
+            window.actionLogs = storedLogs ? JSON.parse(storedLogs) : [];
             
             initPickers();
             setupEvents();
             updateUI();
-            switchTab('inventory'); // Mặc định mở tab kho đồ
+            switchTab('inventory'); 
+
+            // Initialize Firebase
+            await initFirebase();
         }
 
         function setupEvents() {
@@ -461,42 +575,361 @@
             locInput.addEventListener('input', renderLocationSuggestions);
         }
 
-        // --- TAB SWITCHING (ROUTING) ---
-        function switchTab(tab) {
-            activeTab = tab;
-            
-            // Toggle Views
-            document.getElementById('inventoryView').classList.toggle('hidden', tab !== 'inventory');
-            document.getElementById('historyView').classList.toggle('hidden', tab !== 'history');
-            
-            // Toggle Mobile Nav Styles
-            document.getElementById('tab-inventory-mobile').className = `flex flex-col items-center justify-center w-16 h-full transition-colors ${tab === 'inventory' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-500'}`;
-            document.getElementById('tab-history-mobile').className = `flex flex-col items-center justify-center w-16 h-full transition-colors ${tab === 'history' ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-500'}`;
-            
-            // Toggle Desktop Nav Styles
-            const actCls = 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white';
-            const inactCls = 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50';
-            document.getElementById('tab-inventory-desktop').className = `w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${tab === 'inventory' ? actCls : inactCls}`;
-            document.getElementById('tab-history-desktop').className = `w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${tab === 'history' ? actCls : inactCls}`;
+        // --- FIREBASE INITIALIZATION & SYNC LOGIC ---
+        async function initFirebase() {
+            let config;
+            if (typeof __firebase_config !== 'undefined') {
+                config = JSON.parse(__firebase_config);
+            } else {
+                config = {
+                    apiKey: "AIzaSyD938419h5vckTS93a1CPPmND3sHhJU70g",
+                    authDomain: "storage-hunq.firebaseapp.com",
+                    projectId: "storage-hunq",
+                    storageBucket: "storage-hunq.firebasestorage.app",
+                    messagingSenderId: "98545788993",
+                    appId: "1:98545788993:web:96975fe560833ccbbfbec0"
+                };
+            }
 
-            // Toggle Mobile Header specific buttons
-            document.getElementById('mobileCatBtn').classList.toggle('hidden', tab !== 'inventory');
-            document.getElementById('mobileHeaderTitle').innerText = tab === 'inventory' ? 'Kho đồ' : 'Nhật ký';
-            document.getElementById('mobileHeaderSubtitle').innerText = tab === 'inventory' ? 'Quản lý' : 'Lịch sử';
+            try {
+                const fbApp = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+                const fbAuth = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+                const fbStore = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+                
+                window.fb = fbStore;
+                window.fbAuthAPI = fbAuth; // Lưu API Auth để gọi sau
+                const app = fbApp.initializeApp(config);
+                window.auth = fbAuth.getAuth(app);
+                window.db = fbStore.getFirestore(app);
 
-            // Toggle Desktop Filters Nav
-            document.getElementById('desktopFilterNav').style.display = tab === 'inventory' ? 'flex' : 'none';
+                fbAuth.onAuthStateChanged(window.auth, async (user) => {
+                    if (user) {
+                        window.currentUser = user;
+                        // Cập nhật UI
+                        document.getElementById('authSection').classList.add('hidden');
+                        document.getElementById('authLoggedInSection').classList.remove('hidden');
+                        document.getElementById('loggedInEmail').innerText = user.email;
+                        
+                        showToast('Đã kết nối Cloud');
+                        
+                        await loadCloudLatest();
+                        loadCloudBackups();
+                    } else {
+                        window.currentUser = null;
+                        // Trở về Local mode
+                        document.getElementById('authSection').classList.remove('hidden');
+                        document.getElementById('authLoggedInSection').classList.add('hidden');
+                    }
+                });
 
-            if (tab === 'history') {
-                renderHistory();
+            } catch(e) {
+                console.error("Firebase init failed", e);
+                showToast("Lỗi khởi tạo Firebase", "error");
             }
         }
 
+        // --- AUTH HANDLERS ---
+        function getAuthErrorMsg(code) {
+            switch(code) {
+                case 'auth/invalid-email': return 'Email không hợp lệ.';
+                case 'auth/user-not-found':
+                case 'auth/wrong-password':
+                case 'auth/invalid-credential': return 'Sai email hoặc mật khẩu.';
+                case 'auth/email-already-in-use': return 'Email này đã được đăng ký.';
+                case 'auth/weak-password': return 'Mật khẩu quá yếu (ít nhất 6 ký tự).';
+                case 'auth/missing-password': return 'Vui lòng nhập mật khẩu.';
+                default: return 'Có lỗi xảy ra. Vui lòng thử lại.';
+            }
+        }
+
+        async function handleLogin() {
+            const email = document.getElementById('authEmail').value.trim();
+            const pass = document.getElementById('authPassword').value;
+            if(!email || !pass) return showToast('Vui lòng nhập Email và Mật khẩu', 'error');
+            
+            try {
+                await window.fbAuthAPI.signInWithEmailAndPassword(window.auth, email, pass);
+            } catch(e) {
+                showToast(getAuthErrorMsg(e.code), 'error');
+            }
+        }
+
+        async function handleRegister() {
+            const email = document.getElementById('authEmail').value.trim();
+            const pass = document.getElementById('authPassword').value;
+            if(!email || !pass) return showToast('Vui lòng nhập Email và Mật khẩu', 'error');
+            
+            try {
+                await window.fbAuthAPI.createUserWithEmailAndPassword(window.auth, email, pass);
+                showToast('Đăng ký thành công!');
+            } catch(e) {
+                showToast(getAuthErrorMsg(e.code), 'error');
+            }
+        }
+
+        async function handleResetPassword() {
+            const email = document.getElementById('authEmail').value.trim();
+            if(!email) return showToast('Vui lòng nhập Email vào ô trên để lấy lại mật khẩu', 'error');
+            
+            try {
+                await window.fbAuthAPI.sendPasswordResetEmail(window.auth, email);
+                showToast('Đã gửi email khôi phục mật khẩu. Vui lòng kiểm tra hộp thư.');
+            } catch(e) {
+                showToast(getAuthErrorMsg(e.code), 'error');
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await window.fbAuthAPI.signOut(window.auth);
+                showToast('Đã đăng xuất. Chuyển về chế độ Local.');
+                // Làm sạch mật khẩu
+                document.getElementById('authPassword').value = '';
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        async function syncToCloudLatest() {
+            if (!window.currentUser || !window.db) return;
+            try {
+                const docRef = window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'state', 'latest');
+                await window.fb.setDoc(docRef, { 
+                    items: window.items, 
+                    categories: window.customCategories, 
+                    logs: window.actionLogs, 
+                    timestamp: Date.now() 
+                });
+            } catch(e) { console.error("Sync failed", e); }
+        }
+
+        async function loadCloudLatest() {
+            if (!window.currentUser || !window.db) return;
+            try {
+                const docRef = window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'state', 'latest');
+                const snap = await window.fb.getDoc(docRef);
+                if (snap.exists()) {
+                    const d = snap.data();
+                    if (d.items) window.items = d.items;
+                    if (d.categories) window.customCategories = d.categories;
+                    if (d.logs) window.actionLogs = d.logs;
+                    saveDataLocalOnly();
+                    updateUI();
+                } else {
+                    // Mới tinh, push local lên
+                    syncToCloudLatest();
+                }
+            } catch(e) { console.error("Load latest failed", e); }
+        }
+
+        async function loadCloudBackups() {
+             if (!window.currentUser || !window.db) return;
+             try {
+                 const collRef = window.fb.collection(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'backups');
+                 const snaps = await window.fb.getDocs(collRef);
+                 const backups = [];
+                 snaps.forEach(doc => backups.push({ id: doc.id, ...doc.data() }));
+                 backups.sort((a,b) => b.timestamp - a.timestamp);
+                 
+                 const list = document.getElementById('cloudBackupsList');
+                 list.innerHTML = '';
+                 if(backups.length === 0) {
+                     list.innerHTML = '<p class="text-xs text-zinc-500 py-2">Chưa có bản sao lưu nào.</p>';
+                     return;
+                 }
+                 backups.forEach(b => {
+                     const dateStr = new Date(b.timestamp).toLocaleString('vi-VN');
+                     list.innerHTML += `
+                         <div class="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-850 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                             <div>
+                                 <p class="font-bold text-sm text-zinc-900 dark:text-white">${b.name}</p>
+                                 <p class="text-[11px] text-zinc-500 mt-0.5">${dateStr} • ${b.items.length} vật phẩm</p>
+                             </div>
+                             <div class="flex items-center gap-1.5 shrink-0">
+                                 <button onclick="restoreCloudBackup('${b.id}')" title="Khôi phục" class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 flex items-center justify-center hover:bg-emerald-100 transition-colors"><i class="ph-bold ph-download-simple"></i></button>
+                                 <button onclick="renameCloudBackup('${b.id}', '${b.name}')" title="Đổi tên" class="w-8 h-8 rounded-xl bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300 flex items-center justify-center hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"><i class="ph-bold ph-pencil-simple"></i></button>
+                                 <button onclick="deleteCloudBackup('${b.id}')" title="Xóa" class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/10 flex items-center justify-center hover:bg-rose-100 transition-colors"><i class="ph-bold ph-trash"></i></button>
+                             </div>
+                         </div>
+                     `;
+                 });
+             } catch(e) { console.error(e); }
+        }
+
+        // --- BACKUP ACTIONS ---
+        function promptCreateBackup() {
+            showPrompt("Tạo bản sao lưu Cloud", "Tên bản sao lưu...", `Backup ${new Date().toLocaleDateString('vi-VN')}`, "Tạo", async (name) => {
+                if (!name || !window.currentUser || !window.db) return;
+                const collRef = window.fb.collection(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'backups');
+                await window.fb.addDoc(collRef, {
+                    name: name,
+                    items: window.items,
+                    categories: window.customCategories,
+                    logs: window.actionLogs,
+                    timestamp: Date.now()
+                });
+                showToast("Đã tạo bản sao lưu Cloud");
+                loadCloudBackups();
+            });
+        }
+
+        function renameCloudBackup(id, currentName) {
+            showPrompt("Đổi tên bản sao lưu", "Tên mới...", currentName, "Lưu", async (newName) => {
+                if (!newName || !window.currentUser || !window.db) return;
+                await window.fb.updateDoc(window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'backups', id), { name: newName });
+                showToast("Đã đổi tên sao lưu");
+                loadCloudBackups();
+            });
+        }
+
+        function deleteCloudBackup(id) {
+            showConfirm("Xóa bản sao lưu", "Bạn có chắc chắn muốn xóa bản sao lưu Cloud này không? Không thể hoàn tác.", "Xóa", "bg-rose-500", async () => {
+                if (!window.currentUser || !window.db) return;
+                await window.fb.deleteDoc(window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'backups', id));
+                showToast("Đã xóa bản sao lưu");
+                loadCloudBackups();
+            });
+        }
+
+        function restoreCloudBackup(id) {
+            showConfirm("Khôi phục sao lưu", "Dữ liệu hiện tại sẽ bị GHI ĐÈ bởi bản sao lưu này. Khuyên bạn nên tạo sao lưu trước khi khôi phục.", "Khôi phục", "bg-emerald-500", async () => {
+                if (!window.currentUser || !window.db) return;
+                const snap = await window.fb.getDoc(window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'backups', id));
+                if (snap.exists()) {
+                    const d = snap.data();
+                    window.items = d.items || [];
+                    window.customCategories = d.categories || [];
+                    window.actionLogs = d.logs || [];
+                    saveData(); 
+                    updateUI();
+                    showToast('Đã khôi phục dữ liệu thành công');
+                }
+            });
+        }
+
+
+        // --- JSON EXPORT / IMPORT ---
+        function exportJSON() {
+            const data = { 
+                items: window.items, 
+                customCategories: window.customCategories, 
+                actionLogs: window.actionLogs 
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SmartInventory_Backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Đã tải xuống file JSON');
+        }
+
+        function importJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            showConfirm("Nhập dữ liệu", "Nhập file JSON sẽ GHI ĐÈ toàn bộ dữ liệu hiện tại của bạn. Tiếp tục?", "Đồng ý", "bg-emerald-500", () => {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.items) window.items = data.items;
+                        if (data.customCategories) window.customCategories = data.customCategories;
+                        if (data.actionLogs) window.actionLogs = data.actionLogs;
+                        saveData();
+                        showToast('Đã nhập dữ liệu thành công');
+                    } catch(err) {
+                        showToast('File JSON không hợp lệ', 'error');
+                    }
+                    e.target.value = ''; // reset
+                };
+                reader.readAsText(file);
+            });
+        }
+
+
+        // --- CUSTOM DIALOGS (Thay thế confirm/prompt) ---
+        let confirmActionCallback = null;
+        function showConfirm(title, message, btnText, btnColorClass, callback) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            const btn = document.getElementById('confirmBtn');
+            btn.innerText = btnText;
+            btn.className = `flex-1 ${btnColorClass} text-white py-3.5 rounded-2xl font-bold shadow-sm active:scale-95 transition-transform`;
+            confirmActionCallback = callback;
+            toggleSheetVisibility('confirmSheet', true);
+        }
+        function closeConfirm() { toggleSheetVisibility('confirmSheet', false); }
+        document.getElementById('confirmBtn').onclick = () => {
+            if (confirmActionCallback) confirmActionCallback();
+            closeConfirm();
+        };
+
+        let promptActionCallback = null;
+        function showPrompt(title, placeholder, initialVal, btnText, callback) {
+            document.getElementById('promptTitle').innerText = title;
+            const input = document.getElementById('promptInput');
+            input.placeholder = placeholder;
+            input.value = initialVal || '';
+            const btn = document.getElementById('promptBtn');
+            btn.innerText = btnText;
+            promptActionCallback = callback;
+            
+            toggleSheetVisibility('promptSheet', true);
+            setTimeout(() => input.focus(), 300);
+        }
+        function closePrompt() { toggleSheetVisibility('promptSheet', false); }
+        document.getElementById('promptBtn').onclick = () => {
+            const val = document.getElementById('promptInput').value.trim();
+            if (promptActionCallback) promptActionCallback(val);
+            closePrompt();
+        };
+
+
+        // --- TAB SWITCHING ---
+        function switchTab(tab) {
+            activeTab = tab;
+            
+            ['inventory', 'history', 'settings'].forEach(t => {
+                document.getElementById(`${t}View`).classList.toggle('hidden', tab !== t);
+            });
+            
+            // Mobile Nav
+            ['inventory', 'history', 'settings'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}-mobile`);
+                btn.className = `flex flex-col items-center justify-center flex-1 h-full transition-colors ${tab === t ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-500'}`;
+            });
+            
+            // Desktop Nav
+            ['inventory', 'history', 'settings'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}-desktop`);
+                const actCls = 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white';
+                const inactCls = 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50';
+                btn.className = `w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${tab === t ? actCls : inactCls}`;
+            });
+
+            // Headers
+            const catBtn = document.getElementById('mobileCatBtn');
+            if (catBtn) catBtn.classList.toggle('hidden', tab !== 'inventory');
+            
+            document.getElementById('mobileHeaderTitle').innerText = tab === 'inventory' ? 'Kho đồ' : (tab === 'history' ? 'Nhật ký' : 'Cài đặt');
+            document.getElementById('mobileHeaderSubtitle').innerText = tab === 'inventory' ? 'Quản lý' : (tab === 'history' ? 'Lịch sử' : 'Hệ thống');
+            document.getElementById('desktopFilterNav').style.display = tab === 'inventory' ? 'flex' : 'none';
+
+            if (tab === 'history') renderHistory();
+            if (tab === 'inventory') renderItemsGrid();
+        }
+
         // --- DATA LAYER ---
+        function saveDataLocalOnly() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(window.items));
+            localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(window.customCategories));
+            localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(window.actionLogs));
+        }
+
         function saveData() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-            localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(customCategories));
-            localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(actionLogs));
+            saveDataLocalOnly();
+            syncToCloudLatest(); // Auto Sync
             updateUI();
             if (activeTab === 'history') renderHistory();
         }
@@ -505,14 +938,14 @@
             const log = {
                 id: 'log_' + Date.now(),
                 date: new Date().toISOString(),
-                action: actionType, // 'Thêm mới', 'Nhập thêm', 'Sử dụng', 'Xóa'
+                action: actionType, 
                 itemName,
                 qty,
                 unit,
                 color: hexColor || '#71717a'
             };
-            actionLogs.unshift(log); // Đầu mảng là mới nhất
-            if (actionLogs.length > 200) actionLogs.pop(); // Giới hạn 200 log
+            window.actionLogs.unshift(log); 
+            if (window.actionLogs.length > 200) window.actionLogs.pop(); 
         }
 
         function getStatus(dateStr) {
@@ -526,15 +959,14 @@
             return { type: 'good', text: `Còn ${diffDays} ngày`, style: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400' };
         }
 
-        // Helper gen style linh hoạt cho Emoji & Mã HEX
         function getCatStyleDef(catName) {
-            const cat = customCategories.find(c => c.name === catName) || { icon: 'ph-package', color: '#71717a' };
+            const cat = window.customCategories.find(c => c.name === catName) || { icon: 'ph-package', color: '#71717a' };
             const isEmoji = !cat.icon.startsWith('ph-');
             const iconHtml = isEmoji ? `<span class="text-xl leading-none">${cat.icon}</span>` : `<i class="ph-fill ${cat.icon} text-xl" style="color: ${cat.color}"></i>`;
             return {
                 iconHtml,
                 colorStr: cat.color,
-                bgStyle: `background-color: ${cat.color}15;`, // 15% opacity hex (tailwind style pseudo)
+                bgStyle: `background-color: ${cat.color}15;`, 
                 textColor: cat.color
             };
         }
@@ -557,9 +989,8 @@
                 { id: 'Sắp hết hạn', label: 'Sắp hết hạn', isSystem: true, iconHtml: '<i class="ph ph-clock-countdown text-lg text-amber-500"></i>' }
             ];
 
-            const allFilters = [...systemFilters, ...customCategories.map(c => {
+            const allFilters = [...systemFilters, ...window.customCategories.map(c => {
                 const s = getCatStyleDef(c.name);
-                // Giảm font-size icon để vừa chip
                 const iHtml = s.iconHtml.replace('text-xl', 'text-lg');
                 return { id: c.name, label: c.name, isSystem: false, iconHtml: iHtml, color: s.colorStr };
             })];
@@ -567,21 +998,19 @@
             allFilters.forEach(cat => {
                 const isActive = currentFilter === cat.id;
                 
-                // Mobile Chip
                 const mBtn = document.createElement('button');
                 mBtn.onclick = () => { currentFilter = cat.id; renderFilters(); renderItemsGrid(); };
                 mBtn.className = `flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[14px] font-medium transition-all whitespace-nowrap border ${isActive ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 dark:border-white' : 'bg-white text-zinc-600 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400'}`;
                 mBtn.innerHTML = `${cat.iconHtml} ${cat.label}`;
                 mContainer.appendChild(mBtn);
 
-                // Desktop Sidebar Link
                 const dBtn = document.createElement('button');
                 dBtn.onclick = () => { currentFilter = cat.id; renderFilters(); renderItemsGrid(); };
                 dBtn.className = `w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-all ${isActive ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50'}`;
                 
                 let countHTML = '';
                 if (cat.id === 'Sắp hết hạn') {
-                    const soonCount = items.filter(i => getStatus(i.expiryDate).type === 'soon').length;
+                    const soonCount = window.items.filter(i => getStatus(i.expiryDate).type === 'soon').length;
                     if(soonCount > 0) countHTML = `<span class="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 py-0.5 px-2 rounded-full text-xs font-bold">${soonCount}</span>`;
                 }
 
@@ -591,15 +1020,14 @@
         }
 
         function renderItemsGrid() {
+            if (activeTab !== 'inventory') return;
             const grid = document.getElementById('itemsGrid');
             const empty = document.getElementById('emptyState');
             
             const desktopCountEl = document.getElementById('desktopTotalCount');
-            if (desktopCountEl) {
-                desktopCountEl.innerText = items.length;
-            }
+            if (desktopCountEl) desktopCountEl.innerText = window.items.length;
 
-            let filtered = items.filter(item => {
+            let filtered = window.items.filter(item => {
                 const matchSearch = item.name.toLowerCase().includes(searchQuery) || item.location.toLowerCase().includes(searchQuery);
                 let matchCat = true;
                 if (currentFilter === 'Sắp hết hạn') matchCat = getStatus(item.expiryDate).type === 'soon';
@@ -612,7 +1040,6 @@
                 const statB = getStatus(b.expiryDate).type;
                 if (statA === 'soon' && statB !== 'soon') return -1;
                 if (statB === 'soon' && statA !== 'soon') return 1;
-                // Ưu tiên ngày thêm (addedDate), nếu không có thì fallback createdAt
                 const dateA = a.addedDate ? new Date(a.addedDate) : new Date(a.createdAt);
                 const dateB = b.addedDate ? new Date(b.addedDate) : new Date(b.createdAt);
                 return dateB - dateA; 
@@ -700,7 +1127,7 @@
             const emptyState = document.getElementById('historyEmptyState');
             container.innerHTML = '';
 
-            if (actionLogs.length === 0) {
+            if (window.actionLogs.length === 0) {
                 emptyState.classList.remove('hidden');
                 return;
             }
@@ -708,14 +1135,13 @@
 
             // Group by Date
             const groups = {};
-            actionLogs.forEach(log => {
+            window.actionLogs.forEach(log => {
                 const dateKey = new Date(log.date).toLocaleDateString('vi-VN');
                 if(!groups[dateKey]) groups[dateKey] = [];
                 groups[dateKey].push(log);
             });
 
             for (const [dateStr, logs] of Object.entries(groups)) {
-                // Header ngày
                 let displayDate = dateStr;
                 const todayStr = new Date().toLocaleDateString('vi-VN');
                 if (dateStr === todayStr) displayDate = 'Hôm nay';
@@ -760,9 +1186,9 @@
 
         // --- QUANTITY LOGIC ---
         function updateQty(id, delta) {
-            const idx = items.findIndex(i => i.id === id);
+            const idx = window.items.findIndex(i => i.id === id);
             if (idx > -1) {
-                const item = items[idx];
+                const item = window.items[idx];
                 const catStyle = getCatStyleDef(item.category);
                 let currentQty = parseFloat(item.quantity) || 0;
                 let newQty = currentQty + delta;
@@ -785,7 +1211,7 @@
         function renderLocationSuggestions() {
             const inputVal = document.getElementById('itemLocation').value.toLowerCase();
             const container = document.getElementById('locationSuggestions');
-            const allLocations = [...new Set(items.map(i => i.location.trim()).filter(l => l !== ''))];
+            const allLocations = [...new Set(window.items.map(i => i.location.trim()).filter(l => l !== ''))];
             const matched = allLocations.filter(l => l.toLowerCase().includes(inputVal)).slice(0, 5); 
 
             container.innerHTML = '';
@@ -842,16 +1268,11 @@
                 `;
             });
             
-            // Set initial color preview
             updateHexPreview(COLORS_LIST[0]);
         }
 
-        function clearEmojiInput() {
-            document.getElementById('catEmojiInput').value = '';
-        }
-        function clearIconRadios() {
-            document.querySelectorAll('input[name="catIcon"]').forEach(r => r.checked = false);
-        }
+        function clearEmojiInput() { document.getElementById('catEmojiInput').value = ''; }
+        function clearIconRadios() { document.querySelectorAll('input[name="catIcon"]').forEach(r => r.checked = false); }
         
         function updateHexPreview(forceVal = null) {
             const hexInput = document.getElementById('catHexInput');
@@ -859,23 +1280,19 @@
             let val = hexInput.value.trim();
             if(!val.startsWith('#') && val.length > 0) val = '#' + val;
             
-            // Basic valid hex check (3 or 6 chars)
             if(/^#[0-9A-F]{3,6}$/i.test(val)) {
                 document.getElementById('hexColorPreview').style.backgroundColor = val;
-                // Uncheck preset radios if typed manually
                 if(!forceVal) document.querySelectorAll('input[name="catColor"]').forEach(r => r.checked = false);
             }
         }
-        function setHexFromPreset(hex) {
-            updateHexPreview(hex);
-        }
+        function setHexFromPreset(hex) { updateHexPreview(hex); }
 
         function renderManageCategoryList() {
             const container = document.getElementById('manageCategoryList');
             if(!container) return;
             container.innerHTML = '';
 
-            customCategories.forEach(cat => {
+            window.customCategories.forEach(cat => {
                 const style = getCatStyleDef(cat.name);
                 container.innerHTML += `
                     <div class="flex items-center justify-between bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
@@ -903,12 +1320,12 @@
             if(!select) return;
             const currentVal = select.value;
             select.innerHTML = '';
-            customCategories.forEach(cat => {
+            window.customCategories.forEach(cat => {
                 const opt = document.createElement('option');
                 opt.value = cat.name; opt.text = cat.name;
                 select.appendChild(opt);
             });
-            if(customCategories.some(c => c.name === currentVal)) select.value = currentVal;
+            if(window.customCategories.some(c => c.name === currentVal)) select.value = currentVal;
         }
 
         function saveCategory() {
@@ -926,16 +1343,16 @@
             if(!nameInput) return showToast('Vui lòng nhập tên danh mục', 'error');
 
             if(idInput) {
-                const idx = customCategories.findIndex(c => c.id === idInput);
+                const idx = window.customCategories.findIndex(c => c.id === idInput);
                 if(idx > -1) {
-                    const oldName = customCategories[idx].name;
-                    customCategories[idx] = { ...customCategories[idx], name: nameInput, icon: finalIcon, color: hexInput };
-                    items.forEach(i => { if(i.category === oldName) i.category = nameInput; });
+                    const oldName = window.customCategories[idx].name;
+                    window.customCategories[idx] = { ...window.customCategories[idx], name: nameInput, icon: finalIcon, color: hexInput };
+                    window.items.forEach(i => { if(i.category === oldName) i.category = nameInput; });
                 }
                 showToast('Đã cập nhật danh mục');
             } else {
-                if(customCategories.some(c => c.name.toLowerCase() === nameInput.toLowerCase())) return showToast('Tên danh mục tồn tại', 'error');
-                customCategories.push({ id: 'cat_' + Date.now(), name: nameInput, icon: finalIcon, color: hexInput });
+                if(window.customCategories.some(c => c.name.toLowerCase() === nameInput.toLowerCase())) return showToast('Tên danh mục tồn tại', 'error');
+                window.customCategories.push({ id: 'cat_' + Date.now(), name: nameInput, icon: finalIcon, color: hexInput });
                 showToast('Đã thêm danh mục mới');
             }
 
@@ -944,7 +1361,7 @@
         }
 
         function editCategory(id) {
-            const cat = customCategories.find(c => c.id === id);
+            const cat = window.customCategories.find(c => c.id === id);
             if(!cat) return;
 
             document.getElementById('catFormTitle').innerText = 'Sửa danh mục';
@@ -968,20 +1385,20 @@
         }
 
         function deleteCategory(id) {
-            const cat = customCategories.find(c => c.id === id);
+            const cat = window.customCategories.find(c => c.id === id);
             if(!cat) return;
-            if(customCategories.length <= 1) return showToast('Phải giữ lại ít nhất 1 danh mục', 'error');
+            if(window.customCategories.length <= 1) return showToast('Phải giữ lại ít nhất 1 danh mục', 'error');
 
-            if(confirm(`Xóa danh mục "${cat.name}"?\nVật phẩm bên trong sẽ chuyển sang danh mục khác.`)) {
-                const fallbackCat = customCategories.find(c => c.id !== id).name;
-                items.forEach(i => { if(i.category === cat.name) i.category = fallbackCat; });
-                customCategories = customCategories.filter(c => c.id !== id);
+            showConfirm("Xóa danh mục", `Bạn có chắc chắn muốn xóa danh mục "${cat.name}"?\nCác vật phẩm trong này sẽ được chuyển sang danh mục khác.`, "Xóa", "bg-rose-500", () => {
+                const fallbackCat = window.customCategories.find(c => c.id !== id).name;
+                window.items.forEach(i => { if(i.category === cat.name) i.category = fallbackCat; });
+                window.customCategories = window.customCategories.filter(c => c.id !== id);
                 if(currentFilter === cat.name) currentFilter = 'all';
 
                 saveData();
                 showToast('Đã xóa danh mục');
                 resetCatForm();
-            }
+            });
         }
 
         function resetCatForm() {
@@ -1011,17 +1428,17 @@
                 addedDate: document.getElementById('itemAddedDate').value,
                 expiryDate: document.getElementById('itemExpiry').value,
                 notes: document.getElementById('itemNotes').value.trim(),
-                createdAt: id ? items.find(i=>i.id===id).createdAt : new Date().toISOString()
+                createdAt: id ? window.items.find(i=>i.id===id).createdAt : new Date().toISOString()
             };
             
             const catStyle = getCatStyleDef(newItem.category);
 
             if (id) {
-                const idx = items.findIndex(i => i.id === id);
-                if(idx > -1) items[idx] = newItem;
+                const idx = window.items.findIndex(i => i.id === id);
+                if(idx > -1) window.items[idx] = newItem;
                 showToast('Đã lưu thay đổi');
             } else {
-                items.push(newItem);
+                window.items.push(newItem);
                 logAction('Thêm mới', newItem.name, newItem.quantity, newItem.unit, catStyle.colorStr);
                 showToast('Đã thêm vật phẩm');
             }
@@ -1031,7 +1448,7 @@
         }
 
         function editItem(id) {
-            const item = items.find(i => i.id === id);
+            const item = window.items.find(i => i.id === id);
             if (!item) return;
 
             document.getElementById('sheetTitle').innerText = 'Sửa vật phẩm';
@@ -1052,33 +1469,20 @@
         }
 
         function deleteItem(id) {
-            const item = items.find(i => i.id === id);
-            if(item && confirm('Xóa vật phẩm này khỏi kho?')) {
-                const catStyle = getCatStyleDef(item.category);
-                logAction('Xóa', item.name, item.quantity, item.unit, catStyle.colorStr);
-                
-                items = items.filter(i => i.id !== id);
-                saveData();
-                showToast('Đã xóa', 'error');
+            const item = window.items.find(i => i.id === id);
+            if(item) {
+                showConfirm("Xóa vật phẩm", `Bạn có chắc chắn muốn xóa "${item.name}" khỏi kho đồ không?`, "Xóa", "bg-rose-500", () => {
+                    const catStyle = getCatStyleDef(item.category);
+                    logAction('Xóa', item.name, item.quantity, item.unit, catStyle.colorStr);
+                    
+                    window.items = window.items.filter(i => i.id !== id);
+                    saveData();
+                    showToast('Đã xóa', 'error');
+                });
             }
         }
 
-        function showToast(msg, type = 'success') {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastMessage').innerText = msg;
-            const icon = document.getElementById('toastIcon');
-            if(type === 'error') icon.className = 'ph-fill ph-warning-circle text-xl text-rose-500';
-            else icon.className = 'ph-fill ph-check-circle text-xl text-emerald-500';
-
-            toast.classList.remove('-translate-y-24', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-            setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('-translate-y-24', 'opacity-0');
-            }, 3000);
-        }
-
-        // --- SHEET UTILS ---
+        // --- SHEET & DIALOG UTILS ---
         function openSheet(reset = true) {
             if(reset) {
                 document.getElementById('sheetTitle').innerText = 'Thêm vật phẩm';
@@ -1086,7 +1490,6 @@
                 document.getElementById('itemId').value = '';
                 document.getElementById('itemQuantity').value = '1';
                 document.getElementById('itemUnit').value = 'Cái';
-                // Đặt mặc định Ngày nhập = Hôm nay
                 document.getElementById('itemAddedDate').value = new Date().toISOString().split('T')[0];
                 populateCategoryDropdown();
             }
@@ -1103,8 +1506,8 @@
 
         function toggleSheetVisibility(sheetId, isShow) {
             const sheet = document.getElementById(sheetId);
-            const content = sheet.querySelector('.absolute.bottom-0');
-            const backdrop = sheet.querySelector('.absolute.inset-0');
+            const content = sheet.querySelector('.sheet-content');
+            const backdrop = sheet.querySelector('.sheet-overlay');
 
             if (isShow) {
                 sheet.classList.remove('hidden');
@@ -1119,18 +1522,18 @@
                 backdrop.classList.add('backdrop-exit-active');
                 content.classList.remove('sheet-enter-active');
                 content.classList.add('sheet-exit-active');
-                setTimeout(() => { sheet.classList.add('hidden'); }, 300);
+                setTimeout(() => { sheet.classList.add('hidden'); }, 400); // Wait for transiton
             }
         }
 
-        // --- DRAG TO DISMISS ---
+        // --- DRAG TO DISMISS (Mobile) ---
         let startY = 0, currentY = 0, isDragging = false, activeSheetContent = null;
-        document.querySelectorAll('[data-sheet]').forEach(header => {
+        document.querySelectorAll('.handle-area').forEach(header => {
             header.addEventListener('touchstart', (e) => {
                 if (window.innerWidth >= 768) return; 
                 startY = e.touches[0].clientY; currentY = startY; isDragging = true;
                 const sheetId = header.getAttribute('data-sheet');
-                activeSheetContent = document.getElementById(sheetId).querySelector('.absolute.bottom-0');
+                activeSheetContent = document.getElementById(sheetId).querySelector('.sheet-content');
                 activeSheetContent.style.transition = 'none'; 
             }, { passive: true });
             header.addEventListener('touchmove', (e) => {
@@ -1149,7 +1552,7 @@
             });
         });
 
-        // Run
+        // Run Init
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
