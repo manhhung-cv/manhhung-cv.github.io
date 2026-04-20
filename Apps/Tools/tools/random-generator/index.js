@@ -311,7 +311,7 @@ export function init() {
             // Xây dựng chuỗi ký tự ảo
             let fakeData = '';
             // Nếu quay số thì chuỗi ngắn hơn (4 ký tự), quay chữ thì chuỗi dài hơn (7 ký tự)
-            const len = currentMode === 'number' ? 10 : 7; 
+            const len = currentMode === 'number' ? 5 : 7; 
             for (let i = 0; i < len; i++) {
                 fakeData += hackerChars.charAt(Math.floor(Math.random() * hackerChars.length));
             }

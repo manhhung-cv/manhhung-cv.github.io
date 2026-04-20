@@ -229,24 +229,40 @@ export function init() {
                 btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang copy...';
 
                 try {
-                    // Chuyển ảnh trên canvas thành định dạng PNG tiêu chuẩn để tránh lỗi Clipboard
+                    // 1. Tạo Canvas để đồng bộ định dạng (Clipboard API hiện tại chỉ hỗ trợ tốt nhất cho image/png)
                     const canvas = document.createElement('canvas');
                     canvas.width = previewImg.naturalWidth;
                     canvas.height = previewImg.naturalHeight;
                     canvas.getContext('2d').drawImage(previewImg, 0, 0);
                     
-                    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
-                    const item = new ClipboardItem({ 'image/png': blob });
+                    // 2. BỌC TRONG PROMISE CHUẨN: Cách này giúp Safari và Chrome giữ được User Gesture context
+                    const blobPromise = new Promise((resolve, reject) => {
+                        canvas.toBlob((blob) => {
+                            if (blob) resolve(blob);
+                            else reject(new Error('Canvas toBlob failed'));
+                        }, 'image/png');
+                    });
+
+                    // 3. Khởi tạo ClipboardItem với Promise thay vì Blob đã resolve
+                    const item = new ClipboardItem({ 'image/png': blobPromise });
+                    
+                    // 4. Thực thi việc ghi vào Clipboard
                     await navigator.clipboard.write([item]);
 
-                    // Mở tab tìm kiếm tương ứng
+                    // Mở tab tìm kiếm
                     window.open(manualUrls[engineName], '_blank');
                     
                     // Thông báo hướng dẫn
                     UI.showAlert('Thành công', 'Đã copy ảnh! Hãy bấm Ctrl+V (hoặc Chuột phải -> Dán) vào ô tìm kiếm trên tab vừa mở.', 'success');
                 } catch (err) {
                     console.error('Lỗi Clipboard:', err);
-                    UI.showAlert('Không thể Copy', 'Trình duyệt của bạn không hỗ trợ tính năng copy ảnh. Vui lòng thử trên trình duyệt khác.', 'error');
+                    
+                    // Fallback: Xử lý lỗi cụ thể (ví dụ do trình duyệt chặn hoặc không hỗ trợ)
+                    let errorMsg = 'Trình duyệt của bạn không hỗ trợ tính năng copy ảnh hoặc quyền bị chặn.';
+                    if (err.name === 'NotAllowedError') {
+                        errorMsg = 'Trình duyệt đã chặn quyền copy vào Clipboard. Vui lòng cấp quyền hoặc copy thủ công.';
+                    }
+                    UI.showAlert('Không thể Copy', errorMsg, 'error');
                 } finally {
                     btn.innerHTML = originalHTML;
                 }

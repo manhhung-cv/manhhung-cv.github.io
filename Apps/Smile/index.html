@@ -621,40 +621,49 @@
         btn.classList.add('loading');
         elRate.style.opacity = '0.5';
 
-        const targetUrl = 'https://www.smileswallet.com/japan/vi/ty-gia/';
-        const rules = { "currencies": { "selector": ".currency", "type": "list", "output": { "country": ".country_name", "rate": ".exchange_rate" } } };
+        const apiUrl = 'https://www.smileswallet.com/japan/wp-admin/admin-ajax.php?action=smiles_simulator&security=&RemitAmount=0&AmountType=1&RegionCode=jp&FromCurrency=jpy&RemittenceMethod=cash-pickup&DPType=10&BeneficiaryCurrency=vnd&VietNamReceiveIn=VND';
         
         let newRate = 0;
         let success = false;
 
-        // Thử lấy dữ liệu thật
-        for (let key of SCRAPINGBEE_KEYS) {
-            if (!key) continue;
-            try {
-                const url = `https://app.scrapingbee.com/api/v1/?api_key=${key}&url=${encodeURIComponent(targetUrl)}&extract_rules=${encodeURIComponent(JSON.stringify(rules))}&render_js=false`;
-                const res = await fetch(url);
-                if (res.ok) {
-                    const data = await res.json();
-                    const vnData = data.currencies?.find(c => c.country.includes("Vietnam") || c.country.includes("Việt Nam"));
-                    if (vnData) {
-                        const match = vnData.rate.match(/([\d,.]+)/);
-                        if (match) { 
-                            newRate = parseFloat(match[0].replace(/,/g, '')); 
-                            success = true;
-                            break; 
-                        }
-                    }
-                }
-            } catch (e) { console.warn("API Error", e); }
-        }
+        // Định nghĩa 3 luồng gọi API độc lập
+        const fetchAllOrigins = async () => {
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(apiUrl)}`);
+            if (!res.ok) throw new Error('AllOrigins failed');
+            const data = await res.json();
+            const parsed = JSON.parse(data.contents); // AllOrigins bọc response trong chuỗi 'contents'
+            if (!parsed || !parsed.Rate) throw new Error('Invalid rate data');
+            return parseFloat(parsed.Rate);
+        };
 
-        // --- FALLBACK (Chỉ dùng khi test nếu không có API Key) ---
-        if (!success) {
-            // console.log("Dùng dữ liệu giả lập để test");
-            // newRate = 162 + Math.random() * 2; // Giả lập tỷ giá
-            // success = true; 
+        const fetchCorsProxy = async () => {
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(apiUrl)}`);
+            if (!res.ok) throw new Error('CorsProxy failed');
+            const data = await res.json();
+            if (!data || !data.Rate) throw new Error('Invalid rate data');
+            return parseFloat(data.Rate);
+        };
+
+        const fetchCodeTabs = async () => {
+            const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(apiUrl)}`);
+            if (!res.ok) throw new Error('CodeTabs failed');
+            const data = await res.json();
+            if (!data || !data.Rate) throw new Error('Invalid rate data');
+            return parseFloat(data.Rate);
+        };
+
+        try {
+            // Promise.any sẽ lấy kết quả của máy chủ hoàn thành đầu tiên và không bị lỗi
+            newRate = await Promise.any([
+                fetchAllOrigins(),
+                fetchCorsProxy(),
+                fetchCodeTabs()
+            ]);
+            success = true;
+        } catch (error) {
+            // Sẽ lọt vào đây nếu CẢ 3 máy chủ đều chết/lỗi mạng (AggregateError)
+            console.error("Toàn bộ proxy đều thất bại:", error);
         }
-        // --------------------------------------------------------
 
         btn.classList.remove('loading');
         elRate.style.opacity = '1';
@@ -663,10 +672,9 @@
             saveRate(newRate);
             updateStatus(newRate, new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }));
         } else {
-            alert("Lỗi cập nhật tỷ giá. Vui lòng kiểm tra kết nối hoặc API Key.");
+            alert("Lỗi cập nhật tỷ giá. Các máy chủ trung gian hiện không phản hồi, vui lòng thử lại sau.");
         }
     }
-
     function updateStatus(rate, timeStr) {
         document.getElementById('rateDisplay').innerText = `1 JPY = ${formatNumber(rate)} VND`;
         document.getElementById('lastUpdatedTime').innerText = `Cập nhật: ${timeStr}`;

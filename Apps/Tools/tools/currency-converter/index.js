@@ -158,12 +158,8 @@ export function init() {
         'TWD': '🇹🇼 TWD'
     };
 
-    const SMILES_TARGET_URL = 'https://www.smileswallet.com/japan/vi/ty-gia/';
-    const SCRAPINGBEE_KEYS = [
-        "YFH8ZPMDE27ABK3HAVVALLVZLVAF4PNMDYE12GSH2ILVSQ5AVLTGMTUZCDNG2SAGCII7PKXLZWJI7GD7", 
-        "API_KEY_2", // Dự phòng nếu cần
-        "API_KEY_3"
-    ];
+    // Đổi sang API trực tiếp của Smiles trả về JSON
+    const SMILES_API_URL = 'https://www.smileswallet.com/japan/wp-admin/admin-ajax.php?action=smiles_simulator&security=&RemitAmount=0&AmountType=1&RegionCode=jp&FromCurrency=jpy&RemittenceMethod=cash-pickup&DPType=10&BeneficiaryCurrency=vnd&VietNamReceiveIn=VND';
 
     // --- DOM ELEMENTS ---
     const sourceBtns = document.querySelectorAll('.cc-source-btn');
@@ -235,59 +231,50 @@ export function init() {
         }
     };
 
-    // --- KẾT NỐI SCRAPINGBEE (SMILES) ---
+    // --- KẾT NỐI SMILES API QUA PROXY (ĐUA TỐC ĐỘ) ---
     const fetchSmilesApi = async () => {
-        const extractRules = {
-            "currencies": {
-                "selector": ".currency",
-                "type": "list",
-                "output": {
-                    "rateString": ".exchange_rate",
-                    "country": ".country_name"
-                }
-            }
+        const fetchAllOrigins = async () => {
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(SMILES_API_URL)}`);
+            if (!res.ok) throw new Error('AllOrigins failed');
+            const data = await res.json();
+            const parsed = JSON.parse(data.contents);
+            if (!parsed || !parsed.Rate) throw new Error('Invalid rate data');
+            return parseFloat(parsed.Rate);
         };
 
-        for (let i = 0; i < SCRAPINGBEE_KEYS.length; i++) {
-            const apiKey = SCRAPINGBEE_KEYS[i];
-            if (!apiKey || apiKey.startsWith('API_KEY')) continue;
+        const fetchCorsProxy = async () => {
+            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(SMILES_API_URL)}`);
+            if (!res.ok) throw new Error('CorsProxy failed');
+            const data = await res.json();
+            if (!data || !data.Rate) throw new Error('Invalid rate data');
+            return parseFloat(data.Rate);
+        };
 
-            try {
-                const apiUrl = `https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(SMILES_TARGET_URL)}&extract_rules=${encodeURIComponent(JSON.stringify(extractRules))}&render_js=false`;
-                const response = await fetch(apiUrl);
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (data.currencies && data.currencies.length > 0) {
-                        data.currencies.forEach(item => {
-                            if (!item.rateString) return;
-                            
-                            const parts = item.rateString.trim().split(' ');
-                            if (parts.length >= 2) {
-                                const rateVal = parseFloat(parts[0].replace(/,/g, ''));
-                                const currencyCode = parts[1].toUpperCase();
-                                if (!isNaN(rateVal) && currencyCode) {
-                                    smilesRates[currencyCode] = rateVal;
-                                }
-                            } else {
-                                const rateVal = parseFloat(parts[0].replace(/,/g, ''));
-                                if (!isNaN(rateVal)) smilesRates['VND'] = rateVal;
-                            }
-                        });
+        const fetchCodeTabs = async () => {
+            const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SMILES_API_URL)}`);
+            if (!res.ok) throw new Error('CodeTabs failed');
+            const data = await res.json();
+            if (!data || !data.Rate) throw new Error('Invalid rate data');
+            return parseFloat(data.Rate);
+        };
 
-                        if (smilesRates['VND']) {
-                            rateSmiles = smilesRates['VND'];
-                            lastFetchSmiles = new Date();
-                            return true; 
-                        }
-                    }
-                }
-            } catch (err) { 
-                console.warn(`ScrapingBee Key [${i+1}] lỗi:`, err.message); 
-            }
+        try {
+            // Lấy kết quả từ proxy nào phản hồi nhanh nhất và không bị lỗi
+            const newRate = await Promise.any([
+                fetchAllOrigins(),
+                fetchCorsProxy(),
+                fetchCodeTabs()
+            ]);
+            
+            rateSmiles = newRate;
+            smilesRates['VND'] = newRate; 
+            lastFetchSmiles = new Date();
+            return true;
+            
+        } catch (error) {
+            console.error("Toàn bộ proxy lấy tỷ giá Smiles đều thất bại:", error);
+            return false;
         }
-        return false; 
     };
 
     // --- LOGIC TÍNH TOÁN ---
@@ -337,7 +324,7 @@ export function init() {
     // --- HÀM KHỞI ĐỘNG VÀ LOAD DATA ---
     const loadDataAndCalculate = async (forceRefresh = false) => {
         rateText.innerHTML = `<span class="cc-loader"></span> Đang cập nhật...`;
-        btnRefresh.querySelector('i').classList.add('fa-spin'); // Thêm hiệu ứng xoay cho nút refresh
+        btnRefresh.querySelector('i').classList.add('fa-spin'); 
         
         if (currentSource === 'standard') {
             if (forceRefresh || Object.keys(ratesStandard).length === 0) {
@@ -352,7 +339,13 @@ export function init() {
             if (forceRefresh || !rateSmiles) {
                 const success = await fetchSmilesApi();
                 if (!success) {
-                    UI.showAlert('Lỗi', 'Không thể lấy tỷ giá từ Smiles lúc này. Tạm dùng tỷ giá Quốc tế.', 'warning');
+                    // Kiểm tra xem UI.showAlert có tồn tại không trước khi gọi để tránh lỗi
+                    if (typeof UI !== 'undefined' && UI.showAlert) {
+                        UI.showAlert('Lỗi', 'Không thể lấy tỷ giá từ Smiles lúc này. Tạm dùng tỷ giá Quốc tế.', 'warning');
+                    } else {
+                        alert('Không thể lấy tỷ giá từ Smiles lúc này. Tạm dùng tỷ giá Quốc tế.');
+                    }
+                    
                     if (Object.keys(ratesStandard).length === 0) await fetchStandardApi();
                     if (ratesStandard['JPY'] && ratesStandard['VND']) {
                         rateSmiles = ratesStandard['VND'] / ratesStandard['JPY'];

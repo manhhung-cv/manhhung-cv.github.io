@@ -407,11 +407,79 @@ export function template() {
 
             </div>
         </div>
+        
     `;
 }
 
 export function init() {
+    // ==========================================
+    // 0. HỆ THỐNG DIALOG TÙY CHỈNH (Thay thế Prompt & Confirm)
+    // ==========================================
+    const escapeHTML = (str) => {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    };
+
+    const showDialog = ({ type, title, message, defaultValue = '', okText = 'Đồng ý', cancelText = 'Hủy', onConfirm }) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);animation:fadeIn 0.2s;';
+        
+        const box = document.createElement('div');
+        box.style.cssText = 'background:var(--bg-main,#fff);width:90%;max-width:400px;border-radius:var(--radius,12px);padding:24px;box-shadow:0 10px 30px rgba(0,0,0,0.2);';
+        
+        let inputHTML = '';
+        if (type === 'prompt') {
+            inputHTML = `<input type="text" id="mtg-dialog-input" value="${escapeHTML(defaultValue)}" style="width:100%;padding:10px 12px;border:1px solid var(--border,#eee);border-radius:8px;margin-bottom:20px;background:var(--bg-sec,#f9f9f9);color:var(--text-main,#333);outline:none;font-size:0.95rem;transition:0.2s;">`;
+        }
+
+        box.innerHTML = `
+            <h3 style="margin:0 0 12px 0;font-size:1.15rem;color:var(--text-main,#333);">${title}</h3>
+            <p style="margin:0 0 ${type==='prompt'?'12px':'20px'} 0;font-size:0.95rem;color:var(--text-mut,#888);line-height:1.5;">${message}</p>
+            ${inputHTML}
+            <div style="display:flex;justify-content:flex-end;gap:12px;">
+                <button id="mtg-dialog-cancel" style="padding:8px 16px;border:none;background:var(--bg-sec,#f9f9f9);color:var(--text-mut,#888);border-radius:6px;cursor:pointer;font-weight:600;transition:0.2s;">${cancelText}</button>
+                <button id="mtg-dialog-ok" style="padding:8px 16px;border:none;background:#3b82f6;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;transition:0.2s;">${okText}</button>
+            </div>
+        `;
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const btnCancel = box.querySelector('#mtg-dialog-cancel');
+        const btnOk = box.querySelector('#mtg-dialog-ok');
+        const inputEl = box.querySelector('#mtg-dialog-input');
+
+        if (inputEl) {
+            inputEl.addEventListener('focus', () => inputEl.style.borderColor = '#3b82f6');
+            inputEl.addEventListener('blur', () => inputEl.style.borderColor = 'var(--border,#eee)');
+        }
+
+        const closeDialog = () => {
+            overlay.style.opacity = '0';
+            setTimeout(() => document.body.removeChild(overlay), 200);
+        };
+
+        btnCancel.onclick = closeDialog;
+        overlay.onmousedown = (e) => { if(e.target === overlay) closeDialog(); };
+
+        const confirmAction = () => {
+            const val = type === 'prompt' ? inputEl.value : null;
+            closeDialog();
+            if (onConfirm) onConfirm(val);
+        };
+
+        btnOk.onclick = confirmAction;
+
+        if (inputEl) {
+            inputEl.focus();
+            inputEl.select();
+            inputEl.onkeydown = (e) => { if (e.key === 'Enter') confirmAction(); };
+        }
+    };
+
+
+    // ==========================================
     // 1. TABS
+    // ==========================================
     const setupTabs = (tabContainerId) => {
         const btns = document.querySelectorAll(`#${tabContainerId} .mini-tab-btn`);
         btns.forEach(btn => {
@@ -428,7 +496,9 @@ export function init() {
     };
     setupTabs('form-tabs');
 
+    // ==========================================
     // 2. LOGIC DÁN NHANH (PASTE BUTTONS)
+    // ==========================================
     document.querySelectorAll('.btn-paste').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             try {
@@ -484,7 +554,7 @@ export function init() {
     });
 
     // ==========================================
-    // 4. GENERATE LOGIC
+    // 4. GENERATE LOGIC & LẤY DỮ LIỆU
     // ==========================================
     const inputs = document.querySelectorAll('.meta-input');
     const outCode = document.getElementById('mt-code-output');
@@ -495,7 +565,6 @@ export function init() {
     
     const cntTitle = document.getElementById('cnt-title'); const cntDesc = document.getElementById('cnt-desc');
 
-    const escapeHTML = (str) => str.replace(/"/g, '&quot;');
     const getDomain = (urlStr) => { try { return new URL(urlStr).hostname.replace('www.', ''); } catch (e) { return urlStr ? urlStr : 'example.com'; } };
 
     const getAllData = () => {
@@ -550,7 +619,6 @@ export function init() {
 
         const domainStr = getDomain(d.url);
 
-        // Update UI Preview
         pGgTitle.textContent = d.title || 'Tiêu đề trang web của bạn';
         pGgDesc.textContent = d.desc || 'Đây là phần mô tả tóm tắt nội dung trang web hiển thị trên Google.';
         pGgUrl.textContent = d.url || 'example.com';
@@ -559,12 +627,12 @@ export function init() {
         pFbTitle.textContent = ogTitle || 'Tiêu đề trang web hiển thị trên Facebook';
         pFbDesc.textContent = ogDesc || 'Mô tả ngắn gọn hấp dẫn người dùng...';
         pFbDomain.textContent = domainStr.toUpperCase();
-        pFbImgWrap.innerHTML = d.ogImg ? `<img src="${d.ogImg}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<i class=\\'fas fa-image\\'></i>'">` : `<i class="fas fa-image"></i>`;
+        pFbImgWrap.innerHTML = d.ogImg ? `<img src="${escapeHTML(d.ogImg)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<i class=\\'fas fa-image\\'></i>'">` : `<i class="fas fa-image"></i>`;
 
         pTwTitle.textContent = twTitle || 'Tiêu đề hiển thị trên Twitter Card';
         pTwDesc.textContent = twDesc || 'Mô tả tóm tắt dành cho Twitter...';
         pTwDomain.textContent = domainStr;
-        pTwImgWrap.innerHTML = twImg ? `<img src="${twImg}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<i class=\\'fas fa-image\\'></i>'">` : `<i class="fas fa-image"></i>`;
+        pTwImgWrap.innerHTML = twImg ? `<img src="${escapeHTML(twImg)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<i class=\\'fas fa-image\\'></i>'">` : `<i class="fas fa-image"></i>`;
 
         let html = '';
         const ind = d.fullHtml ? '    ' : ''; 
@@ -586,28 +654,28 @@ export function init() {
         if (d.fdChecks.length > 0) html += `${ind}<meta name="format-detection" content="${d.fdChecks.join(', ')}">\n`;
         
         html += `${ind}<meta name="robots" content="${d.robots}">\n`;
-        if (d.url) html += `${ind}<link rel="canonical" href="${d.url}">\n`;
-        if (d.favicon) html += `${ind}<link rel="icon" href="${d.favicon}">\n`;
-        if (d.manifest) html += `${ind}<link rel="manifest" href="${d.manifest}">\n`;
+        if (d.url) html += `${ind}<link rel="canonical" href="${escapeHTML(d.url)}">\n`;
+        if (d.favicon) html += `${ind}<link rel="icon" href="${escapeHTML(d.favicon)}">\n`;
+        if (d.manifest) html += `${ind}<link rel="manifest" href="${escapeHTML(d.manifest)}">\n`;
         
         if (ogTitle || ogDesc || d.ogImg || d.url) {
             html += `\n`;
-            if (d.url) html += `${ind}<meta property="og:url" content="${d.url}">\n`;
+            if (d.url) html += `${ind}<meta property="og:url" content="${escapeHTML(d.url)}">\n`;
             html += `${ind}<meta property="og:type" content="${d.ogType}">\n`;
             if (ogTitle) html += `${ind}<meta property="og:title" content="${escapeHTML(ogTitle)}">\n`;
             if (ogDesc) html += `${ind}<meta property="og:description" content="${escapeHTML(ogDesc)}">\n`;
-            if (d.ogImg) html += `${ind}<meta property="og:image" content="${d.ogImg}">\n`;
+            if (d.ogImg) html += `${ind}<meta property="og:image" content="${escapeHTML(d.ogImg)}">\n`;
         }
 
         if (twTitle || twDesc || twImg || d.twSite) {
             html += `\n`;
             html += `${ind}<meta name="twitter:card" content="${d.twCard}">\n`;
             if (d.url) html += `${ind}<meta property="twitter:domain" content="${domainStr}">\n`;
-            if (d.url) html += `${ind}<meta property="twitter:url" content="${d.url}">\n`;
+            if (d.url) html += `${ind}<meta property="twitter:url" content="${escapeHTML(d.url)}">\n`;
             if (d.twSite) html += `${ind}<meta name="twitter:site" content="${escapeHTML(d.twSite)}">\n`;
             if (twTitle) html += `${ind}<meta name="twitter:title" content="${escapeHTML(twTitle)}">\n`;
             if (twDesc) html += `${ind}<meta name="twitter:description" content="${escapeHTML(twDesc)}">\n`;
-            if (twImg) html += `${ind}<meta name="twitter:image" content="${twImg}">\n`;
+            if (twImg) html += `${ind}<meta name="twitter:image" content="${escapeHTML(twImg)}">\n`;
         }
 
         if (d.appleIcon || d.appleCapable === 'yes') {
@@ -617,10 +685,9 @@ export function init() {
                 html += `${ind}<meta name="apple-mobile-web-app-status-bar-style" content="${d.appleStatus}">\n`;
                 if (d.title) html += `${ind}<meta name="apple-mobile-web-app-title" content="${escapeHTML(d.title)}">\n`;
             }
-            if (d.appleIcon) html += `${ind}<link rel="apple-touch-icon" href="${d.appleIcon}">\n`;
+            if (d.appleIcon) html += `${ind}<link rel="apple-touch-icon" href="${escapeHTML(d.appleIcon)}">\n`;
         }
 
-        // Tài nguyên CDN
         if (d.cdnTw || d.cdnBs || d.cdnFa || d.cdnJq || d.customHead) {
             html += `\n${ind}\n`;
             if (d.cdnTw) html += `${ind}<script src="https://cdn.tailwindcss.com"></script>\n`;
@@ -661,8 +728,10 @@ export function init() {
         }
     };
 
-    // 5. LƯU, TẢI, XUẤT, NHẬP (STORAGE & JSON)
-    const STORAGE_KEY = 'aio_meta_tags';
+    // ==========================================
+    // 5. LƯU, TẢI, XUẤT, NHẬP (QUẢN LÝ BẢN LƯU BẰNG CUSTOM MODAL)
+    // ==========================================
+    const STORAGE_KEY = 'aio_meta_tags_profiles';
 
     const applyDataToForm = (data) => {
         if(!data) return;
@@ -693,30 +762,208 @@ export function init() {
         generateMeta();
     };
 
-    document.getElementById('btn-mt-save').onclick = () => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(getAllData()));
-        UI.showAlert('Đã lưu', 'Dữ liệu form đã được lưu vào trình duyệt.', 'success');
-    };
-
-    document.getElementById('btn-mt-load').onclick = () => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            applyDataToForm(JSON.parse(saved));
-            UI.showAlert('Đã tải', 'Dữ liệu cũ đã được khôi phục.', 'info');
-        } else {
-            UI.showAlert('Trống', 'Chưa có dữ liệu nào được lưu trong máy.', 'warning');
+    const getProfiles = () => {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        } catch {
+            return [];
         }
     };
 
+    const saveProfiles = (profiles) => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+    };
+
+    // LƯU LOCAL (Dùng Custom Prompt Modal)
+    document.getElementById('btn-mt-save').onclick = () => {
+        showDialog({
+            type: 'prompt',
+            title: 'Lưu bản lưu',
+            message: 'Nhập tên cho bản lưu này (VD: Dự án Landing Page):',
+            defaultValue: 'Bản lưu ' + new Date().toLocaleDateString('vi-VN'),
+            okText: 'Lưu',
+            onConfirm: (name) => {
+                if (!name || name.trim() === '') return;
+
+                const profiles = getProfiles();
+                const data = getAllData();
+                const trimmedName = name.trim();
+                
+                const existingIndex = profiles.findIndex(p => p.name.toLowerCase() === trimmedName.toLowerCase());
+                
+                if (existingIndex > -1) {
+                    showDialog({
+                        type: 'confirm',
+                        title: 'Ghi đè bản lưu?',
+                        message: `Bản lưu "<b>${escapeHTML(trimmedName)}</b>" đã tồn tại. Bạn có muốn ghi đè dữ liệu mới lên không?`,
+                        okText: 'Ghi đè',
+                        onConfirm: () => {
+                            profiles[existingIndex].data = data;
+                            profiles[existingIndex].updatedAt = Date.now();
+                            saveProfiles(profiles);
+                            UI.showAlert('Thành công', `Đã cập nhật bản lưu "${trimmedName}".`, 'success');
+                        }
+                    });
+                } else {
+                    profiles.push({
+                        id: Date.now().toString(),
+                        name: trimmedName,
+                        data: data,
+                        createdAt: Date.now()
+                    });
+                    saveProfiles(profiles);
+                    UI.showAlert('Thành công', `Đã lưu cấu hình mới: "${trimmedName}".`, 'success');
+                }
+            }
+        });
+    };
+
+    // TẢI LOCAL (Modal Quản lý)
+    document.getElementById('btn-mt-load').onclick = () => {
+        let profiles = getProfiles();
+        if (profiles.length === 0) {
+            UI.showAlert('Trống', 'Chưa có bản lưu nào trong trình duyệt.', 'warning');
+            return;
+        }
+        
+        let modal = document.getElementById('mt-save-mgr-modal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'mt-save-mgr-modal';
+            modal.innerHTML = `
+                <style>
+                    #mt-save-mgr-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); animation: fadeIn 0.2s; }
+                    .mtg-box { background: var(--bg-main, #fff); width: 90%; max-width: 500px; border-radius: var(--radius, 12px); padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 80vh; display: flex; flex-direction: column; }
+                    .mtg-box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border, #eee); }
+                    .mtg-box-title { font-size: 1.15rem; font-weight: 600; margin: 0; color: var(--text-main, #333); }
+                    .mtg-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
+                    .mtg-list::-webkit-scrollbar { width: 6px; }
+                    .mtg-list::-webkit-scrollbar-thumb { background: var(--border, #ccc); border-radius: 4px; }
+                    .mtg-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-sec, #f9f9f9); border: 1px solid var(--border, #eee); border-radius: 8px; transition: 0.2s; }
+                    .mtg-item:hover { border-color: #3b82f6; }
+                    .mtg-item-name { font-weight: 600; font-size: 0.95rem; color: var(--text-main, #333); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                    .mtg-item-date { font-size: 0.75rem; color: var(--text-mut, #888); margin-top: 4px; }
+                    .mtg-actions { display: flex; gap: 6px; }
+                    .mtg-btn-icon { background: transparent; border: none; padding: 6px 8px; cursor: pointer; border-radius: 4px; transition: 0.2s; font-size: 0.9rem; }
+                    .mtg-btn-icon:hover { background: var(--border, #eee); }
+                </style>
+                <div class="mtg-box">
+                    <div class="mtg-box-header">
+                        <h3 class="mtg-box-title">Quản lý Bản lưu Local</h3>
+                        <button class="btn btn-ghost btn-sm" id="mt-close-modal" style="color: var(--text-mut, #888);"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="mtg-list" id="mt-profile-list"></div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            document.getElementById('mt-close-modal').onclick = () => { modal.style.display = 'none'; };
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+        }
+        
+        const listEl = document.getElementById('mt-profile-list');
+        
+        const refreshList = () => {
+            profiles = getProfiles();
+            if (profiles.length === 0) {
+                listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-mut, #888);">Không còn bản lưu nào.</div>';
+                setTimeout(() => { modal.style.display = 'none'; }, 1500);
+                return;
+            }
+            
+            listEl.innerHTML = profiles.reverse().map(p => {
+                const d = new Date(p.updatedAt || p.createdAt || Date.now());
+                const dateStr = d.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' - ' + d.toLocaleDateString('vi-VN');
+                return `
+                <div class="mtg-item">
+                    <div style="flex: 1; overflow: hidden; padding-right: 12px;">
+                        <div class="mtg-item-name">${escapeHTML(p.name)}</div>
+                        <div class="mtg-item-date"><i class="far fa-clock"></i> ${dateStr}</div>
+                    </div>
+                    <div class="mtg-actions">
+                        <button class="mtg-btn-icon btn-pf-load" style="color: #10b981;" data-id="${p.id}" title="Tải"><i class="fas fa-upload"></i></button>
+                        <button class="mtg-btn-icon btn-pf-rename" style="color: #3b82f6;" data-id="${p.id}" title="Đổi tên"><i class="fas fa-edit"></i></button>
+                        <button class="mtg-btn-icon btn-pf-del" style="color: #ef4444;" data-id="${p.id}" title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+            
+            // Event: Tải
+            document.querySelectorAll('.btn-pf-load').forEach(btn => {
+                btn.onclick = () => {
+                    const pf = profiles.find(x => x.id === btn.getAttribute('data-id'));
+                    if (pf) {
+                        applyDataToForm(pf.data);
+                        UI.showAlert('Đã tải', `Dữ liệu từ bản lưu "${pf.name}" đã được khôi phục.`, 'success');
+                        modal.style.display = 'none';
+                    }
+                };
+            });
+            
+            // Event: Đổi tên (Dùng Custom Prompt Modal)
+            document.querySelectorAll('.btn-pf-rename').forEach(btn => {
+                btn.onclick = () => {
+                    const pf = profiles.find(x => x.id === btn.getAttribute('data-id'));
+                    if (pf) {
+                        showDialog({
+                            type: 'prompt',
+                            title: 'Đổi tên bản lưu',
+                            message: 'Nhập tên mới cho bản lưu:',
+                            defaultValue: pf.name,
+                            okText: 'Lưu tên',
+                            onConfirm: (newName) => {
+                                if (newName && newName.trim() !== '' && newName !== pf.name) {
+                                    pf.name = newName.trim();
+                                    pf.updatedAt = Date.now();
+                                    saveProfiles(profiles.reverse());
+                                    refreshList();
+                                    UI.showAlert('Thành công', 'Đã đổi tên bản lưu.', 'success');
+                                }
+                            }
+                        });
+                    }
+                };
+            });
+            
+            // Event: Xóa (Dùng Custom Confirm Modal)
+            document.querySelectorAll('.btn-pf-del').forEach(btn => {
+                btn.onclick = () => {
+                    const pf = profiles.find(x => x.id === btn.getAttribute('data-id'));
+                    if (pf) {
+                        showDialog({
+                            type: 'confirm',
+                            title: 'Xóa bản lưu',
+                            message: `Bạn có chắc chắn muốn xóa vĩnh viễn bản lưu "<b>${escapeHTML(pf.name)}</b>" không?`,
+                            okText: 'Xóa',
+                            onConfirm: () => {
+                                profiles = profiles.filter(x => x.id !== pf.id);
+                                saveProfiles(profiles.reverse());
+                                refreshList();
+                            }
+                        });
+                    }
+                };
+            });
+        };
+        
+        refreshList();
+        modal.style.display = 'flex';
+    };
+
+    // XUẤT FILE JSON
     document.getElementById('btn-mt-export').onclick = () => {
+        const title = document.getElementById('in-title').value.trim() || 'config';
+        const safeTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(getAllData(), null, 4));
         const a = document.createElement('a');
         a.href = dataStr;
-        a.download = "meta-tags-config.json";
+        a.download = `meta-tags-${safeTitle}.json`;
         a.click();
-        UI.showAlert('Đã xuất file', 'File meta-tags-config.json đã được tải xuống.', 'success');
+        UI.showAlert('Đã xuất file', 'Cấu hình đã được tải xuống máy của bạn.', 'success');
     };
 
+    // NHẬP FILE JSON
     document.getElementById('btn-mt-import-trigger').onclick = () => {
         document.getElementById('file-mt-import').click();
     };
@@ -728,7 +975,7 @@ export function init() {
             try {
                 const data = JSON.parse(event.target.result);
                 applyDataToForm(data);
-                UI.showAlert('Thành công', 'Đã nhập cấu hình từ file.', 'success');
+                UI.showAlert('Thành công', 'Đã nhập dữ liệu từ file.', 'success');
             } catch (err) {
                 UI.showAlert('Lỗi', 'File JSON không hợp lệ.', 'error');
             }
@@ -737,21 +984,28 @@ export function init() {
         e.target.value = ''; 
     });
 
+    // LÀM MỚI FORM (Dùng Custom Confirm Modal)
     document.getElementById('btn-mt-clear').onclick = () => {
-        UI.showConfirm('Làm mới toàn bộ?', 'Bạn có chắc chắn muốn xóa form không?', () => {
-            document.getElementById('meta-form').reset();
-            document.getElementById('in-theme-color').value = "#ffffff";
-            document.querySelectorAll('.vp-check').forEach(cb => cb.checked = (cb.value === 'width=device-width' || cb.value === 'initial-scale=1.0'));
-            document.querySelectorAll('.fd-check').forEach(cb => cb.checked = false);
-            
-            document.getElementById('in-cdn-tailwind').checked = false;
-            document.getElementById('in-cdn-bootstrap').checked = false;
-            document.getElementById('in-cdn-fa').checked = false;
-            document.getElementById('in-cdn-jquery').checked = false;
-            document.getElementById('in-full-html').checked = true;
+        showDialog({
+            type: 'confirm',
+            title: 'Làm mới toàn bộ?',
+            message: 'Bạn có chắc chắn muốn xóa form hiện tại không?',
+            okText: 'Làm mới',
+            onConfirm: () => {
+                document.getElementById('meta-form').reset();
+                document.getElementById('in-theme-color').value = "#ffffff";
+                document.querySelectorAll('.vp-check').forEach(cb => cb.checked = (cb.value === 'width=device-width' || cb.value === 'initial-scale=1.0'));
+                document.querySelectorAll('.fd-check').forEach(cb => cb.checked = false);
+                
+                document.getElementById('in-cdn-tailwind').checked = false;
+                document.getElementById('in-cdn-bootstrap').checked = false;
+                document.getElementById('in-cdn-fa').checked = false;
+                document.getElementById('in-cdn-jquery').checked = false;
+                document.getElementById('in-full-html').checked = true;
 
-            generateMeta();
-            document.querySelector('[data-target="form-basic"]').click();
+                generateMeta();
+                document.querySelector('[data-target="form-basic"]').click();
+            }
         });
     };
 }
