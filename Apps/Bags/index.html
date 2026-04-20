@@ -1,9 +1,29 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Smart Inventory</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kho đồ</title>
+<meta name="description" content="Quản lý kho đồ thông minh">
+<meta name="author" content="Hunq">
+<meta name="theme-color" content="#000000">
+<meta name="robots" content="index, follow">
+<link rel="icon" href="/Asset/logo/logo.png">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Kho đồ">
+<meta property="og:description" content="Quản lý kho đồ thông minh">
+<meta property="og:image" content="/Asset/Banner/Banner.png">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Kho đồ">
+<meta name="twitter:description" content="Quản lý kho đồ thông minh">
+<meta name="twitter:image" content="/Asset/Banner/Banner.png">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Kho đồ">
+<link rel="apple-touch-icon" href="/Asset/logo/iconApps.png">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Phosphor Icons -->
@@ -156,15 +176,22 @@
 
         <!-- VIEW 1: KHO ĐỒ (INVENTORY) -->
         <div id="inventoryView" class="flex-1 flex flex-col h-full overflow-hidden">
-            <!-- SEARCH & CHIPS -->
+            <!-- SEARCH & FILTER BAR -->
             <div class="px-5 md:px-8 py-2 md:pt-8 shrink-0 z-10 bg-zinc-50 dark:bg-zinc-950 flex items-center gap-3">
                 <div class="relative group flex-1">
                     <i class="ph ph-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-zinc-400 text-lg group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors"></i>
-                    <input type="text" id="searchInput" placeholder="Tìm tên, vị trí..." 
-                        class="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-zinc-900 border-none rounded-2xl shadow-soft dark:shadow-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-[15px] outline-none placeholder-zinc-400">
+                    <input type="text" id="inventorySearchInput" oninput="handleSearchInput(event, 'inventory')" placeholder="Tìm tên, vị trí..." 
+                        class="w-full pl-12 pr-10 py-3.5 bg-white dark:bg-zinc-900 border-none rounded-2xl shadow-soft dark:shadow-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-[15px] outline-none placeholder-zinc-400">
+                    <!-- Nút Clear Search -->
+                    <button id="inventoryClearBtn" onclick="clearSearch('inventory')" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+                        <i class="ph-fill ph-x-circle text-lg"></i>
+                    </button>
                 </div>
-                <button id="mobileCatBtn" onclick="openCategorySheet()" class="md:hidden w-12 h-12 shrink-0 rounded-2xl bg-white dark:bg-zinc-900 shadow-soft dark:shadow-none flex items-center justify-center text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform">
-                    <i class="ph-fill ph-funnel text-xl"></i>
+                <!-- Nút Mở Bộ Lọc Nâng Cao -->
+                <button onclick="openInventoryFilter()" class="relative w-[52px] h-[52px] shrink-0 rounded-2xl bg-white dark:bg-zinc-900 shadow-soft dark:shadow-none flex items-center justify-center text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform">
+                    <i class="ph-fill ph-faders text-xl"></i>
+                    <!-- Badge hiện khi có filter -->
+                    <span id="invFilterBadge" class="hidden absolute top-3 right-3 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-zinc-900"></span>
                 </button>
             </div>
             <!-- Mobile Category Chips -->
@@ -180,8 +207,8 @@
                     <div class="w-20 h-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4">
                         <i class="ph ph-package text-3xl text-zinc-400 dark:text-zinc-600"></i>
                     </div>
-                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Chưa có gì ở đây</h3>
-                    <p class="text-sm text-zinc-500 mt-1">Bấm nút + để thêm vật phẩm mới</p>
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Không tìm thấy vật phẩm</h3>
+                    <p class="text-sm text-zinc-500 mt-1">Thử thay đổi bộ lọc hoặc thêm mới.</p>
                 </div>
             </div>
         </div>
@@ -190,16 +217,43 @@
         <div id="historyView" class="hidden flex-1 flex-col h-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
             <div class="px-5 md:px-8 py-4 md:pt-8 shrink-0 border-b border-zinc-200/50 dark:border-zinc-800/50 hidden md:block">
                 <h2 class="text-xl font-bold">Nhật ký hoạt động</h2>
-                <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Theo dõi lịch sử nhập thêm và sử dụng vật phẩm.</p>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Theo dõi chi tiết lịch sử nhập và sử dụng.</p>
             </div>
             
-            <div class="flex-1 overflow-y-auto px-5 md:px-8 py-6 pb-28 md:pb-8 hide-scrollbar">
-                <div id="historyTimeline" class="relative border-l-2 border-zinc-200 dark:border-zinc-800 ml-3 md:ml-4 space-y-8 pb-10">
+            <!-- SEARCH & FILTER BAR (STYLE KHO ĐỒ) -->
+            <div class="px-5 md:px-8 py-2 md:pt-8 shrink-0 z-10 bg-zinc-50 dark:bg-zinc-950 flex items-center gap-3">
+                <div class="relative group flex-1">
+                    <i class="ph ph-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-zinc-400 text-lg group-focus-within:text-zinc-900 dark:group-focus-within:text-white transition-colors"></i>
+                    <input type="text" id="historySearchInput" oninput="handleSearchInput(event, 'history')" placeholder="Tìm trong nhật ký..." 
+                        class="w-full pl-12 pr-10 py-3.5 bg-white dark:bg-zinc-900 border-none rounded-2xl shadow-soft dark:shadow-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-[15px] outline-none placeholder-zinc-400">
+                    <!-- Nút Clear Search -->
+                    <button id="historyClearBtn" onclick="clearSearch('history')" class="hidden absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors">
+                        <i class="ph-fill ph-x-circle text-lg"></i>
+                    </button>
+                </div>
+                <!-- Nút Mở Bộ Lọc Nâng Cao -->
+                <button onclick="openHistoryFilter()" class="relative w-[52px] h-[52px] shrink-0 rounded-2xl bg-white dark:bg-zinc-900 shadow-soft dark:shadow-none flex items-center justify-center text-zinc-600 dark:text-zinc-400 active:scale-95 transition-transform">
+                    <i class="ph-fill ph-faders text-xl"></i>
+                    <!-- Badge hiện khi có filter -->
+                    <span id="historyFilterBadge" class="hidden absolute top-3 right-3 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white dark:border-zinc-900"></span>
+                </button>
+            </div>
+            <!-- Action Chips ngang (Mobile & Desktop) -->
+            <div class="pt-4 pb-2 overflow-x-auto hide-scrollbar px-5 md:px-8 bg-zinc-50 dark:bg-zinc-950 shrink-0">
+                <div class="flex gap-2 w-max" id="historyActionChips"></div>
+            </div>
+
+            <!-- TIMELINE -->
+            <div class="flex-1 overflow-y-auto px-5 md:px-8 pt-4 md:pt-6 pb-28 md:pb-8 hide-scrollbar relative">
+                <div id="historyTimeline" class="max-w-3xl mx-auto pb-10">
                     <!-- JS Render Timeline -->
                 </div>
-                <div id="historyEmptyState" class="hidden flex flex-col items-center justify-center py-20 opacity-60">
-                    <i class="ph-fill ph-clock-counter-clockwise text-4xl text-zinc-400 mb-3"></i>
-                    <p class="text-sm text-zinc-500">Chưa có hoạt động nào được ghi nhận.</p>
+                <div id="historyEmptyState" class="hidden absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-20">
+                    <div class="w-20 h-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4">
+                        <i class="ph ph-clock-counter-clockwise text-3xl text-zinc-400 dark:text-zinc-600"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Không có hoạt động</h3>
+                    <p class="text-sm font-medium text-zinc-500 mt-1">Chưa có hoạt động nào phù hợp.</p>
                 </div>
             </div>
         </div>
@@ -284,7 +338,7 @@
             </div>
         </div>
 
-        <!-- FAB (Floating Action Button) - Cố định góc phải cho cả Mobile và Desktop -->
+        <!-- FAB (Floating Action Button) - Cố định góc phải -->
         <button onclick="openSheet()" class="fixed md:hidden bottom-24 right-5 w-14 h-14 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full shadow-fab flex items-center justify-center text-2xl z-40 transform active:scale-90 transition-transform">
             <i class="ph-bold ph-plus"></i>
         </button>
@@ -307,7 +361,112 @@
 
     </main>
 
-    <!-- 1. BOTTOM SHEET: THÊM / SỬA VẬT PHẨM -->
+    <!-- === CÁC BOTTOM SHEETS === -->
+
+    <!-- BỘ LỌC NÂNG CAO KHO ĐỒ (Inventory Filter Sheet) -->
+    <div id="inventoryFilterSheet" class="fixed inset-0 z-50 hidden pointer-events-none">
+        <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closeSheet('inventoryFilterSheet')"></div>
+        <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300 sheet-content">
+            
+            <div class="shrink-0 md:cursor-default cursor-grab active:cursor-grabbing handle-area" data-sheet="inventoryFilterSheet">
+                <div class="md:hidden flex justify-center pt-3 pb-2" onclick="closeSheet('inventoryFilterSheet')">
+                    <div class="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full pointer-events-none"></div>
+                </div>
+                <div class="px-6 py-4 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pointer-events-none">
+                    <h3 class="text-xl font-bold">Bộ lọc nâng cao</h3>
+                    <button onclick="closeSheet('inventoryFilterSheet')" class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 pointer-events-auto active:scale-95 transition-transform">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6 overflow-y-auto hide-scrollbar flex-1 flex flex-col gap-6">
+                <!-- Sắp xếp -->
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wide">Sắp xếp theo</label>
+                    <select id="invSortSelect" class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium outline-none dark:text-white cursor-pointer appearance-none">
+                        <option value="added_desc">Ngày nhập (Mới nhất)</option>
+                        <option value="added_asc">Ngày nhập (Cũ nhất)</option>
+                        <option value="name_asc">Tên (A - Z)</option>
+                        <option value="qty_desc">Số lượng (Nhiều nhất)</option>
+                        <option value="qty_asc">Số lượng (Ít nhất)</option>
+                        <option value="exp_asc">Hạn sử dụng (Gần nhất)</option>
+                    </select>
+                </div>
+
+                <!-- Trạng thái -->
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wide">Trạng thái hạn sử dụng</label>
+                    <select id="invStatusSelect" class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium outline-none dark:text-white cursor-pointer appearance-none">
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="good">Còn hạn</option>
+                        <option value="soon">Sắp hết hạn</option>
+                        <option value="expired">Đã hết hạn</option>
+                    </select>
+                </div>
+
+                <!-- Danh mục -->
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wide">Danh mục</label>
+                    <select id="invCatSelect" class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium outline-none dark:text-white cursor-pointer appearance-none">
+                        <!-- JS Populate -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="p-6 pt-2 bg-white dark:bg-zinc-900 shrink-0 border-t border-zinc-100 dark:border-zinc-800 md:rounded-b-[32px] flex gap-3">
+                <button onclick="resetInventoryFilter()" class="px-5 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold rounded-2xl active:scale-[0.98] transition-transform flex-1 text-center whitespace-nowrap">Thiết lập lại</button>
+                <button onclick="applyInventoryFilter()" class="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold py-4 rounded-2xl active:scale-[0.98] transition-transform flex-[2] flex justify-center items-center gap-2 shadow-sm">Áp dụng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BỘ LỌC NÂNG CAO NHẬT KÝ (History Filter Sheet) -->
+    <div id="historyFilterSheet" class="fixed inset-0 z-50 hidden pointer-events-none">
+        <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closeSheet('historyFilterSheet')"></div>
+        <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300 sheet-content">
+            
+            <div class="shrink-0 md:cursor-default cursor-grab active:cursor-grabbing handle-area" data-sheet="historyFilterSheet">
+                <div class="md:hidden flex justify-center pt-3 pb-2" onclick="closeSheet('historyFilterSheet')">
+                    <div class="w-12 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full pointer-events-none"></div>
+                </div>
+                <div class="px-6 py-4 flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pointer-events-none">
+                    <h3 class="text-xl font-bold">Lọc nhật ký</h3>
+                    <button onclick="closeSheet('historyFilterSheet')" class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-full text-zinc-500 pointer-events-auto active:scale-95 transition-transform">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-6 overflow-y-auto hide-scrollbar flex-1 flex flex-col gap-6">
+                <!-- Thời gian -->
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wide">Thời gian</label>
+                    <select id="histTimeSelect" class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium outline-none dark:text-white cursor-pointer appearance-none">
+                        <option value="all">Mọi lúc</option>
+                        <option value="today">Hôm nay</option>
+                        <option value="week">7 ngày qua</option>
+                        <option value="month">30 ngày qua</option>
+                    </select>
+                </div>
+
+                <!-- Danh mục -->
+                <div>
+                    <label class="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-3 uppercase tracking-wide">Danh mục</label>
+                    <select id="histCatSelect" class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-medium outline-none dark:text-white cursor-pointer appearance-none">
+                        <!-- JS Populate -->
+                    </select>
+                </div>
+            </div>
+
+            <div class="p-6 pt-2 bg-white dark:bg-zinc-900 shrink-0 border-t border-zinc-100 dark:border-zinc-800 md:rounded-b-[32px] flex gap-3">
+                <button onclick="resetHistoryFilter()" class="px-5 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold rounded-2xl active:scale-[0.98] transition-transform flex-1 text-center whitespace-nowrap">Thiết lập lại</button>
+                <button onclick="applyHistoryFilter()" class="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold py-4 rounded-2xl active:scale-[0.98] transition-transform flex-[2] flex justify-center items-center gap-2 shadow-sm">Áp dụng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM SHEET: THÊM / SỬA VẬT PHẨM -->
     <div id="formSheet" class="fixed inset-0 z-50 hidden pointer-events-none">
         <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closeSheet('formSheet')"></div>
         <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300 sheet-content">
@@ -330,19 +489,19 @@
                 <div>
                     <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Tên vật phẩm *</label>
                     <input type="text" id="itemName" required placeholder="Ví dụ: Tài liệu dự án..." 
-                        class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
+                        class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Số lượng *</label>
                         <input type="number" id="itemQuantity" required min="0" step="any" placeholder="0" value="1"
-                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
                     </div>
                     <div>
                         <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Đơn vị *</label>
                         <input type="text" id="itemUnit" required list="unitList" placeholder="Cái, kg, hộp..." value="Cái"
-                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
                         <datalist id="unitList">
                             <option value="Cái"> <option value="Hộp"> <option value="Chai">
                             <option value="Túi"> <option value="Kg"> <option value="g">
@@ -355,12 +514,12 @@
                     <div>
                         <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Ngày nhập</label>
                         <input type="date" id="itemAddedDate" required
-                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]">
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]">
                     </div>
                     <div>
                         <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Hạn sử dụng</label>
                         <input type="date" id="itemExpiry" 
-                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]">
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white [color-scheme:light] dark:[color-scheme:dark]">
                     </div>
                 </div>
 
@@ -368,7 +527,7 @@
                     <div>
                         <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Danh mục</label>
                         <div class="relative">
-                            <select id="itemCategory" required class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white appearance-none pr-10">
+                            <select id="itemCategory" required class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white appearance-none pr-10">
                                 <!-- JS Populate -->
                             </select>
                             <i class="ph ph-caret-down absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"></i>
@@ -377,7 +536,7 @@
                     <div>
                         <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Vị trí *</label>
                         <input type="text" id="itemLocation" required placeholder="Tủ lạnh..." autocomplete="off"
-                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
+                            class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white">
                         <div id="locationSuggestions" class="mt-2 flex flex-wrap gap-1.5 hidden"></div>
                     </div>
                 </div>
@@ -385,19 +544,19 @@
                 <div>
                     <label class="block text-[13px] font-semibold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-wide">Ghi chú</label>
                     <textarea id="itemNotes" rows="2" placeholder="Tình trạng, lưu ý..." 
-                        class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border-none rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white resize-none"></textarea>
+                        class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-base outline-none dark:text-white resize-none"></textarea>
                 </div>
             </form>
 
             <div class="p-6 pt-2 bg-white dark:bg-zinc-900 shrink-0 border-t border-zinc-100 dark:border-zinc-800 md:rounded-b-[32px]">
-                <button type="button" onclick="submitForm()" class="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform flex justify-center items-center gap-2">
+                <button type="button" onclick="submitForm()" class="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform flex justify-center items-center gap-2 shadow-sm">
                     <i class="ph-bold ph-check"></i> Lưu hoàn tất
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- 2. BOTTOM SHEET: QUẢN LÝ DANH MỤC CÓ EMOJI VÀ MÀU CUSTOM -->
+    <!-- BOTTOM SHEET: QUẢN LÝ DANH MỤC -->
     <div id="categorySheet" class="fixed inset-0 z-50 hidden pointer-events-none">
         <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closeSheet('categorySheet')"></div>
         <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[480px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] shadow-soft-dark pointer-events-auto flex flex-col max-h-[90vh] md:max-h-[85vh] sheet-exit-active transition-all duration-300 sheet-content">
@@ -433,7 +592,7 @@
                                 <input type="text" id="catEmojiInput" maxlength="2" placeholder="🍎" title="Nhập 1 Emoji"
                                     class="w-12 h-12 text-center text-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none shrink-0"
                                     oninput="clearIconRadios()">
-                                <div class="flex items-center text-xs text-zinc-400">Gõ Emoji riêng biệt vào ô bên cạnh để thay thế Icon.</div>
+                                <div class="flex items-center text-xs text-zinc-400 leading-snug">Gõ Emoji riêng biệt vào ô bên cạnh để thay thế Icon.</div>
                             </div>
                             <div class="flex flex-wrap gap-2" id="iconPicker"></div>
                         </div>
@@ -466,8 +625,7 @@
         </div>
     </div>
 
-    <!-- 3. CUSTOM DIALOGS: THAY THẾ ALERT/CONFIRM/PROMPT -->
-    <!-- Confirm Dialog -->
+    <!-- CUSTOM DIALOGS -->
     <div id="confirmSheet" class="fixed inset-0 z-[60] hidden pointer-events-none">
         <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closeConfirm()"></div>
         <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[400px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] p-6 pointer-events-auto sheet-exit-active transition-all duration-300 sheet-content">
@@ -480,11 +638,11 @@
         </div>
     </div>
 
-    <!-- Prompt Dialog (For Backups) -->
     <div id="promptSheet" class="fixed inset-0 z-[60] hidden pointer-events-none">
         <div class="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm pointer-events-auto backdrop-exit-active sheet-overlay" onclick="closePrompt()"></div>
         <div class="absolute bottom-0 md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 md:bottom-auto w-full md:w-[400px] bg-white dark:bg-zinc-900 rounded-t-[32px] md:rounded-[32px] p-6 pointer-events-auto sheet-exit-active transition-all duration-300 sheet-content">
-            <h3 id="promptTitle" class="text-xl font-bold mb-4">Nhập thông tin</h3>
+            <h3 id="promptTitle" class="text-xl font-bold mb-1">Nhập thông tin</h3>
+            <p id="promptSubtitle" class="text-xs text-zinc-500 dark:text-zinc-400 mb-4 hidden leading-relaxed"></p>
             <input type="text" id="promptInput" class="w-full px-4 py-3.5 bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none text-sm dark:text-white mb-6" autocomplete="off">
             <div class="flex gap-3">
                 <button onclick="closePrompt()" class="flex-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white py-3.5 rounded-2xl font-bold active:scale-95 transition-transform">Hủy</button>
@@ -502,8 +660,8 @@
     <!-- ỨNG DỤNG JAVASCRIPT & FIREBASE -->
     <script>
         /**
-         * KHO ĐỒ THÔNG MINH - MINIMAL PREMIUM V5
-         * Sửa lỗi Icon, Thêm Import/Export JSON, Firebase Sync & Backups, Bỏ Confirm Native
+         * KHO ĐỒ THÔNG MINH - MINIMAL PREMIUM V8
+         * Advanced Filters, Smart History, Clear Search, Error Fixes
          */
         const STORAGE_KEY = 'smart_inventory_v5';
         const CAT_STORAGE_KEY = 'smart_categories_v5';
@@ -512,9 +670,24 @@
         window.items = [];
         window.customCategories = [];
         window.actionLogs = [];
-        let currentFilter = 'all'; 
-        let searchQuery = '';
-        let activeTab = 'inventory';
+        
+        // Trạng thái tìm kiếm và bộ lọc
+        window.searchQuery = '';
+        window.historySearchQuery = '';
+        
+        window.invFilters = {
+            sort: 'added_desc',
+            status: 'all',
+            category: 'all'
+        };
+
+        window.historyFilters = {
+            action: 'all',
+            time: 'all',
+            category: 'all'
+        };
+
+        window.activeTab = 'inventory';
 
         // Firebase Globals
         window.db = null;
@@ -522,7 +695,6 @@
         window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-smart-inv';
         window.fb = {};
 
-        // Sửa ph-apple-pod thành ph-bowl-food
         const ICONS_LIST = ['ph-package', 'ph-file-text', 'ph-bowl-food', 'ph-laptop', 'ph-t-shirt', 'ph-pill', 'ph-books', 'ph-wrench', 'ph-car', 'ph-house'];
         const COLORS_LIST = ['#71717a', '#3b82f6', '#10b981', '#a855f7', '#f43f5e', '#f59e0b', '#06b6d4'];
         
@@ -532,6 +704,22 @@
             { id: 'cat_3', name: 'Đồ điện tử', icon: 'ph-laptop', color: '#a855f7' },
             { id: 'cat_4', name: 'Khác', icon: 'ph-package', color: '#71717a' }
         ];
+
+        // Gán Global để chặn lỗi ReferenceError từ HTML events
+        window.updateQty = updateQty;
+        window.promptEditQuantity = promptEditQuantity;
+        window.deleteItem = deleteItem;
+        window.editItem = editItem;
+        window.handleSearchInput = handleSearchInput;
+        window.clearSearch = clearSearch;
+        window.openInventoryFilter = openInventoryFilter;
+        window.applyInventoryFilter = applyInventoryFilter;
+        window.resetInventoryFilter = resetInventoryFilter;
+        
+        window.openHistoryFilter = openHistoryFilter;
+        window.applyHistoryFilter = applyHistoryFilter;
+        window.resetHistoryFilter = resetHistoryFilter;
+        window.setHistoryActionFilter = setHistoryActionFilter;
 
         // --- THEME ---
         function toggleTheme() {
@@ -561,15 +749,10 @@
             updateUI();
             switchTab('inventory'); 
 
-            // Initialize Firebase
             await initFirebase();
         }
 
         function setupEvents() {
-            document.getElementById('searchInput').addEventListener('input', (e) => {
-                searchQuery = e.target.value.toLowerCase();
-                updateUI();
-            });
             const locInput = document.getElementById('itemLocation');
             locInput.addEventListener('focus', renderLocationSuggestions);
             locInput.addEventListener('input', renderLocationSuggestions);
@@ -597,7 +780,7 @@
                 const fbStore = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
                 
                 window.fb = fbStore;
-                window.fbAuthAPI = fbAuth; // Lưu API Auth để gọi sau
+                window.fbAuthAPI = fbAuth;
                 const app = fbApp.initializeApp(config);
                 window.auth = fbAuth.getAuth(app);
                 window.db = fbStore.getFirestore(app);
@@ -605,7 +788,6 @@
                 fbAuth.onAuthStateChanged(window.auth, async (user) => {
                     if (user) {
                         window.currentUser = user;
-                        // Cập nhật UI
                         document.getElementById('authSection').classList.add('hidden');
                         document.getElementById('authLoggedInSection').classList.remove('hidden');
                         document.getElementById('loggedInEmail').innerText = user.email;
@@ -616,7 +798,6 @@
                         loadCloudBackups();
                     } else {
                         window.currentUser = null;
-                        // Trở về Local mode
                         document.getElementById('authSection').classList.remove('hidden');
                         document.getElementById('authLoggedInSection').classList.add('hidden');
                     }
@@ -624,7 +805,6 @@
 
             } catch(e) {
                 console.error("Firebase init failed", e);
-                showToast("Lỗi khởi tạo Firebase", "error");
             }
         }
 
@@ -646,48 +826,35 @@
             const email = document.getElementById('authEmail').value.trim();
             const pass = document.getElementById('authPassword').value;
             if(!email || !pass) return showToast('Vui lòng nhập Email và Mật khẩu', 'error');
-            
-            try {
-                await window.fbAuthAPI.signInWithEmailAndPassword(window.auth, email, pass);
-            } catch(e) {
-                showToast(getAuthErrorMsg(e.code), 'error');
-            }
+            try { await window.fbAuthAPI.signInWithEmailAndPassword(window.auth, email, pass); } 
+            catch(e) { showToast(getAuthErrorMsg(e.code), 'error'); }
         }
 
         async function handleRegister() {
             const email = document.getElementById('authEmail').value.trim();
             const pass = document.getElementById('authPassword').value;
             if(!email || !pass) return showToast('Vui lòng nhập Email và Mật khẩu', 'error');
-            
             try {
                 await window.fbAuthAPI.createUserWithEmailAndPassword(window.auth, email, pass);
                 showToast('Đăng ký thành công!');
-            } catch(e) {
-                showToast(getAuthErrorMsg(e.code), 'error');
-            }
+            } catch(e) { showToast(getAuthErrorMsg(e.code), 'error'); }
         }
 
         async function handleResetPassword() {
             const email = document.getElementById('authEmail').value.trim();
             if(!email) return showToast('Vui lòng nhập Email vào ô trên để lấy lại mật khẩu', 'error');
-            
             try {
                 await window.fbAuthAPI.sendPasswordResetEmail(window.auth, email);
                 showToast('Đã gửi email khôi phục mật khẩu. Vui lòng kiểm tra hộp thư.');
-            } catch(e) {
-                showToast(getAuthErrorMsg(e.code), 'error');
-            }
+            } catch(e) { showToast(getAuthErrorMsg(e.code), 'error'); }
         }
 
         async function handleLogout() {
             try {
                 await window.fbAuthAPI.signOut(window.auth);
                 showToast('Đã đăng xuất. Chuyển về chế độ Local.');
-                // Làm sạch mật khẩu
                 document.getElementById('authPassword').value = '';
-            } catch(e) {
-                console.error(e);
-            }
+            } catch(e) { console.error(e); }
         }
 
         async function syncToCloudLatest() {
@@ -700,7 +867,7 @@
                     logs: window.actionLogs, 
                     timestamp: Date.now() 
                 });
-            } catch(e) { console.error("Sync failed", e); }
+            } catch(e) {}
         }
 
         async function loadCloudLatest() {
@@ -715,11 +882,8 @@
                     if (d.logs) window.actionLogs = d.logs;
                     saveDataLocalOnly();
                     updateUI();
-                } else {
-                    // Mới tinh, push local lên
-                    syncToCloudLatest();
-                }
-            } catch(e) { console.error("Load latest failed", e); }
+                } else { syncToCloudLatest(); }
+            } catch(e) {}
         }
 
         async function loadCloudBackups() {
@@ -753,7 +917,7 @@
                          </div>
                      `;
                  });
-             } catch(e) { console.error(e); }
+             } catch(e) {}
         }
 
         // --- BACKUP ACTIONS ---
@@ -807,7 +971,6 @@
             });
         }
 
-
         // --- JSON EXPORT / IMPORT ---
         function exportJSON() {
             const data = { 
@@ -841,14 +1004,13 @@
                     } catch(err) {
                         showToast('File JSON không hợp lệ', 'error');
                     }
-                    e.target.value = ''; // reset
+                    e.target.value = ''; 
                 };
                 reader.readAsText(file);
             });
         }
 
-
-        // --- CUSTOM DIALOGS (Thay thế confirm/prompt) ---
+        // --- CUSTOM DIALOGS ---
         let confirmActionCallback = null;
         function showConfirm(title, message, btnText, btnColorClass, callback) {
             document.getElementById('confirmTitle').innerText = title;
@@ -866,8 +1028,12 @@
         };
 
         let promptActionCallback = null;
-        function showPrompt(title, placeholder, initialVal, btnText, callback) {
+        function showPrompt(title, placeholder, initialVal, btnText, callback, subtitle = '') {
             document.getElementById('promptTitle').innerText = title;
+            const subEl = document.getElementById('promptSubtitle');
+            if (subtitle) { subEl.innerText = subtitle; subEl.classList.remove('hidden'); } 
+            else { subEl.classList.add('hidden'); }
+
             const input = document.getElementById('promptInput');
             input.placeholder = placeholder;
             input.value = initialVal || '';
@@ -885,22 +1051,131 @@
             closePrompt();
         };
 
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            const icon = document.getElementById('toastIcon');
+            if(type === 'error') { icon.className = 'ph-fill ph-warning-circle text-xl text-rose-500'; } 
+            else { icon.className = 'ph-fill ph-check-circle text-xl text-emerald-500'; }
+
+            toast.classList.remove('-translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('-translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        // --- SEARCH HANDLING & FILTERS ---
+        function handleSearchInput(e, type) {
+            const val = e.target.value.toLowerCase();
+            const clearBtn = document.getElementById(type + 'ClearBtn');
+            
+            if (val) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+
+            if (type === 'inventory') {
+                window.searchQuery = val;
+                updateUI();
+            } else if (type === 'history') {
+                window.historySearchQuery = val;
+                renderHistory();
+            }
+        }
+
+        function clearSearch(type) {
+            const input = document.getElementById(type + 'SearchInput');
+            input.value = '';
+            document.getElementById(type + 'ClearBtn').classList.add('hidden');
+            
+            if (type === 'inventory') {
+                window.searchQuery = '';
+                updateUI();
+            } else if (type === 'history') {
+                window.historySearchQuery = '';
+                renderHistory();
+            }
+        }
+
+        // --- ADVANCED INVENTORY FILTER SHEET ---
+        function openInventoryFilter() {
+            document.getElementById('invSortSelect').value = window.invFilters.sort;
+            document.getElementById('invStatusSelect').value = window.invFilters.status;
+            
+            const catSelect = document.getElementById('invCatSelect');
+            catSelect.innerHTML = '<option value="all">Tất cả danh mục</option>';
+            window.customCategories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.name; opt.text = cat.name;
+                catSelect.appendChild(opt);
+            });
+            catSelect.value = window.invFilters.category;
+
+            toggleSheetVisibility('inventoryFilterSheet', true);
+        }
+
+        function applyInventoryFilter() {
+            window.invFilters.sort = document.getElementById('invSortSelect').value;
+            window.invFilters.status = document.getElementById('invStatusSelect').value;
+            window.invFilters.category = document.getElementById('invCatSelect').value;
+            
+            toggleSheetVisibility('inventoryFilterSheet', false);
+            updateUI();
+        }
+
+        function resetInventoryFilter() {
+            window.invFilters = { sort: 'added_desc', status: 'all', category: 'all' };
+            document.getElementById('invSortSelect').value = 'added_desc';
+            document.getElementById('invStatusSelect').value = 'all';
+            document.getElementById('invCatSelect').value = 'all';
+            applyInventoryFilter();
+        }
+        
+        // --- ADVANCED HISTORY FILTER SHEET ---
+        function openHistoryFilter() {
+            document.getElementById('histTimeSelect').value = window.historyFilters.time;
+            
+            const catSelect = document.getElementById('histCatSelect');
+            catSelect.innerHTML = '<option value="all">Tất cả danh mục</option>';
+            window.customCategories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat.name; opt.text = cat.name;
+                catSelect.appendChild(opt);
+            });
+            catSelect.value = window.historyFilters.category;
+
+            toggleSheetVisibility('historyFilterSheet', true);
+        }
+
+        function applyHistoryFilter() {
+            window.historyFilters.time = document.getElementById('histTimeSelect').value;
+            window.historyFilters.category = document.getElementById('histCatSelect').value;
+            
+            toggleSheetVisibility('historyFilterSheet', false);
+            renderHistory();
+        }
+
+        function resetHistoryFilter() {
+            window.historyFilters.time = 'all';
+            window.historyFilters.category = 'all';
+            document.getElementById('histTimeSelect').value = 'all';
+            document.getElementById('histCatSelect').value = 'all';
+            applyHistoryFilter();
+        }
 
         // --- TAB SWITCHING ---
         function switchTab(tab) {
-            activeTab = tab;
+            window.activeTab = tab;
             
             ['inventory', 'history', 'settings'].forEach(t => {
                 document.getElementById(`${t}View`).classList.toggle('hidden', tab !== t);
             });
             
-            // Mobile Nav
             ['inventory', 'history', 'settings'].forEach(t => {
                 const btn = document.getElementById(`tab-${t}-mobile`);
                 btn.className = `flex flex-col items-center justify-center flex-1 h-full transition-colors ${tab === t ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 dark:text-zinc-500'}`;
             });
             
-            // Desktop Nav
             ['inventory', 'history', 'settings'].forEach(t => {
                 const btn = document.getElementById(`tab-${t}-desktop`);
                 const actCls = 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white';
@@ -908,15 +1183,11 @@
                 btn.className = `w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${tab === t ? actCls : inactCls}`;
             });
 
-            // Headers
-            const catBtn = document.getElementById('mobileCatBtn');
-            if (catBtn) catBtn.classList.toggle('hidden', tab !== 'inventory');
-            
             document.getElementById('mobileHeaderTitle').innerText = tab === 'inventory' ? 'Kho đồ' : (tab === 'history' ? 'Nhật ký' : 'Cài đặt');
             document.getElementById('mobileHeaderSubtitle').innerText = tab === 'inventory' ? 'Quản lý' : (tab === 'history' ? 'Lịch sử' : 'Hệ thống');
             document.getElementById('desktopFilterNav').style.display = tab === 'inventory' ? 'flex' : 'none';
 
-            if (tab === 'history') renderHistory();
+            if (tab === 'history') { renderHistory(); }
             if (tab === 'inventory') renderItemsGrid();
         }
 
@@ -929,12 +1200,12 @@
 
         function saveData() {
             saveDataLocalOnly();
-            syncToCloudLatest(); // Auto Sync
+            syncToCloudLatest(); 
             updateUI();
-            if (activeTab === 'history') renderHistory();
+            if (window.activeTab === 'history') renderHistory();
         }
 
-        function logAction(actionType, itemName, qty, unit, hexColor) {
+        function logAction(actionType, itemName, qty, unit, hexColor, categoryName) {
             const log = {
                 id: 'log_' + Date.now(),
                 date: new Date().toISOString(),
@@ -942,7 +1213,8 @@
                 itemName,
                 qty,
                 unit,
-                color: hexColor || '#71717a'
+                color: hexColor || '#71717a',
+                category: categoryName || 'Khác'
             };
             window.actionLogs.unshift(log); 
             if (window.actionLogs.length > 200) window.actionLogs.pop(); 
@@ -963,86 +1235,128 @@
             const cat = window.customCategories.find(c => c.name === catName) || { icon: 'ph-package', color: '#71717a' };
             const isEmoji = !cat.icon.startsWith('ph-');
             const iconHtml = isEmoji ? `<span class="text-xl leading-none">${cat.icon}</span>` : `<i class="ph-fill ${cat.icon} text-xl" style="color: ${cat.color}"></i>`;
-            return {
-                iconHtml,
-                colorStr: cat.color,
-                bgStyle: `background-color: ${cat.color}15;`, 
-                textColor: cat.color
-            };
+            return { iconHtml, colorStr: cat.color, bgStyle: `background-color: ${cat.color}15;`, textColor: cat.color };
         }
 
         // --- UI UPDATES: CORE ---
         function updateUI() {
-            renderFilters();
+            renderDesktopSidebarFilters();
+            renderMobileCategoryChips();
             renderItemsGrid();
             renderManageCategoryList();
             populateCategoryDropdown();
         }
 
-        function renderFilters() {
-            const mContainer = document.getElementById('mobileFilterContainer');
+        function renderDesktopSidebarFilters() {
             const dContainer = document.getElementById('desktopFilterContainer');
-            mContainer.innerHTML = ''; dContainer.innerHTML = '';
+            if(!dContainer) return;
+            dContainer.innerHTML = '';
 
-            const systemFilters = [
-                { id: 'all', label: 'Tất cả', isSystem: true, iconHtml: '<i class="ph ph-squares-four text-lg"></i>' },
-                { id: 'Sắp hết hạn', label: 'Sắp hết hạn', isSystem: true, iconHtml: '<i class="ph ph-clock-countdown text-lg text-amber-500"></i>' }
+            const allFilters = [
+                { id: 'all', label: 'Tất cả danh mục', isSystem: true, iconHtml: '<i class="ph ph-squares-four text-lg"></i>' },
+                ...window.customCategories.map(c => {
+                    const s = getCatStyleDef(c.name);
+                    return { id: c.name, label: c.name, isSystem: false, iconHtml: s.iconHtml.replace('text-xl', 'text-lg'), color: s.colorStr };
+                })
             ];
 
-            const allFilters = [...systemFilters, ...window.customCategories.map(c => {
-                const s = getCatStyleDef(c.name);
-                const iHtml = s.iconHtml.replace('text-xl', 'text-lg');
-                return { id: c.name, label: c.name, isSystem: false, iconHtml: iHtml, color: s.colorStr };
-            })];
+            allFilters.forEach(cat => {
+                const isActive = window.invFilters.category === cat.id;
+                
+                const dBtn = document.createElement('button');
+                dBtn.onclick = () => { 
+                    window.invFilters.category = cat.id; 
+                    renderDesktopSidebarFilters(); 
+                    renderMobileCategoryChips();
+                    renderItemsGrid(); 
+                };
+                dBtn.className = `w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-all ${isActive ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50'}`;
+                dBtn.innerHTML = `<div class="flex items-center gap-3">${cat.iconHtml} <span ${isActive?'':(cat.color?`style="color:${cat.color}"`:'')}>${cat.label}</span></div>`;
+                dContainer.appendChild(dBtn);
+            });
+        }
+        
+        function renderMobileCategoryChips() {
+            const mContainer = document.getElementById('mobileFilterContainer');
+            if(!mContainer) return;
+            mContainer.innerHTML = '';
+
+            const allFilters = [
+                { id: 'all', label: 'Tất cả', isSystem: true, iconHtml: '<i class="ph ph-squares-four text-lg"></i>' },
+                ...window.customCategories.map(c => {
+                    const s = getCatStyleDef(c.name);
+                    return { id: c.name, label: c.name, isSystem: false, iconHtml: s.iconHtml.replace('text-xl', 'text-lg'), color: s.colorStr };
+                })
+            ];
 
             allFilters.forEach(cat => {
-                const isActive = currentFilter === cat.id;
+                const isActive = window.invFilters.category === cat.id;
                 
                 const mBtn = document.createElement('button');
-                mBtn.onclick = () => { currentFilter = cat.id; renderFilters(); renderItemsGrid(); };
-                mBtn.className = `flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[14px] font-medium transition-all whitespace-nowrap border ${isActive ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 dark:border-white' : 'bg-white text-zinc-600 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400'}`;
+                mBtn.onclick = () => { 
+                    window.invFilters.category = cat.id; 
+                    renderMobileCategoryChips();
+                    renderDesktopSidebarFilters();
+                    renderItemsGrid(); 
+                };
+                mBtn.className = `flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[14px] font-medium transition-all whitespace-nowrap border ${isActive ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 dark:border-white shadow-sm' : 'bg-white text-zinc-600 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400'}`;
                 mBtn.innerHTML = `${cat.iconHtml} ${cat.label}`;
                 mContainer.appendChild(mBtn);
-
-                const dBtn = document.createElement('button');
-                dBtn.onclick = () => { currentFilter = cat.id; renderFilters(); renderItemsGrid(); };
-                dBtn.className = `w-full flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition-all ${isActive ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white' : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/50'}`;
-                
-                let countHTML = '';
-                if (cat.id === 'Sắp hết hạn') {
-                    const soonCount = window.items.filter(i => getStatus(i.expiryDate).type === 'soon').length;
-                    if(soonCount > 0) countHTML = `<span class="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 py-0.5 px-2 rounded-full text-xs font-bold">${soonCount}</span>`;
-                }
-
-                dBtn.innerHTML = `<div class="flex items-center gap-3">${cat.iconHtml} <span ${isActive?'':(cat.color?`style="color:${cat.color}"`:'')}>${cat.label}</span></div> ${countHTML}`;
-                dContainer.appendChild(dBtn);
             });
         }
 
         function renderItemsGrid() {
-            if (activeTab !== 'inventory') return;
+            if (window.activeTab !== 'inventory') return;
             const grid = document.getElementById('itemsGrid');
             const empty = document.getElementById('emptyState');
             
             const desktopCountEl = document.getElementById('desktopTotalCount');
             if (desktopCountEl) desktopCountEl.innerText = window.items.length;
 
+            // Check Filter active state for Badge
+            const filterBadge = document.getElementById('invFilterBadge');
+            if (filterBadge) {
+                if (window.invFilters.status !== 'all' || window.invFilters.category !== 'all' || window.invFilters.sort !== 'added_desc') {
+                    filterBadge.classList.remove('hidden');
+                } else {
+                    filterBadge.classList.add('hidden');
+                }
+            }
+
             let filtered = window.items.filter(item => {
-                const matchSearch = item.name.toLowerCase().includes(searchQuery) || item.location.toLowerCase().includes(searchQuery);
+                // Tiềm kiếm
+                const matchSearch = item.name.toLowerCase().includes(window.searchQuery) || item.location.toLowerCase().includes(window.searchQuery);
+                // Trạng thái
+                let matchStatus = true;
+                if (window.invFilters.status !== 'all') {
+                    matchStatus = getStatus(item.expiryDate).type === window.invFilters.status;
+                }
+                // Danh mục
                 let matchCat = true;
-                if (currentFilter === 'Sắp hết hạn') matchCat = getStatus(item.expiryDate).type === 'soon';
-                else if (currentFilter !== 'all') matchCat = item.category === currentFilter;
-                return matchSearch && matchCat;
+                if (window.invFilters.category !== 'all') {
+                    matchCat = item.category === window.invFilters.category;
+                }
+                return matchSearch && matchStatus && matchCat;
             });
 
+            // Sắp xếp
             filtered.sort((a, b) => {
-                const statA = getStatus(a.expiryDate).type;
-                const statB = getStatus(b.expiryDate).type;
-                if (statA === 'soon' && statB !== 'soon') return -1;
-                if (statB === 'soon' && statA !== 'soon') return 1;
                 const dateA = a.addedDate ? new Date(a.addedDate) : new Date(a.createdAt);
                 const dateB = b.addedDate ? new Date(b.addedDate) : new Date(b.createdAt);
-                return dateB - dateA; 
+                
+                switch(window.invFilters.sort) {
+                    case 'added_asc': return dateA - dateB;
+                    case 'name_asc': return a.name.localeCompare(b.name);
+                    case 'qty_desc': return (b.quantity || 0) - (a.quantity || 0);
+                    case 'qty_asc': return (a.quantity || 0) - (b.quantity || 0);
+                    case 'exp_asc':
+                        if(!a.expiryDate) return 1;
+                        if(!b.expiryDate) return -1;
+                        return new Date(a.expiryDate) - new Date(b.expiryDate);
+                    case 'added_desc':
+                    default:
+                        return dateB - dateA; 
+                }
             });
 
             grid.innerHTML = '';
@@ -1062,7 +1376,6 @@
                     card.className = "bg-white dark:bg-zinc-900 p-5 rounded-[24px] shadow-soft dark:shadow-none border border-zinc-100 dark:border-zinc-800/60 relative group flex flex-col transition-all hover:shadow-md";
                     
                     card.innerHTML = `
-                        <!-- Action Menu -->
                         <div class="absolute top-4 right-4 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button onclick="editItem('${item.id}')" class="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center transition">
                                 <i class="ph ph-pencil-simple"></i>
@@ -1072,7 +1385,6 @@
                             </button>
                         </div>
 
-                        <!-- Card Header -->
                         <div class="flex items-start gap-4 mb-4 pr-16">
                             <div class="w-12 h-12 rounded-[18px] flex items-center justify-center shrink-0" style="${style.bg}">
                                 ${style.iconHtml}
@@ -1088,7 +1400,6 @@
 
                         <div class="flex-1"></div>
 
-                        <!-- Bottom Controls -->
                         <div class="flex items-end justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800/80 mt-auto">
                             <div class="space-y-2">
                                 <div class="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 text-sm font-medium">
@@ -1102,12 +1413,11 @@
                                 ` : '<div class="h-5"></div>'}
                             </div>
                             
-                            <!-- Bảng điều khiển số lượng mini -->
                             <div class="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1 shrink-0 border border-zinc-200/50 dark:border-zinc-700/50">
                                 <button onclick="updateQty('${item.id}', -1)" class="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors active:scale-90">
                                     <i class="ph-bold ph-minus"></i>
                                 </button>
-                                <div class="flex flex-col items-center justify-center px-1.5 min-w-[3rem]">
+                                <div onclick="promptEditQuantity('${item.id}')" class="flex flex-col items-center justify-center px-2 py-0.5 min-w-[3rem] cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors active:scale-95" title="Chạm để nhập nhanh">
                                     <span class="text-xs font-bold leading-none text-zinc-900 dark:text-white">${qty}</span>
                                     <span class="text-[9px] font-semibold text-zinc-500 uppercase mt-0.5">${unit}</span>
                                 </div>
@@ -1122,69 +1432,34 @@
             }
         }
 
-        function renderHistory() {
-            const container = document.getElementById('historyTimeline');
-            const emptyState = document.getElementById('historyEmptyState');
-            container.innerHTML = '';
-
-            if (window.actionLogs.length === 0) {
-                emptyState.classList.remove('hidden');
-                return;
-            }
-            emptyState.classList.add('hidden');
-
-            // Group by Date
-            const groups = {};
-            window.actionLogs.forEach(log => {
-                const dateKey = new Date(log.date).toLocaleDateString('vi-VN');
-                if(!groups[dateKey]) groups[dateKey] = [];
-                groups[dateKey].push(log);
-            });
-
-            for (const [dateStr, logs] of Object.entries(groups)) {
-                let displayDate = dateStr;
-                const todayStr = new Date().toLocaleDateString('vi-VN');
-                if (dateStr === todayStr) displayDate = 'Hôm nay';
-
-                const dayGroup = document.createElement('div');
-                dayGroup.className = 'relative';
+        // --- SMART QUANTITY EDIT ---
+        function promptEditQuantity(id) {
+            const item = window.items.find(i => i.id === id);
+            if (!item) return;
+            const subtitle = `Đang có: ${item.quantity} ${item.unit}. Có thể nhập số mới, hoặc dùng dấu + / - (VD: -200, +50)`;
+            showPrompt('Điều chỉnh nhanh', 'Nhập số lượng...', item.quantity.toString(), 'Cập nhật', (val) => {
+                const valStr = val.trim();
+                if (!valStr) return;
                 
-                let html = `<h4 class="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-4 bg-zinc-50 dark:bg-zinc-950 inline-block pr-3 -ml-1">${displayDate}</h4><div class="space-y-5">`;
-                
-                logs.forEach(log => {
-                    const timeStr = new Date(log.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-                    
-                    let actionIcon = '', actionText = '', textCol = '';
-                    if (log.action === 'Thêm mới') { actionIcon = 'ph-plus-circle'; actionText = 'Đã thêm mới'; textCol = 'text-blue-500'; }
-                    else if (log.action === 'Nhập thêm') { actionIcon = 'ph-trend-up'; actionText = 'Đã nhập thêm'; textCol = 'text-emerald-500'; }
-                    else if (log.action === 'Sử dụng') { actionIcon = 'ph-trend-down'; actionText = 'Đã sử dụng'; textCol = 'text-amber-500'; }
-                    else { actionIcon = 'ph-trash'; actionText = 'Đã xóa'; textCol = 'text-rose-500'; }
+                let newQty = item.quantity;
+                if (valStr.startsWith('-')) {
+                    const delta = parseFloat(valStr.substring(1));
+                    if(!isNaN(delta)) newQty -= delta;
+                } else if (valStr.startsWith('+')) {
+                    const delta = parseFloat(valStr.substring(1));
+                    if(!isNaN(delta)) newQty += delta;
+                } else {
+                    const parsed = parseFloat(valStr);
+                    if(!isNaN(parsed)) newQty = parsed;
+                }
 
-                    html += `
-                        <div class="relative timeline-dot" style="color: ${log.color}">
-                            <div class="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl p-4 shadow-sm flex items-start gap-3">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${log.color}15; color: ${log.color}">
-                                    <i class="ph-fill ${actionIcon} text-lg"></i>
-                                </div>
-                                <div>
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <span class="text-[13px] font-bold ${textCol}">${actionText}</span>
-                                        <span class="text-[11px] font-medium text-zinc-400">• ${timeStr}</span>
-                                    </div>
-                                    <p class="text-sm font-semibold text-zinc-900 dark:text-white leading-snug">${log.qty} ${log.unit} <span class="font-normal text-zinc-500">${log.itemName}</span></p>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-                dayGroup.innerHTML = html;
-                container.appendChild(dayGroup);
-            }
+                if (newQty < 0) newQty = 0;
+                newQty = Math.round(newQty * 100) / 100;
+                const actualDelta = newQty - item.quantity;
+                if (actualDelta !== 0) updateQty(id, actualDelta);
+            }, subtitle);
         }
 
-        // --- QUANTITY LOGIC ---
         function updateQty(id, delta) {
             const idx = window.items.findIndex(i => i.id === id);
             if (idx > -1) {
@@ -1198,12 +1473,154 @@
 
                 const actualDelta = Math.abs(newQty - currentQty);
                 if (actualDelta > 0) {
-                    if (delta > 0) logAction('Nhập thêm', item.name, actualDelta, item.unit, catStyle.colorStr);
-                    else logAction('Sử dụng', item.name, actualDelta, item.unit, catStyle.colorStr);
+                    if (delta > 0) logAction('Nhập thêm', item.name, actualDelta, item.unit, catStyle.colorStr, item.category);
+                    else logAction('Sử dụng', item.name, actualDelta, item.unit, catStyle.colorStr, item.category);
                     
                     item.quantity = newQty;
                     saveData();
                 }
+            }
+        }
+
+        // --- ADVANCED HISTORY FILTER & RENDER ---
+        function setHistoryActionFilter(action) {
+            window.historyFilters.action = action;
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const timeFilter = window.historyFilters.time;
+            const catFilter = window.historyFilters.category;
+            const now = new Date();
+
+            // Check Filter active state for Badge
+            const filterBadge = document.getElementById('historyFilterBadge');
+            if (filterBadge) {
+                if (timeFilter !== 'all' || catFilter !== 'all') {
+                    filterBadge.classList.remove('hidden');
+                } else {
+                    filterBadge.classList.add('hidden');
+                }
+            }
+            
+            // Filter logs
+            let filteredLogs = window.actionLogs.filter(log => {
+                // Search
+                if (window.historySearchQuery && !log.itemName.toLowerCase().includes(window.historySearchQuery)) return false;
+
+                const logDate = new Date(log.date);
+                
+                if (timeFilter === 'today') {
+                    if (logDate.toDateString() !== now.toDateString()) return false;
+                } else if (timeFilter === 'week') {
+                    const diff = (now - logDate) / (1000 * 60 * 60 * 24);
+                    if (diff > 7) return false;
+                } else if (timeFilter === 'month') {
+                    const diff = (now - logDate) / (1000 * 60 * 60 * 24);
+                    if (diff > 30) return false;
+                }
+                
+                const actF = window.historyFilters.action;
+                if (actF === 'in' && !['Thêm mới', 'Nhập thêm'].includes(log.action)) return false;
+                if (actF === 'out' && log.action !== 'Sử dụng') return false;
+                if (actF === 'delete' && log.action !== 'Xóa') return false;
+                
+                if (catFilter !== 'all') {
+                    const logCat = log.category || window.items.find(i => i.name === log.itemName)?.category || 'Khác';
+                    if (logCat !== catFilter) return false;
+                }
+
+                return true;
+            });
+
+            // Render Action Chips UI
+            const actionChipsContainer = document.getElementById('historyActionChips');
+            if (actionChipsContainer) {
+                actionChipsContainer.innerHTML = '';
+                const actions = [
+                    { id: 'all', label: 'Tất cả' },
+                    { id: 'in', label: 'Nhập vào' },
+                    { id: 'out', label: 'Lấy ra' },
+                    { id: 'delete', label: 'Đã xóa' }
+                ];
+                
+                actions.forEach(act => {
+                    const isActive = window.historyFilters.action === act.id;
+                    const btn = document.createElement('button');
+                    btn.className = `flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[14px] font-medium transition-all whitespace-nowrap border ${isActive ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-white dark:text-zinc-900 dark:border-white shadow-sm' : 'bg-white text-zinc-600 border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-400'}`;
+                    btn.innerText = act.label;
+                    btn.onclick = () => setHistoryActionFilter(act.id);
+                    actionChipsContainer.appendChild(btn);
+                });
+            }
+
+            // Render Timeline Items
+            const container = document.getElementById('historyTimeline');
+            const emptyState = document.getElementById('historyEmptyState');
+            container.innerHTML = '';
+
+            if (filteredLogs.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            const groups = {};
+            filteredLogs.forEach(log => {
+                const dateKey = new Date(log.date).toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
+                if(!groups[dateKey]) groups[dateKey] = [];
+                groups[dateKey].push(log);
+            });
+
+            for (const [dateStr, logs] of Object.entries(groups)) {
+                let displayDate = dateStr;
+                const todayStr = new Date().toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: '2-digit', day: '2-digit' });
+                if (dateStr === todayStr) displayDate = 'Hôm nay, ' + new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+
+                const dayGroup = document.createElement('div');
+                dayGroup.className = 'mb-8';
+                
+                let html = `
+                    <div class="flex items-center gap-3 mb-5">
+                        <div class="h-px flex-1 bg-zinc-200 dark:bg-zinc-800"></div>
+                        <span class="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">${displayDate}</span>
+                        <div class="h-px flex-1 bg-zinc-200 dark:bg-zinc-800"></div>
+                    </div>
+                    <div class="space-y-3">
+                `;
+                
+                logs.forEach(log => {
+                    const timeStr = new Date(log.date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    
+                    let actionIcon = '', actionText = '', textCol = '', bgIcon = '';
+                    if (log.action === 'Thêm mới') { actionIcon = 'ph-plus'; actionText = 'Thêm mới'; textCol = 'text-blue-600 dark:text-blue-400'; bgIcon = 'bg-blue-50 dark:bg-blue-500/10 text-blue-500'; }
+                    else if (log.action === 'Nhập thêm') { actionIcon = 'ph-arrow-down-left'; actionText = 'Nhập thêm'; textCol = 'text-emerald-600 dark:text-emerald-400'; bgIcon = 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500'; }
+                    else if (log.action === 'Sử dụng') { actionIcon = 'ph-arrow-up-right'; actionText = 'Lấy ra'; textCol = 'text-amber-600 dark:text-amber-400'; bgIcon = 'bg-amber-50 dark:bg-amber-500/10 text-amber-500'; }
+                    else { actionIcon = 'ph-trash'; actionText = 'Đã xóa'; textCol = 'text-rose-600 dark:text-rose-400'; bgIcon = 'bg-rose-50 dark:bg-rose-500/10 text-rose-500'; }
+
+                    html += `
+                        <div class="flex items-center gap-3.5 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800/80 p-3.5 rounded-[20px] shadow-sm hover:shadow-md transition-shadow">
+                            <div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${bgIcon}">
+                                <i class="ph-bold ${actionIcon} text-xl"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-2 mb-0.5">
+                                    <h4 class="font-bold text-sm text-zinc-900 dark:text-white truncate">${log.itemName}</h4>
+                                    <span class="text-[10px] font-bold text-zinc-400 shrink-0">${timeStr}</span>
+                                </div>
+                                <div class="flex items-center gap-1.5 mt-1">
+                                    <span class="text-[11px] font-bold uppercase tracking-wide ${textCol}">${actionText}</span>
+                                    <span class="text-zinc-300 dark:text-zinc-600">•</span>
+                                    <span class="text-[13px] font-semibold text-zinc-600 dark:text-zinc-300">${log.qty} ${log.unit}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                dayGroup.innerHTML = html;
+                container.appendChild(dayGroup);
             }
         }
 
@@ -1393,7 +1810,7 @@
                 const fallbackCat = window.customCategories.find(c => c.id !== id).name;
                 window.items.forEach(i => { if(i.category === cat.name) i.category = fallbackCat; });
                 window.customCategories = window.customCategories.filter(c => c.id !== id);
-                if(currentFilter === cat.name) currentFilter = 'all';
+                if(window.invFilters.category === cat.name) window.invFilters.category = 'all';
 
                 saveData();
                 showToast('Đã xóa danh mục');
@@ -1439,7 +1856,7 @@
                 showToast('Đã lưu thay đổi');
             } else {
                 window.items.push(newItem);
-                logAction('Thêm mới', newItem.name, newItem.quantity, newItem.unit, catStyle.colorStr);
+                logAction('Thêm mới', newItem.name, newItem.quantity, newItem.unit, catStyle.colorStr, newItem.category);
                 showToast('Đã thêm vật phẩm');
             }
 
@@ -1473,7 +1890,7 @@
             if(item) {
                 showConfirm("Xóa vật phẩm", `Bạn có chắc chắn muốn xóa "${item.name}" khỏi kho đồ không?`, "Xóa", "bg-rose-500", () => {
                     const catStyle = getCatStyleDef(item.category);
-                    logAction('Xóa', item.name, item.quantity, item.unit, catStyle.colorStr);
+                    logAction('Xóa', item.name, item.quantity, item.unit, catStyle.colorStr, item.category);
                     
                     window.items = window.items.filter(i => i.id !== id);
                     saveData();
