@@ -1261,43 +1261,55 @@
         }
 
         async function syncToCloudLatest() {
+            // Kiểm tra các điều kiện tiên quyết: Đã đăng nhập, có database và bật Auto Sync
             if (!window.currentUser || !window.db || !window.autoSync) return;
-
+            
             const statusEl = document.getElementById('cloudStatus');
 
+            // Xử lý khi thiết bị đang ngoại tuyến (Offline)
             if (!navigator.onLine) {
                 localStorage.setItem('pendingCloudSync', 'true');
                 if (statusEl) {
-                    statusEl.innerText = "Đang chờ mạng (Lưu tạm Local)";
+                    statusEl.innerHTML = `<i class="ph-fill ph-cloud-slash"></i> Đang chờ mạng (Lưu tạm Local)`;
                     statusEl.className = "text-[11px] mt-0.5 text-amber-500 font-medium flex items-center gap-1";
                 }
                 return;
             }
-
+            
             try {
+                // Xác định đường dẫn tài liệu trên Firestore
                 const docRef = window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'state', 'latest');
-                await window.fb.setDoc(docRef, {
-                    items: window.items,
-                    categories: window.customCategories,
-                    logs: window.actionLogs,
-                    timestamp: Date.now()
+                
+                // Ghi toàn bộ dữ liệu hiện tại lên Cloud
+                await window.fb.setDoc(docRef, { 
+                    items: window.items, 
+                    categories: window.customCategories, 
+                    logs: window.actionLogs, 
+                    dataSaves: window.dataSaves, // Dữ liệu mã vạch/QR mẫu
+                    timestamp: Date.now() 
                 });
-                localStorage.removeItem('pendingCloudSync');
 
+                // Xóa trạng thái chờ đồng bộ sau khi thành công
+                localStorage.removeItem('pendingCloudSync');
+                
+                // Cập nhật giao diện trạng thái kết nối
                 if (statusEl) {
                     statusEl.innerHTML = `<i class="ph-fill ph-cloud-check"></i> Đã đồng bộ Cloud`;
                     statusEl.className = "text-[11px] mt-0.5 text-emerald-500 font-medium flex items-center gap-1";
                 }
-
-                // Cập nhật lại UI Danh sách sao lưu nếu đang ở tab Cài đặt
+                
+                // Nếu đang ở tab Cài đặt, cập nhật lại danh sách các bản sao lưu
                 if (window.activeTab === 'settings') {
                     loadCloudBackups();
                 }
-            } catch (e) {
-                console.error("Sync failed", e);
+            } catch(e) { 
+                console.error("Lỗi đồng bộ Cloud:", e);
+                
+                // Đánh dấu để đồng bộ lại sau khi có mạng hoặc tải lại trang
                 localStorage.setItem('pendingCloudSync', 'true');
+                
                 if (statusEl) {
-                    statusEl.innerText = "Lỗi đồng bộ (Sẽ thử lại sau)";
+                    statusEl.innerHTML = `<i class="ph-fill ph-warning-circle"></i> Lỗi đồng bộ (Sẽ thử lại sau)`;
                     statusEl.className = "text-[11px] mt-0.5 text-rose-500 font-medium flex items-center gap-1";
                 }
             }
@@ -1313,10 +1325,12 @@
                     if (d.items) window.items = d.items;
                     if (d.categories) window.customCategories = d.categories;
                     if (d.logs) window.actionLogs = d.logs;
+                    if (d.dataSaves) window.dataSaves = d.dataSaves; // <-- THÊM DÒNG NÀY
+                    
                     saveDataLocalOnly();
                     updateUI();
                 } else { syncToCloudLatest(); }
-            } catch (e) { }
+            } catch(e) {}
         }
 
         async function loadCloudBackups() {
@@ -1385,13 +1399,13 @@
                     items: window.items,
                     categories: window.customCategories,
                     logs: window.actionLogs,
+                    dataSaves: window.dataSaves, // <-- THÊM DÒNG NÀY
                     timestamp: Date.now()
                 });
                 showToast("Đã tạo bản sao lưu Cloud");
                 loadCloudBackups();
             });
         }
-
         function renameCloudBackup(id, currentName) {
             showPrompt("Đổi tên bản sao lưu", "Tên mới...", currentName, "Lưu", async (newName) => {
                 if (!newName || !window.currentUser || !window.db) return;
@@ -1410,31 +1424,71 @@
             });
         }
 
+    
         function restoreCloudBackup(id, isAuto = false) {
-            showConfirm("Khôi phục sao lưu", "Dữ liệu hiện tại sẽ bị GHI ĐÈ bởi bản sao lưu này. Khuyên bạn nên tạo sao lưu trước khi khôi phục.", "Khôi phục", "bg-emerald-500", async () => {
-                if (!window.currentUser || !window.db) return;
+            showConfirm(
+                "Khôi phục sao lưu", 
+                "Dữ liệu hiện tại trên máy sẽ bị GHI ĐÈ hoàn toàn bởi bản sao lưu này. Bạn có chắc chắn muốn tiếp tục?", 
+                "Khôi phục ngay", 
+                "bg-emerald-500", 
+                async () => {
+                    // Kiểm tra quyền truy cập và kết nối
+                    if (!window.currentUser || !window.db) {
+                        showToast("Vui lòng đăng nhập để thực hiện", "error");
+                        return;
+                    }
 
-                let docRef;
-                if (isAuto || id === 'latest') {
-                    docRef = window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'state', 'latest');
-                } else {
-                    docRef = window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'backups', id);
-                }
+                    try {
+                        let docRef;
+                        
+                        // Xác định đường dẫn tài liệu dựa trên loại sao lưu
+                        if (isAuto || id === 'latest') {
+                            // Bản đồng bộ tự động mới nhất
+                            docRef = window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'state', 'latest');
+                        } else {
+                            // Bản sao lưu thủ công cụ thể
+                            docRef = window.fb.doc(window.db, 'artifacts', window.appId, 'users', window.currentUser.uid, 'backups', id);
+                        }
 
-                const snap = await window.fb.getDoc(docRef);
-                if (snap.exists()) {
-                    const d = snap.data();
-                    window.items = d.items || [];
-                    window.customCategories = d.categories || [];
-                    window.actionLogs = d.logs || [];
-                    saveDataLocalOnly();
-                    if (window.autoSync) syncToCloudLatest();
-                    updateUI();
-                    showToast('Đã khôi phục dữ liệu thành công');
+                        const snap = await window.fb.getDoc(docRef);
+
+                        if (snap.exists()) {
+                            const data = snap.data();
+
+                            // Cập nhật trạng thái ứng dụng toàn cục (Global State)
+                            window.items = data.items || [];
+                            window.customCategories = data.categories || [];
+                            window.actionLogs = data.logs || [];
+                            window.dataSaves = data.dataSaves || []; // Dữ liệu mã vạch/QR mẫu
+
+                            // 1. Lưu ngay vào LocalStorage để đảm bảo tính nhất quán
+                            saveDataLocalOnly(); 
+
+                            // 2. Nếu đang bật Tự động đồng bộ, cập nhật lại bản 'latest' trên Cloud 
+                            // để khớp với bản vừa khôi phục
+                            if (window.autoSync) {
+                                syncToCloudLatest(); 
+                            }
+
+                            // 3. Làm mới toàn bộ giao diện người dùng
+                            updateUI();
+                            
+                            // Nếu đang ở tab Nhật ký, cần render lại timeline
+                            if (window.activeTab === 'history') {
+                                renderHistory();
+                            }
+
+                            showToast('Đã khôi phục dữ liệu thành công');
+                        } else {
+                            showToast('Không tìm thấy dữ liệu sao lưu trên Cloud', 'error');
+                        }
+                    } catch (error) {
+                        console.error("Lỗi khi khôi phục:", error);
+                        showToast("Khôi phục thất bại. Vui lòng kiểm tra kết nối.", "error");
+                    }
                 }
-            });
+            );
         }
-
         // --- JSON EXPORT / IMPORT ---
         function exportJSON() {
             const data = { items: window.items, customCategories: window.customCategories, actionLogs: window.actionLogs, dataSaves: window.dataSaves };
