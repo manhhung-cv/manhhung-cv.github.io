@@ -173,10 +173,54 @@ window.toggleFavorite = (e, toolId) => {
     const tool = getToolData(toolId);
     if (tool) UI.showAlert(isAdded ? 'Đã ghim' : 'Bỏ ghim', isAdded ? `Đã thêm ${tool.name} lên đầu.` : `Đã bỏ ghim ${tool.name}.`, isAdded ? 'success' : 'info');
 };
+// ==========================================
+// 3. RENDERING UI GIAO DIỆN CHÍNH & CHẾ ĐỘ XEM
+// ==========================================
+let currentViewMode = localStorage.getItem('app_view_mode') || 'detailed'; // 'detailed', 'grid', 'list'
 
-// ==========================================
-// 3. RENDERING UI GIAO DIỆN CHÍNH
-// ==========================================
+window.changeViewMode = (mode) => {
+    currentViewMode = mode;
+    localStorage.setItem('app_view_mode', mode);
+    
+    // Render lại tab hiện tại để áp dụng thay đổi
+    const currentTab = state.tabs.find(t => t.tabId === state.activeTabId);
+    if (currentTab) {
+        if (currentTab.toolId === 'home') {
+            renderHomeView(currentTab.tabId);
+        } else {
+            // Nếu đang ở màn hình category, render lại toàn bộ nội dung pane
+            // Lưu ý: Cách an toàn nhất là switchTab lại
+            switchTab(state.activeTabId); 
+        }
+    }
+};
+
+function getViewContainerClasses() {
+    if (currentViewMode === 'list') return 'flex flex-col gap-2.5'; // Khoảng cách list khít hơn một chút
+    // Chế độ Grid: Thu gọn kích thước card -> Tăng số lượng cột trên các màn hình để tối ưu diện tích
+    if (currentViewMode === 'grid') return 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3';
+    // Chế độ Chi tiết (Hiện tại)
+    return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'; 
+}
+
+
+
+function renderViewToggle() {
+    return `
+        <div class="flex items-center gap-1 pb-2">
+            <button onclick="window.changeViewMode('detailed')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${currentViewMode === 'detailed' ? 'text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-500/10' : 'text-zinc-400'}" title="Chi tiết">
+                <i class="fas fa-th-large text-[13px]"></i>
+            </button>
+            <button onclick="window.changeViewMode('grid')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${currentViewMode === 'grid' ? 'text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-500/10' : 'text-zinc-400'}" title="Lưới">
+                <i class="fas fa-border-all text-[13px]"></i>
+            </button>
+            <button onclick="window.changeViewMode('list')" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${currentViewMode === 'list' ? 'text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-500/10' : 'text-zinc-400'}" title="Danh sách">
+                <i class="fas fa-list text-[13px]"></i>
+            </button>
+        </div>
+    `;
+}
+
 function renderTabs() {
     tabStrip.innerHTML = state.tabs.map(tab => {
         const isActive = state.activeTabId === tab.tabId;
@@ -214,6 +258,49 @@ function renderTabs() {
 }
 
 function renderToolCard(tool, isFav) {
+    // 1. CHẾ ĐỘ DANH SÁCH (LIST)
+    if (currentViewMode === 'list') {
+        return `
+        <div class="premium-card p-2.5 pr-4 rounded-[16px] border border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all cursor-pointer bg-white dark:bg-zinc-900 group flex items-center gap-4" onclick="window.openToolGlobal('${tool.id}')">
+            <div class="w-10 h-10 shrink-0 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white text-base">
+                <i class="${tool.icon}"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h3 class="font-semibold text-zinc-900 dark:text-white text-[13px] mb-0.5 truncate">${tool.name}</h3>
+                <p class="text-zinc-500 text-[11px] truncate">${tool.desc}</p>
+            </div>
+            <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all ${isFav ? 'text-amber-500 opacity-100' : 'text-zinc-400 hover:text-amber-500'}" onclick="window.toggleFavorite(event, '${tool.id}')" title="${isFav ? 'Bỏ yêu thích' : 'Yêu thích'}">
+                    <i class="${isFav ? 'fas' : 'far'} fa-star text-[12px]"></i>
+                </button>
+                <button class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all scale-95 hover:scale-100" onclick="window.openToolGlobal('${tool.id}', true); event.stopPropagation();" title="Mở trong tab mới">
+                    <i class="fas fa-external-link-alt text-[10px]"></i>
+                </button>
+            </div>
+        </div>`;
+    }
+
+    // 2. CHẾ ĐỘ LƯỚI GỌN (COMPACT GRID)
+    if (currentViewMode === 'grid') {
+        return `
+        <div class="premium-card p-3 rounded-[18px] border border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all cursor-pointer bg-white dark:bg-zinc-900 group flex flex-col items-center text-center relative" onclick="window.openToolGlobal('${tool.id}')">
+            <div class="absolute top-1.5 right-1.5 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <button class="w-6 h-6 flex items-center justify-center rounded-full bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all ${isFav ? 'text-amber-500 opacity-100 shadow-sm' : 'text-zinc-400 hover:text-amber-500'}" onclick="window.toggleFavorite(event, '${tool.id}')" title="${isFav ? 'Bỏ yêu thích' : 'Yêu thích'}">
+                    <i class="${isFav ? 'fas' : 'far'} fa-star text-[10px]"></i>
+                </button>
+                <button class="w-6 h-6 flex items-center justify-center rounded-full bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all" onclick="window.openToolGlobal('${tool.id}', true); event.stopPropagation();" title="Mở trong tab mới">
+                    <i class="fas fa-external-link-alt text-[9px]"></i>
+                </button>
+            </div>
+            
+            <div class="w-10 h-10 mb-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white text-base">
+                <i class="${tool.icon}"></i>
+            </div>
+            <h3 class="font-medium text-zinc-900 dark:text-white text-xs line-clamp-2 px-1 leading-tight">${tool.name}</h3>
+        </div>`;
+    }
+
+    // 3. CHẾ ĐỘ CHI TIẾT (DETAILED - DEFAULT)
     return `
     <div class="premium-card p-5 rounded-[28px] border border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all cursor-pointer relative bg-white dark:bg-zinc-900 group" onclick="window.openToolGlobal('${tool.id}')">
         <div class="flex justify-between items-start mb-4">
@@ -248,13 +335,16 @@ function renderHomeView(tabId) {
             <p class="text-zinc-500 text-sm">Quản lý công cụ và danh mục của bạn tại đây.</p>
         </div>
 
-        <div class="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-6 px-2">
-            <button class="home-tab-btn active pb-3 text-sm font-semibold border-b-2 border-zinc-900 dark:border-white text-zinc-900 dark:text-white" data-target="all-tools-${tabId}">Tất cả công cụ</button>
-            <button class="home-tab-btn pb-3 text-sm font-medium border-b-2 border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all" data-target="categories-${tabId}">Danh mục</button>
+        <div class="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 mb-6 px-2">
+            <div class="flex items-center gap-6">
+                <button class="home-tab-btn active pb-3 text-sm font-semibold border-b-2 border-zinc-900 dark:border-white text-zinc-900 dark:text-white" data-target="all-tools-${tabId}">Tất cả công cụ</button>
+                <button class="home-tab-btn pb-3 text-sm font-medium border-b-2 border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all" data-target="categories-${tabId}">Danh mục</button>
+            </div>
+            ${renderViewToggle()}
         </div>
         
         <div id="all-tools-${tabId}" class="home-tab-content block">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="${getViewContainerClasses()}">
                 ${sortedTools.map(tool => renderToolCard(tool, favs.includes(tool.id))).join('')}
             </div>
         </div>
@@ -307,17 +397,19 @@ window.renderCategoryViewGlobal = (tabId, catId) => {
             <span class="text-zinc-900 dark:text-zinc-100">${category.name}</span>
         </nav>
 
-        <div class="mb-8 mt-2 px-2">
-            <h1 class="text-3xl font-bold tracking-tight mb-2">${category.name}</h1>
-            <p class="text-zinc-500 text-sm">${category.desc}</p>
+        <div class="flex items-center justify-between mb-8 mt-2 px-2">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight mb-2">${category.name}</h1>
+                <p class="text-zinc-500 text-sm">${category.desc}</p>
+            </div>
+            ${renderViewToggle()}
         </div>
         
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="${getViewContainerClasses()}">
             ${catTools.map(tool => renderToolCard(tool, favs.includes(tool.id))).join('')}
         </div>
     `;
 };
-
 // ==========================================
 // 4. KHỞI CHẠY & UI CONTROLS THÊM
 // ==========================================
