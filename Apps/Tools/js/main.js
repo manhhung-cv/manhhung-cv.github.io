@@ -269,8 +269,8 @@ function renderToolCard(tool, isFav) {
                 <h3 class="font-semibold text-zinc-900 dark:text-white text-[13px] mb-0.5 truncate">${tool.name}</h3>
                 <p class="text-zinc-500 text-[11px] truncate">${tool.desc}</p>
             </div>
-            <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all ${isFav ? 'text-amber-500 opacity-100' : 'text-zinc-400 hover:text-amber-500'}" onclick="window.toggleFavorite(event, '${tool.id}')" title="${isFav ? 'Bỏ yêu thích' : 'Yêu thích'}">
+            <div class="flex items-center gap-1 shrink-0">
+                <button class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all ${isFav ? 'text-amber-500' : 'text-zinc-400 hover:text-amber-500'}" onclick="window.toggleFavorite(event, '${tool.id}')" title="${isFav ? 'Bỏ yêu thích' : 'Yêu thích'}">
                     <i class="${isFav ? 'fas' : 'far'} fa-star text-[12px]"></i>
                 </button>
                 <button class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all scale-95 hover:scale-100" onclick="window.openToolGlobal('${tool.id}', true); event.stopPropagation();" title="Mở trong tab mới">
@@ -284,16 +284,16 @@ function renderToolCard(tool, isFav) {
     if (currentViewMode === 'grid') {
         return `
         <div class="premium-card p-3 rounded-[18px] border border-zinc-200/80 dark:border-zinc-800/80 hover:border-zinc-400 dark:hover:border-zinc-600 transition-all cursor-pointer bg-white dark:bg-zinc-900 group flex flex-col items-center text-center relative" onclick="window.openToolGlobal('${tool.id}')">
-            <div class="absolute top-1.5 right-1.5 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                <button class="w-6 h-6 flex items-center justify-center rounded-full bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all ${isFav ? 'text-amber-500 opacity-100 shadow-sm' : 'text-zinc-400 hover:text-amber-500'}" onclick="window.toggleFavorite(event, '${tool.id}')" title="${isFav ? 'Bỏ yêu thích' : 'Yêu thích'}">
+            <div class="absolute top-1.5 right-1.5 flex flex-col gap-0.5 z-10">
+                <button class="w-6 h-6 flex items-center justify-center rounded-full bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all ${isFav ? 'text-amber-500 shadow-sm' : 'text-zinc-400 hover:text-amber-500'}" onclick="window.toggleFavorite(event, '${tool.id}')" title="${isFav ? 'Bỏ yêu thích' : 'Yêu thích'}">
                     <i class="${isFav ? 'fas' : 'far'} fa-star text-[10px]"></i>
                 </button>
-                <button class="w-6 h-6 flex items-center justify-center rounded-full bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all" onclick="window.openToolGlobal('${tool.id}', true); event.stopPropagation();" title="Mở trong tab mới">
+                <button class="w-6 h-6 flex items-center justify-center rounded-full bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all" onclick="window.openToolGlobal('${tool.id}', true); event.stopPropagation();" title="Mở trong tab mới">
                     <i class="fas fa-external-link-alt text-[9px]"></i>
                 </button>
             </div>
             
-            <div class="w-10 h-10 mb-2 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white text-base">
+            <div class="w-10 h-10 mb-2 mt-1 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl flex items-center justify-center text-zinc-900 dark:text-white text-base">
                 <i class="${tool.icon}"></i>
             </div>
             <h3 class="font-medium text-zinc-900 dark:text-white text-xs line-clamp-2 px-1 leading-tight">${tool.name}</h3>
