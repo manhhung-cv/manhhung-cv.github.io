@@ -45,161 +45,145 @@ const buildVietQR = (bin, accountNumber, amount, info) => {
 export function template() {
     return `
         <style>
-            .qr-layout { display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px; }
-            .qr-preview-sticky { position: sticky; top: 80px; } 
+            .qr-tabs-wrapper::-webkit-scrollbar { display: none; }
+            .qr-tabs-wrapper { scrollbar-width: none; }
             
-            #qr-canvas-wrapper { 
-                background: #ffffff; 
-                padding: 16px; 
-                border-radius: var(--radius); 
-                border: 1px solid var(--border);
-                margin-bottom: 24px;
-                display: flex; justify-content: center; align-items: center;
-                min-height: 250px;
-                position: relative;
-            }
-            #qr-canvas-wrapper canvas, #qr-canvas-wrapper img { 
-                max-width: 100%; height: auto !important; 
-                border-radius: 4px; display: block; 
-            }
-            .qr-empty-state {
-                color: var(--text-mut);
-                font-size: 0.9rem;
-                text-align: center;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 8px;
-            }
-            .qr-empty-state i { font-size: 2rem; opacity: 0.5; }
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
+            
+            /* Color Picker Flat Style */
+            input[type="color"] { -webkit-appearance: none; border: none; padding: 0; background: transparent; }
+            input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+            input[type="color"]::-webkit-color-swatch { border: 1px solid #e4e4e7; border-radius: 8px; }
+            .dark input[type="color"]::-webkit-color-swatch { border: 1px solid #3f3f46; }
 
-            @media (min-width: 992px) { 
-                .qr-layout { display: grid; grid-template-columns: 1.2fr 0.8fr; align-items: start; } 
-            }
+            /* Fix tỷ lệ ảnh QR */
+            #qr-canvas-wrapper canvas, #qr-canvas-wrapper img { width: 100% !important; height: auto !important; object-fit: contain; border-radius: 8px; }
         </style>
 
-        <div class="flex-between" style="margin-bottom: 24px;">
-            <div>
-                <h1 class="h1">Tạo Mã QR (QR Generator)</h1>
-                <p class="text-mut">Tạo mã QR tùy chỉnh nhanh chóng. Cập nhật VietQR hỗ trợ mọi ứng dụng ngân hàng.</p>
-            </div>
-            <button class="btn btn-ghost btn-sm" id="btn-qr-clear" style="color: #ef4444;">
-                <i class="fas fa-trash-alt"></i> Đặt lại
-            </button>
-        </div>
-
-        <div class="qr-layout">
-            
-            <div class="card" style="padding: 20px;">
-                
-                <div class="tabs" id="qr-type-tabs" style="margin-bottom: 20px;">
-                    <button class="tab-btn active" data-type="bank"><i class="fas fa-university"></i> Ngân hàng</button>
-                    <button class="tab-btn" data-type="url"><i class="fas fa-link"></i> URL</button>
-                    <button class="tab-btn" data-type="text"><i class="fas fa-font"></i> Văn bản</button>
-                    <button class="tab-btn" data-type="wifi"><i class="fas fa-wifi"></i> WiFi</button>
-                    <button class="tab-btn" data-type="phone"><i class="fas fa-phone"></i> Gọi điện</button>
-                    <button class="tab-btn" data-type="sms"><i class="fas fa-sms"></i> SMS</button>
-                    <button class="tab-btn" data-type="email"><i class="fas fa-envelope"></i> Email</button>
-                    <button class="tab-btn" data-type="vcard"><i class="fas fa-id-card"></i> Danh thiếp</button>
-                </div>
-
-                <div id="qr-inputs-dynamic" style="min-height: 100px;"></div>
-
-                <div class="divider"></div>
-
-                <div class="h1" style="font-size: 1.1rem; margin-bottom: 16px;">
-                    <i class="fas fa-palette text-mut"></i> Tùy chỉnh thiết kế
-                </div>
-                
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label class="form-label">Màu mã QR (Foreground)</label>
-                        <input type="color" class="input input-color qr-opt" id="opt-color" value="#000000" style="width: 100%;">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Màu nền (Background)</label>
-                        <input type="color" class="input input-color qr-opt" id="opt-bg" value="#ffffff" style="width: 100%;">
-                    </div>
-                </div>
-
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label class="form-label">Kích thước (Pixels)</label>
-                        <select class="input qr-opt" id="opt-size">
-                            <option value="256">256 x 256</option>
-                            <option value="512" selected>512 x 512</option>
-                            <option value="1024">1024 x 1024</option>
-                            <option value="2048">2048 x 2048 (Siêu nét)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Mức chịu lỗi (Error Correction)</label>
-                        <select class="input qr-opt" id="opt-error">
-                            <option value="L">Thấp (7%) - Gọn nhẹ</option>
-                            <option value="M">Trung bình (15%)</option>
-                            <option value="Q">Khá (25%)</option>
-                            <option value="H" selected>Cao (30%) - Khuyên dùng có Logo</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label class="form-label">Chèn Logo ở giữa (Tùy chọn)</label>
-                    <input type="file" class="input input-file" id="opt-logo" accept="image/png, image/jpeg, image/webp">
-                </div>
-                
-                <button class="btn btn-primary" id="btn-generate-qr" style="width: 100%; justify-content: center; margin-top: 24px; padding: 12px; font-size: 1.05rem;">
-                    <i class="fas fa-qrcode"></i> Tạo mã QR
+        <div class="relative flex flex-col w-full max-w-[960px] mx-auto min-h-[500px]">
+            <div class="flex justify-between items-center mb-5 px-1">
+                <h2 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">Tạo Mã QR</h2>
+                <button class="h-9 px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-bold text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-transform" id="btn-qr-clear">
+                    <i class="fas fa-redo-alt"></i> Làm mới
                 </button>
             </div>
 
-            <div class="qr-preview-sticky">
-                <div class="card" style="background: var(--bg-sec); display: flex; flex-direction: column; align-items: center; padding: 24px;">
-                    
-                    <div id="qr-canvas-wrapper" style="width: 100%; max-width: 300px; aspect-ratio: 1/1;">
-                        <div class="qr-empty-state" id="qr-empty-state">
-                            <i class="fas fa-qrcode"></i>
-                            <span>Chưa có mã QR</span>
-                        </div>
-                    </div>
-                    
-                    <div style="width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 12px;">
-                        <button class="btn btn-primary" id="btn-dl-png" style="width: 100%; justify-content: center; padding: 12px; font-size: 1rem;" disabled>
-                            <i class="fas fa-download"></i> Tải xuống PNG
-                        </button>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                
+                <div class="lg:col-span-7 flex flex-col gap-4">
+                    <div class="bg-white dark:bg-[#09090b] rounded-[24px] border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden">
                         
-                        <div class="grid-2" style="gap: 12px;">
-                            <button class="btn btn-outline" id="btn-dl-jpg" style="justify-content: center;" disabled>
-                                <i class="fas fa-file-image"></i> JPEG
+                        <div class="qr-tabs-wrapper flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#121214]" id="qr-type-tabs">
+                            <button class="tab-btn active flex-1 py-3.5 px-4 text-[12px] font-bold text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-white transition-colors whitespace-nowrap active:bg-zinc-200 dark:active:bg-zinc-800" data-type="bank"><i class="fas fa-university mr-1.5"></i> Ngân hàng</button>
+                            <button class="tab-btn flex-1 py-3.5 px-4 text-[12px] font-bold text-zinc-400 border-b-2 border-transparent transition-colors whitespace-nowrap active:bg-zinc-200 dark:active:bg-zinc-800" data-type="url"><i class="fas fa-link mr-1.5"></i> URL</button>
+                            <button class="tab-btn flex-1 py-3.5 px-4 text-[12px] font-bold text-zinc-400 border-b-2 border-transparent transition-colors whitespace-nowrap active:bg-zinc-200 dark:active:bg-zinc-800" data-type="text"><i class="fas fa-font mr-1.5"></i> Văn bản</button>
+                            <button class="tab-btn flex-1 py-3.5 px-4 text-[12px] font-bold text-zinc-400 border-b-2 border-transparent transition-colors whitespace-nowrap active:bg-zinc-200 dark:active:bg-zinc-800" data-type="wifi"><i class="fas fa-wifi mr-1.5"></i> WiFi</button>
+                            <button class="tab-btn flex-1 py-3.5 px-4 text-[12px] font-bold text-zinc-400 border-b-2 border-transparent transition-colors whitespace-nowrap active:bg-zinc-200 dark:active:bg-zinc-800" data-type="vcard"><i class="fas fa-id-card mr-1.5"></i> Danh thiếp</button>
+                        </div>
+
+                        <div id="qr-inputs-dynamic" class="p-5 min-h-[220px] space-y-4">
+                            </div>
+                        
+                        <div class="px-5 py-5 bg-zinc-50 dark:bg-[#121214] border-t border-zinc-200 dark:border-zinc-800 space-y-4">
+                            <h3 class="text-[11px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider"><i class="fas fa-palette mr-1 text-zinc-400"></i> Tùy chỉnh thiết kế</h3>
+                            
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 items-end">
+                                <div class="space-y-1.5">
+                                    <label class="text-[11px] font-bold text-zinc-500 block">Màu mã (Foreground)</label>
+                                    <input type="color" id="opt-color" value="#000000" class="qr-opt w-full h-10 rounded-xl cursor-pointer">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[11px] font-bold text-zinc-500 block">Màu nền (Background)</label>
+                                    <input type="color" id="opt-bg" value="#ffffff" class="qr-opt w-full h-10 rounded-xl cursor-pointer">
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[11px] font-bold text-zinc-500 block">Kích thước</label>
+                                    <select id="opt-size" class="qr-opt w-full bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-xs font-bold text-zinc-900 dark:text-white appearance-none">
+                                        <option value="256">Nhỏ (256)</option>
+                                        <option value="512" selected>Chuẩn (512)</option>
+                                        <option value="1024">Nét (1024)</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-1.5">
+                                    <label class="text-[11px] font-bold text-zinc-500 block">Sửa lỗi (Mức)</label>
+                                    <select id="opt-error" class="qr-opt w-full bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-xs font-bold text-zinc-900 dark:text-white appearance-none">
+                                        <option value="L">L (7%)</option>
+                                        <option value="M">M (15%)</option>
+                                        <option value="Q">Q (25%)</option>
+                                        <option value="H" selected>H (30%)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <label class="text-[11px] font-bold text-zinc-500 block mb-2">Chèn Logo ở giữa</label>
+                                <input type="file" id="opt-logo" accept="image/png, image/jpeg, image/webp" class="w-full text-xs text-zinc-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-zinc-200 file:text-zinc-700 dark:file:bg-zinc-800 dark:file:text-zinc-300 cursor-pointer border border-zinc-200 dark:border-zinc-800 rounded-xl bg-white dark:bg-[#09090b]">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="lg:col-span-5 flex flex-col gap-4 sticky top-6">
+                    <div class="bg-white dark:bg-[#09090b] rounded-[24px] border border-zinc-200 dark:border-zinc-800 p-6 flex flex-col items-center justify-center min-h-[380px]">
+                        
+                        <div class="relative w-full max-w-[280px] aspect-square bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center mb-6 overflow-hidden p-3" id="qr-canvas-wrapper">
+                            <div class="text-zinc-400 flex flex-col items-center gap-3 opacity-50" id="qr-empty-state">
+                                <i class="fas fa-qrcode text-5xl"></i>
+                                <span class="text-xs font-bold uppercase tracking-wider">Chưa có mã QR</span>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-3 w-full">
+                            <button id="btn-dl-png" class="h-12 w-full rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-[13px] active:scale-95 transition-transform flex items-center justify-center gap-2 opacity-50 pointer-events-none" disabled>
+                                <i class="fas fa-download"></i> TẢI XUỐNG (PNG)
                             </button>
-                            <button class="btn btn-outline" id="btn-copy-clip" style="justify-content: center;" disabled>
-                                <i class="fas fa-clipboard"></i> Copy Ảnh
-                            </button>
+                            <div class="flex gap-3 w-full">
+                                <button id="btn-dl-jpg" class="flex-1 h-11 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold text-xs active:scale-95 transition-transform flex items-center justify-center gap-1.5 opacity-50 pointer-events-none" disabled>
+                                    <i class="fas fa-file-image"></i> Tải JPG
+                                </button>
+                                <button id="btn-copy-clip" class="flex-1 h-11 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold text-xs active:scale-95 transition-transform flex items-center justify-center gap-1.5 opacity-50 pointer-events-none" disabled>
+                                    <i class="fas fa-clipboard"></i> Chép ảnh
+                                </button>
+                            </div>
                         </div>
                     </div>
-
                 </div>
-            </div>
 
+            </div>
         </div>
     `;
 }
 
 export function init() {
+    // Tải thư viện QRCode chuẩn (davidshimjs)
+    const loadQRCodeLib = () => {
+        return new Promise((resolve) => {
+            if (window.QRCode) return resolve();
+            const script = document.createElement('script');
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+            script.onload = resolve;
+            document.head.appendChild(script);
+        });
+    };
+
     const dynamicFields = document.getElementById('qr-inputs-dynamic');
     const tabs = document.querySelectorAll('#qr-type-tabs .tab-btn');
     const qrWrapper = document.getElementById('qr-canvas-wrapper');
     const logoInput = document.getElementById('opt-logo');
     
-    const btnGenerate = document.getElementById('btn-generate-qr');
     const btnDlPng = document.getElementById('btn-dl-png');
     const btnDlJpg = document.getElementById('btn-dl-jpg');
     const btnCopyClip = document.getElementById('btn-copy-clip');
     
-    let currentType = 'bank'; // Chuyển default sang Bank
+    let currentType = 'bank'; 
     let logoImgData = null;
     let isGenerated = false;
 
+    // --- RENDER FORM INPUTS DỰA VÀO TAB --- 
     const renderInputs = (type) => {
         let html = '';
         switch(type) {
@@ -209,76 +193,60 @@ export function init() {
                 bankOptions += '<option value="other">Khác (Nhập mã BIN thủ công)</option>';
 
                 html = `
-                    <div class="grid-2">
-                        <div class="form-group">
-                            <label class="form-label">Ngân hàng <span style="color:#ef4444">*</span></label>
-                            <select class="input qr-in" id="in-bank-bin">${bankOptions}</select>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Ngân hàng <span class="text-red-500">*</span></label>
+                            <select class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-bold text-zinc-900 dark:text-white" id="in-bank-bin">${bankOptions}</select>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Số tài khoản <span style="color:#ef4444">*</span></label>
-                            <input type="text" class="input qr-in" id="in-bank-acc" placeholder="Nhập số tài khoản...">
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Số tài khoản <span class="text-red-500">*</span></label>
+                            <input type="text" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-bank-acc" placeholder="Nhập số tài khoản...">
                         </div>
                     </div>
-                    <div class="form-group" id="group-custom-bin" style="display: none;">
-                        <label class="form-label">Mã BIN Ngân hàng (6 chữ số) <span style="color:#ef4444">*</span></label>
-                        <input type="text" class="input qr-in" id="in-bank-custom-bin" placeholder="Ví dụ: 970436">
+                    <div class="space-y-1.5" id="group-custom-bin" style="display: none;">
+                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Mã BIN Ngân hàng (6 số) <span class="text-red-500">*</span></label>
+                        <input type="text" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-bank-custom-bin" placeholder="Ví dụ: 970436">
                     </div>
-                    <div class="grid-2">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label">Số tiền (VNĐ) <span class="text-mut" style="font-weight: 400;">(Tùy chọn)</span></label>
-                            <input type="number" class="input qr-in" id="in-bank-amount" placeholder="Ví dụ: 50000">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Số tiền (VNĐ)</label>
+                            <input type="number" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-bank-amount" placeholder="Ví dụ: 50000">
                         </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label">Nội dung <span class="text-mut" style="font-weight: 400;">(Tùy chọn)</span></label>
-                            <input type="text" class="input qr-in" id="in-bank-info" placeholder="Nhập lời nhắn...">
+                        <div class="space-y-1.5">
+                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Nội dung</label>
+                            <input type="text" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-bank-info" placeholder="Nhập lời nhắn...">
                         </div>
                     </div>`;
                 break;
             case 'url':
-                html = `<div class="form-group" style="margin-bottom: 0;"><label class="form-label">Địa chỉ liên kết (URL)</label><input type="url" class="input qr-in" id="in-url" placeholder="https://my-aio-tools.com"></div>`;
+                html = `<div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Liên kết (URL)</label><input type="url" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-url" placeholder="https://example.com"></div>`;
                 break;
             case 'text':
-                html = `<div class="form-group" style="margin-bottom: 0;"><label class="form-label">Nội dung văn bản</label><textarea class="textarea qr-in" id="in-text" rows="4" placeholder="Nhập văn bản bất kỳ..."></textarea></div>`;
+                html = `<div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Nội dung văn bản</label><textarea class="textarea qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white min-h-[120px] resize-y custom-scrollbar" id="in-text" placeholder="Nhập văn bản bất kỳ..."></textarea></div>`;
                 break;
             case 'wifi':
                 html = `
-                    <div class="grid-2">
-                        <div class="form-group"><label class="form-label">Tên mạng (SSID)</label><input type="text" class="input qr-in" id="in-wifi-ssid" placeholder="Tên WiFi"></div>
-                        <div class="form-group"><label class="form-label">Chuẩn bảo mật</label><select class="input qr-in" id="in-wifi-enc"><option value="WPA">WPA/WPA2</option><option value="WEP">WEP</option><option value="nopass">Mở (Không mật khẩu)</option></select></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Tên mạng (SSID)</label><input type="text" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-wifi-ssid" placeholder="Tên WiFi"></div>
+                        <div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Bảo mật</label><select class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-bold text-zinc-900 dark:text-white" id="in-wifi-enc"><option value="WPA">WPA/WPA2</option><option value="WEP">WEP</option><option value="nopass">Không mật khẩu</option></select></div>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;"><label class="form-label">Mật khẩu WiFi</label><input type="text" class="input qr-in" id="in-wifi-pass" placeholder="••••••••"></div>`;
-                break;
-            case 'phone':
-                html = `<div class="form-group" style="margin-bottom: 0;"><label class="form-label">Số điện thoại</label><input type="tel" class="input qr-in" id="in-phone" placeholder="0901234567"></div>`;
-                break;
-            case 'sms':
-                html = `
-                    <div class="form-group"><label class="form-label">Số điện thoại nhận</label><input type="tel" class="input qr-in" id="in-sms-num" placeholder="0901234567"></div>
-                    <div class="form-group" style="margin-bottom: 0;"><label class="form-label">Nội dung tin nhắn</label><textarea class="textarea qr-in" id="in-sms-msg" rows="2" placeholder="Xin chào..."></textarea></div>`;
-                break;
-            case 'email':
-                html = `
-                    <div class="grid-2">
-                        <div class="form-group"><label class="form-label">Gửi đến Email</label><input type="email" class="input qr-in" id="in-email-to" placeholder="admin@example.com"></div>
-                        <div class="form-group"><label class="form-label">Tiêu đề (Subject)</label><input type="text" class="input qr-in" id="in-email-sub" placeholder="Tiêu đề..."></div>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 0;"><label class="form-label">Nội dung (Body)</label><textarea class="textarea qr-in" id="in-email-body" rows="2" placeholder="Nội dung email..."></textarea></div>`;
+                    <div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Mật khẩu WiFi</label><input type="text" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-wifi-pass" placeholder="••••••••"></div>`;
                 break;
             case 'vcard':
                 html = `
-                    <div class="grid-2">
-                        <div class="form-group"><label class="form-label">Họ và Tên</label><input type="text" class="input qr-in" id="in-vc-name" placeholder="Nguyễn Văn A"></div>
-                        <div class="form-group"><label class="form-label">Công ty / Tổ chức</label><input type="text" class="input qr-in" id="in-vc-org" placeholder="Công ty TNHH ABC"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Họ Tên</label><input type="text" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-vc-name" placeholder="Nguyễn Văn A"></div>
+                        <div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Công ty</label><input type="text" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-vc-org" placeholder="Công ty ABC"></div>
                     </div>
-                    <div class="grid-2">
-                        <div class="form-group" style="margin-bottom: 0;"><label class="form-label">Số điện thoại</label><input type="tel" class="input qr-in" id="in-vc-tel" placeholder="0987654321"></div>
-                        <div class="form-group" style="margin-bottom: 0;"><label class="form-label">Email</label><input type="email" class="input qr-in" id="in-vc-email" placeholder="email@example.com"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Điện thoại</label><input type="tel" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-vc-tel" placeholder="0987654321"></div>
+                        <div class="space-y-1.5"><label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block">Email</label><input type="email" class="input qr-in w-full bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-sm font-medium text-zinc-900 dark:text-white" id="in-vc-email" placeholder="email@example.com"></div>
                     </div>`;
                 break;
         }
         dynamicFields.innerHTML = html;
         
-        // Sự kiện hiển thị trường nhập BIN tùy chỉnh cho tính năng Bank
+        // Hiện input nhập BIN nếu chọn "Khác"
         if (type === 'bank') {
             const selectBin = document.getElementById('in-bank-bin');
             const groupCustomBin = document.getElementById('group-custom-bin');
@@ -287,13 +255,13 @@ export function init() {
             });
         }
 
+        // Auto Generate khi nhập
         dynamicFields.querySelectorAll('.qr-in').forEach(el => {
-            el.addEventListener('keypress', (e) => {
-                if(e.key === 'Enter') triggerGenerate();
-            });
+            el.addEventListener('input', triggerGenerate);
         });
     };
 
+    // --- LẤY DỮ LIỆU ĐẦU VÀO --- 
     const getPayload = () => {
         const val = (id) => document.getElementById(id)?.value.trim() || '';
         switch(currentType) {
@@ -304,25 +272,13 @@ export function init() {
                 const amt = val('in-bank-amount');
                 const info = val('in-bank-info');
                 
-                if (!bin || !acc) {
-                    UI.showAlert('Thiếu thông tin', 'Vui lòng chọn ngân hàng và nhập Số tài khoản.', 'warning');
-                    return null; // Return null để phân biệt với chuỗi rỗng
-                }
+                if (!bin || !acc) return null; // Thiếu info bắt buộc
                 return buildVietQR(bin, acc, amt, info);
             case 'url': return val('in-url');
             case 'text': return val('in-text');
             case 'wifi': 
                 if(!val('in-wifi-ssid')) return '';
                 return `WIFI:S:${val('in-wifi-ssid')};T:${val('in-wifi-enc')};P:${val('in-wifi-pass')};;`;
-            case 'phone': 
-                if(!val('in-phone')) return '';
-                return `tel:${val('in-phone')}`;
-            case 'sms': 
-                if(!val('in-sms-num')) return '';
-                return `smsto:${val('in-sms-num')}:${val('in-sms-msg')}`;
-            case 'email': 
-                if(!val('in-email-to')) return '';
-                return `mailto:${val('in-email-to')}?subject=${encodeURIComponent(val('in-email-sub'))}&body=${encodeURIComponent(val('in-email-body'))}`;
             case 'vcard': 
                 if(!val('in-vc-name') && !val('in-vc-tel') && !val('in-vc-email')) return '';
                 return `BEGIN:VCARD\nVERSION:3.0\nN:${val('in-vc-name')}\nORG:${val('in-vc-org')}\nTEL:${val('in-vc-tel')}\nEMAIL:${val('in-vc-email')}\nEND:VCARD`;
@@ -332,37 +288,42 @@ export function init() {
 
     const resetPreview = () => {
         qrWrapper.innerHTML = `
-            <div class="qr-empty-state" id="qr-empty-state">
-                <i class="fas fa-qrcode"></i>
-                <span>Chưa có mã QR</span>
+            <div class="text-zinc-400 flex flex-col items-center gap-3 opacity-50" id="qr-empty-state">
+                <i class="fas fa-qrcode text-5xl"></i>
+                <span class="text-xs font-bold uppercase tracking-wider">Chưa có mã QR</span>
             </div>
         `;
         isGenerated = false;
-        btnDlPng.disabled = true;
-        btnDlJpg.disabled = true;
-        btnCopyClip.disabled = true;
+        
+        [btnDlPng, btnDlJpg, btnCopyClip].forEach(b => {
+            b.disabled = true;
+            b.classList.add('opacity-50', 'pointer-events-none');
+            b.classList.remove('active:scale-95');
+        });
     };
 
+    // --- TẠO MÃ QR (CHUẨN DAVIDSHIMJS) --- 
     const triggerGenerate = () => {
         const payload = getPayload();
         
-        // Return null từ getPayload có nghĩa là đã validate lỗi (VD: thiếu TK ngân hàng)
-        if (payload === null) return;
-        
-        if (!payload || payload === '') {
-            UI.showAlert('Thiếu dữ liệu', 'Vui lòng nhập thông tin (URL, Text, Số tài khoản...) trước khi tạo mã.', 'warning');
+        if (payload === null || payload === '') {
+            resetPreview();
             return;
         }
+
+        if (!window.QRCode) return;
+
+        // Xóa nội dung cũ trong khung
+        qrWrapper.innerHTML = ''; 
 
         const size = parseInt(document.getElementById('opt-size').value);
         const color = document.getElementById('opt-color').value;
         const bg = document.getElementById('opt-bg').value;
         const errorStr = document.getElementById('opt-error').value;
 
-        qrWrapper.innerHTML = ''; 
-        
         try {
-            const qr = new QRCode(qrWrapper, {
+            // Sử dụng cú pháp chuẩn của thư viện qrcode.js
+            new QRCode(qrWrapper, {
                 text: payload,
                 width: size,
                 height: size,
@@ -372,11 +333,13 @@ export function init() {
             });
 
             isGenerated = true;
-            btnDlPng.disabled = false;
-            btnDlJpg.disabled = false;
-            btnCopyClip.disabled = false;
+            [btnDlPng, btnDlJpg, btnCopyClip].forEach(b => {
+                b.disabled = false;
+                b.classList.remove('opacity-50', 'pointer-events-none');
+                b.classList.add('active:scale-95');
+            });
 
-            // Xử lý chèn Logo
+            // Chèn Logo lên Canvas do qrcode.js tạo ra
             if (logoImgData) {
                 setTimeout(() => {
                     const canvas = qrWrapper.querySelector('canvas');
@@ -384,7 +347,6 @@ export function init() {
                     
                     if (!canvas) return;
                     const ctx = canvas.getContext('2d');
-                    
                     const img = new Image();
                     img.src = logoImgData;
                     
@@ -393,6 +355,7 @@ export function init() {
                         const x = (size - lSize) / 2;
                         const y = (size - lSize) / 2;
                         
+                        // Vẽ background cho logo để không bị đè lên QR
                         ctx.fillStyle = bg;
                         if(ctx.roundRect) {
                             ctx.beginPath();
@@ -402,8 +365,10 @@ export function init() {
                             ctx.fillRect(x - 8, y - 8, lSize + 16, lSize + 16);
                         }
                         
+                        // Vẽ logo lên
                         ctx.drawImage(img, x, y, lSize, lSize);
 
+                        // Cập nhật lại thẻ img nếu qrcode.js đang dùng img để hiển thị
                         if (qrImg) {
                             qrImg.src = canvas.toDataURL("image/png");
                         }
@@ -412,31 +377,36 @@ export function init() {
             }
         } catch (err) {
             console.error("QR Error:", err);
-            UI.showAlert('Lỗi', 'Nội dung đầu vào quá dài hoặc không hợp lệ để tạo QR.', 'error');
             resetPreview();
         }
     };
 
-    // --- CÁC SỰ KIỆN --- //
-
-    btnGenerate.addEventListener('click', triggerGenerate);
-
+    // --- SỰ KIỆN TƯƠNG TÁC --- //
+    
+    // Click Tabs 
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
+            tabs.forEach(t => {
+                t.classList.remove('active', 'text-zinc-900', 'dark:text-white', 'border-zinc-900', 'dark:border-white');
+                t.classList.add('text-zinc-400', 'border-transparent');
+            });
+            tab.classList.add('active', 'text-zinc-900', 'dark:text-white', 'border-zinc-900', 'dark:border-white');
+            tab.classList.remove('text-zinc-400', 'border-transparent');
+            
             currentType = tab.dataset.type;
             renderInputs(currentType);
             resetPreview();
         });
     });
 
+    // Options thay đổi thì render lại 
     document.querySelectorAll('.qr-opt').forEach(el => {
         el.addEventListener('change', () => {
             if (isGenerated) triggerGenerate();
         });
     });
 
+    // Logo Upload 
     logoInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -452,15 +422,11 @@ export function init() {
         }
     });
 
-    const getCanvasData = (format) => {
-        const canvas = qrWrapper.querySelector('canvas');
-        if (!canvas) return null;
-        return canvas.toDataURL(`image/${format}`, 1.0);
-    };
-
+    // Tải & Copy 
     const downloadImage = (format) => {
-        const dataURL = getCanvasData(format);
-        if (!dataURL) return;
+        const canvas = qrWrapper.querySelector('canvas');
+        if (!canvas) return;
+        const dataURL = canvas.toDataURL(`image/${format}`, 1.0);
         const link = document.createElement('a');
         link.download = `AIO_QR_${Date.now()}.${format === 'jpeg' ? 'jpg' : format}`;
         link.href = dataURL;
@@ -468,8 +434,8 @@ export function init() {
         UI.showAlert('Thành công', `Đã tải xuống mã QR định dạng ${format.toUpperCase()}.`, 'success');
     };
 
-    btnDlPng.onclick = () => downloadImage('png');
-    btnDlJpg.onclick = () => downloadImage('jpeg');
+    btnDlPng.onclick = () => downloadImage('png'); 
+    btnDlJpg.onclick = () => downloadImage('jpeg'); 
 
     btnCopyClip.onclick = async () => {
         const canvas = qrWrapper.querySelector('canvas');
@@ -483,8 +449,9 @@ export function init() {
         } catch (err) {
             UI.showAlert('Lỗi', 'Trình duyệt không hỗ trợ sao chép ảnh trực tiếp.', 'error');
         }
-    };
+    }; 
 
+    // Làm mới Form 
     document.getElementById('btn-qr-clear').onclick = () => {
         UI.showConfirm('Đặt lại mặc định?', 'Mọi nội dung, thiết lập màu sắc và logo sẽ bị xóa.', () => {
             document.getElementById('opt-color').value = '#000000';
@@ -494,13 +461,14 @@ export function init() {
             logoInput.value = '';
             logoImgData = null;
             
-            const activeTab = document.querySelector('#qr-type-tabs .tab-btn.active');
-            renderInputs(activeTab.dataset.type);
+            renderInputs(currentType);
             resetPreview();
         });
-    };
+    }; 
 
-    // Khởi chạy
-    renderInputs('bank'); // Default vào Bank
-    resetPreview();
+    // Bắt đầu
+    loadQRCodeLib().then(() => {
+        renderInputs('bank'); 
+        resetPreview();
+    });
 }

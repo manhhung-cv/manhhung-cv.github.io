@@ -2,403 +2,194 @@ import { UI } from '../../js/ui.js';
 
 export function template() {
     return `
-        <style>
-            .cc-widget { max-width: 480px; margin: 0 auto; padding-bottom: 24px; }
-            
-            /* Thanh gạt chọn nguồn (Segmented Control) */
-            .cc-source-toggle { 
-                display: flex; background: var(--bg-sec); border-radius: 30px; 
-                padding: 4px; margin-bottom: 24px; border: 1px solid var(--border); 
-            }
-            .cc-source-btn { 
-                flex: 1; text-align: center; padding: 10px 16px; border-radius: 26px; 
-                border: none; background: transparent; color: var(--text-mut); 
-                font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-                font-size: 0.9rem; font-family: var(--font); display: flex; align-items: center; justify-content: center; gap: 8px;
-            }
-            .cc-source-btn:hover { color: var(--text-main); }
-            .cc-source-btn.active { 
-                background: var(--bg-main); color: #3b82f6; 
-                box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
-            }
-
-            /* Khu vực nhập liệu chính */
-            .cc-convert-area { position: relative; display: flex; flex-direction: column; gap: 4px; }
-            
-            .cc-input-group { 
-                background: var(--bg-main); border: 1px solid var(--border); 
-                border-radius: 16px; padding: 16px 20px; transition: all 0.2s; 
-                display: flex; flex-direction: column; gap: 8px; z-index: 1;
-            }
-            .cc-input-group:focus-within { 
-                border-color: #3b82f6; 
-                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); 
-                z-index: 3; /* Nổi lên trên nút swap */
-            }
-            
-            .cc-label { font-size: 0.85rem; color: var(--text-mut); font-weight: 500; }
-            
-            .cc-input-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-            
-            .cc-input { 
-                border: none; background: transparent; font-size: 2.2rem; 
-                font-weight: 700; color: var(--text-main); width: 100%; 
-                outline: none; padding: 0; font-family: var(--font);
-            }
-            .cc-input::placeholder { color: var(--text-mut); opacity: 0.3; }
-            
-            .cc-select { 
-                border: none; background: var(--bg-sec); padding: 8px 12px 8px 16px; 
-                border-radius: 20px; font-weight: 600; color: var(--text-main); 
-                font-size: 1.05rem; cursor: pointer; outline: none; transition: background 0.2s; 
-                appearance: none; -webkit-appearance: none; padding-right: 36px; 
-                background-image: url('data:image/svg+xml;utf8,<svg fill="%23888" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); 
-                background-repeat: no-repeat; background-position-x: calc(100% - 4px); background-position-y: center; 
-            }
-            .cc-select:hover { background-color: var(--border); }
-
-            /* Nút Đảo Ngược (Swap) Floating */
-            .cc-swap-btn { 
-                position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); 
-                width: 44px; height: 44px; border-radius: 50%; background: #3b82f6; 
-                color: white; border: 4px solid var(--bg-sec); display: flex; 
-                align-items: center; justify-content: center; cursor: pointer; 
-                transition: all 0.3s ease; z-index: 2; font-size: 1.1rem;
-            }
-            .cc-swap-btn:hover { 
-                transform: translate(-50%, -50%) rotate(180deg); 
-                background: #2563eb; 
-            }
-
-            /* Bảng thông tin tỷ giá */
-            .cc-rate-box { 
-                margin-top: 16px; padding: 16px 20px; border-radius: 16px; 
-                background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); 
-                display: flex; flex-direction: column; gap: 4px; text-align: center;
-            }
-            .cc-rate-val { font-weight: 600; color: #3b82f6; font-size: 1.1rem; }
-            .cc-rate-time { font-size: 0.8rem; color: var(--text-mut); }
-            
-            .cc-loader { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--text-mut); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 6px; vertical-align: middle; }
-            @keyframes spin { to { transform: rotate(360deg); } }
-        </style>
-
-        <div class="cc-widget">
-            
-            <div class="flex-between" style="margin-bottom: 20px;">
+        <div class="space-y-6">
+            <div class="flex justify-between items-start mb-2">
                 <div>
-                    <h1 class="h1" style="font-size: 1.5rem; margin-bottom: 4px;">Chuyển đổi Tiền tệ</h1>
-                    <p class="text-mut" style="font-size: 0.9rem;">Cập nhật tự động theo thời gian thực.</p>
+                    <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Chuyển đổi Tiền tệ</h2>
+                    <p class="text-sm text-zinc-500 mt-1">Dữ liệu thời gian thực • Phong cách Minimal Premium</p>
                 </div>
-                <button class="btn btn-ghost btn-sm" id="btn-cc-refresh" title="Làm mới tỷ giá" style="padding: 8px; border-radius: 50%; height: 36px; width: 36px; display: flex; justify-content: center; align-items: center;">
+                <button id="btn-cc-refresh" class="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center shadow-sm" title="Làm mới tỷ giá">
                     <i class="fas fa-sync-alt"></i>
                 </button>
             </div>
 
-            <div class="cc-source-toggle">
-                <button class="cc-source-btn active" data-source="standard">
-                    <i class="fas fa-globe"></i> Quốc tế
+            <div class="flex p-1 bg-zinc-100/80 dark:bg-zinc-900/50 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 relative w-full lg:w-fit min-w-[300px]">
+                <button class="cc-source-btn active flex-1 px-6 py-2.5 text-sm font-semibold rounded-xl text-zinc-900 dark:text-white bg-white dark:bg-zinc-800 shadow-sm transition-all flex items-center justify-center gap-2" data-source="standard">
+                    <i class="fas fa-globe text-blue-500"></i> Quốc tế
                 </button>
-                <button class="cc-source-btn" data-source="smiles">
-                    <i class="fas fa-wallet"></i> Smiles Wallet
+                <button class="cc-source-btn flex-1 px-6 py-2.5 text-sm font-medium rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center justify-center gap-2" data-source="smiles">
+                    <i class="fas fa-wallet text-emerald-500"></i> Smiles Wallet
                 </button>
             </div>
 
-            <div class="card" style="background: var(--bg-sec); padding: 8px; border: none; border-radius: 20px;">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
-                <div class="cc-convert-area">
-                    <div class="cc-input-group">
-                        <span class="cc-label">Số tiền chuyển</span>
-                        <div class="cc-input-row">
-                            <input type="number" class="cc-input" id="cc-in-1" placeholder="0" step="any">
-                            <select class="cc-select" id="cc-sel-1"></select>
+                <div class="lg:col-span-7 bg-zinc-50 dark:bg-zinc-900/30 p-2 sm:p-3 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm">
+                    <div class="flex flex-col relative">
+                        <div class="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-[24px] p-5 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all z-10 relative">
+                            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">Số tiền gửi</label>
+                            <div class="flex items-center gap-3">
+                                <input type="text" inputmode="decimal" id="cc-in-1" class="flex-1 bg-transparent border-none outline-none text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white p-0 w-full placeholder-zinc-300 dark:placeholder-zinc-700 font-sans" placeholder="0">
+                                <div class="relative shrink-0">
+                                    <select id="cc-sel-1" class="appearance-none bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-semibold py-2 pl-4 pr-10 rounded-xl outline-none cursor-pointer transition-colors text-base border border-transparent"></select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500"><i class="fas fa-chevron-down text-xs"></i></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-center -my-5 relative z-20">
+                            <button id="btn-cc-swap" class="w-12 h-12 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full border-[4px] border-zinc-50 dark:border-zinc-900 shadow-sm flex items-center justify-center active:scale-95 transition-transform">
+                                <i class="fas fa-exchange-alt text-sm"></i>
+                            </button>
+                        </div>
+
+                        <div class="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-[24px] p-5 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-500/10 transition-all z-10 relative">
+                            <label class="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2 block">Số tiền nhận</label>
+                            <div class="flex items-center gap-3">
+                                <input type="text" inputmode="decimal" id="cc-in-2" class="flex-1 bg-transparent border-none outline-none text-3xl sm:text-4xl font-bold text-zinc-900 dark:text-white p-0 w-full placeholder-zinc-300 dark:placeholder-zinc-700 font-sans" placeholder="0">
+                                <div class="relative shrink-0">
+                                    <select id="cc-sel-2" class="appearance-none bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white font-semibold py-2 pl-4 pr-10 rounded-xl outline-none cursor-pointer transition-colors text-base border border-transparent"></select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500"><i class="fas fa-chevron-down text-xs"></i></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <button class="cc-swap-btn" id="btn-cc-swap" title="Hoán đổi">
-                        <i class="fas fa-exchange-alt"></i>
-                    </button>
-
-                    <div class="cc-input-group">
-                        <span class="cc-label">Số tiền nhận được</span>
-                        <div class="cc-input-row">
-                            <input type="number" class="cc-input" id="cc-in-2" placeholder="0" step="any">
-                            <select class="cc-select" id="cc-sel-2"></select>
-                        </div>
+                    <div class="mt-3 mx-2 p-4 rounded-[20px] bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/30 flex flex-col items-center justify-center text-center gap-1">
+                        <div id="cc-rate-text" class="text-blue-600 dark:text-blue-400 font-semibold text-[15px] sm:text-base"><i class="fas fa-circle-notch fa-spin"></i></div>
+                        <div id="cc-update-time" class="text-[10px] text-blue-400/70 uppercase font-bold tracking-widest">--</div>
                     </div>
                 </div>
 
-                <div class="cc-rate-box">
-                    <div class="cc-rate-val" id="cc-rate-text">
-                        <span class="cc-loader"></span> Đang tải tỷ giá...
+                <div class="lg:col-span-5 space-y-4">
+                    <div class="premium-card bg-white dark:bg-zinc-900 p-5 rounded-[28px] border border-zinc-200 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-bl-full pointer-events-none"></div>
+                        <h3 id="popular-title" class="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2 relative z-10">
+                            <i class="fas fa-chart-line text-blue-500"></i> Tỷ giá so với VND
+                        </h3>
+                        <ul id="popular-rates-list" class="space-y-1 relative z-10">
+                            <li class="py-4 text-center text-xs text-zinc-400">Đang tải...</li>
+                        </ul>
                     </div>
-                    <div class="cc-rate-time" id="cc-update-time">--</div>
                 </div>
-
             </div>
-
         </div>
     `;
 }
 
 export function init() {
-    // --- KHAI BÁO CẤU HÌNH ---
-    const CURRENCIES = {
-        'USD': '🇺🇸 USD',
-        'VND': '🇻🇳 VND',
-        'JPY': '🇯🇵 JPY',
-        'EUR': '🇪🇺 EUR',
-        'GBP': '🇬🇧 GBP',
-        'KRW': '🇰🇷 KRW',
-        'CNY': '🇨🇳 CNY',
-        'THB': '🇹🇭 THB',
-        'AUD': '🇦🇺 AUD',
-        'CAD': '🇨🇦 CAD',
-        'SGD': '🇸🇬 SGD',
-        'TWD': '🇹🇼 TWD'
-    };
-
-    // Đổi sang API trực tiếp của Smiles trả về JSON
+    const CURRENCIES = { 'JPY': '🇯🇵 JPY', 'VND': '🇻🇳 VND', 'USD': '🇺🇸 USD', 'EUR': '🇪🇺 EUR', 'GBP': '🇬🇧 GBP', 'KRW': '🇰🇷 KRW', 'CNY': '🇨🇳 CNY', 'THB': '🇹🇭 THB' };
+    const POPULAR_REFS = ['USD', 'JPY', 'EUR', 'KRW', 'CNY'];
     const SMILES_API_URL = 'https://www.smileswallet.com/japan/wp-admin/admin-ajax.php?action=smiles_simulator&security=&RemitAmount=0&AmountType=1&RegionCode=jp&FromCurrency=jpy&RemittenceMethod=cash-pickup&DPType=10&BeneficiaryCurrency=vnd&VietNamReceiveIn=VND';
 
-    // --- DOM ELEMENTS ---
     const sourceBtns = document.querySelectorAll('.cc-source-btn');
-    const in1 = document.getElementById('cc-in-1');
-    const in2 = document.getElementById('cc-in-2');
-    const sel1 = document.getElementById('cc-sel-1');
-    const sel2 = document.getElementById('cc-sel-2');
-    const btnSwap = document.getElementById('btn-cc-swap');
-    const btnRefresh = document.getElementById('btn-cc-refresh');
-    const rateText = document.getElementById('cc-rate-text');
-    const updateTime = document.getElementById('cc-update-time');
+    const in1 = document.getElementById('cc-in-1'), in2 = document.getElementById('cc-in-2');
+    const sel1 = document.getElementById('cc-sel-1'), sel2 = document.getElementById('cc-sel-2');
+    const btnSwap = document.getElementById('btn-cc-swap'), btnRefresh = document.getElementById('btn-cc-refresh');
+    const rateText = document.getElementById('cc-rate-text'), updateTime = document.getElementById('cc-update-time');
+    const popularRatesList = document.getElementById('popular-rates-list'), popularTitle = document.getElementById('popular-title');
 
-    // --- STATE VARIABLES ---
-    let currentSource = 'standard';
-    let lastEdited = 1; 
-    
-    let ratesStandard = {}; 
-    let smilesRates = {}; 
-    let rateSmiles = null; 
-    
-    let lastFetchStandard = null;
-    let lastFetchSmiles = null;
+    let currentSource = 'standard', lastEdited = 1, ratesStandard = {}, rateSmiles = null, lastFetchStandard = null, lastFetchSmiles = null;
 
-    // --- TIỆN ÍCH ---
-    const formatCurrency = (num) => {
-        if (!num) return '';
-        // Làm tròn tối đa 4 số thập phân và bỏ các số 0 vô nghĩa ở đuôi
-        return Number(Math.round(num * 10000) / 10000).toString();
+    const formatCurrency = (num) => !num && num !== 0 ? '' : new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 4 }).format(num);
+    const parseInputStr = (valStr) => !valStr ? NaN : parseFloat(valStr.replace(/\./g, '').replace(/,/g, '.'));
+    
+    const formatInputField = (inputEl) => {
+        let val = inputEl.value.replace(/[^0-9,]/g, '');
+        const parts = val.split(',');
+        if (parts[0]) parts[0] = parseInt(parts[0], 10).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        inputEl.value = parts.slice(0, 2).join(',');
     };
 
-    const formatDate = (date) => {
-        if (!date) return '--';
-        return `Cập nhật lúc: ${date.toLocaleTimeString('vi-VN')} - ${date.toLocaleDateString('vi-VN')}`;
-    };
-
-    const populateSelects = () => {
-        sel1.innerHTML = '';
-        sel2.innerHTML = '';
-        
-        if (currentSource === 'standard') {
-            Object.entries(CURRENCIES).forEach(([code, name]) => {
-                sel1.add(new Option(name, code));
-                sel2.add(new Option(name, code));
-            });
-            if (!sel1.value) sel1.value = 'USD';
-            if (!sel2.value) sel2.value = 'VND';
+    const renderPopularRates = () => {
+        let html = '';
+        if (currentSource === 'smiles') {
+            popularTitle.innerHTML = `<i class="fas fa-wallet text-emerald-500"></i> Tỷ giá Smiles Wallet`;
+            if (rateSmiles) {
+                html = `<li class="flex justify-between items-center py-3 px-3 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
+                    <div class="flex items-center gap-2"><span class="text-base">🇯🇵</span><span class="text-xs font-bold text-zinc-500">1 JPY</span></div>
+                    <div class="text-sm font-black text-emerald-600 dark:text-emerald-400">${formatCurrency(rateSmiles)} <span class="text-[10px] opacity-60">VND</span></div>
+                </li>`;
+            }
         } else {
-            sel1.add(new Option(CURRENCIES['JPY'], 'JPY'));
-            sel1.add(new Option(CURRENCIES['VND'], 'VND'));
-            sel2.add(new Option(CURRENCIES['JPY'], 'JPY'));
-            sel2.add(new Option(CURRENCIES['VND'], 'VND'));
-            
-            sel1.value = 'JPY';
-            sel2.value = 'VND';
+            popularTitle.innerHTML = `<i class="fas fa-chart-line text-blue-500"></i> Tỷ giá so với VND`;
+            if (Object.keys(ratesStandard).length) {
+                POPULAR_REFS.forEach(base => {
+                    let rate = ratesStandard['VND'] / ratesStandard[base];
+                    html += `<li class="flex justify-between items-center py-2 px-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-xl transition-all">
+                        <div class="flex items-center gap-2"><span>${CURRENCIES[base].split(' ')[0]}</span><span class="text-xs font-bold text-zinc-500">1 ${base}</span></div>
+                        <div class="text-sm font-bold text-zinc-900 dark:text-white">${formatCurrency(rate)}</div>
+                    </li>`;
+                });
+            }
         }
+        popularRatesList.innerHTML = html || '<li class="text-center text-xs text-zinc-400">Đang cập nhật...</li>';
     };
 
-    // --- KẾT NỐI API QUỐC TẾ ---
     const fetchStandardApi = async () => {
         try {
             const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
             const data = await res.json();
-            ratesStandard = data.rates;
-            lastFetchStandard = new Date();
+            ratesStandard = data.rates; lastFetchStandard = new Date();
             return true;
-        } catch (error) {
-            console.error('Lỗi API Quốc tế:', error);
-            return false;
-        }
+        } catch (e) { return false; }
     };
 
-    // --- KẾT NỐI SMILES API QUA PROXY (ĐUA TỐC ĐỘ) ---
     const fetchSmilesApi = async () => {
-        const fetchAllOrigins = async () => {
-            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(SMILES_API_URL)}`);
-            if (!res.ok) throw new Error('AllOrigins failed');
-            const data = await res.json();
-            const parsed = JSON.parse(data.contents);
-            if (!parsed || !parsed.Rate) throw new Error('Invalid rate data');
-            return parseFloat(parsed.Rate);
-        };
-
-        const fetchCorsProxy = async () => {
-            const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(SMILES_API_URL)}`);
-            if (!res.ok) throw new Error('CorsProxy failed');
-            const data = await res.json();
-            if (!data || !data.Rate) throw new Error('Invalid rate data');
-            return parseFloat(data.Rate);
-        };
-
-        const fetchCodeTabs = async () => {
-            const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SMILES_API_URL)}`);
-            if (!res.ok) throw new Error('CodeTabs failed');
-            const data = await res.json();
-            if (!data || !data.Rate) throw new Error('Invalid rate data');
-            return parseFloat(data.Rate);
-        };
-
+        const proxies = [
+            `https://api.allorigins.win/get?url=${encodeURIComponent(SMILES_API_URL)}`,
+            `https://corsproxy.io/?${encodeURIComponent(SMILES_API_URL)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SMILES_API_URL)}`
+        ];
         try {
-            // Lấy kết quả từ proxy nào phản hồi nhanh nhất và không bị lỗi
-            const newRate = await Promise.any([
-                fetchAllOrigins(),
-                fetchCorsProxy(),
-                fetchCodeTabs()
-            ]);
-            
-            rateSmiles = newRate;
-            smilesRates['VND'] = newRate; 
-            lastFetchSmiles = new Date();
+            const result = await Promise.any(proxies.map(url => fetch(url).then(r => r.json())));
+            const content = result.contents ? JSON.parse(result.contents) : result;
+            rateSmiles = parseFloat(content.Rate); lastFetchSmiles = new Date();
             return true;
-            
-        } catch (error) {
-            console.error("Toàn bộ proxy lấy tỷ giá Smiles đều thất bại:", error);
-            return false;
-        }
+        } catch (e) { return false; }
     };
 
-    // --- LOGIC TÍNH TOÁN ---
     const calculate = () => {
-        const c1 = sel1.value;
-        const c2 = sel2.value;
-        
-        let exchangeRate = 0;
-        let isError = false;
+        const c1 = sel1.value, c2 = sel2.value;
+        let rate = 0;
+        if (currentSource === 'standard') rate = ratesStandard[c2] / ratesStandard[c1];
+        else rate = (c1 === 'JPY' && c2 === 'VND') ? rateSmiles : (c1 === 'VND' && c2 === 'JPY') ? 1/rateSmiles : 1;
 
-        if (currentSource === 'standard') {
-            if (!ratesStandard[c1] || !ratesStandard[c2]) {
-                isError = true;
-            } else {
-                exchangeRate = ratesStandard[c2] / ratesStandard[c1];
-            }
-        } else {
-            if (!rateSmiles) {
-                isError = true;
-            } else {
-                if (c1 === 'JPY' && c2 === 'VND') exchangeRate = rateSmiles;
-                else if (c1 === 'VND' && c2 === 'JPY') exchangeRate = 1 / rateSmiles;
-                else if (c1 === c2) exchangeRate = 1;
-            }
-        }
+        if (!rate) { rateText.innerHTML = "Đang tải dữ liệu..."; return; }
 
-        if (isError) {
-            rateText.innerHTML = `<span style="color: #ef4444;"><i class="fas fa-exclamation-triangle"></i> Lỗi dữ liệu tỷ giá.</span>`;
-            updateTime.textContent = '--';
-            return;
-        }
+        rateText.innerHTML = `1 ${c1} <i class="fas fa-arrow-right mx-2 text-[10px] opacity-30"></i> <b>${formatCurrency(rate)}</b> ${c2}`;
+        updateTime.textContent = `Cập nhật: ${(currentSource === 'standard' ? lastFetchStandard : lastFetchSmiles)?.toLocaleTimeString()}`;
 
-        rateText.innerHTML = `1 ${c1} &nbsp;=&nbsp; <b>${formatCurrency(exchangeRate)}</b> ${c2}`;
-        updateTime.textContent = formatDate(currentSource === 'standard' ? lastFetchStandard : lastFetchSmiles);
-
-        if (lastEdited === 1) {
-            const val1 = parseFloat(in1.value);
-            if (isNaN(val1)) { in2.value = ''; return; }
-            in2.value = formatCurrency(val1 * exchangeRate);
-        } else {
-            const val2 = parseFloat(in2.value);
-            if (isNaN(val2)) { in1.value = ''; return; }
-            in1.value = formatCurrency(val2 / exchangeRate);
-        }
+        if (lastEdited === 1) in2.value = formatCurrency(parseInputStr(in1.value) * rate);
+        else in1.value = formatCurrency(parseInputStr(in2.value) / rate);
+        renderPopularRates();
     };
 
-    // --- HÀM KHỞI ĐỘNG VÀ LOAD DATA ---
-    const loadDataAndCalculate = async (forceRefresh = false) => {
-        rateText.innerHTML = `<span class="cc-loader"></span> Đang cập nhật...`;
-        btnRefresh.querySelector('i').classList.add('fa-spin'); 
-        
-        if (currentSource === 'standard') {
-            if (forceRefresh || Object.keys(ratesStandard).length === 0) {
-                const success = await fetchStandardApi();
-                if (!success && Object.keys(ratesStandard).length === 0) {
-                    rateText.innerHTML = `<span style="color: #ef4444;">Lỗi kết nối API Quốc tế.</span>`;
-                    btnRefresh.querySelector('i').classList.remove('fa-spin');
-                    return;
-                }
-            }
-        } else {
-            if (forceRefresh || !rateSmiles) {
-                const success = await fetchSmilesApi();
-                if (!success) {
-                    // Kiểm tra xem UI.showAlert có tồn tại không trước khi gọi để tránh lỗi
-                    if (typeof UI !== 'undefined' && UI.showAlert) {
-                        UI.showAlert('Lỗi', 'Không thể lấy tỷ giá từ Smiles lúc này. Tạm dùng tỷ giá Quốc tế.', 'warning');
-                    } else {
-                        alert('Không thể lấy tỷ giá từ Smiles lúc này. Tạm dùng tỷ giá Quốc tế.');
-                    }
-                    
-                    if (Object.keys(ratesStandard).length === 0) await fetchStandardApi();
-                    if (ratesStandard['JPY'] && ratesStandard['VND']) {
-                        rateSmiles = ratesStandard['VND'] / ratesStandard['JPY'];
-                        lastFetchSmiles = lastFetchStandard;
-                    }
-                }
-            }
-        }
+    const loadData = async (force = false) => {
+        btnRefresh.querySelector('i').classList.add('fa-spin');
+        if (force || !Object.keys(ratesStandard).length) await fetchStandardApi();
+        if (currentSource === 'smiles' && (force || !rateSmiles)) await fetchSmilesApi();
         calculate();
         btnRefresh.querySelector('i').classList.remove('fa-spin');
     };
 
-    // --- SỰ KIỆN LẮNG NGHE ---
-    sourceBtns.forEach(btn => {
-        btn.onclick = () => {
-            sourceBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            const oldC1 = sel1.value;
-            const oldC2 = sel2.value;
-
-            currentSource = btn.dataset.source;
-            populateSelects();
-
-            if (currentSource === 'standard') {
-                sel1.value = oldC1;
-                sel2.value = oldC2;
-            }
-            
-            loadDataAndCalculate();
-        };
+    sourceBtns.forEach(btn => btn.onclick = () => {
+        sourceBtns.forEach(b => b.classList.remove('active', 'bg-white', 'dark:bg-zinc-800', 'shadow-sm', 'text-zinc-900', 'dark:text-white', 'font-semibold'));
+        btn.classList.add('active', 'bg-white', 'dark:bg-zinc-800', 'shadow-sm', 'text-zinc-900', 'dark:text-white', 'font-semibold');
+        currentSource = btn.dataset.source;
+        loadData();
     });
 
-    in1.addEventListener('input', () => { lastEdited = 1; calculate(); });
-    in2.addEventListener('input', () => { lastEdited = 2; calculate(); });
+    in1.oninput = () => { formatInputField(in1); lastEdited = 1; calculate(); };
+    in2.oninput = () => { formatInputField(in2); lastEdited = 2; calculate(); };
+    sel1.onchange = calculate; sel2.onchange = calculate;
+    btnSwap.onclick = () => { [sel1.value, sel2.value] = [sel2.value, sel1.value]; calculate(); };
+    btnRefresh.onclick = () => loadData(true);
 
-    sel1.addEventListener('change', () => { calculate(); });
-    sel2.addEventListener('change', () => { calculate(); });
-
-    btnSwap.addEventListener('click', () => {
-        const temp = sel1.value;
-        sel1.value = sel2.value;
-        sel2.value = temp;
-        lastEdited = 1;
-        calculate();
+    sel1.innerHTML = ''; sel2.innerHTML = '';
+    Object.entries(CURRENCIES).forEach(([code, name]) => {
+        sel1.add(new Option(name, code)); sel2.add(new Option(name, code));
     });
-
-    btnRefresh.addEventListener('click', () => {
-        loadDataAndCalculate(true);
-    });
-
-    // --- KHỞI CHẠY LẦN ĐẦU ---
-    populateSelects();
-    in1.value = '1';
-    loadDataAndCalculate(true);
+    sel1.value = 'JPY'; sel2.value = 'VND'; in1.value = '1';
+    loadData();
 }

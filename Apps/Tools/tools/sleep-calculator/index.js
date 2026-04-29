@@ -3,150 +3,142 @@ import { UI } from '../../js/ui.js';
 export function template() {
     return `
         <style>
-            .slp-layout { display: flex; flex-direction: column; gap: 24px; margin-bottom: 24px; }
-            @media (min-width: 992px) { .slp-layout { display: grid; grid-template-columns: 1fr 1fr; align-items: start; } }
-            
-            .slp-sticky { position: sticky; top: 80px; }
-            
-            /* Tùy chỉnh danh sách kết quả dạng Lưới (Grid) */
-            .cycle-list { 
-                display: grid; 
-                grid-template-columns: repeat(2, 1fr); 
-                gap: 12px; 
-                margin-top: 20px; 
-            }
-            @media (min-width: 576px) {
-                .cycle-list { grid-template-columns: repeat(3, 1fr); }
-            }
-            
-            .cycle-card { 
-                display: flex; flex-direction: column; align-items: center; justify-content: center;
-                padding: 16px 12px; border-radius: var(--radius); border: 1px solid var(--border);
-                background: var(--bg-main); transition: all 0.2s; position: relative; overflow: hidden;
-            }
-            .cycle-card:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: transparent; }
-            
-            .cycle-badge { position: absolute; top: 0; left: 0; width: 100%; height: 4px; }
-            
-            .cycle-time { font-size: 1.7rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; line-height: 1; }
-            .cycle-count { font-weight: 600; font-size: 0.9rem; margin-bottom: 2px; }
-            .cycle-dur { font-size: 0.8rem; color: var(--text-mut); }
-            
-            /* Màu sắc đánh giá chu kỳ */
-            .cycle-optimal { background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2); }
-            .cycle-optimal .cycle-badge { background: #10b981; }
-            .cycle-optimal .cycle-count { color: #10b981; }
-            
-            .cycle-warning { background: rgba(245, 158, 11, 0.05); border-color: rgba(245, 158, 11, 0.2); }
-            .cycle-warning .cycle-badge { background: #f59e0b; }
-            .cycle-warning .cycle-count { color: #f59e0b; }
-            
-            .cycle-bad { background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.2); }
-            .cycle-bad .cycle-badge { background: #ef4444; }
-            .cycle-bad .cycle-count { color: #ef4444; }
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
 
-            /* Result Box Mode 3 */
-            .dur-result-box {
-                background: var(--bg-main); border: 1px solid var(--border);
-                border-radius: var(--radius); padding: 24px; text-align: center; margin-top: 16px;
-            }
-            .dur-val { font-size: 2.5rem; font-weight: 700; color: #3b82f6; line-height: 1.2; margin: 8px 0; }
+            .hide-scrollbar::-webkit-scrollbar { display: none; }
+            .hide-scrollbar { scrollbar-width: none; }
+
+            .flat-btn { transition: transform 0.1s; user-select: none; }
+            .flat-btn:active { transform: scale(0.95); }
+
+            /* Flat Range */
+            .flat-range { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; width: 100%; }
+            .flat-range::-webkit-slider-runnable-track { height: 6px; background: #e4e4e7; border-radius: 3px; }
+            .dark .flat-range::-webkit-slider-runnable-track { background: #27272a; }
+            .flat-range::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: #18181b; margin-top: -7px; border: 2px solid #fff; }
+            .dark .flat-range::-webkit-slider-thumb { background: #fff; border-color: #18181b; }
+            
+            /* Ẩn icon đồng hồ mặc định của input type="time" trên một số trình duyệt */
+            input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
         </style>
 
-        <div class="flex-between" style="margin-bottom: 24px;">
-            <div>
-                <h1 class="h1">Máy Tính Giấc Ngủ</h1>
-                <p class="text-mut">Tính toán thời điểm ngủ/dậy tối ưu dựa trên chu kỳ giấc ngủ 90 phút.</p>
-            </div>
-            <button class="btn btn-ghost btn-sm" id="btn-slp-reset" style="color: #ef4444;">
-                <i class="fas fa-redo"></i> Đặt lại
-            </button>
-        </div>
-
-        <div class="slp-layout">
+        <div class="relative flex flex-col w-full max-w-[960px] mx-auto min-h-[500px]">
             
-            <div class="card" style="padding: 20px;">
-                <div class="tabs" id="slp-tabs">
-                    <button class="tab-btn active" data-mode="wake"><i class="fas fa-sun"></i> Giờ thức dậy</button>
-                    <button class="tab-btn" data-mode="bed"><i class="fas fa-moon"></i> Giờ đi ngủ</button>
-                    <button class="tab-btn" data-mode="duration"><i class="fas fa-hourglass-half"></i> Thời lượng</button>
+            <div class="flex justify-between items-center mb-5 px-1">
+                <div>
+                    <h2 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">Máy Tính Giấc Ngủ</h2>
+                    <p class="text-xs text-zinc-500 mt-1 font-medium">Tính toán chu kỳ 90 phút để thức dậy luôn tỉnh táo.</p>
                 </div>
-
-                <div id="mode-wake" class="slp-pane">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">Nếu tôi đi ngủ vào lúc...</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="time" class="input slp-input" id="in-sleep-time" style="flex: 1; font-size: 1.2rem; text-align: center; padding: 12px;">
-                            <button class="btn btn-outline btn-set-now" data-target="in-sleep-time" title="Lấy giờ hiện tại">
-                                <i class="fas fa-clock"></i> Bây giờ
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="mode-bed" class="slp-pane" style="display: none;">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">Tôi muốn thức dậy vào lúc...</label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="time" class="input slp-input" id="in-wake-time" value="06:00" style="flex: 1; font-size: 1.2rem; text-align: center; padding: 12px;">
-                            <button class="btn btn-outline btn-set-now" data-target="in-wake-time" title="Lấy giờ hiện tại">
-                                <i class="fas fa-clock"></i> Hiện tại
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="mode-duration" class="slp-pane" style="display: none;">
-                    <div class="grid-2">
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label">Giờ đi ngủ</label>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="time" class="input slp-input" id="in-dur-sleep" value="23:00" style="flex: 1; font-size: 1.1rem; text-align: center;">
-                                <button class="btn btn-outline btn-set-now" data-target="in-dur-sleep" title="Lấy giờ hiện tại" style="padding: 0 12px;">
-                                    <i class="fas fa-clock"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <label class="form-label">Giờ thức dậy</label>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="time" class="input slp-input" id="in-dur-wake" value="06:00" style="flex: 1; font-size: 1.1rem; text-align: center;">
-                                <button class="btn btn-outline btn-set-now" data-target="in-dur-wake" title="Lấy giờ hiện tại" style="padding: 0 12px;">
-                                    <i class="fas fa-clock"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+                <button class="flat-btn h-9 px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-bold text-[12px] flex items-center justify-center gap-1.5" id="btn-slp-reset">
+                    <i class="fas fa-redo-alt"></i> Đặt lại
+                </button>
             </div>
 
-            <div class="slp-sticky">
-                <div class="card" style="padding: 24px; background: var(--bg-sec); min-height: 300px;" id="res-container">
-                    
-                    <div id="res-cycles">
-                        <h3 class="h3" id="res-title" style="margin-bottom: 8px;">Bạn nên thức dậy vào lúc:</h3>
-                        <p class="text-mut" style="font-size: 0.9rem;" id="res-desc">
-                            Máy tính đã cộng thêm trung bình <strong>15 phút</strong> để chìm vào giấc ngủ. Hãy chọn thức dậy vào cuối các chu kỳ sau:
-                        </p>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                
+                <div class="lg:col-span-5 flex flex-col gap-4">
+                    <div class="bg-white dark:bg-[#09090b] rounded-[24px] border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden">
                         
-                        <div class="cycle-list" id="res-list">
-                            </div>
-                    </div>
-
-                    <div id="res-duration-box" style="display: none;">
-                        <h3 class="h3" style="margin-bottom: 8px; text-align: center;">Đánh giá thời lượng</h3>
-                        <div class="dur-result-box">
-                            <div class="text-mut">Tổng thời gian ngủ của bạn là:</div>
-                            <div class="dur-val" id="dur-total">0g 0p</div>
-                            <div id="dur-cycles-text" style="font-weight: 500; margin-bottom: 8px;">Tương đương 0 chu kỳ</div>
-                            <div id="dur-eval" style="font-size: 0.9rem; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border);"></div>
+                        <div class="flex overflow-x-auto border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#121214] hide-scrollbar" id="slp-tabs">
+                            <button class="tab-btn active flex-1 py-3.5 px-4 text-[12px] font-bold text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-white transition-colors whitespace-nowrap" data-mode="wake"><i class="fas fa-sun mr-1"></i> Giờ thức</button>
+                            <button class="tab-btn flex-1 py-3.5 px-4 text-[12px] font-bold text-zinc-400 border-b-2 border-transparent transition-colors whitespace-nowrap" data-mode="bed"><i class="fas fa-moon mr-1"></i> Giờ ngủ</button>
+                            <button class="tab-btn flex-1 py-3.5 px-4 text-[12px] font-bold text-zinc-400 border-b-2 border-transparent transition-colors whitespace-nowrap" data-mode="duration"><i class="fas fa-hourglass-half mr-1"></i> Thời lượng</button>
                         </div>
+
+                        <div class="p-5 flex flex-col gap-6 min-h-[220px]">
+                            
+                            <div id="mode-wake" class="slp-pane block animate-in fade-in">
+                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-3">Nếu tôi đi ngủ lúc...</label>
+                                <div class="flex gap-2">
+                                    <input type="time" id="in-sleep-time" class="flex-1 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-2xl font-black text-center text-zinc-900 dark:text-white font-mono tracking-widest transition-colors">
+                                    <button class="flat-btn px-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl text-sm font-bold border border-zinc-200 dark:border-zinc-700 btn-set-now" data-target="in-sleep-time" title="Bây giờ">
+                                        <i class="fas fa-clock"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="mode-bed" class="slp-pane hidden animate-in fade-in">
+                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-3">Tôi muốn thức dậy lúc...</label>
+                                <div class="flex gap-2">
+                                    <input type="time" id="in-wake-time" value="06:00" class="flex-1 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-2xl font-black text-center text-zinc-900 dark:text-white font-mono tracking-widest transition-colors">
+                                    <button class="flat-btn px-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl text-sm font-bold border border-zinc-200 dark:border-zinc-700 btn-set-now" data-target="in-wake-time" title="Bây giờ">
+                                        <i class="fas fa-clock"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="mode-duration" class="slp-pane hidden animate-in fade-in space-y-4">
+                                <div>
+                                    <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2">Giờ lên giường</label>
+                                    <div class="flex gap-2">
+                                        <input type="time" id="in-dur-sleep" value="23:00" class="flex-1 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-xl font-black text-center text-zinc-900 dark:text-white font-mono tracking-widest transition-colors">
+                                        <button class="flat-btn px-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl text-sm font-bold border border-zinc-200 dark:border-zinc-700 btn-set-now" data-target="in-dur-sleep"><i class="fas fa-clock"></i></button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-2">Giờ thức dậy</label>
+                                    <div class="flex gap-2">
+                                        <input type="time" id="in-dur-wake" value="06:00" class="flex-1 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:border-zinc-900 dark:focus:border-white text-xl font-black text-center text-zinc-900 dark:text-white font-mono tracking-widest transition-colors">
+                                        <button class="flat-btn px-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl text-sm font-bold border border-zinc-200 dark:border-zinc-700 btn-set-now" data-target="in-dur-wake"><i class="fas fa-clock"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="px-5 py-5 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-[#121214]">
+                            <div class="flex justify-between items-center mb-3">
+                                <label class="text-[11px] font-bold text-zinc-500 uppercase tracking-wider"><i class="fas fa-bed mr-1"></i> Chìm vào giấc ngủ</label>
+                                <span class="text-xs font-black text-zinc-900 dark:text-white bg-white dark:bg-[#09090b] px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700" id="val-fall-asleep">15 phút</span>
+                            </div>
+                            <input type="range" id="in-fall-asleep" min="0" max="60" step="5" value="15" class="flat-range">
+                            <div class="flex justify-between text-[9px] font-bold text-zinc-400 mt-2">
+                                <span>0p (Lập tức)</span>
+                                <span>60p (Trằn trọc)</span>
+                            </div>
+                        </div>
+
                     </div>
-
                 </div>
-            </div>
 
+                <div class="lg:col-span-7 flex flex-col h-full min-h-[400px]">
+                    <div class="bg-white dark:bg-[#09090b] rounded-[24px] border border-zinc-200 dark:border-zinc-800 flex flex-col h-full overflow-hidden p-6 relative">
+                        
+                        <div id="res-cycles-box" class="block animate-in fade-in duration-300">
+                            <h3 class="text-[11px] font-black text-zinc-900 dark:text-white uppercase tracking-widest mb-1 pb-3 border-b border-zinc-100 dark:border-zinc-800" id="res-title">BẠN NÊN THỨC DẬY VÀO LÚC:</h3>
+                            <p class="text-xs text-zinc-500 mb-5 mt-3 leading-relaxed" id="res-desc">Tính toán dựa trên các chu kỳ 90 phút. Hãy chọn các mốc có màu xanh để cơ thể phục hồi tốt nhất.</p>
+                            
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="res-list">
+                                </div>
+
+                            <div id="res-nap-box" class="mt-6 pt-5 border-t border-zinc-100 dark:border-zinc-800 hidden">
+                                <h4 class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-3"><i class="fas fa-bolt mr-1"></i> Gợi ý chợp mắt (Power Nap)</h4>
+                                <div class="grid grid-cols-2 gap-3" id="res-nap-list">
+                                    </div>
+                            </div>
+                        </div>
+
+                        <div id="res-duration-box" class="hidden animate-in fade-in duration-300 h-full flex-col items-center justify-center text-center">
+                            <h3 class="text-[11px] font-black text-zinc-900 dark:text-white uppercase tracking-widest mb-6 border-b border-zinc-100 dark:border-zinc-800 pb-3 w-full text-left">ĐÁNH GIÁ THỜI LƯỢNG NGỦ</h3>
+                            
+                            <div class="bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-[24px] p-8 w-full">
+                                <div class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Thực ngủ (Đã trừ thời gian chìm)</div>
+                                <div class="text-5xl font-black text-blue-500 font-mono tracking-tighter mb-2" id="dur-total">0g 0p</div>
+                                <div class="text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-6" id="dur-cycles-text">Tương đương 0 chu kỳ</div>
+                                
+                                <div class="h-px bg-zinc-200 dark:bg-zinc-800 w-full mb-6"></div>
+                                
+                                <div id="dur-eval" class="text-sm font-medium text-zinc-900 dark:text-white leading-relaxed"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
         </div>
     `;
 }
@@ -164,21 +156,27 @@ export function init() {
     const inWakeTime = document.getElementById('in-wake-time');
     const inDurSleep = document.getElementById('in-dur-sleep');
     const inDurWake = document.getElementById('in-dur-wake');
-
+    
+    const inFallAsleep = document.getElementById('in-fall-asleep');
+    const valFallAsleep = document.getElementById('val-fall-asleep');
+    
     const btnSetNows = document.querySelectorAll('.btn-set-now'); 
 
-    const resCyclesBox = document.getElementById('res-cycles');
+    const resCyclesBox = document.getElementById('res-cycles-box');
     const resDurBox = document.getElementById('res-duration-box');
+    
     const resTitle = document.getElementById('res-title');
     const resDesc = document.getElementById('res-desc');
     const resList = document.getElementById('res-list');
+    
+    const resNapBox = document.getElementById('res-nap-box');
+    const resNapList = document.getElementById('res-nap-list');
     
     const durTotal = document.getElementById('dur-total');
     const durCyclesText = document.getElementById('dur-cycles-text');
     const durEval = document.getElementById('dur-eval');
 
     let currentMode = 'wake';
-    const FALL_ASLEEP_MINS = 15;
     const CYCLE_MINS = 90;
 
     // --- UTILS ---
@@ -189,84 +187,117 @@ export function init() {
     };
 
     const getCycleClass = (cycles) => {
-        if (cycles === 5 || cycles === 6) return 'cycle-optimal';
-        if (cycles === 4) return 'cycle-warning';
-        return 'cycle-bad';
+        if (cycles === 5 || cycles === 6) return 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400';
+        if (cycles === 4) return 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400';
+        if (cycles === 3) return 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-500/30 text-orange-600 dark:text-orange-400';
+        return 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400';
     };
 
     const getCycleLabel = (cycles) => {
-        if (cycles === 6) return 'Ngủ 9 tiếng';
-        if (cycles === 5) return 'Ngủ 7.5 tiếng';
-        if (cycles === 4) return 'Ngủ 6 tiếng';
-        if (cycles === 3) return 'Ngủ 4.5 tiếng';
-        if (cycles === 2) return 'Ngủ 3 tiếng';
-        if (cycles === 1) return 'Ngủ 1.5 tiếng';
+        if (cycles === 6) return 'Ngủ 9 giờ';
+        if (cycles === 5) return 'Ngủ 7.5 giờ';
+        if (cycles === 4) return 'Ngủ 6 giờ';
+        if (cycles === 3) return 'Ngủ 4.5 giờ';
+        if (cycles === 2) return 'Ngủ 3 giờ';
+        if (cycles === 1) return 'Ngủ 1.5 giờ';
         return '';
     };
 
     const parseTimeString = (timeStr) => {
+        if (!timeStr) return new Date();
         const [h, m] = timeStr.split(':').map(Number);
         let d = new Date();
         d.setHours(h, m, 0, 0);
         return d;
     };
 
+    // --- RENDER HTML CARD ---
+    const renderCard = (time, cycles, desc, colorClass) => {
+        return `
+            <div class="${colorClass} border rounded-xl p-3 flex flex-col items-center justify-center text-center animate-in zoom-in-95">
+                <div class="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-1">${cycles} chu kỳ</div>
+                <div class="text-3xl font-black font-mono tracking-tighter leading-none mb-1">${time}</div>
+                <div class="text-xs font-bold opacity-90">${desc}</div>
+            </div>
+        `;
+    };
+
     // --- CALCULATION LOGIC ---
 
     const calcWakeTimes = (sleepDate) => {
+        const fallAsleep = parseInt(inFallAsleep.value) || 0;
         resList.innerHTML = '';
-        resTitle.textContent = 'Bạn nên thức dậy vào lúc:';
-        resDesc.innerHTML = `Đã cộng thêm <strong>${FALL_ASLEEP_MINS} phút</strong> để nhắm mắt. Đặt báo thức vào 1 trong 6 mốc sau để không bị mệt mỏi:`;
+        resTitle.textContent = 'BẠN NÊN THỨC DẬY VÀO LÚC:';
+        resDesc.innerHTML = `Đã cộng thêm <strong>${fallAsleep} phút</strong> chìm vào giấc ngủ.`;
 
-        // Tính 6 chu kỳ, ưu tiên hiển thị mốc xa nhất (tối ưu nhất) đầu tiên
+        // 6 chu kỳ, ưu tiên hiển thị mốc xa nhất (tối ưu nhất) đầu tiên
         const cyclesToCalculate = [6, 5, 4, 3, 2, 1]; 
 
-        cyclesToCalculate.forEach(cycle => {
+        cyclesToCalculate.forEach((cycle, idx) => {
             let wakeDate = new Date(sleepDate.getTime());
-            wakeDate.setMinutes(wakeDate.getMinutes() + FALL_ASLEEP_MINS + (cycle * CYCLE_MINS));
-
-            const card = document.createElement('div');
-            card.className = `cycle-card ${getCycleClass(cycle)}`;
-            card.innerHTML = `
-                <div class="cycle-badge"></div>
-                <div class="cycle-time">${formatTime(wakeDate)}</div>
-                <div class="cycle-count">${cycle} chu kỳ</div>
-                <div class="cycle-dur">${getCycleLabel(cycle)}</div>
-            `;
-            resList.appendChild(card);
+            wakeDate.setMinutes(wakeDate.getMinutes() + fallAsleep + (cycle * CYCLE_MINS));
+            
+            resList.innerHTML += renderCard(
+                formatTime(wakeDate),
+                cycle,
+                getCycleLabel(cycle),
+                getCycleClass(cycle)
+            );
         });
+
+        // Gợi ý Nap
+        resNapBox.classList.remove('hidden');
+        let nap20 = new Date(sleepDate.getTime()); nap20.setMinutes(nap20.getMinutes() + fallAsleep + 20);
+        let nap90 = new Date(sleepDate.getTime()); nap90.setMinutes(nap90.getMinutes() + fallAsleep + 90);
+        
+        resNapList.innerHTML = `
+            <div class="bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex justify-between items-center">
+                <div class="flex flex-col">
+                    <span class="text-[11px] font-bold text-zinc-500 uppercase">Chợp mắt</span>
+                    <span class="text-xs font-bold text-zinc-900 dark:text-white">20 phút</span>
+                </div>
+                <span class="text-xl font-black text-zinc-900 dark:text-white font-mono">${formatTime(nap20)}</span>
+            </div>
+            <div class="bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex justify-between items-center">
+                <div class="flex flex-col">
+                    <span class="text-[11px] font-bold text-zinc-500 uppercase">Ngủ sâu</span>
+                    <span class="text-xs font-bold text-zinc-900 dark:text-white">1 chu kỳ (90p)</span>
+                </div>
+                <span class="text-xl font-black text-zinc-900 dark:text-white font-mono">${formatTime(nap90)}</span>
+            </div>
+        `;
     };
 
     const calcBedTimes = () => {
         if (!inWakeTime.value) return;
         const wakeDate = parseTimeString(inWakeTime.value);
+        const fallAsleep = parseInt(inFallAsleep.value) || 0;
 
         resList.innerHTML = '';
-        resTitle.textContent = 'Bạn nên đi ngủ vào lúc:';
-        resDesc.innerHTML = `Để thức dậy tỉnh táo lúc <b>${inWakeTime.value}</b>, hãy lên giường vào một trong các giờ sau (đã trừ hao 15p nhắm mắt):`;
+        resTitle.textContent = 'BẠN NÊN ĐI NGỦ VÀO LÚC:';
+        resDesc.innerHTML = `Để thức dậy tỉnh táo, hãy lên giường vào các giờ sau (đã trừ đi <strong>${fallAsleep} phút</strong> chìm vào giấc ngủ).`;
+        resNapBox.classList.add('hidden');
 
-        // Tính 6 chu kỳ
+        // 6 chu kỳ
         const cyclesToCalculate = [6, 5, 4, 3, 2, 1]; 
 
-        cyclesToCalculate.forEach(cycle => {
+        cyclesToCalculate.forEach((cycle, idx) => {
             let bedDate = new Date(wakeDate.getTime());
-            bedDate.setMinutes(bedDate.getMinutes() - FALL_ASLEEP_MINS - (cycle * CYCLE_MINS));
+            bedDate.setMinutes(bedDate.getMinutes() - fallAsleep - (cycle * CYCLE_MINS));
 
-            const card = document.createElement('div');
-            card.className = `cycle-card ${getCycleClass(cycle)}`;
-            card.innerHTML = `
-                <div class="cycle-badge"></div>
-                <div class="cycle-time">${formatTime(bedDate)}</div>
-                <div class="cycle-count">${cycle} chu kỳ</div>
-                <div class="cycle-dur">${getCycleLabel(cycle)}</div>
-            `;
-            resList.appendChild(card);
+            resList.innerHTML += renderCard(
+                formatTime(bedDate),
+                cycle,
+                getCycleLabel(cycle),
+                getCycleClass(cycle)
+            );
         });
     };
 
     const calcDuration = () => {
         if (!inDurSleep.value || !inDurWake.value) return;
 
+        const fallAsleep = parseInt(inFallAsleep.value) || 0;
         const dSleep = parseTimeString(inDurSleep.value);
         let dWake = parseTimeString(inDurWake.value);
 
@@ -275,7 +306,7 @@ export function init() {
         }
 
         let totalMins = Math.round((dWake - dSleep) / 60000);
-        let realSleepMins = totalMins - FALL_ASLEEP_MINS;
+        let realSleepMins = totalMins - fallAsleep;
         
         if (realSleepMins < 0) realSleepMins = 0; 
 
@@ -287,17 +318,17 @@ export function init() {
         durCyclesText.textContent = `Tương đương ~${cycles} chu kỳ`;
 
         if (cycles >= 5 && cycles <= 6.5) {
-            durEval.innerHTML = `<span style="color:#10b981; font-weight:600;"><i class="fas fa-check-circle"></i> Tuyệt vời!</span> Thời lượng ngủ lý tưởng cho sức khỏe.`;
-            durTotal.style.color = '#10b981';
+            durEval.innerHTML = `<span class="text-emerald-500 font-bold"><i class="fas fa-check-circle"></i> Tuyệt vời!</span> Thời lượng ngủ lý tưởng cho sức khỏe thể chất và tinh thần.`;
+            durTotal.className = 'text-5xl font-black text-emerald-500 font-mono tracking-tighter mb-2';
         } else if (cycles >= 4 && cycles < 5) {
-            durEval.innerHTML = `<span style="color:#f59e0b; font-weight:600;"><i class="fas fa-exclamation-triangle"></i> Tạm ổn.</span> Nhưng hãy cố gắng ngủ thêm 1 chu kỳ nữa để phục hồi tốt hơn.`;
-            durTotal.style.color = '#f59e0b';
+            durEval.innerHTML = `<span class="text-blue-500 font-bold"><i class="fas fa-info-circle"></i> Tạm ổn.</span> Ngủ 6 tiếng đủ để hoạt động, nhưng hãy cố gắng thêm 1 chu kỳ nữa để phục hồi tốt hơn.`;
+            durTotal.className = 'text-5xl font-black text-blue-500 font-mono tracking-tighter mb-2';
         } else if (cycles > 6.5) {
-            durEval.innerHTML = `<span style="color:#f59e0b; font-weight:600;"><i class="fas fa-exclamation-triangle"></i> Ngủ hơi nhiều.</span> Ngủ quá giấc cũng có thể gây uể oải.`;
-            durTotal.style.color = '#f59e0b';
+            durEval.innerHTML = `<span class="text-orange-500 font-bold"><i class="fas fa-exclamation-triangle"></i> Hơi nhiều!</span> Ngủ quá giấc (hơn 9 tiếng) đôi khi làm cơ thể bị "say ngủ" và mệt mỏi hơn.`;
+            durTotal.className = 'text-5xl font-black text-orange-500 font-mono tracking-tighter mb-2';
         } else {
-            durEval.innerHTML = `<span style="color:#ef4444; font-weight:600;"><i class="fas fa-times-circle"></i> Thiếu ngủ!</span> Cơ thể chưa có đủ thời gian để phục hồi.`;
-            durTotal.style.color = '#ef4444';
+            durEval.innerHTML = `<span class="text-red-500 font-bold"><i class="fas fa-times-circle"></i> Thiếu ngủ nghiêm trọng!</span> Cơ thể không có đủ thời gian để dọn dẹp độc tố trong não và phục hồi cơ bắp.`;
+            durTotal.className = 'text-5xl font-black text-red-500 font-mono tracking-tighter mb-2';
         }
     };
 
@@ -313,6 +344,11 @@ export function init() {
         }
     };
 
+    inFallAsleep.addEventListener('input', (e) => {
+        valFallAsleep.textContent = `${e.target.value} phút`;
+        triggerCalc();
+    });
+
     btnSetNows.forEach(btn => {
         btn.onclick = () => {
             const targetId = btn.dataset.target;
@@ -326,19 +362,23 @@ export function init() {
 
     tabs.forEach(tab => {
         tab.onclick = () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
+            tabs.forEach(t => {
+                t.classList.remove('active', 'text-zinc-900', 'dark:text-white', 'border-zinc-900', 'dark:border-white');
+                t.classList.add('text-zinc-400', 'border-transparent');
+            });
+            tab.classList.add('active', 'text-zinc-900', 'dark:text-white', 'border-zinc-900', 'dark:border-white');
+            tab.classList.remove('text-zinc-400', 'border-transparent');
             
             currentMode = tab.dataset.mode;
-            Object.values(panes).forEach(p => p.style.display = 'none');
-            panes[currentMode].style.display = 'block';
+            Object.values(panes).forEach(p => { p.classList.remove('block'); p.classList.add('hidden'); });
+            panes[currentMode].classList.remove('hidden'); panes[currentMode].classList.add('block');
 
             if (currentMode === 'duration') {
-                resCyclesBox.style.display = 'none';
-                resDurBox.style.display = 'block';
+                resCyclesBox.classList.remove('block'); resCyclesBox.classList.add('hidden');
+                resDurBox.classList.remove('hidden'); resDurBox.classList.add('flex');
             } else {
-                resCyclesBox.style.display = 'block';
-                resDurBox.style.display = 'none';
+                resCyclesBox.classList.remove('hidden'); resCyclesBox.classList.add('block');
+                resDurBox.classList.remove('flex'); resDurBox.classList.add('hidden');
             }
 
             triggerCalc();
@@ -356,6 +396,8 @@ export function init() {
         inWakeTime.value = '06:00';
         inDurSleep.value = '23:00';
         inDurWake.value = '06:00';
+        inFallAsleep.value = 15;
+        valFallAsleep.textContent = '15 phút';
         
         inSleepTime.value = formatTime(new Date()); 
         triggerCalc();
@@ -363,6 +405,7 @@ export function init() {
 
     // Khởi chạy mặc định
     inSleepTime.value = formatTime(new Date());
-    inDurSleep.value = formatTime(new Date());
+    inDurSleep.value = '23:00';
+    inDurWake.value = '06:00';
     triggerCalc();
 }

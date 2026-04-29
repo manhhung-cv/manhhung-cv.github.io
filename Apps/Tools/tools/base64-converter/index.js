@@ -1,161 +1,270 @@
 import { UI } from '../../js/ui.js';
 
-export function template() {
+export const template = () => {
     return `
-        <style>
-            .b64-layout { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
-            .b64-in { order: 1; }
-            .b64-act { order: 2; display: flex; justify-content: center; gap: 12px; }
-            .b64-out { order: 3; }
-
-            @media(min-width: 768px) {
-                .b64-layout {
-                    display: grid; 
-                    grid-template-columns: 1fr 1fr;
-                    grid-template-areas: "in out";
-                    gap: 20px;
-                }
-                .b64-in { grid-area: in; }
-                .b64-out { grid-area: out; }
-                /* Trên Desktop, đưa các nút hành động xuống dưới cùng */
-                .b64-act { grid-column: span 2; margin-top: 8px; }
-            }
-        </style>
-
-        <div class="flex-between" style="margin-bottom: 24px;">
-            <div>
-                <h1 class="h1">Base64 Encoder / Decoder</h1>
-                <p class="text-mut">Mã hóa và giải mã chuỗi dữ liệu an toàn (Hỗ trợ Tiếng Việt & Unicode).</p>
+        <div class="space-y-6">
+            <div class="mb-2">
+                <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Base64 Converter</h2>
+                <p class="text-sm text-zinc-500 mt-1">Mã hóa văn bản, tập tin thành Base64 hoặc ngược lại.</p>
             </div>
-        </div>
 
-        <div class="b64-layout">
-            
-            <div class="card b64-in" style="padding: 0; display: flex; flex-direction: column; overflow: hidden;">
-                <div class="flex-between" style="padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-sec);">
-                    <div class="text-mut" style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Đầu vào</div>
-                    <div class="flex-row" style="gap: 4px;">
-                        <button class="btn btn-ghost" id="b64-paste" title="Dán" style="padding: 4px 8px; font-size: 0.8rem;"><i class="fas fa-paste"></i> Dán</button>
-                        <button class="btn btn-ghost" id="b64-clear" title="Xóa" style="padding: 4px 8px; font-size: 0.8rem; color: #ef4444;"><i class="fas fa-trash"></i> Xóa</button>
+            <div class="flex items-center p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl w-fit">
+                <button id="tab-text" class="px-4 py-2 text-sm font-semibold rounded-lg bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm transition-all">Văn bản</button>
+                <button id="tab-file" class="px-4 py-2 text-sm font-medium rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all">Tập tin</button>
+            </div>
+
+            <div class="flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/30 p-3 rounded-xl border border-zinc-200 dark:border-zinc-800/50">
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <div class="relative flex items-center">
+                        <input type="checkbox" id="url-safe-toggle" class="sr-only peer">
+                        <div class="w-9 h-5 bg-zinc-200 dark:bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-zinc-900 dark:peer-checked:bg-white transition-colors"></div>
                     </div>
-                </div>
-                <textarea id="b64-input" class="textarea" rows="12" 
-                    style="border: none; border-radius: 0; flex: 1; padding: 16px; resize: vertical; line-height: 1.6; background: transparent;" 
-                    placeholder="Nhập văn bản gốc hoặc chuỗi Base64 vào đây..."></textarea>
+                    <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">URL Safe Mode</span>
+                </label>
+                <div class="text-[11px] text-zinc-400 hidden sm:block">Chuyển '+' thành '-', '/' thành '_'</div>
             </div>
 
-            <div class="card b64-out" style="padding: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-sec); border-color: #3b82f640;">
-                <div class="flex-between" style="padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-main);">
-                    <div class="text-mut" style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: #3b82f6;">Kết quả</div>
-                    <div class="flex-row" style="gap: 4px;">
-                        <button class="btn btn-outline" id="b64-swap" title="Đưa kết quả sang ô Đầu vào" style="padding: 4px 8px; font-size: 0.75rem;">
-                            <i class="fas fa-exchange-alt"></i> Đảo chiều
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                
+                <div class="space-y-3 flex flex-col">
+                    <label class="text-xs font-bold uppercase tracking-wider text-zinc-400 ml-1">Đầu vào (Input)</label>
+                    
+                    <textarea id="b64-text-input" 
+                        class="flex-1 min-h-[250px] w-full p-4 bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all resize-y text-sm leading-relaxed"
+                        placeholder="Nhập văn bản hoặc dán mã Base64 vào đây..."></textarea>
+
+                    <div id="b64-file-input" class="hidden flex-1 min-h-[250px] w-full flex flex-col items-center justify-center p-6 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl bg-zinc-50 dark:bg-zinc-900/30 hover:bg-zinc-100 dark:hover:bg-zinc-900/50 transition-colors cursor-pointer relative group">
+                        <input type="file" id="file-upload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div class="w-12 h-12 bg-zinc-200 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 mb-3 group-hover:scale-110 transition-transform">
+                            <i class="fas fa-cloud-upload-alt text-xl"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-zinc-700 dark:text-zinc-300 text-center">Kéo thả hoặc Click để chọn file</p>
+                        <p class="text-xs text-zinc-400 text-center mt-1" id="file-name-display">Max 5MB (Khuyến nghị)</p>
+                    </div>
+
+                    <div class="flex gap-2 mt-auto pt-2">
+                        <button id="btn-encode" class="flex-1 py-3 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-semibold text-sm hover:opacity-90 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2">
+                            <i class="fas fa-lock"></i> Mã hóa
                         </button>
-                        <button class="btn btn-primary" id="b64-copy" title="Sao chép" style="padding: 4px 12px; font-size: 0.8rem;">
-                            <i class="fas fa-copy"></i> Chép
+                        <button id="btn-decode" class="flex-1 py-3 px-4 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 rounded-xl font-semibold text-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-2">
+                            <i class="fas fa-unlock"></i> Giải mã
                         </button>
                     </div>
                 </div>
-                <textarea id="b64-output" class="textarea" rows="12" 
-                    style="border: none; border-radius: 0; flex: 1; padding: 16px; resize: vertical; line-height: 1.6; background: transparent; cursor: text;" 
-                    placeholder="Kết quả sẽ hiển thị ở đây..." readonly></textarea>
-            </div>
 
-            <div class="b64-act">
-                <button class="btn btn-primary" id="btn-encode" style="padding: 12px 24px; font-size: 1rem; flex: 1; max-width: 250px; justify-content: center;">
-                    <i class="fas fa-lock"></i> Mã hóa (Encode)
-                </button>
-                <button class="btn btn-outline" id="btn-decode" style="padding: 12px 24px; font-size: 1rem; flex: 1; max-width: 250px; justify-content: center;">
-                    <i class="fas fa-unlock"></i> Giải mã (Decode)
-                </button>
-            </div>
+                <div class="space-y-3 flex flex-col">
+                    <div class="flex justify-between items-center px-1">
+                        <label class="text-xs font-bold uppercase tracking-wider text-zinc-400">Kết quả (Output)</label>
+                        <div class="flex gap-3">
+                            <button id="btn-download" class="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors hidden">
+                                <i class="fas fa-download mr-1"></i>Tải File
+                            </button>
+                            <button id="btn-copy" class="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors">
+                                <i class="far fa-copy mr-1"></i>Sao chép
+                            </button>
+                            <button id="btn-clear" class="text-xs font-medium text-red-500 hover:text-red-600 transition-colors">
+                                <i class="far fa-trash-alt mr-1"></i>Xóa
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="relative flex-1 flex flex-col min-h-[250px]">
+                        <textarea id="b64-output" readonly
+                            class="flex-1 w-full p-4 bg-zinc-100/50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 rounded-2xl outline-none text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 resize-y"
+                            placeholder="Kết quả hiển thị tại đây..."></textarea>
+                        
+                        <div id="image-preview-container" class="absolute inset-0 bg-zinc-100/90 dark:bg-zinc-900/90 backdrop-blur-sm border border-zinc-200 dark:border-zinc-800 rounded-2xl hidden flex-col items-center justify-center p-4">
+                            <img id="image-preview" class="max-w-full max-h-[200px] object-contain rounded-lg shadow-sm mb-3">
+                            <p class="text-xs text-zinc-500">Xem trước hình ảnh từ Base64</p>
+                        </div>
+                    </div>
+                </div>
 
+            </div>
         </div>
     `;
-}
+};
 
-export function init() {
-    const input = document.getElementById('b64-input');
+export const init = () => {
+    // UI Elements
+    const tabText = document.getElementById('tab-text');
+    const tabFile = document.getElementById('tab-file');
+    const txtInput = document.getElementById('b64-text-input');
+    const fileInputArea = document.getElementById('b64-file-input');
+    const fileUpload = document.getElementById('file-upload');
+    const fileNameDisplay = document.getElementById('file-name-display');
     const output = document.getElementById('b64-output');
+    
+    const btnEncode = document.getElementById('btn-encode');
+    const btnDecode = document.getElementById('btn-decode');
+    const btnCopy = document.getElementById('btn-copy');
+    const btnClear = document.getElementById('btn-clear');
+    const btnDownload = document.getElementById('btn-download');
+    
+    const urlSafeToggle = document.getElementById('url-safe-toggle');
+    const imgPreviewContainer = document.getElementById('image-preview-container');
+    const imgPreview = document.getElementById('image-preview');
 
-    // MÃ HÓA
-    document.getElementById('btn-encode').onclick = () => {
-        if (!input.value) {
-            output.value = '';
-            return UI.showAlert('Trống', 'Vui lòng nhập văn bản cần mã hóa.', 'warning');
+    let currentMode = 'text'; // 'text' or 'file'
+    let currentFile = null;
+
+    // --- TAB SWITCH LOGIC ---
+    const switchTab = (mode) => {
+        currentMode = mode;
+        if (mode === 'text') {
+            tabText.classList.replace('text-zinc-500', 'text-zinc-900');
+            tabText.classList.replace('hover:text-zinc-900', 'bg-white');
+            tabText.classList.add('dark:text-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-semibold');
+            tabText.classList.remove('font-medium', 'dark:hover:text-white');
+
+            tabFile.classList.remove('text-zinc-900', 'bg-white', 'dark:text-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-semibold');
+            tabFile.classList.add('text-zinc-500', 'hover:text-zinc-900', 'dark:hover:text-white', 'font-medium');
+
+            txtInput.classList.remove('hidden');
+            fileInputArea.classList.add('hidden');
+        } else {
+            tabFile.classList.replace('text-zinc-500', 'text-zinc-900');
+            tabFile.classList.replace('hover:text-zinc-900', 'bg-white');
+            tabFile.classList.add('dark:text-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-semibold');
+            tabFile.classList.remove('font-medium', 'dark:hover:text-white');
+
+            tabText.classList.remove('text-zinc-900', 'bg-white', 'dark:text-white', 'dark:bg-zinc-700', 'shadow-sm', 'font-semibold');
+            tabText.classList.add('text-zinc-500', 'hover:text-zinc-900', 'dark:hover:text-white', 'font-medium');
+
+            txtInput.classList.add('hidden');
+            fileInputArea.classList.remove('hidden');
         }
-        try {
-            // Dùng unescape & encodeURIComponent để hỗ trợ mã hóa chuẩn tiếng Việt (Unicode)
-            output.value = btoa(unescape(encodeURIComponent(input.value)));
-            UI.showAlert('Thành công', 'Đã mã hóa sang Base64.', 'success');
-            scrollToOutput();
-        } catch (err) {
-            output.value = '';
-            UI.showAlert('Lỗi', 'Dữ liệu đầu vào không hợp lệ.', 'error');
-        }
+        clearAll();
     };
 
-    // GIẢI MÃ
-    document.getElementById('btn-decode').onclick = () => {
-        if (!input.value) {
-            output.value = '';
-            return UI.showAlert('Trống', 'Vui lòng nhập chuỗi Base64 cần giải mã.', 'warning');
+    tabText.onclick = () => switchTab('text');
+    tabFile.onclick = () => switchTab('file');
+
+    // --- HELPER FUNCTIONS ---
+    const encodeUTF8ToBase64 = (str) => {
+        return btoa(unescape(encodeURIComponent(str)));
+    };
+    const decodeBase64ToUTF8 = (str) => {
+        return decodeURIComponent(escape(atob(str)));
+    };
+    const makeUrlSafe = (base64Str) => {
+        return base64Str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    };
+    const revertUrlSafe = (base64Str) => {
+        let str = base64Str.replace(/-/g, '+').replace(/_/g, '/');
+        while (str.length % 4) str += '=';
+        return str;
+    };
+
+    // --- FILE INPUT LOGIC ---
+    fileUpload.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            currentFile = e.target.files[0];
+            fileNameDisplay.textContent = `${currentFile.name} (${(currentFile.size / 1024).toFixed(1)} KB)`;
         }
-        try {
-            // Loại bỏ khoảng trắng thừa nếu người dùng dán nhầm
-            const cleanInput = input.value.replace(/\s/g, '');
-            output.value = decodeURIComponent(escape(atob(cleanInput)));
-            UI.showAlert('Thành công', 'Đã giải mã Base64.', 'success');
-            scrollToOutput();
-        } catch (err) {
-            output.value = '';
-            UI.showAlert('Lỗi', 'Chuỗi Base64 không hợp lệ hoặc bị hỏng.', 'error');
+    });
+
+    // --- ENCODE LOGIC ---
+    btnEncode.addEventListener('click', () => {
+        if (currentMode === 'text') {
+            const str = txtInput.value;
+            if (!str) return UI.showAlert('Thông báo', 'Vui lòng nhập văn bản cần mã hóa', 'warning');
+            try {
+                let encoded = encodeUTF8ToBase64(str);
+                if (urlSafeToggle.checked) encoded = makeUrlSafe(encoded);
+                output.value = encoded;
+            } catch (e) {
+                UI.showAlert('Lỗi', 'Không thể mã hóa văn bản này', 'error');
+            }
+        } else {
+            if (!currentFile) return UI.showAlert('Thông báo', 'Vui lòng chọn một tập tin', 'warning');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                let result = e.target.result; // Data URL format: data:image/png;base64,iVBORw0KGgo...
+                if (urlSafeToggle.checked) {
+                    const parts = result.split(',');
+                    if (parts.length === 2) result = parts[0] + ',' + makeUrlSafe(parts[1]);
+                }
+                output.value = result;
+                UI.showAlert('Thành công', 'Đã chuyển file thành mã Base64', 'success');
+            };
+            reader.readAsDataURL(currentFile);
         }
-    };
+    });
 
-    // COPY
-    document.getElementById('b64-copy').onclick = async () => {
-        if (!output.value) return UI.showAlert('Trống', 'Không có kết quả để chép.', 'warning');
-        try {
-            await navigator.clipboard.writeText(output.value);
-            UI.showAlert('Đã chép', 'Kết quả đã được lưu vào Clipboard.', 'success');
-        } catch (e) { UI.showAlert('Lỗi', 'Vui lòng bôi đen và chép thủ công.', 'error'); }
-    };
+    // --- DECODE LOGIC ---
+    btnDecode.addEventListener('click', () => {
+        imgPreviewContainer.classList.add('hidden');
+        btnDownload.classList.add('hidden');
 
-    // PASTE
-    document.getElementById('b64-paste').onclick = async () => {
-        try {
-            const text = await navigator.clipboard.readText();
-            if (!text) return;
-            const start = input.selectionStart;
-            input.value = input.value.substring(0, start) + text + input.value.substring(input.selectionEnd);
-            input.focus();
-        } catch (e) { UI.showAlert('Lỗi dán', 'Trình duyệt chặn, hãy ấn Ctrl+V.', 'error'); }
-    };
+        if (currentMode === 'text') {
+            let str = txtInput.value.trim();
+            if (!str) return UI.showAlert('Thông báo', 'Vui lòng dán mã Base64 cần giải mã', 'warning');
+            try {
+                str = revertUrlSafe(str);
+                output.value = decodeBase64ToUTF8(str);
+            } catch (e) {
+                UI.showAlert('Lỗi', 'Chuỗi Base64 không hợp lệ', 'error');
+            }
+        } else {
+            // Trong tab File, nếu giải mã, user vẫn phải paste mã Base64 vào output (hoặc input text rồi switch)
+            // Để tiện lợi, chúng ta sẽ lấy text từ output nếu input trống
+            let str = txtInput.value.trim();
+            if (!str && output.value) str = output.value.trim();
+            
+            if (!str) return UI.showAlert('Thông báo', 'Vui lòng dán chuỗi Base64 (có data URI) vào vùng Nhập hoặc Kết quả', 'warning');
 
-    // CLEAR
-    document.getElementById('b64-clear').onclick = () => {
-        if (!input.value && !output.value) return;
-        input.value = '';
+            // Xử lý xem có phải là file/ảnh không (có data:image/png;base64,... không)
+            const isDataURI = str.match(/^data:(.*?);base64,(.*)$/);
+            
+            try {
+                if (isDataURI) {
+                    const mime = isDataURI[1];
+                    const b64Data = revertUrlSafe(isDataURI[2]);
+                    
+                    if (mime.startsWith('image/')) {
+                        imgPreview.src = `data:${mime};base64,${b64Data}`;
+                        imgPreviewContainer.classList.remove('hidden');
+                        imgPreviewContainer.classList.add('flex');
+                    }
+                    
+                    // Setup nút download
+                    btnDownload.classList.remove('hidden');
+                    btnDownload.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = `data:${mime};base64,${b64Data}`;
+                        a.download = `downloaded_file.${mime.split('/')[1] || 'bin'}`;
+                        a.click();
+                    };
+                    UI.showAlert('Thành công', 'Đã giải mã thành tập tin thành công', 'success');
+                } else {
+                    // Cố gắng giải mã text thuần
+                    output.value = decodeBase64ToUTF8(revertUrlSafe(str));
+                    UI.showAlert('Giải mã văn bản', 'Mã Base64 này không chứa định dạng File, đã giải mã ra văn bản thường.', 'info');
+                }
+            } catch (e) {
+                UI.showAlert('Lỗi', 'Mã Base64 không hợp lệ hoặc bị hỏng', 'error');
+            }
+        }
+    });
+
+    // --- ACTIONS ---
+    btnCopy.addEventListener('click', () => {
+        if (!output.value) return;
+        navigator.clipboard.writeText(output.value);
+        UI.showAlert('Đã sao chép', 'Kết quả đã được lưu vào Clipboard', 'success');
+    });
+
+    const clearAll = () => {
+        txtInput.value = '';
         output.value = '';
-        input.focus();
+        currentFile = null;
+        fileUpload.value = '';
+        fileNameDisplay.textContent = 'Max 5MB (Khuyến nghị)';
+        imgPreviewContainer.classList.add('hidden');
+        imgPreviewContainer.classList.remove('flex');
+        btnDownload.classList.add('hidden');
     };
 
-    // ĐẢO CHIỀU (Swap)
-    document.getElementById('b64-swap').onclick = () => {
-        if (!output.value) return UI.showAlert('Trống', 'Không có kết quả để đảo chiều.', 'warning');
-        input.value = output.value;
-        output.value = '';
-        UI.showAlert('Đã chuyển', 'Kết quả đã được đưa sang ô Đầu vào.', 'info');
-        if (window.innerWidth <= 768) {
-            document.querySelector('.b64-in').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    };
-
-    // Hàm hỗ trợ cuộn trên mobile
-    function scrollToOutput() {
-        if (window.innerWidth <= 768) {
-            setTimeout(() => { document.querySelector('.b64-out').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 50);
-        }
-    }
-}
+    btnClear.addEventListener('click', clearAll);
+};

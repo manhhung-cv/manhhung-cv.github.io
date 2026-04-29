@@ -3,435 +3,354 @@ import { UI } from '../../js/ui.js';
 export function template() {
     return `
         <style>
-            .ip-widget { max-width: 900px; margin: 0 auto; padding-bottom: 24px; }
-            
-            /* Bento Grid Layout */
-            .ip-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-            @media (min-width: 768px) { .ip-grid { grid-template-columns: repeat(2, 1fr); } }
-            @media (min-width: 992px) { .ip-grid { grid-template-columns: repeat(3, 1fr); } }
-
-            /* Card Style */
-            .ip-card { 
-                background: var(--bg-main); border: 1px solid var(--border); 
-                border-radius: 16px; padding: 20px; display: flex; flex-direction: column; 
-                transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
+            /* CSS hô biến bản đồ thành Dark Mode siêu mượt */
+            .dark #ipc-map-container .leaflet-layer {
+                filter: invert(1) hue-rotate(180deg) brightness(95%) contrast(90%);
             }
-            .ip-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.05); border-color: var(--text-mut); }
-            
-            /* Hero Card (Hiển thị IP chính) */
-            .ip-card-hero { 
-                grid-column: 1 / -1; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(59, 130, 246, 0.1) 100%); 
-                border-color: rgba(16, 185, 129, 0.2); flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;
-            }
-            
-            .ip-hero-left { display: flex; align-items: center; gap: 20px; }
-            .ip-hero-icon { font-size: 3.5rem; color: #10b981; }
-            .ip-hero-info h2 { margin: 0 0 4px 0; font-size: 2.2rem; color: var(--text-main); line-height: 1.2; font-family: 'Courier New', monospace; font-weight: 800; letter-spacing: 1px; }
-            .ip-hero-info p { margin: 0; color: var(--text-mut); font-size: 1rem; font-weight: 500; }
-
-            .btn-ip-copy { 
-                background: var(--bg-main); border: 2px solid #10b981; color: #10b981; 
-                padding: 10px 20px; border-radius: 30px; font-weight: 600; cursor: pointer; 
-                transition: all 0.2s; display: flex; align-items: center; gap: 8px; font-size: 1rem;
-            }
-            .btn-ip-copy:hover { background: #10b981; color: white; }
-
-            /* Tiêu đề nhóm trong Card */
-            .ip-card-title { font-size: 1.05rem; font-weight: 600; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px dashed var(--border); padding-bottom: 12px; }
-            .ip-card-title i { color: #3b82f6; }
-
-            /* Các dòng thông tin (Key - Value) */
-            .ip-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 0.95rem; }
-            .ip-item:last-child { margin-bottom: 0; }
-            .ip-label { color: var(--text-mut); font-weight: 500; }
-            
-            /* Class cho Click-to-copy */
-            .clickable-value { 
-                color: var(--text-main); font-weight: 600; font-family: 'Courier New', monospace; 
-                text-align: right; word-break: break-word; 
-                cursor: pointer; padding: 4px 8px; margin-right: -8px; border-radius: 6px;
-                transition: all 0.2s; position: relative;
-            }
-            .clickable-value:hover { 
-                background: rgba(59, 130, 246, 0.1); color: #3b82f6; 
-            }
-            .clickable-value:active {
-                transform: scale(0.95);
-            }
-            
-            /* Cờ quốc gia */
-            .ip-flag { font-size: 1.2rem; margin-right: 6px; vertical-align: middle; }
-
-            /* Bản đồ OSM Card */
-            .ip-card-map { grid-column: 1 / -1; padding: 0; min-height: 350px; }
-            .ip-map-header { padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-main); display: flex; justify-content: space-between; align-items: center; }
-            .ip-iframe { width: 100%; height: 100%; min-height: 350px; border: none; background: #e5e5e5; display: block; }
-            
-            /* Loader Overlay */
-            .ip-loader-overlay { position: absolute; inset: 0; background: var(--bg-main); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; transition: opacity 0.3s; }
-            .ip-loader-overlay.hidden { opacity: 0; pointer-events: none; }
-            .ip-spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px; }
-            @keyframes spin { to { transform: rotate(360deg); } }
-
         </style>
 
-        <div class="ip-widget">
+        <div class="relative min-h-[500px]">
             
-            <div class="flex-between" style="margin-bottom: 24px;">
-                <div>
-                    <h1 class="h1" style="font-size: 1.5rem; margin-bottom: 4px;">Địa chỉ IP của tôi</h1>
-                    <p class="text-mut" style="font-size: 0.9rem;">Kiểm tra IP công khai, nhà mạng và vị trí địa lý.</p>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-ghost btn-sm" id="btn-ip-download" title="Tải xuống toàn bộ thông tin (.txt)">
-                        <i class="fas fa-download"></i> Tải về
-                    </button>
-                    <button class="btn btn-ghost btn-sm" id="btn-ip-refresh" title="Làm mới dữ liệu">
-                        <i class="fas fa-sync-alt"></i> Làm mới
-                    </button>
+            <div id="ipc-consent-modal" class="absolute inset-0 z-50 flex items-center justify-center bg-white/60 dark:bg-zinc-950/60 backdrop-blur-lg rounded-[32px] transition-all duration-300">
+                <div class="premium-card bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 shadow-2xl rounded-[28px] p-8 max-w-md w-full text-center flex flex-col items-center animate-in zoom-in-95 duration-300 mx-4">
+                    <div class="w-16 h-16 bg-blue-50 dark:bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center text-2xl mb-5 shadow-sm">
+                        <i class="fas fa-radar"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-zinc-900 dark:text-white mb-2 tracking-tight">Cấp quyền định vị IP</h3>
+                    <p class="text-[13px] text-zinc-500 leading-relaxed mb-8">
+                        Để hiển thị bản đồ và phân tích chi tiết dữ liệu mạng, công cụ cần kết nối với <strong class="text-zinc-800 dark:text-zinc-200 font-mono">ipapi.co</strong>. Bạn đồng ý cấp quyền chứ?
+                    </p>
+                    <div class="flex gap-3 w-full">
+                        <button id="btn-ipc-decline" class="flex-1 py-3.5 rounded-xl font-bold text-sm bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all active:scale-95">
+                            Từ chối
+                        </button>
+                        <button id="btn-ipc-accept" class="flex-1 py-3.5 rounded-xl font-bold text-sm bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 transition-all shadow-md active:scale-95">
+                            Chấp nhận
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div class="ip-grid" id="ip-grid-container">
+            <div id="ipc-main-content" class="space-y-5 opacity-0 pointer-events-none hidden transition-opacity duration-500">
                 
-                <div class="ip-loader-overlay" id="ip-loader">
-                    <div class="ip-spinner"></div>
-                    <div style="color: var(--text-mut); font-weight: 500;">Đang quét địa chỉ mạng...</div>
+                <div class="flex justify-between items-end mb-2">
+                    <div>
+                        <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Phân tích IP & Bản đồ</h2>
+                        <p class="text-sm text-zinc-500 mt-1">Trích xuất tối đa dữ liệu từ địa chỉ IP của bạn.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="btn-ipc-copy-all" class="h-10 px-4 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all flex items-center justify-center gap-2 text-[13px] font-bold shadow-sm active:scale-95">
+                            <i class="far fa-copy"></i> <span class="hidden sm:inline">Chép toàn bộ</span>
+                        </button>
+                        <button id="btn-ipc-refresh" class="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 transition-all flex items-center justify-center shadow-md active:scale-95 hover:opacity-90" title="Làm mới">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
                 </div>
 
-                <div class="ip-card ip-card-hero">
-                    <div class="ip-hero-left">
-                        <div class="ip-hero-icon"><i class="fas fa-network-wired"></i></div>
-                        <div class="ip-hero-info">
-                            <p>IP Công khai (Public IP)</p>
-                            <h2 id="ip-main" class="clickable-value" title="Nhấn để sao chép" style="padding:0; margin:0 0 4px 0;">--.---.---.--</h2>
-                            <p id="ip-type" style="font-family: monospace; color: #3b82f6;">Phiên bản: ---</p>
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                    
+                    <div class="lg:col-span-5 flex flex-col gap-4">
+                        
+                        <div class="premium-card bg-zinc-900 dark:bg-zinc-950 border border-zinc-800 rounded-[28px] p-6 sm:p-8 shadow-lg relative overflow-hidden flex flex-col items-center text-center">
+                            <div class="absolute top-0 right-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                            <div class="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                            
+                            <div class="relative z-10 w-full">
+                                <span class="flex justify-center items-center gap-2 text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">
+                                    <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div> Public IP
+                                </span>
+                                <h3 class="text-4xl sm:text-5xl font-black text-white tracking-tight font-mono mb-4" id="ipc-ip">
+                                    <i class="fas fa-circle-notch fa-spin text-zinc-600"></i>
+                                </h3>
+                                <button id="btn-ipc-copy-ip" class="mx-auto px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-all flex items-center gap-2 active:scale-95 border border-white/5 backdrop-blur-sm">
+                                    <i class="fas fa-copy"></i> SAO CHÉP IP
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <button class="btn-ip-copy" id="btn-ip-copy">
-                        <i class="fas fa-copy"></i> Sao chép IP
-                    </button>
-                </div>
 
-                <div class="ip-card">
-                    <div class="ip-card-title"><i class="fas fa-map-marker-alt"></i> Vị trí Địa lý</div>
-                    <div class="ip-item">
-                        <span class="ip-label">Quốc gia</span>
-                        <span class="clickable-value" id="ip-country" title="Nhấn để sao chép"><span class="ip-flag" id="ip-flag"></span><span id="ip-country-text">---</span></span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Tỉnh / Vùng</span>
-                        <span class="clickable-value" id="ip-region" title="Nhấn để sao chép">---</span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Thành phố</span>
-                        <span class="clickable-value" id="ip-city" title="Nhấn để sao chép">---</span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Mã bưu chính</span>
-                        <span class="clickable-value" id="ip-postal" title="Nhấn để sao chép">---</span>
-                    </div>
-                </div>
+                        <div class="premium-card bg-white dark:bg-zinc-900 rounded-[24px] p-5 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm">
+                            <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <i class="fas fa-map-marker-alt text-rose-500"></i> Định vị địa lý
+                            </h3>
+                            <ul class="space-y-3">
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Quốc gia</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-1.5"><span id="ipc-flag">🌍</span> <span id="ipc-country">--</span></span>
+                                </li>
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Khu vực / Tỉnh</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white" id="ipc-region">--</span>
+                                </li>
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Thành phố</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white" id="ipc-city">--</span>
+                                </li>
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Mã bưu chính (Zip)</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white font-mono" id="ipc-postal">--</span>
+                                </li>
+                            </ul>
+                        </div>
 
-                <div class="ip-card">
-                    <div class="ip-card-title"><i class="fas fa-server"></i> Mạng & Cung cấp dịch vụ</div>
-                    <div class="ip-item">
-                        <span class="ip-label">Nhà cung cấp (ISP)</span>
-                        <span class="clickable-value" id="ip-isp" title="Nhấn để sao chép" style="color: #f59e0b;">---</span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Tổ chức (Org)</span>
-                        <span class="clickable-value" id="ip-org" title="Nhấn để sao chép">---</span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Số ASN</span>
-                        <span class="clickable-value" id="ip-asn" title="Nhấn để sao chép">---</span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Tọa độ (Lat/Lon)</span>
-                        <span class="clickable-value" id="ip-coord" title="Nhấn để sao chép">--- / ---</span>
-                    </div>
-                </div>
+                        <div class="premium-card bg-white dark:bg-zinc-900 rounded-[24px] p-5 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm">
+                            <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <i class="fas fa-server text-indigo-500"></i> Thông tin Mạng
+                            </h3>
+                            <ul class="space-y-3">
+                                <li class="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500 shrink-0 mr-4">Nhà cung cấp (ISP)</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white text-right break-words" id="ipc-org">--</span>
+                                </li>
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Số hiệu mạng (ASN)</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white font-mono" id="ipc-asn">--</span>
+                                </li>
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Loại địa chỉ</span>
+                                    <span class="text-xs px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-md font-bold text-zinc-700 dark:text-zinc-300" id="ipc-type">--</span>
+                                </li>
+                            </ul>
+                        </div>
 
-                <div class="ip-card">
-                    <div class="ip-card-title"><i class="fas fa-globe"></i> Thông tin Phụ</div>
-                    <div class="ip-item">
-                        <span class="ip-label">Múi giờ</span>
-                        <span class="clickable-value" id="ip-timezone" title="Nhấn để sao chép">---</span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Giờ địa phương</span>
-                        <span class="clickable-value" id="ip-localtime" title="Nhấn để sao chép">---</span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Mã gọi quốc tế</span>
-                        <span class="clickable-value" id="ip-calling" title="Nhấn để sao chép">---</span>
-                    </div>
-                    <div class="ip-item">
-                        <span class="ip-label">Châu lục</span>
-                        <span class="clickable-value" id="ip-continent" title="Nhấn để sao chép">---</span>
-                    </div>
-                </div>
+                        <div class="premium-card bg-white dark:bg-zinc-900 rounded-[24px] p-5 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm">
+                            <h3 class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <i class="fas fa-globe-asia text-emerald-500"></i> Dữ liệu Khu vực
+                            </h3>
+                            <ul class="space-y-3">
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Múi giờ</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white" id="ipc-timezone">--</span>
+                                </li>
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Tiền tệ</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white" id="ipc-currency">--</span>
+                                </li>
+                                <li class="flex justify-between items-end border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500">Mã vùng điện thoại</span>
+                                    <span class="text-sm font-bold text-zinc-900 dark:text-white font-mono" id="ipc-calling-code">--</span>
+                                </li>
+                                <li class="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800/50 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-xs font-medium text-zinc-500 shrink-0 mr-4">Ngôn ngữ</span>
+                                    <span class="text-[13px] font-bold text-zinc-900 dark:text-white text-right truncate" id="ipc-languages">--</span>
+                                </li>
+                            </ul>
+                        </div>
 
-                <div class="ip-card ip-card-map shadow-sm">
-                    <div class="ip-map-header">
-                        <span><i class="fas fa-map" style="color: #3b82f6; margin-right: 8px;"></i> Bản đồ vị trí (OpenStreetMap)</span>
-                        <span style="font-size: 0.8rem; color: var(--text-mut); font-weight: normal;">*Vị trí ước tính theo dải IP</span>
                     </div>
-                    <iframe class="ip-iframe" id="ip-map-frame" src="about:blank" title="Bản đồ IP"></iframe>
-                </div>
 
+                    <div class="lg:col-span-7 h-[400px] lg:h-auto min-h-[600px] premium-card bg-zinc-100 dark:bg-zinc-950 rounded-[32px] border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden relative p-1.5 flex flex-col">
+                        
+                        <div class="flex-1 w-full relative rounded-[26px] overflow-hidden">
+                            <div id="ipc-map-container" class="absolute inset-0 z-10 bg-zinc-100 dark:bg-zinc-900">
+                                </div>
+                            
+                            <div class="absolute bottom-4 right-4 z-20 px-4 py-3 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-2xl border border-white/20 dark:border-zinc-700/50 shadow-lg flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-500/20 text-blue-500 flex items-center justify-center">
+                                    <i class="fas fa-crosshairs"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Tọa độ GPS</p>
+                                    <p id="ipc-coords" class="text-sm font-mono font-black text-zinc-900 dark:text-white">--</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
             </div>
 
         </div>
+        
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     `;
 }
 
 export function init() {
-    // --- DOM Elements ---
+    const modal = document.getElementById('ipc-consent-modal');
+    const mainContent = document.getElementById('ipc-main-content');
+    const btnAccept = document.getElementById('btn-ipc-accept');
+    const btnDecline = document.getElementById('btn-ipc-decline');
+    const btnRefresh = document.getElementById('btn-ipc-refresh');
+    const btnCopyIp = document.getElementById('btn-ipc-copy-ip');
+    const btnCopyAll = document.getElementById('btn-ipc-copy-all');
+
     const els = {
-        loader: document.getElementById('ip-loader'),
-        main: document.getElementById('ip-main'),
-        type: document.getElementById('ip-type'),
-        btnCopy: document.getElementById('btn-ip-copy'),
-        btnRefresh: document.getElementById('btn-ip-refresh'),
-        btnDownload: document.getElementById('btn-ip-download'),
-        
-        countryText: document.getElementById('ip-country-text'),
-        flag: document.getElementById('ip-flag'),
-        region: document.getElementById('ip-region'),
-        city: document.getElementById('ip-city'),
-        postal: document.getElementById('ip-postal'),
-        
-        isp: document.getElementById('ip-isp'),
-        org: document.getElementById('ip-org'),
-        asn: document.getElementById('ip-asn'),
-        coord: document.getElementById('ip-coord'),
-        
-        timezone: document.getElementById('ip-timezone'),
-        localtime: document.getElementById('ip-localtime'),
-        calling: document.getElementById('ip-calling'),
-        continent: document.getElementById('ip-continent'),
-        
-        mapFrame: document.getElementById('ip-map-frame')
+        ip: document.getElementById('ipc-ip'),
+        type: document.getElementById('ipc-type'),
+        flag: document.getElementById('ipc-flag'),
+        country: document.getElementById('ipc-country'),
+        region: document.getElementById('ipc-region'),
+        city: document.getElementById('ipc-city'),
+        postal: document.getElementById('ipc-postal'),
+        org: document.getElementById('ipc-org'),
+        asn: document.getElementById('ipc-asn'),
+        timezone: document.getElementById('ipc-timezone'),
+        currency: document.getElementById('ipc-currency'),
+        callingCode: document.getElementById('ipc-calling-code'),
+        languages: document.getElementById('ipc-languages'),
+        coords: document.getElementById('ipc-coords')
     };
 
-    let currentIP = '';
-    let fullDataForCopy = '';
+    let map = null;
+    let marker = null;
+    let currentData = null;
 
-    const getFlagEmoji = (countryCode) => {
-        if (!countryCode) return '';
-        const codePoints = countryCode.toUpperCase().split('').map(char => 127397 + char.charCodeAt());
-        return String.fromCodePoint(...codePoints);
+    // --- TẢI THƯ VIỆN LEAFLET DỰ PHÒNG ---
+    const loadLeaflet = () => {
+        return new Promise((resolve) => {
+            if (window.L) return resolve();
+            const script = document.createElement('script');
+            script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+            script.integrity = "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
+            script.crossOrigin = "";
+            script.onload = resolve;
+            document.head.appendChild(script);
+        });
     };
 
-    // Hàm tạo chuỗi lưu file
-    const buildDownloadText = (data, isFallback = false) => {
-        if (!isFallback) {
-            fullDataForCopy = `--- THÔNG TIN IP ---
-IP: ${data.ip}
-Phiên bản: ${data.version || 'IPv4'}
+    // --- KHỞI TẠO HOẶC CẬP NHẬT BẢN ĐỒ ---
+    const updateMap = (lat, lon) => {
+        if (!window.L) return;
 
-[ VỊ TRÍ ĐỊA LÝ ]
-Quốc gia: ${data.country_name || 'Không xác định'}
-Tỉnh/Vùng: ${data.region || 'Không xác định'}
-Thành phố: ${data.city || 'Không xác định'}
-Mã bưu chính: ${data.postal || 'N/A'}
+        if (!map) {
+            map = L.map('ipc-map-container', {
+                zoomControl: false,
+                attributionControl: false
+            }).setView([lat, lon], 13);
 
-[ MẠNG & NHÀ CUNG CẤP ]
-ISP: ${data.org || 'Không xác định'}
-Tổ chức: ${data.org || 'Không xác định'}
-Số ASN: ${data.asn || 'N/A'}
-Tọa độ: ${data.latitude} / ${data.longitude}
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+            }).addTo(map);
 
-[ THÔNG TIN PHỤ ]
-Múi giờ: ${data.timezone || 'N/A'}
-Mã gọi quốc tế: +${data.country_calling_code || 'N/A'}
-Châu lục: ${data.continent_code || 'N/A'}
-Thời gian xuất: ${new Date().toLocaleString('vi-VN')}
-`;
+            // Tùy chỉnh Marker phong cách Minimal Premium (Trắng đen có hiệu ứng)
+            const icon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="w-7 h-7 bg-zinc-900 dark:bg-white rounded-full border-4 border-white dark:border-zinc-900 shadow-xl flex items-center justify-center animate-bounce">
+                           <div class="w-1.5 h-1.5 bg-white dark:bg-zinc-900 rounded-full"></div>
+                       </div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+
+            marker = L.marker([lat, lon], { icon }).addTo(map);
         } else {
-            fullDataForCopy = `--- THÔNG TIN IP ---
-IP: ${data.ipAddress}
-Phiên bản: IPv${data.ipVersion}
-
-[ VỊ TRÍ ĐỊA LÝ ]
-Quốc gia: ${data.countryName || 'Không xác định'}
-Tỉnh/Vùng: ${data.regionName || 'Không xác định'}
-Thành phố: ${data.cityName || 'Không xác định'}
-Mã bưu chính: ${data.zipCode || 'N/A'}
-
-[ MẠNG & NHÀ CUNG CẤP ]
-ISP: Dữ liệu bị giới hạn
-Tổ chức: N/A
-Số ASN: N/A
-Tọa độ: ${data.latitude} / ${data.longitude}
-
-[ THÔNG TIN PHỤ ]
-Múi giờ: ${data.timeZone || 'N/A'}
-Thời gian xuất: ${new Date().toLocaleString('vi-VN')}
-`;
+            map.setView([lat, lon], 13, { animate: true });
+            marker.setLatLng([lat, lon]);
         }
     };
 
-    // --- Hàm lấy dữ liệu (Hệ thống API Kép) ---
+    // --- FETCH DATA ---
     const fetchIPData = async () => {
-        els.loader.classList.remove('hidden');
+        const icon = btnRefresh.querySelector('i');
+        icon.classList.add('fa-spin');
+        els.ip.innerHTML = '<i class="fas fa-circle-notch fa-spin text-zinc-600"></i>';
         
         try {
-            // API CHÍNH
             const response = await fetch('https://ipapi.co/json/');
-            if (!response.ok) throw new Error('API chính phản hồi lỗi ' + response.status);
-            
             const data = await response.json();
-            if (data.error) throw new Error(data.reason || 'Lỗi API');
 
-            currentIP = data.ip;
-            els.main.textContent = data.ip;
-            els.type.textContent = `Phiên bản: ${data.version || 'IPv4'}`;
-            
-            els.flag.textContent = getFlagEmoji(data.country_code);
-            els.countryText.textContent = data.country_name || 'Không xác định';
-            
-            els.region.textContent = data.region || 'Không xác định';
-            els.city.textContent = data.city || 'Không xác định';
-            els.postal.textContent = data.postal || 'N/A';
-            
-            els.isp.textContent = data.org || 'Không xác định';
-            els.org.textContent = data.org || 'Không xác định';
-            els.asn.textContent = data.asn || 'N/A';
-            
-            const lat = data.latitude;
-            const lon = data.longitude;
-            els.coord.textContent = (lat && lon) ? `${lat} / ${lon}` : 'N/A';
+            if (data.error) throw new Error(data.reason);
+            currentData = data;
 
-            els.timezone.textContent = data.timezone || 'N/A';
-            try { els.localtime.textContent = new Date().toLocaleString('vi-VN', { timeZone: data.timezone }); } 
-            catch(e) { els.localtime.textContent = 'N/A'; }
-            
-            els.calling.textContent = data.country_calling_code ? `+${data.country_calling_code}` : 'N/A';
-            els.continent.textContent = data.continent_code || 'N/A';
+            // Render Hero & Network
+            els.ip.textContent = data.ip;
+            els.type.textContent = data.version || 'IPv4';
+            els.org.textContent = data.org || '--';
+            els.asn.textContent = data.asn || '--';
 
-            buildDownloadText(data, false);
+            // Render Location
+            els.flag.textContent = countryToEmoji(data.country_code);
+            els.country.textContent = data.country_name || '--';
+            els.region.textContent = data.region || '--';
+            els.city.textContent = data.city || '--';
+            els.postal.textContent = data.postal || '--';
 
-            if (lat && lon) {
-                const offset = 0.05; 
-                els.mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${lon-offset},${lat-offset},${lon+offset},${lat+offset}&layer=mapnik&marker=${lat},${lon}`;
+            // Render Regional
+            els.timezone.textContent = data.timezone ? `${data.timezone} (UTC ${data.utc_offset})` : '--';
+            els.currency.textContent = data.currency ? `${data.currency} - ${data.currency_name}` : '--';
+            els.callingCode.textContent = data.country_calling_code || '--';
+            els.languages.textContent = data.languages ? data.languages.split(',').join(', ') : '--';
+
+            // Coordinates & Map
+            if (data.latitude && data.longitude) {
+                els.coords.textContent = `${data.latitude}, ${data.longitude}`;
+                await loadLeaflet();
+                updateMap(data.latitude, data.longitude);
+            } else {
+                els.coords.textContent = '--';
             }
 
         } catch (error) {
-            console.warn('API Chính lỗi, chuyển sang API Dự phòng:', error);
-            
-            // API DỰ PHÒNG
-            try {
-                const fallbackRes = await fetch('https://freeipapi.com/api/json');
-                if (!fallbackRes.ok) throw new Error('API dự phòng cũng lỗi');
-                const fbData = await fallbackRes.json();
-                
-                currentIP = fbData.ipAddress;
-                els.main.textContent = fbData.ipAddress;
-                els.type.textContent = `Phiên bản: IPv${fbData.ipVersion}`;
-                
-                els.flag.textContent = ''; 
-                els.countryText.textContent = fbData.countryName || 'Không xác định';
-                els.region.textContent = fbData.regionName || 'Không xác định';
-                els.city.textContent = fbData.cityName || 'Không xác định';
-                els.postal.textContent = fbData.zipCode || 'N/A';
-                
-                els.timezone.textContent = fbData.timeZone || 'N/A';
-                els.isp.textContent = 'Dữ liệu ISP bị giới hạn';
-                els.org.textContent = 'N/A';
-                els.asn.textContent = 'N/A';
-                
-                buildDownloadText(fbData, true);
-
-                if (fbData.latitude && fbData.longitude) {
-                    els.coord.textContent = `${fbData.latitude} / ${fbData.longitude}`;
-                    const offset = 0.05; 
-                    els.mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${fbData.longitude-offset},${fbData.latitude-offset},${fbData.longitude+offset},${fbData.latitude+offset}&layer=mapnik&marker=${fbData.latitude},${fbData.longitude}`;
-                }
-
-            } catch (fallbackError) {
-                console.error('Cả 2 API đều thất bại:', fallbackError);
-                UI.showAlert('Lỗi', 'Không thể kết nối máy chủ để lấy thông tin IP. Vui lòng tắt trình chặn quảng cáo (Adblock) hoặc VPN và thử lại.', 'error');
-                els.main.textContent = 'Lỗi kết nối';
-            }
+            console.error(error);
+            UI.showAlert('Lỗi', 'Không thể lấy dữ liệu IP. Hãy thử tắt AdBlock.', 'error');
+            els.ip.textContent = 'Lỗi kết nối';
         } finally {
-            setTimeout(() => { els.loader.classList.add('hidden'); }, 300);
+            icon.classList.remove('fa-spin');
         }
     };
 
-    // --- SỰ KIỆN NÚT SAO CHÉP CHÍNH ---
-    els.btnCopy.addEventListener('click', async () => {
-        if (!currentIP || currentIP === 'Lỗi kết nối') return;
+    const countryToEmoji = (code) => {
+        if (!code) return '🌍';
+        return code.toUpperCase().replace(/./g, char => String.fromCodePoint(char.charCodeAt(0) + 127397));
+    };
+
+    // --- SỰ KIỆN NÚT BẤM ---
+    btnDecline.onclick = () => window.location.hash = '#/';
+
+    btnAccept.onclick = () => {
+        modal.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+            mainContent.classList.replace('opacity-0', 'opacity-100');
+            mainContent.classList.add('pointer-events-auto');
+            fetchIPData();
+        }, 300);
+    };
+
+    btnRefresh.onclick = fetchIPData;
+
+    btnCopyIp.onclick = async () => {
+        if (!currentData?.ip) return;
         try {
-            await navigator.clipboard.writeText(currentIP);
-            UI.showAlert('Đã chép', `IP: ${currentIP} đã lưu vào bộ nhớ đệm.`, 'success');
-        } catch (err) {
-            UI.showAlert('Lỗi', 'Trình duyệt không hỗ trợ sao chép.', 'error');
+            await navigator.clipboard.writeText(currentData.ip);
+            const originalHtml = btnCopyIp.innerHTML;
+            btnCopyIp.innerHTML = '<i class="fas fa-check"></i> ĐÃ CHÉP';
+            btnCopyIp.classList.add('text-emerald-400', 'border-emerald-500/50');
+            setTimeout(() => {
+                btnCopyIp.innerHTML = originalHtml;
+                btnCopyIp.classList.remove('text-emerald-400', 'border-emerald-500/50');
+            }, 2000);
+        } catch (e) {
+            UI.showAlert('Lỗi', 'Không thể copy', 'error');
         }
-    });
+    };
 
-    // --- SỰ KIỆN CLICK-TO-COPY TRỰC TIẾP LÊN DỮ LIỆU ---
-    document.querySelectorAll('.clickable-value').forEach(el => {
-        el.addEventListener('click', async () => {
-            // Lọc ra text chính xác cần copy (Nếu click vào dòng Quốc gia thì bỏ qua cái emoji cờ)
-            let textToCopy = el.id === 'ip-country' 
-                ? document.getElementById('ip-country-text').innerText.trim() 
-                : el.innerText.trim();
+    btnCopyAll.onclick = async () => {
+        if (!currentData) return;
+        const text = `--- BÁO CÁO CHI TIẾT IP ---
+IP: ${currentData.ip} (${currentData.version})
+ISP: ${currentData.org}
+ASN: ${currentData.asn}
 
-            if (textToCopy && textToCopy !== '---' && textToCopy !== 'N/A' && !textToCopy.includes('Không xác định')) {
-                try {
-                    await navigator.clipboard.writeText(textToCopy);
-                    UI.showAlert('Đã chép', `Đã sao chép: ${textToCopy}`, 'success');
-                    
-                    // Hiệu ứng nháy xanh lá báo thành công
-                    const originalColor = el.style.color;
-                    const originalBg = el.style.background;
-                    el.style.color = '#10b981';
-                    el.style.background = 'rgba(16, 185, 129, 0.1)';
-                    setTimeout(() => {
-                        el.style.color = originalColor;
-                        el.style.background = originalBg;
-                    }, 500);
+Quốc gia: ${currentData.country_name} (${currentData.country_code})
+Thành phố: ${currentData.city}
+Khu vực: ${currentData.region}
+Mã bưu chính: ${currentData.postal}
+Tọa độ: ${currentData.latitude}, ${currentData.longitude}
 
-                } catch (e) {
-                    UI.showAlert('Lỗi', 'Trình duyệt không hỗ trợ sao chép.', 'error');
-                }
-            } else {
-                UI.showAlert('Thông báo', 'Không có dữ liệu hợp lệ để chép.', 'warning');
-            }
-        });
-    });
+Múi giờ: ${currentData.timezone} (UTC ${currentData.utc_offset})
+Tiền tệ: ${currentData.currency} - ${currentData.currency_name}
+Mã vùng gọi: ${currentData.country_calling_code}
+Ngôn ngữ: ${currentData.languages}`;
 
-    // --- SỰ KIỆN TẢI XUỐNG ---
-    els.btnDownload.addEventListener('click', () => {
-        if (!currentIP || currentIP === 'Lỗi kết nối') {
-            return UI.showAlert('Thông báo', 'Không có dữ liệu hợp lệ để tải.', 'warning');
+        try {
+            await navigator.clipboard.writeText(text);
+            UI.showAlert('Đã chép', 'Toàn bộ thông tin báo cáo đã được lưu vào bộ nhớ tạm.', 'success');
+        } catch (e) {
+            UI.showAlert('Lỗi', 'Không thể copy', 'error');
         }
-        
-        const blob = new Blob([fullDataForCopy], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        
-        const safeFileName = currentIP.replace(/:/g, '-');
-        a.download = `IP_Info_${safeFileName}.txt`;
-        
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    });
-
-    // --- SỰ KIỆN REFRESH ---
-    els.btnRefresh.addEventListener('click', () => {
-        const icon = els.btnRefresh.querySelector('i');
-        icon.classList.add('fa-spin');
-        fetchIPData().then(() => {
-            setTimeout(() => icon.classList.remove('fa-spin'), 500);
-        });
-    });
-
-    // Chạy mặc định khi vào tool
-    fetchIPData();
+    };
 }

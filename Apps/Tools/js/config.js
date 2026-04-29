@@ -5,7 +5,13 @@ export const CATEGORIES = [
     { id: 'text', name: 'Văn Bản', icon: 'fas fa-align-left', desc: 'Xử lý chuỗi, định dạng văn bản' },
     { id: 'life', name: 'Đời Sống', icon: 'fas fa-heartbeat', desc: 'Sức khỏe, thời gian và sinh hoạt' },
     { id: 'dev', name: 'Developer', icon: 'fas fa-code', desc: 'Công cụ lập trình, web và dữ liệu' },
-    { id: 'system', name: 'Hệ Thống', icon: 'fas fa-laptop-code', desc: 'Mạng, bảo mật và thiết bị' }
+    { id: 'system', name: 'Hệ Thống', icon: 'fas fa-laptop-code', desc: 'Mạng, bảo mật và thiết bị' },
+{ 
+    id: 'entertainment', 
+    name: 'Giải Trí', 
+    icon: 'fas fa-star', 
+    desc: 'Trò chơi, sự kiện và tiện ích thư giãn' 
+}
 ];
 
 export const TOOLS = [
@@ -161,6 +167,14 @@ export const TOOLS = [
         desc: 'Tính toán thời gian đi ngủ và thức dậy tối ưu dựa trên chu kỳ giấc ngủ sinh học (90 phút).',
         tags: ['ngủ', 'giấc ngủ', 'thức dậy', 'chu kỳ', 'sức khỏe', 'sleep']
     },
+   {
+    id: 'led-matrix',
+    catId: 'entertainment', // Hoặc 'tools' tùy thuộc vào cấu trúc danh mục của bạn
+    name: 'Bảng LED Cổ Vũ',
+    icon: 'fa-solid fa-bolt', // Hoặc 'fa-solid fa-display', 'fa-solid fa-font'
+    desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
+    tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
+},
 
     // ==========================================
     // 6. DEVELOPER (dev)

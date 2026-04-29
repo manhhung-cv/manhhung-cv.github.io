@@ -3,383 +3,409 @@ import { UI } from '../../js/ui.js';
 export function template() {
     return `
         <style>
-            .pg-widget { max-width: 600px; margin: 0 auto; padding-bottom: 24px; }
+            .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
             
-            /* Thanh gạt Chế độ (Segmented Control) */
-            .pg-mode-toggle { 
-                display: flex; background: var(--bg-sec); border-radius: 30px; 
-                padding: 4px; margin-bottom: 20px; border: 1px solid var(--border); 
-            }
-            .pg-mode-btn { 
-                flex: 1; text-align: center; padding: 12px 16px; border-radius: 26px; 
-                border: none; background: transparent; color: var(--text-mut); 
-                font-weight: 600; cursor: pointer; transition: all 0.3s ease; 
-                font-size: 0.95rem; font-family: var(--font); display: flex; align-items: center; justify-content: center; gap: 8px;
-            }
-            .pg-mode-btn:hover { color: var(--text-main); }
-            .pg-mode-btn.active { background: var(--bg-main); color: #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-
-            /* Khu vực hiển thị mật khẩu */
-            .pg-display-card { 
-                background: var(--bg-sec); border: 2px solid var(--border); 
-                border-radius: 16px; padding: 20px; margin-bottom: 20px;
-                position: relative; transition: border-color 0.3s;
-            }
-            .pg-display-card:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+            /* Tùy chỉnh Range Slider phong cách Flat */
+            .flat-range { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+            .flat-range::-webkit-slider-runnable-track { height: 4px; background: #e4e4e7; border-radius: 2px; }
+            .dark .flat-range::-webkit-slider-runnable-track { background: #27272a; }
+            .flat-range::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #18181b; margin-top: -6px; border: 2px solid #fff; }
+            .dark .flat-range::-webkit-slider-thumb { background: #fff; border-color: #18181b; }
             
-            .pg-input-row { display: flex; gap: 12px; align-items: center; }
-            .pg-input { 
-                flex: 1; border: none; background: transparent; font-size: 1.8rem; 
-                font-family: 'Courier New', Courier, monospace; font-weight: 700; 
-                color: var(--text-main); outline: none; width: 100%; letter-spacing: 2px;
-            }
-            .pg-input::placeholder { color: var(--text-mut); opacity: 0.4; letter-spacing: 0; font-size: 1.2rem; font-family: var(--font); }
-            
-            .pg-action-btns { display: flex; gap: 8px; }
-            .pg-btn-icon { 
-                width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border);
-                background: var(--bg-main); color: var(--text-mut); cursor: pointer; 
-                display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-                transition: all 0.2s;
-            }
-            .pg-btn-icon:hover { color: #3b82f6; border-color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
-
-            /* Thanh đo độ mạnh */
-            .pg-strength-wrapper { margin-top: 16px; }
-            .pg-strength-header { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .pg-strength-bar-bg { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; display: flex; }
-            .pg-strength-bar { height: 100%; width: 0%; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 3px; }
-            
-            /* Khu vực các Tab nội dung */
-            .pg-pane { display: none; animation: fadeIn 0.3s ease; }
-            .pg-pane.active { display: block; }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-            /* Tab Tạo tự động */
-            .pg-slider-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
-            .pg-slider-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-            .pg-slider-val { font-size: 1.5rem; font-weight: 700; color: #3b82f6; }
-            
-            .pg-range { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: var(--border); outline: none; cursor: pointer; }
-            .pg-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #3b82f6; cursor: pointer; border: 4px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.2); transition: transform 0.1s; }
-            .pg-range::-webkit-slider-thumb:hover { transform: scale(1.1); }
-
-            .pg-options-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 24px; }
-            @media (min-width: 480px) { .pg-options-grid { grid-template-columns: 1fr 1fr; } }
-            
-            .pg-toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-sec); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; user-select: none; transition: border-color 0.2s; }
-            .pg-toggle-row:hover { border-color: var(--text-mut); }
-            .pg-toggle-label { font-weight: 500; color: var(--text-main); font-size: 0.95rem; }
-            
-            .pg-switch { position: relative; width: 44px; height: 24px; background: var(--border); border-radius: 12px; transition: 0.3s; }
-            .pg-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-            input:checked + .pg-switch { background: #3b82f6; }
-            input:checked + .pg-switch::after { transform: translateX(20px); }
-            input:disabled + .pg-switch { opacity: 0.5; cursor: not-allowed; }
-
-            /* Tab Kiểm tra (Checklist) */
-            .pg-criteria { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
-            .pg-criteria li { display: flex; align-items: center; gap: 12px; font-size: 1rem; color: var(--text-mut); transition: all 0.3s; font-weight: 500; }
-            .pg-criteria li i { font-size: 1.2rem; width: 24px; text-align: center; }
-            .pg-criteria li.pass { color: #10b981; }
-            
+            /* Tùy chỉnh Checkbox Toggle phẳng */
+            .flat-toggle { appearance: none; width: 36px; height: 20px; background: #e4e4e7; border-radius: 10px; position: relative; cursor: pointer; outline: none; transition: background 0.2s; border: 1px solid #d4d4d8; }
+            .dark .flat-toggle { background: #27272a; border-color: #3f3f46; }
+            .flat-toggle::after { content: ''; position: absolute; top: 1px; left: 1px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform 0.2s; border: 1px solid #d4d4d8; }
+            .dark .flat-toggle::after { background: #71717a; border-color: #3f3f46; }
+            .flat-toggle:checked { background: #18181b; border-color: #18181b; }
+            .dark .flat-toggle:checked { background: #fff; border-color: #fff; }
+            .flat-toggle:checked::after { transform: translateX(16px); background: #fff; border-color: #18181b; }
+            .dark .flat-toggle:checked::after { background: #18181b; border-color: #fff; }
         </style>
 
-        <div class="pg-widget">
-            
-            <div class="flex-between" style="margin-bottom: 20px;">
+        <div class="relative flex flex-col w-full max-w-[340px] mx-auto sm:max-w-none min-h-[500px]">
+            <div class="flex justify-between items-center mb-4 px-1">
                 <div>
-                    <h1 class="h1" style="font-size: 1.5rem; margin-bottom: 4px;">Quản lý Mật Khẩu</h1>
-                    <p class="text-mut" style="font-size: 0.9rem;">Sinh mã bảo mật và đánh giá độ mạnh offline.</p>
+                    <h2 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">Mật Khẩu</h2>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button class="h-8 px-3 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-transform" id="btn-pg-history">
+                        <i class="fas fa-history"></i> Lịch sử
+                    </button>
                 </div>
             </div>
 
-            <div class="pg-mode-toggle">
-                <button class="pg-mode-btn active" data-target="pane-gen"><i class="fas fa-magic"></i> Tạo tự động</button>
-                <button class="pg-mode-btn" data-target="pane-check"><i class="fas fa-shield-check"></i> Kiểm tra cá nhân</button>
-            </div>
-
-            <div class="pg-display-card shadow-sm">
-                <div class="pg-input-row">
-                    <input type="text" class="pg-input" id="pg-output" placeholder="Nhập hoặc tạo mật khẩu...">
-                    <div class="pg-action-btns">
-                        <button class="pg-btn-icon" id="btn-pg-eye" title="Ẩn/Hiện mật khẩu"><i class="fas fa-eye-slash"></i></button>
-                        <button class="pg-btn-icon" id="btn-pg-refresh" title="Tạo mới ngẫu nhiên"><i class="fas fa-sync-alt"></i></button>
-                        <button class="pg-btn-icon" id="btn-pg-copy" title="Sao chép" style="color: #10b981; border-color: rgba(16,185,129,0.3);"><i class="fas fa-copy"></i></button>
-                    </div>
-                </div>
+            <div class="w-full max-w-[340px] mx-auto bg-white dark:bg-[#09090b] rounded-[24px] border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden relative">
                 
-                <div class="pg-strength-wrapper">
-                    <div class="pg-strength-header">
-                        <span style="color: var(--text-mut);">Độ mạnh:</span>
-                        <span id="pg-strength-lbl">Đang chờ...</span>
+                <div class="p-5 pb-4 bg-zinc-50 dark:bg-[#121214] border-b border-zinc-200 dark:border-zinc-800">
+                    <div class="relative flex items-center justify-between mb-3">
+                        <input type="text" id="pg-output" class="w-full bg-transparent border-none outline-none text-2xl font-mono font-medium text-zinc-900 dark:text-white tracking-wider pr-10 truncate selection:bg-zinc-200 dark:selection:bg-zinc-700" readonly>
+                        <button id="btn-pg-copy" class="absolute right-0 w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center active:scale-90 transition-transform"><i class="far fa-copy"></i></button>
                     </div>
-                    <div class="pg-strength-bar-bg">
-                        <div class="pg-strength-bar" id="pg-strength-bar"></div>
+
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 flex gap-1 h-1.5">
+                            <div class="flex-1 rounded-full bg-zinc-200 dark:bg-zinc-800 transition-colors" id="st-1"></div>
+                            <div class="flex-1 rounded-full bg-zinc-200 dark:bg-zinc-800 transition-colors" id="st-2"></div>
+                            <div class="flex-1 rounded-full bg-zinc-200 dark:bg-zinc-800 transition-colors" id="st-3"></div>
+                            <div class="flex-1 rounded-full bg-zinc-200 dark:bg-zinc-800 transition-colors" id="st-4"></div>
+                        </div>
+                        <span class="text-[10px] font-bold uppercase w-12 text-right" id="st-text">--</span>
                     </div>
                 </div>
-            </div>
 
-            <div id="pane-gen" class="pg-pane active">
-                <div class="pg-slider-card shadow-sm">
-                    <div class="pg-slider-header">
-                        <span style="font-weight: 600; color: var(--text-main);">Độ dài mật khẩu</span>
-                        <span class="pg-slider-val"><span id="pg-length-val">16</span> <span style="font-size: 1rem; color: var(--text-mut); font-weight: 500;">ký tự</span></span>
+                <div class="p-5 flex flex-col gap-5">
+                    
+                    <div class="flex p-1 bg-zinc-100 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <button class="pg-mode-btn active flex-1 py-1.5 text-[11px] font-bold rounded-lg bg-white dark:bg-[#18181b] text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 transition-all" data-mode="random">Ngẫu nhiên</button>
+                        <button class="pg-mode-btn flex-1 py-1.5 text-[11px] font-bold rounded-lg text-zinc-500 border border-transparent transition-all" data-mode="pronounceable">Dễ đọc</button>
                     </div>
-                    <input type="range" class="pg-range" id="pg-length" min="4" max="64" value="16">
 
-                    <div class="pg-options-grid">
-                        <label class="pg-toggle-row">
-                            <span class="pg-toggle-label">In hoa (A-Z)</span>
-                            <input type="checkbox" id="chk-upper" class="pg-chk" style="display:none;" checked>
-                            <div class="pg-switch"></div>
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-[12px] font-bold text-zinc-900 dark:text-white">Độ dài</label>
+                            <span class="text-[12px] font-mono font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700" id="pg-val-len">16</span>
+                        </div>
+                        <input type="range" id="pg-range-len" min="4" max="64" value="16" class="flat-range w-full">
+                    </div>
+
+                    <div class="space-y-3" id="pg-options">
+                        <label class="flex items-center justify-between group cursor-pointer">
+                            <span class="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">Chữ hoa (A-Z)</span>
+                            <input type="checkbox" id="opt-upper" class="flat-toggle" checked>
                         </label>
-                        <label class="pg-toggle-row">
-                            <span class="pg-toggle-label">In thường (a-z)</span>
-                            <input type="checkbox" id="chk-lower" class="pg-chk" style="display:none;" checked>
-                            <div class="pg-switch"></div>
+                        <label class="flex items-center justify-between group cursor-pointer">
+                            <span class="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">Chữ thường (a-z)</span>
+                            <input type="checkbox" id="opt-lower" class="flat-toggle" checked>
                         </label>
-                        <label class="pg-toggle-row">
-                            <span class="pg-toggle-label">Chữ số (0-9)</span>
-                            <input type="checkbox" id="chk-num" class="pg-chk" style="display:none;" checked>
-                            <div class="pg-switch"></div>
+                        <label class="flex items-center justify-between group cursor-pointer">
+                            <span class="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">Chữ số (0-9)</span>
+                            <input type="checkbox" id="opt-number" class="flat-toggle" checked>
                         </label>
-                        <label class="pg-toggle-row">
-                            <span class="pg-toggle-label">Ký tự đặc biệt (!@#)</span>
-                            <input type="checkbox" id="chk-sym" class="pg-chk" style="display:none;" checked>
-                            <div class="pg-switch"></div>
+                        <label class="flex items-center justify-between group cursor-pointer">
+                            <span class="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">Ký tự đặc biệt (!@#)</span>
+                            <input type="checkbox" id="opt-symbol" class="flat-toggle" checked>
+                        </label>
+                        <div class="h-px w-full bg-zinc-100 dark:bg-zinc-800 my-1"></div>
+                        <label class="flex items-center justify-between group cursor-pointer">
+                            <span class="text-[12px] font-medium text-zinc-700 dark:text-zinc-300 flex flex-col">
+                                Loại bỏ nhầm lẫn
+                                <span class="text-[9px] text-zinc-400 font-mono mt-0.5">Không dùng: i, l, 1, L, o, 0, O</span>
+                            </span>
+                            <input type="checkbox" id="opt-exclude" class="flat-toggle">
                         </label>
                     </div>
+
+                    <button id="btn-pg-generate" class="w-full h-12 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-[13px] border border-zinc-900 dark:border-white active:scale-95 transition-transform flex items-center justify-center gap-2 mt-2">
+                        <i class="fas fa-sync-alt"></i> TẠO MẬT KHẨU MỚI
+                    </button>
+                </div>
+
+                <div id="pg-hist-panel" class="absolute inset-x-0 bottom-0 top-0 bg-white dark:bg-[#09090b] z-20 transition-transform duration-300 translate-y-full flex flex-col">
+                    <div class="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-[#121214]">
+                        <span class="text-[12px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Đã tạo gần đây</span>
+                        <div class="flex gap-2">
+                            <button id="btn-pg-hist-clear" class="w-7 h-7 rounded-full bg-red-50 dark:bg-red-500/10 text-red-500 active:bg-red-100 dark:active:bg-red-900/30 flex items-center justify-center transition-colors"><i class="fas fa-trash-alt text-[10px]"></i></button>
+                            <button id="btn-pg-hist-close" class="w-7 h-7 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 active:text-zinc-900 dark:active:text-white flex items-center justify-center transition-colors"><i class="fas fa-times text-[10px]"></i></button>
+                        </div>
+                    </div>
+                    <div id="pg-history-list" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2"></div>
                 </div>
             </div>
-
-            <div id="pane-check" class="pg-pane">
-                <div class="card shadow-sm">
-                    <h3 class="h3" style="font-size: 1.1rem; margin-bottom: 16px;">Tiêu chí an toàn</h3>
-                    <ul class="pg-criteria">
-                        <li id="cr-len"><i class="fas fa-times-circle"></i> Tối thiểu 8 ký tự</li>
-                        <li id="cr-up"><i class="fas fa-times-circle"></i> Có ít nhất 1 chữ in hoa (A-Z)</li>
-                        <li id="cr-low"><i class="fas fa-times-circle"></i> Có ít nhất 1 chữ in thường (a-z)</li>
-                        <li id="cr-num"><i class="fas fa-times-circle"></i> Có ít nhất 1 chữ số (0-9)</li>
-                        <li id="cr-sym"><i class="fas fa-times-circle"></i> Có ít nhất 1 ký tự đặc biệt (!@#...)</li>
-                    </ul>
-                    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--border); font-size: 0.85rem; color: var(--text-mut);">
-                        <i class="fas fa-lock" style="color: #10b981; margin-right: 4px;"></i> <b>An toàn tuyệt đối:</b> Công cụ hoạt động hoàn toàn offline trên thiết bị của bạn. Mật khẩu không bao giờ được gửi đi đâu.
-                    </div>
-                </div>
-            </div>
-
         </div>
     `;
 }
 
 export function init() {
-    // --- DOM Elements ---
-    const output = document.getElementById('pg-output');
-    const btnRefresh = document.getElementById('btn-pg-refresh');
+    // --- STATE ---
+    let state = {
+        mode: 'random', // random, pronounceable
+        length: 16,
+        upper: true,
+        lower: true,
+        number: true,
+        symbol: true,
+        exclude: false
+    };
+
+    const HISTORY_KEY = 'aio_pwd_history';
+    let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+
+    // --- DICTIONARIES ---
+    const CHARS = {
+        upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+        lower: 'abcdefghijklmnopqrstuvwxyz',
+        number: '0123456789',
+        symbol: '!@#$%^&*()_+~`|}{[]:;?><,./-='
+    };
+    const CONFUSING = /[ilLI|`oO0]/g;
+
+    const PRONOUNCE = {
+        vowels: 'aeiou',
+        consonants: 'bcdfghjklmnpqrstvwxyz'
+    };
+
+    // --- DOM ELEMENTS ---
+    const elOut = document.getElementById('pg-output');
     const btnCopy = document.getElementById('btn-pg-copy');
-    const btnEye = document.getElementById('btn-pg-eye');
+    const btnGen = document.getElementById('btn-pg-generate');
     
-    const strengthLbl = document.getElementById('pg-strength-lbl');
-    const strengthBar = document.getElementById('pg-strength-bar');
+    const rangeLen = document.getElementById('pg-range-len');
+    const valLen = document.getElementById('pg-val-len');
+    
+    const modeBtns = document.querySelectorAll('.pg-mode-btn');
+    const optsBox = document.getElementById('pg-options');
+    
+    const chkUpper = document.getElementById('opt-upper');
+    const chkLower = document.getElementById('opt-lower');
+    const chkNumber = document.getElementById('opt-number');
+    const chkSymbol = document.getElementById('opt-symbol');
+    const chkExclude = document.getElementById('opt-exclude');
 
-    // Chế độ Generate
-    const lengthSlider = document.getElementById('pg-length');
-    const lengthVal = document.getElementById('pg-length-val');
-    const chkUpper = document.getElementById('chk-upper');
-    const chkLower = document.getElementById('chk-lower');
-    const chkNum = document.getElementById('chk-num');
-    const chkSym = document.getElementById('chk-sym');
-    const allChks = [chkUpper, chkLower, chkNum, chkSym];
+    const st1 = document.getElementById('st-1');
+    const st2 = document.getElementById('st-2');
+    const st3 = document.getElementById('st-3');
+    const st4 = document.getElementById('st-4');
+    const stText = document.getElementById('st-text');
 
-    // Chế độ Check (Criteria)
-    const crLen = document.getElementById('cr-len');
-    const crUp = document.getElementById('cr-up');
-    const crLow = document.getElementById('cr-low');
-    const crNum = document.getElementById('cr-num');
-    const crSym = document.getElementById('cr-sym');
+    const histPanel = document.getElementById('pg-hist-panel');
+    const btnHistOpen = document.getElementById('btn-pg-history');
+    const btnHistClose = document.getElementById('btn-pg-hist-close');
+    const btnHistClear = document.getElementById('btn-pg-hist-clear');
+    const histList = document.getElementById('pg-history-list');
 
-    let currentMode = 'gen'; // 'gen' hoặc 'check'
-    let isPasswordHidden = false;
-
-    // --- Data & Crypto ---
-    const CHARS = { upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', lower: 'abcdefghijklmnopqrstuvwxyz', num: '0123456789', sym: '!@#$%^&*()_+~`|}{[]:;?><,./-=' };
-
-    const getSecureRandomChar = (charString) => {
+    // --- LOGIC ---
+    const getRandomInt = (max) => {
         const array = new Uint32Array(1);
         window.crypto.getRandomValues(array);
-        return charString[array[0] % charString.length];
+        return array[0] % max;
     };
 
-    const secureShuffle = (array) => {
-        const randArray = new Uint32Array(1);
-        for (let i = array.length - 1; i > 0; i--) {
-            window.crypto.getRandomValues(randArray);
-            const j = randArray[0] % (i + 1);
-            [array[i], array[j]] = [array[j], array[i]];
-        }
-        return array;
+    const calculateEntropy = (pwd) => {
+        let poolSize = 0;
+        if (/[a-z]/.test(pwd)) poolSize += 26;
+        if (/[A-Z]/.test(pwd)) poolSize += 26;
+        if (/[0-9]/.test(pwd)) poolSize += 10;
+        if (/[^a-zA-Z0-9]/.test(pwd)) poolSize += 32;
+
+        if (poolSize === 0) return 0;
+        const entropy = pwd.length * Math.log2(poolSize);
+        return entropy;
     };
 
-    // --- Core: Generator ---
-    const generatePassword = () => {
-        if (currentMode !== 'gen') return; // Không tự sinh pass nếu đang ở tab kiểm tra
+    const updateStrengthMeter = (pwd) => {
+        const entropy = calculateEntropy(pwd);
         
-        const length = parseInt(lengthSlider.value);
-        let pool = '';
-        let mandatoryChars = [];
-
-        if (chkUpper.checked) { pool += CHARS.upper; mandatoryChars.push(getSecureRandomChar(CHARS.upper)); }
-        if (chkLower.checked) { pool += CHARS.lower; mandatoryChars.push(getSecureRandomChar(CHARS.lower)); }
-        if (chkNum.checked) { pool += CHARS.num; mandatoryChars.push(getSecureRandomChar(CHARS.num)); }
-        if (chkSym.checked) { pool += CHARS.sym; mandatoryChars.push(getSecureRandomChar(CHARS.sym)); }
-
-        let passwordArray = [...mandatoryChars];
-        for (let i = mandatoryChars.length; i < length; i++) {
-            passwordArray.push(getSecureRandomChar(pool));
-        }
-
-        output.value = secureShuffle(passwordArray).join('');
-        evaluateStrength(output.value);
-    };
-
-    // --- Core: Checker ---
-    const updateCriteriaUI = (el, isValid) => {
-        if (isValid) {
-            el.classList.add('pass');
-            el.querySelector('i').className = 'fas fa-check-circle';
+        // Reset
+        [st1, st2, st3, st4].forEach(el => el.className = 'flex-1 rounded-full transition-colors bg-zinc-200 dark:bg-zinc-800');
+        
+        if (entropy < 28) {
+            st1.classList.replace('bg-zinc-200', 'bg-red-500'); st1.classList.replace('dark:bg-zinc-800', 'bg-red-500');
+            stText.textContent = 'YẾU'; stText.className = 'text-[10px] font-bold uppercase w-12 text-right text-red-500';
+        } else if (entropy < 50) {
+            st1.classList.replace('bg-zinc-200', 'bg-orange-500'); st1.classList.replace('dark:bg-zinc-800', 'bg-orange-500');
+            st2.classList.replace('bg-zinc-200', 'bg-orange-500'); st2.classList.replace('dark:bg-zinc-800', 'bg-orange-500');
+            stText.textContent = 'VỪA'; stText.className = 'text-[10px] font-bold uppercase w-12 text-right text-orange-500';
+        } else if (entropy < 70) {
+            st1.classList.replace('bg-zinc-200', 'bg-blue-500'); st1.classList.replace('dark:bg-zinc-800', 'bg-blue-500');
+            st2.classList.replace('bg-zinc-200', 'bg-blue-500'); st2.classList.replace('dark:bg-zinc-800', 'bg-blue-500');
+            st3.classList.replace('bg-zinc-200', 'bg-blue-500'); st3.classList.replace('dark:bg-zinc-800', 'bg-blue-500');
+            stText.textContent = 'TỐT'; stText.className = 'text-[10px] font-bold uppercase w-12 text-right text-blue-500';
         } else {
-            el.classList.remove('pass');
-            el.querySelector('i').className = 'fas fa-times-circle';
+            st1.classList.replace('bg-zinc-200', 'bg-emerald-500'); st1.classList.replace('dark:bg-zinc-800', 'bg-emerald-500');
+            st2.classList.replace('bg-zinc-200', 'bg-emerald-500'); st2.classList.replace('dark:bg-zinc-800', 'bg-emerald-500');
+            st3.classList.replace('bg-zinc-200', 'bg-emerald-500'); st3.classList.replace('dark:bg-zinc-800', 'bg-emerald-500');
+            st4.classList.replace('bg-zinc-200', 'bg-emerald-500'); st4.classList.replace('dark:bg-zinc-800', 'bg-emerald-500');
+            stText.textContent = 'MẠNH'; stText.className = 'text-[10px] font-bold uppercase w-12 text-right text-emerald-500';
         }
     };
 
-    const evaluateStrength = (password) => {
-        let score = 0;
+    const generatePassword = () => {
+        let pwd = '';
         
-        // 1. Cập nhật Checklist (Tab Checker)
-        const hasLen = password.length >= 8;
-        const hasUp = /[A-Z]/.test(password);
-        const hasLow = /[a-z]/.test(password);
-        const hasNum = /[0-9]/.test(password);
-        const hasSym = /[^A-Za-z0-9]/.test(password);
+        if (state.mode === 'pronounceable') {
+            let isConsonant = true;
+            for (let i = 0; i < state.length; i++) {
+                if (isConsonant) {
+                    pwd += PRONOUNCE.consonants[getRandomInt(PRONOUNCE.consonants.length)];
+                } else {
+                    pwd += PRONOUNCE.vowels[getRandomInt(PRONOUNCE.vowels.length)];
+                }
+                isConsonant = !isConsonant;
+            }
+            // Capitalize first letter optionally
+            if (state.length > 0) pwd = pwd.charAt(0).toUpperCase() + pwd.slice(1);
+            
+            // Auto add 2 numbers at end to make it comply with basic systems
+            if (state.length >= 4) {
+                pwd = pwd.slice(0, -2) + getRandomInt(10) + getRandomInt(10);
+            }
 
-        updateCriteriaUI(crLen, hasLen);
-        updateCriteriaUI(crUp, hasUp);
-        updateCriteriaUI(crLow, hasLow);
-        updateCriteriaUI(crNum, hasNum);
-        updateCriteriaUI(crSym, hasSym);
+        } else {
+            // Chế độ Ngẫu nhiên
+            if (!state.upper && !state.lower && !state.number && !state.symbol) {
+                // Rơi vào case bỏ tick hết, ép bật chữ thường
+                state.lower = true;
+                chkLower.checked = true;
+            }
 
-        // 2. Chấm điểm Thanh đo
-        if (!password) {
-            strengthBar.style.width = '0%';
-            strengthLbl.textContent = 'Trống';
-            strengthLbl.style.color = 'var(--text-mut)';
+            let pool = '';
+            if (state.upper) pool += CHARS.upper;
+            if (state.lower) pool += CHARS.lower;
+            if (state.number) pool += CHARS.number;
+            if (state.symbol) pool += CHARS.symbol;
+
+            if (state.exclude) {
+                pool = pool.replace(CONFUSING, '');
+            }
+
+            // Đảm bảo có ít nhất 1 ký tự của mỗi loại đã chọn
+            const mandatory = [];
+            if (state.upper) mandatory.push(state.exclude ? CHARS.upper.replace(CONFUSING,'')[0] : CHARS.upper[0]);
+            if (state.lower) mandatory.push(state.exclude ? CHARS.lower.replace(CONFUSING,'')[0] : CHARS.lower[0]);
+            if (state.number) mandatory.push(state.exclude ? CHARS.number.replace(CONFUSING,'')[0] : CHARS.number[0]);
+            if (state.symbol) mandatory.push(CHARS.symbol[0]); // Symbols gen ko bị confusing rule cắt mất hoàn toàn
+
+            for (let i = 0; i < state.length; i++) {
+                if (i < mandatory.length) {
+                    pwd += mandatory[i];
+                } else {
+                    pwd += pool[getRandomInt(pool.length)];
+                }
+            }
+
+            // Trộn mảng (Shuffle)
+            pwd = pwd.split('').sort(() => 0.5 - Math.random()).join('');
+        }
+
+        elOut.value = pwd;
+        updateStrengthMeter(pwd);
+    };
+
+    const saveHistory = (pwd) => {
+        if (!pwd || history[0] === pwd) return;
+        history.unshift(pwd);
+        if (history.length > 20) history.pop();
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+        renderHistory();
+    };
+
+    const renderHistory = () => {
+        if (history.length === 0) {
+            histList.innerHTML = '<div class="text-zinc-400 text-center text-[11px] font-medium py-10 opacity-50">Chưa có mật khẩu nào được lưu.</div>';
             return;
         }
 
-        if (password.length >= 8) score += 1;
-        if (password.length >= 12) score += 1;
-        if (password.length >= 16) score += 1;
-        if (hasUp) score += 1;
-        if (hasLow) score += 1;
-        if (hasNum) score += 1;
-        if (hasSym) score += 1;
+        histList.innerHTML = history.map(item => `
+            <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-[#121214] border border-zinc-200 dark:border-zinc-800 rounded-xl active:scale-95 transition-transform cursor-pointer group hist-item" data-val="${item}">
+                <div class="font-mono text-sm font-medium text-zinc-900 dark:text-white truncate pr-4">${item}</div>
+                <button class="w-6 h-6 rounded flex items-center justify-center text-zinc-400 group-active:text-zinc-900 dark:group-active:text-white shrink-0"><i class="far fa-copy text-[10px]"></i></button>
+            </div>
+        `).join('');
 
-        let width = '0%', color = '', text = '';
-
-        if (score <= 2) { width = '25%'; color = '#ef4444'; text = 'Rất yếu'; } 
-        else if (score <= 4) { width = '50%'; color = '#f59e0b'; text = 'Trung bình'; } 
-        else if (score <= 6) { width = '75%'; color = '#10b981'; text = 'Mạnh'; } 
-        else { width = '100%'; color = '#3b82f6'; text = 'Rất mạnh (An toàn)'; }
-
-        strengthBar.style.width = width;
-        strengthBar.style.backgroundColor = color;
-        strengthLbl.textContent = text;
-        strengthLbl.style.color = color;
+        document.querySelectorAll('.hist-item').forEach(el => {
+            el.addEventListener('click', async () => {
+                const val = el.dataset.val;
+                try {
+                    await navigator.clipboard.writeText(val);
+                    UI.showAlert('Đã chép', 'Mật khẩu đã được copy', 'success', 1000);
+                } catch(e){}
+            });
+        });
     };
 
-    const enforceCheckboxRule = () => {
-        const checkedCount = allChks.filter(chk => chk.checked).length;
-        if (checkedCount === 1) {
-            allChks.forEach(chk => { if (chk.checked) chk.disabled = true; });
-        } else {
-            allChks.forEach(chk => chk.disabled = false);
-        }
-    };
+    // --- SỰ KIỆN ---
 
-    // --- Bật/Tắt hiển thị Pass ---
-    const toggleEye = () => {
-        isPasswordHidden = !isPasswordHidden;
-        if (isPasswordHidden) {
-            output.type = 'password';
-            btnEye.innerHTML = '<i class="fas fa-eye"></i>';
-            btnEye.style.color = '#3b82f6';
-        } else {
-            output.type = 'text';
-            btnEye.innerHTML = '<i class="fas fa-eye-slash"></i>';
-            btnEye.style.color = 'var(--text-mut)';
-        }
-    };
-
-    // --- Chuyển Tab (Modes) ---
-    const modeBtns = document.querySelectorAll('.pg-mode-btn');
+    // Đổi Mode
     modeBtns.forEach(btn => {
-        btn.onclick = () => {
-            modeBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            currentMode = btn.dataset.target === 'pane-gen' ? 'gen' : 'check';
-            
-            document.querySelectorAll('.pg-pane').forEach(p => p.classList.remove('active'));
-            document.getElementById(btn.dataset.target).classList.add('active');
+        btn.addEventListener('click', () => {
+            modeBtns.forEach(b => {
+                b.classList.remove('active', 'bg-white', 'dark:bg-[#18181b]', 'text-zinc-900', 'dark:text-white', 'border-zinc-200', 'dark:border-zinc-700');
+                b.classList.add('text-zinc-500', 'border-transparent');
+            });
+            btn.classList.add('active', 'bg-white', 'dark:bg-[#18181b]', 'text-zinc-900', 'dark:text-white', 'border-zinc-200', 'dark:border-zinc-700');
+            btn.classList.remove('text-zinc-500', 'border-transparent');
 
-            if (currentMode === 'check') {
-                // Sang chế độ kiểm tra: Xóa pass, bật chế độ ẩn (password), ẩn nút Tạo Random
-                output.value = '';
-                btnRefresh.style.display = 'none';
-                output.placeholder = 'Nhập mật khẩu của bạn vào đây...';
-                if (!isPasswordHidden) toggleEye(); // Bắt buộc ẩn khi check pass thật
-                evaluateStrength('');
-                output.focus();
+            state.mode = btn.dataset.mode;
+
+            if (state.mode === 'pronounceable') {
+                optsBox.classList.add('opacity-30', 'pointer-events-none');
             } else {
-                // Sang chế độ tạo: Hiện lại nút Random, tắt chế độ ẩn (chuyển về text)
-                btnRefresh.style.display = 'flex';
-                output.placeholder = 'Nhập hoặc tạo mật khẩu...';
-                if (isPasswordHidden) toggleEye(); // Bắt buộc hiện khi tool tự tạo pass
-                generatePassword();
+                optsBox.classList.remove('opacity-30', 'pointer-events-none');
             }
-        };
+            generatePassword();
+        });
     });
 
-    // --- Sự kiện tương tác ---
-    lengthSlider.addEventListener('input', (e) => { lengthVal.textContent = e.target.value; generatePassword(); });
-    allChks.forEach(chk => { chk.addEventListener('change', () => { enforceCheckboxRule(); generatePassword(); }); });
-    
-    btnRefresh.addEventListener('click', () => {
-        const icon = btnRefresh.querySelector('i');
-        icon.style.transform = `rotate(${Math.random() * 360 + 180}deg)`;
-        icon.style.transition = 'transform 0.3s ease-out';
+    // Slider
+    rangeLen.addEventListener('input', (e) => {
+        state.length = parseInt(e.target.value);
+        valLen.textContent = state.length;
         generatePassword();
     });
 
-    btnEye.addEventListener('click', toggleEye);
+    // Checkboxes
+    const updateCheckboxes = () => {
+        state.upper = chkUpper.checked;
+        state.lower = chkLower.checked;
+        state.number = chkNumber.checked;
+        state.symbol = chkSymbol.checked;
+        state.exclude = chkExclude.checked;
+        generatePassword();
+    };
 
+    [chkUpper, chkLower, chkNumber, chkSymbol, chkExclude].forEach(chk => {
+        chk.addEventListener('change', updateCheckboxes);
+    });
+
+    // Nút Tạo mới
+    btnGen.addEventListener('click', generatePassword);
+
+    // Nút Copy
     btnCopy.addEventListener('click', async () => {
-        if (!output.value) return;
+        const val = elOut.value;
+        if (!val) return;
         try {
-            await navigator.clipboard.writeText(output.value);
-            UI.showAlert('Đã chép', 'Mật khẩu đã được lưu vào bộ nhớ đệm.', 'success');
-        } catch (err) {
-            UI.showAlert('Lỗi', 'Trình duyệt không hỗ trợ sao chép.', 'error');
-        }
+            await navigator.clipboard.writeText(val);
+            saveHistory(val);
+            
+            const ori = btnCopy.innerHTML;
+            btnCopy.innerHTML = '<i class="fas fa-check"></i>';
+            btnCopy.classList.replace('text-zinc-600', 'text-emerald-500');
+            btnCopy.classList.replace('dark:text-zinc-300', 'dark:text-emerald-400');
+            
+            setTimeout(() => {
+                btnCopy.innerHTML = ori;
+                btnCopy.classList.replace('text-emerald-500', 'text-zinc-600');
+                btnCopy.classList.replace('dark:text-emerald-400', 'dark:text-zinc-300');
+            }, 1000);
+            
+            UI.showAlert('Đã chép', 'Mật khẩu đã được lưu.', 'success', 1000);
+        } catch (e) { }
     });
 
-    output.addEventListener('input', (e) => {
-        evaluateStrength(e.target.value);
+    // History Toggle
+    btnHistOpen.addEventListener('click', () => {
+        renderHistory();
+        histPanel.classList.remove('translate-y-full');
+    });
+    
+    btnHistClose.addEventListener('click', () => {
+        histPanel.classList.add('translate-y-full');
     });
 
-    // --- Khởi chạy mặc định ---
-    enforceCheckboxRule();
+    btnHistClear.addEventListener('click', () => {
+        if (history.length === 0) return;
+        UI.showConfirm('Xóa lịch sử?', 'Toàn bộ mật khẩu đã tạo sẽ bị xóa.', () => {
+            history = [];
+            localStorage.removeItem(HISTORY_KEY);
+            renderHistory();
+        });
+    });
+
+    // Khởi chạy lần đầu
     generatePassword();
 }

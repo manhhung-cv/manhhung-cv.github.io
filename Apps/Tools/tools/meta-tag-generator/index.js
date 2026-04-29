@@ -2,418 +2,367 @@ import { UI } from '../../js/ui.js';
 
 export function template() {
     return `
-        <style>
-            .mtg-layout { display: flex; flex-direction: column; gap: 20px; margin-bottom: 24px; }
-            
-            /* Form Inputs & Labels */
-            .form-group { margin-bottom: 16px; }
-            .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-mut); margin-bottom: 6px; }
-            
-            /* Input Group kèm nút Dán (Paste) */
-            .ig { display: flex; width: 100%; }
-            .ig .form-control { 
-                border-radius: var(--radius) 0 0 var(--radius); border-right: none; 
-                flex: 1; padding: 10px 12px; border: 1px solid var(--border); 
-                background: var(--bg-main); color: var(--text-main); 
-                font-size: 0.95rem; outline: none; transition: 0.2s;
-            }
-            .ig .form-control:focus { border-color: #3b82f6; }
-            .ig .btn-paste { 
-                background: var(--bg-sec); border: 1px solid var(--border); 
-                border-radius: 0 var(--radius) var(--radius) 0; padding: 0 12px;
-                color: var(--text-mut); cursor: pointer; transition: 0.2s;
-            }
-            .ig .btn-paste:hover { background: var(--border); color: var(--text-main); }
-            
-            /* Textarea không có nút paste kế bên để giữ form gọn */
-            .form-control-alone { 
-                width: 100%; padding: 10px 12px; border: 1px solid var(--border); 
-                border-radius: var(--radius); background: var(--bg-main); 
-                color: var(--text-main); font-size: 0.95rem; outline: none; 
-            }
-
-            /* Checkbox Grid */
-            .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
-
-            /* Tabs */
-            .mini-tabs { display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
-            .mini-tabs::-webkit-scrollbar { display: none; }
-            .mini-tab-btn { 
-                padding: 8px 16px; background: transparent; border: none; 
-                color: var(--text-mut); font-weight: 600; font-size: 0.9rem; 
-                cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap;
-            }
-            .mini-tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; }
-            .tab-content { display: none; }
-            .tab-content.active { display: block; animation: fadeIn 0.3s; }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-            /* Sync Buttons */
-            .btn-sync { background: var(--bg-main); color: #10b981; border: 1px solid #10b981; padding: 6px 12px; font-size: 0.8rem; font-weight: 600; border-radius: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-            .btn-sync:hover { background: #10b981; color: white; }
-
-            /* Preview Wrapper */
-            .preview-container {
-                display: flex; flex-direction: column; gap: 24px;
-                padding: 20px; background: var(--bg-sec); 
-                border-radius: var(--radius); border: 1px solid var(--border);
-            }
-            .preview-heading { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--text-mut); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-
-            /* Google Preview */
-            .gg-preview { font-family: Arial, sans-serif; background: var(--bg-main); padding: 16px; border-radius: 8px; border: 1px solid var(--border); }
-            .gg-url { font-size: 0.85rem; color: var(--text-main); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-            .gg-url img { width: 16px; height: 16px; border-radius: 50%; background: var(--border); object-fit: cover; }
-            .gg-title { font-size: 1.25rem; color: #1a0dab; text-decoration: none; margin-bottom: 4px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .gg-desc { font-size: 0.85rem; color: var(--text-mut); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-            :root[data-theme="dark"] .gg-title { color: #8ab4f8; }
-
-            /* Facebook Preview */
-            .fb-preview { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg-main); max-width: 100%; }
-            .fb-img { width: 100%; height: 235px; object-fit: cover; background: var(--border); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-mut); font-size: 2rem; }
-            .fb-content { padding: 10px 12px; }
-            .fb-domain { font-size: 0.75rem; color: var(--text-mut); text-transform: uppercase; margin-bottom: 4px; }
-            .fb-title { font-size: 1rem; font-weight: 600; margin: 0 0 4px 0; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .fb-desc { font-size: 0.85rem; color: var(--text-mut); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-
-            /* Twitter Preview */
-            .tw-preview { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--bg-main); max-width: 100%; }
-            .tw-img { width: 100%; height: 235px; object-fit: cover; background: var(--border); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text-mut); font-size: 2rem; }
-            .tw-content { padding: 12px; }
-            .tw-title { font-size: 0.95rem; font-weight: 600; margin: 0 0 2px 0; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .tw-desc { font-size: 0.9rem; color: var(--text-mut); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 4px; }
-            .tw-domain { font-size: 0.85rem; color: var(--text-mut); display: flex; align-items: center; gap: 4px; }
-
-            @media(min-width: 992px) {
-                .mtg-layout { display: grid; grid-template-columns: 1.1fr 0.9fr; align-items: start; }
-            }
-        </style>
-
-        <div class="flex-between" style="margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-            <div>
-                <h1 class="h1">Meta Tag Generator</h1>
-                <p class="text-mut">Tạo thẻ Meta chuẩn SEO. Lưu trữ và tạo khung HTML Boilerplate mạnh mẽ.</p>
-            </div>
-            
-            <div class="flex-row" style="gap: 8px; flex-wrap: wrap;">
-                <button class="btn btn-ghost btn-sm" id="btn-mt-clear" style="color: #ef4444;"><i class="fas fa-trash-alt"></i> Xóa</button>
-                <button class="btn btn-outline btn-sm" id="btn-mt-load"><i class="fas fa-history"></i> Tải Local</button>
-                <button class="btn btn-primary btn-sm" id="btn-mt-save"><i class="fas fa-save"></i> Lưu Local</button>
-                <button class="btn btn-outline btn-sm" id="btn-mt-export" title="Xuất file JSON"><i class="fas fa-download"></i></button>
-                <button class="btn btn-outline btn-sm" id="btn-mt-import-trigger" title="Nhập file JSON"><i class="fas fa-upload"></i></button>
-                <input type="file" id="file-mt-import" accept=".json" style="display: none;">
-            </div>
-        </div>
-
-        <div class="mtg-layout">
-            
-            <div class="card" style="padding: 20px;">
-                <div class="mini-tabs" id="form-tabs">
-                    <button class="mini-tab-btn active" data-target="form-basic">Cơ bản (SEO)</button>
-                    <button class="mini-tab-btn" data-target="form-og">Open Graph (FB)</button>
-                    <button class="mini-tab-btn" data-target="form-tw">Twitter</button>
-                    <button class="mini-tab-btn" data-target="form-misc">Nâng cao</button>
-                    <button class="mini-tab-btn" data-target="form-cdn"><i class="fas fa-layer-group"></i> Tài nguyên & Khung</button>
+        <div class="space-y-6">
+            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Meta Tag Generator</h2>
+                    <p class="text-sm text-zinc-500 mt-1">Tạo thẻ Meta chuẩn SEO. Lưu trữ và tạo HTML Boilerplate mạnh mẽ.</p>
                 </div>
-
-                <form id="meta-form">
-                    <div class="tab-content active" id="form-basic">
-                        <div class="form-group">
-                            <label class="form-label">Tiêu đề trang (Title) <span class="text-mut" style="font-weight:normal; float:right;" id="cnt-title">0/60</span></label>
-                            <div class="ig">
-                                <input type="text" class="form-control meta-input" id="in-title" placeholder="VD: Công cụ AIO Tools miễn phí">
-                                <button type="button" class="btn-paste" data-target="in-title" title="Dán"><i class="fas fa-paste"></i></button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Mô tả (Description) <span class="text-mut" style="font-weight:normal; float:right;" id="cnt-desc">0/160</span></label>
-                            <textarea class="form-control-alone meta-input" id="in-desc" rows="3" placeholder="Mô tả ngắn gọn về trang web của bạn (Nên dưới 160 ký tự)..."></textarea>
-                        </div>
-                        <div class="grid-2" style="gap: 16px;">
-                            <div class="form-group">
-                                <label class="form-label">URL Trang web (Canonical)</label>
-                                <div class="ig">
-                                    <input type="url" class="form-control meta-input" id="in-url" placeholder="https://example.com">
-                                    <button type="button" class="btn-paste" data-target="in-url" title="Dán"><i class="fas fa-paste"></i></button>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Favicon URL (Icon Website)</label>
-                                <div class="ig">
-                                    <input type="url" class="form-control meta-input" id="in-favicon" placeholder="https://example.com/favicon.ico">
-                                    <button type="button" class="btn-paste" data-target="in-favicon" title="Dán"><i class="fas fa-paste"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid-2" style="gap: 16px;">
-                            <div class="form-group">
-                                <label class="form-label">Từ khóa (Keywords)</label>
-                                <div class="ig">
-                                    <input type="text" class="form-control meta-input" id="in-keywords" placeholder="công cụ, tiện ích, seo">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Tác giả (Author)</label>
-                                <div class="ig">
-                                    <input type="text" class="form-control meta-input" id="in-author" placeholder="Tên của bạn">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="form-og">
-                        <div class="flex-between" style="margin-bottom: 16px; font-size: 0.85rem; color: #10b981; background: #10b98115; padding: 10px 12px; border-radius: 6px; border: 1px solid #10b98130; flex-wrap: wrap; gap: 8px;">
-                            <span style="flex: 1;"><i class="fas fa-info-circle"></i> Nếu để trống, hệ thống sẽ tự động mượn dữ liệu từ tab <b>Cơ bản</b>.</span>
-                            <button type="button" class="btn-sync" id="btn-sync-og">
-                                <i class="fas fa-sync-alt"></i> Điền nhanh từ Cơ bản
-                            </button>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">OG Title (Tiêu đề FB)</label>
-                            <div class="ig">
-                                <input type="text" class="form-control meta-input" id="in-og-title" placeholder="Tiêu đề hiển thị trên Facebook">
-                                <button type="button" class="btn-paste" data-target="in-og-title"><i class="fas fa-paste"></i></button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">OG Description</label>
-                            <textarea class="form-control-alone meta-input" id="in-og-desc" rows="2" placeholder="Mô tả hiển thị trên Facebook..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">OG Image URL (Ảnh bìa chia sẻ)</label>
-                            <div class="ig">
-                                <input type="url" class="form-control meta-input" id="in-og-img" placeholder="https://example.com/image.jpg">
-                                <button type="button" class="btn-paste" data-target="in-og-img"><i class="fas fa-paste"></i></button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">OG Type</label>
-                            <select class="form-control-alone meta-input" id="in-og-type">
-                                <option value="website">Website</option>
-                                <option value="article">Article (Bài viết)</option>
-                                <option value="product">Product (Sản phẩm)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="form-tw">
-                        <div class="flex-between" style="margin-bottom: 16px; font-size: 0.85rem; color: #10b981; background: #10b98115; padding: 10px 12px; border-radius: 6px; border: 1px solid #10b98130; flex-wrap: wrap; gap: 8px;">
-                            <span style="flex: 1;"><i class="fas fa-info-circle"></i> Twitter sẽ tự mượn dữ liệu tab <b>Cơ bản</b> hoặc <b>Open Graph</b> nếu bạn để trống.</span>
-                            <button type="button" class="btn-sync" id="btn-sync-tw">
-                                <i class="fas fa-sync-alt"></i> Điền nhanh từ OG / Cơ bản
-                            </button>
-                        </div>
-                        <div class="grid-2" style="gap: 16px;">
-                            <div class="form-group">
-                                <label class="form-label">Twitter Card Type</label>
-                                <select class="form-control-alone meta-input" id="in-tw-card">
-                                    <option value="summary_large_image">Summary Large Image</option>
-                                    <option value="summary">Summary (Ảnh nhỏ)</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Twitter Site (@username)</label>
-                                <div class="ig">
-                                    <input type="text" class="form-control meta-input" id="in-tw-site" placeholder="@elonmusk">
-                                </div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Twitter Title</label>
-                            <div class="ig">
-                                <input type="text" class="form-control meta-input" id="in-tw-title" placeholder="Tiêu đề trên Twitter">
-                                <button type="button" class="btn-paste" data-target="in-tw-title"><i class="fas fa-paste"></i></button>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Twitter Description</label>
-                            <textarea class="form-control-alone meta-input" id="in-tw-desc" rows="2" placeholder="Mô tả hiển thị trên Twitter..."></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Twitter Image URL</label>
-                            <div class="ig">
-                                <input type="url" class="form-control meta-input" id="in-tw-img" placeholder="https://example.com/twitter-image.jpg">
-                                <button type="button" class="btn-paste" data-target="in-tw-img"><i class="fas fa-paste"></i></button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="form-misc">
-                        <div class="grid-2" style="gap: 16px;">
-                            <div class="form-group">
-                                <label class="form-label">Charset (Bảng mã)</label>
-                                <select class="form-control-alone meta-input" id="in-charset">
-                                    <option value="UTF-8">UTF-8</option>
-                                    <option value="ISO-8859-1">ISO-8859-1</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Robots (Lập chỉ mục)</label>
-                                <select class="form-control-alone meta-input" id="in-robots">
-                                    <option value="index, follow">Index, Follow</option>
-                                    <option value="noindex, nofollow">Noindex, Nofollow</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Viewport (Hiển thị Responsive)</label>
-                            <div class="check-grid">
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input vp-check" value="width=device-width" checked> width=device-width</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input vp-check" value="initial-scale=1.0" checked> initial-scale=1.0</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input vp-check" value="maximum-scale=1.0"> maximum-scale=1.0</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input vp-check" value="user-scalable=no"> user-scalable=no</label>
-                            </div>
-                        </div>
-                        
-                        <div class="form-group" style="padding-bottom: 16px; border-bottom: 1px solid var(--border);">
-                            <label class="form-label">Chặn tự động nhận diện (Format Detection)</label>
-                            <div class="check-grid">
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input fd-check" value="telephone=no"> Chặn SĐT</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input fd-check" value="email=no"> Chặn Email</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input fd-check" value="address=no"> Chặn Địa chỉ</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input fd-check" value="date=no"> Chặn Ngày tháng</label>
-                            </div>
-                        </div>
-
-                        <div class="form-group" style="margin-top: 16px;">
-                            <label class="form-label">Theme Color (Màu trình duyệt)</label>
-                            <input type="color" class="form-control-alone meta-input" id="in-theme-color" value="#ffffff" style="padding: 2px 4px; height: 40px; cursor: pointer;">
-                        </div>
-
-                        <div style="border-top: 1px solid var(--border); padding-top: 16px;">
-                            <label class="form-label" style="color: #3b82f6;"><i class="fab fa-apple"></i> Apple Web App</label>
-                            <div class="form-group">
-                                <label class="form-label">Apple Touch Icon URL</label>
-                                <div class="ig">
-                                    <input type="url" class="form-control meta-input" id="in-apple-icon" placeholder="https://example.com/apple-icon.png">
-                                    <button type="button" class="btn-paste" data-target="in-apple-icon"><i class="fas fa-paste"></i></button>
-                                </div>
-                            </div>
-                            <div class="grid-2" style="gap: 16px;">
-                                <div class="form-group">
-                                    <label class="form-label">Web App Capable</label>
-                                    <select class="form-control-alone meta-input" id="in-apple-capable">
-                                        <option value="yes">Yes (Full màn hình)</option>
-                                        <option value="no">No</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label class="form-label">Status Bar Style</label>
-                                    <select class="form-control-alone meta-input" id="in-apple-status">
-                                        <option value="default">Default</option>
-                                        <option value="black">Black</option>
-                                        <option value="black-translucent">Translucent</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tab-content" id="form-cdn">
-                        <div class="grid-2" style="gap: 16px;">
-                            <div class="form-group">
-                                <label class="form-label">Ngôn ngữ trang (Language)</label>
-                                <input type="text" class="form-control-alone meta-input" id="in-lang" value="vi" placeholder="vi, en, fr...">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Web Manifest (PWA)</label>
-                                <div class="ig">
-                                    <input type="url" class="form-control meta-input" id="in-manifest" placeholder="/manifest.json">
-                                    <button type="button" class="btn-paste" data-target="in-manifest"><i class="fas fa-paste"></i></button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group" style="padding-bottom: 16px; border-bottom: 1px solid var(--border);">
-                            <label class="form-label">Tích hợp thư viện nhanh (CDN)</label>
-                            <div class="check-grid">
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input" id="in-cdn-tailwind"> Tailwind CSS (Script)</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input" id="in-cdn-bootstrap"> Bootstrap 5 (CSS/JS)</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input" id="in-cdn-fa"> FontAwesome 6.4</label>
-                                <label class="check-label"><input type="checkbox" class="checkbox meta-input" id="in-cdn-jquery"> jQuery 3.6</label>
-                            </div>
-                        </div>
-
-                        <div class="form-group" style="margin-top: 16px;">
-                            <label class="form-label">Thẻ tùy chỉnh (Google Fonts, Custom CSS/JS...)</label>
-                            <textarea class="form-control-alone meta-input" id="in-custom-head" rows="4" placeholder="Dán các thẻ <link> hoặc <script> của bạn vào đây..."></textarea>
-                        </div>
-
-                        <div class="form-group" style="margin-top: 16px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.2);">
-                            <label class="check-label" style="font-weight: 600; color: #3b82f6; display: flex; align-items: center; gap: 8px;">
-                                <input type="checkbox" class="checkbox meta-input" id="in-full-html" checked> 
-                                Tạo khung HTML5 hoàn chỉnh (Boilerplate)
-                            </label>
-                            <p style="font-size: 0.8rem; color: var(--text-mut); margin: 4px 0 0 24px;">Tắt tùy chọn này nếu bạn chỉ muốn copy riêng phần nội dung thẻ cho vào thẻ &lt;head&gt; đã có sẵn.</p>
-                        </div>
-                    </div>
-
-                </form>
-
-                <button class="btn btn-primary" id="btn-mt-copy-main" style="width: 100%; margin-top: 24px; justify-content: center; padding: 12px; font-size: 1.05rem;">
-                    <i class="fas fa-code"></i> Sao chép toàn bộ HTML
-                </button>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 20px;">
                 
-                <div class="preview-container">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button class="px-3 py-2 bg-red-50 dark:bg-red-500/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5" id="btn-mt-clear">
+                        <i class="fas fa-trash-alt"></i> Xóa
+                    </button>
+                    <button class="px-3 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5" id="btn-mt-load">
+                        <i class="fas fa-history"></i> Tải Local
+                    </button>
+                    <button class="px-3 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5" id="btn-mt-save">
+                        <i class="fas fa-save"></i> Lưu Local
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl text-xs transition-all shadow-sm" id="btn-mt-export" title="Xuất file JSON">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl text-xs transition-all shadow-sm" id="btn-mt-import-trigger" title="Nhập file JSON">
+                        <i class="fas fa-upload"></i>
+                    </button>
+                    <input type="file" id="file-mt-import" accept=".json" class="hidden">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                
+                <div class="xl:col-span-5 flex flex-col gap-4">
                     
-                    <div>
-                        <div class="preview-heading" style="color: #3b82f6;"><i class="fas fa-file-code"></i> Xem trước mã HTML</div>
-                        <textarea id="mt-code-output" class="textarea" rows="18" 
-                            style="border: 1px solid var(--border); border-radius: 8px; width: 100%; padding: 16px; background: var(--bg-main); font-family: monospace; font-size: 0.85rem; line-height: 1.6; color: #3b82f6; resize: vertical; white-space: pre;" 
-                            readonly></textarea>
+                    <div class="premium-card bg-white dark:bg-zinc-900 rounded-[28px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm overflow-hidden flex flex-col">
+                        
+                        <div class="flex overflow-x-auto hide-scrollbar border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/30" id="form-tabs">
+                            <button class="mini-tab-btn active px-4 py-3 text-[12px] font-bold text-zinc-900 dark:text-white border-b-2 border-zinc-900 dark:border-white transition-all whitespace-nowrap" data-target="form-basic">Cơ bản (SEO)</button>
+                            <button class="mini-tab-btn px-4 py-3 text-[12px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white border-b-2 border-transparent transition-all whitespace-nowrap" data-target="form-og">Open Graph (FB)</button>
+                            <button class="mini-tab-btn px-4 py-3 text-[12px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white border-b-2 border-transparent transition-all whitespace-nowrap" data-target="form-tw">Twitter</button>
+                            <button class="mini-tab-btn px-4 py-3 text-[12px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white border-b-2 border-transparent transition-all whitespace-nowrap" data-target="form-misc">Nâng cao</button>
+                            <button class="mini-tab-btn px-4 py-3 text-[12px] font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white border-b-2 border-transparent transition-all whitespace-nowrap" data-target="form-cdn">Tài nguyên</button>
+                        </div>
+
+                        <form id="meta-form" class="p-5">
+                            
+                            <div class="tab-content block animate-in fade-in" id="form-basic">
+                                <div class="space-y-4">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1.5">
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1">Tiêu đề trang (Title)</label>
+                                            <span class="text-[10px] text-zinc-400 font-bold" id="cnt-title">0/60</span>
+                                        </div>
+                                        <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all overflow-hidden">
+                                            <input type="text" class="meta-input w-full bg-transparent border-none px-3 py-2.5 outline-none text-[13px] font-semibold text-zinc-900 dark:text-white" id="in-title" placeholder="VD: Công cụ AIO Tools miễn phí">
+                                            <button type="button" class="btn-paste px-3 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="in-title" title="Dán"><i class="fas fa-paste"></i></button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1.5">
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1">Mô tả (Description)</label>
+                                            <span class="text-[10px] text-zinc-400 font-bold" id="cnt-desc">0/160</span>
+                                        </div>
+                                        <textarea class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-[13px] text-zinc-900 dark:text-white resize-y min-h-[80px]" id="in-desc" placeholder="Mô tả ngắn gọn về trang web của bạn (Nên dưới 160 ký tự)..."></textarea>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">URL Trang web</label>
+                                            <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-zinc-900 transition-all overflow-hidden">
+                                                <input type="url" class="meta-input w-full bg-transparent border-none px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-url" placeholder="https://example.com">
+                                                <button type="button" class="btn-paste px-2 text-zinc-400 hover:text-zinc-900" data-target="in-url"><i class="fas fa-paste"></i></button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Favicon URL</label>
+                                            <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-zinc-900 transition-all overflow-hidden">
+                                                <input type="url" class="meta-input w-full bg-transparent border-none px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-favicon" placeholder=".../favicon.ico">
+                                                <button type="button" class="btn-paste px-2 text-zinc-400 hover:text-zinc-900" data-target="in-favicon"><i class="fas fa-paste"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Từ khóa</label>
+                                            <input type="text" class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-[13px] text-zinc-900 dark:text-white" id="in-keywords" placeholder="seo, tools">
+                                        </div>
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Tác giả</label>
+                                            <input type="text" class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-[13px] text-zinc-900 dark:text-white" id="in-author" placeholder="Tên của bạn">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-content hidden animate-in fade-in" id="form-og">
+                                <div class="space-y-4">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30 rounded-xl gap-2">
+                                        <span class="text-[11px] text-emerald-600 dark:text-emerald-400"><i class="fas fa-info-circle"></i> Trống sẽ tự mượn tab Cơ bản.</span>
+                                        <button type="button" class="px-3 py-1.5 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors" id="btn-sync-og">
+                                            <i class="fas fa-sync-alt"></i> Điền nhanh
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">OG Title (Tiêu đề FB)</label>
+                                        <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-zinc-900 transition-all overflow-hidden">
+                                            <input type="text" class="meta-input w-full bg-transparent border-none px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-og-title">
+                                            <button type="button" class="btn-paste px-3 text-zinc-400 hover:text-zinc-900" data-target="in-og-title"><i class="fas fa-paste"></i></button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">OG Description</label>
+                                        <textarea class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-[13px] text-zinc-900 dark:text-white resize-y min-h-[60px]" id="in-og-desc"></textarea>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">OG Image URL</label>
+                                            <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-zinc-900 transition-all overflow-hidden">
+                                                <input type="url" class="meta-input w-full bg-transparent border-none px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-og-img">
+                                                <button type="button" class="btn-paste px-2 text-zinc-400 hover:text-zinc-900" data-target="in-og-img"><i class="fas fa-paste"></i></button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">OG Type</label>
+                                            <select class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-og-type">
+                                                <option value="website">Website</option>
+                                                <option value="article">Article</option>
+                                                <option value="product">Product</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-content hidden animate-in fade-in" id="form-tw">
+                                <div class="space-y-4">
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200/50 dark:border-blue-800/30 rounded-xl gap-2">
+                                        <span class="text-[11px] text-blue-600 dark:text-blue-400"><i class="fas fa-info-circle"></i> Trống sẽ tự mượn tab OG / Cơ bản.</span>
+                                        <button type="button" class="px-3 py-1.5 bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-colors" id="btn-sync-tw">
+                                            <i class="fas fa-sync-alt"></i> Điền nhanh
+                                        </button>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Card Type</label>
+                                            <select class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-tw-card">
+                                                <option value="summary_large_image">Large Image</option>
+                                                <option value="summary">Summary</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Site (@user)</label>
+                                            <input type="text" class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-[13px] text-zinc-900 dark:text-white" id="in-tw-site" placeholder="@elonmusk">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Twitter Title</label>
+                                        <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-zinc-900 transition-all overflow-hidden">
+                                            <input type="text" class="meta-input w-full bg-transparent border-none px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-tw-title">
+                                            <button type="button" class="btn-paste px-3 text-zinc-400 hover:text-zinc-900" data-target="in-tw-title"><i class="fas fa-paste"></i></button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Twitter Description</label>
+                                        <textarea class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-[13px] text-zinc-900 dark:text-white resize-y min-h-[60px]" id="in-tw-desc"></textarea>
+                                    </div>
+                                    <div>
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Twitter Image URL</label>
+                                        <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus-within:ring-2 focus-within:ring-zinc-900 transition-all overflow-hidden">
+                                            <input type="url" class="meta-input w-full bg-transparent border-none px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-tw-img">
+                                            <button type="button" class="btn-paste px-3 text-zinc-400 hover:text-zinc-900" data-target="in-tw-img"><i class="fas fa-paste"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-content hidden animate-in fade-in" id="form-misc">
+                                <div class="space-y-5">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Charset</label>
+                                            <select class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-charset">
+                                                <option value="UTF-8">UTF-8</option>
+                                                <option value="ISO-8859-1">ISO-8859-1</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Robots</label>
+                                            <select class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-robots">
+                                                <option value="index, follow">Index, Follow</option>
+                                                <option value="noindex, nofollow">Noindex, Nofollow</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-2 block">Viewport (Hiển thị Responsive)</label>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input vp-check rounded text-zinc-900" value="width=device-width" checked> width=device-width</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input vp-check rounded text-zinc-900" value="initial-scale=1.0" checked> initial-scale=1.0</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input vp-check rounded text-zinc-900" value="maximum-scale=1.0"> max-scale=1.0</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input vp-check rounded text-zinc-900" value="user-scalable=no"> user-scalable=no</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-2 block">Format Detection (Chặn nhận diện)</label>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input fd-check rounded text-zinc-900" value="telephone=no"> Chặn SĐT</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input fd-check rounded text-zinc-900" value="email=no"> Chặn Email</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input fd-check rounded text-zinc-900" value="address=no"> Chặn Địa chỉ</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input fd-check rounded text-zinc-900" value="date=no"> Chặn Ngày</label>
+                                        </div>
+                                    </div>
+
+                                    <div class="border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Theme Color</label>
+                                        <input type="color" class="meta-input w-16 h-8 rounded cursor-pointer bg-transparent border-none p-0" id="in-theme-color" value="#ffffff">
+                                    </div>
+
+                                    <div class="border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                                        <label class="text-[12px] font-bold text-zinc-900 dark:text-white mb-3 block flex items-center gap-2"><i class="fab fa-apple"></i> Apple Web App</label>
+                                        <div class="space-y-3">
+                                            <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+                                                <input type="url" class="meta-input w-full bg-transparent border-none px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-apple-icon" placeholder="Apple Touch Icon URL">
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <select class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-[12px] text-zinc-900 dark:text-white" id="in-apple-capable">
+                                                    <option value="yes">Capable: Yes</option>
+                                                    <option value="no">Capable: No</option>
+                                                </select>
+                                                <select class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-[12px] text-zinc-900 dark:text-white" id="in-apple-status">
+                                                    <option value="default">Status: Default</option>
+                                                    <option value="black">Status: Black</option>
+                                                    <option value="black-translucent">Translucent</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-content hidden animate-in fade-in" id="form-cdn">
+                                <div class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Ngôn ngữ (Lang)</label>
+                                            <input type="text" class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-lang" value="vi" placeholder="vi, en...">
+                                        </div>
+                                        <div>
+                                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Web Manifest</label>
+                                            <input type="url" class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none text-[13px] text-zinc-900 dark:text-white" id="in-manifest" placeholder="/manifest.json">
+                                        </div>
+                                    </div>
+
+                                    <div class="border-t border-zinc-100 dark:border-zinc-800 pt-4">
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-2 block">Tích hợp thư viện nhanh (CDN)</label>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input rounded text-zinc-900" id="in-cdn-tailwind"> Tailwind CSS (Script)</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input rounded text-zinc-900" id="in-cdn-bootstrap"> Bootstrap 5</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input rounded text-zinc-900" id="in-cdn-fa"> FontAwesome 6</label>
+                                            <label class="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300"><input type="checkbox" class="meta-input rounded text-zinc-900" id="in-cdn-jquery"> jQuery 3.6</label>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider pl-1 mb-1.5 block">Thẻ tùy chỉnh (&lt;link&gt;, &lt;script&gt;)</label>
+                                        <textarea class="meta-input w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 transition-all text-[12px] font-mono text-zinc-900 dark:text-white resize-y min-h-[80px]" id="in-custom-head" placeholder="Dán thẻ custom của bạn vào đây..."></textarea>
+                                    </div>
+
+                                    <div class="p-3 bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl">
+                                        <label class="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-white">
+                                            <input type="checkbox" class="meta-input rounded text-zinc-900 w-4 h-4" id="in-full-html" checked> 
+                                            Tạo khung HTML5 (Boilerplate)
+                                        </label>
+                                        <p class="text-[10px] text-zinc-500 mt-1 ml-6">Tắt tùy chọn này nếu bạn chỉ muốn copy riêng phần thẻ meta để dán vào thẻ &lt;head&gt; có sẵn.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </form>
                     </div>
 
-                    <div>
-                        <div class="preview-heading"><i class="fab fa-google" style="color: #ea4335;"></i> Google Search</div>
-                        <div class="gg-preview">
-                            <div class="gg-url">
-                                <img id="pv-gg-favicon" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23888'/></svg>" alt="icon"> 
-                                <span id="pv-gg-url">example.com</span>
+                    <button class="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-[20px] font-bold text-[14px] transition-all hover:opacity-90 active:scale-95 shadow-md flex items-center justify-center gap-2" id="btn-mt-copy-main">
+                        <i class="fas fa-code"></i> SAO CHÉP TOÀN BỘ HTML
+                    </button>
+                </div>
+
+                <div class="xl:col-span-7 flex flex-col gap-6">
+                    
+                    <div class="premium-card bg-[#0d1117] dark:bg-zinc-950 rounded-[28px] shadow-xl overflow-hidden flex flex-col border border-zinc-800/50">
+                        <div class="flex justify-between items-center px-4 py-3 bg-[#161b22] dark:bg-zinc-900 border-b border-white/10">
+                            <div class="flex items-center gap-3">
+                                <div class="flex gap-1.5">
+                                    <div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+                                    <div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+                                    <div class="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+                                </div>
+                                <span class="text-[11px] font-bold text-zinc-400 ml-2 uppercase tracking-wider flex items-center gap-2"><i class="fas fa-file-code text-blue-500"></i> Mã HTML</span>
                             </div>
-                            <div class="gg-title" id="pv-gg-title">Tiêu đề trang web của bạn</div>
-                            <div class="gg-desc" id="pv-gg-desc">Mô tả tóm tắt nội dung trang web hiển thị trên kết quả tìm kiếm Google...</div>
+                        </div>
+                        <div class="p-4 bg-[#0d1117]">
+                            <textarea id="mt-code-output" class="w-full h-[300px] bg-transparent text-[13px] font-mono leading-relaxed text-[#c9d1d9] resize-none outline-none custom-scrollbar" readonly spellcheck="false"></textarea>
                         </div>
                     </div>
 
-                    <div>
-                        <div class="preview-heading"><i class="fab fa-facebook" style="color: #1877f2;"></i> Facebook (Open Graph)</div>
-                        <div class="fb-preview">
-                            <div class="fb-img" id="pv-fb-img-wrap"><i class="fas fa-image"></i></div>
-                            <div class="fb-content">
-                                <div class="fb-domain" id="pv-fb-domain">EXAMPLE.COM</div>
-                                <div class="fb-title" id="pv-fb-title">Tiêu đề trang web hiển thị trên Facebook</div>
-                                <div class="fb-desc" id="pv-fb-desc">Mô tả ngắn gọn hấp dẫn người dùng click vào đường link của bạn...</div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <div class="premium-card bg-white dark:bg-zinc-900 rounded-[24px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm p-4">
+                            <h4 class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><i class="fab fa-google text-rose-500"></i> Google Search</h4>
+                            <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4">
+                                <div class="flex items-center gap-2 mb-1.5">
+                                    <img id="pv-gg-favicon" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23888'/></svg>" class="w-4 h-4 rounded-full object-cover bg-zinc-200">
+                                    <span id="pv-gg-url" class="text-[12px] text-zinc-700 dark:text-zinc-300">example.com</span>
+                                </div>
+                                <div id="pv-gg-title" class="text-[18px] text-[#1a0dab] dark:text-[#8ab4f8] hover:underline cursor-pointer truncate mb-1">Tiêu đề trang web</div>
+                                <div id="pv-gg-desc" class="text-[13px] text-[#4d5156] dark:text-[#bdc1c6] line-clamp-2 leading-relaxed">Mô tả tóm tắt nội dung trang web hiển thị trên kết quả tìm kiếm Google...</div>
                             </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <div class="preview-heading"><i class="fab fa-twitter" style="color: #1da1f2;"></i> Twitter Card</div>
-                        <div class="tw-preview">
-                            <div class="tw-img" id="pv-tw-img-wrap"><i class="fas fa-image"></i></div>
-                            <div class="tw-content">
-                                <div class="tw-title" id="pv-tw-title">Tiêu đề hiển thị trên Twitter Card</div>
-                                <div class="tw-desc" id="pv-tw-desc">Mô tả tóm tắt dành cho Twitter. Card này giúp tweet của bạn nổi bật hơn...</div>
-                                <div class="tw-domain"><i class="fas fa-link" style="font-size: 0.75rem;"></i> <span id="pv-tw-domain">example.com</span></div>
+                        <div class="premium-card bg-white dark:bg-zinc-900 rounded-[24px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm p-4">
+                            <h4 class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><i class="fab fa-twitter text-blue-400"></i> Twitter Card</h4>
+                            <div class="border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-zinc-50 dark:bg-black">
+                                <div id="pv-tw-img-wrap" class="w-full aspect-[1.91/1] bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 text-2xl border-b border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
+                                    <i class="fas fa-image"></i>
+                                </div>
+                                <div class="p-3">
+                                    <div id="pv-tw-title" class="text-[14px] font-bold text-zinc-900 dark:text-zinc-100 truncate mb-1">Tiêu đề Twitter</div>
+                                    <div id="pv-tw-desc" class="text-[13px] text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-snug mb-1">Mô tả tóm tắt dành cho Twitter...</div>
+                                    <div class="text-[12px] text-zinc-400 flex items-center gap-1"><i class="fas fa-link text-[10px]"></i> <span id="pv-tw-domain">example.com</span></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
+                        <div class="md:col-span-2 premium-card bg-white dark:bg-zinc-900 rounded-[24px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm p-4">
+                            <h4 class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><i class="fab fa-facebook text-blue-600"></i> Facebook (Open Graph)</h4>
+                            <div class="max-w-[500px] mx-auto border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden bg-zinc-50 dark:bg-[#242526]">
+                                <div id="pv-fb-img-wrap" class="w-full aspect-[1.91/1] bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 text-3xl border-b border-zinc-200 dark:border-zinc-700 overflow-hidden relative">
+                                    <i class="fas fa-image"></i>
+                                </div>
+                                <div class="p-3">
+                                    <div id="pv-fb-domain" class="text-[11px] text-zinc-500 dark:text-[#b0b3b8] uppercase tracking-wider mb-0.5 truncate">EXAMPLE.COM</div>
+                                    <div id="pv-fb-title" class="text-[15px] font-bold text-zinc-900 dark:text-[#e4e6eb] truncate mb-1">Tiêu đề trang web Facebook</div>
+                                    <div id="pv-fb-desc" class="text-[13px] text-zinc-500 dark:text-[#b0b3b8] line-clamp-1 leading-snug">Mô tả ngắn gọn hấp dẫn...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
             </div>
         </div>
-        
     `;
 }
 
 export function init() {
     // ==========================================
-    // 0. HỆ THỐNG DIALOG TÙY CHỈNH (Thay thế Prompt & Confirm)
+    // 0. HỆ THỐNG DIALOG TÙY CHỈNH MINIMAL PREMIUM
     // ==========================================
     const escapeHTML = (str) => {
         if (!str) return '';
@@ -422,23 +371,25 @@ export function init() {
 
     const showDialog = ({ type, title, message, defaultValue = '', okText = 'Đồng ý', cancelText = 'Hủy', onConfirm }) => {
         const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);animation:fadeIn 0.2s;';
+        overlay.className = 'fixed inset-0 z-[10000] flex items-center justify-center bg-zinc-900/60 backdrop-blur-sm transition-opacity duration-200 px-4';
         
         const box = document.createElement('div');
-        box.style.cssText = 'background:var(--bg-main,#fff);width:90%;max-width:400px;border-radius:var(--radius,12px);padding:24px;box-shadow:0 10px 30px rgba(0,0,0,0.2);';
+        box.className = 'bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[24px] p-6 shadow-2xl animate-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800';
         
         let inputHTML = '';
         if (type === 'prompt') {
-            inputHTML = `<input type="text" id="mtg-dialog-input" value="${escapeHTML(defaultValue)}" style="width:100%;padding:10px 12px;border:1px solid var(--border,#eee);border-radius:8px;margin-bottom:20px;background:var(--bg-sec,#f9f9f9);color:var(--text-main,#333);outline:none;font-size:0.95rem;transition:0.2s;">`;
+            inputHTML = `<input type="text" id="mtg-dialog-input" value="${escapeHTML(defaultValue)}" class="w-full mt-4 mb-6 px-4 py-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl outline-none focus:border-zinc-900 dark:focus:border-white transition-all text-sm font-semibold text-zinc-900 dark:text-white">`;
+        } else {
+            inputHTML = `<div class="mb-6"></div>`;
         }
 
         box.innerHTML = `
-            <h3 style="margin:0 0 12px 0;font-size:1.15rem;color:var(--text-main,#333);">${title}</h3>
-            <p style="margin:0 0 ${type==='prompt'?'12px':'20px'} 0;font-size:0.95rem;color:var(--text-mut,#888);line-height:1.5;">${message}</p>
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">${title}</h3>
+            <p class="text-sm text-zinc-500 leading-relaxed">${message}</p>
             ${inputHTML}
-            <div style="display:flex;justify-content:flex-end;gap:12px;">
-                <button id="mtg-dialog-cancel" style="padding:8px 16px;border:none;background:var(--bg-sec,#f9f9f9);color:var(--text-mut,#888);border-radius:6px;cursor:pointer;font-weight:600;transition:0.2s;">${cancelText}</button>
-                <button id="mtg-dialog-ok" style="padding:8px 16px;border:none;background:#3b82f6;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;transition:0.2s;">${okText}</button>
+            <div class="flex justify-end gap-2">
+                <button id="mtg-dialog-cancel" class="px-4 py-2.5 rounded-xl font-bold text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all active:scale-95">${cancelText}</button>
+                <button id="mtg-dialog-ok" class="px-4 py-2.5 rounded-xl font-bold text-xs bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:opacity-90 transition-all active:scale-95 shadow-md">${okText}</button>
             </div>
         `;
         overlay.appendChild(box);
@@ -448,13 +399,8 @@ export function init() {
         const btnOk = box.querySelector('#mtg-dialog-ok');
         const inputEl = box.querySelector('#mtg-dialog-input');
 
-        if (inputEl) {
-            inputEl.addEventListener('focus', () => inputEl.style.borderColor = '#3b82f6');
-            inputEl.addEventListener('blur', () => inputEl.style.borderColor = 'var(--border,#eee)');
-        }
-
         const closeDialog = () => {
-            overlay.style.opacity = '0';
+            overlay.classList.add('opacity-0');
             setTimeout(() => document.body.removeChild(overlay), 200);
         };
 
@@ -476,31 +422,33 @@ export function init() {
         }
     };
 
-
     // ==========================================
     // 1. TABS
     // ==========================================
-    const setupTabs = (tabContainerId) => {
-        const btns = document.querySelectorAll(`#${tabContainerId} .mini-tab-btn`);
-        btns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const targetId = btn.getAttribute('data-target');
-                btns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                const tabContents = btn.closest('.card').querySelectorAll('.tab-content');
-                tabContents.forEach(tc => tc.classList.remove('active'));
-                document.getElementById(targetId).classList.add('active');
+    const tabBtns = document.querySelectorAll('#form-tabs .mini-tab-btn');
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = btn.getAttribute('data-target');
+            tabBtns.forEach(b => {
+                b.classList.remove('active', 'text-zinc-900', 'dark:text-white', 'border-zinc-900', 'dark:border-white', 'font-bold');
+                b.classList.add('text-zinc-500', 'border-transparent', 'font-medium');
             });
+            btn.classList.remove('text-zinc-500', 'border-transparent', 'font-medium');
+            btn.classList.add('active', 'text-zinc-900', 'dark:text-white', 'border-zinc-900', 'dark:border-white', 'font-bold');
+            
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(tc => { tc.classList.remove('block'); tc.classList.add('hidden'); });
+            document.getElementById(targetId).classList.remove('hidden');
+            document.getElementById(targetId).classList.add('block');
         });
-    };
-    setupTabs('form-tabs');
+    });
 
     // ==========================================
-    // 2. LOGIC DÁN NHANH (PASTE BUTTONS)
+    // 2. PASTE BUTTONS
     // ==========================================
     document.querySelectorAll('.btn-paste').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', async () => {
             try {
                 const text = await navigator.clipboard.readText();
                 if (!text) return;
@@ -509,20 +457,20 @@ export function init() {
                 targetInput.value = text;
                 targetInput.dispatchEvent(new Event('input')); 
             } catch (err) {
-                UI.showAlert('Lỗi', 'Trình duyệt chặn lấy dữ liệu Clipboard. Hãy dán thủ công.', 'error');
+                UI.showAlert('Lỗi', 'Trình duyệt chặn Clipboard. Hãy dán thủ công.', 'error');
             }
         });
     });
 
     // ==========================================
-    // 3. LOGIC NÚT ĐỒNG BỘ (SYNC)
+    // 3. SYNC BUTTONS
     // ==========================================
     document.getElementById('btn-sync-og').addEventListener('click', () => {
         const titleVal = document.getElementById('in-title').value;
         const descVal = document.getElementById('in-desc').value;
         
         if(!titleVal && !descVal) {
-            UI.showAlert('Cảnh báo', 'Tab Cơ bản đang trống, không có gì để copy.', 'warning');
+            UI.showAlert('Cảnh báo', 'Tab Cơ bản đang trống.', 'warning');
             return;
         }
 
@@ -530,7 +478,7 @@ export function init() {
         document.getElementById('in-og-desc').value = descVal;
         
         generateMeta();
-        UI.showAlert('Thành công', 'Đã copy Tiêu đề và Mô tả sang Open Graph.', 'success');
+        UI.showAlert('Thành công', 'Đã chép sang Open Graph.', 'success');
     });
 
     document.getElementById('btn-sync-tw').addEventListener('click', () => {
@@ -541,7 +489,7 @@ export function init() {
         const ogImg = document.getElementById('in-og-img').value;
 
         if(!ogTitle && !ogDesc && !seoTitle && !seoDesc) {
-            UI.showAlert('Cảnh báo', 'Chưa có Tiêu đề / Mô tả nào để copy.', 'warning');
+            UI.showAlert('Cảnh báo', 'Chưa có thông tin để copy.', 'warning');
             return;
         }
 
@@ -550,11 +498,11 @@ export function init() {
         if(ogImg) document.getElementById('in-tw-img').value = ogImg;
         
         generateMeta();
-        UI.showAlert('Thành công', 'Đã copy Tiêu đề, Mô tả (và Ảnh) sang Twitter.', 'success');
+        UI.showAlert('Thành công', 'Đã chép sang Twitter.', 'success');
     });
 
     // ==========================================
-    // 4. GENERATE LOGIC & LẤY DỮ LIỆU
+    // 4. GENERATOR LOGIC
     // ==========================================
     const inputs = document.querySelectorAll('.meta-input');
     const outCode = document.getElementById('mt-code-output');
@@ -613,26 +561,26 @@ export function init() {
         const twImg = d.twImg || d.ogImg;
 
         cntTitle.textContent = `${d.title.length}/60`;
-        cntTitle.style.color = d.title.length > 60 ? '#ef4444' : 'var(--text-mut)';
+        cntTitle.className = d.title.length > 60 ? 'text-[10px] font-bold text-rose-500' : 'text-[10px] font-bold text-zinc-400';
         cntDesc.textContent = `${d.desc.length}/160`;
-        cntDesc.style.color = d.desc.length > 160 ? '#ef4444' : 'var(--text-mut)';
+        cntDesc.className = d.desc.length > 160 ? 'text-[10px] font-bold text-rose-500' : 'text-[10px] font-bold text-zinc-400';
 
         const domainStr = getDomain(d.url);
 
         pGgTitle.textContent = d.title || 'Tiêu đề trang web của bạn';
-        pGgDesc.textContent = d.desc || 'Đây là phần mô tả tóm tắt nội dung trang web hiển thị trên Google.';
+        pGgDesc.textContent = d.desc || 'Mô tả tóm tắt nội dung trang web hiển thị trên Google...';
         pGgUrl.textContent = d.url || 'example.com';
         pGgFavicon.src = d.favicon ? d.favicon : "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23888'/></svg>";
 
-        pFbTitle.textContent = ogTitle || 'Tiêu đề trang web hiển thị trên Facebook';
-        pFbDesc.textContent = ogDesc || 'Mô tả ngắn gọn hấp dẫn người dùng...';
+        pFbTitle.textContent = ogTitle || 'Tiêu đề trang web Facebook';
+        pFbDesc.textContent = ogDesc || 'Mô tả ngắn gọn hấp dẫn...';
         pFbDomain.textContent = domainStr.toUpperCase();
-        pFbImgWrap.innerHTML = d.ogImg ? `<img src="${escapeHTML(d.ogImg)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<i class=\\'fas fa-image\\'></i>'">` : `<i class="fas fa-image"></i>`;
+        pFbImgWrap.innerHTML = d.ogImg ? `<img src="${escapeHTML(d.ogImg)}" class="w-full h-full object-cover">` : `<i class="fas fa-image"></i>`;
 
-        pTwTitle.textContent = twTitle || 'Tiêu đề hiển thị trên Twitter Card';
+        pTwTitle.textContent = twTitle || 'Tiêu đề Twitter';
         pTwDesc.textContent = twDesc || 'Mô tả tóm tắt dành cho Twitter...';
         pTwDomain.textContent = domainStr;
-        pTwImgWrap.innerHTML = twImg ? `<img src="${escapeHTML(twImg)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML='<i class=\\'fas fa-image\\'></i>'">` : `<i class="fas fa-image"></i>`;
+        pTwImgWrap.innerHTML = twImg ? `<img src="${escapeHTML(twImg)}" class="w-full h-full object-cover">` : `<i class="fas fa-image"></i>`;
 
         let html = '';
         const ind = d.fullHtml ? '    ' : ''; 
@@ -729,7 +677,7 @@ export function init() {
     };
 
     // ==========================================
-    // 5. LƯU, TẢI, XUẤT, NHẬP (QUẢN LÝ BẢN LƯU BẰNG CUSTOM MODAL)
+    // 5. LƯU, TẢI, XUẤT, NHẬP (QUẢN LÝ BẢN LƯU)
     // ==========================================
     const STORAGE_KEY = 'aio_meta_tags_profiles';
 
@@ -763,23 +711,19 @@ export function init() {
     };
 
     const getProfiles = () => {
-        try {
-            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-        } catch {
-            return [];
-        }
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
     };
 
     const saveProfiles = (profiles) => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
     };
 
-    // LƯU LOCAL (Dùng Custom Prompt Modal)
+    // LƯU LOCAL
     document.getElementById('btn-mt-save').onclick = () => {
         showDialog({
             type: 'prompt',
             title: 'Lưu bản lưu',
-            message: 'Nhập tên cho bản lưu này (VD: Dự án Landing Page):',
+            message: 'Nhập tên cho bản lưu này (VD: Dự án SEO):',
             defaultValue: 'Bản lưu ' + new Date().toLocaleDateString('vi-VN'),
             okText: 'Lưu',
             onConfirm: (name) => {
@@ -795,7 +739,7 @@ export function init() {
                     showDialog({
                         type: 'confirm',
                         title: 'Ghi đè bản lưu?',
-                        message: `Bản lưu "<b>${escapeHTML(trimmedName)}</b>" đã tồn tại. Bạn có muốn ghi đè dữ liệu mới lên không?`,
+                        message: `Bản lưu "<b>${escapeHTML(trimmedName)}</b>" đã tồn tại. Bạn có muốn ghi đè lên không?`,
                         okText: 'Ghi đè',
                         onConfirm: () => {
                             profiles[existingIndex].data = data;
@@ -818,11 +762,11 @@ export function init() {
         });
     };
 
-    // TẢI LOCAL (Modal Quản lý)
+    // TẢI LOCAL (Quản lý)
     document.getElementById('btn-mt-load').onclick = () => {
         let profiles = getProfiles();
         if (profiles.length === 0) {
-            UI.showAlert('Trống', 'Chưa có bản lưu nào trong trình duyệt.', 'warning');
+            UI.showAlert('Trống', 'Chưa có bản lưu nào.', 'warning');
             return;
         }
         
@@ -830,35 +774,20 @@ export function init() {
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'mt-save-mgr-modal';
+            modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center bg-zinc-900/60 backdrop-blur-sm px-4';
             modal.innerHTML = `
-                <style>
-                    #mt-save-mgr-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); animation: fadeIn 0.2s; }
-                    .mtg-box { background: var(--bg-main, #fff); width: 90%; max-width: 500px; border-radius: var(--radius, 12px); padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); max-height: 80vh; display: flex; flex-direction: column; }
-                    .mtg-box-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border, #eee); }
-                    .mtg-box-title { font-size: 1.15rem; font-weight: 600; margin: 0; color: var(--text-main, #333); }
-                    .mtg-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
-                    .mtg-list::-webkit-scrollbar { width: 6px; }
-                    .mtg-list::-webkit-scrollbar-thumb { background: var(--border, #ccc); border-radius: 4px; }
-                    .mtg-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-sec, #f9f9f9); border: 1px solid var(--border, #eee); border-radius: 8px; transition: 0.2s; }
-                    .mtg-item:hover { border-color: #3b82f6; }
-                    .mtg-item-name { font-weight: 600; font-size: 0.95rem; color: var(--text-main, #333); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                    .mtg-item-date { font-size: 0.75rem; color: var(--text-mut, #888); margin-top: 4px; }
-                    .mtg-actions { display: flex; gap: 6px; }
-                    .mtg-btn-icon { background: transparent; border: none; padding: 6px 8px; cursor: pointer; border-radius: 4px; transition: 0.2s; font-size: 0.9rem; }
-                    .mtg-btn-icon:hover { background: var(--border, #eee); }
-                </style>
-                <div class="mtg-box">
-                    <div class="mtg-box-header">
-                        <h3 class="mtg-box-title">Quản lý Bản lưu Local</h3>
-                        <button class="btn btn-ghost btn-sm" id="mt-close-modal" style="color: var(--text-mut, #888);"><i class="fas fa-times"></i></button>
+                <div class="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[24px] p-6 shadow-2xl flex flex-col max-h-[80vh] border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95">
+                    <div class="flex justify-between items-center mb-4 pb-4 border-b border-zinc-100 dark:border-zinc-800">
+                        <h3 class="text-lg font-bold text-zinc-900 dark:text-white m-0">Quản lý Bản lưu Local</h3>
+                        <button class="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center transition-colors" id="mt-close-modal"><i class="fas fa-times"></i></button>
                     </div>
-                    <div class="mtg-list" id="mt-profile-list"></div>
+                    <div class="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-3" id="mt-profile-list"></div>
                 </div>
             `;
             document.body.appendChild(modal);
             
-            document.getElementById('mt-close-modal').onclick = () => { modal.style.display = 'none'; };
-            modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+            document.getElementById('mt-close-modal').onclick = () => { modal.classList.add('hidden'); };
+            modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.add('hidden'); });
         }
         
         const listEl = document.getElementById('mt-profile-list');
@@ -866,8 +795,8 @@ export function init() {
         const refreshList = () => {
             profiles = getProfiles();
             if (profiles.length === 0) {
-                listEl.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-mut, #888);">Không còn bản lưu nào.</div>';
-                setTimeout(() => { modal.style.display = 'none'; }, 1500);
+                listEl.innerHTML = '<div class="text-center py-8 text-zinc-400 text-sm font-medium">Không còn bản lưu nào.</div>';
+                setTimeout(() => { modal.classList.add('hidden'); }, 1500);
                 return;
             }
             
@@ -875,33 +804,32 @@ export function init() {
                 const d = new Date(p.updatedAt || p.createdAt || Date.now());
                 const dateStr = d.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'}) + ' - ' + d.toLocaleDateString('vi-VN');
                 return `
-                <div class="mtg-item">
-                    <div style="flex: 1; overflow: hidden; padding-right: 12px;">
-                        <div class="mtg-item-name">${escapeHTML(p.name)}</div>
-                        <div class="mtg-item-date"><i class="far fa-clock"></i> ${dateStr}</div>
+                <div class="flex justify-between items-center p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-blue-500 transition-colors group">
+                    <div class="flex-1 overflow-hidden pr-3">
+                        <div class="font-bold text-sm text-zinc-900 dark:text-white truncate">${escapeHTML(p.name)}</div>
+                        <div class="text-xs text-zinc-500 mt-1"><i class="far fa-clock"></i> ${dateStr}</div>
                     </div>
-                    <div class="mtg-actions">
-                        <button class="mtg-btn-icon btn-pf-load" style="color: #10b981;" data-id="${p.id}" title="Tải"><i class="fas fa-upload"></i></button>
-                        <button class="mtg-btn-icon btn-pf-rename" style="color: #3b82f6;" data-id="${p.id}" title="Đổi tên"><i class="fas fa-edit"></i></button>
-                        <button class="mtg-btn-icon btn-pf-del" style="color: #ef4444;" data-id="${p.id}" title="Xóa"><i class="fas fa-trash-alt"></i></button>
+                    <div class="flex gap-2">
+                        <button class="btn-pf-load w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 hover:bg-emerald-100 flex items-center justify-center transition-colors" data-id="${p.id}" title="Tải"><i class="fas fa-upload"></i></button>
+                        <button class="btn-pf-rename w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 hover:bg-blue-100 flex items-center justify-center transition-colors" data-id="${p.id}" title="Đổi tên"><i class="fas fa-edit"></i></button>
+                        <button class="btn-pf-del w-8 h-8 rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 hover:bg-rose-100 flex items-center justify-center transition-colors" data-id="${p.id}" title="Xóa"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 </div>
                 `;
             }).join('');
             
-            // Event: Tải
+            // Event Lắng nghe
             document.querySelectorAll('.btn-pf-load').forEach(btn => {
                 btn.onclick = () => {
                     const pf = profiles.find(x => x.id === btn.getAttribute('data-id'));
                     if (pf) {
                         applyDataToForm(pf.data);
-                        UI.showAlert('Đã tải', `Dữ liệu từ bản lưu "${pf.name}" đã được khôi phục.`, 'success');
-                        modal.style.display = 'none';
+                        UI.showAlert('Đã tải', `Dữ liệu từ "${pf.name}" đã được khôi phục.`, 'success');
+                        modal.classList.add('hidden');
                     }
                 };
             });
             
-            // Event: Đổi tên (Dùng Custom Prompt Modal)
             document.querySelectorAll('.btn-pf-rename').forEach(btn => {
                 btn.onclick = () => {
                     const pf = profiles.find(x => x.id === btn.getAttribute('data-id'));
@@ -926,7 +854,6 @@ export function init() {
                 };
             });
             
-            // Event: Xóa (Dùng Custom Confirm Modal)
             document.querySelectorAll('.btn-pf-del').forEach(btn => {
                 btn.onclick = () => {
                     const pf = profiles.find(x => x.id === btn.getAttribute('data-id'));
@@ -934,7 +861,7 @@ export function init() {
                         showDialog({
                             type: 'confirm',
                             title: 'Xóa bản lưu',
-                            message: `Bạn có chắc chắn muốn xóa vĩnh viễn bản lưu "<b>${escapeHTML(pf.name)}</b>" không?`,
+                            message: `Bạn có chắc chắn muốn xóa "<b>${escapeHTML(pf.name)}</b>" không?`,
                             okText: 'Xóa',
                             onConfirm: () => {
                                 profiles = profiles.filter(x => x.id !== pf.id);
@@ -948,10 +875,10 @@ export function init() {
         };
         
         refreshList();
-        modal.style.display = 'flex';
+        modal.classList.remove('hidden');
     };
 
-    // XUẤT FILE JSON
+    // XUẤT JSON
     document.getElementById('btn-mt-export').onclick = () => {
         const title = document.getElementById('in-title').value.trim() || 'config';
         const safeTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -960,10 +887,10 @@ export function init() {
         a.href = dataStr;
         a.download = `meta-tags-${safeTitle}.json`;
         a.click();
-        UI.showAlert('Đã xuất file', 'Cấu hình đã được tải xuống máy của bạn.', 'success');
+        UI.showAlert('Đã xuất file', 'Cấu hình đã tải xuống máy.', 'success');
     };
 
-    // NHẬP FILE JSON
+    // NHẬP JSON
     document.getElementById('btn-mt-import-trigger').onclick = () => {
         document.getElementById('file-mt-import').click();
     };
@@ -984,7 +911,7 @@ export function init() {
         e.target.value = ''; 
     });
 
-    // LÀM MỚI FORM (Dùng Custom Confirm Modal)
+    // XÓA FORM
     document.getElementById('btn-mt-clear').onclick = () => {
         showDialog({
             type: 'confirm',

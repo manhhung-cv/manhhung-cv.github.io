@@ -2,133 +2,96 @@ import { UI } from '../../js/ui.js';
 
 export function template() {
     return `
-        <style>
-            .gdt-layout { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
-            
-            .email-input-wrapper {
-                display: flex; align-items: center; 
-                background: var(--bg-main);
-                border: 2px solid var(--border);
-                border-radius: var(--radius);
-                padding: 4px 16px;
-                transition: border-color 0.2s;
-            }
-            .email-input-wrapper:focus-within { border-color: #3b82f6; }
-            .email-input-wrapper input {
-                border: none; background: transparent; flex: 1;
-                font-size: 1.2rem; font-weight: 500; color: var(--text-main);
-                padding: 12px 0; outline: none;
-            }
-
-            /* Bảng danh sách email */
-            .email-row {
-                display: flex; justify-content: space-between; align-items: center;
-                padding: 12px 16px; border-bottom: 1px solid var(--border);
-                transition: background 0.2s;
-            }
-            .email-row:hover { background: var(--bg-main); }
-            
-            .email-row.is-used .email-text { color: #10b981; font-weight: 600; }
-            
-            .email-text {
-                font-family: monospace; font-size: 1rem; color: var(--text-main);
-                word-break: break-all; padding-right: 12px; transition: color 0.2s;
-            }
-
-            /* Nút lọc */
-            .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
-            .filter-btn {
-                background: var(--bg-sec); border: 1px solid var(--border);
-                color: var(--text-mut); padding: 6px 16px; border-radius: 20px;
-                font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap;
-            }
-            .filter-btn.active { background: #3b82f6; color: white; border-color: #3b82f6; }
-            
-            /* Lịch sử Mail gốc */
-            .history-chip {
-                padding: 4px 12px; font-size: 0.8rem; border: 1px solid var(--border); 
-                border-radius: 12px; background: var(--bg-sec); color: var(--text-mut);
-                cursor: pointer; transition: 0.2s;
-            }
-            .history-chip:hover { background: var(--bg-main); color: var(--text-main); border-color: #3b82f6; }
-
-            /* Phân trang */
-            .pagination { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--bg-sec); }
-            .page-input {
-                width: 50px; text-align: center; border: 1px solid var(--border);
-                background: var(--bg-main); color: var(--text-main);
-                border-radius: 4px; padding: 2px 4px; font-size: 0.9rem;
-                outline: none; -moz-appearance: textfield; font-weight: 600;
-            }
-            .page-input::-webkit-outer-spin-button,
-            .page-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-            .page-input:focus { border-color: #3b82f6; }
-
-            @media(min-width: 768px) {
-                .gdt-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
-            }
-        </style>
-
-        <div class="flex-between" style="margin-bottom: 24px;">
-            <div>
-                <h1 class="h1">Gmail Dot Trick</h1>
-                <p class="text-mut">Tạo hàng ngàn bí danh, đánh dấu sao và tự động đổi màu xanh các email đã sử dụng.</p>
-            </div>
-            <button class="btn btn-outline btn-sm" id="btn-clear-data" style="color: #ef4444; border-color: #ef444420;">
-                <i class="fas fa-trash-alt"></i> Xóa lịch sử
-            </button>
-        </div>
-
-        <div class="gdt-layout">
-            
-            <div class="card" style="padding: 20px;">
-                <label class="text-mut" style="font-size: 0.9rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; display: block;">Địa chỉ Gmail gốc</label>
-                <div class="email-input-wrapper">
-                    <i class="fas fa-envelope text-mut" style="margin-right: 12px; font-size: 1.2rem;"></i>
-                    <input type="text" id="gdt-input" placeholder="nhapemail" autocomplete="off" spellcheck="false">
-                    <span class="text-mut" style="font-size: 1.1rem; margin-left: 8px; font-weight: 500;" id="gdt-domain">@gmail.com</span>
+        <div class="space-y-6">
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Gmail Dot Trick</h2>
+                    <p class="text-sm text-zinc-500 mt-1">Tạo hàng ngàn bí danh, đánh dấu sao và theo dõi các email đã sử dụng.</p>
                 </div>
+                <button id="btn-clear-data" class="h-10 px-4 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-500 hover:bg-red-100 dark:hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 text-sm font-semibold shadow-sm" title="Xóa lịch sử">
+                    <i class="fas fa-trash-alt"></i> <span class="hidden sm:inline">Xóa dữ liệu</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                 
-                <div id="gdt-history-list" class="flex-row" style="gap: 8px; flex-wrap: wrap; margin-top: 12px;"></div>
-                
-                <div class="flex-between" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
-                    <div style="font-size: 0.9rem; color: var(--text-mut);">
-                        Sẽ tạo ra: <strong id="gdt-estimate" style="color: #10b981; font-size: 1.1rem;">0</strong> biến thể.
+                <div class="lg:col-span-5 premium-card bg-white dark:bg-zinc-900 rounded-[32px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col p-6 space-y-6">
+                    
+                    <div class="space-y-2">
+                        <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider ml-1">Địa chỉ Gmail gốc</label>
+                        <div class="relative flex items-center bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 focus-within:ring-2 focus-within:ring-zinc-900 dark:focus-within:ring-white transition-all">
+                            <i class="far fa-envelope text-zinc-400 text-lg mr-3"></i>
+                            <input type="text" id="gdt-input" 
+                                class="w-full bg-transparent border-none py-4 outline-none text-lg font-semibold text-zinc-900 dark:text-white placeholder-zinc-300 dark:placeholder-zinc-700" 
+                                placeholder="nhapemail" autocomplete="off" spellcheck="false">
+                            <span class="text-zinc-500 font-medium text-base ml-2 shrink-0" id="gdt-domain">@gmail.com</span>
+                        </div>
                     </div>
-                    <button class="btn btn-primary" id="btn-gdt-generate"><i class="fas fa-magic"></i> Tạo ngay</button>
-                </div>
-            </div>
 
-            <div class="card" style="padding: 0; display: flex; flex-direction: column; overflow: hidden; border-color: #10b98140;">
-                
-                <div style="padding: 16px 16px 0 16px; background: var(--bg-main); border-bottom: 1px solid var(--border);">
-                    <div class="filter-tabs" id="gdt-filters">
-                        <button class="filter-btn active" data-filter="all">Tất cả (<span id="count-all">0</span>)</button>
-                        <button class="filter-btn" data-filter="starred"><i class="fas fa-star" style="color: #eab308;"></i> Đã lưu (<span id="count-starred">0</span>)</button>
-                        <button class="filter-btn" data-filter="used"><i class="fas fa-check" style="color: #10b981;"></i> Đã dùng (<span id="count-used">0</span>)</button>
+                    <div class="space-y-2">
+                        <div id="gdt-history-list" class="flex flex-wrap gap-2">
+                            </div>
                     </div>
                     
-                    <div class="flex-between" style="padding-bottom: 12px;">
-                        <span class="text-mut" style="font-size: 0.85rem; font-weight: 500;" id="list-status-text">Hiển thị tất cả email</span>
-                        <button class="btn btn-ghost btn-sm" id="btn-copy-all" title="Sao chép toàn bộ danh sách đang hiển thị">
-                            <i class="fas fa-copy"></i> Sao chép toàn bộ
+                    <div class="pt-6 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                        <div class="text-sm font-medium text-zinc-500">
+                            Sẽ tạo ra: <br>
+                            <strong id="gdt-estimate" class="text-emerald-500 text-xl font-black">0</strong> biến thể.
+                        </div>
+                        <button id="btn-gdt-generate" class="px-6 py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-95 shadow-sm flex items-center justify-center gap-2">
+                            <i class="fas fa-magic"></i> TẠO NGAY
                         </button>
                     </div>
+
                 </div>
 
-                <div id="gdt-list-container" style="min-height: 300px; max-height: 500px; overflow-y: auto; background: var(--bg-sec);">
-                    <div style="padding: 40px 20px; text-align: center; color: var(--text-mut);">Nhập email và bấm "Tạo ngay" để bắt đầu...</div>
-                </div>
-
-                <div class="pagination">
-                    <button class="btn btn-outline btn-sm" id="btn-page-prev" disabled><i class="fas fa-chevron-left"></i> Trước</button>
-                    <div class="text-mut" style="font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 6px;">
-                        Trang <input type="number" id="page-input" class="page-input" value="0" min="1" disabled title="Nhập số trang và nhấn Enter"> / <span id="total-pages">0</span>
+                <div class="lg:col-span-7 premium-card bg-white dark:bg-zinc-900 rounded-[32px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col overflow-hidden h-[600px]">
+                    
+                    <div class="bg-zinc-50/80 dark:bg-zinc-900/80 border-b border-zinc-200 dark:border-zinc-800 px-4 pt-4 pb-0">
+                        <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-4" id="gdt-filters">
+                            <button class="filter-btn active px-4 py-2 text-sm font-bold rounded-xl transition-all border bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-transparent shrink-0" data-filter="all">
+                                Tất cả (<span id="count-all">0</span>)
+                            </button>
+                            <button class="filter-btn px-4 py-2 text-sm font-semibold rounded-xl transition-all border bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 shrink-0" data-filter="starred">
+                                <i class="fas fa-star text-amber-500 mr-1"></i> Đã lưu (<span id="count-starred">0</span>)
+                            </button>
+                            <button class="filter-btn px-4 py-2 text-sm font-semibold rounded-xl transition-all border bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 shrink-0" data-filter="used">
+                                <i class="fas fa-check text-emerald-500 mr-1"></i> Đã dùng (<span id="count-used">0</span>)
+                            </button>
+                        </div>
+                        
+                        <div class="flex justify-between items-center py-3 border-t border-zinc-200 dark:border-zinc-800">
+                            <span class="text-xs font-semibold text-zinc-500 uppercase tracking-wider" id="list-status-text">Hiển thị tất cả email</span>
+                            <button id="btn-copy-all" class="text-xs font-bold text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center gap-1.5 transition-colors bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg active:scale-95">
+                                <i class="fas fa-copy"></i> Copy trang này
+                            </button>
+                        </div>
                     </div>
-                    <button class="btn btn-outline btn-sm" id="btn-page-next" disabled>Sau <i class="fas fa-chevron-right"></i></button>
-                </div>
-            </div>
 
+                    <div id="gdt-list-container" class="flex-1 overflow-y-auto bg-zinc-50/30 dark:bg-zinc-950/30 relative">
+                        <div class="absolute inset-0 flex items-center justify-center text-sm font-medium text-zinc-400 p-8 text-center" id="gdt-empty-state">
+                            Nhập email và bấm "Tạo ngay" để bắt đầu...
+                        </div>
+                        <div id="gdt-table-body"></div>
+                    </div>
+
+                    <div class="bg-zinc-50 dark:bg-zinc-900/80 border-t border-zinc-200 dark:border-zinc-800 p-4 flex justify-between items-center">
+                        <button id="btn-page-prev" class="px-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold text-zinc-600 dark:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all flex items-center gap-2" disabled>
+                            <i class="fas fa-chevron-left text-xs"></i> Trước
+                        </button>
+                        <div class="text-sm font-medium text-zinc-500 flex items-center gap-2">
+                            Trang 
+                            <input type="number" id="page-input" class="w-14 h-8 text-center bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg text-zinc-900 dark:text-white font-bold outline-none focus:border-zinc-900 dark:focus:border-white transition-all disabled:opacity-50" value="0" min="1" disabled> 
+                            / <span id="total-pages" class="font-bold">0</span>
+                        </div>
+                        <button id="btn-page-next" class="px-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm font-bold text-zinc-600 dark:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all flex items-center gap-2" disabled>
+                            Sau <i class="fas fa-chevron-right text-xs"></i>
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
         </div>
     `;
 }
@@ -140,6 +103,9 @@ export function init() {
     const historyContainer = document.getElementById('gdt-history-list');
     
     const listContainer = document.getElementById('gdt-list-container');
+    const tableBody = document.getElementById('gdt-table-body');
+    const emptyState = document.getElementById('gdt-empty-state');
+    
     const btnPrev = document.getElementById('btn-page-prev');
     const btnNext = document.getElementById('btn-page-next');
     const pageInput = document.getElementById('page-input');
@@ -183,18 +149,16 @@ export function init() {
         if (historyRoots.length === 0) {
             historyContainer.innerHTML = ''; return;
         }
-        let html = '<span class="text-mut" style="font-size: 0.8rem; margin-right: 4px;">Tái sử dụng:</span>';
+        let html = '<span class="text-[11px] font-bold text-zinc-400 uppercase mr-1 mt-1">Lịch sử:</span>';
         historyRoots.forEach(root => {
-            html += `<button class="history-chip" data-root="${root}">${root}</button>`;
+            html += `<button class="history-chip px-3 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-lg text-xs font-semibold cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-white transition-colors border border-zinc-200 dark:border-zinc-700" data-root="${root}">${root}</button>`;
         });
         historyContainer.innerHTML = html;
     };
-    renderHistory(); // Chạy lần đầu
+    renderHistory(); 
 
     // Tách bỏ các ký tự thừa
-    const cleanUsername = (raw) => {
-        return raw.toLowerCase().replace(/\s/g, '').replace(/\./g, '');
-    };
+    const cleanUsername = (raw) => raw.toLowerCase().replace(/\s/g, '').replace(/\./g, '');
 
     // ==========================================
     // AUTO-STRIP: Xử lý Tách Domain ngay lúc nhập
@@ -202,38 +166,34 @@ export function init() {
     input.addEventListener('input', (e) => {
         let val = e.target.value;
         
-        // Cắt Domain thông minh nếu có chữ @
         if (val.includes('@')) {
             const parts = val.split('@');
-            input.value = parts[0].replace(/\s/g, ''); // Cập nhật lại vào ô input chỉ còn username
+            input.value = parts[0].replace(/\s/g, ''); 
             domainSpan.textContent = parts[1] ? '@' + parts[1].replace(/\s/g, '') : '@gmail.com';
         }
 
-        // Tính toán số lượng ước tính
         const username = cleanUsername(input.value);
         const len = username.length;
         if (len < 2) {
-            estCount.textContent = '0'; estCount.style.color = 'var(--text-mut)';
+            estCount.textContent = '0'; estCount.className = 'text-zinc-400 text-xl font-black';
         } else {
             const combos = Math.pow(2, len - 1);
-            estCount.textContent = combos.toLocaleString('vi-VN');
             if (len > 16) {
                 estCount.textContent = combos.toLocaleString('vi-VN') + ' (Quá tải)';
-                estCount.style.color = '#ef4444';
-            } else { estCount.style.color = '#10b981'; }
+                estCount.className = 'text-red-500 text-xl font-black';
+            } else { 
+                estCount.textContent = combos.toLocaleString('vi-VN');
+                estCount.className = 'text-emerald-500 text-xl font-black'; 
+            }
         }
     });
 
-    // ==========================================
-    // SỰ KIỆN: CHỌN LỊCH SỬ ĐỂ ĐIỀN NHANH
-    // ==========================================
     historyContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('history-chip')) {
             const root = e.target.getAttribute('data-root');
             const parts = root.split('@');
             input.value = parts[0];
             domainSpan.textContent = '@' + (parts[1] || 'gmail.com');
-            // Kích hoạt sự kiện input để tính toán lại số lượng
             input.dispatchEvent(new Event('input'));
         }
     });
@@ -248,11 +208,10 @@ export function init() {
         if (username.length < 2) return UI.showAlert('Lỗi', 'Username phải có ít nhất 2 ký tự.', 'warning');
         if (username.length > 16) return UI.showAlert('Giới hạn', 'Hệ thống giới hạn tối đa 16 ký tự để trình duyệt không bị treo.', 'error');
 
-        // LƯU LỊCH SỬ MAIL GỐC
         const fullRoot = input.value.trim() + domain;
         if (!historyRoots.includes(fullRoot)) {
-            historyRoots.unshift(fullRoot); // Đẩy lên đầu
-            if (historyRoots.length > 5) historyRoots.pop(); // Giữ tối đa 5 cái gần nhất
+            historyRoots.unshift(fullRoot); 
+            if (historyRoots.length > 5) historyRoots.pop(); 
             saveDB();
             renderHistory();
         }
@@ -273,10 +232,6 @@ export function init() {
         currentPage = 1;
         applyFilter(); 
         UI.showAlert('Thành công', `Đã tạo ${numCombinations.toLocaleString('vi-VN')} bí danh.`, 'success');
-        
-        if (window.innerWidth <= 768) {
-            setTimeout(() => { document.getElementById('gdt-list-container').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
-        }
     };
 
     // ==========================================
@@ -301,11 +256,14 @@ export function init() {
 
     const renderTable = () => {
         if (filteredEmails.length === 0) {
-            listContainer.innerHTML = `<div style="padding: 40px 20px; text-align: center; color: var(--text-mut);">Không có dữ liệu phù hợp.</div>`;
+            emptyState.classList.remove('hidden');
+            tableBody.innerHTML = '';
             btnPrev.disabled = true; btnNext.disabled = true; 
             pageInput.value = 0; pageInput.disabled = true; totalPagesEl.textContent = "0";
             return;
         }
+
+        emptyState.classList.add('hidden');
 
         const totalPages = Math.ceil(filteredEmails.length / itemsPerPage);
         if (currentPage > totalPages) currentPage = totalPages;
@@ -319,24 +277,24 @@ export function init() {
             const isStarred = starredSet.has(email);
             
             html += `
-                <div class="email-row ${isUsed ? 'is-used' : ''}">
-                    <div class="email-text" title="${email}">
-                        <span style="opacity: 0.4; font-size: 0.8rem; margin-right: 8px; font-weight: normal;">#${startIndex + index + 1}</span>
+                <div class="flex justify-between items-center py-3.5 px-5 hover:bg-zinc-100 dark:hover:bg-zinc-800/80 border-b border-zinc-100 dark:border-zinc-800/50 transition-colors group">
+                    <div class="font-mono text-[13px] md:text-sm truncate pr-4 ${isUsed ? 'text-emerald-500 font-bold' : 'text-zinc-700 dark:text-zinc-300'} transition-colors" title="${email}">
+                        <span class="opacity-30 text-[10px] mr-3 font-sans w-6 inline-block text-right">#${startIndex + index + 1}</span>
                         ${email}
                     </div>
-                    <div class="flex-row" style="gap: 6px;">
-                        <button class="btn btn-ghost btn-sm action-star" data-email="${email}" title="${isStarred ? 'Bỏ lưu' : 'Lưu lại'}">
-                            <i class="fa-star ${isStarred ? 'fas' : 'far'}" style="color: ${isStarred ? '#eab308' : 'var(--text-mut)'}; font-size: 1.1rem;"></i>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button class="action-star w-8 h-8 rounded-lg flex items-center justify-center hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors ${isStarred ? 'text-amber-500' : 'text-zinc-400 hover:text-amber-500'}" data-email="${email}" title="${isStarred ? 'Bỏ lưu' : 'Lưu lại'}">
+                            <i class="fa-star ${isStarred ? 'fas' : 'far'}"></i>
                         </button>
-                        <button class="btn btn-outline btn-sm action-copy" data-email="${email}" title="Copy và đánh dấu Đã dùng" style="${isUsed ? 'border-color: #10b981; color: #10b981;' : ''}">
-                            <i class="fas ${isUsed ? 'fa-check' : 'fa-copy'}"></i> ${isUsed ? 'Đã sao chép' : 'Copy'}
+                        <button class="action-copy px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${isUsed ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50' : 'bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500'}" data-email="${email}" title="Copy và đánh dấu Đã dùng">
+                            <i class="fas ${isUsed ? 'fa-check' : 'fa-copy'}"></i> ${isUsed ? 'Đã copy' : 'Copy'}
                         </button>
                     </div>
                 </div>
             `;
         });
 
-        listContainer.innerHTML = html;
+        tableBody.innerHTML = html;
         
         pageInput.disabled = false;
         pageInput.value = currentPage;
@@ -361,9 +319,6 @@ export function init() {
         renderTable();
     });
 
-    // ==========================================
-    // SỰ KIỆN: NEXT / PREV PAGE
-    // ==========================================
     btnPrev.onclick = () => { if (currentPage > 1) { currentPage--; renderTable(); } };
     btnNext.onclick = () => { 
         const totalPages = Math.ceil(filteredEmails.length / itemsPerPage);
@@ -375,14 +330,21 @@ export function init() {
     // ==========================================
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.onclick = (e) => {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            currentFilter = e.target.getAttribute('data-filter');
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('active', 'bg-zinc-900', 'text-white', 'dark:bg-white', 'dark:text-zinc-900', 'border-transparent');
+                b.classList.add('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400', 'border-zinc-200', 'dark:border-zinc-700');
+            });
+            
+            const target = e.currentTarget;
+            target.classList.remove('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400', 'border-zinc-200', 'dark:border-zinc-700');
+            target.classList.add('active', 'bg-zinc-900', 'text-white', 'dark:bg-white', 'dark:text-zinc-900', 'border-transparent');
+            
+            currentFilter = target.getAttribute('data-filter');
             applyFilter();
         };
     });
 
-    listContainer.addEventListener('click', async (e) => {
+    tableBody.addEventListener('click', async (e) => {
         const btnCopy = e.target.closest('.action-copy');
         const btnStar = e.target.closest('.action-star');
 
@@ -393,9 +355,14 @@ export function init() {
                 usedSet.add(email); 
                 saveDB();
                 
-                btnCopy.innerHTML = `<i class="fas fa-check"></i> Đã sao chép`;
-                btnCopy.style.borderColor = '#10b981'; btnCopy.style.color = '#10b981';
-                btnCopy.closest('.email-row').classList.add('is-used');
+                // Cập nhật giao diện nút copy nhanh (emerald color)
+                btnCopy.className = 'action-copy px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50';
+                btnCopy.innerHTML = `<i class="fas fa-check"></i> Đã copy`;
+                
+                // Thêm màu emerald cho text
+                const textDiv = btnCopy.closest('.flex').querySelector('.font-mono');
+                textDiv.classList.add('text-emerald-500', 'font-bold');
+                textDiv.classList.remove('text-zinc-700', 'dark:text-zinc-300');
                 
                 UI.showAlert('Thành công', `Đã chép: ${email}`, 'success');
             } catch (err) { UI.showAlert('Lỗi', 'Không thể sao chép!', 'error'); }
@@ -405,10 +372,14 @@ export function init() {
             const email = btnStar.getAttribute('data-email');
             if (starredSet.has(email)) {
                 starredSet.delete(email); 
-                btnStar.innerHTML = `<i class="far fa-star" style="color: var(--text-mut); font-size: 1.1rem;"></i>`;
+                btnStar.innerHTML = `<i class="far fa-star"></i>`;
+                btnStar.classList.remove('text-amber-500');
+                btnStar.classList.add('text-zinc-400', 'hover:text-amber-500');
             } else {
                 starredSet.add(email); 
-                btnStar.innerHTML = `<i class="fas fa-star" style="color: #eab308; font-size: 1.1rem;"></i>`;
+                btnStar.innerHTML = `<i class="fas fa-star"></i>`;
+                btnStar.classList.remove('text-zinc-400', 'hover:text-amber-500');
+                btnStar.classList.add('text-amber-500');
             }
             saveDB();
             if (currentFilter === 'starred') applyFilter(); 
@@ -416,19 +387,31 @@ export function init() {
     });
 
     // ==========================================
-    // NÚT XÓA DATA & COPY TẤT CẢ
+    // NÚT XÓA DATA & COPY TRANG (Hiện tại)
     // ==========================================
     document.getElementById('btn-copy-all').onclick = async () => {
-        if (filteredEmails.length === 0) return UI.showAlert('Trống', 'Chưa có kết quả.', 'warning');
+        // Chỉ copy những email đang được render trên trang hiện tại để tránh lag Clipboard
+        const rows = tableBody.querySelectorAll('.action-copy');
+        if (rows.length === 0) return UI.showAlert('Trống', 'Chưa có kết quả để copy.', 'warning');
+        
+        const emailsToCopy = Array.from(rows).map(btn => btn.getAttribute('data-email'));
         try {
-            await navigator.clipboard.writeText(filteredEmails.join('\n'));
-            UI.showAlert('Đã chép', `Đã lưu ${filteredEmails.length} email.`, 'success');
-        } catch (e) { UI.showAlert('Lỗi', 'Trình duyệt chặn copy số lượng lớn.', 'error'); }
+            await navigator.clipboard.writeText(emailsToCopy.join('\n'));
+            UI.showAlert('Đã chép', `Đã lưu ${emailsToCopy.length} email trên trang này.`, 'success');
+            
+            // Tự động đánh dấu đã dùng cho cả cục
+            emailsToCopy.forEach(email => usedSet.add(email));
+            saveDB();
+            renderTable(); // Cập nhật lại UI xanh lá
+        } catch (e) { UI.showAlert('Lỗi', 'Trình duyệt chặn copy.', 'error'); }
     };
 
     document.getElementById('btn-clear-data').onclick = () => {
         UI.showConfirm('Xóa dữ liệu?', 'Toàn bộ lịch sử (Mail gốc, Đã dùng, Đánh dấu) sẽ bị xóa.', () => {
             usedSet.clear(); starredSet.clear(); historyRoots = [];
+            currentEmails = []; filteredEmails = [];
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
             saveDB(); renderHistory(); applyFilter();
             UI.showAlert('Thành công', 'Đã làm sạch dữ liệu.', 'success');
         });

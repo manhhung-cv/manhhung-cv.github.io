@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hunq's Picks - Review & Đánh giá</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        premium: {
+                            50: '#f8f9fa',
+                            100: '#f1f3f5',
+                            200: '#e9ecef',
+                            800: '#343a40',
+                            900: '#212529',
+                            black: '#000000'
+                        }
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                        'slide-up': 'slideUp 0.5s ease-out forwards'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Tùy chỉnh thanh cuộn */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.8); }
+        
+        /* Ẩn scrollbar cho nav mobile */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        body.modal-open { overflow: hidden; }
+        
+        /* Họa tiết nền Caro (Grid Pattern) tạo chiều sâu */
+        .fomo-grid {
+            background-image: 
+                linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+
+        /* Loader Animation */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #343a40;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-premium-50 text-premium-900 font-sans antialiased selection:bg-premium-900 selection:text-white flex flex-col min-h-screen">
+
+    <!-- Thông báo Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-premium-900 text-white px-6 py-3 rounded-lg shadow-2xl z-[60] flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-green-400"></i>
+        <span id="toast-message" class="text-sm font-medium">Đã sao chép!</span>
+    </div>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 h-16 md:h-20 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-2 cursor-pointer shrink-0" onclick="switchTab('home'); renderProducts('Tất cả');">
+                <i class="fa-solid fa-gem text-lg md:text-xl"></i>
+                <h1 class="text-lg md:text-xl font-bold tracking-tight">Hunq's<span class="font-light text-gray-500">Picks.</span></h1>
+            </div>
+            <nav class="flex gap-4 md:gap-8 text-xs md:text-sm font-medium text-gray-600 overflow-x-auto whitespace-nowrap hide-scrollbar items-center pt-2">
+                <button onclick="switchTab('home')" id="nav-home" class="nav-btn text-premium-900 font-bold border-b-2 border-premium-900 hover:text-premium-black transition-colors py-2 pb-3 md:pb-4 outline-none">Trang chủ</button>
+                <button onclick="switchTab('about')" id="nav-about" class="nav-btn border-b-2 border-transparent hover:text-premium-black transition-colors py-2 pb-3 md:pb-4 outline-none">Về tôi</button>
+                <button onclick="switchTab('contact')" id="nav-contact" class="nav-btn border-b-2 border-transparent hover:text-premium-black transition-colors py-2 pb-3 md:pb-4 outline-none">Hợp tác</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- VIEWS CONTAINER -->
+    <div class="flex-grow flex flex-col relative">
+        
+        <!-- Background Parallax Layer -->
+        <div id="hero-bg" class="absolute inset-0 fomo-grid z-0 will-change-transform h-[800px] pointer-events-none"></div>
+
+        <!-- ================= VIEW: TRANG CHỦ (SẢN PHẨM) ================= -->
+        <main id="view-home" class="flex-grow block animate-fade-in relative z-10">
+            <!-- Hero Section có Parallax -->
+            <section class="max-w-7xl mx-auto px-6 py-12 md:py-24 text-center overflow-hidden relative">
+                <div id="hero-content" class="transition-opacity will-change-transform">
+                    <span class="text-xs font-bold tracking-widest uppercase text-gray-400 mb-4 block animate-slide-up opacity-0" style="animation-delay: 50ms;">Góc Review Chân Thực</span>
+                    <h2 class="text-4xl md:text-5xl font-bold mb-4 tracking-tight leading-tight animate-slide-up opacity-0" style="animation-delay: 150ms;">Những sản phẩm tôi <br class="hidden md:block">đã trải nghiệm.</h2>
+                    <p class="text-gray-500 max-w-2xl mx-auto text-sm md:text-lg animate-slide-up opacity-0" style="animation-delay: 250ms;">Đánh giá khách quan, ưu nhược điểm rõ ràng. Giúp bạn ra quyết định mua sắm thông minh hơn với các deal tốt nhất.</p>
+                </div>
+            </section>
+
+            <!-- Controls & Tabs Area -->
+            <section class="max-w-7xl mx-auto px-6 mb-8 relative z-20">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-gray-200 pb-4">
+                    
+                    <!-- Category Tabs -->
+                    <div id="category-tabs" class="flex gap-6 w-full md:w-auto overflow-x-auto hide-scrollbar -mb-[17px] z-10">
+                        <!-- Render bởi JS -->
+                    </div>
+                    
+                    <!-- Search & View Toggle -->
+                    <div class="flex items-center gap-3 w-full md:w-auto shrink-0 mt-4 md:mt-0">
+                        <div class="relative w-full md:w-56">
+                            <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                            <input type="text" id="search-input" placeholder="Tìm kiếm..." class="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-premium-900 transition-all shadow-sm">
+                        </div>
+                        <button id="view-toggle-btn" onclick="toggleView()" class="h-[38px] w-[38px] flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 bg-white shrink-0 shadow-sm" title="Thay đổi góc nhìn">
+                            <i class="fa-solid fa-list" id="view-icon"></i>
+                        </button>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Lưới sản phẩm -->
+            <section class="max-w-7xl mx-auto px-6 pb-10 relative z-20">
+                <!-- Vùng chứa Product -->
+                <div id="product-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Render bởi JS -->
+                </div>
+                
+                <!-- Infinite Scroll Loading Indicator -->
+                <div id="loading-indicator" class="hidden justify-center items-center gap-3 py-10 w-full text-gray-400 text-sm font-medium">
+                    <div class="loader"></div> Đang tải thêm đánh giá...
+                </div>
+                
+                <!-- Trạng thái trống -->
+                <div id="empty-state" class="hidden text-center py-20 w-full">
+                    <i class="fa-regular fa-folder-open text-4xl text-gray-300 mb-4 block"></i>
+                    <p class="text-gray-500">Không tìm thấy sản phẩm nào phù hợp.</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- ================= VIEW: VỀ TÔI ================= -->
+        <main id="view-about" class="hidden flex-grow max-w-5xl mx-auto px-6 py-16 md:py-24 animate-fade-in w-full relative z-10">
+            <div class="flex flex-col md:flex-row gap-12 lg:gap-20 items-center md:items-start">
+                <div class="w-56 h-56 md:w-72 md:h-72 rounded-[2rem] overflow-hidden shrink-0 shadow-xl border border-gray-100 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800" alt="Profile" class="w-full h-full object-cover">
+                </div>
+                <div class="text-center md:text-left">
+                    <span class="text-xs font-bold tracking-widest uppercase text-premium-900 mb-3 block">Hi there! 👋</span>
+                    <h2 class="text-3xl md:text-4xl font-bold mb-6 leading-tight">Chào bạn, tôi là <span class="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-500">Hunq.</span></h2>
+                    
+                    <p class="text-gray-600 mb-5 leading-relaxed text-base md:text-lg">
+                        Tôi là một nhà sáng tạo nội dung đam mê khám phá các sản phẩm công nghệ, làm đẹp và setup không gian sống. Mục tiêu của trang web này là tạo ra một góc nhỏ tối giản, nơi lưu trữ những đánh giá khách quan và chân thực nhất.
+                    </p>
+                    <p class="text-gray-600 mb-8 leading-relaxed text-base md:text-lg">
+                        Thay vì bị ngợp bởi hàng ngàn sự lựa chọn trên các sàn thương mại điện tử, tôi hy vọng <strong class="text-premium-900">Hunq's Picks</strong> sẽ giúp bạn tiết kiệm thời gian và tìm được những món đồ thực sự đáng tiền.
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <!-- ================= VIEW: HỢP TÁC ================= -->
+        <main id="view-contact" class="hidden flex-grow max-w-3xl mx-auto px-6 py-16 md:py-24 animate-fade-in w-full relative z-10">
+            <div class="text-center mb-10 md:mb-14">
+                <span class="text-xs font-bold tracking-widest uppercase text-premium-900 mb-3 block">Let's work together</span>
+                <h2 class="text-3xl md:text-4xl font-bold mb-4">Hợp tác cùng tôi</h2>
+                <p class="text-gray-500 text-base md:text-lg max-w-xl mx-auto mb-6">Nếu bạn là nhãn hàng có sản phẩm thú vị và muốn tôi trải nghiệm để mang đến đánh giá khách quan cho cộng đồng, hãy để lại thông tin nhé!</p>
+                
+                <div class="bg-red-50/80 border border-red-100 text-red-600 px-5 py-4 rounded-xl max-w-2xl mx-auto flex items-start gap-3 text-left shadow-sm">
+                    <i class="fa-solid fa-circle-exclamation mt-1"></i>
+                    <p class="text-sm font-medium leading-relaxed">
+                        <strong class="font-bold">Lưu ý quan trọng:</strong> Tôi xin phép <span class="underline font-bold">từ chối</span> mọi lời mời hợp tác quảng cáo liên quan đến cờ bạc, cá cược, app vay tiền, hoặc các sản phẩm kém chất lượng, không rõ nguồn gốc gây hại cho người tiêu dùng.
+                    </p>
+                </div>
+            </div>
+
+            <form class="bg-white p-6 md:p-10 rounded-3xl shadow-sm border border-gray-100 space-y-6" onsubmit="event.preventDefault(); showToast('Đã gửi thông tin liên hệ thành công!'); this.reset();">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 tracking-wide mb-2">Tên / Nhãn hàng</label>
+                        <input type="text" required placeholder="Ví dụ: Logitech VN" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-premium-900 focus:bg-white focus:outline-none transition-all text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-gray-500 tracking-wide mb-2">Email liên hệ</label>
+                        <input type="email" required placeholder="contact@brand.com" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-premium-900 focus:bg-white focus:outline-none transition-all text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-500 tracking-wide mb-2">Nội dung hợp tác (Mô tả sản phẩm)</label>
+                    <textarea required rows="4" placeholder="Chia sẻ một chút về sản phẩm bạn muốn tôi review..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-premium-900 focus:bg-white focus:outline-none transition-all text-sm resize-none"></textarea>
+                </div>
+                <button type="submit" class="w-full py-4 bg-premium-900 hover:bg-black text-white text-sm font-bold rounded-xl transition-colors shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                    <i class="fa-regular fa-paper-plane"></i> Gửi Yêu Cầu Hợp Tác
+                </button>
+            </form>
+        </main>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-100 py-10 mt-auto relative z-20">
+        <div class="max-w-7xl mx-auto px-6 text-center text-gray-400 text-sm flex flex-col items-center gap-4">
+            <div class="flex gap-4 text-lg text-gray-600">
+                <a href="#" class="hover:text-black transition-colors"><i class="fa-brands fa-tiktok"></i></a>
+                <a href="#" class="hover:text-black transition-colors"><i class="fa-brands fa-instagram"></i></a>
+                <a href="#" class="hover:text-black transition-colors"><i class="fa-brands fa-youtube"></i></a>
+            </div>
+            <p>&copy; 2026 Hunq's Picks. Designed with Minimalist style.</p>
+        </div>
+    </footer>
+
+    <!-- Modal chi tiết sản phẩm -->
+    <div id="product-modal" class="fixed inset-0 z-50 hidden opacity-0 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-premium-black/80 backdrop-blur-md" onclick="closeModal()"></div>
+        
+        <div class="absolute inset-0 flex items-center justify-center p-0 md:p-6 lg:p-10">
+            <div id="modal-content" class="bg-white w-full h-full md:h-[90vh] md:max-w-[1200px] md:rounded-2xl shadow-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300 relative">
+                
+                <button onclick="closeModal()" class="absolute top-4 right-4 w-10 h-10 bg-white/90 border border-gray-100 backdrop-blur rounded-full flex items-center justify-center text-gray-500 hover:text-black hover:bg-gray-100 z-50 transition-colors shadow-md">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+
+                <div class="flex-1 flex flex-col md:flex-row overflow-hidden w-full h-full">
+                    <!-- CỘT TRÁI -->
+                    <div id="immersive-media-container" class="w-full md:w-[55%] bg-[#050505] flex flex-col z-10 h-[45vh] md:h-full shrink-0 relative group/leftcol overflow-hidden">
+                        <!-- JS renders here -->
+                    </div>
+
+                    <!-- CỘT PHẢI -->
+                    <div class="w-full md:w-[45%] bg-white flex flex-col h-[calc(100%-45vh)] md:h-full relative overflow-hidden">
+                        
+                        <div id="modal-scroll-area" class="flex-1 overflow-y-auto custom-scrollbar" onscroll="handleModalScroll(this)">
+                            <div id="modal-header" class="sticky top-0 z-30 bg-white/95 backdrop-blur-md px-5 pt-5 pb-3 md:px-8 md:pt-8 transition-colors duration-300">
+                                <div class="flex items-center gap-2.5 mb-2 flex-wrap">
+                                    <div id="modal-category" class="flex flex-wrap gap-1.5"></div>
+                                    <span class="text-red-600 font-bold text-[10px] bg-red-50 px-1.5 py-0.5 rounded border border-red-100 flex items-center gap-1">
+                                        <i class="fa-solid fa-fire"></i> <span id="modal-sales"></span>
+                                    </span>
+                                </div>
+                                <h2 id="modal-title" class="text-xl md:text-2xl font-bold text-premium-900 leading-tight pr-8"></h2>
+                            </div>
+
+                            <div class="px-5 md:px-8 pb-6">
+                                <div class="mb-5 border-l-[3px] border-premium-900 pl-3">
+                                    <p id="modal-verdict" class="text-sm text-gray-800 font-medium italic leading-relaxed"></p>
+                                </div>
+                                <p id="modal-desc" class="text-gray-600 mb-6 text-sm leading-relaxed"></p>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                                    <div class="bg-green-50/50 rounded-xl p-3 border border-green-100/50">
+                                        <h4 class="text-xs font-bold text-green-700 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-circle-check"></i> Điểm cộng</h4>
+                                        <ul id="modal-pros" class="space-y-1.5 text-xs text-gray-700"></ul>
+                                    </div>
+                                    <div class="bg-red-50/50 rounded-xl p-3 border border-red-100/50">
+                                        <h4 class="text-xs font-bold text-red-600 mb-2 flex items-center gap-1.5"><i class="fa-solid fa-circle-xmark"></i> Điểm trừ</h4>
+                                        <ul id="modal-cons" class="space-y-1.5 text-xs text-gray-700"></ul>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-gray-50 rounded-xl p-4 space-y-3 border border-gray-100">
+                                    <div class="flex items-start gap-3">
+                                        <i class="fa-solid fa-shield-halved text-blue-500 mt-0.5 text-sm w-4 text-center shrink-0"></i>
+                                        <p id="modal-warranty" class="text-xs text-gray-700 leading-relaxed"></p>
+                                    </div>
+                                    <div class="flex items-start gap-3">
+                                        <i class="fa-solid fa-rotate-left text-green-500 mt-0.5 text-sm w-4 text-center shrink-0"></i>
+                                        <p id="modal-refund" class="text-xs text-gray-700 leading-relaxed"></p>
+                                    </div>
+                                    <div class="flex items-start gap-3">
+                                        <i class="fa-solid fa-truck-fast text-orange-500 mt-0.5 text-sm w-4 text-center shrink-0"></i>
+                                        <p id="modal-shipping" class="text-xs text-gray-700 leading-relaxed"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- FIXED BOTTOM ACTION BAR -->
+                        <div class="w-full bg-white border-t border-gray-100 px-4 py-3 md:px-6 md:py-4 z-40 shrink-0 shadow-[0_-15px_30px_rgba(0,0,0,0.06)] flex flex-col gap-3">
+                            <div id="modal-voucher-section" class="hidden overflow-x-auto hide-scrollbar w-full">
+                                <div id="voucher-container" class="flex gap-2 pb-1 w-max"></div>
+                            </div>
+                            <div id="modal-platforms" class="flex flex-wrap justify-center gap-2.5 w-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dữ liệu & Logic -->
+    <script>
+        // --- BẢO MẬT XSS (CROSS-SITE SCRIPTING PROTECTION) ---
+        // Hàm lọc nội dung độc hại trước khi in ra giao diện
+        const escapeHTML = (str) => {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        };
+
+        const sanitizeUrl = (url) => {
+            if (!url) return '#';
+            if (url.toLowerCase().startsWith('javascript:')) return '#';
+            return escapeHTML(url);
+        };
+
+        // --- 1. DỮ LIỆU SẢN PHẨM MẪU ---
+        const products = [
+            {
+                id: 1,
+                name: "Chuột Logitech MX Master 3S",
+                categories: ["Công nghệ", "Setup Góc Làm"],
+                ads_target: "Được Tài Trợ",
+                ontop: true,
+                image: "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&q=80&w=1000", 
+                gallery: [
+                    { type: 'image', url: "https://images.unsplash.com/photo-1593642632823-8f785ba67e45?auto=format&fit=crop&q=80&w=1000" },
+                    { type: 'video', url: "https://www.youtube.com/embed/tgbNymZ7vqY" }
+                ],
+                description: "Được mệnh danh là 'vua của các loại chuột công việc'. Form cầm công thái học cực kỳ thoải mái, con lăn vô cực mượt mà.",
+                pros: ["Click cực êm", "Cảm biến 8000 DPI", "Pin đến 70 ngày"],
+                cons: ["Giá cao", "Kích thước lớn"],
+                salesText: "Đã bán 15.400+",
+                policies: {
+                    warranty: "Bảo hành chính hãng 1 đổi 1 trong 12 tháng.",
+                    refund: "Trả hàng/Hoàn tiền miễn phí trong 15 ngày.",
+                    shipping: "Freeship toàn quốc."
+                },
+                verdict: "Tuyệt đối đáng tiền nếu bạn làm việc hơn 8 tiếng/ngày.",
+                vouchers: [
+                    { platform: "Shopee", code: "LOGITECH200K", quantity: 50 }
+                ],
+                platforms: [
+                    { name: "Shopee", url: "https://shopee.vn", icon: "fa-bag-shopping", bgColor: "bg-orange-500", hoverColor: "hover:bg-orange-600", textColor: "text-white" },
+                    { name: "Lazada", url: "https://lazada.vn", icon: "fa-heart", bgColor: "bg-blue-600", hoverColor: "hover:bg-blue-700", textColor: "text-white" }
+                ]
+            },
+            {
+                id: 2,
+                name: "Máy rửa mặt Foreo Luna 4",
+                categories: ["Làm đẹp", "Sức khỏe"],
+                ads_target: false,
+                ontop: false,
+                image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&q=80&w=1000",
+                gallery: [{ type: 'image', url: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&q=80&w=1000" }],
+                description: "Thiết bị làm sạch da thông minh với gai silicone siêu mềm. Massage chống lão hóa qua app.",
+                pros: ["Gai siêu mềm", "Chống nước", "Pin dùng cả năm"],
+                cons: ["App kết nối chậm"],
+                salesText: "Top 1 Trending",
+                policies: {
+                    warranty: "Bảo hành chính hãng 2 năm.",
+                    refund: "Không áp dụng đổi trả do đặc thù vệ sinh.",
+                    shipping: "Miễn phí vận chuyển."
+                },
+                verdict: "Nên đầu tư nếu bạn quan tâm sâu đến skincare.",
+                vouchers: [],
+                platforms: [
+                    { name: "TikTok", url: "https://tiktok.com", icon: "fa-tiktok", bgColor: "bg-black", hoverColor: "hover:bg-gray-800", textColor: "text-white" },
+                    { name: "Shopee", url: "https://shopee.vn", icon: "fa-bag-shopping", bgColor: "bg-orange-500", hoverColor: "hover:bg-orange-600", textColor: "text-white" }
+                ]
+            },
+            {
+                id: 3,
+                name: "Ghế Công Thái Học Herman Miller Aeron",
+                categories: ["Setup Góc Làm", "Nội thất"],
+                ads_target: "Hợp tác",
+                ontop: false,
+                image: "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?auto=format&fit=crop&q=80&w=1000",
+                gallery: [{ type: 'image', url: "https://images.unsplash.com/photo-1505843490538-5133c6c7d0e1?auto=format&fit=crop&q=80&w=1000" }],
+                description: "Chiếc ghế huyền thoại trong giới setup. Lưới pellicle thoáng khí, tựa lưng hỗ trợ cột sống hoàn hảo.",
+                pros: ["Lưới siêu thoáng", "Tư thế ngồi chuẩn", "Bảo hành 12 năm"],
+                cons: ["Giá siêu đắt", "Không kèm tựa đầu"],
+                salesText: "Đã bán 800+",
+                policies: {
+                    warranty: "Bảo hành 12 năm toàn diện.",
+                    refund: "Hỗ trợ thu cũ đổi mới.",
+                    shipping: "Lắp đặt miễn phí tận nơi."
+                },
+                verdict: "Chỉ dành cho người dư dả tài chính và bị đau lưng nặng.",
+                vouchers: [], 
+                platforms: [
+                    { name: "Web Hãng", url: "#", icon: "fa-globe", bgColor: "bg-gray-200", hoverColor: "hover:bg-gray-300", textColor: "text-gray-800" }
+                ]
+            }
+        ];
+
+      
+
+        // --- 2. LOGIC GIAO DIỆN & PHÂN TRANG ---
+        let currentCategory = 'Tất cả';
+        let currentView = 'flex'; 
+        let searchQuery = '';
+        let currentGalleryData = [];
+        let currentProductImage = '';
+        
+        // Phân trang Infinite Scroll
+        let currentPage = 1;
+        const itemsPerPage = 12; // Load 12 sản phẩm mỗi lần cuộn
+        let currentFilteredList = [];
+        let isLoading = false;
+
+        window.switchTab = (tabId) => {
+            document.getElementById('view-home').classList.add('hidden');
+            document.getElementById('view-about').classList.add('hidden');
+            document.getElementById('view-contact').classList.add('hidden');
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-premium-900', 'font-bold', 'border-premium-900');
+                btn.classList.add('border-transparent');
+            });
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('border-transparent');
+                activeBtn.classList.add('text-premium-900', 'font-bold', 'border-premium-900');
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        const renderFilters = () => {
+            const tabsContainer = document.getElementById('category-tabs');
+            const allCategories = products.reduce((acc, p) => acc.concat(p.categories || []), []);
+            const categories = ['Tất cả', ...new Set(allCategories)];
+            
+            tabsContainer.innerHTML = categories.map(cat => `
+                <button onclick="setCategory('${escapeHTML(cat)}')" 
+                    class="pb-3 text-sm font-semibold whitespace-nowrap transition-all duration-300 border-b-2 
+                    ${cat === currentCategory ? 'text-premium-900 border-premium-900' : 'text-gray-400 border-transparent hover:text-gray-700 hover:border-gray-300'}">
+                    ${escapeHTML(cat)}
+                </button>`).join('');
+        };
+
+        window.setCategory = (cat) => {
+            currentCategory = cat;
+            renderFilters();
+            renderProducts();
+        };
+
+        window.toggleView = () => {
+            currentView = currentView === 'grid' ? 'list' : 'grid';
+            document.getElementById('view-icon').className = currentView === 'grid' ? 'fa-solid fa-list' : 'fa-solid fa-border-all';
+            renderProducts();
+        };
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase().trim();
+            renderProducts();
+        });
+
+        // Khởi tạo danh sách và render trang đầu tiên
+        window.renderProducts = (forceCategory = null) => {
+            if(forceCategory) { currentCategory = forceCategory; renderFilters(); }
+            
+            const container = document.getElementById('product-container');
+            const emptyState = document.getElementById('empty-state');
+            
+            // Lọc sản phẩm
+            currentFilteredList = products.filter(p => {
+                const matchCategory = currentCategory === 'Tất cả' || (p.categories && p.categories.includes(currentCategory));
+                const matchSearch = !searchQuery || 
+                    p.name.toLowerCase().includes(searchQuery) || 
+                    p.description.toLowerCase().includes(searchQuery) ||
+                    (p.categories && p.categories.some(c => c.toLowerCase().includes(searchQuery)));
+                return matchCategory && matchSearch;
+            });
+
+            // Ưu tiên ontop
+            currentFilteredList.sort((a, b) => (b.ontop === true ? 1 : 0) - (a.ontop === true ? 1 : 0));
+
+            // Reset trang
+            currentPage = 1;
+            container.innerHTML = '';
+            
+            if(currentFilteredList.length === 0) { 
+                emptyState.classList.remove('hidden'); 
+                document.getElementById('loading-indicator').classList.add('hidden');
+                return; 
+            }
+            emptyState.classList.add('hidden');
+
+            // Định dạng Grid/List container
+            container.className = currentView === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" : "flex flex-col gap-4 md:gap-5";
+
+            loadMoreProducts();
+        };
+
+        // Tải thêm sản phẩm khi cuộn
+        const loadMoreProducts = () => {
+            if (isLoading) return;
+            const container = document.getElementById('product-container');
+            const loader = document.getElementById('loading-indicator');
+            
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const productsToRender = currentFilteredList.slice(startIndex, endIndex);
+
+            if (productsToRender.length === 0) {
+                loader.classList.add('hidden');
+                return;
+            }
+
+            isLoading = true;
+            if(currentPage > 1) loader.classList.replace('hidden', 'flex');
+
+            // Render an toàn với hàm escapeHTML
+            let html = '';
+            if (currentView === 'grid') {
+                html = productsToRender.map((p, i) => `
+                    <div class="group overflow-hidden transition-all duration-500 flex flex-col animate-fade-in relative ${p.ontop ? 'bg-gradient-to-br from-amber-50 to-orange-50/20 border-none shadow-sm' : (p.ads_target ? 'bg-gradient-to-br from-cyan-50/80 to-blue-50/30 border-none shadow-sm' : 'bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] border border-gray-100')} rounded-2xl">
+                        <div class="flex flex-col h-full relative w-full overflow-hidden z-10" style="border-radius: inherit;">
+                            <div class="relative h-64 overflow-hidden cursor-pointer rounded-t-2xl" onclick="openModal(${p.id})">
+                                <div class="absolute top-4 left-4 z-20 flex flex-col items-start gap-2.5 pr-4 pointer-events-none">
+                                    ${p.ontop ? `<div class="bg-[#1a1a1a]/85 backdrop-blur-md border border-white/10 text-amber-300 text-[9px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 uppercase tracking-[0.15em]"><i class="fa-solid fa-award text-[10px]"></i> Lựa Chọn</div>` : ''}
+                                    ${p.ads_target ? `<div class="bg-white/50 backdrop-blur-md border border-white/70 text-premium-900 text-[9px] font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 uppercase tracking-[0.15em]"><i class="fa-regular fa-handshake text-[10px]"></i> ${escapeHTML(p.ads_target)}</div>` : ''}
+                                </div>
+                                <img src="${sanitizeUrl(p.image)}" alt="${escapeHTML(p.name)}" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700">
+                                <div class="absolute bottom-4 left-4 flex flex-wrap gap-1.5 pr-4 z-20">
+                                    ${p.categories ? p.categories.map(c => `<span class="px-2.5 py-1 bg-white/95 backdrop-blur-md text-[10px] font-bold uppercase tracking-wider text-premium-900 rounded-md shadow-sm border border-gray-100/50">${escapeHTML(c)}</span>`).join('') : ''}
+                                </div>
+                            </div>
+                            <div class="p-6 flex flex-col flex-grow z-20 ${p.ontop || p.ads_target ? 'bg-transparent' : 'bg-white'}">
+                                <div class="flex items-center gap-2 mb-3"><span class="text-red-500 font-semibold text-[10px] bg-red-50/80 px-2 py-0.5 rounded border border-red-100/50 flex items-center gap-1 uppercase"><i class="fa-solid fa-fire text-[10px]"></i> ${escapeHTML(p.salesText)}</span></div>
+                                <h3 class="text-lg md:text-xl font-bold text-premium-900 mb-2 line-clamp-2 cursor-pointer hover:text-blue-600 transition-colors leading-snug tracking-tight" onclick="openModal(${p.id})">${escapeHTML(p.name)}</h3>
+                                <p class="text-gray-600 text-[13px] mb-6 line-clamp-2 leading-relaxed">${escapeHTML(p.description)}</p>
+                                <div class="mt-auto pt-5 border-t border-premium-900/10 flex flex-col gap-4">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Phân phối tại</span>
+                                        <div class="flex items-center gap-3 text-premium-900">
+                                            ${p.platforms.map(plat => `<a href="${sanitizeUrl(plat.url)}" target="_blank" onclick="event.stopPropagation()" class="hover:text-blue-600 hover:scale-110 transform transition-all" title="${escapeHTML(plat.name)}"><i class="fa-brands ${escapeHTML(plat.icon)} text-sm"></i></a>`).join('')}
+                                        </div>
+                                    </div>
+                                    <button onclick="openModal(${p.id})" class="w-full py-3 bg-premium-900 text-white hover:bg-black text-[13px] font-bold rounded-xl transition-all duration-300 text-center shadow-md hover:shadow-lg flex items-center justify-center gap-2 group active:scale-[0.98]">
+                                        Đọc Review Chi Tiết <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`).join('');
+            } else {
+                html = productsToRender.map((p, i) => `
+                    <div class="group transition-all duration-500 flex flex-row h-32 md:h-40 animate-fade-in relative ${p.ontop ? 'bg-gradient-to-r from-amber-50 to-white border-none shadow-sm' : (p.ads_target ? 'bg-gradient-to-r from-cyan-50/80 to-white border-none shadow-sm' : 'bg-white shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-gray-100')} rounded-xl">
+                        <div class="flex flex-row h-full relative w-full overflow-hidden z-10" style="border-radius: inherit;">
+                            <div class="relative w-32 md:w-48 h-full shrink-0 overflow-hidden cursor-pointer" onclick="openModal(${p.id})">
+                                <div class="absolute top-2.5 left-2.5 z-20 flex flex-col items-start gap-2 pointer-events-none">
+                                    ${p.ontop ? `<div class="bg-[#1a1a1a]/85 backdrop-blur-md border border-white/10 text-amber-300 text-[8px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center justify-center gap-1.5 uppercase tracking-widest"><i class="fa-solid fa-award"></i><span class="hidden md:inline">Lựa Chọn</span></div>` : ''}
+                                    ${p.ads_target ? `<div class="bg-white/50 backdrop-blur-md border border-white/60 text-premium-900 text-[8px] font-bold px-2.5 py-1 rounded-full shadow-md flex items-center justify-center gap-1.5 uppercase tracking-widest"><i class="fa-regular fa-handshake"></i> <span class="hidden md:inline">${escapeHTML(p.ads_target)}</span></div>` : ''}
+                                </div>
+                                <img src="${sanitizeUrl(p.image)}" alt="${escapeHTML(p.name)}" class="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700">
+                            </div>
+                            <div class="p-4 md:p-5 flex flex-col flex-grow justify-between min-w-0 z-20 ${p.ontop || p.ads_target ? 'bg-transparent' : 'bg-white'}">
+                                <div>
+                                    <div class="flex items-center gap-2 mb-1.5 overflow-x-auto hide-scrollbar">
+                                        ${p.categories ? p.categories.map(c => `<span class="text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-premium-900 bg-white/60 backdrop-blur px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">${escapeHTML(c)}</span>`).join('') : ''}
+                                        <span class="hidden md:flex text-red-500 font-semibold text-[10px] bg-red-50/80 px-1.5 py-0.5 rounded border border-red-100/50 items-center gap-1 shrink-0 uppercase tracking-wide"><i class="fa-solid fa-fire"></i> ${escapeHTML(p.salesText)}</span>
+                                    </div>
+                                    <h3 class="text-sm md:text-lg font-bold text-premium-900 mb-1 md:mb-1.5 truncate cursor-pointer hover:text-blue-600 transition-colors tracking-tight" onclick="openModal(${p.id})">${escapeHTML(p.name)}</h3>
+                                    <p class="text-gray-600 text-xs md:text-[13px] line-clamp-1 md:line-clamp-2 leading-relaxed">${escapeHTML(p.description)}</p>
+                                </div>
+                                <div class="mt-0 md:mt-0 flex items-center justify-between border-t border-premium-900/5 md:border-none pt-2 md:pt-0">
+                                    <div class="flex items-center gap-2.5 text-premium-900">
+                                        <span class="text-[10px] font-semibold uppercase tracking-widest hidden sm:inline text-gray-500">Phân phối:</span>
+                                        ${p.platforms.map(plat => `<a href="${sanitizeUrl(plat.url)}" target="_blank" onclick="event.stopPropagation()" class="hover:text-blue-600 hover:scale-110 transform transition-all" title="${escapeHTML(plat.name)}"><i class="fa-brands ${escapeHTML(plat.icon)} text-[13px] md:text-sm"></i></a>`).join('')}
+                                    </div>
+                                    <button onclick="openModal(${p.id})" class="px-4 py-1.5 md:py-2 bg-premium-900 text-white hover:bg-black text-[11px] md:text-xs font-semibold rounded-lg transition-all duration-300 shadow-sm hover:shadow-md flex items-center gap-1.5 group active:scale-[0.96]">
+                                        Review <i class="fa-solid fa-arrow-right text-[9px] group-hover:translate-x-1 transition-transform"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`).join('');
+            }
+
+            // Giả lập thời gian load nếu cuộn xuống (tạo cảm giác thực tế)
+            setTimeout(() => {
+                container.insertAdjacentHTML('beforeend', html);
+                loader.classList.replace('flex', 'hidden');
+                currentPage++;
+                isLoading = false;
+            }, currentPage === 1 ? 0 : 500);
+        };
+
+        // --- EVENTS: SCROLL PARALLAX & INFINITE SCROLL ---
+        window.addEventListener('scroll', () => {
+            // Parallax Effect (Nội dung và Background lưới cuộn với tốc độ khác nhau)
+            const heroContent = document.getElementById('hero-content');
+            const heroBg = document.getElementById('hero-bg');
+            if (window.scrollY < 600) {
+                const scrolled = window.scrollY;
+                if(heroContent) {
+                    heroContent.style.transform = `translate3d(0, ${scrolled * 0.35}px, 0)`;
+                    heroContent.style.opacity = Math.max(0, 1 - (scrolled / 300));
+                }
+                if(heroBg) {
+                    heroBg.style.transform = `translate3d(0, ${scrolled * 0.15}px, 0)`;
+                }
+            }
+
+            // Infinite Scroll Trigger (Tải trang vô tận)
+            const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+            // Kích hoạt khi cuộn cách đáy 400px
+            if (scrollTop + clientHeight >= scrollHeight - 400) {
+                const totalFiltered = currentFilteredList.length;
+                if ((currentPage - 1) * itemsPerPage < totalFiltered && !isLoading) {
+                    loadMoreProducts();
+                }
+            }
+        });
+
+        // --- 3. LOGIC MODAL & IMMERSIVE MEDIA ---
+        window.openModal = (productId) => {
+            const product = products.find(p => p.id === productId);
+            if(!product) return;
+
+            const scrollArea = document.getElementById('modal-scroll-area');
+            if (scrollArea) scrollArea.scrollTop = 0;
+            document.getElementById('modal-header').classList.remove('shadow-sm', 'border-gray-100');
+
+            // Bảo mật XSS khi render nội dung chi tiết
+            document.getElementById('modal-category').innerHTML = product.categories ? product.categories.map(c => `<span class="px-2 py-0.5 bg-gray-100 text-[10px] font-bold uppercase tracking-wider rounded text-gray-600">${escapeHTML(c)}</span>`).join('') : '';
+            document.getElementById('modal-sales').innerText = escapeHTML(product.salesText);
+            document.getElementById('modal-title').innerText = escapeHTML(product.name);
+            document.getElementById('modal-desc').innerText = escapeHTML(product.description);
+            document.getElementById('modal-verdict').innerText = escapeHTML(product.verdict);
+            document.getElementById('modal-warranty').innerText = escapeHTML(product.policies.warranty);
+            document.getElementById('modal-refund').innerText = escapeHTML(product.policies.refund);
+            document.getElementById('modal-shipping').innerText = escapeHTML(product.policies.shipping);
+
+            currentProductImage = product.image; 
+            currentGalleryData = product.gallery && product.gallery.length > 0 ? product.gallery : [{ type: 'image', url: product.image }]; 
+            
+            renderModalMedia(0); 
+
+            document.getElementById('modal-pros').innerHTML = product.pros.map(pro => `<li class="flex items-start gap-1.5"><span class="text-green-500 mt-0.5">•</span> <span>${escapeHTML(pro)}</span></li>`).join('');
+            document.getElementById('modal-cons').innerHTML = product.cons.map(con => `<li class="flex items-start gap-1.5"><span class="text-red-400 mt-0.5">•</span> <span>${escapeHTML(con)}</span></li>`).join('');
+
+            const vSection = document.getElementById('modal-voucher-section');
+            const vContainer = document.getElementById('voucher-container');
+            if(product.vouchers && product.vouchers.length > 0) {
+                vContainer.innerHTML = product.vouchers.map(v => `
+                    <div class="flex items-center gap-1.5 py-1.5 px-3 border border-dashed border-premium-900/30 rounded-lg bg-premium-50 shrink-0 shadow-sm">
+                        <i class="fa-solid fa-ticket text-premium-900 text-xs"></i>
+                        <span class="text-[11px] font-semibold text-gray-500">${escapeHTML(v.platform)}:</span>
+                        <span id="voucher-${escapeHTML(v.code)}" class="text-[13px] font-mono font-bold text-premium-900 leading-none tracking-wide">${escapeHTML(v.code)}</span>
+                        <div class="w-px h-3.5 bg-gray-300 mx-1"></div>
+                        <button onclick="copyToClipboard('voucher-${escapeHTML(v.code)}')" class="text-[11px] font-bold text-premium-900 hover:text-black uppercase hover:scale-105 transition-transform">Copy</button>
+                    </div>
+                `).join('');
+                vSection.classList.remove('hidden');
+                vSection.classList.add('block');
+            } else { 
+                vSection.classList.add('hidden'); 
+                vSection.classList.remove('block');
+                vContainer.innerHTML = '';
+            }
+
+            document.getElementById('modal-platforms').innerHTML = product.platforms.map(plat => `
+                <a href="${sanitizeUrl(plat.url)}" target="_blank" class="group relative overflow-hidden flex-1 basis-[calc(33.33%-0.75rem)] min-w-[100px] sm:min-w-[120px] flex items-center justify-center gap-1.5 sm:gap-2 py-2.5 md:py-3 px-2 sm:px-3 rounded-xl font-bold transition-all duration-300 shadow-md hover:shadow-lg ${escapeHTML(plat.bgColor)} ${escapeHTML(plat.hoverColor)} ${escapeHTML(plat.textColor)} text-[13px] sm:text-sm hover:-translate-y-1 active:scale-95 border border-black/5">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shimmer pointer-events-none"></div>
+                    <i class="fa-brands ${escapeHTML(plat.icon)} text-sm sm:text-base drop-shadow-sm"></i> 
+                    <span class="truncate drop-shadow-sm">${escapeHTML(plat.name)}</span>
+                </a>
+            `).join('');
+
+            const modal = document.getElementById('product-modal');
+            modal.classList.remove('hidden');
+            void modal.offsetWidth; 
+            modal.classList.remove('opacity-0');
+            document.getElementById('modal-content').classList.remove('scale-95');
+            document.body.classList.add('modal-open');
+        };
+
+        window.handleModalScroll = (el) => {
+            const header = document.getElementById('modal-header');
+            if (el.scrollTop > 10) {
+                header.classList.add('border-gray-100', 'shadow-sm');
+                header.classList.remove('border-transparent');
+            } else {
+                header.classList.remove('border-gray-100', 'shadow-sm');
+                header.classList.add('border-transparent');
+            }
+        };
+
+        window.renderModalMedia = (activeIndex) => {
+            const container = document.getElementById('immersive-media-container');
+            const activeMedia = currentGalleryData[activeIndex];
+
+            let tUrlAmbient = sanitizeUrl(activeMedia.type === 'image' ? activeMedia.url : currentProductImage);
+
+            container.innerHTML = `
+                <div class="absolute inset-0 z-0 overflow-hidden">
+                    <div id="ambient-backend" class="absolute inset-0 bg-cover bg-center blur-[60px] md:blur-[80px] scale-[1.2] saturate-[1.5] transition-all duration-700 pointer-events-none opacity-40 md:opacity-60" style="background-image: url('${tUrlAmbient}')"></div>
+                    <div class="absolute inset-0 fomo-grid pointer-events-none opacity-50 mix-blend-overlay"></div>
+                </div>
+                <div id="main-media-content" class="absolute inset-0 flex items-center justify-center z-20 overflow-hidden"></div>
+                <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,#050505_100%)] md:bg-[radial-gradient(ellipse_at_center,transparent_30%,#050505_100%)] pointer-events-none z-30 opacity-90 transition-opacity duration-500"></div>
+                
+                <div id="modal-controls-container" class="absolute bottom-0 left-0 right-0 z-40 flex flex-col items-center gap-4 pb-4 md:pb-6 px-4 pointer-events-none">
+                     <div id="custom-video-controls" class="pointer-events-auto w-full max-w-[90%] md:max-w-xl px-4 py-3 md:px-5 md:py-3.5 bg-white/10 backdrop-blur-xl rounded-2xl border border-white/10 hidden shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+                        <div class="flex flex-col gap-2.5">
+                            <div class="w-full h-1 md:h-1.5 bg-white/20 rounded-full cursor-pointer relative group/progress overflow-hidden" id="progress-container">
+                                <div id="progress-bar" class="absolute top-0 left-0 h-full bg-white w-0 transition-all duration-75 rounded-full"></div>
+                            </div>
+                            <div class="flex items-center justify-between text-white text-xs md:text-sm">
+                                <div class="flex items-center gap-4 md:gap-5">
+                                    <button id="play-pause-btn" class="hover:text-gray-300 transition-colors w-5 flex justify-center"><i class="fa-solid fa-pause"></i></button>
+                                    <span id="time-display" class="font-mono text-[10px] md:text-xs opacity-70 tracking-wider">0:00 / 0:00</span>
+                                </div>
+                                <div class="flex items-center gap-3 md:gap-4">
+                                    <button id="mute-btn" class="hover:text-gray-300 transition-colors"><i class="fa-solid fa-volume-high"></i></button>
+                                    <button id="fullscreen-btn" class="hover:text-gray-300 transition-colors"><i class="fa-solid fa-expand"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="modal-gallery-thumbs" class="pointer-events-auto flex gap-2 md:gap-3 overflow-x-auto custom-scrollbar items-center justify-start max-w-full px-2" style="display: none;"></div>
+                </div>
+            `;
+
+            const contentArea = document.getElementById('main-media-content');
+            const vControls = document.getElementById('custom-video-controls');
+            const thumbsContainer = document.getElementById('modal-gallery-thumbs');
+
+            if (activeMedia.type === 'video') {
+                const extUrl = sanitizeUrl(activeMedia.externalUrl);
+                const extBtn = activeMedia.externalUrl ? `<a href="${extUrl}" target="_blank" class="absolute top-4 left-4 md:top-6 md:left-6 px-3 py-1.5 md:px-4 md:py-2 bg-white/10 hover:bg-white hover:text-black backdrop-blur-md text-white rounded-full flex items-center justify-center transition-all duration-300 z-50 text-[10px] md:text-xs font-semibold gap-2 shadow-lg border border-white/20 pointer-events-auto"><i class="fa-solid fa-arrow-up-right-from-square"></i> TikTok</a>` : '';
+                const safeMediaUrl = sanitizeUrl(activeMedia.url);
+
+                if(safeMediaUrl.includes('youtube.com') || safeMediaUrl.includes('youtu.be')) {
+                     contentArea.innerHTML = `
+                        <div class="w-full h-full p-4 md:p-8 lg:p-12 pb-24 md:pb-28 flex items-center justify-center relative z-20 pointer-events-none">
+                            <iframe class="w-full h-full max-h-full rounded-2xl md:rounded-3xl ring-1 ring-white/10 overflow-hidden drop-shadow-[0_20px_50px_rgba(0,0,0,0.6)] pointer-events-auto" src="${safeMediaUrl}?autoplay=1&mute=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                            ${extBtn}
+                        </div>`;
+                } else {
+                    contentArea.innerHTML = `
+                        <div class="w-full h-full p-4 md:p-8 lg:p-12 pb-24 md:pb-28 flex items-center justify-center relative z-20 pointer-events-none">
+                            <video id="custom-video" class="w-full h-full object-contain animate-media-fade cursor-pointer drop-shadow-[0_20px_50px_rgba(0,0,0,0.7)] pointer-events-auto rounded-2xl md:rounded-3xl ring-1 ring-white/10" autoplay playsinline loop>
+                                <source src="${safeMediaUrl}" type="video/mp4">
+                            </video>
+                            ${extBtn}
+                            <div id="center-play-icon" class="absolute inset-0 flex items-center justify-center z-30 pointer-events-none opacity-0 transition-all duration-300 transform scale-90">
+                                <div class="w-16 h-16 md:w-20 md:h-20 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center text-white text-2xl md:text-3xl border border-white/20 shadow-2xl"><i class="fa-solid fa-play ml-1"></i></div>
+                            </div>
+                        </div>`;
+                    vControls.classList.remove('hidden');
+                    setupVideoControls();
+                }
+            } else {
+                contentArea.innerHTML = `
+                    <div id="zoom-container" class="absolute inset-0 z-20 flex items-center justify-center overflow-hidden cursor-zoom-in select-none p-4 pb-24 md:p-10 md:pb-28 lg:p-16 lg:pb-32 pointer-events-auto">
+                        <img id="zoom-image" src="${sanitizeUrl(activeMedia.url)}" class="w-full h-full object-contain animate-media-fade drop-shadow-[0_30px_60px_rgba(0,0,0,0.7)] pointer-events-none rounded-2xl md:rounded-3xl ring-1 ring-white/10 transition-transform duration-300 ease-out origin-center">
+                    </div>
+                    <div id="zoom-hint" class="absolute top-4 right-14 md:top-6 md:right-6 bg-white/10 backdrop-blur-md text-white text-[10px] md:text-xs px-2 py-1 md:px-3 md:py-1.5 rounded-full z-50 pointer-events-none transition-opacity duration-300 opacity-0 group-hover/leftcol:opacity-100 flex items-center gap-1.5 border border-white/20 shadow-lg">
+                        <i class="fa-solid fa-magnifying-glass-plus"></i> Click phóng to
+                    </div>`;
+                setupZoom();
+            }
+
+            if (currentGalleryData.length > 1) {
+                thumbsContainer.style.display = 'flex';
+                thumbsContainer.innerHTML = currentGalleryData.map((m, index) => {
+                    const isSelected = index === activeIndex;
+                    let tUrl = sanitizeUrl(m.url);
+                    if(m.type === 'video' && m.url.includes('youtube.com/embed/')) {
+                        tUrl = `https://img.youtube.com/vi/${m.url.split('embed/')[1].split('?')[0]}/mqdefault.jpg`;
+                    } else if(m.type === 'video') { tUrl = sanitizeUrl(currentProductImage); }
+                    
+                    return `
+                    <button onclick="renderModalMedia(${index})" 
+                        class="w-12 h-12 md:w-14 md:h-14 shrink-0 relative rounded-xl overflow-hidden transition-all duration-400 cursor-pointer 
+                        ${isSelected ? 'ring-2 ring-white scale-110 shadow-[0_10px_20px_rgba(0,0,0,0.5)] z-10' : 'ring-1 ring-white/20 hover:ring-white/50 opacity-60 hover:opacity-100 hover:scale-105'}">
+                        <img src="${tUrl}" class="w-full h-full object-cover pointer-events-none">
+                        ${m.type === 'video' ? '<div class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] text-white"><i class="fa-solid fa-play text-xs pl-0.5"></i></div>' : ''}
+                    </button>`;
+                }).join('');
+            } else { thumbsContainer.style.display = 'none'; }
+        };
+
+        const setupZoom = () => {
+            const container = document.getElementById('zoom-container');
+            const img = document.getElementById('zoom-image');
+            const hint = document.getElementById('zoom-hint');
+            let isZoomed = false;
+            if(!container || !img) return;
+            const updateOrigin = (e) => {
+                if (!isZoomed) return;
+                const rect = container.getBoundingClientRect();
+                const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                if(!clientX || !clientY) return;
+                const x = ((clientX - rect.left) / rect.width) * 100;
+                const y = ((clientY - rect.top) / rect.height) * 100;
+                img.style.transformOrigin = `${Math.max(0, Math.min(100, x))}% ${Math.max(0, Math.min(100, y))}%`;
+            };
+            const toggle = (e) => {
+                isZoomed = !isZoomed;
+                if (isZoomed) {
+                    container.classList.replace('cursor-zoom-in', 'cursor-zoom-out');
+                    img.style.transform = 'scale(2.5)';
+                    hint.style.opacity = '0';
+                    updateOrigin(e);
+                } else {
+                    container.classList.replace('cursor-zoom-out', 'cursor-zoom-in');
+                    img.style.transform = 'scale(1)';
+                    if(container.matches(':hover')) hint.style.opacity = '1';
+                    setTimeout(() => { if(!isZoomed) img.style.transformOrigin = 'center center'; }, 300);
+                }
+            };
+            container.addEventListener('mousemove', updateOrigin);
+            container.addEventListener('touchmove', updateOrigin, { passive: true });
+            container.addEventListener('click', toggle);
+            container.addEventListener('mouseleave', () => { if(isZoomed) toggle({clientX: container.offsetWidth/2, clientY: container.offsetHeight/2}); });
+        };
+
+        window.setupVideoControls = () => {
+            const video = document.getElementById('custom-video');
+            const playBtn = document.getElementById('play-pause-btn');
+            const muteBtn = document.getElementById('mute-btn');
+            const fsBtn = document.getElementById('fullscreen-btn');
+            const pBar = document.getElementById('progress-bar');
+            const pContainer = document.getElementById('progress-container');
+            const timeDisp = document.getElementById('time-display');
+            const cPlay = document.getElementById('center-play-icon');
+
+            if(!video) return;
+            const format = (t) => { const m = Math.floor(t / 60); const s = Math.floor(t % 60); return `${m}:${s < 10 ? '0' : ''}${s}`; };
+            const toggle = () => {
+                if(video.paused) { 
+                    video.play(); playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>'; cPlay.classList.add('opacity-0', 'scale-90');
+                } else { 
+                    video.pause(); playBtn.innerHTML = '<i class="fa-solid fa-play ml-0.5"></i>'; cPlay.classList.remove('opacity-0', 'scale-90');
+                }
+            };
+            playBtn.onclick = toggle; video.onclick = toggle; if(cPlay) cPlay.onclick = toggle;
+            video.ontimeupdate = () => {
+                pBar.style.width = `${(video.currentTime / video.duration) * 100}%`;
+                timeDisp.innerText = `${format(video.currentTime)} / ${format(video.duration || 0)}`;
+            };
+            pContainer.onclick = (e) => {
+                const rect = pContainer.getBoundingClientRect();
+                video.currentTime = ((e.clientX - rect.left) / rect.width) * video.duration;
+            };
+            muteBtn.onclick = () => {
+                video.muted = !video.muted;
+                muteBtn.innerHTML = video.muted ? '<i class="fa-solid fa-volume-xmark"></i>' : '<i class="fa-solid fa-volume-high"></i>';
+            };
+            fsBtn.onclick = () => { 
+                if (video.requestFullscreen) video.requestFullscreen(); 
+                else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+            };
+        };
+
+        window.closeModal = () => {
+            const modal = document.getElementById('product-modal');
+            modal.classList.add('opacity-0');
+            document.getElementById('modal-content').classList.add('scale-95');
+            setTimeout(() => { 
+                modal.classList.add('hidden'); 
+                document.body.classList.remove('modal-open'); 
+                document.getElementById('immersive-media-container').innerHTML = ''; 
+            }, 300);
+        };
+
+        window.copyToClipboard = (id) => {
+            const txt = document.getElementById(id).innerText;
+            if(navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(txt).then(() => showToast(`Đã sao chép: ${txt}`));
+            } else {
+                const ta = document.createElement("textarea");
+                ta.value = txt; ta.style.position = "fixed"; ta.style.left = "-9999px";
+                document.body.appendChild(ta); ta.select();
+                try { document.execCommand('copy'); showToast(`Đã sao chép: ${txt}`); } finally { ta.remove(); }
+            }
+        };
+
+        window.showToast = (msg) => {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            t.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => t.classList.add('translate-y-20', 'opacity-0'), 3000);
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderFilters(); 
+            renderProducts();
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+        });
+    </script>
+</body>
+</html>

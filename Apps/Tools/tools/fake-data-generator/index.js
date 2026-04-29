@@ -2,365 +2,343 @@ import { UI } from '../../js/ui.js';
 
 export function template() {
     return `
-        <style>
-            .fd-widget { max-width: 800px; margin: 0 auto; padding-bottom: 24px; }
-            
-            /* Khu vực Cài đặt (Settings) */
-            .fd-card { background: var(--bg-main); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 20px; }
-            .fd-card-title { font-size: 1.1rem; font-weight: 600; color: var(--text-main); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-            .fd-card-title i { color: #3b82f6; }
-
-            /* Nút gạt Toggle (Chọn trường dữ liệu) */
-            .fd-options-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-            .fd-toggle-row { 
-                display: flex; justify-content: space-between; align-items: center; 
-                padding: 12px 16px; background: var(--bg-sec); border: 1px solid var(--border); 
-                border-radius: 12px; cursor: pointer; user-select: none; transition: border-color 0.2s;
-            }
-            .fd-toggle-row:hover { border-color: var(--text-mut); }
-            .fd-toggle-label { font-weight: 500; color: var(--text-main); font-size: 0.95rem; }
-            
-            .fd-switch { position: relative; width: 44px; height: 24px; background: var(--border); border-radius: 12px; transition: 0.3s; }
-            .fd-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-            input:checked + .fd-switch { background: #3b82f6; }
-            input:checked + .fd-switch::after { transform: translateX(20px); }
-
-            /* Khu vực Format Tabs */
-            .fd-format-tabs { display: flex; background: var(--bg-sec); border-radius: 12px; padding: 4px; border: 1px solid var(--border); }
-            .fd-format-btn { 
-                flex: 1; text-align: center; padding: 10px; border-radius: 8px; 
-                border: none; background: transparent; color: var(--text-mut); 
-                font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Courier New', monospace; font-size: 1rem;
-            }
-            .fd-format-btn.active { background: var(--bg-main); color: #3b82f6; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-
-            /* Khu vực Preview (Output) */
-            .fd-preview-wrapper { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: #1e1e1e; }
-            .fd-preview-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #2d2d2d; border-bottom: 1px solid #444; }
-            .fd-preview-title { color: #aaa; font-size: 0.85rem; font-family: var(--font); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-            .fd-preview-actions { display: flex; gap: 8px; }
-            
-            .fd-preview-content { 
-                padding: 16px; margin: 0; color: #d4d4d4; font-family: 'Courier New', Courier, monospace; 
-                font-size: 0.9rem; line-height: 1.5; overflow-y: auto; max-height: 400px; white-space: pre-wrap; word-break: break-all;
-            }
-            .fd-preview-content::-webkit-scrollbar { width: 8px; height: 8px; }
-            .fd-preview-content::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-            .fd-preview-content::-webkit-scrollbar-track { background: #1e1e1e; }
-
-            .btn-dark { background: #444; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; transition: background 0.2s; display: flex; align-items: center; gap: 6px; font-weight: 500; }
-            .btn-dark:hover { background: #555; }
-            .btn-dark.primary { background: #3b82f6; }
-            .btn-dark.primary:hover { background: #2563eb; }
-
-            /* Nút Generate bự */
-            .btn-gen-huge { width: 100%; padding: 16px; font-size: 1.2rem; font-weight: 700; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); margin-bottom: 20px; }
-
-        </style>
-
-        <div class="fd-widget">
-            
-            <div class="flex-between" style="margin-bottom: 20px;">
+        <div class="space-y-6">
+            <div class="flex justify-between items-start mb-2">
                 <div>
-                    <h1 class="h1" style="font-size: 1.5rem; margin-bottom: 4px;">Tạo Dữ Liệu Giả (Mock Data)</h1>
-                    <p class="text-mut" style="font-size: 0.9rem;">Sinh dữ liệu ngẫu nhiên chuẩn Việt Nam cho testing.</p>
+                    <h2 class="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight">Tạo Dữ liệu Mẫu (Fake Data)</h2>
+                    <p class="text-sm text-zinc-500 mt-1">Sinh dữ liệu ngẫu nhiên để Test, thiết kế API hoặc Database.</p>
                 </div>
             </div>
 
-            <div class="fd-card shadow-sm">
-                <div class="grid-2">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">Số lượng dòng (Rows)</label>
-                        <input type="number" class="input" id="fd-count" value="10" min="1" max="100000" style="font-size: 1.2rem; font-weight: 600;">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                <div class="lg:col-span-5 premium-card bg-white dark:bg-zinc-900 rounded-[32px] border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex flex-col overflow-hidden">
+                    
+                    <div class="p-6 space-y-6">
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Định dạng xuất</label>
+                                <div class="relative">
+                                    <select id="fd-format" class="appearance-none w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-semibold text-zinc-900 dark:text-white cursor-pointer">
+                                        <option value="json">JSON</option>
+                                        <option value="csv">CSV</option>
+                                        <option value="sql">SQL (Insert)</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500"><i class="fas fa-chevron-down text-xs"></i></div>
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Ngôn ngữ</label>
+                                <div class="relative">
+                                    <select id="fd-locale" class="appearance-none w-full bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all text-sm font-semibold text-zinc-900 dark:text-white cursor-pointer">
+                                        <option value="vi">🇻🇳 Việt Nam</option>
+                                        <option value="en">🇺🇸 English</option>
+                                    </select>
+                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500"><i class="fas fa-chevron-down text-xs"></i></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Số lượng bản ghi (Rows)</label>
+                            <div class="flex gap-2">
+                                <button class="fd-row-btn active flex-1 py-2 text-xs font-bold rounded-xl border-2 border-zinc-900 dark:border-white bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white transition-all" data-val="10">10</button>
+                                <button class="fd-row-btn flex-1 py-2 text-xs font-bold rounded-xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all" data-val="50">50</button>
+                                <button class="fd-row-btn flex-1 py-2 text-xs font-bold rounded-xl border-2 border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-all" data-val="100">100</button>
+                                <div class="relative flex-1">
+                                    <input type="number" id="fd-custom-rows" class="w-full h-full bg-white dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-800 rounded-xl px-2 outline-none focus:border-zinc-900 dark:focus:border-white transition-all text-xs font-bold text-center text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Tùy...">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                                <label class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Các trường dữ liệu (Fields)</label>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2" id="fd-fields-container">
+                                </div>
+                        </div>
+
+                        <button id="btn-fd-generate" class="w-full py-3.5 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold text-sm transition-all hover:opacity-90 active:scale-95 shadow-sm flex items-center justify-center gap-2 mt-4">
+                            <i class="fas fa-bolt"></i> TẠO DỮ LIỆU MỚI
+                        </button>
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label class="form-label">Định dạng xuất (Format)</label>
-                        <div class="fd-format-tabs" id="fd-format-tabs">
-                            <button class="fd-format-btn active" data-format="json">JSON</button>
-                            <button class="fd-format-btn" data-format="csv">CSV</button>
-                            <button class="fd-format-btn" data-format="sql">SQL</button>
+                </div>
+
+                <div class="lg:col-span-7 space-y-4">
+                    
+                    <div class="premium-card bg-[#0d1117] dark:bg-zinc-950 rounded-[32px] shadow-xl overflow-hidden flex flex-col h-[550px] border border-zinc-800/50">
+                        
+                        <div class="flex justify-between items-center px-4 py-3 bg-[#161b22] dark:bg-zinc-900 border-b border-white/10">
+                            <div class="flex items-center gap-3">
+                                <div class="flex gap-1.5">
+                                    <div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+                                    <div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+                                    <div class="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+                                </div>
+                                <span id="fd-preview-title" class="text-xs font-mono text-zinc-400">data.json</span>
+                            </div>
+                            
+                            <div class="flex gap-2">
+                                <button id="btn-fd-copy" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-300 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95">
+                                    <i class="far fa-copy"></i> Copy
+                                </button>
+                                <button id="btn-fd-download" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-zinc-300 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95">
+                                    <i class="fas fa-download"></i> Tải file
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 overflow-auto p-4 custom-scrollbar relative">
+                            <pre><code id="fd-preview-code" class="text-[13px] font-mono leading-relaxed text-[#c9d1d9] break-all"></code></pre>
+                        </div>
+                        
+                        <div class="bg-[#161b22] dark:bg-zinc-900 px-4 py-1.5 text-[10px] font-mono text-zinc-500 flex justify-between border-t border-white/5">
+                            <span id="fd-status-count">10 rows</span>
+                            <span id="fd-status-size">UTF-8</span>
                         </div>
                     </div>
+
                 </div>
+
             </div>
-
-            <div class="fd-card shadow-sm">
-                <div class="fd-card-title"><i class="fas fa-list-ul"></i> Chọn Trường Dữ Liệu (Fields)</div>
-                <div class="fd-options-grid">
-                    <label class="fd-toggle-row">
-                        <span class="fd-toggle-label">ID (UUID / Số)</span>
-                        <input type="checkbox" id="chk-id" class="fd-chk" style="display:none;" checked>
-                        <div class="fd-switch"></div>
-                    </label>
-                    <label class="fd-toggle-row">
-                        <span class="fd-toggle-label">Họ và Tên (Full Name)</span>
-                        <input type="checkbox" id="chk-name" class="fd-chk" style="display:none;" checked>
-                        <div class="fd-switch"></div>
-                    </label>
-                    <label class="fd-toggle-row">
-                        <span class="fd-toggle-label">Email</span>
-                        <input type="checkbox" id="chk-email" class="fd-chk" style="display:none;" checked>
-                        <div class="fd-switch"></div>
-                    </label>
-                    <label class="fd-toggle-row">
-                        <span class="fd-toggle-label">Số điện thoại (VN)</span>
-                        <input type="checkbox" id="chk-phone" class="fd-chk" style="display:none;" checked>
-                        <div class="fd-switch"></div>
-                    </label>
-                    <label class="fd-toggle-row">
-                        <span class="fd-toggle-label">Địa chỉ (Tỉnh/Thành)</span>
-                        <input type="checkbox" id="chk-address" class="fd-chk" style="display:none;">
-                        <div class="fd-switch"></div>
-                    </label>
-                    <label class="fd-toggle-row">
-                        <span class="fd-toggle-label">Nghề nghiệp (Job)</span>
-                        <input type="checkbox" id="chk-job" class="fd-chk" style="display:none;">
-                        <div class="fd-switch"></div>
-                    </label>
-                    <label class="fd-toggle-row">
-                        <span class="fd-toggle-label">Ngày sinh (DOB)</span>
-                        <input type="checkbox" id="chk-dob" class="fd-chk" style="display:none;">
-                        <div class="fd-switch"></div>
-                    </label>
-                    <label class="fd-toggle-row">
-                        <span class="fd-toggle-label">Số tài khoản NH</span>
-                        <input type="checkbox" id="chk-bank" class="fd-chk" style="display:none;">
-                        <div class="fd-switch"></div>
-                    </label>
-                </div>
-            </div>
-
-            <button class="btn btn-primary btn-gen-huge" id="btn-fd-generate">
-                <i class="fas fa-bolt"></i> TẠO DỮ LIỆU
-            </button>
-
-            <div class="fd-preview-wrapper shadow-sm">
-                <div class="fd-preview-header">
-                    <div class="fd-preview-title" id="fd-preview-title">Xem trước (Hiển thị tối đa 50 dòng)</div>
-                    <div class="fd-preview-actions">
-                        <button class="btn-dark" id="btn-fd-copy" title="Sao chép toàn bộ"><i class="fas fa-copy"></i> Copy</button>
-                        <button class="btn-dark primary" id="btn-fd-download" title="Tải xuống File"><i class="fas fa-download"></i> Download</button>
-                    </div>
-                </div>
-                <pre class="fd-preview-content" id="fd-output">// Nhấn TẠO DỮ LIỆU để bắt đầu...</pre>
-            </div>
-
         </div>
     `;
 }
 
 export function init() {
-    // --- DICTIONARIES (DỮ LIỆU THUẦN VIỆT) ---
-    const lastNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Võ', 'Đặng', 'Bùi', 'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý', 'Đinh', 'Đoàn'];
-    const middleNames = ['Văn', 'Thị', 'Ngọc', 'Hoàng', 'Minh', 'Xuân', 'Hữu', 'Đức', 'Hải', 'Thái', 'Gia', 'Thanh', 'Quang', 'Hồng', 'Bảo', 'Kim', 'Anh'];
-    const firstNames = ['Anh', 'Tuấn', 'Dũng', 'Linh', 'Trang', 'Hoa', 'Lan', 'Phương', 'Thảo', 'Nam', 'Phong', 'Long', 'Huy', 'Khang', 'Bảo', 'Ngọc', 'Nhi', 'Hùng', 'Cường', 'Quân', 'Thành', 'Đạt', 'Vy', 'Mai', 'Yến', 'My'];
-    
-    const phonePrefixes = ['090', '091', '092', '093', '094', '096', '097', '098', '099', '032', '033', '034', '035', '036', '037', '038', '039', '081', '082', '083', '084', '085', '086', '088', '089', '070', '079', '077', '076', '078'];
-    const domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'company.vn'];
-    
-    const cities = ['Hà Nội', 'TP. Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ', 'Nha Trang', 'Huế', 'Vũng Tàu', 'Biên Hòa', 'Đà Lạt', 'Hạ Long', 'Vinh', 'Quy Nhơn'];
-    const streets = ['Lê Lợi', 'Trần Hưng Đạo', 'Nguyễn Huệ', 'Hai Bà Trưng', 'Lê Duẩn', 'Phạm Văn Đồng', 'Điện Biên Phủ', 'Quang Trung', 'Nguyễn Trãi', 'Lý Thường Kiệt'];
-    
-    const jobs = ['Lập trình viên', 'Kế toán', 'Nhân viên Kinh doanh', 'Giáo viên', 'Bác sĩ', 'Kỹ sư', 'Thiết kế Đồ họa', 'Marketing', 'Quản lý Dự án', 'Nhân sự', 'Chuyên viên IT', 'Kiến trúc sư'];
-
-    // --- HELPER FUNCTIONS ---
-    const rnd = (arr) => arr[Math.floor(Math.random() * arr.length)];
-    const rndNum = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-    const removeAccents = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D");
-
-    const generateRow = (idIndex, fields) => {
-        let row = {};
-        
-        // Sinh tên trước để dùng chung cho Email
-        let lastName = rnd(lastNames);
-        let midName = rnd(middleNames);
-        let firstName = rnd(firstNames);
-        let fullName = `${lastName} ${midName} ${firstName}`;
-
-        if (fields.id) row.id = idIndex;
-        if (fields.name) row.name = fullName;
-        if (fields.email) {
-            let emailBase = removeAccents(firstName).toLowerCase() + '.' + removeAccents(lastName).toLowerCase();
-            row.email = `${emailBase}${rndNum(10, 99)}@${rnd(domains)}`;
+    // --- STATE ---
+    let state = {
+        format: 'json', 
+        locale: 'vi', 
+        rows: 10,
+        fields: {
+            id: true, fullName: true, email: true, phone: true, address: true,
+            company: false, jobTitle: false, creditCard: false
         }
-        if (fields.phone) {
-            row.phone = rnd(phonePrefixes) + rndNum(1000000, 9999999).toString();
-        }
-        if (fields.address) {
-            row.address = `Số ${rndNum(1, 999)} ${rnd(streets)}, ${rnd(cities)}`;
-        }
-        if (fields.job) row.job = rnd(jobs);
-        if (fields.dob) {
-            // Random ngày sinh từ năm 1970 đến 2005
-            let year = rndNum(1970, 2005);
-            let month = format2(rndNum(1, 12));
-            let day = format2(rndNum(1, 28));
-            row.dob = `${year}-${month}-${day}`;
-        }
-        if (fields.bank) {
-            row.bank_account = rndNum(1000000000, 9999999999).toString();
-        }
-
-        return row;
     };
 
-    const format2 = (num) => num.toString().padStart(2, '0');
+    let generatedDataStr = "";
 
-    // --- DOM ELEMENTS ---
-    const inCount = document.getElementById('fd-count');
-    const formatBtns = document.querySelectorAll('.fd-format-btn');
+    // --- DOM Elements ---
+    const elFormat = document.getElementById('fd-format');
+    const elLocale = document.getElementById('fd-locale');
+    const rowBtns = document.querySelectorAll('.fd-row-btn');
+    const customRowInput = document.getElementById('fd-custom-rows');
+    const fieldsContainer = document.getElementById('fd-fields-container');
     const btnGenerate = document.getElementById('btn-fd-generate');
+    
+    const previewTitle = document.getElementById('fd-preview-title');
+    const previewCode = document.getElementById('fd-preview-code');
+    const statusCount = document.getElementById('fd-status-count');
     const btnCopy = document.getElementById('btn-fd-copy');
     const btnDownload = document.getElementById('btn-fd-download');
-    const outputBox = document.getElementById('fd-output');
+
+    // --- MINI FAKER ENGINE ---
+    const DB = {
+        vi: {
+            firstNames: ['Hùng', 'Dũng', 'Linh', 'Trang', 'Hải', 'Lan', 'Nam', 'Minh', 'Khoa', 'Mai', 'Thảo', 'Hoàng', 'Huy', 'Tùng', 'Cường', 'Quỳnh', 'Nga'],
+            lastNames: ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Võ', 'Đặng', 'Bùi', 'Đỗ', 'Hồ', 'Ngô', 'Dương', 'Lý'],
+            middleNames: ['Văn', 'Thị', 'Đức', 'Hữu', 'Ngọc', 'Thanh', 'Mạnh', 'Xuân', 'Thu', 'Minh', 'Đình'],
+            cities: ['Hà Nội', 'Hồ Chí Minh', 'Đà Nẵng', 'Hải Phòng', 'Cần Thơ', 'Đồng Nai', 'Bình Dương', 'Vũng Tàu', 'Nha Trang', 'Huế'],
+            streets: ['Lê Lợi', 'Nguyễn Huệ', 'Trần Hưng Đạo', 'Phan Đình Phùng', 'Hai Bà Trưng', 'Lý Thường Kiệt', 'Cách Mạng Tháng Tám', 'Quang Trung', 'Điện Biên Phủ'],
+            jobTitles: ['Lập trình viên', 'Chuyên viên Marketing', 'Quản lý dự án', 'Nhân viên kinh doanh', 'Kế toán viên', 'Kỹ sư hệ thống', 'Giám đốc nhân sự', 'Trưởng phòng IT'],
+            companies: ['Công ty CP Công Nghệ', 'Tập đoàn', 'Công ty TNHH', 'Tổng công ty']
+        },
+        en: {
+            firstNames: ['John', 'Emma', 'Michael', 'Sophia', 'William', 'Isabella', 'James', 'Olivia', 'Robert', 'Ava', 'David', 'Mia', 'Joseph', 'Charlotte', 'Thomas', 'Amelia'],
+            lastNames: ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson'],
+            cities: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose', 'Austin', 'Jacksonville'],
+            streets: ['Main St', 'Oak St', 'Pine St', 'Maple Ave', 'Cedar Ln', 'Elm St', 'Washington Blvd', 'Lake St', 'Hill Rd', 'Park Ave'],
+            jobTitles: ['Software Engineer', 'Marketing Specialist', 'Project Manager', 'Sales Representative', 'Accountant', 'Systems Engineer', 'HR Director', 'IT Manager'],
+            companies: ['Inc.', 'LLC', 'Group', 'Corporation', 'Enterprises']
+        },
+        domains: ['gmail.com', 'yahoo.com', 'hunq.online', 'outlook.com', 'example.com']
+    };
+
+    const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const getRandNum = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
     
-    // Checkboxes
-    const chkId = document.getElementById('chk-id');
-    const chkName = document.getElementById('chk-name');
-    const chkEmail = document.getElementById('chk-email');
-    const chkPhone = document.getElementById('chk-phone');
-    const chkAddress = document.getElementById('chk-address');
-    const chkJob = document.getElementById('chk-job');
-    const chkDob = document.getElementById('chk-dob');
-    const chkBank = document.getElementById('chk-bank');
+    const generateUUID = () => {
+        if (crypto && crypto.randomUUID) return crypto.randomUUID();
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    };
 
-    let currentFormat = 'json';
-    let fullDataString = ''; // Lưu toàn bộ data để copy/download, bất kể preview
+    const generateFakeRecord = () => {
+        const d = DB[state.locale];
+        const record = {};
+        
+        const fName = getRandom(d.firstNames);
+        const lName = getRandom(d.lastNames);
+        let fullName = state.locale === 'vi' ? `${lName} ${getRandom(d.middleNames)} ${fName}` : `${fName} ${lName}`;
+        const emailSafeName = fullName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '.') + getRandNum(1, 999);
 
-    // --- CHUYỂN FORMAT TABS ---
-    formatBtns.forEach(btn => {
-        btn.onclick = () => {
-            formatBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentFormat = btn.dataset.format;
-            if (fullDataString !== '') {
-                // Nếu đã có dữ liệu, format lại ngay
-                generateData(); 
-            }
-        };
+        if (state.fields.id) record.id = generateUUID();
+        if (state.fields.fullName) record.fullName = fullName;
+        if (state.fields.email) record.email = `${emailSafeName}@${getRandom(DB.domains)}`;
+        if (state.fields.phone) record.phone = state.locale === 'vi' ? `0${getRandNum(8,9)}${getRandNum(10000000, 99999999)}` : `+1-${getRandNum(200,999)}-${getRandNum(200,999)}-${getRandNum(1000,9999)}`;
+        if (state.fields.address) record.address = `${getRandNum(1, 999)} ${getRandom(d.streets)}, ${getRandom(d.cities)}`;
+        if (state.fields.company) record.company = state.locale === 'vi' ? `${getRandom(d.companies)} ${fName} ${lName}` : `${lName} ${getRandom(d.companies)}`;
+        if (state.fields.jobTitle) record.jobTitle = getRandom(d.jobTitles);
+        if (state.fields.creditCard) record.creditCard = `${getRandNum(4000,4999)}-${getRandNum(1000,9999)}-${getRandNum(1000,9999)}-${getRandNum(1000,9999)}`;
+
+        return record;
+    };
+
+    const generateDataStr = (records) => {
+        if (records.length === 0) return "";
+        const keys = Object.keys(records[0]);
+
+        if (state.format === 'json') {
+            return JSON.stringify(records, null, 2);
+        } else if (state.format === 'csv') {
+            const header = keys.join(',');
+            const rows = records.map(r => keys.map(k => {
+                let val = r[k] ? r[k].toString() : '';
+                if (val.includes(',') || val.includes('"')) val = `"${val.replace(/"/g, '""')}"`;
+                return val;
+            }).join(','));
+            return [header, ...rows].join('\n');
+        } else if (state.format === 'sql') {
+            const table = 'users';
+            const cols = keys.join(', ');
+            let sql = `INSERT INTO ${table} (${cols}) VALUES\n`;
+            const rows = records.map((r, i) => {
+                const vals = keys.map(k => {
+                    let val = r[k];
+                    if (typeof val === 'string') return `'${val.replace(/'/g, "''")}'`;
+                    if (val === null || val === undefined) return 'NULL';
+                    return val;
+                }).join(', ');
+                return `(${vals})${i === records.length - 1 ? ';' : ','}`;
+            });
+            return sql + rows.join('\n');
+        }
+    };
+
+    // --- RENDER GIAO DIỆN CỘT TRÁI (STYLE TRẮNG/ĐEN) ---
+    const FIELD_DEFS = [
+        { id: 'id', label: 'ID (UUID)', icon: 'fas fa-fingerprint' },
+        { id: 'fullName', label: 'Họ & Tên', icon: 'fas fa-user' },
+        { id: 'email', label: 'Email', icon: 'fas fa-envelope' },
+        { id: 'phone', label: 'Số điện thoại', icon: 'fas fa-phone' },
+        { id: 'address', label: 'Địa chỉ', icon: 'fas fa-map-marker-alt' },
+        { id: 'company', label: 'Công ty', icon: 'fas fa-building' },
+        { id: 'jobTitle', label: 'Chức vụ', icon: 'fas fa-briefcase' },
+        { id: 'creditCard', label: 'Credit Card', icon: 'fas fa-credit-card' }
+    ];
+
+    const renderFields = () => {
+        fieldsContainer.innerHTML = FIELD_DEFS.map(f => `
+            <label class="flex items-center justify-between p-2.5 rounded-xl border ${state.fields[f.id] ? 'border-zinc-900 dark:border-white bg-zinc-100/50 dark:bg-zinc-800/50' : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50'} cursor-pointer transition-colors group">
+                <div class="flex items-center gap-2.5">
+                    <i class="${f.icon} ${state.fields[f.id] ? 'text-zinc-900 dark:text-white' : 'text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300'} transition-colors w-4 text-center text-xs"></i>
+                    <span class="text-xs font-semibold ${state.fields[f.id] ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300'}">${f.label}</span>
+                </div>
+                <div class="relative flex items-center">
+                    <input type="checkbox" class="sr-only fd-field-cb" data-field="${f.id}" ${state.fields[f.id] ? 'checked' : ''}>
+                    <div class="w-7 h-4 bg-zinc-200 dark:bg-zinc-700 rounded-full transition-colors relative ${state.fields[f.id] ? '!bg-zinc-900 dark:!bg-white' : ''}">
+                        <div class="w-3 h-3 ${state.fields[f.id] ? 'bg-white dark:bg-zinc-900' : 'bg-white'} rounded-full absolute top-[2px] left-[2px] transition-transform ${state.fields[f.id] ? 'translate-x-3' : ''} shadow-sm"></div>
+                    </div>
+                </div>
+            </label>
+        `).join('');
+
+        document.querySelectorAll('.fd-field-cb').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                state.fields[e.target.dataset.field] = e.target.checked;
+                renderFields(); 
+                runGenerate();
+            });
+        });
+    };
+
+    const runGenerate = () => {
+        const hasField = Object.values(state.fields).some(v => v);
+        if (!hasField) {
+            previewCode.innerHTML = `<span class="text-red-400">/* Vui lòng chọn ít nhất 1 trường dữ liệu ở bên trái */</span>`;
+            return;
+        }
+
+        const records = [];
+        const maxRows = Math.min(state.rows, 5000); 
+        for (let i = 0; i < maxRows; i++) records.push(generateFakeRecord());
+
+        generatedDataStr = generateDataStr(records);
+        
+        let displayHtml = generatedDataStr
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/(".*?"|'.*?')/g, '<span style="color: #a5d6ff;">$1</span>')
+            .replace(/\b(true|false|null)\b/g, '<span style="color: #79c0ff;">$1</span>')
+            .replace(/\b(\d+)\b/g, '<span style="color: #79c0ff;">$1</span>');
+            
+        if (state.format === 'sql') displayHtml = displayHtml.replace(/\b(INSERT INTO|VALUES)\b/g, '<span style="color: #ff7b72;">$1</span>');
+
+        previewCode.innerHTML = displayHtml;
+
+        const ext = state.format === 'sql' ? 'sql' : (state.format === 'csv' ? 'csv' : 'json');
+        previewTitle.textContent = `mock_data.${ext}`;
+        statusCount.textContent = `${maxRows} rows`;
+    };
+
+    // --- SỰ KIỆN LẮNG NGHE ---
+    elFormat.addEventListener('change', (e) => { state.format = e.target.value; runGenerate(); });
+    elLocale.addEventListener('change', (e) => { state.locale = e.target.value; runGenerate(); });
+
+    rowBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            rowBtns.forEach(b => {
+                b.classList.remove('active', 'border-zinc-900', 'dark:border-white', 'text-zinc-900', 'dark:text-white');
+                b.classList.add('border-zinc-200', 'dark:border-zinc-800', 'text-zinc-500');
+            });
+            btn.classList.remove('border-zinc-200', 'dark:border-zinc-800', 'text-zinc-500');
+            btn.classList.add('active', 'border-zinc-900', 'dark:border-white', 'text-zinc-900', 'dark:text-white');
+            
+            customRowInput.value = '';
+            state.rows = parseInt(btn.dataset.val);
+            runGenerate();
+        });
     });
 
-    // --- LOGIC TẠO & FORMAT DỮ LIỆU ---
-    const generateData = () => {
-        const count = parseInt(inCount.value);
-        if (isNaN(count) || count < 1 || count > 100000) {
-            return UI.showAlert('Lỗi', 'Số lượng dòng phải từ 1 đến 100,000.', 'error');
+    customRowInput.addEventListener('input', (e) => {
+        rowBtns.forEach(b => {
+            b.classList.remove('active', 'border-zinc-900', 'dark:border-white', 'text-zinc-900', 'dark:text-white');
+            b.classList.add('border-zinc-200', 'dark:border-zinc-800', 'text-zinc-500');
+        });
+        const val = parseInt(e.target.value);
+        if (val > 0) {
+            state.rows = val;
+            runGenerate();
         }
+    });
 
-        const fields = {
-            id: chkId.checked, name: chkName.checked, email: chkEmail.checked,
-            phone: chkPhone.checked, address: chkAddress.checked, job: chkJob.checked,
-            dob: chkDob.checked, bank: chkBank.checked
-        };
+    btnGenerate.addEventListener('click', runGenerate);
 
-        // Kiểm tra xem có chọn trường nào không
-        if (!Object.values(fields).some(v => v)) {
-            return UI.showAlert('Lỗi', 'Vui lòng chọn ít nhất 1 trường dữ liệu.', 'warning');
-        }
-
-        btnGenerate.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG XỬ LÝ...';
-        btnGenerate.style.pointerEvents = 'none';
-
-        // Dùng setTimeout để nhường luồng cho UI cập nhật nút Quay
-        setTimeout(() => {
-            let dataArr = [];
-            for (let i = 1; i <= count; i++) {
-                dataArr.push(generateRow(i, fields));
-            }
-
-            // --- FORMAT JSON ---
-            if (currentFormat === 'json') {
-                fullDataString = JSON.stringify(dataArr, null, 2);
-            } 
-            // --- FORMAT CSV ---
-            else if (currentFormat === 'csv') {
-                const keys = Object.keys(dataArr[0]);
-                let csv = keys.join(',') + '\n';
-                dataArr.forEach(row => {
-                    // Cần bọc giá trị bằng ngoặc kép nếu có chứa dấu phẩy (như địa chỉ)
-                    let values = keys.map(k => `"${String(row[k]).replace(/"/g, '""')}"`);
-                    csv += values.join(',') + '\n';
-                });
-                fullDataString = csv;
-            } 
-            // --- FORMAT SQL ---
-            else if (currentFormat === 'sql') {
-                const tableName = 'mock_data';
-                const keys = Object.keys(dataArr[0]);
-                let sql = `CREATE TABLE ${tableName} (${keys.join(', ')});\n`;
-                
-                // Group các giá trị thành lô (batch insert) để tối ưu
-                const batchSize = 100;
-                for (let i = 0; i < dataArr.length; i += batchSize) {
-                    let batch = dataArr.slice(i, i + batchSize);
-                    let valuesStrings = batch.map(row => {
-                        let vals = keys.map(k => {
-                            if (typeof row[k] === 'number') return row[k];
-                            // Escape single quotes in SQL
-                            return `'${String(row[k]).replace(/'/g, "''")}'`;
-                        });
-                        return `(${vals.join(', ')})`;
-                    });
-                    sql += `INSERT INTO ${tableName} (${keys.join(', ')}) VALUES\n${valuesStrings.join(',\n')};\n`;
-                }
-                fullDataString = sql;
-            }
-
-            // --- Xử lý Preview (Giới hạn hiển thị để tránh treo máy) ---
-            const previewLines = fullDataString.split('\n');
-            const MAX_PREVIEW_LINES = 150; // Giới hạn số dòng hiển thị
-            
-            if (previewLines.length > MAX_PREVIEW_LINES) {
-                outputBox.textContent = previewLines.slice(0, MAX_PREVIEW_LINES).join('\n') + `\n\n... (Và ${count} dòng nữa. Nhấn Download hoặc Copy để lấy toàn bộ dữ liệu)`;
-            } else {
-                outputBox.textContent = fullDataString;
-            }
-
-            // Reset nút
-            btnGenerate.innerHTML = '<i class="fas fa-bolt"></i> TẠO DỮ LIỆU';
-            btnGenerate.style.pointerEvents = 'auto';
-
-        }, 50); // Delay 50ms
-    };
-
-    // --- SỰ KIỆN CLICK NÚT ---
-    btnGenerate.onclick = generateData;
-
-    btnCopy.onclick = async () => {
-        if (!fullDataString) return UI.showAlert('Thông báo', 'Vui lòng tạo dữ liệu trước.', 'warning');
+    btnCopy.addEventListener('click', async () => {
         try {
-            await navigator.clipboard.writeText(fullDataString);
-            UI.showAlert('Đã chép', `Đã sao chép toàn bộ ${inCount.value} dòng dữ liệu.`, 'success');
-        } catch (e) {
-            UI.showAlert('Lỗi', 'Không thể sao chép. File có thể quá lớn.', 'error');
+            await navigator.clipboard.writeText(generatedDataStr);
+            UI.showAlert('Đã copy', 'Dữ liệu đã được lưu vào bộ nhớ tạm.', 'success');
+        } catch (err) {
+            UI.showAlert('Lỗi', 'Không thể copy', 'error');
         }
-    };
+    });
 
-    btnDownload.onclick = () => {
-        if (!fullDataString) return UI.showAlert('Thông báo', 'Vui lòng tạo dữ liệu trước.', 'warning');
-        
-        let ext = currentFormat; // json, csv, sql
-        let mimeType = 'text/plain';
-        if (ext === 'json') mimeType = 'application/json';
-        if (ext === 'csv') mimeType = 'text/csv';
+    btnDownload.addEventListener('click', () => {
+        if (!generatedDataStr) return;
+        const blob = new Blob([generatedDataStr], { type: 'text/plain;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const ext = state.format === 'sql' ? 'sql' : (state.format === 'csv' ? 'csv' : 'json');
+        link.download = `mock_data_${Date.now()}.${ext}`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    });
 
-        const blob = new Blob([fullDataString], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `mock_data_${Date.now()}.${ext}`;
-        document.body.appendChild(a);
-        a.click();
-        
-        // Dọn dẹp
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }, 0);
-    };
-
-    // --- AUTO RUN ---
-    // Khởi chạy sinh 10 dòng đầu tiên khi vào tool
-    setTimeout(generateData, 100);
+    renderFields();
+    runGenerate();
 }

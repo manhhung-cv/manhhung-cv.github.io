@@ -1,0 +1,90 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Google Sheets API</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Danh Sách Sản Phẩm</h1>
+            <p class="text-gray-600">Dữ liệu được lấy thời gian thực từ Google Sheets</p>
+            <div id="status" class="mt-4 text-sm font-medium text-blue-600">Đang tải dữ liệu...</div>
+        </header>
+
+        <div id="product-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            </div>
+    </div>
+
+    <script>
+        // Cấu hình các tham số bảo mật của bạn
+        const API_URL = "https://script.google.com/macros/s/AKfycbyyxGgSBulQ1wFGF0Gj1zxQxVoqWhgxO7Q8sPJb0SkF_GYKjlRglVBOxptEQckUkxIamw/exec";
+        const TOKEN = "Hunq"; // Token bạn đã cài đặt trong script
+        const DOMAIN = window.location.hostname || "";
+
+        async function fetchProducts() {
+            try {
+                const response = await fetch(`${API_URL}?token=${TOKEN}&domain=${DOMAIN}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    document.getElementById('status').innerHTML = `<span class="text-red-500">Lỗi: ${data.message}</span>`;
+                    return;
+                }
+
+                renderProducts(data);
+                document.getElementById('status').innerText = "Cập nhật lần cuối: " + new Date().toLocaleTimeString();
+            } catch (error) {
+                console.error("Lỗi fetch:", error);
+                document.getElementById('status').innerHTML = `<span class="text-red-500">Không thể kết nối tới API. Hãy kiểm tra CORS hoặc Token.</span>`;
+            }
+        }
+
+        function renderProducts(products) {
+            const container = document.getElementById('product-container');
+            container.innerHTML = ''; // Xóa nội dung cũ
+
+            products.forEach(product => {
+                const card = `
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300">
+                        <img src="${product.image}" alt="${product.name}" class="w-full h-48 object-cover">
+                        
+                        <div class="p-6">
+                            <div class="flex justify-between items-start mb-2">
+                                <h2 class="text-xl font-bold text-gray-800">${product.name}</h2>
+                                ${product.ontop ? '<span class="bg-yellow-400 text-xs font-bold px-2 py-1 rounded">HOT</span>' : ''}
+                            </div>
+                            
+                            <p class="text-gray-600 text-sm mb-4 line-clamp-2">${product.description}</p>
+                            
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                ${product.categories.map(cat => `<span class="bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">${cat}</span>`).join('')}
+                            </div>
+
+                            <div class="border-t pt-4">
+                                <p class="text-sm font-semibold text-gray-500 mb-2">Mua tại:</p>
+                                <div class="flex gap-3">
+                                    ${product.platforms.map(p => `
+                                        <a href="${p.url}" target="_blank" class="flex-1 flex items-center justify-center gap-2 ${p.bgColor} text-white py-2 rounded-lg hover:opacity-90 transition">
+                                            <i class="fa-solid ${p.icon}"></i> ${p.name}
+                                        </a>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += card;
+            });
+        }
+
+        // Chạy hàm lấy dữ liệu khi trang web tải xong
+        fetchProducts();
+    </script>
+</body>
+</html>

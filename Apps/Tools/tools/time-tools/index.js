@@ -3,786 +3,607 @@ import { UI } from '../../js/ui.js';
 export function template() {
     return `
         <style>
-            .tt-widget { max-width: 800px; margin: 0 auto; padding-bottom: 24px; }
-            
-            /* Thanh gạt Danh mục */
-            .tt-category-toggle { 
-                display: flex; background: var(--bg-sec); border-radius: 30px; 
-                padding: 4px; margin-bottom: 24px; border: 1px solid var(--border); 
-                overflow-x: auto; scrollbar-width: none;
-            }
-            .tt-category-toggle::-webkit-scrollbar { display: none; }
-            
-            .tt-cat-btn { 
-                flex: 1; text-align: center; padding: 10px 16px; border-radius: 26px; 
-                border: none; background: transparent; color: var(--text-mut); 
-                font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-                font-size: 0.9rem; font-family: var(--font); display: flex; align-items: center; justify-content: center; gap: 6px;
-                white-space: nowrap; min-width: max-content;
-            }
-            .tt-cat-btn:hover { color: var(--text-main); }
-            .tt-cat-btn.active { background: var(--bg-main); color: #3b82f6; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+            .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 10px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
 
-            .tt-pane { display: none; animation: fadeIn 0.3s ease; }
-            .tt-pane.active { display: block; }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+            .hide-scrollbar::-webkit-scrollbar { display: none; }
+            .hide-scrollbar { scrollbar-width: none; }
 
-            /* Màn hình hiển thị số lớn */
-            .tt-display-box { 
-                background: var(--bg-sec); border: 1px solid var(--border); border-radius: var(--radius);
-                padding: 30px 20px; text-align: center; margin-bottom: 20px;
-            }
-            .tt-large-text { font-family: 'Courier New', Courier, monospace; font-size: 3.5rem; font-weight: 700; color: #3b82f6; line-height: 1; margin: 0; letter-spacing: 2px; }
-            @media (max-width: 576px) { .tt-large-text { font-size: 2.5rem; } }
-            
-            .tt-sub-text { font-size: 0.9rem; color: var(--text-mut); margin-top: 8px; font-weight: 500; }
+            /* Nút bấm Premium: Click êm ái, không hover lòe loẹt */
+            .btn-premium { transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s; user-select: none; }
+            .btn-premium:active { transform: scale(0.96); opacity: 0.8; }
 
-            /* Grid & Input */
-            .tt-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-            .tt-input-col { display: flex; flex-direction: column; align-items: center; }
-            .tt-input-col input { font-size: 1.5rem; text-align: center; padding: 12px; border-radius: 12px; }
+            /* Toggle Switch Phẳng */
+            .toggle-premium { appearance: none; width: 32px; height: 18px; background: #e4e4e7; border-radius: 9px; position: relative; cursor: pointer; outline: none; transition: background 0.2s; }
+            .dark .toggle-premium { background: #27272a; }
+            .toggle-premium::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: #fff; border-radius: 50%; transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+            .dark .toggle-premium::after { background: #a1a1aa; }
+            .toggle-premium:checked { background: #18181b; }
+            .dark .toggle-premium:checked { background: #fff; }
+            .toggle-premium:checked::after { transform: translateX(14px); background: #fff; }
+            .dark .toggle-premium:checked::after { background: #18181b; }
 
-            /* Quick Tags (Cho đếm ngược ngày) */
-            .tt-quick-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-            .tt-quick-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg-sec); color: var(--text-mut); cursor: pointer; font-size: 0.85rem; transition: all 0.2s; font-weight: 500; }
-            .tt-quick-btn:hover { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: #3b82f6; }
+            /* Checkbox Days dạng Tag */
+            .day-tag input { display: none; }
+            .day-tag:has(input:checked) div { background: #18181b; color: #fff; border-color: #18181b; }
+            .dark .day-tag:has(input:checked) div { background: #fff; color: #18181b; border-color: #fff; }
 
-            /* Switch (Toggle bật/tắt Trừ giờ nghỉ) */
-            .tt-toggle-row { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
-            .tt-switch { position: relative; width: 44px; height: 24px; background: var(--border); border-radius: 12px; transition: 0.3s; }
-            .tt-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-            input:checked + .tt-switch { background: #3b82f6; }
-            input:checked + .tt-switch::after { transform: translateX(20px); }
+            /* Radio Mode dạng Switch liền khối */
+            .mode-switch input { display: none; }
+            .mode-switch:has(input:checked) div { background: #18181b; color: #fff; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+            .dark .mode-switch:has(input:checked) div { background: #fff; color: #18181b; }
 
-            /* Grid Tính Tuổi Chi Tiết */
-            .age-stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 24px; border-top: 1px dashed var(--border); padding-top: 24px; }
-            @media (max-width: 576px) { .age-stats-grid { grid-template-columns: repeat(2, 1fr); } }
-            .age-stat { background: var(--bg-main); border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; align-items: center; transition: all 0.2s; }
-            .age-stat:hover { border-color: #3b82f6; }
-            .age-stat span { font-size: 0.8rem; color: var(--text-mut); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-            .age-stat strong { font-size: 1.2rem; color: var(--text-main); font-family: 'Courier New', monospace; font-weight: 700; }
-
-            /* Các CSS cũ tái sử dụng */
-            .tt-week-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-            .tt-week-lbl { padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px; font-size: 0.85rem; cursor: pointer; background: var(--bg-sec); color: var(--text-mut); transition: all 0.2s; user-select: none; }
-            .tt-week-lbl:has(input:checked) { background: #ef4444; color: white; border-color: #ef4444; }
-            .tt-week-lbl input { display: none; }
-
-            .tt-radio-group { display: flex; gap: 8px; margin-bottom: 16px; }
-            .tt-radio-btn { flex: 1; padding: 10px; text-align: center; border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; font-weight: 500; color: var(--text-mut); transition: all 0.2s; }
-            .tt-radio-btn:has(input:checked) { border-color: #3b82f6; background: rgba(59, 130, 246, 0.05); color: #3b82f6; }
-            .tt-radio-btn input { display: none; }
-
-            .tt-lap-list { max-height: 200px; overflow-y: auto; margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px; }
-            .tt-lap-item { display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px dashed var(--border); font-family: monospace; font-size: 1.1rem; }
-            .tt-lap-item:last-child { border-bottom: none; }
-            
-            .tt-ringing { animation: pulseRed 1s infinite; }
-            @keyframes pulseRed { 0% { color: #3b82f6; } 50% { color: #ef4444; text-shadow: 0 0 10px rgba(239,68,68,0.5); } 100% { color: #3b82f6; } }
-
+            @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+            .is-ringing { animation: blink 1s infinite; color: #18181b !important; }
+            .dark .is-ringing { color: #ffffff !important; }
         </style>
 
-        <div class="tt-widget">
+        <div class="relative flex flex-col w-full max-w-[540px] mx-auto min-h-[500px]">
             
-            <div class="flex-between" style="margin-bottom: 20px;">
-                <div>
-                    <h1 class="h1" style="font-size: 1.5rem; margin-bottom: 4px;">Đồng hồ & Thời gian</h1>
-                    <p class="text-mut" style="font-size: 0.9rem;">7 tiện ích thời gian mạnh mẽ trong 1 công cụ.</p>
-                </div>
+            <div class="mb-6 px-2">
+                <h2 class="text-[22px] font-bold text-zinc-900 dark:text-white tracking-tight leading-none mb-1">Thời Gian</h2>
+                <p class="text-[13px] text-zinc-500 font-medium">Bộ tiện ích đo lường & tính toán chuẩn xác.</p>
             </div>
 
-            <div class="tt-category-toggle" id="tt-tabs">
-                <button class="tt-cat-btn active" data-target="pane-timer"><i class="fas fa-hourglass-start"></i> Đếm ngược</button>
-                <button class="tt-cat-btn" data-target="pane-stopwatch"><i class="fas fa-stopwatch"></i> Bấm giờ</button>
-                <button class="tt-cat-btn" data-target="pane-countday"><i class="fas fa-calendar-alt"></i> Đếm ngược Ngày</button>
-                <button class="tt-cat-btn" data-target="pane-datecalc"><i class="fas fa-calculator"></i> Tính Ngày</button>
-                <button class="tt-cat-btn" data-target="pane-timecalc"><i class="fas fa-clock"></i> Tính Giờ</button>
-                <button class="tt-cat-btn" data-target="pane-week"><i class="fas fa-calendar-week"></i> Số Tuần</button>
-                <button class="tt-cat-btn" data-target="pane-age"><i class="fas fa-birthday-cake"></i> Tính Tuổi</button>
+            <div class="flex overflow-x-auto hide-scrollbar gap-2 mb-6 px-2 pb-2">
+                <button class="tt-tab active btn-premium px-4 py-2.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[12px] font-bold whitespace-nowrap shrink-0" data-target="pane-timer">Đếm ngược</button>
+                <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-stopwatch">Bấm giờ</button>
+                <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-countday">Sự kiện</button>
+                <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-datecalc">Tính ngày</button>
+                <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-timecalc">Tính giờ</button>
+                <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-week">Số tuần</button>
+                <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-age">Tuổi</button>
             </div>
 
-            <div class="card" style="padding: 24px;">
+            <div class="bg-white dark:bg-[#0c0c0e] rounded-[32px] ring-1 ring-inset ring-zinc-200 dark:ring-zinc-800/80 shadow-sm overflow-hidden flex flex-col">
                 
-                <div id="pane-timer" class="tt-pane active">
-                    <div class="tt-display-box">
-                        <div class="tt-large-text" id="timer-display">00:00:00</div>
-                        <div class="tt-sub-text" id="timer-status">Chưa bắt đầu</div>
+                <div id="pane-timer" class="tt-pane block animate-in fade-in">
+                    <div class="bg-zinc-50/50 dark:bg-transparent px-6 py-12 flex flex-col items-center justify-center border-b border-zinc-100 dark:border-zinc-800/50 relative">
+                        <div class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4 absolute top-6" id="tm-status">Đã sẵn sàng</div>
+                        <div class="text-[5.5rem] font-black text-zinc-900 dark:text-white font-mono tracking-tighter leading-none" id="tm-display">25:00</div>
                     </div>
                     
-                    <div class="tt-grid-3">
-                        <div class="tt-input-col"><label class="form-label">Giờ</label><input type="number" class="input" id="timer-h" value="0" min="0" max="99"></div>
-                        <div class="tt-input-col"><label class="form-label">Phút</label><input type="number" class="input" id="timer-m" value="5" min="0" max="59"></div>
-                        <div class="tt-input-col"><label class="form-label">Giây</label><input type="number" class="input" id="timer-s" value="0" min="0" max="59"></div>
-                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-3 gap-3 mb-6">
+                            <div class="relative bg-zinc-100/50 dark:bg-zinc-800/30 rounded-2xl p-2 flex flex-col items-center">
+                                <span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Giờ</span>
+                                <input type="number" id="tm-h" value="0" min="0" max="99" class="w-full bg-transparent border-none outline-none text-center font-bold text-xl text-zinc-900 dark:text-white p-0">
+                            </div>
+                            <div class="relative bg-zinc-100/50 dark:bg-zinc-800/30 rounded-2xl p-2 flex flex-col items-center">
+                                <span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Phút</span>
+                                <input type="number" id="tm-m" value="25" min="0" max="59" class="w-full bg-transparent border-none outline-none text-center font-bold text-xl text-zinc-900 dark:text-white p-0">
+                            </div>
+                            <div class="relative bg-zinc-100/50 dark:bg-zinc-800/30 rounded-2xl p-2 flex flex-col items-center">
+                                <span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Giây</span>
+                                <input type="number" id="tm-s" value="0" min="0" max="59" class="w-full bg-transparent border-none outline-none text-center font-bold text-xl text-zinc-900 dark:text-white p-0">
+                            </div>
+                        </div>
 
-                    <div class="flex-row" style="gap: 12px; margin-top: 24px;">
-                        <button class="btn btn-outline" id="btn-timer-reset" style="flex: 1; justify-content: center;"><i class="fas fa-undo"></i> Đặt lại</button>
-                        <button class="btn btn-primary" id="btn-timer-start" style="flex: 2; justify-content: center;"><i class="fas fa-play"></i> Bắt đầu</button>
+                        <div class="flex justify-center gap-2 mb-8">
+                            <button class="btn-premium tm-quick px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-[11px] font-bold" data-m="1">+1p</button>
+                            <button class="btn-premium tm-quick px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-[11px] font-bold" data-m="5">+5p</button>
+                            <button class="btn-premium tm-quick px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-[11px] font-bold" data-m="15">+15p</button>
+                            <button class="btn-premium tm-quick px-4 py-1.5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-bold" data-m="25">Pomodoro</button>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <button id="btn-tm-reset" class="btn-premium w-1/3 py-4 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold text-[13px]">Đặt lại</button>
+                            <button id="btn-tm-start" class="btn-premium flex-1 py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-[13px] tracking-wide">BẮT ĐẦU</button>
+                        </div>
                     </div>
                 </div>
 
-                <div id="pane-stopwatch" class="tt-pane">
-                    <div class="tt-display-box">
-                        <div class="tt-large-text" id="sw-display">00:00:00.<small>00</small></div>
+                <div id="pane-stopwatch" class="tt-pane hidden animate-in fade-in flex flex-col h-[520px]">
+                    <div class="bg-zinc-50/50 dark:bg-transparent px-6 py-12 flex flex-col items-center justify-center border-b border-zinc-100 dark:border-zinc-800/50 shrink-0">
+                        <div class="text-[4rem] sm:text-[4.5rem] font-black text-zinc-900 dark:text-white font-mono tracking-tighter leading-none" id="sw-display">00:00<span class="text-2xl text-zinc-400">.00</span></div>
                     </div>
                     
-                    <div class="flex-row" style="gap: 12px;">
-                        <button class="btn btn-outline" id="btn-sw-lap" style="flex: 1; justify-content: center;" disabled><i class="fas fa-flag"></i> Vòng (Lap)</button>
-                        <button class="btn btn-primary" id="btn-sw-start" style="flex: 1; justify-content: center;"><i class="fas fa-play"></i> Bắt đầu</button>
-                        <button class="btn btn-ghost" id="btn-sw-reset" style="flex: 1; justify-content: center; color: #ef4444;"><i class="fas fa-redo"></i> Đặt lại</button>
+                    <div id="sw-laps" class="w-full flex-1 overflow-y-auto custom-scrollbar flex flex-col px-6 py-2">
+                        <div class="text-center text-[11px] font-medium text-zinc-400 py-10 opacity-50">Chưa có vòng chạy.</div>
                     </div>
 
-                    <div class="tt-lap-list" id="sw-laps"></div>
-                </div>
-
-                <div id="pane-countday" class="tt-pane">
-                    <div class="form-group">
-                        <label class="form-label">Chọn Ngày & Giờ đích</label>
-                        <input type="datetime-local" class="input" id="cd-target" style="font-size: 1.1rem; padding: 12px;">
-                        
-                        <div class="tt-quick-tags">
-                            <button class="tt-quick-btn cd-quick" data-type="newyear">🎉 Năm mới</button>
-                            <button class="tt-quick-btn cd-quick" data-type="valentine">💖 Valentine</button>
-                            <button class="tt-quick-btn cd-quick" data-type="halloween">🎃 Halloween</button>
-                            <button class="tt-quick-btn cd-quick" data-type="christmas">🎄 Giáng sinh</button>
+                    <div class="p-6 shrink-0 bg-white dark:bg-[#0c0c0e] border-t border-zinc-100 dark:border-zinc-800/50">
+                        <button id="btn-sw-start" class="btn-premium w-full py-4 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-[13px] tracking-wide mb-3">BẮT ĐẦU</button>
+                        <div class="flex gap-3">
+                            <button id="btn-sw-lap" class="btn-premium flex-1 py-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold text-[12px] opacity-50 pointer-events-none" disabled>Ghi Vòng</button>
+                            <button id="btn-sw-reset" class="btn-premium flex-1 py-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold text-[12px]">Xóa</button>
                         </div>
-                    </div>
-                    
-                    <div class="tt-display-box" style="margin-top: 24px; padding: 40px 20px;">
-                        <div class="tt-large-text" id="cd-display" style="font-size: 2.5rem;">0d 0h 0m 0s</div>
-                        <div class="tt-sub-text" id="cd-status">Vui lòng chọn ngày trong tương lai</div>
                     </div>
                 </div>
 
-                <div id="pane-datecalc" class="tt-pane">
-                    <div class="tt-radio-group">
-                        <label class="tt-radio-btn"><input type="radio" name="dc-mode" value="diff" checked> Đếm số ngày giữa 2 mốc</label>
-                        <label class="tt-radio-btn"><input type="radio" name="dc-mode" value="addsub"> Cộng / Trừ ngày</label>
+                <div id="pane-countday" class="tt-pane hidden animate-in fade-in">
+                    <div class="bg-zinc-50/50 dark:bg-transparent px-6 py-12 flex flex-col items-center justify-center border-b border-zinc-100 dark:border-zinc-800/50">
+                        <div class="text-[3.5rem] font-black text-zinc-900 dark:text-white font-mono tracking-tighter leading-none mb-3 text-center" id="cd-display">0<span class="text-xl text-zinc-400 font-sans font-bold">n</span> 0<span class="text-xl text-zinc-400 font-sans font-bold">g</span></div>
+                        <div class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest" id="cd-status">Thời gian còn lại</div>
                     </div>
 
-                    <div id="dc-mode-diff">
-                        <div class="grid-2">
-                            <div class="form-group"><label class="form-label">Từ ngày</label><input type="date" class="input dc-trigger" id="dc-start"></div>
-                            <div class="form-group"><label class="form-label">Đến ngày</label><input type="date" class="input dc-trigger" id="dc-end"></div>
+                    <div class="p-6 space-y-6">
+                        <div class="bg-zinc-100/50 dark:bg-zinc-800/30 p-4 rounded-2xl">
+                            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-2">Ngày giờ sự kiện</label>
+                            <input type="datetime-local" id="cd-target" class="w-full bg-transparent border-none outline-none font-bold text-base text-zinc-900 dark:text-white p-0 cursor-pointer">
                         </div>
                         
-                        <div class="form-group">
-                            <label class="form-label" style="display:flex; align-items:center; gap:8px;">
-                                <input type="checkbox" id="dc-inc-last" class="dc-trigger" style="width:16px; height:16px; accent-color:#3b82f6;"> 
-                                Bao gồm cả ngày cuối cùng (+1 ngày)
-                            </label>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label class="form-label">Loại trừ các ngày trong tuần khỏi kết quả đếm:</label>
-                            <div class="tt-week-group">
-                                <label class="tt-week-lbl"><input type="checkbox" class="dc-exclude dc-trigger" value="1"> Thứ 2</label>
-                                <label class="tt-week-lbl"><input type="checkbox" class="dc-exclude dc-trigger" value="2"> Thứ 3</label>
-                                <label class="tt-week-lbl"><input type="checkbox" class="dc-exclude dc-trigger" value="3"> Thứ 4</label>
-                                <label class="tt-week-lbl"><input type="checkbox" class="dc-exclude dc-trigger" value="4"> Thứ 5</label>
-                                <label class="tt-week-lbl"><input type="checkbox" class="dc-exclude dc-trigger" value="5"> Thứ 6</label>
-                                <label class="tt-week-lbl"><input type="checkbox" class="dc-exclude dc-trigger" value="6"> Thứ 7</label>
-                                <label class="tt-week-lbl"><input type="checkbox" class="dc-exclude dc-trigger" value="0"> Chủ Nhật</label>
+                        <div>
+                            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-3 text-center">Hoặc chọn nhanh</label>
+                            <div class="flex justify-center flex-wrap gap-2">
+                                <button class="btn-premium cd-quick px-4 py-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold" data-type="newyear">Năm mới</button>
+                                <button class="btn-premium cd-quick px-4 py-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold" data-type="valentine">Valentine</button>
+                                <button class="btn-premium cd-quick px-4 py-2 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[11px] font-bold" data-type="christmas">Giáng sinh</button>
                             </div>
                         </div>
                     </div>
-
-                    <div id="dc-mode-addsub" style="display: none;">
-                        <div class="form-group"><label class="form-label">Ngày bắt đầu</label><input type="date" class="input dc-trigger" id="dc-base"></div>
-                        <div class="grid-2">
-                            <div class="form-group">
-                                <label class="form-label">Phép tính</label>
-                                <select class="input dc-trigger" id="dc-op">
-                                    <option value="add">Cộng (+) ngày</option>
-                                    <option value="sub">Trừ (-) ngày</option>
-                                </select>
-                            </div>
-                            <div class="form-group"><label class="form-label">Số ngày</label><input type="number" class="input dc-trigger" id="dc-days" value="30" min="0"></div>
-                        </div>
-                    </div>
-
-                    <div class="tt-display-box" style="padding: 20px;">
-                        <div class="tt-sub-text" style="margin-bottom: 8px; margin-top: 0;">Kết quả:</div>
-                        <div class="tt-large-text" id="dc-result" style="font-size: 2rem;">--</div>
-                    </div>
                 </div>
 
-                <div id="pane-timecalc" class="tt-pane">
-                    <div class="tt-radio-group">
-                        <label class="tt-radio-btn"><input type="radio" name="tc-mode" value="duration" checked> Khoảng thời lượng</label>
-                        <label class="tt-radio-btn"><input type="radio" name="tc-mode" value="math"> Cộng / Trừ Giờ</label>
-                    </div>
-
-                    <div id="tc-mode-dur">
-                        <div class="grid-2">
-                            <div class="form-group"><label class="form-label">Giờ Bắt đầu</label><input type="time" class="input tc-trigger" id="tc-start" value="08:00"></div>
-                            <div class="form-group"><label class="form-label">Giờ Kết thúc</label><input type="time" class="input tc-trigger" id="tc-end" value="17:30"></div>
-                        </div>
-                        <div class="form-group">
-                            <label class="tt-toggle-row" style="margin-bottom: 8px;">
-                                <input type="checkbox" id="tc-has-break" class="tc-trigger" style="display:none;" checked>
-                                <div class="tt-switch"></div>
-                                <span style="font-weight:500; font-size:0.9rem; color:var(--text-main);">Trừ đi thời gian nghỉ giữa giờ (Phút)</span>
+                <div id="pane-datecalc" class="tt-pane hidden animate-in fade-in">
+                    <div class="p-6 pb-2 border-b border-zinc-100 dark:border-zinc-800/50">
+                        <div class="flex bg-zinc-100/80 dark:bg-zinc-800/50 rounded-[14px] p-1">
+                            <label class="mode-switch flex-1 cursor-pointer">
+                                <input type="radio" name="dc-mode" value="diff" checked>
+                                <div class="text-center py-2 rounded-xl text-[12px] font-medium text-zinc-500 transition-all">Tính khoảng cách</div>
                             </label>
-                            <input type="number" class="input tc-trigger" id="tc-break" value="60" min="0" style="transition: opacity 0.3s;">
+                            <label class="mode-switch flex-1 cursor-pointer">
+                                <input type="radio" name="dc-mode" value="addsub">
+                                <div class="text-center py-2 rounded-xl text-[12px] font-medium text-zinc-500 transition-all">Cộng / Trừ ngày</div>
+                            </label>
                         </div>
                     </div>
 
-                    <div id="tc-mode-math" style="display: none;">
-                        <div class="form-group"><label class="form-label">Giờ gốc</label><input type="time" class="input tc-trigger" id="tc-base" value="10:00"></div>
-                        <div class="grid-2">
-                            <div class="form-group"><label class="form-label">Thao tác</label><select class="input tc-trigger" id="tc-op"><option value="add">Cộng (+) thêm</option><option value="sub">Trừ (-) bớt</option></select></div>
-                            <div class="form-group"><label class="form-label">Thời lượng (Giờ : Phút)</label>
-                                <div style="display:flex; gap:8px;">
-                                    <input type="number" class="input tc-trigger" id="tc-add-h" value="2" min="0" placeholder="Giờ">
-                                    <input type="number" class="input tc-trigger" id="tc-add-m" value="30" min="0" max="59" placeholder="Phút">
+                    <div class="p-6">
+                        <div id="dc-mode-diff" class="space-y-5 animate-in fade-in">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                                    <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Từ ngày</label>
+                                    <input type="date" id="dc-start" class="dc-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-zinc-900 dark:text-white p-0">
+                                </div>
+                                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                                    <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Đến ngày</label>
+                                    <input type="date" id="dc-end" class="dc-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-zinc-900 dark:text-white p-0">
+                                </div>
+                            </div>
+                            
+                            <label class="flex items-center justify-between cursor-pointer py-1">
+                                <span class="text-[12px] font-bold text-zinc-700 dark:text-zinc-300">Tính cả ngày cuối (+1)</span>
+                                <input type="checkbox" id="dc-inc-last" class="dc-trigger toggle-premium">
+                            </label>
+
+                            <div>
+                                <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block mb-2">Không đếm các ngày (Nghỉ)</label>
+                                <div class="flex gap-1.5 justify-between">
+                                    <label class="day-tag flex-1 cursor-pointer"><input type="checkbox" value="1" class="dc-exc dc-trigger"><div class="py-2 rounded-xl text-center text-[11px] font-bold text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 transition-colors">T2</div></label>
+                                    <label class="day-tag flex-1 cursor-pointer"><input type="checkbox" value="2" class="dc-exc dc-trigger"><div class="py-2 rounded-xl text-center text-[11px] font-bold text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 transition-colors">T3</div></label>
+                                    <label class="day-tag flex-1 cursor-pointer"><input type="checkbox" value="3" class="dc-exc dc-trigger"><div class="py-2 rounded-xl text-center text-[11px] font-bold text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 transition-colors">T4</div></label>
+                                    <label class="day-tag flex-1 cursor-pointer"><input type="checkbox" value="4" class="dc-exc dc-trigger"><div class="py-2 rounded-xl text-center text-[11px] font-bold text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 transition-colors">T5</div></label>
+                                    <label class="day-tag flex-1 cursor-pointer"><input type="checkbox" value="5" class="dc-exc dc-trigger"><div class="py-2 rounded-xl text-center text-[11px] font-bold text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 transition-colors">T6</div></label>
+                                    <label class="day-tag flex-1 cursor-pointer"><input type="checkbox" value="6" class="dc-exc dc-trigger"><div class="py-2 rounded-xl text-center text-[11px] font-bold text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 transition-colors">T7</div></label>
+                                    <label class="day-tag flex-1 cursor-pointer"><input type="checkbox" value="0" class="dc-exc dc-trigger"><div class="py-2 rounded-xl text-center text-[11px] font-bold text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 transition-colors">CN</div></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="dc-mode-add" class="hidden space-y-5 animate-in fade-in">
+                            <div class="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl">
+                                <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Ngày gốc</label>
+                                <input type="date" id="dc-base" class="dc-trigger w-full bg-transparent border-none outline-none text-base font-bold text-zinc-900 dark:text-white p-0">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                                    <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Thao tác</label>
+                                    <select id="dc-op" class="dc-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-zinc-900 dark:text-white appearance-none p-0"><option value="add">Cộng (+) ngày</option><option value="sub">Trừ (-) ngày</option></select>
+                                </div>
+                                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                                    <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Số lượng</label>
+                                    <input type="number" id="dc-days" value="30" min="0" class="dc-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-zinc-900 dark:text-white p-0">
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="tt-display-box" style="padding: 20px;">
-                        <div class="tt-sub-text" style="margin-bottom: 8px; margin-top: 0;">Kết quả:</div>
-                        <div class="tt-large-text" id="tc-result" style="font-size: 2.2rem;">--</div>
-                        <div class="tt-sub-text" id="tc-decimal" style="display: none; color: #10b981;">(Tương đương: 0.00 giờ thập phân)</div>
+                    <div class="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 p-6 flex flex-col items-center justify-center min-h-[120px]">
+                        <div class="text-[10px] font-bold opacity-60 uppercase tracking-widest mb-1">Kết quả</div>
+                        <div class="text-3xl font-black font-mono tracking-tighter" id="dc-res">--</div>
                     </div>
                 </div>
 
-                <div id="pane-week" class="tt-pane">
-                    <div class="form-group">
-                        <label class="form-label">Kiểm tra số tuần của ngày:</label>
-                        <input type="date" class="input" id="wk-date" style="font-size: 1.1rem; padding: 12px;">
+                <div id="pane-timecalc" class="tt-pane hidden animate-in fade-in">
+                    <div class="p-6 pb-2 border-b border-zinc-100 dark:border-zinc-800/50">
+                        <div class="flex bg-zinc-100/80 dark:bg-zinc-800/50 rounded-[14px] p-1">
+                            <label class="mode-switch flex-1 cursor-pointer">
+                                <input type="radio" name="tc-mode" value="dur" checked>
+                                <div class="text-center py-2 rounded-xl text-[12px] font-medium text-zinc-500 transition-all">Tính khoảng giờ</div>
+                            </label>
+                            <label class="mode-switch flex-1 cursor-pointer">
+                                <input type="radio" name="tc-mode" value="math">
+                                <div class="text-center py-2 rounded-xl text-[12px] font-medium text-zinc-500 transition-all">Cộng / Trừ giờ</div>
+                            </label>
+                        </div>
                     </div>
-                    
-                    <div class="tt-display-box" style="margin-top: 24px; padding: 30px 20px;">
-                        <div class="tt-sub-text" style="margin-bottom: 8px; margin-top: 0;">Ngày này thuộc:</div>
-                        <div class="tt-large-text" id="wk-number" style="font-size: 3rem;">Tuần --</div>
-                        <div class="tt-sub-text" id="wk-range" style="font-size: 1.1rem; margin-top: 16px; color: var(--text-main);">-- đến --</div>
-                        <div class="tt-sub-text" id="wk-year">Năm ---- có tổng cộng -- tuần.</div>
-                    </div>
-                </div>
 
-                <div id="pane-age" class="tt-pane">
-                    <div class="grid-2">
-                        <div class="form-group"><label class="form-label">Ngày sinh của bạn</label><input type="date" class="input age-trigger" id="age-dob"></div>
-                        <div class="form-group"><label class="form-label">Tính đến ngày</label><input type="date" class="input age-trigger" id="age-target"></div>
-                    </div>
-                    
-                    <div class="tt-display-box" style="padding: 20px; background: transparent; border: none;">
-                        <div class="tt-sub-text" style="margin: 0; font-size: 1rem;">Bạn sinh vào: <strong id="age-weekday" style="color:var(--text-main); font-size: 1.2rem;">---</strong></div>
-                        <div class="tt-large-text" id="age-main" style="font-size: 2rem; color: #10b981; margin: 16px 0;">-- Năm, -- Tháng, -- Ngày</div>
-                        
-                        <div class="age-stats-grid">
-                            <div class="age-stat"><span>Tổng Tháng</span><strong id="age-m">--</strong></div>
-                            <div class="age-stat"><span>Tổng Tuần</span><strong id="age-w">--</strong></div>
-                            <div class="age-stat"><span>Tổng Ngày</span><strong id="age-d">--</strong></div>
-                            <div class="age-stat"><span>Tổng Giờ</span><strong id="age-h">--</strong></div>
-                            <div class="age-stat"><span>Tổng Phút</span><strong id="age-min">--</strong></div>
-                            <div class="age-stat" style="border-color: #3b82f6; background: rgba(59,130,246,0.05);">
-                                <span style="color:#3b82f6;">Tổng Giây (Live)</span>
-                                <strong id="age-sec" style="color:#3b82f6;">--</strong>
+                    <div class="p-6">
+                        <div id="tc-mode-dur" class="space-y-5 animate-in fade-in">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl flex flex-col items-center text-center">
+                                    <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Bắt đầu</label>
+                                    <input type="time" id="tc-start" value="08:00" class="tc-trigger bg-transparent border-none outline-none text-2xl font-black font-mono text-zinc-900 dark:text-white p-0 text-center w-full">
+                                </div>
+                                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl flex flex-col items-center text-center">
+                                    <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Kết thúc</label>
+                                    <input type="time" id="tc-end" value="17:30" class="tc-trigger bg-transparent border-none outline-none text-2xl font-black font-mono text-zinc-900 dark:text-white p-0 text-center w-full">
+                                </div>
                             </div>
+                            
+                            <div class="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                                <label class="flex items-center gap-3 cursor-pointer flex-1">
+                                    <input type="checkbox" id="tc-has-brk" class="tc-trigger toggle-premium" checked>
+                                    <span class="text-[12px] font-bold text-zinc-700 dark:text-zinc-300">Trừ giờ nghỉ</span>
+                                </label>
+                                <div class="flex items-center gap-1">
+                                    <input type="number" id="tc-brk" value="60" min="0" class="tc-trigger w-12 bg-transparent border-none outline-none text-base font-bold text-right text-zinc-900 dark:text-white p-0 transition-opacity">
+                                    <span class="text-[11px] font-bold text-zinc-400">phút</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="tc-mode-math" class="hidden space-y-5 animate-in fade-in">
+                            <div class="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl flex flex-col items-center text-center">
+                                <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Giờ gốc</label>
+                                <input type="time" id="tc-base" value="10:00" class="tc-trigger bg-transparent border-none outline-none text-2xl font-black font-mono text-zinc-900 dark:text-white p-0 text-center w-full">
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                                    <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Thao tác</label>
+                                    <select id="tc-op" class="tc-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-zinc-900 dark:text-white appearance-none p-0"><option value="add">Cộng (+)</option><option value="sub">Trừ (-)</option></select>
+                                </div>
+                                <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                                    <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Lượng (H/M)</label>
+                                    <div class="flex gap-1">
+                                        <input type="number" id="tc-add-h" value="2" min="0" class="tc-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-center text-zinc-900 dark:text-white p-0">
+                                        <span class="text-zinc-300 dark:text-zinc-700">:</span>
+                                        <input type="number" id="tc-add-m" value="30" min="0" max="59" class="tc-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-center text-zinc-900 dark:text-white p-0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 p-6 flex flex-col items-center justify-center min-h-[120px]">
+                        <div class="text-[10px] font-bold opacity-60 uppercase tracking-widest mb-1">Kết quả</div>
+                        <div class="text-[2.5rem] font-black font-mono tracking-tighter leading-none" id="tc-res">--</div>
+                        <div class="text-[10px] font-bold opacity-80 mt-1 hidden" id="tc-res-dec"></div>
+                    </div>
+                </div>
+
+                <div id="pane-week" class="tt-pane hidden animate-in fade-in">
+                    <div class="p-6">
+                        <div class="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl mb-8">
+                            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-2 text-center">Kiểm tra số tuần của ngày</label>
+                            <input type="date" id="wk-date" class="w-full bg-transparent border-none outline-none font-bold text-base text-zinc-900 dark:text-white p-0 text-center cursor-pointer">
+                        </div>
+                        
+                        <div class="text-center">
+                            <div class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">Ngày này thuộc</div>
+                            <div class="text-[4rem] font-black text-zinc-900 dark:text-white font-mono tracking-tighter leading-none mb-4" id="wk-num">Tuần --</div>
+                            <div class="text-[13px] font-bold text-zinc-500 mb-2" id="wk-range">--</div>
+                            <div class="text-[11px] font-medium text-zinc-400" id="wk-year">--</div>
                         </div>
                     </div>
                 </div>
 
-            </div>
+                <div id="pane-age" class="tt-pane hidden animate-in fade-in p-6">
+                    <div class="grid grid-cols-2 gap-4 mb-8">
+                        <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                            <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Ngày sinh (DOB)</label>
+                            <input type="date" id="age-dob" class="age-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-zinc-900 dark:text-white p-0">
+                        </div>
+                        <div class="bg-zinc-50 dark:bg-zinc-800/30 p-3.5 rounded-2xl">
+                            <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-1">Tính đến</label>
+                            <input type="date" id="age-target" class="age-trigger w-full bg-transparent border-none outline-none text-sm font-bold text-zinc-900 dark:text-white p-0">
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mb-8">
+                        <div class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Tuổi chính xác (Sinh <span id="age-wd" class="text-zinc-900 dark:text-white">--</span>)</div>
+                        <div class="text-[1.8rem] font-black text-zinc-900 dark:text-white font-mono tracking-tighter leading-tight" id="age-main">--</div>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="bg-zinc-50 dark:bg-[#121214] rounded-2xl p-3 flex flex-col items-center"><span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Tháng</span><span class="text-sm font-black font-mono text-zinc-900 dark:text-white" id="age-m">--</span></div>
+                        <div class="bg-zinc-50 dark:bg-[#121214] rounded-2xl p-3 flex flex-col items-center"><span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Tuần</span><span class="text-sm font-black font-mono text-zinc-900 dark:text-white" id="age-w">--</span></div>
+                        <div class="bg-zinc-50 dark:bg-[#121214] rounded-2xl p-3 flex flex-col items-center"><span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Ngày</span><span class="text-sm font-black font-mono text-zinc-900 dark:text-white" id="age-d">--</span></div>
+                        <div class="bg-zinc-50 dark:bg-[#121214] rounded-2xl p-3 flex flex-col items-center"><span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Giờ</span><span class="text-sm font-black font-mono text-zinc-900 dark:text-white" id="age-h">--</span></div>
+                        <div class="bg-zinc-50 dark:bg-[#121214] rounded-2xl p-3 flex flex-col items-center"><span class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Phút</span><span class="text-sm font-black font-mono text-zinc-900 dark:text-white" id="age-min">--</span></div>
+                        <div class="bg-zinc-900 dark:bg-white rounded-2xl p-3 flex flex-col items-center"><span class="text-[9px] font-bold text-white/70 dark:text-black/70 uppercase tracking-widest mb-0.5">Giây (Live)</span><span class="text-sm font-black font-mono text-white dark:text-zinc-900" id="age-sec">--</span></div>
+                    </div>
+                </div>
 
+            </div>
         </div>
     `;
 }
 
 export function init() {
-    // --- Utils ---
     const format2 = (num) => num.toString().padStart(2, '0');
     const todayStr = new Date().toISOString().split('T')[0];
-    
-    // --- Audio Beep Generator ---
-    const playBeep = () => {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            gain.gain.setValueAtTime(0.1, ctx.currentTime);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 0.5);
-        } catch (e) { console.log('Audio không hỗ trợ'); }
-    };
 
-    // ==========================================
-    // MODULE 1: TIMER (ĐẾM NGƯỢC)
-    // ==========================================
+    // --- TABS LOGIC ---
+    const tabs = document.querySelectorAll('.tt-tab');
+    const panes = document.querySelectorAll('.tt-pane');
+    
+    tabs.forEach(tab => {
+        tab.onclick = () => {
+            tabs.forEach(t => {
+                t.classList.remove('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
+                t.classList.add('bg-transparent', 'text-zinc-500');
+            });
+            tab.classList.add('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
+            tab.classList.remove('bg-transparent', 'text-zinc-500');
+            
+            panes.forEach(p => { p.classList.remove('block'); p.classList.add('hidden'); });
+            document.getElementById(tab.dataset.target).classList.remove('hidden');
+            document.getElementById(tab.dataset.target).classList.add('block');
+            tab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        };
+    });
+
+    // --- 1. TIMER ---
     const Timer = {
-        h: document.getElementById('timer-h'), m: document.getElementById('timer-m'), s: document.getElementById('timer-s'),
-        disp: document.getElementById('timer-display'), stat: document.getElementById('timer-status'),
-        btnStart: document.getElementById('btn-timer-start'), btnReset: document.getElementById('btn-timer-reset'),
-        interval: null, totalSecs: 0, isRunning: false,
-        
+        h: document.getElementById('tm-h'), m: document.getElementById('tm-m'), s: document.getElementById('tm-s'),
+        disp: document.getElementById('tm-display'), stat: document.getElementById('tm-status'),
+        btnS: document.getElementById('btn-tm-start'), btnR: document.getElementById('btn-tm-reset'),
+        interval: null, total: 0, isRun: false,
         init() {
-            this.btnStart.onclick = () => { if (this.isRunning) this.pause(); else this.start(); };
-            this.btnReset.onclick = () => this.reset();
+            this.btnS.onclick = () => this.isRun ? this.pause() : this.start();
+            this.btnR.onclick = () => this.reset();
+            document.querySelectorAll('.tm-quick').forEach(b => {
+                b.onclick = () => { this.reset(); this.h.value = 0; this.m.value = b.dataset.m; this.s.value = 0; this.updateDisp(0, parseInt(b.dataset.m), 0); };
+            });
         },
         start() {
-            if (this.totalSecs <= 0) {
-                this.totalSecs = (parseInt(this.h.value)||0)*3600 + (parseInt(this.m.value)||0)*60 + (parseInt(this.s.value)||0);
-            }
-            if (this.totalSecs <= 0) return UI.showAlert('Lỗi', 'Vui lòng đặt thời gian lớn hơn 0.', 'warning');
+            if (this.total <= 0) this.total = (parseInt(this.h.value)||0)*3600 + (parseInt(this.m.value)||0)*60 + (parseInt(this.s.value)||0);
+            if (this.total <= 0) return UI.showAlert('Lỗi', 'Đặt thời gian lớn hơn 0.', 'warning');
             
-            this.isRunning = true;
-            this.btnStart.innerHTML = '<i class="fas fa-pause"></i> Tạm dừng';
-            this.btnStart.classList.replace('btn-primary', 'btn-outline');
-            this.stat.textContent = 'Đang chạy...';
-            this.disp.classList.remove('tt-ringing');
-            
-            document.querySelector('.tt-grid-3').style.display = 'none';
+            this.isRun = true;
+            this.btnS.textContent = 'TẠM DỪNG'; 
+            this.stat.textContent = 'Đang chạy...'; this.disp.classList.remove('is-ringing');
             
             this.interval = setInterval(() => {
-                this.totalSecs--;
-                this.updateDisplay();
-                if (this.totalSecs <= 0) this.finish();
+                this.total--; this.updateDisp();
+                if (this.total <= 0) this.finish();
             }, 1000);
         },
         pause() {
-            this.isRunning = false;
-            clearInterval(this.interval);
-            this.btnStart.innerHTML = '<i class="fas fa-play"></i> Tiếp tục';
-            this.btnStart.classList.replace('btn-outline', 'btn-primary');
+            this.isRun = false; clearInterval(this.interval);
+            this.btnS.textContent = 'TIẾP TỤC';
             this.stat.textContent = 'Đã tạm dừng';
         },
         finish() {
-            this.pause();
-            this.btnStart.innerHTML = '<i class="fas fa-play"></i> Bắt đầu lại';
+            this.pause(); this.btnS.textContent = 'BẮT ĐẦU';
             this.stat.textContent = 'HẾT GIỜ!';
-            this.stat.style.color = '#ef4444';
-            this.disp.classList.add('tt-ringing');
-            playBeep(); setTimeout(playBeep, 800);
-            document.querySelector('.tt-grid-3').style.display = 'grid';
+            this.disp.classList.add('is-ringing');
         },
         reset() {
-            this.pause();
-            this.totalSecs = 0;
-            this.h.value = '0'; this.m.value = '5'; this.s.value = '0';
-            this.updateDisplay(0, 5, 0);
-            this.stat.textContent = 'Chưa bắt đầu';
-            this.stat.style.color = 'var(--text-mut)';
-            this.btnStart.innerHTML = '<i class="fas fa-play"></i> Bắt đầu';
-            this.disp.classList.remove('tt-ringing');
-            document.querySelector('.tt-grid-3').style.display = 'grid';
+            this.pause(); this.total = 0;
+            this.h.value = '0'; this.m.value = '25'; this.s.value = '0';
+            this.updateDisp(0, 25, 0);
+            this.stat.textContent = 'Đã sẵn sàng';
+            this.disp.classList.remove('is-ringing'); this.btnS.textContent = 'BẮT ĐẦU';
         },
-        updateDisplay(th, tm, ts) {
-            let h = th !== undefined ? th : Math.floor(this.totalSecs / 3600);
-            let m = tm !== undefined ? tm : Math.floor((this.totalSecs % 3600) / 60);
-            let s = ts !== undefined ? ts : this.totalSecs % 60;
-            this.disp.textContent = `${format2(h)}:${format2(m)}:${format2(s)}`;
+        updateDisp(th, tm, ts) {
+            let h = th !== undefined ? th : Math.floor(this.total / 3600);
+            let m = tm !== undefined ? tm : Math.floor((this.total % 3600) / 60);
+            let s = ts !== undefined ? ts : this.total % 60;
+            if (h > 0) {
+                this.disp.textContent = `${format2(h)}:${format2(m)}:${format2(s)}`;
+            } else {
+                this.disp.textContent = `${format2(m)}:${format2(s)}`;
+            }
         }
-    };
-    Timer.init();
+    }; Timer.init();
 
-    // ==========================================
-    // MODULE 2: STOPWATCH (BẤM GIỜ) - FIXED
-    // ==========================================
-    const Stopwatch = {
-        disp: document.getElementById('sw-display'), lapsBox: document.getElementById('sw-laps'),
-        btnStart: document.getElementById('btn-sw-start'), btnLap: document.getElementById('btn-sw-lap'), btnReset: document.getElementById('btn-sw-reset'),
-        startTime: 0, elapsedTime: 0, isRunning: false, lapCount: 0,
-        
+    // --- 2. STOPWATCH ---
+    const Sw = {
+        disp: document.getElementById('sw-display'), laps: document.getElementById('sw-laps'),
+        btnS: document.getElementById('btn-sw-start'), btnL: document.getElementById('btn-sw-lap'), btnR: document.getElementById('btn-sw-reset'),
+        startT: 0, elaps: 0, isRun: false, count: 0,
         init() {
-            this.btnStart.onclick = () => { if (this.isRunning) this.pause(); else this.start(); };
-            this.btnReset.onclick = () => this.reset();
-            this.btnLap.onclick = () => this.lap();
+            this.btnS.onclick = () => this.isRun ? this.pause() : this.start();
+            this.btnL.onclick = () => this.lap();
+            this.btnR.onclick = () => this.reset();
         },
         start() {
-            this.isRunning = true;
-            this.startTime = Date.now() - this.elapsedTime;
-            this.btnStart.innerHTML = '<i class="fas fa-pause"></i> Dừng';
-            this.btnStart.classList.replace('btn-primary', 'btn-outline');
-            this.btnLap.disabled = false;
-            
-            const update = () => {
-                this.elapsedTime = Date.now() - this.startTime;
-                // FIX LỖI: Dùng innerHTML thay vì textContent để render thẻ <small>
-                this.disp.innerHTML = this.format(this.elapsedTime);
-                if (this.isRunning) requestAnimationFrame(update);
-            };
-            requestAnimationFrame(update);
+            this.isRun = true; this.startT = Date.now() - this.elaps;
+            this.btnS.textContent = 'TẠM DỪNG';
+            this.btnL.disabled = false; this.btnL.classList.remove('opacity-50', 'pointer-events-none');
+            const loop = () => { this.elaps = Date.now() - this.startT; this.disp.innerHTML = this.fmt(this.elaps); if(this.isRun) requestAnimationFrame(loop); };
+            requestAnimationFrame(loop);
         },
         pause() {
-            this.isRunning = false;
-            this.btnStart.innerHTML = '<i class="fas fa-play"></i> Tiếp tục';
-            this.btnStart.classList.replace('btn-outline', 'btn-primary');
-            this.btnLap.disabled = true;
-        },
-        reset() {
-            this.pause();
-            this.elapsedTime = 0;
-            this.lapCount = 0;
-            this.disp.innerHTML = '00:00:00.<small>00</small>';
-            this.lapsBox.innerHTML = '';
+            this.isRun = false; this.btnS.textContent = 'TIẾP TỤC';
+            this.btnL.disabled = true; this.btnL.classList.add('opacity-50', 'pointer-events-none');
         },
         lap() {
-            this.lapCount++;
-            const div = document.createElement('div');
-            div.className = 'tt-lap-item';
-            div.innerHTML = `<span style="color:var(--text-mut);">Vòng ${this.lapCount}</span> <span>${this.format(this.elapsedTime)}</span>`;
-            this.lapsBox.prepend(div);
+            this.count++;
+            if (this.count === 1) this.laps.innerHTML = '';
+            this.laps.insertAdjacentHTML('afterbegin', `<div class="flex justify-between items-center py-2.5 border-b border-zinc-100 dark:border-zinc-800/50"><span class="text-[11px] font-bold text-zinc-400">Vòng ${format2(this.count)}</span><span class="text-sm font-mono font-bold text-zinc-900 dark:text-white">${this.fmt(this.elaps)}</span></div>`);
         },
-        format(ms) {
-            let d = new Date(ms);
-            let h = Math.floor(ms / 3600000);
-            let m = d.getUTCMinutes();
-            let s = d.getUTCSeconds();
-            let mil = Math.floor(d.getUTCMilliseconds() / 10);
-            return `${format2(h)}:${format2(m)}:${format2(s)}.<small>${format2(mil)}</small>`;
+        reset() {
+            this.pause(); this.elaps = 0; this.count = 0; this.disp.innerHTML = '00:00<span class="text-2xl text-zinc-400">.00</span>';
+            this.laps.innerHTML = '<div class="text-center text-[10px] font-medium text-zinc-400 py-10 opacity-50">Chưa có vòng chạy.</div>';
+            this.btnS.textContent = 'BẮT ĐẦU';
+        },
+        fmt(ms) {
+            let d = new Date(ms); let h = Math.floor(ms / 3600000); let m = d.getUTCMinutes(); let s = d.getUTCSeconds(); let mil = Math.floor(d.getUTCMilliseconds() / 10);
+            if (h > 0) return `${format2(h)}:${format2(m)}:${format2(s)}<span class="text-2xl text-zinc-400">.${format2(mil)}</span>`;
+            return `${format2(m)}:${format2(s)}<span class="text-2xl text-zinc-400">.${format2(mil)}</span>`;
         }
-    };
-    Stopwatch.init();
+    }; Sw.init();
 
-    // ==========================================
-    // MODULE 3: COUNTDOWN DATE (ĐẾM NGƯỢC NGÀY) - ADDED QUICK BUTTONS
-    // ==========================================
-    const CountDay = {
-        input: document.getElementById('cd-target'), disp: document.getElementById('cd-display'), stat: document.getElementById('cd-status'),
-        interval: null,
-        
+    // --- 3. COUNTDAY ---
+    const Cd = {
+        inp: document.getElementById('cd-target'), disp: document.getElementById('cd-display'), stat: document.getElementById('cd-status'), intv: null,
         init() {
-            let tmr = new Date(); tmr.setDate(tmr.getDate() + 1); tmr.setHours(0,0,0,0);
-            this.input.value = new Date(tmr.getTime() - tmr.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-            
-            this.input.addEventListener('change', () => this.start());
-            
-            // Xử lý nút bấm nhanh
-            document.querySelectorAll('.cd-quick').forEach(btn => {
-                btn.onclick = () => {
-                    const now = new Date();
-                    let y = now.getFullYear();
-                    let target;
-                    switch(btn.dataset.type) {
-                        case 'newyear': target = new Date(y + 1, 0, 1, 0, 0); break;
-                        case 'christmas': target = new Date(y, 11, 25, 0, 0); if (target < now) target.setFullYear(y + 1); break;
-                        case 'valentine': target = new Date(y, 1, 14, 0, 0); if (target < now) target.setFullYear(y + 1); break;
-                        case 'halloween': target = new Date(y, 9, 31, 0, 0); if (target < now) target.setFullYear(y + 1); break;
-                    }
-                    this.input.value = new Date(target.getTime() - target.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            let t = new Date(); t.setDate(t.getDate() + 1); t.setHours(0,0,0,0);
+            this.inp.value = new Date(t.getTime() - t.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            this.inp.onchange = () => this.start();
+            document.querySelectorAll('.cd-quick').forEach(b => {
+                b.onclick = () => {
+                    let y = new Date().getFullYear(); let n = new Date(); let tg;
+                    if (b.dataset.type === 'newyear') tg = new Date(y+1, 0, 1);
+                    else if (b.dataset.type === 'valentine') { tg = new Date(y, 1, 14); if(tg<n) tg.setFullYear(y+1); }
+                    else if (b.dataset.type === 'christmas') { tg = new Date(y, 11, 25); if(tg<n) tg.setFullYear(y+1); }
+                    this.inp.value = new Date(tg.getTime() - tg.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
                     this.start();
                 };
             });
-
             this.start();
         },
         start() {
-            clearInterval(this.interval);
-            const target = new Date(this.input.value).getTime();
-            
-            const update = () => {
-                const now = new Date().getTime();
-                const diff = target - now;
-                
-                if (diff <= 0 || isNaN(diff)) {
-                    this.disp.textContent = '0d 0h 0m 0s';
-                    this.stat.textContent = 'Đã đến thời hạn!';
-                    this.stat.style.color = '#ef4444';
-                    clearInterval(this.interval);
-                    return;
-                }
-                
-                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-                const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                const s = Math.floor((diff % (1000 * 60)) / 1000);
-                
-                this.disp.innerHTML = `${d}<small>d</small> ${h}<small>h</small> ${m}<small>m</small> ${s}<small>s</small>`;
-                this.stat.textContent = 'Thời gian còn lại';
-                this.stat.style.color = 'var(--text-mut)';
+            clearInterval(this.intv);
+            const tg = new Date(this.inp.value).getTime();
+            const tick = () => {
+                const df = tg - Date.now();
+                if (df <= 0 || isNaN(df)) { this.disp.innerHTML = `0<span class="text-xl text-zinc-400 font-sans font-bold">n</span> 0<span class="text-xl text-zinc-400 font-sans font-bold">g</span>`; this.stat.textContent = 'SỰ KIỆN ĐÃ ĐẾN!'; this.stat.className = 'text-[10px] font-bold uppercase tracking-widest text-zinc-900 dark:text-white is-ringing'; clearInterval(this.intv); return; }
+                const d = Math.floor(df / 86400000); const h = Math.floor((df % 86400000) / 3600000); const m = Math.floor((df % 3600000) / 60000);
+                this.disp.innerHTML = `${d}<span class="text-xl text-zinc-400 font-sans font-bold">n</span> ${h}<span class="text-xl text-zinc-400 font-sans font-bold">g</span>`;
+                this.stat.textContent = 'Thời gian còn lại'; this.stat.className = 'text-[10px] font-bold text-zinc-400 uppercase tracking-widest';
             };
-            update();
-            this.interval = setInterval(update, 1000);
+            tick(); this.intv = setInterval(tick, 1000);
         }
-    };
-    CountDay.init();
+    }; Cd.init();
 
-    // ==========================================
-    // MODULE 4: DATE CALCULATOR (TÍNH NGÀY)
-    // ==========================================
-    const DateCalc = {
-        modeRadios: document.querySelectorAll('input[name="dc-mode"]'),
-        boxDiff: document.getElementById('dc-mode-diff'), boxAdd: document.getElementById('dc-mode-addsub'),
-        dStart: document.getElementById('dc-start'), dEnd: document.getElementById('dc-end'),
-        incLast: document.getElementById('dc-inc-last'), excludes: document.querySelectorAll('.dc-exclude'),
-        dBase: document.getElementById('dc-base'), op: document.getElementById('dc-op'), days: document.getElementById('dc-days'),
-        res: document.getElementById('dc-result'),
-        
+    // --- 4. DATE CALC ---
+    const Dc = {
         init() {
-            this.dStart.value = todayStr;
-            let tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 30);
-            this.dEnd.value = tomorrow.toISOString().split('T')[0];
-            this.dBase.value = todayStr;
+            const rads = document.querySelectorAll('input[name="dc-mode"]');
+            const dMode = document.getElementById('dc-mode-diff'); const aMode = document.getElementById('dc-mode-add');
+            const s = document.getElementById('dc-start'); const e = document.getElementById('dc-end'); const inc = document.getElementById('dc-inc-last'); const exc = document.querySelectorAll('.dc-exc');
+            const b = document.getElementById('dc-base'); const op = document.getElementById('dc-op'); const dys = document.getElementById('dc-days');
+            const res = document.getElementById('dc-res');
 
-            this.modeRadios.forEach(r => r.addEventListener('change', () => {
-                this.boxDiff.style.display = r.value === 'diff' ? 'block' : 'none';
-                this.boxAdd.style.display = r.value === 'addsub' ? 'block' : 'none';
-                this.calc();
-            }));
+            s.value = todayStr; let t = new Date(); t.setDate(t.getDate()+30); e.value = t.toISOString().split('T')[0]; b.value = todayStr;
 
-            document.querySelectorAll('.dc-trigger').forEach(el => el.addEventListener('input', () => this.calc()));
-            document.querySelectorAll('.dc-trigger').forEach(el => el.addEventListener('change', () => this.calc()));
-            this.calc();
-        },
-        calc() {
-            const mode = document.querySelector('input[name="dc-mode"]:checked').value;
-            
-            if (mode === 'diff') {
-                if (!this.dStart.value || !this.dEnd.value) return this.res.textContent = '--';
-                
-                let start = new Date(this.dStart.value); start.setHours(0,0,0,0);
-                let end = new Date(this.dEnd.value); end.setHours(0,0,0,0);
-                if (start > end) [start, end] = [end, start];
+            rads.forEach(r => r.onchange = () => { dMode.classList.toggle('hidden', r.value !== 'diff'); aMode.classList.toggle('hidden', r.value !== 'addsub'); calc(); });
+            document.querySelectorAll('.dc-trigger').forEach(i => i.addEventListener('input', calc));
 
-                let excDays = Array.from(this.excludes).filter(cb => cb.checked).map(cb => parseInt(cb.value));
-                let count = 0;
-                let cur = new Date(start);
-                
-                while(cur < end) {
-                    if (!excDays.includes(cur.getDay())) count++;
-                    cur.setDate(cur.getDate() + 1);
+            function calc() {
+                const mode = document.querySelector('input[name="dc-mode"]:checked').value;
+                if (mode === 'diff') {
+                    if (!s.value || !e.value) return res.textContent = '--';
+                    let ds = new Date(s.value); ds.setHours(0,0,0,0); let de = new Date(e.value); de.setHours(0,0,0,0);
+                    if (ds > de) [ds, de] = [de, ds];
+                    let ex = Array.from(exc).filter(c => c.checked).map(c => parseInt(c.value));
+                    let count = 0; let cur = new Date(ds);
+                    while(cur < de) { if (!ex.includes(cur.getDay())) count++; cur.setDate(cur.getDate() + 1); }
+                    if (inc.checked && !ex.includes(de.getDay())) count++;
+                    res.innerHTML = `${count} <span class="text-xl text-zinc-400 font-sans font-bold">ngày</span>`;
+                } else {
+                    if (!b.value || !dys.value) return res.textContent = '--';
+                    let base = new Date(b.value); let num = parseInt(dys.value); if(op.value === 'sub') num = -num;
+                    base.setDate(base.getDate() + num);
+                    res.innerHTML = `<span class="text-2xl tracking-normal">${base.toLocaleDateString('vi-VN')}</span>`;
                 }
-                
-                if (this.incLast.checked && !excDays.includes(end.getDay())) count++;
-                this.res.textContent = `${count} ngày`;
-            } else {
-                if (!this.dBase.value || !this.days.value) return this.res.textContent = '--';
-                let base = new Date(this.dBase.value);
-                let dNum = parseInt(this.days.value);
-                if (this.op.value === 'sub') dNum = -dNum;
-                
-                base.setDate(base.getDate() + dNum);
-                this.res.textContent = base.toLocaleDateString('vi-VN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                this.res.style.fontSize = '1.5rem';
             }
+            calc();
         }
-    };
-    DateCalc.init();
+    }; Dc.init();
 
-    // ==========================================
-    // MODULE 5: TIME CALCULATOR (TÍNH GIỜ) - ADDED TOGGLE
-    // ==========================================
-    const TimeCalc = {
-        modeRadios: document.querySelectorAll('input[name="tc-mode"]'),
-        boxDur: document.getElementById('tc-mode-dur'), boxMath: document.getElementById('tc-mode-math'),
-        start: document.getElementById('tc-start'), end: document.getElementById('tc-end'), 
-        hasBreak: document.getElementById('tc-has-break'), brk: document.getElementById('tc-break'),
-        base: document.getElementById('tc-base'), op: document.getElementById('tc-op'), addH: document.getElementById('tc-add-h'), addM: document.getElementById('tc-add-m'),
-        res: document.getElementById('tc-result'), resDec: document.getElementById('tc-decimal'),
-        
+    // --- 5. TIME CALC ---
+    const Tc = {
         init() {
-            this.modeRadios.forEach(r => r.addEventListener('change', () => {
-                this.boxDur.style.display = r.value === 'duration' ? 'block' : 'none';
-                this.boxMath.style.display = r.value === 'math' ? 'block' : 'none';
-                this.calc();
-            }));
+            const rads = document.querySelectorAll('input[name="tc-mode"]');
+            const dMode = document.getElementById('tc-mode-dur'); const mMode = document.getElementById('tc-mode-math');
+            const s = document.getElementById('tc-start'); const e = document.getElementById('tc-end'); const hB = document.getElementById('tc-has-brk'); const brk = document.getElementById('tc-brk');
+            const b = document.getElementById('tc-base'); const op = document.getElementById('tc-op'); const aH = document.getElementById('tc-add-h'); const aM = document.getElementById('tc-add-m');
+            const res = document.getElementById('tc-res'); const resD = document.getElementById('tc-res-dec');
 
-            // Bật/tắt ô nhập phút nghỉ
-            this.hasBreak.addEventListener('change', () => {
-                this.brk.disabled = !this.hasBreak.checked;
-                this.brk.style.opacity = this.hasBreak.checked ? '1' : '0.4';
-                this.calc();
-            });
+            rads.forEach(r => r.onchange = () => { dMode.classList.toggle('hidden', r.value !== 'dur'); mMode.classList.toggle('hidden', r.value !== 'math'); calc(); });
+            hB.onchange = () => { brk.disabled = !hB.checked; brk.classList.toggle('opacity-50', !hB.checked); calc(); };
+            document.querySelectorAll('.tc-trigger').forEach(i => i.addEventListener('input', calc));
 
-            document.querySelectorAll('.tc-trigger').forEach(el => el.addEventListener('input', () => this.calc()));
-            this.calc();
-        },
-        calc() {
-            const mode = document.querySelector('input[name="tc-mode"]:checked').value;
-            
-            if (mode === 'duration') {
-                if (!this.start.value || !this.end.value) return;
-                let [sH, sM] = this.start.value.split(':').map(Number);
-                let [eH, eM] = this.end.value.split(':').map(Number);
-                
-                let bM = this.hasBreak.checked ? (parseInt(this.brk.value) || 0) : 0;
-                
-                let sMin = sH * 60 + sM;
-                let eMin = eH * 60 + eM;
-                if (eMin < sMin) eMin += 24 * 60; // Dậy qua ngày hôm sau
-                
-                let totalMin = eMin - sMin - bM;
-                if (totalMin < 0) totalMin = 0;
-                
-                let rH = Math.floor(totalMin / 60);
-                let rM = totalMin % 60;
-                
-                this.res.textContent = `${rH} giờ ${rM} phút`;
-                
-                let dec = (totalMin / 60).toFixed(2);
-                this.resDec.textContent = `(Tương đương: ${dec} giờ làm việc)`;
-                this.resDec.style.display = 'block';
-            } else {
-                this.resDec.style.display = 'none';
-                if (!this.base.value) return;
-                let [bH, bM] = this.base.value.split(':').map(Number);
-                let aH = parseInt(this.addH.value) || 0;
-                let aM = parseInt(this.addM.value) || 0;
-                
-                let totalMin = bH * 60 + bM;
-                let addMin = aH * 60 + aM;
-                
-                if (this.op.value === 'add') totalMin += addMin;
-                else totalMin -= addMin;
-                
-                totalMin = ((totalMin % 1440) + 1440) % 1440;
-                
-                let rH = Math.floor(totalMin / 60);
-                let rM = totalMin % 60;
-                this.res.textContent = `${format2(rH)}:${format2(rM)}`;
+            function calc() {
+                const mode = document.querySelector('input[name="tc-mode"]:checked').value;
+                if (mode === 'dur') {
+                    if (!s.value || !e.value) return res.textContent = '--';
+                    let [s1, s2] = s.value.split(':').map(Number); let [e1, e2] = e.value.split(':').map(Number);
+                    let bm = hB.checked ? (parseInt(brk.value) || 0) : 0;
+                    let m1 = s1*60+s2; let m2 = e1*60+e2; if(m2<m1) m2 += 1440;
+                    let tot = m2 - m1 - bm; if (tot < 0) tot = 0;
+                    res.innerHTML = `${Math.floor(tot/60)}<span class="text-xl text-zinc-400 font-sans font-bold">g</span> ${tot%60}<span class="text-xl text-zinc-400 font-sans font-bold">p</span>`;
+                    resD.textContent = `~ ${(tot/60).toFixed(2)} giờ thập phân`;
+                    resD.classList.remove('hidden');
+                } else {
+                    resD.classList.add('hidden');
+                    if (!b.value) return res.textContent = '--';
+                    let [b1, b2] = b.value.split(':').map(Number);
+                    let h = parseInt(aH.value)||0; let m = parseInt(aM.value)||0;
+                    let tot = b1*60+b2; let add = h*60+m;
+                    if (op.value === 'add') tot+=add; else tot-=add;
+                    tot = ((tot%1440)+1440)%1440;
+                    res.textContent = `${format2(Math.floor(tot/60))}:${format2(tot%60)}`;
+                }
             }
+            calc();
         }
-    };
-    TimeCalc.init();
+    }; Tc.init();
 
-    // ==========================================
-    // MODULE 6: WEEK NUMBER (SỐ TUẦN)
-    // ==========================================
-    const WeekCalc = {
-        input: document.getElementById('wk-date'), resNum: document.getElementById('wk-number'),
-        resRange: document.getElementById('wk-range'), resYear: document.getElementById('wk-year'),
-        
+    // --- 6. WEEK CALC ---
+    const Wc = {
         init() {
-            this.input.value = todayStr;
-            this.input.addEventListener('input', () => this.calc());
-            this.calc();
-        },
-        getWeekInfo(d) {
-            let date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-            let dayNum = date.getUTCDay() || 7;
-            date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-            let yearStart = new Date(Date.UTC(date.getUTCFullYear(),0,1));
-            let weekNo = Math.ceil((((date - yearStart) / 86400000) + 1)/7);
-            
-            let dClone = new Date(d);
-            let day = dClone.getDay(), diff = dClone.getDate() - day + (day === 0 ? -6 : 1); 
-            let startWeek = new Date(dClone.setDate(diff));
-            let endWeek = new Date(dClone.setDate(startWeek.getDate() + 6));
-            
-            return { weekNo, startWeek, endWeek, isoYear: date.getUTCFullYear() };
-        },
-        calc() {
-            if (!this.input.value) return;
-            const d = new Date(this.input.value);
-            const info = this.getWeekInfo(d);
-            
-            this.resNum.textContent = `Tuần ${info.weekNo}`;
-            const fmt = (dt) => dt.toLocaleDateString('vi-VN');
-            this.resRange.textContent = `Từ ${fmt(info.startWeek)} đến ${fmt(info.endWeek)}`;
-            
-            const dec28 = new Date(info.isoYear, 11, 28);
-            const maxWeek = this.getWeekInfo(dec28).weekNo;
-            this.resYear.textContent = `Năm ISO ${info.isoYear} có tổng cộng ${maxWeek} tuần.`;
-        }
-    };
-    WeekCalc.init();
-
-    // ==========================================
-    // MODULE 7: AGE CALCULATOR (TÍNH TUỔI) - MASSIVE UPGRADE
-    // ==========================================
-    const AgeCalc = {
-        dob: document.getElementById('age-dob'), target: document.getElementById('age-target'),
-        weekday: document.getElementById('age-weekday'), main: document.getElementById('age-main'),
-        m: document.getElementById('age-m'), w: document.getElementById('age-w'), d: document.getElementById('age-d'),
-        h: document.getElementById('age-h'), min: document.getElementById('age-min'), sec: document.getElementById('age-sec'),
-        interval: null,
-        
-        init() {
-            this.target.value = todayStr;
-            this.dob.addEventListener('input', () => this.calc());
-            this.target.addEventListener('input', () => this.calc());
-        },
-        calc() {
-            clearInterval(this.interval);
-            if (!this.dob.value || !this.target.value) return;
-            
-            let d1 = new Date(this.dob.value); // DOB (00:00:00)
-            let d2 = new Date(this.target.value);
-            
-            if (d1 > d2) {
-                this.main.textContent = 'Lỗi: Ngày sinh lớn hơn hiện tại.';
-                return;
-            }
-
-            // 1. Tìm Thứ của Ngày sinh
-            const daysOfWeek = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-            this.weekday.textContent = daysOfWeek[d1.getDay()];
-
-            // 2. Tính tuổi chính xác (Năm, Tháng, Ngày)
-            let years = d2.getFullYear() - d1.getFullYear();
-            let months = d2.getMonth() - d1.getMonth();
-            let days = d2.getDate() - d1.getDate();
-
-            if (days < 0) {
-                months--;
-                let prevMonth = new Date(d2.getFullYear(), d2.getMonth(), 0).getDate();
-                days += prevMonth;
-            }
-            if (months < 0) {
-                years--;
-                months += 12;
-            }
-
-            this.main.textContent = `${years} Năm, ${months} Tháng, ${days} Ngày`;
-
-            // 3. Update Live Loop cho các thông số chi tiết
-            const isTargetToday = (this.target.value === todayStr);
-
-            const updateLive = () => {
-                let targetTime = isTargetToday ? Date.now() : d2.getTime();
-                let timeDiff = targetTime - d1.getTime();
-                if (timeDiff < 0) timeDiff = 0;
-
-                let tSecs = Math.floor(timeDiff / 1000);
-                let tMins = Math.floor(tSecs / 60);
-                let tHours = Math.floor(tMins / 60);
-                let tDays = Math.floor(tHours / 24);
-                let tWeeks = Math.floor(tDays / 7);
+            const inp = document.getElementById('wk-date'); const rN = document.getElementById('wk-num'); const rR = document.getElementById('wk-range'); const rY = document.getElementById('wk-year');
+            inp.value = todayStr;
+            const calc = () => {
+                if (!inp.value) return; const d = new Date(inp.value);
+                let date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                let dN = date.getUTCDay() || 7; date.setUTCDate(date.getUTCDate() + 4 - dN);
+                let yS = new Date(Date.UTC(date.getUTCFullYear(),0,1));
+                let wNo = Math.ceil((((date - yS) / 86400000) + 1)/7);
+                let dC = new Date(d); let day = dC.getDay(), df = dC.getDate() - day + (day===0?-6:1);
+                let sW = new Date(dC.setDate(df)); let eW = new Date(dC.setDate(sW.getDate()+6));
                 
-                // Tính tổng số tháng xấp xỉ chính xác
-                let tMonths = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-                if (d2.getDate() < d1.getDate()) tMonths--;
-                if (tMonths < 0) tMonths = 0;
-
-                this.m.textContent = tMonths.toLocaleString('vi-VN');
-                this.w.textContent = tWeeks.toLocaleString('vi-VN');
-                this.d.textContent = tDays.toLocaleString('vi-VN');
-                this.h.textContent = tHours.toLocaleString('vi-VN');
-                this.min.textContent = tMins.toLocaleString('vi-VN');
-                this.sec.textContent = tSecs.toLocaleString('vi-VN');
+                rN.textContent = `Tuần ${wNo}`;
+                rR.textContent = `${sW.toLocaleDateString('vi-VN')} → ${eW.toLocaleDateString('vi-VN')}`;
+                
+                let d28 = new Date(date.getUTCFullYear(), 11, 28); let d28N = d28.getUTCDay()||7; d28.setUTCDate(d28.getUTCDate()+4-d28N);
+                let mxW = Math.ceil((((d28 - new Date(Date.UTC(d28.getUTCFullYear(),0,1))) / 86400000) + 1)/7);
+                rY.textContent = `Năm ISO ${date.getUTCFullYear()} có tổng ${mxW} tuần`;
             };
-
-            updateLive(); // Gọi ngay 1 lần
-            if (isTargetToday) {
-                // Nếu đích là hôm nay, cho số giây nhảy liên tục mỗi giây
-                this.interval = setInterval(updateLive, 1000);
-            }
+            inp.oninput = calc; calc();
         }
-    };
-    AgeCalc.init();
+    }; Wc.init();
 
-    // ==========================================
-    // LOGIC CHUYỂN TABS CHÍNH
-    // ==========================================
-    const catBtns = document.querySelectorAll('.tt-cat-btn');
-    const panes = document.querySelectorAll('.tt-pane');
-    
-    catBtns.forEach(btn => {
-        btn.onclick = () => {
-            catBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            
-            panes.forEach(p => p.classList.remove('active'));
-            document.getElementById(btn.dataset.target).classList.add('active');
-            
-            btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        };
-    });
+    // --- 7. AGE CALC ---
+    const Ac = {
+        init() {
+            const dob = document.getElementById('age-dob'); const tg = document.getElementById('age-target');
+            const wd = document.getElementById('age-wd'); const mn = document.getElementById('age-main');
+            const m = document.getElementById('age-m'); const w = document.getElementById('age-w'); const d = document.getElementById('age-d'); const h = document.getElementById('age-h'); const min = document.getElementById('age-min'); const sec = document.getElementById('age-sec');
+            let iv = null; tg.value = todayStr;
+            const days = ['Chủ Nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+
+            const calc = () => {
+                clearInterval(iv); if(!dob.value || !tg.value) return;
+                let d1 = new Date(dob.value); let d2 = new Date(tg.value);
+                if (d1 > d2) return mn.textContent = '--';
+                
+                wd.textContent = days[d1.getDay()];
+                let y = d2.getFullYear()-d1.getFullYear(); let mo = d2.getMonth()-d1.getMonth(); let da = d2.getDate()-d1.getDate();
+                if(da<0){ mo--; da+=new Date(d2.getFullYear(), d2.getMonth(),0).getDate(); }
+                if(mo<0){ y--; mo+=12; }
+                mn.innerHTML = `${y}<span class="text-lg text-zinc-400 font-sans font-bold mr-1">n</span> ${mo}<span class="text-lg text-zinc-400 font-sans font-bold mr-1">t</span> ${da}<span class="text-lg text-zinc-400 font-sans font-bold">n</span>`;
+
+                const isTdy = tg.value === todayStr;
+                const tick = () => {
+                    let tgt = isTdy ? Date.now() : d2.getTime(); let df = Math.max(0, tgt - d1.getTime());
+                    let ts = Math.floor(df/1000); let tmi = Math.floor(ts/60); let th = Math.floor(tmi/60); let td = Math.floor(th/24); let tw = Math.floor(td/7);
+                    let tmo = (d2.getFullYear()-d1.getFullYear())*12 + (d2.getMonth()-d1.getMonth()); if(d2.getDate()<d1.getDate()) tmo--;
+                    
+                    m.textContent = Math.max(0, tmo).toLocaleString('vi-VN'); w.textContent = tw.toLocaleString('vi-VN'); d.textContent = td.toLocaleString('vi-VN');
+                    h.textContent = th.toLocaleString('vi-VN'); min.textContent = tmi.toLocaleString('vi-VN'); sec.textContent = ts.toLocaleString('vi-VN');
+                };
+                tick(); if(isTdy) iv = setInterval(tick, 1000);
+            };
+            dob.oninput = calc; tg.oninput = calc;
+        }
+    }; Ac.init();
 }

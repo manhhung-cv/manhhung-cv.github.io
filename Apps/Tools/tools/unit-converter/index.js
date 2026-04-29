@@ -3,153 +3,96 @@ import { UI } from '../../js/ui.js';
 export function template() {
     return `
         <style>
-            .uc-widget { max-width: 480px; margin: 0 auto; padding-bottom: 24px; }
-            
-            /* Thanh gạt chọn Danh mục (Segmented Control) */
-            .uc-category-toggle { 
-                display: flex; background: var(--bg-sec); border-radius: 30px; 
-                padding: 4px; margin-bottom: 24px; border: 1px solid var(--border); 
-                overflow-x: auto; scrollbar-width: none;
-            }
-            .uc-category-toggle::-webkit-scrollbar { display: none; }
-            
-            .uc-cat-btn { 
-                flex: 1; text-align: center; padding: 10px 12px; border-radius: 26px; 
-                border: none; background: transparent; color: var(--text-mut); 
-                font-weight: 600; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-                font-size: 0.9rem; font-family: var(--font); display: flex; align-items: center; justify-content: center; gap: 6px;
-                white-space: nowrap; min-width: max-content;
-            }
-            .uc-cat-btn:hover { color: var(--text-main); }
-            .uc-cat-btn.active { 
-                background: var(--bg-main); color: #3b82f6; 
-                box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
-            }
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
 
-            /* Khu vực nhập liệu chính */
-            .uc-convert-area { position: relative; display: flex; flex-direction: column; gap: 4px; }
-            
-            .uc-input-group { 
-                background: var(--bg-main); border: 1px solid var(--border); 
-                border-radius: 16px; padding: 16px 20px; transition: all 0.2s; 
-                display: flex; flex-direction: column; gap: 8px; z-index: 1;
-            }
-            .uc-input-group:focus-within { 
-                border-color: #3b82f6; 
-                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); 
-                z-index: 3; /* Nổi lên trên nút swap */
-            }
-            
-            .uc-label { font-size: 0.85rem; color: var(--text-mut); font-weight: 500; }
-            
-            .uc-input-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-            
-            .uc-input { 
-                border: none; background: transparent; font-size: 2.2rem; 
-                font-weight: 700; color: var(--text-main); width: 100%; 
-                outline: none; padding: 0; font-family: var(--font);
-            }
-            .uc-input::placeholder { color: var(--text-mut); opacity: 0.3; }
-            
-            .uc-select { 
-                border: none; background: var(--bg-sec); padding: 8px 12px 8px 16px; 
-                border-radius: 20px; font-weight: 600; color: var(--text-main); 
-                font-size: 1.05rem; cursor: pointer; outline: none; transition: background 0.2s; 
-                appearance: none; -webkit-appearance: none; padding-right: 36px; 
-                background-image: url('data:image/svg+xml;utf8,<svg fill="%23888" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>'); 
-                background-repeat: no-repeat; background-position-x: calc(100% - 4px); background-position-y: center; 
-            }
-            .uc-select:hover { background-color: var(--border); }
+            .hide-scrollbar::-webkit-scrollbar { display: none; }
+            .hide-scrollbar { scrollbar-width: none; }
 
-            /* Nút Đảo Ngược (Swap) Floating */
-            .uc-swap-btn { 
-                position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); 
-                width: 44px; height: 44px; border-radius: 50%; background: #3b82f6; 
-                color: white; border: 4px solid var(--bg-sec); display: flex; 
-                align-items: center; justify-content: center; cursor: pointer; 
-                transition: all 0.3s ease; z-index: 2; font-size: 1.1rem;
-            }
-            .uc-swap-btn:hover { 
-                transform: translate(-50%, -50%) rotate(180deg); 
-                background: #2563eb; 
-            }
+            .flat-btn { transition: transform 0.1s; user-select: none; }
+            .flat-btn:active { transform: scale(0.95); }
 
-            /* Bảng thông tin công thức */
-            .uc-formula-box { 
-                margin-top: 16px; padding: 16px 20px; border-radius: 16px; 
-                background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.1); 
-                text-align: center; color: var(--text-main); font-size: 0.95rem;
+            /* Tùy chỉnh Select phẳng */
+            .flat-select { 
+                appearance: none; -webkit-appearance: none; 
+                background-image: url('data:image/svg+xml;utf8,<svg fill="%23a1a1aa" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+                background-repeat: no-repeat; background-position: right 8px center;
+                padding-right: 32px !important;
             }
-            
-            /* Nút Copy mini */
-            .btn-copy-mini { background: transparent; border: none; color: var(--text-mut); cursor: pointer; padding: 4px; transition: color 0.2s; }
-            .btn-copy-mini:hover { color: #3b82f6; }
         </style>
 
-        <div class="uc-widget">
+        <div class="relative flex flex-col w-full max-w-[640px] mx-auto min-h-[500px]">
             
-            <div class="flex-between" style="margin-bottom: 20px;">
+            <div class="flex justify-between items-center mb-5 px-1">
                 <div>
-                    <h1 class="h1" style="font-size: 1.5rem; margin-bottom: 4px;">Chuyển đổi Đơn vị</h1>
-                    <p class="text-mut" style="font-size: 0.9rem;">Hai chiều siêu tốc. Nhập là tính ngay.</p>
+                    <h2 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">Chuyển đổi Đơn vị</h2>
+                    <p class="text-xs text-zinc-500 mt-1 font-medium">Hai chiều siêu tốc. Nhập là tính ngay.</p>
                 </div>
-                <button class="btn btn-ghost btn-sm" id="btn-uc-clear" title="Xóa trắng" style="padding: 8px; border-radius: 50%; height: 36px; width: 36px; display: flex; justify-content: center; align-items: center; color: #ef4444;">
-                    <i class="fas fa-eraser"></i>
+                <button class="flat-btn h-9 px-4 rounded-xl bg-red-50 dark:bg-red-500/10 text-red-500 font-bold text-[12px] flex items-center justify-center gap-1.5" id="btn-uc-clear">
+                    <i class="fas fa-trash-alt"></i> Xóa
                 </button>
             </div>
 
-            <div class="uc-category-toggle">
-                <button class="uc-cat-btn active" data-cat="length"><i class="fas fa-ruler"></i> Chiều dài</button>
-                <button class="uc-cat-btn" data-cat="volume"><i class="fas fa-tint"></i> Thể tích</button>
-                <button class="uc-cat-btn" data-cat="mass"><i class="fas fa-weight-hanging"></i> Khối lượng</button>
-                <button class="uc-cat-btn" data-cat="speed"><i class="fas fa-tachometer-alt"></i> Tốc độ</button>
+            <div class="flex overflow-x-auto hide-scrollbar gap-1.5 mb-5 px-1 border-b border-zinc-200 dark:border-zinc-800 pb-3" id="uc-tabs">
+                <button class="uc-cat-btn active flat-btn px-4 py-2.5 rounded-xl border border-transparent bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[12px] font-bold whitespace-nowrap shrink-0" data-cat="length"><i class="fas fa-ruler mr-1.5"></i>Chiều dài</button>
+                <button class="uc-cat-btn flat-btn px-4 py-2.5 rounded-xl border border-transparent bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0" data-cat="weight"><i class="fas fa-weight-hanging mr-1.5"></i>Khối lượng</button>
+                <button class="uc-cat-btn flat-btn px-4 py-2.5 rounded-xl border border-transparent bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0" data-cat="temperature"><i class="fas fa-thermometer-half mr-1.5"></i>Nhiệt độ</button>
+                <button class="uc-cat-btn flat-btn px-4 py-2.5 rounded-xl border border-transparent bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0" data-cat="area"><i class="fas fa-vector-square mr-1.5"></i>Diện tích</button>
+                <button class="uc-cat-btn flat-btn px-4 py-2.5 rounded-xl border border-transparent bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0" data-cat="volume"><i class="fas fa-tint mr-1.5"></i>Thể tích</button>
+                <button class="uc-cat-btn flat-btn px-4 py-2.5 rounded-xl border border-transparent bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0" data-cat="data"><i class="fas fa-database mr-1.5"></i>Dữ liệu</button>
+                <button class="uc-cat-btn flat-btn px-4 py-2.5 rounded-xl border border-transparent bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0" data-cat="speed"><i class="fas fa-tachometer-alt mr-1.5"></i>Tốc độ</button>
             </div>
 
-            <div class="card" style="background: var(--bg-sec); padding: 8px; border: none; border-radius: 20px;">
+            <div class="bg-white dark:bg-[#09090b] rounded-[32px] border border-zinc-200 dark:border-zinc-800 p-2 sm:p-4 flex flex-col">
                 
-                <div class="uc-convert-area">
-                    <div class="uc-input-group">
-                        <div class="flex-between">
-                            <span class="uc-label">Từ đơn vị</span>
-                            <button class="btn-copy-mini" data-target="uc-in-1" title="Sao chép"><i class="fas fa-copy"></i></button>
+                <div class="relative flex flex-col">
+                    
+                    <div class="bg-zinc-50 dark:bg-[#121214] rounded-[24px] p-5 pb-8 flex flex-col focus-within:ring-2 ring-zinc-900 dark:ring-white transition-all">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Từ đơn vị</span>
+                            <button class="flat-btn btn-copy-mini text-zinc-400 active:text-zinc-900 dark:active:text-white" data-target="uc-in-1" title="Sao chép"><i class="far fa-copy"></i></button>
                         </div>
-                        <div class="uc-input-row">
-                            <input type="number" class="uc-input" id="uc-in-1" placeholder="0" step="any">
-                            <select class="uc-select" id="uc-sel-1"></select>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                            <input type="number" id="uc-in-1" class="flex-1 bg-transparent border-none outline-none text-[2.5rem] font-black font-mono text-zinc-900 dark:text-white p-0 w-full tracking-tighter" placeholder="0" step="any">
+                            <select id="uc-sel-1" class="flat-select w-full sm:w-auto bg-zinc-200/50 dark:bg-zinc-800/50 border-none outline-none rounded-xl px-4 py-2.5 text-sm font-bold text-zinc-700 dark:text-zinc-300 cursor-pointer"></select>
                         </div>
                     </div>
 
-                    <button class="uc-swap-btn" id="btn-uc-swap" title="Hoán đổi">
-                        <i class="fas fa-exchange-alt"></i>
-                    </button>
+                    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                        <button id="btn-uc-swap" class="flat-btn w-12 h-12 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center border-[6px] border-white dark:border-[#09090b]">
+                            <i class="fas fa-exchange-alt rotate-90 sm:rotate-0"></i>
+                        </button>
+                    </div>
 
-                    <div class="uc-input-group">
-                        <div class="flex-between">
-                            <span class="uc-label">Sang đơn vị</span>
-                            <button class="btn-copy-mini" data-target="uc-in-2" title="Sao chép"><i class="fas fa-copy"></i></button>
+                    <div class="bg-zinc-50 dark:bg-[#121214] rounded-[24px] p-5 pt-8 flex flex-col focus-within:ring-2 ring-zinc-900 dark:ring-white transition-all -mt-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+                            <input type="number" id="uc-in-2" class="flex-1 bg-transparent border-none outline-none text-[2.5rem] font-black font-mono text-zinc-900 dark:text-white p-0 w-full tracking-tighter" placeholder="0" step="any">
+                            <select id="uc-sel-2" class="flat-select w-full sm:w-auto bg-zinc-200/50 dark:bg-zinc-800/50 border-none outline-none rounded-xl px-4 py-2.5 text-sm font-bold text-zinc-700 dark:text-zinc-300 cursor-pointer"></select>
                         </div>
-                        <div class="uc-input-row">
-                            <input type="number" class="uc-input" id="uc-in-2" placeholder="0" step="any">
-                            <select class="uc-select" id="uc-sel-2"></select>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Sang đơn vị</span>
+                            <button class="flat-btn btn-copy-mini text-zinc-400 active:text-zinc-900 dark:active:text-white" data-target="uc-in-2" title="Sao chép"><i class="far fa-copy"></i></button>
                         </div>
                     </div>
+
                 </div>
 
-                <div class="uc-formula-box" id="uc-formula">
-                    1 Mét = 100 Centimét
+                <div class="mt-4 p-4 rounded-[20px] border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-[#0c0c0e] text-center">
+                    <span class="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1">Công thức quy đổi</span>
+                    <div id="uc-formula" class="text-sm font-bold text-zinc-900 dark:text-white font-mono">1 Mét = 100 Centimét</div>
                 </div>
 
             </div>
-
         </div>
     `;
 }
 
 export function init() {
-    // --- TỪ ĐIỂN ĐƠN VỊ ---
-  const UNIT_DATA = {
+    // --- TỪ ĐIỂN ĐƠN VỊ CẤP CAO ---
+    const UNIT_DATA = {
         length: {
-            base: 'm',
             units: {
                 'm': { name: 'Mét (m)', factor: 1 },
                 'km': { name: 'Kilômét (km)', factor: 1000 },
@@ -158,12 +101,46 @@ export function init() {
                 'mi': { name: 'Dặm (mi)', factor: 1609.344 },
                 'yd': { name: 'Yard (yd)', factor: 0.9144 },
                 'ft': { name: 'Feet (ft)', factor: 0.3048 },
-                'in': { name: 'Inch (in)', factor: 0.0254 }
+                'in': { name: 'Inch (in)', factor: 0.0254 },
+                'nmi': { name: 'Hải lý (nmi)', factor: 1852 }
             },
             default1: 'm', default2: 'cm'
         },
+        weight: {
+            units: {
+                'kg': { name: 'Kilôgam (kg)', factor: 1 },
+                'g': { name: 'Gram (g)', factor: 0.001 },
+                'mg': { name: 'Miligram (mg)', factor: 0.000001 },
+                't': { name: 'Tấn (t)', factor: 1000 },
+                'lb': { name: 'Pound (lb)', factor: 0.45359237 },
+                'oz': { name: 'Ounce (oz)', factor: 0.02834952 },
+                'jin': { name: 'Cân TQ (Jin)', factor: 0.5 },    
+                'liang': { name: 'Lạng TQ (Liang)', factor: 0.05 } 
+            },
+            default1: 'kg', default2: 'g'
+        },
+        temperature: {
+            isSpecial: true, // Đánh dấu cần logic riêng
+            units: {
+                'c': { name: 'Độ C (°C)' },
+                'f': { name: 'Độ F (°F)' },
+                'k': { name: 'Kelvin (K)' }
+            },
+            default1: 'c', default2: 'f'
+        },
+        area: {
+            units: {
+                'm2': { name: 'Mét vuông (m²)', factor: 1 },
+                'km2': { name: 'Kilômét vuông (km²)', factor: 1000000 },
+                'cm2': { name: 'Centimét vuông (cm²)', factor: 0.0001 },
+                'ha': { name: 'Hecta (ha)', factor: 10000 },
+                'acre': { name: 'Mẫu Anh (acre)', factor: 4046.85642 },
+                'sqft': { name: 'Feet vuông (sq ft)', factor: 0.09290304 },
+                'sqin': { name: 'Inch vuông (sq in)', factor: 0.00064516 }
+            },
+            default1: 'm2', default2: 'ha'
+        },
         volume: {
-            base: 'l',
             units: {
                 'l': { name: 'Lít (L)', factor: 1 },
                 'ml': { name: 'Mililít (mL)', factor: 0.001 },
@@ -176,22 +153,18 @@ export function init() {
             },
             default1: 'l', default2: 'ml'
         },
-        mass: {
-            base: 'kg',
+        data: {
             units: {
-                'kg': { name: 'Kilôgam (kg)', factor: 1 },
-                'g': { name: 'Gram (g)', factor: 0.001 },
-                'mg': { name: 'Miligram (mg)', factor: 0.000001 },
-                't': { name: 'Tấn (t)', factor: 1000 },
-                'lb': { name: 'Pound (lb)', factor: 0.45359237 },
-                'oz': { name: 'Ounce (oz)', factor: 0.02834952 },
-                'jin': { name: 'Cân Trung Quốc (Jin/市斤)', factor: 0.5 },    // Đã thêm Cân Trung Quốc
-                'liang': { name: 'Lạng Trung Quốc (Liang/市两)', factor: 0.05 } // Đã thêm Lạng Trung Quốc
+                'b': { name: 'Byte (B)', factor: 1 },
+                'kb': { name: 'Kilobyte (KB)', factor: 1024 },
+                'mb': { name: 'Megabyte (MB)', factor: 1048576 },
+                'gb': { name: 'Gigabyte (GB)', factor: 1073741824 },
+                'tb': { name: 'Terabyte (TB)', factor: 1099511627776 },
+                'pb': { name: 'Petabyte (PB)', factor: 1125899906842624 }
             },
-            default1: 'kg', default2: 'g'
+            default1: 'gb', default2: 'mb'
         },
         speed: {
-            base: 'm/s',
             units: {
                 'm/s': { name: 'Mét / giây (m/s)', factor: 1 },
                 'km/h': { name: 'Kilômét / giờ (km/h)', factor: 0.2777777778 },
@@ -215,10 +188,34 @@ export function init() {
     let currentCat = 'length';
     let lastEdited = 1; 
 
+    // --- LOGIC NHIỆT ĐỘ ĐẶC BIỆT ---
+    const tempToC = (val, unit) => {
+        if (unit === 'c') return val;
+        if (unit === 'f') return (val - 32) * 5 / 9;
+        if (unit === 'k') return val - 273.15;
+        return val;
+    };
+    
+    const tempFromC = (val, unit) => {
+        if (unit === 'c') return val;
+        if (unit === 'f') return (val * 9 / 5) + 32;
+        if (unit === 'k') return val + 273.15;
+        return val;
+    };
+
     // --- TIỆN ÍCH ---
     const formatNum = (num) => {
         if (num === 0) return '0';
-        return Number(num.toPrecision(7)).toString();
+        if (isNaN(num) || !isFinite(num)) return '';
+        
+        // Tránh lỗi 0.30000000000000004 của JS
+        let formatted = parseFloat(num.toPrecision(12));
+        
+        // Nếu số quá lớn hoặc quá nhỏ, để dạng khoa học gọn gàng
+        if (Math.abs(formatted) > 1e10 || (Math.abs(formatted) < 1e-6 && formatted !== 0)) {
+            return formatted.toExponential(4).replace('e+', 'e');
+        }
+        return formatted.toString();
     };
 
     const populateSelects = () => {
@@ -244,14 +241,29 @@ export function init() {
         if (source === 1) {
             const val1 = parseFloat(in1.value);
             if (isNaN(val1)) { in2.value = ''; updateFormula(); return; }
-            const inBase = val1 * catData.units[u1].factor;
-            const res = inBase / catData.units[u2].factor;
+            
+            let res;
+            if (catData.isSpecial) {
+                const inC = tempToC(val1, u1);
+                res = tempFromC(inC, u2);
+            } else {
+                const inBase = val1 * catData.units[u1].factor;
+                res = inBase / catData.units[u2].factor;
+            }
             in2.value = formatNum(res);
+
         } else {
             const val2 = parseFloat(in2.value);
             if (isNaN(val2)) { in1.value = ''; updateFormula(); return; }
-            const inBase = val2 * catData.units[u2].factor;
-            const res = inBase / catData.units[u1].factor;
+            
+            let res;
+            if (catData.isSpecial) {
+                const inC = tempToC(val2, u2);
+                res = tempFromC(inC, u1);
+            } else {
+                const inBase = val2 * catData.units[u2].factor;
+                res = inBase / catData.units[u1].factor;
+            }
             in1.value = formatNum(res);
         }
         updateFormula();
@@ -262,13 +274,23 @@ export function init() {
         const u1 = sel1.value;
         const u2 = sel2.value;
         
-        const inBase = 1 * catData.units[u1].factor;
-        const res = inBase / catData.units[u2].factor;
+        let res;
+        if (catData.isSpecial) {
+            // Đối với nhiệt độ, in ra công thức tương đối
+            if (u1 === u2) res = 1;
+            else {
+                const inC = tempToC(1, u1);
+                res = tempFromC(inC, u2);
+            }
+        } else {
+            const inBase = 1 * catData.units[u1].factor;
+            res = inBase / catData.units[u2].factor;
+        }
         
         const name1 = catData.units[u1].name.split(' (')[0];
         const name2 = catData.units[u2].name.split(' (')[0];
         
-        formulaText.innerHTML = `1 ${name1} &nbsp;=&nbsp; <b style="color:#3b82f6;">${formatNum(res)}</b> ${name2}`;
+        formulaText.innerHTML = `1 ${name1} = <span class="text-blue-500">${formatNum(res)}</span> ${name2}`;
     };
 
     // --- SỰ KIỆN LẮNG NGHE ---
@@ -290,8 +312,13 @@ export function init() {
 
     catBtns.forEach(btn => {
         btn.onclick = () => {
-            catBtns.forEach(t => t.classList.remove('active'));
-            btn.classList.add('active');
+            catBtns.forEach(t => {
+                t.classList.remove('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900', 'border-transparent');
+                t.classList.add('bg-transparent', 'text-zinc-500');
+            });
+            btn.classList.add('active', 'bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900', 'border-transparent');
+            btn.classList.remove('bg-transparent', 'text-zinc-500');
+            
             currentCat = btn.dataset.cat;
             
             populateSelects();
@@ -316,7 +343,7 @@ export function init() {
             
             try {
                 await navigator.clipboard.writeText(val);
-                UI.showAlert('Đã chép', `Sao chép thành công: ${val}`, 'success');
+                UI.showAlert('Đã chép', `Sao chép thành công: ${val}`, 'success', 1000);
             } catch (err) {
                 UI.showAlert('Lỗi', 'Trình duyệt không hỗ trợ sao chép.', 'error');
             }

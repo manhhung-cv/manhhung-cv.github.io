@@ -3,99 +3,34 @@ import { UI } from '../../js/ui.js';
 export function template() {
     return `
         <style>
-            .mc-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
-            
-            /* Tùy chỉnh Tabs */
-            .calc-tabs-wrapper {
-                display: flex; gap: 4px; border-bottom: 1px solid var(--border); 
-                margin-bottom: 16px; overflow-x: auto; scrollbar-width: none;
-                padding-bottom: 2px; scroll-behavior: smooth;
-            }
             .calc-tabs-wrapper::-webkit-scrollbar { display: none; }
+            .calc-tabs-wrapper { scrollbar-width: none; }
             
-            .calc-tab {
-                display: flex; align-items: center; gap: 6px;
-                padding: 8px 12px; background: transparent; border: none;
-                color: var(--text-mut); font-family: var(--font); font-size: 0.9rem; font-weight: 500;
-                cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;
-                white-space: nowrap; margin-bottom: -1px;
-            }
-            .calc-tab:hover { color: var(--text-main); }
-            .calc-tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
-            .calc-tab-close {
-                opacity: 0.5; font-size: 0.75rem; padding: 4px; border-radius: 50%;
-                transition: all 0.2s; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px;
-            }
-            .calc-tab:hover .calc-tab-close { opacity: 1; background: rgba(239, 68, 68, 0.05); }
-            .calc-tab-close:hover { background: rgba(239, 68, 68, 0.15) !important; color: #ef4444; }
-
-            /* Giao diện máy tính (Tối ưu cho Mobile) */
-            .calc-widget { 
-                max-width: 380px; margin: 0 auto; width: 100%;
-                display: flex; flex-direction: column; background: var(--bg-main);
-                padding: 16px; border-radius: var(--radius);
-                border: 1px solid var(--border);
-            }
-            
-            .calc-display { 
-                background: var(--bg-sec); padding: 12px 12px; text-align: right; 
-                border-radius: var(--radius); margin-bottom: 12px; 
-                border: 1px solid var(--border); position: relative;
-            }
-            .calc-expr { font-size: 0.85rem; color: var(--text-mut); min-height: 1.2rem; font-family: monospace; letter-spacing: 0.5px; margin-bottom: 4px; }
-            .calc-result { font-size: 2.2rem; font-weight: 600; color: var(--text-main); word-wrap: break-word; line-height: 1.1; overflow-x: auto; scrollbar-width: none; }
-            .calc-result::-webkit-scrollbar { display: none; }
-
-            .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-            .calc-btn { 
-                padding: 12px 0; font-size: 1.2rem; font-weight: 500; background: var(--bg-sec); 
-                border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; 
-                color: var(--text-main); transition: all 0.1s; user-select: none; font-family: var(--font);
-            }
-            .calc-btn:active { transform: scale(0.92); }
-            .calc-btn:hover { border-color: var(--text-mut); background: var(--border); }
-            
-            .calc-btn.op { color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
-            .calc-btn.op-eq { background: #3b82f6; color: white; border-color: #3b82f6; }
-            .calc-btn.op-eq:hover { opacity: 0.9; transform: scale(0.96); }
-            .calc-btn.act-clear { color: #ef4444; background: rgba(239, 68, 68, 0.05); }
-            .calc-btn.zero { grid-column: span 2; }
-
-            .calc-history { 
-                max-height: 180px; overflow-y: auto; font-size: 0.85rem; 
-                margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 12px;
-                display: none; flex-direction: column; gap: 6px;
-            }
-            .calc-history.show { display: flex; }
-            .history-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-radius: 4px; cursor: pointer; transition: background 0.2s; border: 1px solid transparent; }
-            .history-item:hover { background: var(--bg-sec); border-color: var(--border); }
-            .history-expr { color: var(--text-mut); font-size: 0.8rem; font-family: monospace; }
-            .history-res { color: var(--text-main); font-weight: 600; font-size: 1rem; }
-
-            /* Điều chỉnh riêng cho màn hình nhỏ (Mobile) */
-            @media (max-width: 480px) {
-                .mc-toolbar { flex-direction: column; align-items: stretch; gap: 12px; }
-                .mc-toolbar .flex-row { display: flex; justify-content: space-between; width: 100%; }
-                .calc-widget { padding: 12px; border: none; border-top: 1px solid var(--border); border-radius: 0; }
-                .calc-btn { padding: 14px 0; font-size: 1.15rem; }
-                .calc-result { font-size: 2rem; }
-                .calc-grid { gap: 6px; }
-                .calc-display { padding: 10px; margin-bottom: 10px; }
-            }
+            .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+            .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 10px; }
+            .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #3f3f46; }
         </style>
 
-        <div class="mc-toolbar">
-            <div>
-                <h1 class="h1">Multi Calculator</h1>
+        <div class="relative flex flex-col w-full max-w-[340px] mx-auto sm:max-w-none min-h-[500px]">
+            <div class="flex justify-between items-center mb-4 px-1">
+                <h2 class="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white tracking-tight leading-none">Máy Tính Đa Tab</h2>
+                <div class="flex items-center gap-2">
+                    <button class="w-8 h-8 rounded-full bg-red-50 dark:bg-red-500/10 text-red-500 flex items-center justify-center transition-transform active:scale-95" id="btn-clear-all" title="Xóa tất cả">
+                        <i class="fas fa-trash-alt text-[11px]"></i>
+                    </button>
+                    <button class="h-8 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-transform active:scale-95" id="btn-add-calc">
+                        <i class="fas fa-plus"></i> Thêm Tab
+                    </button>
+                </div>
             </div>
-            <div class="flex-row" style="gap: 8px;">
-                <button class="btn btn-ghost btn-sm" id="btn-clear-all" style="color: #ef4444;"><i class="fas fa-trash"></i> Xóa tất cả</button>
-                <button class="btn btn-primary btn-sm" id="btn-add-calc"><i class="fas fa-plus"></i> Thêm Tab</button>
-            </div>
-        </div>
 
-        <div class="calc-tabs-wrapper" id="calc-tabs"></div>
-        <div id="calc-panes"></div>
+            <div class="calc-tabs-wrapper flex gap-2 overflow-x-auto pb-2 px-1 mb-2 border-b border-zinc-200 dark:border-zinc-800" id="calc-tabs">
+                </div>
+
+            <div id="calc-panes" class="flex-1 flex justify-center items-start pt-2">
+                </div>
+        </div>
     `;
 }
 
@@ -105,7 +40,7 @@ export function init() {
     const btnAdd = document.getElementById('btn-add-calc');
     const btnClearAll = document.getElementById('btn-clear-all');
     
-    const STORAGE_KEY = 'aio_multi_calc_v1';
+    const STORAGE_KEY = 'aio_multi_calc_v6';
     let calcCounter = 0;
     const calculators = new Map();
     let currentActiveTabId = null;
@@ -125,8 +60,7 @@ export function init() {
                 previousValue: calc.previousValue,
                 operator: calc.operator,
                 waitingForNewValue: calc.waitingForNewValue,
-                history: calc.history,
-                isHistoryShow: calc.DOM.historyBox.classList.contains('show')
+                history: calc.history
             });
         });
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -143,18 +77,28 @@ export function init() {
 
     // --- LOGIC CHUYỂN TAB ---
     const switchTab = (targetId) => {
-        document.querySelectorAll('.calc-tab').forEach(tab => tab.classList.remove('active'));
-        document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+        document.querySelectorAll('.calc-tab').forEach(tab => {
+            tab.classList.remove('bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
+            tab.classList.add('bg-zinc-100', 'dark:bg-zinc-800', 'text-zinc-500');
+        });
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.remove('block');
+            pane.classList.add('hidden');
+        });
         
         const targetTab = document.querySelector(`.calc-tab[data-target="${targetId}"]`);
         const targetPane = document.getElementById(targetId);
         
         if (targetTab && targetPane) {
-            targetTab.classList.add('active');
-            targetPane.classList.add('active');
+            targetTab.classList.remove('bg-zinc-100', 'dark:bg-zinc-800', 'text-zinc-500');
+            targetTab.classList.add('bg-zinc-900', 'dark:bg-white', 'text-white', 'dark:text-zinc-900');
+            
+            targetPane.classList.remove('hidden');
+            targetPane.classList.add('block');
             targetTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            
             currentActiveTabId = targetId;
-            saveState(); // Lưu tab đang active
+            saveState(); 
         }
     };
 
@@ -169,75 +113,102 @@ export function init() {
             this.waitingForNewValue = initialState.waitingForNewValue || false;
             this.history = initialState.history || [];
             
-            this.render(initialState.isHistoryShow || false);
+            this.render();
             this.bindEvents();
             this.updateDisplay();
             this.renderHistory();
         }
 
-        render(isHistoryShow) {
-            // Render Tab
+        render() {
+            // Render Tab Button (Flat)
             const tabBtn = document.createElement('button');
-            tabBtn.className = 'calc-tab';
+            tabBtn.className = 'calc-tab flex items-center justify-between gap-2 px-3.5 py-1.5 rounded-full text-[11px] font-bold transition-transform whitespace-nowrap shrink-0 active:scale-95';
             tabBtn.dataset.target = this.id;
             tabBtn.innerHTML = `
-                <span class="tab-name">${this.title}</span>
-                <span class="calc-tab-close" title="Đóng tab"><i class="fas fa-times"></i></span>
+                <span class="tab-name truncate max-w-[80px]">${this.title}</span>
+                <span class="calc-tab-close opacity-50 active:opacity-100 active:text-red-500 transition-colors w-4 h-4 flex items-center justify-center rounded-full"><i class="fas fa-times text-[9px]"></i></span>
             `;
             tabsContainer.appendChild(tabBtn);
 
-            // Render Pane
+            // Render Calculator Pane
             const pane = document.createElement('div');
-            pane.className = 'tab-pane';
+            pane.className = 'tab-pane hidden w-full animate-in fade-in zoom-in-95 duration-200';
             pane.id = this.id;
             
             pane.innerHTML = `
-                <div class="calc-widget">
-                    <div class="flex-between" style="margin-bottom: 12px;">
-                        <input type="text" class="input calc-rename" value="${this.title}" style="max-width: 160px; padding: 4px 8px; font-weight: 600; font-size: 0.95rem; border: none; background: transparent;" placeholder="Tên tab...">
-                        <button class="btn btn-sm btn-toggle-hist ${isHistoryShow ? 'btn-primary' : 'btn-outline'}" style="padding: 4px 8px;"><i class="fas fa-history"></i></button>
+                <div class="calc-widget relative w-full max-w-[340px] mx-auto bg-white dark:bg-[#09090b] rounded-[32px] border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden">
+                    
+                    <div class="px-5 pt-4 pb-2 flex justify-between items-center z-10 bg-white dark:bg-[#09090b]">
+                        <input type="text" class="calc-rename text-[11px] font-bold uppercase tracking-widest bg-transparent border-b border-dashed border-zinc-300 dark:border-zinc-700 outline-none text-zinc-900 dark:text-white transition-colors w-28 p-0 m-0" value="${this.title}" placeholder="Tên tab...">
+                        <button class="btn-toggle-hist text-zinc-400 w-7 h-7 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center transition-transform active:scale-95"><i class="fas fa-history text-[10px]"></i></button>
                     </div>
                     
-                    <div class="calc-display">
-                        <div style="position: absolute; top: 8px; left: 8px;">
-                            <button class="btn btn-ghost btn-sm btn-copy" title="Sao chép" style="padding: 2px 6px; font-size: 0.75rem; color: #10b981;">
-                                <i class="fas fa-copy"></i> 
-                            </button>
+                    <div class="px-5 pb-4 pt-1 text-right relative z-10 flex flex-col justify-end min-h-[90px] bg-white dark:bg-[#09090b]">
+                        <button class="btn-copy absolute top-0 left-5 text-zinc-500 dark:text-zinc-400 text-[9px] font-bold uppercase tracking-wider bg-zinc-50 dark:bg-zinc-800 px-2 py-1 rounded-md opacity-50 active:opacity-100 transition-opacity active:scale-95"><i class="far fa-copy"></i> Copy</button>
+                        <div class="calc-expr text-[13px] text-zinc-400 font-medium h-5 mb-1 truncate tracking-wide"></div>
+                        <div class="calc-result text-5xl font-medium text-zinc-900 dark:text-white tracking-tighter truncate leading-none pb-1">0</div>
+                    </div>
+                    
+                    <div class="p-3 grid grid-cols-4 gap-2 z-10 bg-zinc-50 dark:bg-[#121214] border-t border-zinc-200 dark:border-zinc-800">
+                        <button class="calc-btn act-clear" data-val="clear">C</button>
+                        <button class="calc-btn act-del" data-val="del"><i class="fas fa-backspace"></i></button>
+                        <button class="calc-btn op" data-val="%">%</button>
+                        <button class="calc-btn op" data-val="/">÷</button>
+
+                        <button class="calc-btn num" data-val="7">7</button>
+                        <button class="calc-btn num" data-val="8">8</button>
+                        <button class="calc-btn num" data-val="9">9</button>
+                        <button class="calc-btn op" data-val="*">×</button>
+
+                        <button class="calc-btn num" data-val="4">4</button>
+                        <button class="calc-btn num" data-val="5">5</button>
+                        <button class="calc-btn num" data-val="6">6</button>
+                        <button class="calc-btn op" data-val="-">−</button>
+
+                        <button class="calc-btn num" data-val="1">1</button>
+                        <button class="calc-btn num" data-val="2">2</button>
+                        <button class="calc-btn num" data-val="3">3</button>
+                        <button class="calc-btn op" data-val="+">+</button>
+
+                        <button class="calc-btn num col-span-2" data-val="0">0</button>
+                        <button class="calc-btn num" data-val=".">,</button>
+                        <button class="calc-btn op-eq" data-val="=">=</button>
+                    </div>
+
+                    <div class="hist-panel absolute inset-x-0 bottom-0 top-[110px] bg-white dark:bg-[#09090b] z-20 transition-transform duration-300 translate-y-full flex flex-col border-t border-zinc-200 dark:border-zinc-800">
+                        <div class="px-5 py-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-zinc-50 dark:bg-[#121214]">
+                            <span class="text-[10px] font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Lịch sử</span>
+                            <button class="btn-close-hist w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-500 active:text-zinc-900 dark:active:text-white flex items-center justify-center transition-colors"><i class="fas fa-chevron-down text-[10px]"></i></button>
                         </div>
-                        <div class="calc-expr"></div>
-                        <div class="calc-result">0</div>
-                    </div>
-                    
-                    <div class="calc-grid">
-                        <button class="calc-btn act-clear">C</button>
-                        <button class="calc-btn act-del"><i class="fas fa-backspace"></i></button>
-                        <button class="calc-btn op" data-op="%">%</button>
-                        <button class="calc-btn op" data-op="/">÷</button>
-
-                        <button class="calc-btn num" data-num="7">7</button>
-                        <button class="calc-btn num" data-num="8">8</button>
-                        <button class="calc-btn num" data-num="9">9</button>
-                        <button class="calc-btn op" data-op="*">×</button>
-
-                        <button class="calc-btn num" data-num="4">4</button>
-                        <button class="calc-btn num" data-num="5">5</button>
-                        <button class="calc-btn num" data-num="6">6</button>
-                        <button class="calc-btn op" data-op="-">−</button>
-
-                        <button class="calc-btn num" data-num="1">1</button>
-                        <button class="calc-btn num" data-num="2">2</button>
-                        <button class="calc-btn num" data-num="3">3</button>
-                        <button class="calc-btn op" data-op="+">+</button>
-
-                        <button class="calc-btn num zero" data-num="0">0</button>
-                        <button class="calc-btn num" data-num=".">.</button>
-                        <button class="calc-btn op-eq">=</button>
-                    </div>
-                    
-                    <div class="calc-history ${isHistoryShow ? 'show' : ''}">
-                        <div class="text-mut" style="text-align:center; font-size: 0.8rem; padding: 10px 0;">Chưa có lịch sử.</div>
+                        <div class="calc-history flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1"></div>
                     </div>
                 </div>
+
+                <style>
+                    /* Phím bấm phẳng 100%, không bóng, không hover */
+                    #${this.id} .calc-btn { 
+                        display: flex; align-items: center; justify-content: center; 
+                        height: 52px; border-radius: 16px; font-size: 1.15rem; font-weight: 500; 
+                        transition: transform 0.1s; user-select: none; font-family: ui-sans-serif, system-ui, sans-serif;
+                    }
+                    #${this.id} .calc-btn:active { transform: scale(0.92); }
+                    
+                    /* Numbers */
+                    #${this.id} .num { background: #ffffff; color: #18181b; border: 1px solid #e4e4e7; }
+                    .dark #${this.id} .num { background: #18181b; color: #ffffff; border-color: #27272a; }
+
+                    /* Operators */
+                    #${this.id} .op { background: #f4f4f5; color: #18181b; font-weight: 600; border: 1px solid #e4e4e7; }
+                    .dark #${this.id} .op { background: #27272a; color: #ffffff; border-color: #3f3f46; }
+
+                    /* Equal */
+                    #${this.id} .op-eq { background: #18181b; color: #ffffff; font-weight: 600; border: 1px solid #18181b; }
+                    .dark #${this.id} .op-eq { background: #ffffff; color: #18181b; border-color: #ffffff; }
+
+                    /* Clear & Del */
+                    #${this.id} .act-clear, #${this.id} .act-del { background: #fef2f2; color: #ef4444; font-weight: 600; border: 1px solid #fecaca; }
+                    .dark #${this.id} .act-clear, .dark #${this.id} .act-del { background: rgba(239, 68, 68, 0.1); color: #f87171; border-color: rgba(248, 113, 113, 0.2); }
+                </style>
             `;
             panesContainer.appendChild(pane);
             
@@ -249,8 +220,10 @@ export function init() {
                 renameInput: pane.querySelector('.calc-rename'),
                 expr: pane.querySelector('.calc-expr'),
                 res: pane.querySelector('.calc-result'),
+                histPanel: pane.querySelector('.hist-panel'),
                 historyBox: pane.querySelector('.calc-history'),
                 btnToggleHist: pane.querySelector('.btn-toggle-hist'),
+                btnCloseHist: pane.querySelector('.btn-close-hist'),
                 btnCopy: pane.querySelector('.btn-copy')
             };
         }
@@ -265,55 +238,63 @@ export function init() {
                 this.title = newName;
                 saveState();
             });
-            this.DOM.renameInput.addEventListener('focus', (e) => { e.target.style.background = 'var(--bg-sec)'; });
-            this.DOM.renameInput.addEventListener('blur', (e) => { e.target.style.background = 'transparent'; });
 
+            // Toggle History
             this.DOM.btnToggleHist.onclick = () => {
-                this.DOM.historyBox.classList.toggle('show');
-                this.DOM.btnToggleHist.classList.toggle('btn-primary');
-                this.DOM.btnToggleHist.classList.toggle('btn-outline');
-                saveState();
+                this.DOM.histPanel.classList.remove('translate-y-full');
+            };
+            this.DOM.btnCloseHist.onclick = () => {
+                this.DOM.histPanel.classList.add('translate-y-full');
             };
 
             this.DOM.btnCopy.onclick = async () => {
-                if (this.currentValue === 'Lỗi') return UI.showAlert('Lỗi', 'Không thể chép dữ liệu lỗi.', 'warning');
+                if (this.currentValue === 'Lỗi') return UI.showAlert('Lỗi', 'Không thể chép.', 'warning');
                 try {
-                    await navigator.clipboard.writeText(this.currentValue);
-                    UI.showAlert('Đã chép', `Giá trị: ${this.currentValue}`, 'success');
+                    const formattedForCopy = String(this.currentValue).replace('.', ',');
+                    await navigator.clipboard.writeText(formattedForCopy);
+                    UI.showAlert('Đã chép', `Giá trị: ${formattedForCopy}`, 'success', 1000);
                 } catch (err) {}
             };
 
-            this.DOM.pane.querySelectorAll('.num').forEach(btn => btn.onclick = () => this.inputNumber(btn.dataset.num));
-            this.DOM.pane.querySelectorAll('.op').forEach(btn => btn.onclick = () => this.inputOperator(btn.dataset.op));
-
-            this.DOM.pane.querySelector('.act-clear').onclick = () => this.clearAll();
-            this.DOM.pane.querySelector('.act-del').onclick = () => this.deleteChar();
-            this.DOM.pane.querySelector('.op-eq').onclick = () => this.calculate();
+            // Phím bấm
+            this.DOM.pane.querySelectorAll('.calc-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const val = btn.dataset.val;
+                    if (btn.classList.contains('num')) this.inputNumber(val);
+                    else if (btn.classList.contains('op')) this.inputOperator(val);
+                    else if (btn.classList.contains('act-clear')) this.clearAll();
+                    else if (btn.classList.contains('act-del')) this.deleteChar();
+                    else if (btn.classList.contains('op-eq')) this.calculate();
+                };
+            });
             
+            // Lịch sử Click -> Copy
             this.DOM.historyBox.addEventListener('click', async (e) => {
                 const item = e.target.closest('.history-item');
                 if (item) {
                     try {
-                        await navigator.clipboard.writeText(item.dataset.val);
-                        UI.showAlert('Đã chép lịch sử', `Kết quả: ${item.dataset.val}`, 'success');
+                        const copyVal = String(item.dataset.val).replace('.', ',');
+                        await navigator.clipboard.writeText(copyVal);
+                        UI.showAlert('Đã chép', `${copyVal}`, 'success', 1000);
                     } catch (err) { }
                 }
             });
         }
 
-        updateDisplay() {
-            const formatNumber = (numStr) => {
-                if(numStr === 'Lỗi') return numStr;
-                const parts = String(numStr).split('.');
-                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-                return parts.join('.');
-            };
+        // ĐỊNH DẠNG CHUẨN VIỆT NAM
+        formatNumberVN(numStr) {
+            if(numStr === 'Lỗi') return numStr;
+            const parts = String(numStr).split('.'); 
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            return parts.join(',');
+        }
 
-            this.DOM.res.textContent = formatNumber(this.currentValue);
+        updateDisplay() {
+            this.DOM.res.textContent = this.formatNumberVN(this.currentValue);
             
             if (this.operator != null) {
                 const opMap = { '+': '+', '-': '−', '*': '×', '/': '÷', '%': '%' };
-                this.DOM.expr.textContent = `${formatNumber(this.previousValue)} ${opMap[this.operator]}`;
+                this.DOM.expr.textContent = `${this.formatNumberVN(this.previousValue)} ${opMap[this.operator]}`;
             } else {
                 this.DOM.expr.textContent = '';
             }
@@ -363,7 +344,7 @@ export function init() {
 
             if (saveHistory) {
                 const opMap = { '+': '+', '-': '−', '*': '×', '/': '÷', '%': '%' };
-                const exprString = `${this.previousValue} ${opMap[this.operator]} ${this.currentValue}`;
+                const exprString = `${this.formatNumberVN(this.previousValue)} ${opMap[this.operator]} ${this.formatNumberVN(this.currentValue)}`;
                 this.addHistory(exprString, result);
             }
 
@@ -398,19 +379,22 @@ export function init() {
 
         addHistory(expr, res) {
             this.history.unshift({ expr, res });
-            if (this.history.length > 20) this.history.pop(); 
+            if (this.history.length > 30) this.history.pop(); 
             this.renderHistory();
         }
 
         renderHistory() {
-            if (this.history.length === 0) return;
+            if (this.history.length === 0) {
+                this.DOM.historyBox.innerHTML = '<div class="text-zinc-400 text-center text-[11px] font-medium py-10 opacity-50">Chưa có phép tính nào.</div>';
+                return;
+            }
             let html = '';
             this.history.forEach(item => {
-                const formatRes = String(item.res).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                const formatRes = this.formatNumberVN(item.res);
                 html += `
-                    <div class="history-item" data-val="${item.res}" title="Nhấn để copy: ${item.res}">
-                        <div class="history-expr">${item.expr} =</div>
-                        <div class="history-res">${formatRes}</div>
+                    <div class="history-item flex flex-col items-end p-2.5 rounded-xl cursor-pointer active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-colors active:scale-95" data-val="${item.res}" title="Nhấn để copy">
+                        <div class="text-[11px] font-medium text-zinc-400 mb-0.5">${item.expr} =</div>
+                        <div class="text-xl font-bold text-zinc-900 dark:text-white">${formatRes}</div>
                     </div>
                 `;
             });
@@ -453,20 +437,17 @@ export function init() {
         return initialData.id;
     };
 
-    // Khôi phục từ LocalStorage
     const savedState = loadState();
     if (savedState && savedState.items && savedState.items.length > 0) {
         calcCounter = savedState.calcCounter || 0;
         savedState.items.forEach(item => createNewCalculator(item));
         
-        // Active lại tab trước đó
         if (savedState.activeTabId && calculators.has(savedState.activeTabId)) {
             switchTab(savedState.activeTabId);
         } else {
             switchTab(savedState.items[0].id);
         }
     } else {
-        // Mặc định lần đầu
         const firstId = createNewCalculator();
         switchTab(firstId);
     }
@@ -479,7 +460,7 @@ export function init() {
 
     btnClearAll.onclick = () => {
         if (calculators.size === 0) return;
-        UI.showConfirm('Đóng tất cả máy tính?', 'Toàn bộ dữ liệu và lịch sử tính toán sẽ bị xóa hoàn toàn khỏi thiết bị.', () => {
+        UI.showConfirm('Đóng tất cả?', 'Bạn có chắc chắn muốn xóa toàn bộ máy tính và lịch sử không?', () => {
             tabsContainer.innerHTML = '';
             panesContainer.innerHTML = '';
             calculators.clear();
