@@ -2,16 +2,12 @@ export const CATEGORIES = [
     { id: 'utilities', name: 'Tiện Ích', icon: 'fas fa-tools', desc: 'Các công cụ đa năng, tiện lợi hàng ngày' },
     { id: 'calc', name: 'Máy Tính', icon: 'fas fa-calculator', desc: 'Tính toán toán học và tài chính' },
     { id: 'converter', name: 'Chuyển Đổi', icon: 'fas fa-exchange-alt', desc: 'Quy đổi đơn vị, tỷ giá, kích cỡ' },
-    { id: 'text', name: 'Văn Bản', icon: 'fas fa-align-left', desc: 'Xử lý chuỗi, định dạng văn bản' },
+    { id: 'text', name: 'Văn Bản', icon: 'fas fa-align-left', desc: 'Xử lý chuỗi, ngôn từ và định dạng văn bản' },
+    { id: 'document', name: 'Tài Liệu', icon: 'fas fa-file-alt', desc: 'Xử lý tệp tin, PDF và tài liệu văn phòng' },
     { id: 'life', name: 'Đời Sống', icon: 'fas fa-heartbeat', desc: 'Sức khỏe, thời gian và sinh hoạt' },
     { id: 'dev', name: 'Developer', icon: 'fas fa-code', desc: 'Công cụ lập trình, web và dữ liệu' },
     { id: 'system', name: 'Hệ Thống', icon: 'fas fa-laptop-code', desc: 'Mạng, bảo mật và thiết bị' },
-{ 
-    id: 'entertainment', 
-    name: 'Giải Trí', 
-    icon: 'fas fa-star', 
-    desc: 'Trò chơi, sự kiện và tiện ích thư giãn' 
-}
+    { id: 'entertainment', name: 'Giải Trí', icon: 'fas fa-star', desc: 'Trò chơi, sự kiện và tiện ích thư giãn' }
 ];
 
 export const TOOLS = [
@@ -36,7 +32,7 @@ export const TOOLS = [
     },
     {
         id: 'reverse-image-search',
-        catId: 'utilities', 
+        catId: 'utilities',
         name: 'Tìm kiếm bằng hình ảnh',
         icon: 'fas fa-image',
         desc: 'Truy tìm nguồn gốc, ảnh gốc và ảnh tương tự bằng cách upload lên Google Lens, Yandex, Bing.',
@@ -66,6 +62,22 @@ export const TOOLS = [
         desc: 'Công cụ quay số, chọn tên ngẫu nhiên tích hợp thuật toán Crypto chống thiên vị.',
         tags: ['ngẫu nhiên', 'random', 'quay số', 'bốc thăm', 'chọn tên', 'xổ số']
     },
+    {
+        id: 'phone-encoder',
+        catId: 'utilities',
+        name: 'Mã Hóa SĐT',
+        icon: 'fas fa-phone-slash',
+        desc: 'Mã hóa số điện thoại thành chữ, emoji, hoặc ký tự tàng hình để lách bộ lọc của các sàn TMĐT. Hỗ trợ giải mã ngược.',
+        tags: ['mã hóa', 'sđt', 'phone', 'encode', 'lách luật', 'shopee', 'tiktok', 'ẩn số']
+    },
+    {
+        id: 'num-to-text',
+        catId: 'utilities',
+        name: 'Đọc Số Tiền',
+        icon: 'fas fa-coins',
+        desc: 'Công cụ chuyển đổi số liệu thành văn bản đa ngôn ngữ siêu tốc. Hỗ trợ 5 ngôn ngữ Native (Việt, Anh, Nhật, Trung, Hàn), đọc phát âm chuẩn và tự động dịch.',
+        tags: ['đọc số', 'đổi số thành chữ', 'tiền tệ', 'phát âm', 'text to speech', 'number', 'currency', 'money', 'dịch thuật', 'kế toán']
+    },
 
     // ==========================================
     // 2. MÁY TÍNH (calc)
@@ -75,7 +87,8 @@ export const TOOLS = [
         catId: 'calc',
         name: 'Multi Calculator',
         icon: 'fas fa-calculator',
-        desc: 'Máy tính đa năng tích hợp bộ lưu trữ lịch sử tính toán và chuyển đổi đơn vị.'
+        desc: 'Máy tính đa năng tích hợp bộ lưu trữ lịch sử tính toán và chuyển đổi đơn vị.',
+        tags: ['máy tính', 'calculator', 'tính toán', 'đa năng']
     },
     {
         id: 'percentage-calculator',
@@ -130,18 +143,40 @@ export const TOOLS = [
         catId: 'text',
         name: 'AIO Text Tools',
         icon: 'fas fa-font',
-        desc: 'Bộ công cụ: Đếm ký tự, chuẩn hóa, lọc Email/Link, tạo Lorem Ipsum và so sánh (Diff).'
+        desc: 'Bộ công cụ: Đếm ký tự, chuẩn hóa, lọc Email/Link, tạo Lorem Ipsum và so sánh (Diff).',
+        tags: ['text', 'văn bản', 'đếm ký tự', 'lorem ipsum', 'chuẩn hóa', 'diff']
     },
     {
         id: 'morse-code',
         catId: 'text',
         name: 'Mã Morse',
         icon: 'fas fa-ellipsis-h',
-        desc: 'Chuyển đổi văn bản thành mã Morse và ngược lại. Tự động loại bỏ dấu Tiếng Việt.'
+        desc: 'Chuyển đổi văn bản thành mã Morse và ngược lại. Tự động loại bỏ dấu Tiếng Việt.',
+        tags: ['morse', 'mã morse', 'code', 'văn bản', 'giải mã']
+    },
+    {
+        id: 'word-station',
+        catId: 'text',
+        name: 'Trạm Ngôn Từ',
+        icon: 'fas fa-pen-nib',
+        desc: 'Bộ công cụ ngôn ngữ học thông minh giúp gieo vần, đảo vần và nói lái chuẩn xác. Hỗ trợ đắc lực cho sáng tác thơ, rap và viết content sáng tạo.',
+        tags: ['gieo vần', 'nói lái', 'vần đảo', 'từ điển', 'sáng tác', 'thơ', 'rap', 'content', 'word', 'rhyme']
     },
 
     // ==========================================
-    // 5. ĐỜI SỐNG (life)
+    // 5. TÀI LIỆU (document)
+    // ==========================================
+    {
+        id: 'pdf-tools',
+        catId: 'document',
+        name: 'PDF Studio Pro',
+        icon: 'fas fa-file-pdf',
+        desc: 'Bộ công cụ xử lý PDF toàn diện ngay trên trình duyệt (Client-side). Hỗ trợ ghép, tách, ký tên, đóng dấu watermark và xuất ảnh bảo mật tuyệt đối.',
+        tags: ['pdf', 'ghép pdf', 'tách pdf', 'ký pdf', 'watermark', 'chữ ký', 'merge', 'split', 'convert', 'document', 'tài liệu']
+    },
+
+    // ==========================================
+    // 6. ĐỜI SỐNG (life)
     // ==========================================
     {
         id: 'time-tools',
@@ -167,31 +202,25 @@ export const TOOLS = [
         desc: 'Tính toán thời gian đi ngủ và thức dậy tối ưu dựa trên chu kỳ giấc ngủ sinh học (90 phút).',
         tags: ['ngủ', 'giấc ngủ', 'thức dậy', 'chu kỳ', 'sức khỏe', 'sleep']
     },
-   {
-    id: 'led-matrix',
-    catId: 'entertainment', // Hoặc 'tools' tùy thuộc vào cấu trúc danh mục của bạn
-    name: 'Bảng LED Cổ Vũ',
-    icon: 'fa-solid fa-bolt', // Hoặc 'fa-solid fa-display', 'fa-solid fa-font'
-    desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
-    tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
-},
 
     // ==========================================
-    // 6. DEVELOPER (dev)
+    // 7. DEVELOPER (dev)
     // ==========================================
     {
         id: 'json-format',
         catId: 'dev',
         name: 'Format JSON',
         icon: 'fas fa-code',
-        desc: 'Làm đẹp, nén và kiểm tra lỗi cú pháp JSON.'
+        desc: 'Làm đẹp, nén và kiểm tra lỗi cú pháp JSON.',
+        tags: ['json', 'format', 'dev', 'cú pháp', 'validate']
     },
     {
         id: 'base64-converter',
         catId: 'dev',
         name: 'Base64 Encode/Decode',
         icon: 'fas fa-shield-alt',
-        desc: 'Mã hóa và giải mã chuỗi Base64 an toàn, hỗ trợ Unicode (Tiếng Việt).'
+        desc: 'Mã hóa và giải mã chuỗi Base64 an toàn, hỗ trợ Unicode (Tiếng Việt).',
+        tags: ['base64', 'encode', 'decode', 'mã hóa', 'giải mã', 'dev']
     },
     {
         id: 'regex-tester',
@@ -219,7 +248,7 @@ export const TOOLS = [
     },
 
     // ==========================================
-    // 7. HỆ THỐNG & BẢO MẬT (system)
+    // 8. HỆ THỐNG & BẢO MẬT (system)
     // ==========================================
     {
         id: 'ip-checker',
@@ -250,6 +279,19 @@ export const TOOLS = [
         catId: 'system',
         name: 'UI Kit / Components',
         icon: 'fas fa-cubes',
-        desc: 'Thư viện giao diện tái sử dụng.'
+        desc: 'Thư viện giao diện tái sử dụng.',
+        tags: ['ui', 'giao diện', 'kit', 'components', 'thiết kế']
+    },
+
+    // ==========================================
+    // 9. GIẢI TRÍ (entertainment)
+    // ==========================================
+    {
+        id: 'led-matrix',
+        catId: 'entertainment',
+        name: 'Bảng LED Cổ Vũ',
+        icon: 'fa-solid fa-bolt',
+        desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
+        tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
     }
 ];

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trạm Ngôn Từ - Minimal Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #09090b; /* zinc-950 */
+            color: #fafafa; /* zinc-50 */
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+    </style>
+</head>
+<body class="min-h-screen antialiased selection:bg-zinc-800 selection:text-white flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+
+    <main class="w-full max-w-3xl flex flex-col gap-12">
+        
+        <!-- Header -->
+        <header class="text-center space-y-4 fade-in" style="animation-delay: 0ms;">
+            <div class="inline-flex items-center justify-center p-3 bg-zinc-900 border border-zinc-800 rounded-2xl mb-2">
+                <i data-lucide="check-circle" class="w-6 h-6 text-zinc-300"></i>
+            </div>
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-white">
+                Trạm Ngôn Từ
+            </h1>
+            <p class="text-zinc-400 text-base sm:text-lg max-w-lg mx-auto font-light">
+                Thuật toán tinh gọn. Ít nhưng chuẩn xác.
+            </p>
+        </header>
+
+        <!-- Tabs -->
+        <div class="flex justify-center fade-in" style="animation-delay: 100ms;">
+            <div class="flex items-center p-1 bg-zinc-900/80 border border-zinc-800/80 backdrop-blur-md rounded-full shadow-sm">
+                <button onclick="switchTab('van-xuoi')" id="tab-van-xuoi" class="tab-btn active relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-white bg-zinc-800 shadow-sm border border-zinc-700/50">
+                    <i data-lucide="mic-2" class="w-4 h-4"></i> Gieo Vần
+                </button>
+                <button onclick="switchTab('van-dao')" id="tab-van-dao" class="tab-btn relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-zinc-400 hover:text-zinc-200">
+                    <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Vần Đảo
+                </button>
+                <button onclick="switchTab('noi-lai')" id="tab-noi-lai" class="tab-btn relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-zinc-400 hover:text-zinc-200">
+                    <i data-lucide="arrow-right-left" class="w-4 h-4"></i> Nói Lái
+                </button>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="relative w-full group fade-in" style="animation-delay: 200ms;">
+            <div class="absolute inset-0 bg-zinc-800/20 blur-xl rounded-3xl transition-all group-focus-within:bg-zinc-700/30"></div>
+            <input 
+                type="text" 
+                id="wordInput" 
+                placeholder="Nhập từ để gieo vần (VD: cun cút...)" 
+                autocomplete="off"
+                class="relative w-full bg-zinc-900/50 backdrop-blur-sm border border-zinc-800 focus:border-zinc-600 rounded-3xl py-8 px-6 sm:px-12 text-2xl sm:text-4xl font-light text-center text-white placeholder:text-zinc-600 outline-none transition-all shadow-sm"
+            >
+        </div>
+
+        <!-- Results Area -->
+        <div id="resultsContainer" class="min-h-[250px] w-full pb-20">
+            <!-- Default Empty State -->
+            <div id="emptyState" class="flex flex-col items-center justify-center h-full mt-12 fade-in">
+                <div class="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
+                    <i data-lucide="keyboard" class="w-6 h-6 text-zinc-500"></i>
+                </div>
+                <p class="text-zinc-500 font-light">Bắt đầu nhập liệu để xem kết quả</p>
+            </div>
+            
+            <!-- Dynamic Content Injected Here -->
+            <div id="dynamicContent" class="hidden"></div>
+        </div>
+
+    </main>
+
+    <!-- Javascript Logic -->
+    <script>
+        lucide.createIcons();
+
+        // --- NGÔN NGỮ HỌC (LINGUISTIC ENGINE) ---
+        // Rút gọn danh sách phụ âm: Chỉ giữ lại các phụ âm dễ tạo ra từ có nghĩa nhất
+        const PRODUCTIVE_CONS = ['h', 'v', 'm', 'l', 'b', 't', 'ch', 'ng', 'n', 'ph', 'r', 's', 'th', 'tr', 'đ', 'd', 'x', 'k', 'c', 'g', 'nh', 'kh'];
+        
+        const TONE_MAP = [
+            ['a', 'à', 'á', 'ả', 'ã', 'ạ'], ['ă', 'ằ', 'ắ', 'ẳ', 'ẵ', 'ặ'], ['â', 'ầ', 'ấ', 'ẩ', 'ẫ', 'ậ'],
+            ['e', 'è', 'é', 'ẻ', 'ẽ', 'ẹ'], ['ê', 'ề', 'ế', 'ể', 'ễ', 'ệ'], ['i', 'ì', 'í', 'ỉ', 'ĩ', 'ị'],
+            ['o', 'ò', 'ó', 'ỏ', 'õ', 'ọ'], ['ô', 'ồ', 'ố', 'ổ', 'ỗ', 'ộ'], ['ơ', 'ờ', 'ớ', 'ở', 'ỡ', 'ợ'],
+            ['u', 'ù', 'ú', 'ủ', 'ũ', 'ụ'], ['ư', 'ừ', 'ứ', 'ử', 'ữ', 'ự'], ['y', 'ỳ', 'ý', 'ỷ', 'ỹ', 'ỵ']
+        ];
+
+        const CHAR_TO_BASE_TONE = {};
+        TONE_MAP.forEach(row => {
+            const base = row[0];
+            row.forEach((char, index) => { CHAR_TO_BASE_TONE[char] = { base, tone: index }; });
+        });
+
+        // Tách âm tiết
+        const parseSyllable = (word) => {
+            let text = word.toLowerCase().trim();
+            if (!text) return null;
+            let initial = '';
+            // Quét tìm phụ âm đầu dài nhất trước (tr, ngh, th, ph, ng, nh, kh, gh, ch, qu, gi)
+            const ALL_CONS_DESC = ['ngh', 'tr', 'th', 'ph', 'ng', 'nh', 'kh', 'gh', 'ch', 'qu', 'gi', 'b', 'c', 'd', 'đ', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v', 'x'];
+            for (let c of ALL_CONS_DESC) {
+                if (text.startsWith(c)) {
+                    initial = c; text = text.substring(c.length); break;
+                }
+            }
+            let baseRhyme = '', toneIndex = 0;
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const mapInfo = CHAR_TO_BASE_TONE[char];
+                if (mapInfo) {
+                    baseRhyme += mapInfo.base;
+                    if (mapInfo.tone !== 0) toneIndex = mapInfo.tone;
+                } else {
+                    baseRhyme += char;
+                }
+            }
+            return { initial, baseRhyme, toneIndex, original: word };
+        };
+
+        // Gắn thanh điệu
+        const applyTone = (baseRhyme, toneIndex) => {
+            if (toneIndex === 0) return baseRhyme;
+            let chars = baseRhyme.split('');
+            let vowels = [];
+            const bases = 'aăâeêioôơuưy';
+            for (let i = 0; i < chars.length; i++) {
+                if (bases.includes(chars[i])) vowels.push(i);
+            }
+            if (vowels.length === 0) return baseRhyme;
+
+            let targetIndex = vowels[0];
+            if (vowels.length === 2) {
+                const endsWithCons = !bases.includes(chars[chars.length - 1]);
+                if (endsWithCons) targetIndex = vowels[1];
+                else {
+                    const v1 = chars[vowels[0]], v2 = chars[vowels[1]];
+                    if ((v1 === 'u' && v2 === 'y') || (v1 === 'o' && v2 === 'a') || (v1 === 'o' && v2 === 'e')) targetIndex = vowels[1];
+                    else targetIndex = vowels[0];
+                }
+            } else if (vowels.length === 3) targetIndex = vowels[1];
+
+            const baseChar = chars[targetIndex];
+            let accentedChar = baseChar;
+            const row = TONE_MAP.find(r => r[0] === baseChar);
+            if (row) accentedChar = row[toneIndex];
+            chars[targetIndex] = accentedChar;
+            return chars.join('');
+        };
+
+        // Lắp ghép chữ
+        const constructWord = (initial, baseRhyme, toneIndex) => {
+            if (!baseRhyme) return '';
+            let firstVowel = baseRhyme.charAt(0);
+            let isFront = ['i', 'e', 'ê', 'y'].includes(firstVowel);
+            let finalInit = initial;
+
+            // Sửa chính tả tự động
+            if (isFront) {
+                if (initial === 'c') finalInit = 'k';
+                if (initial === 'g') finalInit = 'gh';
+                if (initial === 'ng') finalInit = 'ngh';
+            } else {
+                if (initial === 'k') finalInit = 'c';
+                if (initial === 'gh') finalInit = 'g';
+                if (initial === 'ngh') finalInit = 'ng';
+            }
+
+            let finalRhyme = baseRhyme;
+            if (finalInit === 'gi' && firstVowel === 'i') {
+                if (baseRhyme === 'i') return 'g' + applyTone('i', toneIndex);
+                finalRhyme = baseRhyme.substring(1);
+            }
+            if (finalInit === 'qu' && firstVowel === 'u') {
+                if (baseRhyme === 'u') return 'c' + applyTone('u', toneIndex);
+                finalRhyme = baseRhyme.substring(1);
+            }
+
+            // Loại bỏ các tổ hợp sai chính tả tiếng Việt nghiêm trọng
+            if (['k', 'gh', 'ngh'].includes(finalInit) && !isFront) return null;
+
+            return finalInit + applyTone(finalRhyme, toneIndex);
+        };
+
+        // THUẬT TOÁN MỚI: Tinh Gọn - Chỉ tạo cấu trúc Từ Láy chuẩn
+        function generateAccuratePairs(p1, p2) {
+            let results = new Set();
+            const tonePairs = [[p1.toneIndex, p2.toneIndex]];
+            
+            // Luật Bằng Trắc
+            const shiftMap = {
+                '0,2': [1, 5], // Ngang-Sắc <=> Huyền-Nặng (VD: Cun cút -> ngùn ngụt)
+                '1,5': [0, 2], 
+                '0,3': [1, 4], // Ngang-Hỏi <=> Huyền-Ngã
+                '1,4': [0, 3], 
+                '0,0': [1, 1], // Ngang-Ngang <=> Huyền-Huyền
+                '1,1': [0, 0]
+            };
+            const shifted = shiftMap[`${p1.toneIndex},${p2.toneIndex}`];
+            if (shifted) tonePairs.push(shifted);
+
+            tonePairs.forEach(tones => {
+                const [t1, t2] = tones;
+                PRODUCTIVE_CONS.forEach(c => {
+                    // CỐT LÕI: Láy toàn bộ phụ âm đầu cho cả 2 từ (như hun hút, vun vút)
+                    let w1 = constructWord(c, p1.baseRhyme, t1);
+                    let w2 = constructWord(c, p2.baseRhyme, t2);
+                    
+                    if (w1 && w2 && (c !== p1.initial || t1 !== p1.toneIndex)) {
+                        results.add(`${w1} ${w2}`);
+                    }
+                });
+            });
+
+            // Chỉ trả về 16 kết quả tự nhiên nhất để không gây rối mắt
+            return [...results].slice(0, 16);
+        }
+
+        // --- APP STATE & UI LOGIC ---
+        let currentTab = 'van-xuoi';
+        const inputEl = document.getElementById('wordInput');
+        const emptyStateEl = document.getElementById('emptyState');
+        const contentEl = document.getElementById('dynamicContent');
+
+        const placeholders = {
+            'van-xuoi': 'Nhập từ/cụm từ (VD: cun cút, sầu...)',
+            'van-dao': 'Nhập 2 từ để đảo vần (VD: bảo đảm)',
+            'noi-lai': 'Nhập câu hoặc 2 từ để nói lái (VD: bí mật)'
+        };
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            inputEl.placeholder = placeholders[tabId];
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.id === `tab-${tabId}`) {
+                    btn.className = "tab-btn active relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-white bg-zinc-800 shadow-sm border border-zinc-700/50";
+                } else {
+                    btn.className = "tab-btn relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-zinc-400 hover:text-zinc-200";
+                }
+            });
+            renderResults();
+        }
+
+        async function copyText(text, btnId) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const btn = document.getElementById(btnId);
+                const originalHTML = btn.innerHTML;
+                
+                btn.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-zinc-300"></i> Đã chép`;
+                btn.classList.add('border-zinc-500', 'bg-zinc-800');
+                lucide.createIcons();
+
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('border-zinc-500', 'bg-zinc-800');
+                    lucide.createIcons();
+                }, 1500);
+            } catch (err) {
+                console.error('Failed to copy', err);
+            }
+        }
+
+        const genId = () => Math.random().toString(36).substr(2, 9);
+
+        function renderResults() {
+            const text = inputEl.value.trim();
+            if (!text) {
+                emptyStateEl.classList.remove('hidden');
+                contentEl.classList.add('hidden');
+                contentEl.innerHTML = '';
+                return;
+            }
+
+            emptyStateEl.classList.add('hidden');
+            contentEl.classList.remove('hidden');
+            
+            contentEl.classList.remove('fade-in');
+            void contentEl.offsetWidth;
+            contentEl.classList.add('fade-in');
+
+            let html = '';
+            const words = text.split(/\s+/);
+            const parsedWords = words.map(parseSyllable).filter(Boolean);
+
+            // TAB 1: GIEO VẦN
+            if (currentTab === 'van-xuoi') {
+                if (words.length === 1) {
+                    const parsed = parsedWords[0];
+                    if (parsed && parsed.baseRhyme) {
+                        let results = new Set();
+                        PRODUCTIVE_CONS.forEach(cons => {
+                            const exactTone = constructWord(cons, parsed.baseRhyme, parsed.toneIndex);
+                            if (exactTone && exactTone !== text.toLowerCase()) results.add(exactTone);
+                        });
+                        
+                        // Cắt giảm kết quả xuống 16 từ đẹp nhất
+                        const uniqueRes = [...results].slice(0, 16);
+                        
+                        html = `
+                            <div class="space-y-4 mt-6">
+                                <h3 class="text-zinc-500 text-sm font-medium uppercase tracking-widest pl-2">Gieo vần: -${parsed.baseRhyme} (16 kết quả chọn lọc)</h3>
+                                <div class="flex flex-wrap gap-2">
+                                    ${uniqueRes.map(word => {
+                                        const btnId = 'btn-' + genId();
+                                        return `
+                                        <button id="${btnId}" onclick="copyText('${word}', '${btnId}')" class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 text-zinc-300 px-5 py-2.5 rounded-full text-base transition-all duration-200">
+                                            ${word}
+                                        </button>`
+                                    }).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else if (words.length === 2) {
+                    const p1 = parsedWords[0];
+                    const p2 = parsedWords[1];
+                    const rhymesStruct = `${p1.baseRhyme} · ${p2.baseRhyme}`;
+                    
+                    let uniqueRes = generateAccuratePairs(p1, p2).filter(phrase => phrase !== text.toLowerCase());
+                    
+                    html = `
+                        <div class="space-y-4 mt-6">
+                            <div class="flex items-center gap-3 pl-2 mb-6">
+                                <span class="px-3 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-semibold rounded-full tracking-wider uppercase">Chuẩn vần điệu: ${rhymesStruct}</span>
+                            </div>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                                ${uniqueRes.map(phrase => {
+                                    const btnId = 'btn-' + genId();
+                                    return `
+                                    <button id="${btnId}" onclick="copyText('${phrase}', '${btnId}')" class="flex justify-center items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-500 hover:text-white hover:bg-zinc-800/80 text-zinc-300 px-4 py-3 rounded-2xl text-[15px] capitalize font-medium transition-all duration-200 shadow-sm">
+                                        ${phrase}
+                                    </button>`
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    html = `<p class="text-center text-zinc-500 py-10">Vui lòng nhập tối đa 2 từ để gieo vần chính xác nhất.</p>`;
+                }
+            } 
+            
+            // TAB 2: VẦN ĐẢO (TINH GỌN)
+            else if (currentTab === 'van-dao') {
+                if (words.length < 2 || words.length > 2) {
+                    html = `<p class="text-center text-zinc-500 py-10">Tính năng này cần nhập chính xác 2 từ (VD: Bảo đảm)</p>`;
+                } else {
+                    const p1 = parsedWords[0];
+                    const p2 = parsedWords[1];
+                    let results = new Set();
+
+                    // 1. Chỉ đảo chéo Vần & Dấu (Đúng bản chất Đảo Vần)
+                    let r1_w1 = constructWord(p1.initial, p2.baseRhyme, p2.toneIndex);
+                    let r1_w2 = constructWord(p2.initial, p1.baseRhyme, p1.toneIndex);
+                    if (r1_w1 && r1_w2) results.add(`${r1_w1} ${r1_w2}`);
+
+                    // 2. Đảo nguyên vị trí từ (Word Swap)
+                    let reversedWord = words.reverse().join(' ');
+                    results.add(reversedWord);
+
+                    let uniqueRes = [...results].filter(phrase => phrase.toLowerCase() !== text.toLowerCase());
+                    
+                    html = `
+                        <div class="space-y-4 mt-6">
+                            <h3 class="text-zinc-500 text-sm font-medium uppercase tracking-widest pl-2 text-center mb-6">Kết quả đảo vần tinh gọn</h3>
+                            <div class="flex flex-col items-center gap-4">
+                                ${uniqueRes.map(phrase => {
+                                    const btnId = 'btn-' + genId();
+                                    return `
+                                    <button id="${btnId}" onclick="copyText('${phrase}', '${btnId}')" class="w-full max-w-md flex justify-center items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-500 hover:text-white text-zinc-300 px-8 py-5 rounded-3xl text-2xl md:text-3xl capitalize font-medium transition-all duration-200 shadow-sm group">
+                                        ${phrase}
+                                        <i data-lucide="copy" class="w-5 h-5 ml-2 text-zinc-600 group-hover:text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                                    </button>`
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            } 
+            
+            // TAB 3: NÓI LÁI (Giữ nguyên độ phức tạp vì nói lái cần nhiều option)
+            else if (currentTab === 'noi-lai') {
+                if (words.length < 2) {
+                    html = `<p class="text-center text-zinc-500 py-10">Cần nhập ít nhất 2 từ</p>`;
+                } else {
+                    const generateForPair = (idx1, idx2, labelStr) => {
+                        const w1 = parseSyllable(words[idx1]);
+                        const w2 = parseSyllable(words[idx2]);
+                        if (!w1 || !w2) return [];
+
+                        const getPhrase = (newW1, newW2) => {
+                            const newWords = [...words];
+                            newWords[idx1] = newW1; newWords[idx2] = newW2;
+                            return newWords.join(' ');
+                        };
+
+                        const res = [];
+                        const t1_1 = constructWord(w2.initial, w1.baseRhyme, w1.toneIndex);
+                        const t1_2 = constructWord(w1.initial, w2.baseRhyme, w2.toneIndex);
+                        if(t1_1 && t1_2) res.push({ type: `${labelStr} · Đổi Âm Đầu`, text: getPhrase(t1_1, t1_2) });
+
+                        const t2_1 = constructWord(w1.initial, w2.baseRhyme, w2.toneIndex);
+                        const t2_2 = constructWord(w2.initial, w1.baseRhyme, w1.toneIndex);
+                        if(t2_1 && t2_2) res.push({ type: `${labelStr} · Đổi Vần & Dấu`, text: getPhrase(t2_1, t2_2) });
+
+                        const t3_1 = constructWord(w1.initial, w1.baseRhyme, w2.toneIndex);
+                        const t3_2 = constructWord(w2.initial, w2.baseRhyme, w1.toneIndex);
+                        if(t3_1 && t3_2) res.push({ type: `${labelStr} · Chỉ đổi Dấu`, text: getPhrase(t3_1, t3_2) });
+
+                        const t4_1 = constructWord(w1.initial, w2.baseRhyme, w1.toneIndex);
+                        const t4_2 = constructWord(w2.initial, w1.baseRhyme, w2.toneIndex);
+                        if(t4_1 && t4_2) res.push({ type: `${labelStr} · Chỉ đổi Vần`, text: getPhrase(t4_1, t4_2) });
+                        return res;
+                    };
+
+                    let results = [];
+                    if (words.length === 2) {
+                        results = generateForPair(0, 1, "Kiểu lái");
+                    } else {
+                        results = [
+                            ...generateForPair(0, words.length - 1, "Đầu & Cuối"),
+                            ...generateForPair(words.length - 2, words.length - 1, "Hai từ cuối")
+                        ];
+                    }
+
+                    const unique = [];
+                    const seen = new Set();
+                    results.forEach(r => {
+                        const lower = r.text.toLowerCase();
+                        if (!seen.has(lower) && lower !== text.toLowerCase()) {
+                            seen.add(lower); unique.push(r);
+                        }
+                    });
+
+                    if (unique.length === 0) {
+                        html = `<p class="text-center text-zinc-500 py-10">Không tìm thấy kết quả phù hợp</p>`;
+                    } else {
+                        html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">` + 
+                            unique.map(item => {
+                                const btnId = 'btn-' + genId();
+                                return `
+                                <div class="group bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-2xl p-6 transition-colors flex flex-col justify-between items-start gap-4">
+                                    <div>
+                                        <span class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-3 block">${item.type}</span>
+                                        <p class="text-2xl font-medium text-white capitalize tracking-tight">${item.text}</p>
+                                    </div>
+                                    <button id="${btnId}" onclick="copyText('${item.text}', '${btnId}')" class="flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors px-3 py-1.5 rounded-lg border border-transparent hover:border-zinc-700 hover:bg-zinc-800">
+                                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> Sao chép
+                                    </button>
+                                </div>`
+                            }).join('') + `</div>`;
+                    }
+                }
+            }
+
+            contentEl.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        inputEl.addEventListener('input', renderResults);
+
+    </script>
+</body>
+</html>

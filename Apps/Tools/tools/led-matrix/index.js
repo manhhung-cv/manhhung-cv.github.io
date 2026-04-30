@@ -51,7 +51,7 @@ export function template() {
             .premium-range:active::-webkit-slider-thumb { transform: scale(0.9); }
 
             /* PREMIUM TOGGLE */
-            .premium-toggle { appearance: none; width: 44px; height: 24px; background: #e4e4e7; border-radius: 12px; position: relative; cursor: pointer; outline: none; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+            .premium-toggle { appearance: none; width: 44px; height: 24px; background: #e4e4e7; border-radius: 12px; position: relative; cursor: pointer; outline: none; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); flex-shrink: 0; }
             .dark .premium-toggle { background: #27272a; }
             .premium-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; background: #fff; border-radius: 50%; transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
             .premium-toggle:checked { background: #18181b; }
@@ -92,19 +92,31 @@ export function template() {
                 line-height: 1;
             }
 
-            /* HƯỚNG CHẠY */
+            /* HƯỚNG CHẠY & HIỆU ỨNG ĐẶC BIỆT */
             .dir-normal { animation-direction: normal; }
             .dir-reverse { animation-direction: reverse; }
+
+            .fx-led { mask-image: radial-gradient(circle, black 40%, transparent 50%); mask-size: 8px 8px; }
+            
+            @keyframes rainbow-hue { to { filter: hue-rotate(360deg); } }
+            .fx-rainbow { animation: rainbow-hue 3s linear infinite; }
+
+            @keyframes strobe-flash { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+            .fx-strobe .marquee-text { animation: strobe-flash 0.15s infinite; }
 
             @keyframes scroll-seamless {
                 from { transform: translate3d(0, 0, 0); }
                 to { transform: translate3d(-100%, 0, 0); } 
             }
-
-            /* EFFECTS MASK */
-            .fx-led { mask-image: radial-gradient(circle, black 40%, transparent 50%); mask-size: 8px 8px; }
             
-            /* FULLSCREEN CONTAINER */
+            /* FULLSCREEN CONTAINER (HỖ TRỢ IOS) */
+            #fs-overlay {
+                /* Đảm bảo overlay phủ kín toàn bộ viewport trên iOS Safari */
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                z-index: 99999;
+                /* Chống cuộn trang rác trên iOS */
+                touch-action: none;
+            }
             #led-fs-container.fs-rotated { transform: rotate(90deg); width: 100vh; height: 100vw; }
             #led-fs-container.fs-normal { transform: none; width: 100vw; height: 100vh; }
         </style>
@@ -112,7 +124,7 @@ export function template() {
         <div id="led-app" class="relative flex flex-col w-full max-w-[1000px] mx-auto min-h-[500px]">
             <div class="mb-8 px-2 text-center md:text-left">
                 <h2 class="text-[28px] font-black text-zinc-900 dark:text-white tracking-tight mb-2">LED Board</h2>
-                <p class="text-sm text-zinc-500 font-medium">Bảng điều khiển Minimal Premium.</p>
+                <p class="text-sm text-zinc-500 font-medium">Bảng điện tử tối ưu cho Concert & Sự kiện.</p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -126,7 +138,7 @@ export function template() {
 
                         <div class="grid grid-cols-2 gap-4 pt-2">
                             <div>
-                                <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2 px-1">Hiệu ứng</label>
+                                <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2 px-1">Kết cấu chữ</label>
                                 <div class="radio-pill-group">
                                     <input type="radio" name="fx" id="fx-solid" value="solid" class="radio-pill-input" checked>
                                     <label for="fx-solid" class="radio-pill-label">Cổ điển</label>
@@ -136,7 +148,7 @@ export function template() {
                                 </div>
                             </div>
                             <div>
-                                <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2 px-1">Màu sắc</label>
+                                <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2 px-1">Màu sắc mặc định</label>
                                 <div class="flex items-center gap-2">
                                     <div class="relative w-1/2 h-[42px] rounded-xl overflow-hidden ring-1 ring-zinc-200 dark:ring-zinc-800">
                                         <input type="color" id="color-text" value="#00ffcc" class="absolute -top-2 -left-2 w-[150%] h-[150%] cursor-pointer">
@@ -152,9 +164,9 @@ export function template() {
                     </div>
 
                     <div class="bento-card space-y-6">
-                        <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2 px-1">Chuyển động & Kích thước</label>
+                        <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block mb-2 px-1">Hiệu ứng & Chuyển động</label>
                         
-                        <div class="space-y-5">
+                        <div class="space-y-5 border-b border-zinc-100 dark:border-zinc-800/50 pb-5">
                             <div class="flex flex-col gap-2">
                                 <div class="flex justify-between px-1"><span class="text-xs font-bold text-zinc-600 dark:text-zinc-400">Tốc độ</span><span class="text-xs font-bold" id="lbl-speed">Vừa phải</span></div>
                                 <input type="range" id="range-speed" min="1" max="100" value="40" class="premium-range">
@@ -166,14 +178,22 @@ export function template() {
                             </div>
                         </div>
 
-                        <div class="flex flex-wrap gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800/50">
-                            <div class="flex items-center gap-3 w-full sm:w-auto">
-                                <input type="checkbox" id="toggle-dir" class="premium-toggle">
-                                <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300">Chạy ngược</span>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="toggle-rainbow" class="premium-toggle">
+                                <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300">Đổi màu RGB</span>
                             </div>
-                            <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="toggle-strobe" class="premium-toggle">
+                                <span class="text-xs font-bold text-red-500">Chớp nháy (Strobe)</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" id="toggle-dir" class="premium-toggle">
+                                <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300">Chạy ngược chiều</span>
+                            </div>
+                            <div class="flex items-center gap-3">
                                 <input type="checkbox" id="toggle-rotate" class="premium-toggle">
-                                <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300">Xoay ngang khi phát</span>
+                                <span class="text-xs font-bold text-zinc-700 dark:text-zinc-300">Xoay ngang màn</span>
                             </div>
                         </div>
                     </div>
@@ -181,6 +201,7 @@ export function template() {
                     <button id="btn-start" class="btn-start w-full py-5 text-sm uppercase flex justify-center items-center gap-3">
                         <i class="fas fa-expand"></i> BẮT ĐẦU PHÁT TOÀN MÀN HÌNH
                     </button>
+                    <p class="text-[11px] text-center text-zinc-400 font-medium px-2">Trên iPhone/iPad, bảng LED sẽ tự động mở ở chế độ Lớp phủ tối đa do giới hạn bảo mật của Apple.</p>
                 </div>
 
                 <div class="lg:col-span-5 sticky top-6">
@@ -205,7 +226,7 @@ export function template() {
             </div>
         </div>
 
-        <div id="fs-overlay" class="fixed inset-0 z-[10000] hidden bg-black flex items-center justify-center overflow-hidden cursor-pointer select-none">
+        <div id="fs-overlay" class="hidden bg-black flex items-center justify-center overflow-hidden cursor-pointer select-none">
             <div id="led-fs-container" class="fs-normal flex items-center justify-center transition-transform duration-300">
                 <div id="fs-engine" class="marquee-engine h-full items-center">
                     <div class="marquee-track fs-track">
@@ -230,8 +251,11 @@ export function init() {
     const colorBg = document.getElementById('color-bg');
     const rangeSpeed = document.getElementById('range-speed');
     const rangeGlow = document.getElementById('range-glow');
+    
     const toggleDir = document.getElementById('toggle-dir');
     const toggleRotate = document.getElementById('toggle-rotate');
+    const toggleRainbow = document.getElementById('toggle-rainbow');
+    const toggleStrobe = document.getElementById('toggle-strobe');
     const radiosFx = document.querySelectorAll('input[name="fx"]');
     
     // Labels
@@ -239,12 +263,16 @@ export function init() {
     const lblGlow = document.getElementById('lbl-glow');
 
     // DOM Elements
+    const pEngine = document.getElementById('preview-engine');
     const pTexts = document.querySelectorAll('.preview-text');
     const pTracks = document.querySelectorAll('.preview-track');
+    
     const fsOverlay = document.getElementById('fs-overlay');
     const fsContainer = document.getElementById('led-fs-container');
+    const fsEngine = document.getElementById('fs-engine');
     const fsTexts = document.querySelectorAll('.fs-text');
     const fsTracks = document.querySelectorAll('.fs-track');
+    
     const fsHint = document.getElementById('fs-hint');
     const btnStart = document.getElementById('btn-start');
 
@@ -252,14 +280,10 @@ export function init() {
         app.style.setProperty('--led-color', colorText.value);
         app.style.setProperty('--led-bg', colorBg.value);
         
-        // Tinh chỉnh công thức tốc độ chậm rãi hơn
-        // speedVal = 1 -> duration = 59.45s (Rất chậm)
-        // speedVal = 100 -> duration = 5s (Nhanh)
         const speedVal = parseInt(rangeSpeed.value);
         const duration = 60 - (speedVal * 0.55); 
         app.style.setProperty('--led-speed', `${duration}s`);
         
-        // Cập nhật nhãn
         if(speedVal < 30) lblSpeed.textContent = "Chậm";
         else if(speedVal < 70) lblSpeed.textContent = "Vừa phải";
         else lblSpeed.textContent = "Nhanh";
@@ -291,6 +315,16 @@ export function init() {
             if(selectedFx === 'led') text.classList.add('fx-led');
             else text.classList.remove('fx-led');
         });
+
+        // Xử lý Rainbow & Strobe cho toàn bộ Engine
+        const engines = [pEngine, fsEngine];
+        engines.forEach(eng => {
+            if (toggleRainbow.checked) eng.classList.add('fx-rainbow');
+            else eng.classList.remove('fx-rainbow');
+            
+            if (toggleStrobe.checked) eng.classList.add('fx-strobe');
+            else eng.classList.remove('fx-strobe');
+        });
     };
 
     const syncAll = () => {
@@ -299,7 +333,7 @@ export function init() {
         updateStyleAndDirection();
     };
 
-    [inputStr, colorText, colorBg, rangeSpeed, rangeGlow, toggleDir].forEach(el => {
+    [inputStr, colorText, colorBg, rangeSpeed, rangeGlow, toggleDir, toggleRainbow, toggleStrobe].forEach(el => {
         el.addEventListener('input', syncAll);
     });
     radiosFx.forEach(el => el.addEventListener('change', syncAll));
@@ -311,35 +345,39 @@ export function init() {
         fsOverlay.style.setProperty('--led-color', colorText.value);
         fsOverlay.style.setProperty('--led-bg', colorBg.value);
         
-        // Lấy thời gian gốc của bản xem trước
         const baseDuration = parseFloat(app.style.getPropertyValue('--led-speed'));
 
-        // Xử lý Xoay & Tỉ lệ tốc độ
         if (toggleRotate.checked) {
             fsContainer.className = 'fs-rotated flex items-center justify-center transition-transform duration-300';
             fsOverlay.style.setProperty('--led-size', '65vw');
-            
-            // Vì màn hình ngang (vw) có quãng đường cực dài so với xem trước, nhân duration lên 8 lần
             fsOverlay.style.setProperty('--led-speed', `${baseDuration * 8}s`);
         } else {
             fsContainer.className = 'fs-normal flex items-center justify-center transition-transform duration-300';
             fsOverlay.style.setProperty('--led-size', '65vh');
-            
-            // Màn hình dọc (vh) quãng đường ngắn hơn một chút, nhân duration lên 5 lần
             fsOverlay.style.setProperty('--led-speed', `${baseDuration * 5}s`);
         }
 
         fsOverlay.style.setProperty('--led-glow', `${parseInt(rangeGlow.value) * 3}px`);
 
         fsOverlay.classList.remove('hidden');
-        if (fsOverlay.requestFullscreen) fsOverlay.requestFullscreen().catch(() => {});
+        
+        // Gọi API Fullscreen bao gồm cả WebKit Fallback cho iPad/Safari cũ
+        if (fsOverlay.requestFullscreen) {
+            fsOverlay.requestFullscreen().catch(() => {});
+        } else if (fsOverlay.webkitRequestFullscreen) {
+            fsOverlay.webkitRequestFullscreen().catch(() => {});
+        }
         
         fsHint.style.opacity = '1';
         setTimeout(() => fsHint.style.opacity = '0', 3000);
     });
 
     fsOverlay.addEventListener('click', () => {
-        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        } else if (document.webkitFullscreenElement) {
+            document.webkitExitFullscreen().catch(() => {});
+        }
         fsOverlay.classList.add('hidden');
     });
 

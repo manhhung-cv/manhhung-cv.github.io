@@ -141,6 +141,40 @@ export function template() {
                         </div>
                     </div>
 
+                    <!-- THẺ CÂN NẶNG LÝ TƯỞNG (IBW) MỚI -->
+                    <div class="premium-card bg-white dark:bg-zinc-900 rounded-[24px] p-5 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm">
+                        <h3 class="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4">
+                            <i class="fas fa-balance-scale text-purple-500"></i> Cân nặng lý tưởng (IBW)
+                        </h3>
+                        
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div class="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center">
+                                <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Peterson <span class="font-medium lowercase opacity-70">(2016)</span></p>
+                                <p class="text-base font-black text-zinc-900 dark:text-white"><span id="res-ibw-peterson">0</span> <span class="text-[10px] font-medium text-zinc-500">kg</span></p>
+                            </div>
+                            <div class="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center">
+                                <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Devine <span class="font-medium lowercase opacity-70">(1974)</span></p>
+                                <p class="text-base font-black text-zinc-900 dark:text-white"><span id="res-ibw-devine">0</span> <span class="text-[10px] font-medium text-zinc-500">kg</span></p>
+                            </div>
+                            <div class="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center">
+                                <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Robinson <span class="font-medium lowercase opacity-70">(1983)</span></p>
+                                <p class="text-base font-black text-zinc-900 dark:text-white"><span id="res-ibw-robinson">0</span> <span class="text-[10px] font-medium text-zinc-500">kg</span></p>
+                            </div>
+                            <div class="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center">
+                                <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Miller <span class="font-medium lowercase opacity-70">(1983)</span></p>
+                                <p class="text-base font-black text-zinc-900 dark:text-white"><span id="res-ibw-miller">0</span> <span class="text-[10px] font-medium text-zinc-500">kg</span></p>
+                            </div>
+                            <div class="bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 border border-zinc-100 dark:border-zinc-700/50 flex flex-col justify-center">
+                                <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-0.5">Hamwi <span class="font-medium lowercase opacity-70">(1964)</span></p>
+                                <p class="text-base font-black text-zinc-900 dark:text-white"><span id="res-ibw-hamwi">0</span> <span class="text-[10px] font-medium text-zinc-500">kg</span></p>
+                            </div>
+                            <div class="bg-emerald-50 dark:bg-emerald-500/10 rounded-xl p-3 border border-emerald-100 dark:border-emerald-800/50 flex flex-col justify-center">
+                                <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-0.5">BMI WHO <span class="font-medium lowercase opacity-70">(18.5-24.9)</span></p>
+                                <p class="text-base font-black text-emerald-700 dark:text-emerald-400"><span id="res-ibw-who">0 - 0</span> <span class="text-[10px] font-medium opacity-70">kg</span></p>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div class="bg-white dark:bg-zinc-900 rounded-[20px] p-4 border border-zinc-200/80 dark:border-zinc-800/80 shadow-sm flex items-center gap-4">
                             <div class="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 text-lg"><i class="fas fa-heartbeat"></i></div>
@@ -253,6 +287,13 @@ export function init() {
         bmiStatus: document.getElementById('res-bmi-status'),
         bmiIndicator: document.getElementById('res-bmi-indicator'),
         
+        ibwPeterson: document.getElementById('res-ibw-peterson'),
+        ibwDevine: document.getElementById('res-ibw-devine'),
+        ibwRobinson: document.getElementById('res-ibw-robinson'),
+        ibwMiller: document.getElementById('res-ibw-miller'),
+        ibwHamwi: document.getElementById('res-ibw-hamwi'),
+        ibwWho: document.getElementById('res-ibw-who'),
+
         bmr: document.getElementById('res-bmr'),
         water: document.getElementById('res-water'),
         
@@ -371,12 +412,36 @@ export function init() {
         
         updateBMIBar(bmi);
 
-        // 2. BMR
+        // 2. Tính toán Cân nặng lý tưởng (IBW)
+        const heightInches = state.height / 2.54;
+        const inchesOver5Ft = heightInches - 60;
+        const isMale = state.gender === 'male';
+
+        const devine = isMale ? 50.0 + 2.3 * inchesOver5Ft : 45.5 + 2.3 * inchesOver5Ft;
+        const robinson = isMale ? 52.0 + 1.9 * inchesOver5Ft : 49.0 + 1.7 * inchesOver5Ft;
+        const miller = isMale ? 56.2 + 1.41 * inchesOver5Ft : 53.1 + 1.36 * inchesOver5Ft;
+        const hamwi = isMale ? 48.0 + 2.7 * inchesOver5Ft : 45.5 + 2.2 * inchesOver5Ft;
+        
+        // Peterson (2016) sử dụng Target BMI = 22 chuẩn cho cả 2 giới
+        const targetBmi = 22;
+        const peterson = (2.2 * targetBmi) + (3.5 * targetBmi * (heightM - 1.5));
+
+        const bmiLow = 18.5 * (heightM * heightM);
+        const bmiHigh = 24.9 * (heightM * heightM);
+
+        results.ibwPeterson.textContent = peterson.toFixed(1);
+        results.ibwDevine.textContent = devine.toFixed(1);
+        results.ibwRobinson.textContent = robinson.toFixed(1);
+        results.ibwMiller.textContent = miller.toFixed(1);
+        results.ibwHamwi.textContent = hamwi.toFixed(1);
+        results.ibwWho.textContent = `${bmiLow.toFixed(1)} - ${bmiHigh.toFixed(1)}`;
+
+        // 3. BMR
         let bmr = (10 * state.weight) + (6.25 * state.height) - (5 * state.age);
-        bmr = state.gender === 'male' ? bmr + 5 : bmr - 161;
+        bmr = isMale ? bmr + 5 : bmr - 161;
         results.bmr.textContent = Math.round(bmr).toLocaleString();
 
-        // 3. TDEE & Target Calo (Hero Card Theming)
+        // 4. TDEE & Target Calo (Hero Card Theming)
         const tdee = Math.round(bmr * state.activity);
         results.tdeeInfo.textContent = `TDEE (Tiêu hao): ${tdee.toLocaleString()} kcal`;
 
@@ -422,10 +487,10 @@ export function init() {
         
         results.targetCalo.textContent = targetCalo.toLocaleString();
 
-        // 4. Lượng nước
+        // 5. Lượng nước
         results.water.textContent = (state.weight * 0.035).toFixed(1);
 
-        // 5. Macros Render
+        // 6. Macros Render
         results.pPct.textContent = `${pPct}%`;
         results.cPct.textContent = `${cPct}%`;
         results.fPct.textContent = `${fPct}%`;
