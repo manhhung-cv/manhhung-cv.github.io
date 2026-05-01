@@ -3,477 +3,1150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trạm Ngôn Từ - Minimal Premium</title>
+    <title>Classic Amplifier Music Player</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts for Vintage Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;500;700&display=swap" rel="stylesheet">
+    
     <style>
+        /* Tùy chỉnh màu sắc và phong cách cổ điển NHƯ THẬT */
+        :root {
+            --metal-base: #cfd4d8;
+            --metal-dark: #8c9399;
+            --metal-light: #f4f6f8;
+            --led-on: #00f0ff; /* Cyan đặc trưng của màn hình VFD */
+            --led-off: #003333;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #09090b; /* zinc-950 */
-            color: #fafafa; /* zinc-50 */
+            background-color: #0d0d0d;
+            font-family: 'Oswald', sans-serif;
+            background-image: radial-gradient(circle at center, #1f1f1f 0%, #000 100%);
+            /* Ngăn chặn hiệu ứng pull-to-refresh và cấm bôi đen văn bản */
+            overscroll-behavior-y: none; 
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+        /* Hiệu ứng nhấp nháy cho nút Ghi hình */
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .blinking {
+            animation: blink 1s infinite;
+        }
+
+        /* Vỏ gỗ phong cách Walnut cao cấp */
+        .wood-casing {
+            background-color: #2e160a;
+            background-image: 
+                repeating-linear-gradient( 3deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 5px ),
+                linear-gradient(90deg, rgba(0,0,0,0.8) 0%, rgba(255,255,255,0.03) 3%, transparent 10%, transparent 90%, rgba(255,255,255,0.02) 97%, rgba(0,0,0,0.8) 100%),
+                linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.2) 10%, transparent 50%, rgba(0,0,0,0.4) 95%, rgba(0,0,0,0.8) 100%);
+            box-shadow: 
+                0 30px 60px -10px rgba(0,0,0,0.95),
+                inset 0 0 20px rgba(0,0,0,0.9);
+            border: 2px solid #0f0703;
+            border-radius: 6px;
+        }
+
+        /* Mặt nhôm xước (Brushed Aluminum) */
+        .metal-faceplate {
+            background-color: var(--metal-base);
+            background-image: 
+                repeating-linear-gradient( 90deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 3px ),
+                linear-gradient( 180deg, var(--metal-light) 0%, var(--metal-base) 40%, var(--metal-dark) 100% );
+            box-shadow: 
+                inset 0 3px 2px rgba(255,255,255,0.8),
+                inset 0 -2px 5px rgba(0,0,0,0.4),
+                0 15px 25px rgba(0,0,0,0.7);
+            border: 1px solid #5a5f63;
+            border-radius: 3px;
+        }
+
+        /* Bảng điều khiển chìm (Recessed Panels) */
+        .recessed-panel {
+            background: linear-gradient(180deg, #b8bdc2 0%, #d1d5d8 100%);
+            border-top: 1px solid #777;
+            border-bottom: 1px solid #fff;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.15);
+            border-radius: 4px;
+        }
+
+        /* Màn hình hiển thị LED/VFD */
+        .vfd-screen {
+            background-color: #030608;
+            border: 4px solid #111;
+            border-bottom-color: #2a2a2a;
+            border-right-color: #222;
+            box-shadow: 
+                inset 0 0 20px rgba(0,0,0,1),
+                inset 0 5px 15px rgba(0,0,0,0.8),
+                0 1px 1px rgba(255,255,255,0.7);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .screen-glass::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 40%, rgba(0,0,0,0.4) 100%);
+            pointer-events: none;
+            z-index: 11;
+        }
+
+        /* Chữ in lụa trên nhôm */
+        .silk-text {
+            color: #1a1a1a;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        /* ================= NÚM XOAY (ROTARY KNOBS) ================= */
+        .knob {
+            border-radius: 50%;
+            background: radial-gradient(circle at 50% 15%, #ffffff 0%, #d1d5d8 30%, #8c9399 70%, #4a4e52 100%);
+            box-shadow: 
+                0 8px 12px rgba(0,0,0,0.5),
+                0 2px 4px rgba(0,0,0,0.6),
+                inset 0 1px 2px rgba(255,255,255,0.9),
+                inset 0 -2px 5px rgba(0,0,0,0.4);
+            position: relative;
+            cursor: grab;
+            border: 1px solid #555;
+            display: flex;
+            justify-content: center;
+        }
+
+        .knob:active, .knob.dragging {
+            cursor: grabbing !important;
+        }
+
+        /* Vạch chỉ thị trên núm xoay */
+        .knob-indicator {
+            position: absolute;
+            width: 4px;
+            height: 35%; 
+            background: #111;
+            top: 5%;
+            border-radius: 2px;
+            box-shadow: inset 0 1px 1px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.4);
+        }
+
+        .volume-knob { width: 70px; height: 70px; }
+        .eq-knob { width: 44px; height: 44px; }
+
+        .knob-container {
+            position: relative;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin: 15px 0;
+            z-index: 10;
+        }
+
+        .knob-ticks {
+            position: absolute;
+            border-radius: 50%;
+            -webkit-mask-image: radial-gradient(transparent 68%, black 70%);
+            mask-image: radial-gradient(transparent 68%, black 70%);
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 55%, 0 100%);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .volume-ticks {
+            inset: -14px;
+            background: repeating-conic-gradient(from 225deg, rgba(0,0,0,0.85) 0deg, rgba(255,255,255,0.7) 1deg, transparent 1.5deg, transparent 27deg);
+            -webkit-mask-image: radial-gradient(transparent 69%, black 71%);
+            mask-image: radial-gradient(transparent 69%, black 71%);
+        }
+
+        .eq-ticks {
+            inset: -12px;
+            background: repeating-conic-gradient(from 225deg, rgba(0,0,0,0.85) 0deg, rgba(255,255,255,0.7) 1deg, transparent 1.5deg, transparent 22.5deg);
+            -webkit-mask-image: radial-gradient(transparent 65%, black 67%);
+            mask-image: radial-gradient(transparent 65%, black 67%);
+        }
+
+        .knob-value {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(5px);
+            background: #030608; 
+            color: var(--led-on);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            padding: 2px 6px;
+            border: 1px solid #333;
+            border-radius: 2px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.8), 0 0 5px rgba(0,240,255,0.2);
+            text-shadow: 0 0 3px var(--led-on);
         }
         
-        .fade-in {
-            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .knob-container.active .knob-value {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
         }
 
-        @keyframes fadeIn {
-            0% { opacity: 0; transform: translateY(10px); }
-            100% { opacity: 1; transform: translateY(0); }
+        .knob-socket {
+            background: #a3a8ad;
+            border-radius: 50%;
+            padding: 4px;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.5), 0 1px 1px rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 2;
         }
 
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        /* Nút bấm hình trụ kim loại */
+        .metal-button {
+            background: radial-gradient(circle at 50% 15%, #fff 0%, #dcdcdc 30%, #a0a0a0 80%, #666 100%);
+            border: 1px solid #777;
+            border-bottom: 2px solid #444;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.4), inset 0 2px 2px rgba(255,255,255,0.8);
+            color: #222;
+            border-radius: 50%;
+            transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .metal-button:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 1px rgba(0,0,0,0.3), inset 0 3px 5px rgba(0,0,0,0.3);
+            border-bottom: 1px solid #666;
+        }
+
+        /* Ốc vít */
+        .screw {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e0e0e0, #888);
+            border: 1px solid #555;
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.9), inset 0 -1px 2px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4), 0 -1px 1px rgba(255,255,255,0.8);
+            position: absolute;
+        }
+        .screw::after {
+            content: '';
+            position: absolute;
+            top: 6px; left: 2px;
+            width: 8px; height: 1.5px;
+            background: #222;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.4);
+            transform: rotate(45deg);
+        }
+
+        .vfd-text {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--led-on);
+            text-shadow: 0 0 6px var(--led-on), 0 0 2px var(--led-on);
+        }
+        
+        /* Thanh tiến trình VFD */
+        .vfd-progress {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(0, 240, 255, 0.15);
+            border-radius: 2px;
+            outline: none;
+            position: relative;
+            z-index: 20;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+        }
+        .vfd-progress::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 8px;
+            height: 16px;
+            background: #fff;
+            box-shadow: 0 0 8px var(--led-on), 0 0 15px var(--led-on);
+            border-radius: 1px;
+            cursor: pointer;
+        }
+        .vfd-progress::-moz-range-thumb {
+            width: 8px; height: 16px;
+            background: #fff;
+            box-shadow: 0 0 8px var(--led-on), 0 0 15px var(--led-on);
+            border-radius: 1px;
+            cursor: pointer;
+            border: none;
+        }
+
+        /* Nút Tải / Eject / Record */
+        .metal-upload-btn {
+            background: linear-gradient(180deg, #e0e4e8 0%, #b8bcc2 100%);
+            border: 1px solid #777;
+            border-bottom: 2px solid #555;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.9);
+            color: #1a1a1a;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+            transition: all 0.1s;
+            font-weight: bold;
+        }
+        .metal-upload-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2), inset 0 2px 4px rgba(0,0,0,0.2);
+            border-bottom: 1px solid #777;
+        }
+
+        /* ================= HIỆU ỨNG CD PLAYER ================= */
+        .cd-mask {
+            position: absolute;
+            left: 0; right: 0; bottom: 3px; top: -60px;
+            overflow: hidden;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .cd-disc {
+            position: absolute;
+            width: 60px; height: 60px;
+            left: 50%; bottom: 0;
+            border-radius: 50%;
+            /* Bề mặt vân kim loại và ánh cầu vồng quang học */
+            background: 
+                repeating-radial-gradient(circle at center, transparent 0, transparent 2px, rgba(0,0,0,0.05) 2.5px),
+                conic-gradient(from 0deg, #d4d4d4, #ffffff, #a3a3a3, #ffffff, #d4d4d4);
+            border: 1px solid #888;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 0 5px rgba(255,255,255,0.8);
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s;
+        }
+        
+        .cd-hole {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 14px; height: 14px;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: #000;
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.4);
+            border: 1px solid #999;
+        }
+
+        /* Các trạng thái của Đĩa CD */
+        .cd-hidden-up {
+            transform: translateX(-50%) translateY(-65px) rotate(0deg);
+            opacity: 0;
+        }
+        .cd-popped {
+            transform: translateX(-50%) translateY(-10px) rotate(180deg);
+            opacity: 1;
+        }
+        .cd-inserted {
+            transform: translateX(-50%) translateY(65px) rotate(360deg);
+            opacity: 1; /* Sẽ bị che bởi overflow hidden của mask */
+        }
+
+        /* Khe đĩa vật lý */
+        .cd-opening {
+            position: relative;
+            z-index: 20;
+            height: 6px;
+            background: #050505;
+            border-radius: 3px;
+            border-bottom: 1px solid #666;
+            border-top: 1px solid #111;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,1);
+            cursor: pointer;
+        }
+
+        input[type="file"] { display: none; }
     </style>
 </head>
-<body class="min-h-screen antialiased selection:bg-zinc-800 selection:text-white flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+<body class="min-h-screen flex items-center justify-center p-4 lg:p-8 relative">
+    
+    <!-- Audio Element ẩn -->
+    <audio id="audio-player" crossorigin="anonymous"></audio>
 
-    <main class="w-full max-w-3xl flex flex-col gap-12">
+    <!-- Main Amp Container -->
+    <div class="wood-casing w-full max-w-4xl relative z-10 p-2 md:p-4">
         
-        <!-- Header -->
-        <header class="text-center space-y-4 fade-in" style="animation-delay: 0ms;">
-            <div class="inline-flex items-center justify-center p-3 bg-zinc-900 border border-zinc-800 rounded-2xl mb-2">
-                <i data-lucide="check-circle" class="w-6 h-6 text-zinc-300"></i>
-            </div>
-            <h1 class="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-white">
-                Trạm Ngôn Từ
-            </h1>
-            <p class="text-zinc-400 text-base sm:text-lg max-w-lg mx-auto font-light">
-                Thuật toán tinh gọn. Ít nhưng chuẩn xác.
-            </p>
-        </header>
+        <!-- Mặt trước (Faceplate) -->
+        <div class="metal-faceplate rounded-sm p-5 md:p-8 relative">
+            
+            <!-- Ốc vít 4 góc -->
+            <div class="screw top-3 left-3"></div>
+            <div class="screw top-3 right-3"></div>
+            <div class="screw bottom-3 left-3"></div>
+            <div class="screw bottom-3 right-3"></div>
 
-        <!-- Tabs -->
-        <div class="flex justify-center fade-in" style="animation-delay: 100ms;">
-            <div class="flex items-center p-1 bg-zinc-900/80 border border-zinc-800/80 backdrop-blur-md rounded-full shadow-sm">
-                <button onclick="switchTab('van-xuoi')" id="tab-van-xuoi" class="tab-btn active relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-white bg-zinc-800 shadow-sm border border-zinc-700/50">
-                    <i data-lucide="mic-2" class="w-4 h-4"></i> Gieo Vần
-                </button>
-                <button onclick="switchTab('van-dao')" id="tab-van-dao" class="tab-btn relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-zinc-400 hover:text-zinc-200">
-                    <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Vần Đảo
-                </button>
-                <button onclick="switchTab('noi-lai')" id="tab-noi-lai" class="tab-btn relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-zinc-400 hover:text-zinc-200">
-                    <i data-lucide="arrow-right-left" class="w-4 h-4"></i> Nói Lái
-                </button>
-            </div>
-        </div>
-
-        <!-- Input Area -->
-        <div class="relative w-full group fade-in" style="animation-delay: 200ms;">
-            <div class="absolute inset-0 bg-zinc-800/20 blur-xl rounded-3xl transition-all group-focus-within:bg-zinc-700/30"></div>
-            <input 
-                type="text" 
-                id="wordInput" 
-                placeholder="Nhập từ để gieo vần (VD: cun cút...)" 
-                autocomplete="off"
-                class="relative w-full bg-zinc-900/50 backdrop-blur-sm border border-zinc-800 focus:border-zinc-600 rounded-3xl py-8 px-6 sm:px-12 text-2xl sm:text-4xl font-light text-center text-white placeholder:text-zinc-600 outline-none transition-all shadow-sm"
-            >
-        </div>
-
-        <!-- Results Area -->
-        <div id="resultsContainer" class="min-h-[250px] w-full pb-20">
-            <!-- Default Empty State -->
-            <div id="emptyState" class="flex flex-col items-center justify-center h-full mt-12 fade-in">
-                <div class="w-16 h-16 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-4">
-                    <i data-lucide="keyboard" class="w-6 h-6 text-zinc-500"></i>
+            <!-- Header: Logo & Model -->
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 border-b border-zinc-400 pb-3">
+                <div class="mb-2 md:mb-0">
+                    <h1 class="text-4xl font-bold silk-text tracking-widest">PIONEER<span class="text-xl ml-1 font-normal opacity-80">AUDIO</span></h1>
+                    <p class="text-xs silk-text font-bold">SOLID STATE STEREO AMPLIFIER / VINTAGE SERIES</p>
                 </div>
-                <p class="text-zinc-500 font-light">Bắt đầu nhập liệu để xem kết quả</p>
+                <div class="text-left md:text-right">
+                    <p class="text-xl silk-text font-bold tracking-wider">MODEL EQ-1978</p>
+                    <p class="text-xs silk-text font-bold">GRAPHIC EQUALIZER & FLUORESCENT ANALYZER</p>
+                </div>
+            </div>
+
+            <!-- Khu vực Màn hình Visualizer & Info -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                
+                <!-- Màn hình VFD Visualizer (Chiếm 2 cột) -->
+                <div class="lg:col-span-2 vfd-screen screen-glass p-4 relative flex flex-col justify-between">
+                    
+                    <!-- Trạng thái bài hát & Thanh tiến trình -->
+                    <div class="z-20 relative mb-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="vfd-text text-sm uppercase tracking-wider flex items-center gap-2">
+                                <span id="track-status">SẴN SÀNG</span>
+                                <span id="rec-indicator" class="text-red-500 font-bold opacity-0 transition-opacity duration-300">● REC</span>
+                            </span>
+                            <span class="vfd-text text-sm tracking-wider" id="track-time">00:00 / 00:00</span>
+                        </div>
+                        <input type="range" id="progress-slider" class="vfd-progress w-full" min="0" max="100" step="0.1" value="0">
+                    </div>
+                    
+                    <!-- Canvas Visualizer -->
+                    <canvas id="visualizer" class="w-full h-28 md:h-36 z-20 relative" width="600" height="150"></canvas>
+                    
+                    <!-- Tên bài hát chạy chữ -->
+                    <div class="mt-3 overflow-hidden whitespace-nowrap border-t border-[rgba(0,240,255,0.2)] pt-2 z-20 relative">
+                        <p class="vfd-text text-sm marquee tracking-wider" id="track-name">HÃY NHÉT ĐĨA (NẠP FILE) ĐỂ BẮT ĐẦU TRẢI NGHIỆM ĐỈNH CAO ÂM THANH CỔ ĐIỂN...</p>
+                    </div>
+                </div>
+
+                <!-- Cụm Volume & Nút chức năng -->
+                <div class="flex flex-col justify-between recessed-panel p-5">
+                    <div>
+                        <h3 class="silk-text text-sm font-bold text-center mb-4 border-b border-zinc-400 pb-2">MASTER VOLUME</h3>
+                        <p class="text-[10px] text-center silk-text mb-2 opacity-60">(Kéo lên/xuống để chỉnh)</p>
+                        
+                        <!-- NÚM VOLUME -->
+                        <div class="flex justify-center items-center py-2 relative">
+                            <i class="fas fa-volume-down silk-text text-xs absolute left-4 bottom-2 opacity-70"></i>
+                            
+                            <div class="knob-container">
+                                <div class="knob-value">70%</div>
+                                <div class="knob-ticks volume-ticks"></div>
+                                <div class="knob-socket" style="padding: 6px;">
+                                    <div class="knob volume-knob" data-value="0.7" data-min="0" data-max="1" data-step="0.1" id="volume-knob">
+                                        <div class="knob-indicator"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <i class="fas fa-volume-up silk-text text-xs absolute right-4 bottom-2 opacity-70"></i>
+                        </div>
+                    </div>
+
+                    <!-- Nút điều khiển -->
+                    <div class="mt-5">
+                        <h3 class="silk-text text-sm font-bold text-center mb-4">PLAYBACK</h3>
+                        <div class="flex justify-center space-x-5">
+                            <button id="btn-prev" class="metal-button w-12 h-12" title="Bài trước">
+                                <i class="fas fa-step-backward text-sm"></i>
+                            </button>
+                            <button id="btn-play-pause" class="metal-button w-14 h-14" title="Phát / Tạm dừng">
+                                <i class="fas fa-play text-xl" style="color: #c00; text-shadow: 0 1px 0 rgba(255,255,255,0.5);"></i>
+                            </button>
+                            <button id="btn-next" class="metal-button w-12 h-12" title="Bài tiếp">
+                                <i class="fas fa-step-forward text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- MODULE Ổ ĐĨA CD THAY THẾ NÚT UPLOAD -->
+                    <div class="mt-5 pt-4 border-t border-zinc-400 relative">
+                        <h3 class="silk-text text-[11px] font-bold text-center mb-3 tracking-wider">COMPACT DISC TRAY</h3>
+                        
+                        <!-- Khe và Đĩa -->
+                        <div class="relative w-full h-12 flex flex-col justify-end px-2">
+                            <!-- Vùng Mask chứa đĩa -->
+                            <div class="cd-mask">
+                                <div id="cd-disc" class="cd-disc cd-hidden-up">
+                                    <div class="cd-hole"></div>
+                                </div>
+                            </div>
+                            <!-- Khe trượt đĩa -->
+                            <div class="cd-opening group" onclick="ejectOrInsert()">
+                                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                    <span class="text-[8px] text-cyan-400 tracking-widest font-mono shadow-md" id="slot-indicator">INSERT DISC</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 mt-3">
+                            <button id="btn-eject" class="metal-upload-btn text-[10px] px-2 py-2 flex-1 rounded-sm shadow-md flex justify-center items-center" onclick="ejectOrInsert()">
+                                <i class="fas fa-eject mr-1 text-zinc-800"></i> <span id="eject-text">NHÉT ĐĨA</span>
+                            </button>
+                            <!-- NÚT GHI HÌNH (RECORD) -->
+                            <button id="btn-record" class="metal-upload-btn text-[10px] px-2 py-2 flex-1 rounded-sm shadow-md flex justify-center items-center transition-colors" onclick="toggleRecording()">
+                                <i class="fas fa-circle text-red-600 mr-1" id="record-icon"></i> <span id="record-text">GHI HÌNH</span>
+                            </button>
+                            <input type="file" id="file-upload" accept="audio/*">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Khu vực Graphic Equalizer 5 băng tần -->
+            <div class="recessed-panel p-5 relative mt-4">
+                <h3 class="silk-text text-sm font-bold absolute -top-3 left-6 bg-zinc-300 px-2 border border-zinc-400 rounded-sm">STEREO GRAPHIC EQUALIZER</h3>
+                <span class="silk-text text-[10px] absolute -top-2 right-6 opacity-60">(KÉO LÊN/XUỐNG ĐỂ CHỈNH NÚM)</span>
+                
+                <div class="flex justify-around items-end pt-8 pb-2">
+                    
+                    <!-- Băng tần 60Hz -->
+                    <div class="flex flex-col items-center">
+                        <span class="silk-text text-xs font-bold">+12</span>
+                        <div class="knob-container">
+                            <div class="knob-value">0 dB</div>
+                            <div class="knob-ticks eq-ticks"></div>
+                            <div class="knob-socket">
+                                <div class="knob eq-knob" data-freq="60" data-value="0" data-min="-12" data-max="12" data-step="2">
+                                    <div class="knob-indicator"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="silk-text text-xs font-bold">-12</span>
+                        <span class="silk-text text-sm font-bold mt-3 bg-zinc-300 px-2 rounded-sm shadow-inner border border-zinc-400">60Hz</span>
+                    </div>
+
+                    <!-- Băng tần 230Hz -->
+                    <div class="flex flex-col items-center">
+                        <span class="silk-text text-xs font-bold">+12</span>
+                        <div class="knob-container">
+                            <div class="knob-value">0 dB</div>
+                            <div class="knob-ticks eq-ticks"></div>
+                            <div class="knob-socket">
+                                <div class="knob eq-knob" data-freq="230" data-value="0" data-min="-12" data-max="12" data-step="2">
+                                    <div class="knob-indicator"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="silk-text text-xs font-bold">-12</span>
+                        <span class="silk-text text-sm font-bold mt-3 bg-zinc-300 px-2 rounded-sm shadow-inner border border-zinc-400">230Hz</span>
+                    </div>
+
+                    <!-- Băng tần 910Hz -->
+                    <div class="flex flex-col items-center">
+                        <span class="silk-text text-xs font-bold">+12</span>
+                        <div class="knob-container">
+                            <div class="knob-value">0 dB</div>
+                            <div class="knob-ticks eq-ticks"></div>
+                            <div class="knob-socket">
+                                <div class="knob eq-knob" data-freq="910" data-value="0" data-min="-12" data-max="12" data-step="2">
+                                    <div class="knob-indicator"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="silk-text text-xs font-bold">-12</span>
+                        <span class="silk-text text-sm font-bold mt-3 bg-zinc-300 px-2 rounded-sm shadow-inner border border-zinc-400">910Hz</span>
+                    </div>
+
+                    <!-- Băng tần 3.6kHz -->
+                    <div class="flex flex-col items-center">
+                        <span class="silk-text text-xs font-bold">+12</span>
+                        <div class="knob-container">
+                            <div class="knob-value">0 dB</div>
+                            <div class="knob-ticks eq-ticks"></div>
+                            <div class="knob-socket">
+                                <div class="knob eq-knob" data-freq="3600" data-value="0" data-min="-12" data-max="12" data-step="2">
+                                    <div class="knob-indicator"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="silk-text text-xs font-bold">-12</span>
+                        <span class="silk-text text-sm font-bold mt-3 bg-zinc-300 px-2 rounded-sm shadow-inner border border-zinc-400">3.6kHz</span>
+                    </div>
+
+                    <!-- Băng tần 14kHz -->
+                    <div class="flex flex-col items-center">
+                        <span class="silk-text text-xs font-bold">+12</span>
+                        <div class="knob-container">
+                            <div class="knob-value">0 dB</div>
+                            <div class="knob-ticks eq-ticks"></div>
+                            <div class="knob-socket">
+                                <div class="knob eq-knob" data-freq="14000" data-value="0" data-min="-12" data-max="12" data-step="2">
+                                    <div class="knob-indicator"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <span class="silk-text text-xs font-bold">-12</span>
+                        <span class="silk-text text-sm font-bold mt-3 bg-zinc-300 px-2 rounded-sm shadow-inner border border-zinc-400">14kHz</span>
+                    </div>
+
+                </div>
+                
+                <div class="text-center md:text-right mt-6 pr-0 md:pr-4">
+                    <button id="btn-reset-eq" class="metal-upload-btn text-xs px-4 py-2 rounded-sm shadow-md">
+                        <i class="fas fa-undo-alt mr-1 text-zinc-800"></i> RESET EQ
+                    </button>
+                </div>
             </div>
             
-            <!-- Dynamic Content Injected Here -->
-            <div id="dynamicContent" class="hidden"></div>
         </div>
+    </div>
 
-    </main>
-
-    <!-- Javascript Logic -->
+    <!-- JavaScript xử lý Audio, EQ, Visualizer và LOGIC NÚM XOAY / CD -->
     <script>
-        lucide.createIcons();
+        // DOM Elements
+        const audio = document.getElementById('audio-player');
+        const playPauseBtn = document.getElementById('btn-play-pause');
+        const resetEqBtn = document.getElementById('btn-reset-eq');
+        const fileUpload = document.getElementById('file-upload');
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        const trackStatus = document.getElementById('track-status');
+        const trackTime = document.getElementById('track-time');
+        const trackName = document.getElementById('track-name');
+        const progressSlider = document.getElementById('progress-slider');
 
-        // --- NGÔN NGỮ HỌC (LINGUISTIC ENGINE) ---
-        // Rút gọn danh sách phụ âm: Chỉ giữ lại các phụ âm dễ tạo ra từ có nghĩa nhất
-        const PRODUCTIVE_CONS = ['h', 'v', 'm', 'l', 'b', 't', 'ch', 'ng', 'n', 'ph', 'r', 's', 'th', 'tr', 'đ', 'd', 'x', 'k', 'c', 'g', 'nh', 'kh'];
+        // Web Audio API context
+        let audioContext;
+        let analyser;
+        let source;
+        let isInitialized = false;
+        let isSeeking = false; 
         
-        const TONE_MAP = [
-            ['a', 'à', 'á', 'ả', 'ã', 'ạ'], ['ă', 'ằ', 'ắ', 'ẳ', 'ẵ', 'ặ'], ['â', 'ầ', 'ấ', 'ẩ', 'ẫ', 'ậ'],
-            ['e', 'è', 'é', 'ẻ', 'ẽ', 'ẹ'], ['ê', 'ề', 'ế', 'ể', 'ễ', 'ệ'], ['i', 'ì', 'í', 'ỉ', 'ĩ', 'ị'],
-            ['o', 'ò', 'ó', 'ỏ', 'õ', 'ọ'], ['ô', 'ồ', 'ố', 'ổ', 'ỗ', 'ộ'], ['ơ', 'ờ', 'ớ', 'ở', 'ỡ', 'ợ'],
-            ['u', 'ù', 'ú', 'ủ', 'ũ', 'ụ'], ['ư', 'ừ', 'ứ', 'ử', 'ữ', 'ự'], ['y', 'ỳ', 'ý', 'ỷ', 'ỹ', 'ỵ']
+        // Trạng thái đĩa CD
+        let hasDisc = false;
+        let selectedFile = null;
+
+        // Trạng thái Ghi hình (Recording)
+        let isRecording = false;
+        let mediaRecorder;
+        let recordedChunks = [];
+        
+        // Mảng chứa các bộ lọc EQ
+        const eqBands = [
+            { freq: 60, type: 'lowshelf', filter: null },
+            { freq: 230, type: 'peaking', filter: null },
+            { freq: 910, type: 'peaking', filter: null },
+            { freq: 3600, type: 'peaking', filter: null },
+            { freq: 14000, type: 'highshelf', filter: null }
         ];
 
-        const CHAR_TO_BASE_TONE = {};
-        TONE_MAP.forEach(row => {
-            const base = row[0];
-            row.forEach((char, index) => { CHAR_TO_BASE_TONE[char] = { base, tone: index }; });
-        });
+        let animationId;
 
-        // Tách âm tiết
-        const parseSyllable = (word) => {
-            let text = word.toLowerCase().trim();
-            if (!text) return null;
-            let initial = '';
-            // Quét tìm phụ âm đầu dài nhất trước (tr, ngh, th, ph, ng, nh, kh, gh, ch, qu, gi)
-            const ALL_CONS_DESC = ['ngh', 'tr', 'th', 'ph', 'ng', 'nh', 'kh', 'gh', 'ch', 'qu', 'gi', 'b', 'c', 'd', 'đ', 'g', 'h', 'k', 'l', 'm', 'n', 'p', 'r', 's', 't', 'v', 'x'];
-            for (let c of ALL_CONS_DESC) {
-                if (text.startsWith(c)) {
-                    initial = c; text = text.substring(c.length); break;
-                }
-            }
-            let baseRhyme = '', toneIndex = 0;
-            for (let i = 0; i < text.length; i++) {
-                const char = text[i];
-                const mapInfo = CHAR_TO_BASE_TONE[char];
-                if (mapInfo) {
-                    baseRhyme += mapInfo.base;
-                    if (mapInfo.tone !== 0) toneIndex = mapInfo.tone;
-                } else {
-                    baseRhyme += char;
-                }
-            }
-            return { initial, baseRhyme, toneIndex, original: word };
-        };
+        // Khởi tạo Audio Context và Graph
+        function initAudio() {
+            if (isInitialized) return;
 
-        // Gắn thanh điệu
-        const applyTone = (baseRhyme, toneIndex) => {
-            if (toneIndex === 0) return baseRhyme;
-            let chars = baseRhyme.split('');
-            let vowels = [];
-            const bases = 'aăâeêioôơuưy';
-            for (let i = 0; i < chars.length; i++) {
-                if (bases.includes(chars[i])) vowels.push(i);
-            }
-            if (vowels.length === 0) return baseRhyme;
-
-            let targetIndex = vowels[0];
-            if (vowels.length === 2) {
-                const endsWithCons = !bases.includes(chars[chars.length - 1]);
-                if (endsWithCons) targetIndex = vowels[1];
-                else {
-                    const v1 = chars[vowels[0]], v2 = chars[vowels[1]];
-                    if ((v1 === 'u' && v2 === 'y') || (v1 === 'o' && v2 === 'a') || (v1 === 'o' && v2 === 'e')) targetIndex = vowels[1];
-                    else targetIndex = vowels[0];
-                }
-            } else if (vowels.length === 3) targetIndex = vowels[1];
-
-            const baseChar = chars[targetIndex];
-            let accentedChar = baseChar;
-            const row = TONE_MAP.find(r => r[0] === baseChar);
-            if (row) accentedChar = row[toneIndex];
-            chars[targetIndex] = accentedChar;
-            return chars.join('');
-        };
-
-        // Lắp ghép chữ
-        const constructWord = (initial, baseRhyme, toneIndex) => {
-            if (!baseRhyme) return '';
-            let firstVowel = baseRhyme.charAt(0);
-            let isFront = ['i', 'e', 'ê', 'y'].includes(firstVowel);
-            let finalInit = initial;
-
-            // Sửa chính tả tự động
-            if (isFront) {
-                if (initial === 'c') finalInit = 'k';
-                if (initial === 'g') finalInit = 'gh';
-                if (initial === 'ng') finalInit = 'ngh';
-            } else {
-                if (initial === 'k') finalInit = 'c';
-                if (initial === 'gh') finalInit = 'g';
-                if (initial === 'ngh') finalInit = 'ng';
-            }
-
-            let finalRhyme = baseRhyme;
-            if (finalInit === 'gi' && firstVowel === 'i') {
-                if (baseRhyme === 'i') return 'g' + applyTone('i', toneIndex);
-                finalRhyme = baseRhyme.substring(1);
-            }
-            if (finalInit === 'qu' && firstVowel === 'u') {
-                if (baseRhyme === 'u') return 'c' + applyTone('u', toneIndex);
-                finalRhyme = baseRhyme.substring(1);
-            }
-
-            // Loại bỏ các tổ hợp sai chính tả tiếng Việt nghiêm trọng
-            if (['k', 'gh', 'ngh'].includes(finalInit) && !isFront) return null;
-
-            return finalInit + applyTone(finalRhyme, toneIndex);
-        };
-
-        // THUẬT TOÁN MỚI: Tinh Gọn - Chỉ tạo cấu trúc Từ Láy chuẩn
-        function generateAccuratePairs(p1, p2) {
-            let results = new Set();
-            const tonePairs = [[p1.toneIndex, p2.toneIndex]];
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256; 
+            analyser.smoothingTimeConstant = 0.8; 
             
-            // Luật Bằng Trắc
-            const shiftMap = {
-                '0,2': [1, 5], // Ngang-Sắc <=> Huyền-Nặng (VD: Cun cút -> ngùn ngụt)
-                '1,5': [0, 2], 
-                '0,3': [1, 4], // Ngang-Hỏi <=> Huyền-Ngã
-                '1,4': [0, 3], 
-                '0,0': [1, 1], // Ngang-Ngang <=> Huyền-Huyền
-                '1,1': [0, 0]
-            };
-            const shifted = shiftMap[`${p1.toneIndex},${p2.toneIndex}`];
-            if (shifted) tonePairs.push(shifted);
-
-            tonePairs.forEach(tones => {
-                const [t1, t2] = tones;
-                PRODUCTIVE_CONS.forEach(c => {
-                    // CỐT LÕI: Láy toàn bộ phụ âm đầu cho cả 2 từ (như hun hút, vun vút)
-                    let w1 = constructWord(c, p1.baseRhyme, t1);
-                    let w2 = constructWord(c, p2.baseRhyme, t2);
-                    
-                    if (w1 && w2 && (c !== p1.initial || t1 !== p1.toneIndex)) {
-                        results.add(`${w1} ${w2}`);
-                    }
-                });
-            });
-
-            // Chỉ trả về 16 kết quả tự nhiên nhất để không gây rối mắt
-            return [...results].slice(0, 16);
-        }
-
-        // --- APP STATE & UI LOGIC ---
-        let currentTab = 'van-xuoi';
-        const inputEl = document.getElementById('wordInput');
-        const emptyStateEl = document.getElementById('emptyState');
-        const contentEl = document.getElementById('dynamicContent');
-
-        const placeholders = {
-            'van-xuoi': 'Nhập từ/cụm từ (VD: cun cút, sầu...)',
-            'van-dao': 'Nhập 2 từ để đảo vần (VD: bảo đảm)',
-            'noi-lai': 'Nhập câu hoặc 2 từ để nói lái (VD: bí mật)'
-        };
-
-        function switchTab(tabId) {
-            currentTab = tabId;
-            inputEl.placeholder = placeholders[tabId];
+            source = audioContext.createMediaElementSource(audio);
+            let previousNode = source;
             
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                if (btn.id === `tab-${tabId}`) {
-                    btn.className = "tab-btn active relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-white bg-zinc-800 shadow-sm border border-zinc-700/50";
-                } else {
-                    btn.className = "tab-btn relative flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all text-zinc-400 hover:text-zinc-200";
-                }
-            });
-            renderResults();
-        }
-
-        async function copyText(text, btnId) {
-            try {
-                await navigator.clipboard.writeText(text);
-                const btn = document.getElementById(btnId);
-                const originalHTML = btn.innerHTML;
+            eqBands.forEach(band => {
+                let filter = audioContext.createBiquadFilter();
+                filter.type = band.type;
+                filter.frequency.value = band.freq;
+                filter.gain.value = 0; 
+                band.filter = filter;
                 
-                btn.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-zinc-300"></i> Đã chép`;
-                btn.classList.add('border-zinc-500', 'bg-zinc-800');
-                lucide.createIcons();
+                previousNode.connect(filter);
+                previousNode = filter;
+            });
+            
+            previousNode.connect(analyser);
+            analyser.connect(audioContext.destination);
+            
+            isInitialized = true;
+            drawVisualizer();
 
-                setTimeout(() => {
-                    btn.innerHTML = originalHTML;
-                    btn.classList.remove('border-zinc-500', 'bg-zinc-800');
-                    lucide.createIcons();
-                }, 1500);
-            } catch (err) {
-                console.error('Failed to copy', err);
-            }
+            // Khôi phục giá trị EQ hiện hành vào AudioContext
+            document.querySelectorAll('.eq-knob').forEach(knob => {
+                const freq = parseInt(knob.dataset.freq);
+                const band = eqBands.find(b => b.freq === freq);
+                if (band && band.filter) {
+                    band.filter.gain.value = parseFloat(knob.dataset.value);
+                }
+            });
+            audio.volume = parseFloat(document.getElementById('volume-knob').dataset.value);
         }
 
-        const genId = () => Math.random().toString(36).substr(2, 9);
-
-        function renderResults() {
-            const text = inputEl.value.trim();
-            if (!text) {
-                emptyStateEl.classList.remove('hidden');
-                contentEl.classList.add('hidden');
-                contentEl.innerHTML = '';
+        // --- HỆ THỐNG GHI HÌNH (RECORDING LOGIC) ---
+        async function toggleRecording() {
+            if (isRecording) {
+                mediaRecorder.stop();
                 return;
             }
 
-            emptyStateEl.classList.add('hidden');
-            contentEl.classList.remove('hidden');
-            
-            contentEl.classList.remove('fade-in');
-            void contentEl.offsetWidth;
-            contentEl.classList.add('fade-in');
+            try {
+                // Yêu cầu người dùng chọn màn hình/tab và BẮT BUỘC bật chia sẻ âm thanh
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { displaySurface: "browser" },
+                    audio: true
+                });
 
-            let html = '';
-            const words = text.split(/\s+/);
-            const parsedWords = words.map(parseSyllable).filter(Boolean);
-
-            // TAB 1: GIEO VẦN
-            if (currentTab === 'van-xuoi') {
-                if (words.length === 1) {
-                    const parsed = parsedWords[0];
-                    if (parsed && parsed.baseRhyme) {
-                        let results = new Set();
-                        PRODUCTIVE_CONS.forEach(cons => {
-                            const exactTone = constructWord(cons, parsed.baseRhyme, parsed.toneIndex);
-                            if (exactTone && exactTone !== text.toLowerCase()) results.add(exactTone);
-                        });
-                        
-                        // Cắt giảm kết quả xuống 16 từ đẹp nhất
-                        const uniqueRes = [...results].slice(0, 16);
-                        
-                        html = `
-                            <div class="space-y-4 mt-6">
-                                <h3 class="text-zinc-500 text-sm font-medium uppercase tracking-widest pl-2">Gieo vần: -${parsed.baseRhyme} (16 kết quả chọn lọc)</h3>
-                                <div class="flex flex-wrap gap-2">
-                                    ${uniqueRes.map(word => {
-                                        const btnId = 'btn-' + genId();
-                                        return `
-                                        <button id="${btnId}" onclick="copyText('${word}', '${btnId}')" class="flex items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50 text-zinc-300 px-5 py-2.5 rounded-full text-base transition-all duration-200">
-                                            ${word}
-                                        </button>`
-                                    }).join('')}
-                                </div>
-                            </div>
-                        `;
-                    }
-                } else if (words.length === 2) {
-                    const p1 = parsedWords[0];
-                    const p2 = parsedWords[1];
-                    const rhymesStruct = `${p1.baseRhyme} · ${p2.baseRhyme}`;
-                    
-                    let uniqueRes = generateAccuratePairs(p1, p2).filter(phrase => phrase !== text.toLowerCase());
-                    
-                    html = `
-                        <div class="space-y-4 mt-6">
-                            <div class="flex items-center gap-3 pl-2 mb-6">
-                                <span class="px-3 py-1.5 bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-semibold rounded-full tracking-wider uppercase">Chuẩn vần điệu: ${rhymesStruct}</span>
-                            </div>
-                            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                                ${uniqueRes.map(phrase => {
-                                    const btnId = 'btn-' + genId();
-                                    return `
-                                    <button id="${btnId}" onclick="copyText('${phrase}', '${btnId}')" class="flex justify-center items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-500 hover:text-white hover:bg-zinc-800/80 text-zinc-300 px-4 py-3 rounded-2xl text-[15px] capitalize font-medium transition-all duration-200 shadow-sm">
-                                        ${phrase}
-                                    </button>`
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    html = `<p class="text-center text-zinc-500 py-10">Vui lòng nhập tối đa 2 từ để gieo vần chính xác nhất.</p>`;
+                // Kiểm tra xem người dùng có cấp quyền chia sẻ âm thanh không
+                const audioTracks = stream.getAudioTracks();
+                if (audioTracks.length === 0) {
+                    alert("⚠️ Bạn chưa bật 'Chia sẻ âm thanh của tab'. Video quay được sẽ không có tiếng!\n\nVui lòng làm lại và nhớ tích vào ô chia sẻ âm thanh.");
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
                 }
-            } 
-            
-            // TAB 2: VẦN ĐẢO (TINH GỌN)
-            else if (currentTab === 'van-dao') {
-                if (words.length < 2 || words.length > 2) {
-                    html = `<p class="text-center text-zinc-500 py-10">Tính năng này cần nhập chính xác 2 từ (VD: Bảo đảm)</p>`;
-                } else {
-                    const p1 = parsedWords[0];
-                    const p2 = parsedWords[1];
-                    let results = new Set();
 
-                    // 1. Chỉ đảo chéo Vần & Dấu (Đúng bản chất Đảo Vần)
-                    let r1_w1 = constructWord(p1.initial, p2.baseRhyme, p2.toneIndex);
-                    let r1_w2 = constructWord(p2.initial, p1.baseRhyme, p1.toneIndex);
-                    if (r1_w1 && r1_w2) results.add(`${r1_w1} ${r1_w2}`);
+                // Dùng định dạng mặc định (thường là webm với chất lượng rất tốt)
+                mediaRecorder = new MediaRecorder(stream);
 
-                    // 2. Đảo nguyên vị trí từ (Word Swap)
-                    let reversedWord = words.reverse().join(' ');
-                    results.add(reversedWord);
+                mediaRecorder.ondataavailable = function(e) {
+                    if (e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
 
-                    let uniqueRes = [...results].filter(phrase => phrase.toLowerCase() !== text.toLowerCase());
+                mediaRecorder.onstop = function() {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
                     
-                    html = `
-                        <div class="space-y-4 mt-6">
-                            <h3 class="text-zinc-500 text-sm font-medium uppercase tracking-widest pl-2 text-center mb-6">Kết quả đảo vần tinh gọn</h3>
-                            <div class="flex flex-col items-center gap-4">
-                                ${uniqueRes.map(phrase => {
-                                    const btnId = 'btn-' + genId();
-                                    return `
-                                    <button id="${btnId}" onclick="copyText('${phrase}', '${btnId}')" class="w-full max-w-md flex justify-center items-center gap-2 bg-zinc-900 border border-zinc-800 hover:border-zinc-500 hover:text-white text-zinc-300 px-8 py-5 rounded-3xl text-2xl md:text-3xl capitalize font-medium transition-all duration-200 shadow-sm group">
-                                        ${phrase}
-                                        <i data-lucide="copy" class="w-5 h-5 ml-2 text-zinc-600 group-hover:text-zinc-400 opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                                    </button>`
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
-            } 
-            
-            // TAB 3: NÓI LÁI (Giữ nguyên độ phức tạp vì nói lái cần nhiều option)
-            else if (currentTab === 'noi-lai') {
-                if (words.length < 2) {
-                    html = `<p class="text-center text-zinc-500 py-10">Cần nhập ít nhất 2 từ</p>`;
-                } else {
-                    const generateForPair = (idx1, idx2, labelStr) => {
-                        const w1 = parseSyllable(words[idx1]);
-                        const w2 = parseSyllable(words[idx2]);
-                        if (!w1 || !w2) return [];
+                    // Tự động tải video xuống
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `VintageAmp_Record_${new Date().getTime()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 100);
+                    
+                    recordedChunks = [];
+                    isRecording = false;
+                    updateRecordUI();
+                    
+                    // Dừng tất cả track để tắt biểu tượng chia sẻ màn hình của trình duyệt
+                    stream.getTracks().forEach(track => track.stop());
+                };
 
-                        const getPhrase = (newW1, newW2) => {
-                            const newWords = [...words];
-                            newWords[idx1] = newW1; newWords[idx2] = newW2;
-                            return newWords.join(' ');
-                        };
-
-                        const res = [];
-                        const t1_1 = constructWord(w2.initial, w1.baseRhyme, w1.toneIndex);
-                        const t1_2 = constructWord(w1.initial, w2.baseRhyme, w2.toneIndex);
-                        if(t1_1 && t1_2) res.push({ type: `${labelStr} · Đổi Âm Đầu`, text: getPhrase(t1_1, t1_2) });
-
-                        const t2_1 = constructWord(w1.initial, w2.baseRhyme, w2.toneIndex);
-                        const t2_2 = constructWord(w2.initial, w1.baseRhyme, w1.toneIndex);
-                        if(t2_1 && t2_2) res.push({ type: `${labelStr} · Đổi Vần & Dấu`, text: getPhrase(t2_1, t2_2) });
-
-                        const t3_1 = constructWord(w1.initial, w1.baseRhyme, w2.toneIndex);
-                        const t3_2 = constructWord(w2.initial, w2.baseRhyme, w1.toneIndex);
-                        if(t3_1 && t3_2) res.push({ type: `${labelStr} · Chỉ đổi Dấu`, text: getPhrase(t3_1, t3_2) });
-
-                        const t4_1 = constructWord(w1.initial, w2.baseRhyme, w1.toneIndex);
-                        const t4_2 = constructWord(w2.initial, w1.baseRhyme, w2.toneIndex);
-                        if(t4_1 && t4_2) res.push({ type: `${labelStr} · Chỉ đổi Vần`, text: getPhrase(t4_1, t4_2) });
-                        return res;
-                    };
-
-                    let results = [];
-                    if (words.length === 2) {
-                        results = generateForPair(0, 1, "Kiểu lái");
-                    } else {
-                        results = [
-                            ...generateForPair(0, words.length - 1, "Đầu & Cuối"),
-                            ...generateForPair(words.length - 2, words.length - 1, "Hai từ cuối")
-                        ];
+                // Nếu người dùng bấm "Dừng chia sẻ" từ pop-up mặc định của trình duyệt
+                stream.getVideoTracks()[0].onended = function () {
+                    if (isRecording) {
+                        mediaRecorder.stop();
                     }
+                };
 
-                    const unique = [];
-                    const seen = new Set();
-                    results.forEach(r => {
-                        const lower = r.text.toLowerCase();
-                        if (!seen.has(lower) && lower !== text.toLowerCase()) {
-                            seen.add(lower); unique.push(r);
-                        }
-                    });
+                mediaRecorder.start();
+                isRecording = true;
+                updateRecordUI();
 
-                    if (unique.length === 0) {
-                        html = `<p class="text-center text-zinc-500 py-10">Không tìm thấy kết quả phù hợp</p>`;
-                    } else {
-                        html = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">` + 
-                            unique.map(item => {
-                                const btnId = 'btn-' + genId();
-                                return `
-                                <div class="group bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-2xl p-6 transition-colors flex flex-col justify-between items-start gap-4">
-                                    <div>
-                                        <span class="text-[10px] font-semibold text-zinc-500 uppercase tracking-widest mb-3 block">${item.type}</span>
-                                        <p class="text-2xl font-medium text-white capitalize tracking-tight">${item.text}</p>
-                                    </div>
-                                    <button id="${btnId}" onclick="copyText('${item.text}', '${btnId}')" class="flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors px-3 py-1.5 rounded-lg border border-transparent hover:border-zinc-700 hover:bg-zinc-800">
-                                        <i data-lucide="copy" class="w-3.5 h-3.5"></i> Sao chép
-                                    </button>
-                                </div>`
-                            }).join('') + `</div>`;
-                    }
-                }
+            } catch (err) {
+                console.error("Lỗi khi ghi hình:", err);
+                alert("Không thể ghi hình. Hãy chắc chắn bạn đã cấp quyền chia sẻ màn hình/tab để hệ thống có thể quay lại giao diện Amply.");
             }
-
-            contentEl.innerHTML = html;
-            lucide.createIcons();
         }
 
-        inputEl.addEventListener('input', renderResults);
+        function updateRecordUI() {
+            const recIndicator = document.getElementById('rec-indicator');
+            const recIcon = document.getElementById('record-icon');
+            const recText = document.getElementById('record-text');
+            const btnRecord = document.getElementById('btn-record');
+
+            if (isRecording) {
+                recIndicator.classList.remove('opacity-0');
+                recIndicator.classList.add('blinking');
+                recIcon.classList.add('blinking');
+                recText.textContent = 'DỪNG GHI';
+                btnRecord.classList.add('text-red-700', 'bg-zinc-300'); // Nhấn mạnh nút đang ghi
+            } else {
+                recIndicator.classList.add('opacity-0');
+                recIndicator.classList.remove('blinking');
+                recIcon.classList.remove('blinking');
+                recText.textContent = 'GHI HÌNH';
+                btnRecord.classList.remove('text-red-700', 'bg-zinc-300');
+            }
+        }
+
+        // --- HỆ THỐNG ĐIỀU KHIỂN NÚM XOAY (KNOB LOGIC) ---
+        function setupKnobs() {
+            const knobs = document.querySelectorAll('.knob');
+            
+            knobs.forEach(knob => {
+                let isDragging = false;
+                let startY = 0;
+                let startValue = 0;
+                const min = parseFloat(knob.dataset.min);
+                const max = parseFloat(knob.dataset.max);
+                const step = parseFloat(knob.dataset.step) || 1;
+                
+                updateKnobVisual(knob);
+
+                const startDrag = (e) => {
+                    isDragging = true;
+                    knob.classList.add('dragging');
+                    knob.closest('.knob-container').classList.add('active'); 
+                    startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+                    startValue = parseFloat(knob.dataset.value);
+                    document.body.style.cursor = 'grabbing';
+                };
+
+                const doDrag = (e) => {
+                    if (!isDragging) return;
+                    e.preventDefault(); 
+                    if (!isInitialized) initAudio();
+
+                    const currentY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+                    const deltaY = startY - currentY; 
+                    const sensitivity = 250; 
+                    const range = max - min;
+                    let newValue = startValue + (deltaY / sensitivity) * range;
+                    
+                    if (step) {
+                        let stepsTaken = Math.round((newValue - min) / step);
+                        newValue = min + (stepsTaken * step);
+                    }
+                    
+                    newValue = Math.max(min, Math.min(max, newValue));
+                    
+                    if (Math.abs(newValue - parseFloat(knob.dataset.value)) > 0.001) {
+                        knob.dataset.value = newValue;
+                        updateKnobVisual(knob);
+                        
+                        if (knob.classList.contains('volume-knob')) {
+                            audio.volume = newValue;
+                        } else if (knob.classList.contains('eq-knob')) {
+                            const freq = parseInt(knob.dataset.freq);
+                            const band = eqBands.find(b => b.freq === freq);
+                            if (band && band.filter) {
+                                band.filter.gain.value = newValue;
+                            }
+                        }
+                    }
+                };
+
+                const endDrag = () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        knob.classList.remove('dragging');
+                        knob.closest('.knob-container').classList.remove('active');
+                        document.body.style.cursor = '';
+                    }
+                };
+
+                knob.addEventListener('mousedown', startDrag);
+                knob.addEventListener('touchstart', startDrag, { passive: false });
+                window.addEventListener('mousemove', doDrag);
+                window.addEventListener('touchmove', doDrag, { passive: false });
+                window.addEventListener('mouseup', endDrag);
+                window.addEventListener('touchend', endDrag);
+            });
+        }
+
+        function updateKnobVisual(knob) {
+            const val = parseFloat(knob.dataset.value);
+            const min = parseFloat(knob.dataset.min);
+            const max = parseFloat(knob.dataset.max);
+            
+            const percent = (val - min) / (max - min);
+            const angle = -135 + (percent * 270);
+            
+            knob.style.transform = `rotate(${angle}deg)`;
+
+            const container = knob.closest('.knob-container');
+            const valueDisplay = container.querySelector('.knob-value');
+            
+            if (valueDisplay) {
+                if (knob.classList.contains('volume-knob')) {
+                    valueDisplay.textContent = Math.round(val * 100) + '%';
+                } else if (knob.classList.contains('eq-knob')) {
+                    const displayVal = Math.round(val);
+                    const sign = displayVal > 0 ? '+' : '';
+                    valueDisplay.textContent = sign + displayVal + ' dB';
+                }
+            }
+        }
+
+        resetEqBtn.addEventListener('click', () => {
+            document.querySelectorAll('.eq-knob').forEach(knob => {
+                knob.dataset.value = 0;
+                updateKnobVisual(knob);
+            });
+            eqBands.forEach(band => {
+                if (band.filter) band.filter.gain.value = 0;
+            });
+        });
+
+        // --- ĐIỀU KHIỂN PHÁT NHẠC VÀ CD SLOT ---
+        
+        function ejectOrInsert() {
+            if(hasDisc) {
+                ejectDisc();
+            } else {
+                document.getElementById('file-upload').click();
+            }
+        }
+
+        fileUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                selectedFile = file;
+                insertDiscAnimation();
+            }
+        });
+
+        function insertDiscAnimation() {
+            const cd = document.getElementById('cd-disc');
+            const ejectText = document.getElementById('eject-text');
+            const slotIndicator = document.getElementById('slot-indicator');
+            
+            // Xóa animation cũ để ép đĩa hiện lên từ hư không (bên ngoài)
+            cd.style.transition = 'none';
+            cd.classList.remove('cd-popped', 'cd-inserted');
+            cd.classList.add('cd-hidden-up');
+            
+            // Ép DOM tải lại CSS
+            void cd.offsetWidth;
+            
+            // Đĩa xuất hiện thả xuống
+            cd.style.transition = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s';
+            cd.classList.remove('cd-hidden-up');
+            cd.classList.add('cd-popped');
+            
+            trackStatus.textContent = "ĐANG NẠP ĐĨA...";
+            
+            // Chờ đĩa lơ lửng rồi thụt vào
+            setTimeout(() => {
+                cd.classList.remove('cd-popped');
+                cd.classList.add('cd-inserted');
+                
+                setTimeout(() => {
+                    // Chạy nhạc
+                    loadAndPlayFile(selectedFile);
+                    hasDisc = true;
+                    ejectText.textContent = "ĐẨY ĐĨA (EJECT)";
+                    slotIndicator.textContent = "EJECT";
+                }, 800);
+            }, 1000);
+        }
+
+        function ejectDisc() {
+            const cd = document.getElementById('cd-disc');
+            const ejectText = document.getElementById('eject-text');
+            const slotIndicator = document.getElementById('slot-indicator');
+            
+            // Dừng nhạc
+            audio.pause();
+            playPauseBtn.innerHTML = '<i class="fas fa-play text-xl" style="color: #c00; text-shadow: 0 1px 0 rgba(255,255,255,0.5);"></i>';
+            trackStatus.textContent = "ĐÃ ĐẨY ĐĨA";
+            trackName.style.transform = `translateX(0px)`;
+            trackName.textContent = "HÃY NHÉT ĐĨA ĐỂ BẮT ĐẦU TRẢI NGHIỆM...";
+            trackTime.textContent = "00:00 / 00:00";
+            progressSlider.value = 0;
+            
+            // Tắt đèn Visualizer
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawInitialState();
+            
+            // Nhả đĩa ra ngoài khe
+            cd.classList.remove('cd-inserted');
+            cd.classList.add('cd-popped');
+            
+            // Chờ lấy đĩa cất đi
+            setTimeout(() => {
+                cd.classList.remove('cd-popped');
+                cd.classList.add('cd-hidden-up');
+                
+                // Trả về trạng thái trắng
+                fileUpload.value = '';
+                selectedFile = null;
+                hasDisc = false;
+                ejectText.textContent = "NHÉT ĐĨA (CHỌN FILE)";
+                slotIndicator.textContent = "INSERT DISC";
+                audio.src = '';
+            }, 1200);
+        }
+
+        function loadAndPlayFile(file) {
+            const url = URL.createObjectURL(file);
+            audio.src = url;
+            trackName.textContent = "♪ " + file.name.toUpperCase() + " ♪";
+            trackStatus.textContent = "ĐÃ NẠP";
+            
+            if (!isInitialized) initAudio();
+            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+            
+            audio.play();
+            playPauseBtn.innerHTML = '<i class="fas fa-pause text-xl" style="color: #c00; text-shadow: 0 1px 0 rgba(255,255,255,0.5);"></i>';
+            trackStatus.textContent = "ĐANG PHÁT";
+        }
+
+        function togglePlay() {
+            if (!hasDisc || !audio.src) {
+                alert("Vui lòng nhét đĩa (chọn file) để phát nhạc!");
+                return;
+            }
+
+            if (!isInitialized) initAudio();
+            if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+
+            if (audio.paused) {
+                audio.play();
+                playPauseBtn.innerHTML = '<i class="fas fa-pause text-xl" style="color: #c00; text-shadow: 0 1px 0 rgba(255,255,255,0.5);"></i>';
+                trackStatus.textContent = "ĐANG PHÁT";
+            } else {
+                audio.pause();
+                playPauseBtn.innerHTML = '<i class="fas fa-play text-xl" style="color: #c00; text-shadow: 0 1px 0 rgba(255,255,255,0.5);"></i>';
+                trackStatus.textContent = "TẠM DỪNG";
+            }
+        }
+
+        playPauseBtn.addEventListener('click', togglePlay);
+
+        audio.addEventListener('ended', () => {
+            playPauseBtn.innerHTML = '<i class="fas fa-play text-xl" style="color: #c00; text-shadow: 0 1px 0 rgba(255,255,255,0.5);"></i>';
+            trackStatus.textContent = "DỪNG LẠI";
+            progressSlider.value = 0;
+            // Tự động dừng quay phim nếu bài hát kết thúc (tùy chọn)
+            if (isRecording) toggleRecording();
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            if (audio.duration) {
+                if (!isSeeking) {
+                    progressSlider.value = (audio.currentTime / audio.duration) * 100;
+                }
+
+                let displayTime = isSeeking ? ((progressSlider.value / 100) * audio.duration) : audio.currentTime;
+                
+                const currentMins = Math.floor(displayTime / 60);
+                const currentSecs = Math.floor(displayTime % 60).toString().padStart(2, '0');
+                const durationMins = Math.floor(audio.duration / 60);
+                const durationSecs = Math.floor(audio.duration % 60).toString().padStart(2, '0');
+                trackTime.textContent = `${currentMins}:${currentSecs} / ${durationMins}:${durationSecs}`;
+            }
+        });
+
+        progressSlider.addEventListener('input', () => { isSeeking = true; });
+        progressSlider.addEventListener('change', (e) => {
+            if (audio.duration) {
+                audio.currentTime = (e.target.value / 100) * audio.duration;
+            }
+            isSeeking = false;
+        });
+
+
+        // --- LED SPECTRUM VISUALIZER VINTAGE ---
+        function drawVisualizer() {
+            animationId = requestAnimationFrame(drawVisualizer);
+            if (!analyser) return;
+
+            const bufferLength = analyser.frequencyBinCount; 
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const numBars = 32;
+            const barWidth = (canvas.width / numBars) - 4; 
+            
+            const vfdColorOn = '#00f0ff'; 
+            const vfdColorMid = '#ff3366'; 
+            const vfdColorOff = 'rgba(0, 240, 255, 0.08)'; 
+            
+            const numSegmentsPerBar = 15;
+            const segmentHeight = canvas.height / numSegmentsPerBar;
+            const segmentGap = 2;
+
+            for (let i = 0; i < numBars; i++) {
+                const dataIndex = Math.floor(i * (bufferLength / (numBars * 1.5)));
+                const value = dataArray[dataIndex];
+                
+                const activeSegments = Math.ceil((value / 255) * numSegmentsPerBar);
+                const x = i * (barWidth + 4) + 2;
+
+                for (let j = 0; j < numSegmentsPerBar; j++) {
+                    const y = canvas.height - (j + 1) * segmentHeight;
+                    
+                    ctx.beginPath();
+                    ctx.rect(x, y + segmentGap/2, barWidth, segmentHeight - segmentGap);
+                    
+                    if (j < activeSegments) {
+                        if (j > numSegmentsPerBar * 0.8) {
+                            ctx.fillStyle = vfdColorMid; 
+                            ctx.shadowColor = vfdColorMid;
+                        } else {
+                            ctx.fillStyle = vfdColorOn;
+                            ctx.shadowColor = vfdColorOn;
+                        }
+                        ctx.shadowBlur = 10; 
+                    } else {
+                        ctx.fillStyle = vfdColorOff;
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.fill();
+                }
+            }
+        }
+    
+        function drawInitialState() {
+            ctx.fillStyle = '#030608';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const numBars = 32;
+            const barWidth = (canvas.width / numBars) - 4;
+            const numSegmentsPerBar = 15;
+            const segmentHeight = canvas.height / numSegmentsPerBar;
+            const segmentGap = 2;
+            const vfdColorOff = 'rgba(0, 240, 255, 0.08)';
+
+            for (let i = 0; i < numBars; i++) {
+                const x = i * (barWidth + 4) + 2;
+                for (let j = 0; j < numSegmentsPerBar; j++) {
+                    const y = canvas.height - (j + 1) * segmentHeight;
+                    ctx.beginPath();
+                    ctx.rect(x, y + segmentGap/2, barWidth, segmentHeight - segmentGap);
+                    ctx.fillStyle = vfdColorOff;
+                    ctx.fill();
+                }
+            }
+        }
+    
+        drawInitialState();
+
+        let offset = 0;
+        function animateMarquee() {
+            const containerWidth = trackName.parentElement.offsetWidth;
+            const textWidth = trackName.offsetWidth;
+            
+            if (textWidth > containerWidth) {
+                offset -= 0.5;
+                if (Math.abs(offset) > textWidth) {
+                    offset = containerWidth;
+                }
+                trackName.style.transform = `translateX(${offset}px)`;
+            } else {
+                trackName.style.transform = `translateX(0px)`;
+            }
+            requestAnimationFrame(animateMarquee);
+        }
+        
+        // Khởi động khi load xong
+        window.addEventListener('load', () => {
+            setupKnobs(); 
+            requestAnimationFrame(animateMarquee);
+        });
 
     </script>
 </body>

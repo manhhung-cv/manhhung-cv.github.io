@@ -1,255 +1,10 @@
-// Đối tượng chứa các bản dịch
-const translations = {
-    vi: {
-        welcomeText: "Xin chào",
-        Fullname: "Đinh Mạnh Hùng",
-        Position: "Kỹ thuật Cơ Điện Tử",
-        Quote: "Mong muốn phát triển kỹ năng và kiến thức trong kỹ thuật cơ điện tử, học hỏi công nghệ mới và đóng góp vào dự án thực tế để trở thành chuyên gia trong tương lai.",
-        BtnHireMe: "Tuyển dụng",
-        BtnDownloadCV: "Tải CV",
-        Location: "Việt Nam 🇻🇳",
+// === 1. NGÔN NGỮ & ĐỔ DỮ LIỆU ĐỘNG (DATA-DRIVEN) ===
+let currentTranslations = {}; // Lưu trữ ngôn ngữ đang dùng
 
-
-        QualificationsText: "Bằng cấp",
-        SkillsText: "Kĩ năng",
-        ProjectText: "Dự án",
-        StoreText: "Cửa hàng",
-
-        HideInfo: "Thông tin bị ẩn, Chỉ hiển thị khi nhập mã tuyển dụng.",
-
-        DevText: "Lập trình",
-
-        SkillNote: "*Các đánh giá này được dựa trên đánh giá từ những người có kinh nghiệm chuyên ngành.",
-        Skill1: "Cơ điện tử",
-        Skill2: "Lập trình PLC",
-        Skill3: "Tin học văn phòng",
-        Skill4: "Lập trình Web [Front-End]",
-        Skill5: "Auto CAD",
-        Skill6: "Lập trình Arduino, Vi xử lý",
-
-        ExpText: "Kinh nghiệm",
-        Exp1: "Tốt nghiệp trung học phổ thông",
-        Exp2: "Tốt nghiệp Cao đẳng Cơ Điện Tử tiêu chuẩn Đức",
-        Exp3: "CTY TNHH KỸ THUẬT ELECOM VIỆT NAM",
-        Exp3a: "Thực tập sinh",
-        Exp3b: "Học hỏi về quy trình và công nghệ cơ điện tử",
-        Exp4: "Kỹ thuật",
-        Exp4a: "Kiểm tra & sửa chữa Motor điện, Lập trình PLC.",
-        TimeExp5: "1/2025",
-        Exp5: "CTY CP THIẾT KẾ VÀ QUẢN LÝ KỸ THUẬT IMPC",
-        Exp5a: "Kỹ thuật & Giám sát",
-        Exp5b: `Xử lý sự cố hệ thống điện: Khắc phục các lỗi như mất điện, lỗi thiết bị.
-        <br>Giám sát hệ thống phòng cháy chữa cháy: Kiểm tra thiết bị, kiểm soát các nguồn cháy nổ, đào tạo về phòng cháy chữa cháy. 
-        <br>Giám sát an toàn lao động: Nhắc nhở, phổ biến, huấn luyện an toàn cho nhà thầu thi công.
-        <br>Giám sát an ninh trật tự trong quản lý dự án`,
-
-        LanguagesText: "Ngoại ngữ",
-        LanEN: "Tiếng Anh A2",
-        LanJA: "Tiếng Nhật N4",
-
-        Cer1: "Cao đẳng Cơ Điện Tử - Tiêu chuẩn Đức",
-        Cer1a: "Trường Cao đẳng Công nghệ Quốc tế LILAMA2",
-
-    },
-    en: {
-        welcomeText: "Hello",
-        Fullname: "Dinh Manh Hung",
-        Position: "Mechatronics Engineering",
-        Quote: "*Desiring to develop skills and knowledge in mechatronics engineering, learn new technologies, and contribute to real-world projects to become an expert in the future.",
-        BtnHireMe: "Hire Me",
-        BtnDownloadCV: "Download CV",
-        Location: "Viet Nam 🇻🇳",
-
-        QualificationsText: "Qualifications",
-        SkillsText: "Skills",
-        ProjectText: "Project",
-        StoreText: "Store",
-
-        HideInfo: "Information is hidden, Only displayed when entering recruitment code.",
-
-        DevText: "Developer",
-
-        SkillNote: "*These evaluations are based on assessments from experienced professionals in the field.",
-        Skill1: "Mechatronics",
-        Skill2: "PLC Programming",
-        Skill3: "Office Computing",
-        Skill4: "Web Programming [Front-End]",
-        Skill5: "Auto CAD",
-        Skill6: "Arduino Programming, Microcontroller",
-
-        ExpText: "Experience",
-        Exp1: "High School Graduate",
-        Exp2: "Graduated from German-standard Mechatronics College",
-        Exp3: "ELECOM VIETNAM TECHNICAL CO., LTD",
-        Exp3a: "Intern",
-        Exp3b: "Learning about mechatronics processes and technology",
-        Exp4: "Technical",
-        Exp4a: "Inspect & repair electric motors, PLC.",
-        TimeExp5: "1/2025",
-        Exp5: "IMPC ENGINEERING DESIGN AND MANAGEMENT JSC",
-        Exp5a: "Technical & Supervision",
-        Exp5b: `Handling electrical system issues: Troubleshooting issues like power outages, equipment failures.
-        <br>Supervising fire protection systems: Inspecting equipment, monitoring fire/explosion sources, providing fire protection training.
-        <br>Supervising labor safety: Reminding, educating, and training safety practices for contractors.
-        <br>Supervising security and order in project management.`,
-
-        LanguagesText: "Languages",
-        LanEN: "English A2",
-        LanJA: "JLPT N4",
-
-        Cer1: "College of Mechatronics - German Standard",
-        Cer1a: "LILAMA2 International Technology College"
-    },
-    ja: {
-        welcomeText: "こんにちは",
-        Fullname: "ディン マン フン",
-        Position: "メカトロニクス工学",
-        Quote: "メカトロニクスのスキルと知識を伸ばしたいです。そして、新しい技術を学び、実際のプロジェクトに参加して、将来専門家になりたいです.",
-        BtnHireMe: "私を雇ってください",
-        BtnDownloadCV: "履歴書をダウンロード",
-        Location: "ベトナム 🇻🇳",
-
-        QualificationsText: "資格",
-        SkillsText: "スキル",
-        ProjectText: "プロジェクト",
-        StoreText: "ショップ",
-
-        HideInfo: " 情報は非表示、採用コード入力時のみ表示",
-        DevText: "開発者 ",
-
-        SkillNote: "*これらの評価は、専門分野で経験のある人の評価に基づいています。",
-        Skill1: "メカトロニクス",
-        Skill2: "PLCプログラミング",
-        Skill3: "オフィスコンピューティング",
-        Skill4: "ウェブプログラミング [フロントエンド]",
-        Skill5: "オートCAD",
-        Skill6: "Arduinoプログラミング、マイクロコントローラー",
-
-        ExpText: "経験 (けいけん)",
-        Exp1: "高校卒業",
-        Exp2: "ドイツ基準のメカトロニクス専門学校卒業",
-        Exp3: "ELECOM VIETNAM 技術有限会社",
-        Exp3a: "インターン",
-        Exp3b: "メカトロニクスのプロセスと技術について学ぶ",
-        Exp4: "技術",
-        Exp4a: "電動モーターの検査と修理, PLCプログラミング。",
-        TimeExp5: "1/2025",
-        Exp5: "IMPC設計と技術管理株式会社",
-        Exp5a: "技術と監督",
-        Exp5b: `電気システムの問題対応: 停電、設備故障などの問題を解決。
-<br>防火システムの監視: 機器の点検、火災や爆発源の管理、防火訓練。
-<br>労働安全の監視: 施工業者への注意喚起、教育、安全訓練。
-<br>プロジェクト管理の治安と秩序の監視。`,
-        LanguagesText: "言語 (げんご)",
-        LanEN: "英語 A2",
-        LanJA: "JLPT N4",
-
-        Cer1: "メカトロニクス専門学校 - ドイツ基準",
-        Cer1a: "LILAMA2国際技術専門学校"
-    },
-    zh: {
-        "welcomeText": "你好",
-        "Fullname": "丁孟雄",
-        "Position": "机电工程",
-        "Quote": "希望在机电工程领域提升技能和知识，学习新技术并参与实际项目，为成为未来的专家而努力。",
-        "BtnHireMe": "招聘",
-        "BtnDownloadCV": "下载简历",
-        Location: "越南 🇻🇳",
-
-        "QualificationsText": "学历",
-        "SkillsText": "技能",
-        "ProjectText": "项目",
-        "StoreText": "商店",
-
-        "HideInfo": "信息隐藏，仅输入招聘码时显示",
-
-        "DevText": "编程",
-
-        "SkillNote": "*这些评估基于有行业经验的专业人士的评价。",
-        "Skill1": "机电工程",
-        "Skill2": "PLC编程",
-        "Skill3": "办公软件",
-        "Skill4": "网页编程 [前端]",
-        "Skill5": "Auto CAD",
-        "Skill6": "Arduino和微处理器编程",
-
-        "ExpText": "经验",
-        "Exp1": "高中毕业",
-        "Exp2": "德国标准机电工程专科毕业",
-        "Exp3": "越南ELECOM技术有限公司",
-        "Exp3a": "实习生",
-        "Exp3b": "学习机电工程的流程和技术",
-        "Exp4": "技术",
-        "Exp4a": "电动机的检查和维修",
-        "TimeExp5": "1/2025",
-        "Exp5": "IMPC设计与技术管理股份公司",
-        "Exp5a": "技术与监督",
-        "Exp5b": "处理电力系统问题：解决电力中断、设备故障等问题。<br>消防系统监控：检查设备，控制火灾源，进行消防培训。<br>职业安全监督：提醒、宣传和培训施工承包商的安全措施。<br>项目管理中的秩序与安全监控。",
-
-        LanguagesText: "語言",
-        LanEN: "英語 A2",
-        LanJA: "JLPT N4",
-
-        Cer1: "机电一体化学院 - 德国标准",
-        Cer1a: "LILAMA2国际技术学院",
-    },
-    de: {
-        welcomeText: "Hallo",
-        Fullname: "Dinh Manh Hung",
-        Position: "Mechatronik-Ingenieurwesen",
-        Quote: "*Ich möchte meine Fähigkeiten und Kenntnisse im Bereich Mechatronik-Ingenieurwesen weiterentwickeln, neue Technologien erlernen und zu realen Projekten beitragen, um in Zukunft ein Experte zu werden.",
-        BtnHireMe: "Stellen Sie mich ein",
-        BtnDownloadCV: "Lebenslauf herunterladen",
-        Location: "Vietnam 🇻🇳",
-
-        QualificationsText: "Qualifikationen",
-        SkillsText: "Fähigkeiten",
-        ProjectText: "Projekt",
-        StoreText: "Shop",
-
-        HideInfo: "Informationen sind ausgeblendet und werden nur bei Eingabe des Rekrutierungscodes angezeigt.",
-
-        DevText: "Entwickler",
-
-        SkillNote: "*Diese Bewertungen basieren auf Einschätzungen erfahrener Fachleute auf diesem Gebiet.",
-        Skill1: "Mechatronik",
-        Skill2: "SPS-Programmierung",
-        Skill3: "Büro-IT",
-        Skill4: "Webprogrammierung [Front-End]",
-        Skill5: "Auto CAD",
-        Skill6: "Arduino-Programmierung, Mikrocontroller",
-
-        ExpText: "Erfahrung",
-        Exp1: "Abitur",
-        Exp2: "Abschluss am Deutsch-Standard Mechatronik Kolleg",
-        Exp3: "ELECOM VIETNAM TECHNICAL CO., LTD",
-        Exp3a: "Praktikant",
-        Exp3b: "Einblick in mechatronische Prozesse und Technologie",
-        Exp4: "Techniker",
-        Exp4a: "Elektromotoren prüfen und reparieren",
-        TimeExp5: "1/2025",
-        Exp5: "IMPC ENGINEERING DESIGN AND MANAGEMENT JSC",
-        Exp5a: "Technik & Aufsicht",
-        Exp5b: `Behebung von Problemen mit elektrischen Systemen: Fehlersuche bei Stromausfällen, Geräteausfällen.
-        <br>Überwachung von Brandschutzsystemen: Überprüfung der Ausrüstung, Überwachung von Brand-/Explosionsquellen, Durchführung von Brandschutzschulungen.
-        <br>Überwachung der Arbeitssicherheit: Erinnern, Aufklären und Schulen von Sicherheitsmaßnahmen für Auftragnehmer.
-        <br>Überwachung von Sicherheit und Ordnung im Projektmanagement.`,
-
-        LanguagesText: "Sprachen",
-        LanEN: "Englisch A2",
-        LanJA: "JLPT N4",
-
-        Cer1: "Mechatronik Kolleg - Deutscher Standard",
-        Cer1a: "LILAMA2 International Technology College"
-    }
-};
-
-
-// === CORE FUNCTIONS ===
-// === LOGIC ===
 function setLanguage(lang) {
     localStorage.setItem('language', lang);
     applyLanguage(lang);
+    
     const flags = {
         'vi': './Asset/icon/flag/Vietnam.png',
         'en': './Asset/icon/flag/US.png',
@@ -257,73 +12,120 @@ function setLanguage(lang) {
         'de': './Asset/icon/flag/germany.png',
         'zh': './Asset/icon/flag/china.png'
     };
+    
     const flagEl = document.getElementById('currentFlag');
     if (flagEl && flags[lang]) flagEl.src = flags[lang];
     document.getElementById('languageDropdown').classList.add('hidden');
 }
 
-function applyLanguage(lang) {
-    if (!translations[lang]) lang = 'vi';
-    const t = translations[lang];
-    document.querySelectorAll('[data-translate]').forEach(el => {
-        const key = el.getAttribute('data-translate');
-        if (t[key]) el.innerHTML = t[key];
-    });
+async function applyLanguage(lang) {
+    try {
+        // Tải file JSON tương ứng với ngôn ngữ
+        const response = await fetch(`./Asset/locales/${lang}.json`);
+        
+        // Nếu không tìm thấy file, fallback về tiếng việt
+        if (!response.ok) throw new Error("Language not found");
+        
+        currentTranslations = await response.json();
+
+        // 1.1. Thay thế text tĩnh trên UI (Dựa vào data-translate)
+        document.querySelectorAll('[data-translate]').forEach(el => {
+            const key = el.getAttribute('data-translate');
+            if (currentTranslations[key]) {
+                el.innerHTML = currentTranslations[key];
+            }
+        });
+
+        // 1.2. TỰ ĐỘNG RENDER KỸ NĂNG (Dữ liệu động)
+        let skillHtml = '';
+        let s = 1;
+        while (currentTranslations[`Skill_${s}_Name`]) {
+            skillHtml += `
+            <div class="skill-row">
+                <div class="skill-meta">
+                    <span>${currentTranslations[`Skill_${s}_Name`]}</span> 
+                    <span class="percent">${currentTranslations[`Skill_${s}_Percent`]}</span>
+                </div>
+                <div class="bar-bg">
+                    <div class="bar-fill" style="width: ${currentTranslations[`Skill_${s}_Percent`]}"></div>
+                </div>
+            </div>`;
+            s++;
+        }
+        const skillContainer = document.getElementById('dynamic-skills');
+        if (skillContainer) skillContainer.innerHTML = skillHtml;
+
+        // 1.3. TỰ ĐỘNG RENDER KINH NGHIỆM (Dữ liệu động)
+        let expHtml = '';
+        let e = 1;
+        while (currentTranslations[`Exp_${e}_Name`]) {
+            let timeBadge = currentTranslations[`Exp_${e}_Time`] ? `<span class="time-badge">${currentTranslations[`Exp_${e}_Time`]}</span>` : '';
+            let descText = currentTranslations[`Exp_${e}_Desc`] ? `<p class="desc">${currentTranslations[`Exp_${e}_Desc`]}</p>` : '';
+            
+            expHtml += `
+            <div class="timeline-item">
+                ${timeBadge}
+                <h4>${currentTranslations[`Exp_${e}_Name`]}</h4>
+                <div class="role-title">${currentTranslations[`Exp_${e}_Role`]}</div>
+                ${descText}
+            </div>`;
+            e++;
+        }
+        const expContainer = document.getElementById('dynamic-experience');
+        if (expContainer) expContainer.innerHTML = expHtml;
+
+    } catch (error) {
+        console.error("Lỗi ngôn ngữ:", error);
+        if(lang !== 'vi') applyLanguage('vi'); // Fallback
+    }
 }
 
 function toggleDropdown() {
     document.getElementById('languageDropdown').classList.toggle('hidden');
 }
+
 // === 2. THEME LOGIC (3 CHẾ ĐỘ: SYSTEM -> LIGHT -> DARK) ===
 const themeBtn = document.getElementById('themeToggle');
-const themeIcon = themeBtn.querySelector('i');
-
-// Danh sách các chế độ
+const themeIcon = themeBtn ? themeBtn.querySelector('i') : null;
 const themeModes = ['system', 'light', 'dark'];
 let currentThemeIndex = 0;
 
-// Hàm kiểm tra thiết bị đang để chế độ tối hay không
 function isSystemDark() {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-// Hàm áp dụng giao diện
 function applyTheme(mode) {
-    // Xóa class dark-theme trước
     document.body.classList.remove('dark-theme');
-
     let isDark = false;
-
+    
     if (mode === 'system') {
         isDark = isSystemDark();
-        themeIcon.className = 'fas fa-desktop'; // Icon Máy tính
-        themeBtn.title = "Chế độ: Theo thiết bị";
+        if(themeIcon) themeIcon.className = 'fas fa-desktop';
+        if(themeBtn) themeBtn.title = "Chế độ: Theo hệ thống";
     } else if (mode === 'light') {
         isDark = false;
-        themeIcon.className = 'fas fa-sun'; // Icon Mặt trời
-        themeBtn.title = "Chế độ: Sáng";
+        if(themeIcon) themeIcon.className = 'fas fa-sun';
+        if(themeBtn) themeBtn.title = "Chế độ Sáng";
     } else if (mode === 'dark') {
         isDark = true;
-        themeIcon.className = 'fas fa-moon'; // Icon Mặt trăng
-        themeBtn.title = "Chế độ: Tối";
+        if(themeIcon) themeIcon.className = 'fas fa-moon';
+        if(themeBtn) themeBtn.title = "Chế độ Tối";
     }
-
-    // Nếu cần tối, thêm class
+    
     if (isDark) {
         document.body.classList.add('dark-theme');
     }
-
     localStorage.setItem('themeMode', mode);
 }
 
-// Sự kiện click nút Theme
-themeBtn.addEventListener('click', () => {
-    // Chuyển sang index tiếp theo (0 -> 1 -> 2 -> 0)
-    currentThemeIndex = (currentThemeIndex + 1) % themeModes.length;
-    applyTheme(themeModes[currentThemeIndex]);
-});
+if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+        currentThemeIndex = (currentThemeIndex + 1) % themeModes.length;
+        applyTheme(themeModes[currentThemeIndex]);
+    });
+}
 
-// Lắng nghe sự thay đổi của hệ thống (nếu đang ở chế độ system)
+// Lắng nghe sự thay đổi của hệ thống
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
     if (themeModes[currentThemeIndex] === 'system') {
         if (e.matches) document.body.classList.add('dark-theme');
@@ -331,58 +133,35 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e =
     }
 });
 
-
-// === 3. GLASS MODE LOGIC (MỚI) ===
+// === 3. GLASS MODE LOGIC ===
 const glassBtn = document.getElementById('glassToggle');
-const glassIcon = glassBtn.querySelector('i');
+const glassIcon = glassBtn ? glassBtn.querySelector('i') : null;
 
 function toggleGlass() {
     document.body.classList.toggle('no-glass');
     const isNoGlass = document.body.classList.contains('no-glass');
-
-    // Lưu trạng thái
     localStorage.setItem('glassMode', isNoGlass ? 'off' : 'on');
-
-    // Đổi icon và title
-    if (isNoGlass) {
-        glassIcon.className = 'fa-solid fa-droplet-slash'; // Icon khối đặc
-        glassBtn.title = "Bật hiệu ứng kính";
-    } else {
-        glassIcon.className = 'fa-solid fa-droplet '; // Icon khối 3D/Kính
-        glassBtn.title = "Tắt hiệu ứng kính";
+    
+    if (glassIcon && glassBtn) {
+        if (isNoGlass) {
+            glassIcon.className = 'fa-solid fa-droplet-slash';
+            glassBtn.title = "Bật hiệu ứng kính";
+        } else {
+            glassIcon.className = 'fa-solid fa-droplet';
+            glassBtn.title = "Tắt hiệu ứng kính";
+        }
     }
 }
 
-glassBtn.addEventListener('click', toggleGlass);
+if (glassBtn) glassBtn.addEventListener('click', toggleGlass);
 
-
-// === INIT (KHỞI TẠO) ===
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Load Language
-    const savedLang = localStorage.getItem('language') || 'vi';
-    setLanguage(savedLang);
-
-    // 2. Load Theme
-    const savedThemeMode = localStorage.getItem('themeMode') || 'system';
-    currentThemeIndex = themeModes.indexOf(savedThemeMode);
-    if (currentThemeIndex === -1) currentThemeIndex = 0; // Fallback
-    applyTheme(themeModes[currentThemeIndex]);
-
-    // 3. Load Glass Mode
-    const savedGlass = localStorage.getItem('glassMode');
-    if (savedGlass === 'off') {
-        toggleGlass(); // Tắt nếu đã lưu là tắt
-        // Fix logic: toggleGlass sẽ đảo ngược trạng thái hiện tại (mặc định là có glass)
-        // nên gọi 1 lần sẽ thành no-glass.
-    }
-});
-
-// Modal
+// === 4. MODAL & DOWNLOAD ===
 function closeModal(e) {
     if (!e || e.target.id === 'modalOverlay' || e.target.closest('.btn-text')) {
         document.getElementById('modalOverlay').classList.add('hidden');
     }
 }
+
 function showModal(title, content) {
     document.getElementById('modalTitle').innerText = title;
     document.getElementById('modalContent').innerHTML = content;
@@ -399,28 +178,93 @@ function DownloadCV() {
     showModal("Thông báo", "Đang tải xuống CV...");
 }
 
-// === VIEW MODE LOGIC (NEW) ===
+// === 5. VIEW MODE LOGIC (A4) ===
 const viewBtn = document.getElementById('viewModeBtn');
-const viewIcon = viewBtn.querySelector('i');
+const viewIcon = viewBtn ? viewBtn.querySelector('i') : null;
 
-viewBtn.addEventListener('click', () => {
-    document.body.classList.toggle('a4-mode');
+// Cập nhật hàm xử lý nút chuyển chế độ A4
+if (viewBtn) {
+    viewBtn.addEventListener('click', () => {
+        document.body.classList.toggle('a4-mode');
+        const isA4 = document.body.classList.contains('a4-mode');
+        
+        if (isA4) {
+            viewIcon.className = 'fas fa-th-large';
+            // Tự động tắt Dark Theme để giấy luôn trắng khi xem PDF
+            document.body.classList.remove('dark-theme'); 
+        } else {
+            viewIcon.className = 'fas fa-file-alt';
+            // Khôi phục theme người dùng đã chọn trước đó
+            const savedThemeMode = localStorage.getItem('themeMode') || 'system';
+            applyTheme(savedThemeMode);
+        }
+    });
+}
 
-    // Đổi icon để phản hồi trạng thái
-    const isA4 = document.body.classList.contains('a4-mode');
-    if (isA4) {
-        viewIcon.className = 'fas fa-th-large'; // Icon Dashboard
-        viewBtn.title = "Chuyển về Dashboard";
-
-        // Hiển thị thông báo nhỏ
-        // showModal("Chế độ xem A4", "Bạn đang xem CV dưới dạng khổ giấy in.");
-    } else {
-        viewIcon.className = 'fas fa-file-alt'; // Icon Giấy
-        viewBtn.title = "Chuyển sang khổ A4";
+// Hàm In/Tải chuyên dụng
+function printCV() {
+    // Chỉ kích hoạt khi đang ở chế độ A4 để có bố cục đẹp nhất
+    if (!document.body.classList.contains('a4-mode')) {
+        document.body.classList.add('a4-mode');
     }
-});
+    window.print();
+}
 
-// Init
+function DownloadCV() {
+    showModal("Thông báo", "Đang xuất file PDF chuẩn A4, vui lòng đợi...");
+
+    // Tự động bật chế độ A4 (a4-mode) để gom layout về đúng 794px[cite: 1]
+    const wasA4 = document.body.classList.contains('a4-mode');
+    if (!wasA4) {
+        document.body.classList.add('a4-mode');
+    }
+
+    const element = document.getElementById('mainContainer'); // Lấy khung CV[cite: 1]
+
+    // Cấu hình html2pdf map 1:1 với pixel trên web
+    const opt = {
+        margin:       0,
+        filename:     'DINHMANHHUNG-CV.pdf',
+        image:        { type: 'jpeg', quality: 1 }, // Render chất lượng cao nhất
+        html2canvas:  { 
+            scale: 2, // Render độ nét gấp đôi để text không bị mờ
+            useCORS: true, 
+            scrollY: 0,
+            windowWidth: 794, // Ép trình duyệt hiểu màn hình rộng 794px khi chụp
+            width: 794
+        },
+        jsPDF: { 
+            unit: 'px', // Bắt buộc dùng pixel để đồng bộ với CSS
+            format: [794, 1123], // Khung A4 hệ Pixel
+            orientation: 'portrait',
+            hotfixes: ['px_scaling']
+        }
+    };
+
+    // Tiến hành chụp và xuất file
+    html2pdf().set(opt).from(element).save().then(() => {
+        // Trả lại giao diện cũ nếu người dùng không bật a4-mode từ trước[cite: 1]
+        if (!wasA4) {
+            document.body.classList.remove('a4-mode');
+        }
+        closeModal(); // Tắt popup[cite: 1]
+    });
+}
+// === INIT (KHỞI TẠO KHI TẢI TRANG) ===
 document.addEventListener('DOMContentLoaded', () => {
-    setLanguage(localStorage.getItem('language') || 'vi');
+    // 1. Load Language
+    const savedLang = localStorage.getItem('language') || 'vi';
+    setLanguage(savedLang);
+
+    // 2. Load Theme
+    const savedThemeMode = localStorage.getItem('themeMode') || 'system';
+    currentThemeIndex = themeModes.indexOf(savedThemeMode);
+    if (currentThemeIndex === -1) currentThemeIndex = 0; 
+    applyTheme(themeModes[currentThemeIndex]);
+
+    // 3. Load Glass Mode
+    const savedGlass = localStorage.getItem('glassMode');
+    if (savedGlass === 'off') {
+        toggleGlass(); 
+    }
 });
