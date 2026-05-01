@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="vi" class="antialiased dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Scraper | Premium Feed</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        zinc: {
+                            850: '#1f1f22',
+                            900: '#18181b',
+                            950: '#09090b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            background-color: #000000; /* Pure OLED Black */
+            color: #e4e4e7;
+            -webkit-font-smoothing: antialiased; 
+            overscroll-behavior-y: none;
+        }
+
+        /* Custom Range Slider */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #fff; cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px rgba(0,0,0,0.5); transition: transform 0.2s; }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        /* Minimal Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        /* Animation cho nút Copy */
+        .copy-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .copy-btn:active { transform: scale(0.9); }
+        .copy-success { color: #000 !important; background: #fff !important; border-color: #fff !important; }
+    </style>
+</head>
+
+<body class="h-[100dvh] flex flex-col lg:flex-row overflow-hidden selection:bg-white/20 selection:text-white">
+
+    <!-- System Modal -->
+    <div id="sysModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/80 backdrop-blur-sm opacity-0 transition-opacity duration-300 px-4">
+        <div class="bg-[#121212] border border-white/10 rounded-2xl p-8 w-full max-w-sm transform scale-95 transition-transform duration-300 shadow-2xl" id="sysModalContent">
+            <div class="flex flex-col items-center text-center">
+                <div class="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-cube text-white text-lg"></i>
+                </div>
+                <h3 class="text-white font-medium text-lg tracking-wide mb-2">Thông báo</h3>
+                <p id="sysModalMsg" class="text-sm text-gray-400 mb-8 leading-relaxed font-light"></p>
+                <div id="modalActions" class="flex gap-3 w-full"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar / Navigation -->
+    <aside class="w-full lg:w-[260px] bg-black border-r-0 lg:border-r border-white/10 flex flex-col shrink-0 z-20">
+        <div class="p-8 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-white flex items-center justify-center">
+                    <i class="fa-solid fa-spider text-black text-sm"></i>
+                </div>
+                <h1 class="font-sans font-semibold text-sm tracking-widest text-white uppercase">Scraper</h1>
+            </div>
+        </div>
+
+        <nav class="flex lg:flex-col gap-2 px-6 pb-6 lg:pb-0 overflow-x-auto custom-scrollbar">
+            <button id="btn-tab-engine" onclick="switchTab('tab-engine')" class="tab-btn flex-1 lg:flex-none text-left px-5 py-3.5 rounded-xl text-xs font-medium tracking-wide transition-all bg-white text-black">
+                <i class="fa-solid fa-microchip w-5"></i> Dashboard
+            </button>
+            <button id="btn-tab-archive" onclick="switchTab('tab-archive')" class="tab-btn flex-1 lg:flex-none text-left px-5 py-3.5 rounded-xl text-xs font-medium tracking-wide transition-all text-gray-400 hover:bg-white/5 flex justify-between items-center">
+                <span><i class="fa-brands fa-instagram w-5"></i> Feed Data</span>
+                <span id="badgeArchive" class="text-[9px] bg-white text-black px-2 py-0.5 rounded-full font-bold hidden">0</span>
+            </button>
+        </nav>
+
+        <div class="hidden lg:block mt-auto p-8 border-t border-white/5">
+            <div class="flex items-center gap-3">
+                <span id="statusIndicator" class="relative flex h-2 w-2">
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-gray-600"></span>
+                </span>
+                <span id="statusText" class="text-[10px] font-mono text-gray-500 uppercase tracking-widest">System Idle</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 relative overflow-hidden flex flex-col z-10 bg-[#050505]">
+        
+        <!-- ================= TAB 1: DASHBOARD ================= -->
+        <div id="tab-engine" class="tab-content w-full h-full flex flex-col overflow-y-auto custom-scrollbar p-6 lg:p-10">
+            <div class="max-w-[1200px] w-full mx-auto grid grid-cols-1 xl:grid-cols-3 gap-8">
+                
+                <!-- Cột trái: Điều khiển -->
+                <div class="xl:col-span-2 space-y-8">
+                    <!-- Thống kê -->
+                    <div class="grid grid-cols-2 gap-6">
+                        <div class="bg-[#121212] border border-white/5 rounded-2xl p-8 hover:border-white/20 transition-colors">
+                            <span class="text-[10px] text-gray-500 font-mono tracking-widest uppercase mb-3 block">Node đã quét</span>
+                            <span id="statScanned" class="text-4xl font-light text-white">0</span>
+                        </div>
+                        <div class="bg-[#121212] border border-white/5 rounded-2xl p-8 hover:border-white/20 transition-colors">
+                            <span class="text-[10px] text-gray-500 font-mono tracking-widest uppercase mb-3 block">Tài khoản thu thập</span>
+                            <span id="statExtracted" class="text-4xl font-medium text-white">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Cài đặt -->
+                    <div class="bg-[#121212] border border-white/5 rounded-2xl p-8">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
+                            <div>
+                                <div class="flex justify-between items-center mb-5">
+                                    <h2 class="text-xs font-medium text-gray-300">Luồng xử lý (Threads)</h2>
+                                    <span id="threadLabel" class="text-white font-mono text-xs bg-white/10 px-3 py-1 rounded-md">5</span>
+                                </div>
+                                <input type="range" id="threadSlider" min="1" max="20" value="5" oninput="document.getElementById('threadLabel').innerText = this.value">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-5">
+                                    <h2 class="text-xs font-medium text-gray-300">Dừng khi đạt (0 = Vô tận)</h2>
+                                </div>
+                                <input type="number" id="targetLimit" value="0" min="0" class="w-full bg-black border border-white/10 rounded-lg px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-white/40 transition-colors placeholder-gray-700">
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-4">
+                            <button id="btnStart" onclick="startSystem()" class="flex-1 bg-white hover:bg-gray-200 text-black py-4 rounded-xl text-xs font-bold tracking-widest uppercase transition-colors">
+                                Khởi chạy hệ thống
+                            </button>
+                            <button id="btnStop" onclick="stopSystem()" class="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 py-4 rounded-xl text-xs font-bold tracking-widest uppercase transition-colors hidden">
+                                Dừng lại
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Terminal -->
+                    <div class="bg-[#0a0a0a] rounded-2xl overflow-hidden flex flex-col h-[280px] border border-white/5">
+                        <div class="border-b border-white/5 p-4 flex justify-between items-center">
+                            <span class="text-[10px] text-gray-500 font-mono tracking-widest uppercase">System Log</span>
+                            <button onclick="document.getElementById('logConsole').innerHTML=''" class="text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-eraser text-xs"></i></button>
+                        </div>
+                        <div id="logConsole" class="flex-1 font-mono text-xs leading-relaxed text-gray-400 overflow-y-auto p-6 space-y-2 custom-scrollbar">
+                            <div>> Hệ thống sẵn sàng...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột phải: Proxy -->
+                <div class="bg-[#121212] border border-white/5 rounded-2xl p-8 flex flex-col h-full max-h-[820px]">
+                    <div class="flex justify-between items-center mb-8">
+                        <div>
+                            <h2 class="text-sm font-medium text-white mb-1">Mạng Proxy</h2>
+                            <p class="text-[10px] text-gray-500 font-mono uppercase tracking-widest">Định tuyến</p>
+                        </div>
+                        <button onclick="pingProxies()" class="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/15 text-white flex items-center justify-center transition-colors">
+                            <i class="fa-solid fa-rotate-right text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="proxyList" class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3">
+                        <!-- Danh sách Proxy render qua JS -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ================= TAB 2: IG FEED VAULT ================= -->
+        <div id="tab-archive" class="tab-content hidden w-full h-full flex flex-col p-0">
+            <!-- Header cố định của Vault -->
+            <div class="bg-[#0a0a0a] border-b border-white/5 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 shrink-0 z-10">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-lg font-medium text-white tracking-wide">Data Feed</h2>
+                    <span id="feedCount" class="text-xs text-gray-500 font-mono hidden">0 bài viết</span>
+                </div>
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button onclick="exportData('csv')" class="flex-1 sm:flex-none px-4 py-2 bg-[#1a1a1a] hover:bg-[#252525] border border-white/5 rounded-lg text-white text-xs font-medium transition-colors">CSV</button>
+                    <button onclick="exportData('txt')" class="flex-1 sm:flex-none px-4 py-2 bg-[#1a1a1a] hover:bg-[#252525] border border-white/5 rounded-lg text-white text-xs font-medium transition-colors">TXT</button>
+                    <button onclick="exportData('json')" class="flex-1 sm:flex-none px-4 py-2 bg-white text-black hover:bg-gray-200 rounded-lg text-xs font-medium transition-colors">JSON</button>
+                    <div class="w-px h-6 bg-white/10 self-center hidden sm:block mx-2"></div>
+                    <button onclick="clearLocalStorage()" class="flex-1 sm:flex-none px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-medium transition-colors" title="Xóa toàn bộ">Clear</button>
+                </div>
+            </div>
+
+            <!-- Khu vực Feed dạng Instagram -->
+            <div class="flex-1 overflow-y-auto custom-scrollbar">
+                <div class="max-w-2xl mx-auto py-8 px-4 flex flex-col gap-10 pb-20 relative">
+                    
+                    <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500 pointer-events-none mt-20">
+                        <i class="fa-solid fa-camera text-4xl mb-4 opacity-30"></i>
+                        <span class="text-sm">Chưa có bài viết nào</span>
+                    </div>
+                    
+                    <!-- Các "Bài viết" sẽ được thêm vào đây -->
+                    <div id="feedContainer" class="flex flex-col gap-12 w-full"></div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- QUẢN LÝ TAB & MODAL ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-white', 'text-black');
+                el.classList.add('text-gray-400');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.remove('text-gray-400');
+            activeBtn.classList.add('bg-white', 'text-black');
+            if(tabId === 'tab-archive') document.getElementById('badgeArchive').classList.add('hidden');
+        }
+
+        function showModal(msg, type = 'info', onConfirm = null, onCancel = null) {
+            document.getElementById('sysModalMsg').innerText = msg;
+            const actionsDiv = document.getElementById('modalActions');
+            actionsDiv.innerHTML = ''; 
+
+            const btnBase = "flex-1 py-3 rounded-lg text-xs font-bold tracking-widest uppercase transition-colors ";
+            
+            if (type === 'confirm') {
+                const btnCancel = document.createElement('button');
+                btnCancel.className = btnBase + "bg-[#1a1a1a] hover:bg-[#252525] text-gray-300 border border-white/5";
+                btnCancel.innerText = "Hủy bỏ";
+                btnCancel.onclick = () => { closeModal(); if(onCancel) onCancel(); };
+
+                const btnOk = document.createElement('button');
+                btnOk.className = btnBase + "bg-white text-black hover:bg-gray-200";
+                btnOk.innerText = "Tiếp tục";
+                btnOk.onclick = () => { closeModal(); if(onConfirm) onConfirm(); };
+
+                actionsDiv.appendChild(btnCancel);
+                actionsDiv.appendChild(btnOk);
+            } else {
+                const btnOk = document.createElement('button');
+                btnOk.className = btnBase + "bg-white text-black hover:bg-gray-200";
+                btnOk.innerText = "Đã hiểu";
+                btnOk.onclick = () => closeModal();
+                actionsDiv.appendChild(btnOk);
+            }
+
+            const modal = document.getElementById('sysModal');
+            const content = document.getElementById('sysModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('sysModal');
+            const content = document.getElementById('sysModalContent');
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        function logConsole(msg, type = 'info') {
+            const consoleEl = document.getElementById('logConsole');
+            const div = document.createElement('div');
+            let color = 'text-gray-400';
+            let prefix = '>';
+            if (type === 'success') { color = 'text-white'; prefix = '+'; }
+            if (type === 'warn') { color = 'text-yellow-500'; prefix = '!'; }
+            if (type === 'error') { color = 'text-red-500'; prefix = '-'; }
+            
+            div.innerHTML = `<span class="${color}">${prefix} ${msg}</span>`;
+            consoleEl.appendChild(div);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        }
+
+        // --- QUẢN LÝ PROXY (Sửa Toggle Switch) ---
+        let proxies = [
+            { id: 'px1', name: 'CorsProxy.io', url: 'https://corsproxy.io/?', enabled: true, ping: null, status: 'unknown' },
+            { id: 'px2', name: 'AllOrigins', url: 'https://api.allorigins.win/raw?url=', enabled: true, ping: null, status: 'unknown' },
+            { id: 'px3', name: 'CodeTabs', url: 'https://api.codetabs.com/v1/proxy?quest=', enabled: true, ping: null, status: 'unknown' },
+            { id: 'px4', name: 'ThingProxy', url: 'https://thingproxy.freeboard.io/fetch/', enabled: false, ping: null, status: 'unknown' },
+            { id: 'px5', name: 'CORS.sh', url: 'https://proxy.cors.sh/', enabled: false, ping: null, status: 'unknown' }
+        ];
+
+        function renderProxies() {
+            const list = document.getElementById('proxyList');
+            list.innerHTML = '';
+            proxies.forEach(p => {
+                let dotColor = 'bg-gray-600';
+                if(p.status === 'good') dotColor = 'bg-green-500';
+                if(p.status === 'slow') dotColor = 'bg-yellow-500';
+                if(p.status === 'offline') dotColor = 'bg-red-500';
+
+                let pingText = p.ping !== null ? (p.ping === 9999 ? 'Timeout' : p.ping + 'ms') : 'Chưa test';
+
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-4 bg-[#0a0a0a] rounded-xl border border-white/5 transition-opacity " + (!p.enabled ? 'opacity-50' : '');
+                
+                // Toggle Switch Fix: Sử dụng Tailwind Peer Class, hoàn toàn không bị tràn
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-1.5 h-1.5 rounded-full ${dotColor}"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-200">${p.name}</p>
+                            <p class="text-[10px] font-mono text-gray-500 mt-0.5">Ping: ${pingText}</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input type="checkbox" id="${p.id}" ${p.enabled ? 'checked' : ''} onchange="toggleProxy('${p.id}', this.checked)" class="sr-only peer">
+                        <div class="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-white"></div>
+                    </label>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function toggleProxy(id, isChecked) {
+            const p = proxies.find(x => x.id === id);
+            if(p) { p.enabled = isChecked; renderProxies(); }
+        }
+
+        async function pingProxies() {
+            logConsole("Đang kiểm tra chất lượng proxy...");
+            const testUrl = encodeURIComponent('https://example.com');
+            
+            for(let p of proxies) {
+                if(!p.enabled && p.ping !== null) continue; 
+                let start = Date.now();
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 3500); 
+                    
+                    await fetch(p.url + testUrl, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    
+                    p.ping = Date.now() - start;
+                    p.status = p.ping < 1000 ? 'good' : 'slow';
+                } catch(e) {
+                    p.ping = 9999;
+                    p.status = 'offline';
+                    p.enabled = false; 
+                    logConsole(`Proxy [${p.name}] lỗi. Đã tự động tắt.`, 'warn');
+                }
+            }
+            proxies.sort((a,b) => (a.ping || 9999) - (b.ping || 9999));
+            renderProxies();
+            logConsole("Kiểm tra hoàn tất.", 'success');
+        }
+
+        // --- CORE VARIABLES ---
+        const START_URL = "https://www.mobimeg.com/";
+        let isRunning = false, isPaused = false;
+        let stats = { scanned: 0, extracted: 0 };
+        let resultsData = [], scrapedUrls = new Set(), linkQueue = [];
+        let activeThreads = 0, MAX_THREADS = 5, TARGET_LIMIT = 0;
+        let currentLoadUrl = START_URL;
+
+        // --- DATA MANAGEMENT ---
+        function loadData() {
+            const saved = localStorage.getItem('premium_scraper_data');
+            if(saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if(Array.isArray(parsed) && parsed.length > 0) {
+                        resultsData = parsed;
+                        stats.extracted = resultsData.length;
+                        updateStatsUI();
+                        
+                        resultsData.forEach(item => {
+                            scrapedUrls.add(item.postUrl);
+                            renderFeedPost(item.postUrl, item.title, item.imageUrl, item.account, item.password, false);
+                        });
+                        logConsole(`Đã khôi phục ${resultsData.length} tài khoản từ Local Storage.`, 'success');
+                    }
+                } catch(e) {}
+            }
+            renderProxies();
+        }
+
+        function saveData() { localStorage.setItem('premium_scraper_data', JSON.stringify(resultsData)); }
+
+        function clearLocalStorage() {
+            showModal("Xóa vĩnh viễn toàn bộ dữ liệu cào?", 'confirm', 
+                () => { 
+                    localStorage.removeItem('premium_scraper_data');
+                    resultsData = []; scrapedUrls.clear();
+                    stats.extracted = 0; stats.scanned = 0;
+                    updateStatsUI();
+                    document.getElementById('feedContainer').innerHTML = '';
+                    document.getElementById('emptyState').style.display = 'flex';
+                    logConsole("Kho dữ liệu đã được làm sạch.", 'warn');
+                }
+            );
+        }
+
+        function updateStatsUI() {
+            document.getElementById('statExtracted').innerText = stats.extracted;
+            document.getElementById('statScanned').innerText = stats.scanned;
+            
+            if(stats.extracted > 0) {
+                document.getElementById('feedCount').innerText = `${stats.extracted} bài viết`;
+                document.getElementById('feedCount').classList.remove('hidden');
+            } else {
+                document.getElementById('feedCount').classList.add('hidden');
+            }
+        }
+
+        // --- SAO CHÉP (COPY WIDGET) ---
+        function copyText(btn, text) {
+            navigator.clipboard.writeText(text);
+            const icon = btn.querySelector('i');
+            
+            btn.classList.add('copy-success');
+            icon.className = "fa-solid fa-check";
+            
+            setTimeout(() => {
+                btn.classList.remove('copy-success');
+                icon.className = "fa-regular fa-copy";
+            }, 1000);
+        }
+
+        // --- RENDER DỮ LIỆU: IG FEED STYLE ---
+        function renderFeedPost(postUrl, title, imageUrl, account, password, prepend = true) {
+            document.getElementById('emptyState').style.display = 'none';
+            const container = document.getElementById('feedContainer');
+            const fallbackImg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWExYTFhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNTU1IiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+
+            const post = document.createElement('div');
+            post.className = "bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden w-full mx-auto";
+            
+            post.innerHTML = `
+                <!-- Post Header -->
+                <div class="px-4 py-3 flex justify-between items-center bg-[#121212] border-b border-white/5">
+                    <div class="flex items-center gap-3 overflow-hidden pr-4">
+                        <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20">
+                            <i class="fa-solid fa-user text-gray-400 text-xs"></i>
+                        </div>
+                        <h4 class="text-sm font-semibold text-white truncate" title="${title}">${title}</h4>
+                    </div>
+                    <a href="${postUrl}" target="_blank" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors shrink-0" title="Đến bài viết gốc">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                </div>
+                
+                <!-- Post Image (1:1 Ratio) -->
+                <div class="w-full aspect-square bg-black border-b border-white/5 relative flex items-center justify-center">
+                    <img src="${imageUrl || fallbackImg}" class="w-full h-full object-cover" loading="lazy" onerror="this.src='${fallbackImg}'">
+                </div>
+                
+                <!-- Post Actions / Credentials -->
+                <div class="p-4 bg-[#121212]">
+                    <div class="space-y-3">
+                        <!-- ID Field -->
+                        <div class="flex flex-col gap-1.5">
+                            <span class="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest pl-1">ID Tài Khoản</span>
+                            <div class="flex items-center gap-2">
+                                <input type="text" readonly value="${account}" class="flex-1 bg-black border border-white/10 rounded-lg px-3 py-2.5 text-xs font-mono text-gray-200 focus:outline-none focus:border-white/30 transition-colors">
+                                <button onclick="copyText(this, '${account}')" class="copy-btn w-10 h-10 shrink-0 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-gray-400 hover:text-white transition-colors">
+                                    <i class="fa-regular fa-copy text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Password Field -->
+                        <div class="flex flex-col gap-1.5">
+                            <span class="text-[10px] font-mono font-bold text-gray-500 uppercase tracking-widest pl-1">Mật Khẩu</span>
+                            <div class="flex items-center gap-2">
+                                <input type="text" readonly value="${password}" class="flex-1 bg-black border border-white/10 rounded-lg px-3 py-2.5 text-xs font-mono text-gray-200 focus:outline-none focus:border-white/30 transition-colors">
+                                <button onclick="copyText(this, '${password}')" class="copy-btn w-10 h-10 shrink-0 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/15 border border-white/10 text-gray-400 hover:text-white transition-colors">
+                                    <i class="fa-regular fa-copy text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            if (prepend) container.insertBefore(post, container.firstChild);
+            else container.appendChild(post);
+        }
+
+        function addResult(postUrl, title, imageUrl, account, password) {
+            resultsData.push({ title, account, password, postUrl, imageUrl });
+            stats.extracted++;
+            updateStatsUI();
+            
+            renderFeedPost(postUrl, title, imageUrl, account, password, true);
+            saveData();
+
+            if(document.getElementById('tab-archive').classList.contains('hidden')) {
+                const badge = document.getElementById('badgeArchive');
+                badge.innerText = stats.extracted;
+                badge.classList.remove('hidden');
+            }
+
+            if(TARGET_LIMIT > 0 && stats.extracted >= TARGET_LIMIT && !isPaused) {
+                isPaused = true;
+                showModal(`Đã đạt giới hạn mục tiêu (${TARGET_LIMIT} tài khoản). Bạn muốn tiếp tục cào không?`, 'confirm', 
+                    () => { isPaused = false; logConsole("Tiếp tục quét.", "info"); }, 
+                    () => { stopSystem(); }
+                );
+            }
+        }
+
+        // --- ENGINE LOGIC ---
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+        async function fetchWithRetry(url) {
+            const activeProxies = proxies.filter(p => p.enabled).sort((a,b) => (a.ping || 0) - (b.ping || 0));
+            if(activeProxies.length === 0) throw new Error('No active proxy');
+
+            for (const proxy of activeProxies) {
+                try {
+                    const proxyUrl = proxy.url + encodeURIComponent(url);
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 6000); 
+
+                    const response = await fetch(proxyUrl, { signal: controller.signal });
+                    clearTimeout(timeoutId);
+
+                    if (!response.ok) continue;
+
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.includes("application/json")) {
+                        const data = await response.json();
+                        if (data.contents) return data.contents;
+                    } else {
+                        const text = await response.text();
+                        if (text && text.length > 200) return text;
+                    }
+                } catch (e) {
+                    if(proxy.ping !== null) proxy.ping += 500; 
+                }
+            }
+            throw new Error('Timeout');
+        }
+
+        async function processWorker() {
+            while (isRunning && linkQueue.length > 0) {
+                if(isPaused) { await sleep(1000); continue; }
+
+                const url = linkQueue.shift();
+                activeThreads++;
+                try {
+                    const html = await fetchWithRetry(url);
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    
+                    const titleEl = doc.querySelector('h1.post-title') || doc.querySelector('title');
+                    const title = titleEl ? titleEl.innerText.trim() : url.split('/').pop();
+
+                    let imageUrl = '';
+                    const metaImg = doc.querySelector('meta[property="og:image"]');
+                    if (metaImg && metaImg.content) imageUrl = metaImg.content;
+
+                    const buttons = doc.querySelectorAll('.btnSave, a[href*="ouo.io"], a[href*="sub2unlock"]');
+                    
+                    for (const btn of buttons) {
+                        const href = btn.getAttribute('href');
+                        if (href && !href.startsWith('javascript')) {
+                            try {
+                                const subHtml = await fetchWithRetry(href);
+                                const subDoc = new DOMParser().parseFromString(subHtml, 'text/html');
+                                const inputE = subDoc.getElementById('e');
+                                const inputP = subDoc.getElementById('p');
+
+                                if (inputE && inputP && inputE.value) {
+                                    addResult(url, title, imageUrl, inputE.value, inputP.value);
+                                    logConsole(`Lấy thành công: ${inputE.value.substring(0, 10)}...`, 'success');
+                                    break; 
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                    stats.scanned++;
+                    updateStatsUI();
+                } catch (error) {
+                    logConsole(`Lỗi node: ${url.substring(url.length - 15)}`, 'error');
+                } finally {
+                    activeThreads--;
+                }
+            }
+        }
+
+        async function fetchPagesProducer() {
+            currentLoadUrl = START_URL;
+            while (isRunning && currentLoadUrl) {
+                if(isPaused) { await sleep(1000); continue; }
+                if (linkQueue.length > 20) { await sleep(2000); continue; }
+                
+                try {
+                    const html = await fetchWithRetry(currentLoadUrl);
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                    const links = Array.from(doc.querySelectorAll('h2.post-title a')).map(a => a.href);
+                    for (const link of [...new Set(links)]) {
+                        if (!scrapedUrls.has(link)) {
+                            scrapedUrls.add(link);
+                            linkQueue.push(link);
+                        }
+                    }
+
+                    for (let i = activeThreads; i < MAX_THREADS; i++) {
+                        processWorker();
+                    }
+
+                    const loadMoreBtn = doc.querySelector('.blog-pager-older-link.load-more');
+                    if (loadMoreBtn && loadMoreBtn.getAttribute('data-load')) {
+                        currentLoadUrl = loadMoreBtn.getAttribute('data-load');
+                        await sleep(1000); 
+                    } else {
+                        logConsole("Đã tìm kiếm hết toàn bộ sơ đồ trang.", 'success');
+                        currentLoadUrl = null; // Hết trang để cào
+                    }
+                } catch (error) {
+                    logConsole("Lỗi lấy danh sách, đang thử lại...", "warn");
+                    await sleep(3000);
+                }
+            }
+        }
+
+        function updateUIState(running) {
+            document.getElementById('btnStart').classList.toggle('hidden', running);
+            document.getElementById('btnStop').classList.toggle('hidden', !running);
+            document.getElementById('threadSlider').disabled = running;
+            document.getElementById('targetLimit').disabled = running;
+            
+            const indicator = document.getElementById('statusIndicator');
+            const text = document.getElementById('statusText');
+            
+            if (running) {
+                indicator.innerHTML = '<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-white"></span>';
+                text.innerText = 'Đang hoạt động';
+                text.className = 'text-[10px] font-mono text-white uppercase tracking-widest';
+            } else {
+                indicator.innerHTML = '<span class="relative inline-flex rounded-full h-2 w-2 bg-gray-600"></span>';
+                text.innerText = 'System Idle';
+                text.className = 'text-[10px] font-mono text-gray-500 uppercase tracking-widest';
+            }
+        }
+
+        async function startSystem() {
+            if (isRunning) return;
+            
+            if(proxies.every(p => p.ping === null)) { await pingProxies(); }
+
+            const activeProxies = proxies.filter(p => p.enabled).length;
+            if(activeProxies === 0) {
+                showModal("Vui lòng bật ít nhất 1 proxy để thực hiện quét.", "info");
+                return;
+            }
+
+            isRunning = true; isPaused = false;
+            MAX_THREADS = parseInt(document.getElementById('threadSlider').value);
+            TARGET_LIMIT = parseInt(document.getElementById('targetLimit').value) || 0;
+            
+            updateUIState(true);
+            logConsole(`Bắt đầu chạy | Threads: ${MAX_THREADS} | Proxies: ${activeProxies}`);
+            fetchPagesProducer();
+            
+            // Logic tự động dừng khi cào xong (chế độ vô tận)
+            const monitor = setInterval(() => {
+                if (!isRunning) {
+                    clearInterval(monitor);
+                    return;
+                }
+                
+                // Nếu queue rỗng, các luồng đã chạy xong, và không còn link trang mới để nạp (currentLoadUrl === null)
+                if (linkQueue.length === 0 && activeThreads === 0 && currentLoadUrl === null) {
+                    clearInterval(monitor);
+                    stopSystem();
+                    showModal("Quá trình cào đã hoàn tất. Đã quét toàn bộ dữ liệu trên hệ thống nguồn.", "info");
+                }
+            }, 2000);
+        }
+
+        function stopSystem() {
+            isRunning = false; isPaused = false; linkQueue = [];
+            updateUIState(false);
+            logConsole("Hệ thống đã dừng.");
+        }
+
+        // --- EXPORT ---
+        function exportData(type) {
+            if (resultsData.length === 0) { showModal("Không có dữ liệu để xuất."); return; }
+            const timestamp = new Date().getTime();
+            let content, filename, mimeType;
+
+            if (type === 'json') {
+                content = JSON.stringify(resultsData, null, 4); filename = `data_${timestamp}.json`; mimeType = 'application/json';
+            } else if (type === 'txt') {
+                content = resultsData.map(item => `TITLE: ${item.title}\nID: ${item.account}\nPW: ${item.password}\nURL: ${item.postUrl}\n------------------`).join('\n\n'); filename = `data_${timestamp}.txt`; mimeType = 'text/plain';
+            } else if (type === 'csv') {
+                const header = "Title,ID,Password,URL\n";
+                const rows = resultsData.map(item => `"${item.title.replace(/"/g, '""')}","${item.account}","${item.password}","${item.postUrl}"`).join('\n');
+                content = header + rows; filename = `data_${timestamp}.csv`; mimeType = 'text/csv';
+            }
+
+            const blob = new Blob(["\uFEFF" + content], { type: `${mimeType};charset=utf-8` });
+            const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = filename;
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            logConsole(`Đã xuất file ${type.toUpperCase()} thành công.`, 'success');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
