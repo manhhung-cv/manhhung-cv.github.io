@@ -293,5 +293,16 @@ export const TOOLS = [
         icon: 'fa-solid fa-bolt',
         desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
         tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
+    },
+    // Mới
+    {
+        id: 'speed-test',
+        catId: 'speed-test',
+        name: 'speed-test',
+        icon: 'fa-solid fa-bolt',
+        desc: 'speed-test.',
+        tags: ['speed-test']
     }
+
+    
 ];

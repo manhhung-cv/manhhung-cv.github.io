@@ -1,5 +1,6 @@
 // ==========================================
 // HỆ THỐNG QUẢN LÝ GIAO DIỆN & TABS (main.js)
+// Giao diện: Solid Premium (Hiệu năng cao)
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     const themeBtn = document.getElementById('theme-toggle-btn');
@@ -12,13 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
         let isDark = false;
         if (theme === 'system') {
             isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if(themeIcon) themeIcon.className = 'fa-solid fa-display text-[13px]';
+            if(themeIcon) themeIcon.className = 'fa-solid fa-display text-[14px]';
         } else if (theme === 'dark') {
             isDark = true;
-            if(themeIcon) themeIcon.className = 'fa-solid fa-moon text-[13px]';
+            if(themeIcon) themeIcon.className = 'fa-solid fa-moon text-[14px]';
         } else {
             isDark = false;
-            if(themeIcon) themeIcon.className = 'fa-solid fa-sun text-[13px]';
+            if(themeIcon) themeIcon.className = 'fa-solid fa-sun text-[14px]';
         }
 
         if (isDark) {
@@ -31,10 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         themeOptions.forEach(btn => {
             if (btn.dataset.theme === theme) {
-                btn.classList.add('text-premium-gold', 'bg-black');
+                btn.classList.add('text-premium-gold', 'bg-zinc-100', 'dark:bg-premium-card');
                 btn.classList.remove('text-zinc-600', 'dark:text-zinc-300');
             } else {
-                btn.classList.remove('text-premium-gold', 'bg-black');
+                btn.classList.remove('text-premium-gold', 'bg-zinc-100', 'dark:bg-premium-card');
                 btn.classList.add('text-zinc-600', 'dark:text-zinc-300');
             }
         });
@@ -99,12 +100,14 @@ function initWiki() {
     Tabs.forEach((tab) => {
         const btn = document.createElement('button');
         btn.id = `btn-${tab.id}`;
-        btn.className = `shrink-0 px-4 py-2 text-[12px] font-bold rounded-sm transition-colors duration-200 flex items-center gap-1.5 border outline-none snap-center active:scale-95 `;
+        
+        // Base class: Solid, không bóng đổ nặng, bo tròn hoàn toàn
+        let baseClass = `shrink-0 px-5 py-2.5 text-[11px] font-black tracking-widest uppercase rounded-full transition-colors duration-200 flex items-center gap-2 border outline-none snap-center active:scale-95 `;
 
         if (tab.id === currentTabId) {
-            btn.className += `bg-premium-gold text-black border-transparent`;
+            btn.className = baseClass + `bg-premium-gold text-black border-premium-gold`;
         } else {
-            btn.className += `bg-zinc-100 dark:bg-premium-card text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-premium-gold border-zinc-200 dark:border-premium-border hover:border-premium-gold`;
+            btn.className = baseClass + `bg-zinc-100 dark:bg-premium-card text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-premium-gold border-zinc-200 dark:border-premium-border hover:bg-zinc-200 dark:hover:bg-premium-surface`;
         }
 
         btn.innerHTML = `<i class="fa-solid ${tab.icon}"></i> ${tab.name}`;
@@ -113,24 +116,26 @@ function initWiki() {
 
         const contentDiv = document.createElement('div');
         contentDiv.id = `content-${tab.id}`;
+        // Loại bỏ transition-opacity phức tạp để render nhanh nhất
         contentDiv.className = `tab-content ${tab.id === currentTabId ? 'active block' : 'hidden'}`;
 
         contentDiv.innerHTML = `
-            <div class="flex items-center gap-3 mb-5 px-1 border-b border-zinc-200 dark:border-premium-border pb-3">
-                <div class="w-8 h-8 rounded-sm bg-premium-gold flex items-center justify-center text-black">
-                    <i class="fa-solid ${tab.icon} text-[15px]"></i>
+            <div class="flex items-center gap-4 mb-6 px-2 border-b border-zinc-200 dark:border-premium-border pb-4">
+                <div class="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-premium-card border border-zinc-200 dark:border-premium-border flex items-center justify-center text-premium-gold">
+                    <i class="fa-solid ${tab.icon} text-[18px]"></i>
                 </div>
                 <div>
-                    <h2 class="text-[17px] font-bold text-zinc-900 dark:text-white leading-tight uppercase tracking-wider">${tab.name}</h2>
+                    <h2 class="text-xl font-black text-zinc-900 dark:text-white leading-tight uppercase tracking-widest">${tab.name}</h2>
                 </div>
             </div>
             <div id="grid-${tab.id}">
-                <div class="col-span-full text-center py-10 text-zinc-500 text-sm font-medium">Đang tải dữ liệu...</div>
+                <div class="col-span-full text-center py-16 text-zinc-500 text-xs tracking-widest uppercase font-bold">Đang tải dữ liệu...</div>
             </div>
         `;
         contentContainer.appendChild(contentDiv);
     });
 
+    // Kích hoạt load dữ liệu
     if (typeof loadGodsData === 'function') loadGodsData();
     if (typeof loadOriginData === 'function') loadOriginData();
     if (typeof loadTraitsData === 'function') loadTraitsData();
@@ -153,13 +158,15 @@ function switchTab(tabId) {
         const content = document.getElementById(`content-${tab.id}`);
         if(!btn || !content) return;
 
+        let baseClass = `shrink-0 px-5 py-2.5 text-[11px] font-black tracking-widest uppercase rounded-full transition-colors duration-200 flex items-center gap-2 border outline-none snap-center active:scale-95 `;
+
         if (tab.id === tabId) {
-            btn.className = `shrink-0 px-4 py-2 text-[12px] font-bold rounded-sm transition-colors duration-200 flex items-center gap-1.5 border outline-none snap-center active:scale-95 bg-premium-gold text-black border-transparent`;
+            btn.className = baseClass + `bg-premium-gold text-black border-premium-gold`;
             content.classList.remove('hidden');
             content.classList.add('block', 'active');
             btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         } else {
-            btn.className = `shrink-0 px-4 py-2 text-[12px] font-bold rounded-sm transition-colors duration-200 flex items-center gap-1.5 border outline-none snap-center active:scale-95 bg-zinc-100 dark:bg-premium-card text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-premium-gold border-zinc-200 dark:border-premium-border hover:border-premium-gold`;
+            btn.className = baseClass + `bg-zinc-100 dark:bg-premium-card text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-premium-gold border-zinc-200 dark:border-premium-border hover:bg-zinc-200 dark:hover:bg-premium-surface`;
             content.classList.remove('block', 'active');
             content.classList.add('hidden');
         }
@@ -167,7 +174,7 @@ function switchTab(tabId) {
 }
 
 // ==========================================
-// MODAL LOGIC 
+// MODAL LOGIC (SOLID PREMIUM MODAL)
 // ==========================================
 function getModalElements() {
     return {
@@ -204,27 +211,29 @@ document.addEventListener('click', (e) => {
 window.uiAlert = function(title, message, type = 'info') {
     const { modalTitle, modalMsg, modalActions } = getModalElements();
     if(!modalTitle) return;
-    const icon = type === 'error' ? '<i class="fa-solid fa-square-xmark text-red-500"></i>' : '<i class="fa-solid fa-square-info text-premium-gold"></i>';
-    modalTitle.innerHTML = `${icon} <span class="uppercase tracking-wide">${title}</span>`;
+    const icon = type === 'error' ? '<i class="fa-solid fa-square-xmark text-red-500 text-xl"></i>' : '<i class="fa-solid fa-square-info text-premium-gold text-xl"></i>';
+    modalTitle.innerHTML = `${icon} <span class="uppercase tracking-widest">${title}</span>`;
     modalMsg.innerHTML = message;
-    modalActions.innerHTML = `<button onclick="closeModal()" class="px-5 py-2 bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border hover:text-premium-gold text-zinc-900 dark:text-white text-xs font-bold rounded-sm transition-colors uppercase">Đóng</button>`;
+    
+    // Nút đóng: Solid color, hover mượt
+    modalActions.innerHTML = `<button onclick="closeModal()" class="px-7 py-3 bg-zinc-100 dark:bg-premium-card border border-zinc-200 dark:border-premium-border hover:bg-zinc-200 dark:hover:bg-premium-surface hover:border-premium-gold text-zinc-900 dark:text-white text-[11px] font-black rounded-full transition-colors uppercase tracking-widest outline-none">Đóng</button>`;
     openModalBase();
 }
 
 window.uiConfirm = function(title, message, onConfirm) {
     const { modalTitle, modalMsg, modalActions } = getModalElements();
     if(!modalTitle) return;
-    modalTitle.innerHTML = `<i class="fa-solid fa-circle-question text-premium-gold"></i> <span class="uppercase tracking-wide">${title}</span>`;
+    modalTitle.innerHTML = `<i class="fa-solid fa-circle-question text-premium-gold text-xl"></i> <span class="uppercase tracking-widest">${title}</span>`;
     modalMsg.innerHTML = message;
     modalActions.innerHTML = '';
 
     const btnCancel = document.createElement('button');
-    btnCancel.className = "px-4 py-2 bg-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-xs font-bold transition-colors uppercase border border-transparent";
+    btnCancel.className = "px-6 py-3 bg-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-white text-[11px] font-black transition-colors uppercase border border-transparent rounded-full tracking-widest outline-none";
     btnCancel.innerText = "Huỷ";
     btnCancel.onclick = closeModal;
 
     const btnAccept = document.createElement('button');
-    btnAccept.className = "px-4 py-2 bg-premium-gold text-black hover:bg-yellow-500 text-xs font-bold rounded-sm transition-colors uppercase border border-transparent";
+    btnAccept.className = "px-7 py-3 bg-premium-gold text-black hover:bg-yellow-400 text-[11px] font-black rounded-full transition-colors uppercase border border-premium-gold tracking-widest outline-none";
     btnAccept.innerText = "Xác nhận";
     btnAccept.onclick = () => { closeModal(); if (onConfirm) onConfirm(); };
 
@@ -233,8 +242,10 @@ window.uiConfirm = function(title, message, onConfirm) {
     openModalBase();
 }
 
+// Khởi tạo Wiki khi tải xong DOM
 document.addEventListener('DOMContentLoaded', initWiki);
 
+// Đóng các dropdown khi click ra ngoài (Nếu có)
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#dropdown-load-menu') && !e.target.closest('[onclick*="dropdown-load-menu"]')) {
         document.getElementById('dropdown-load-menu')?.classList.add('hidden');
@@ -243,3 +254,9 @@ document.addEventListener('click', (e) => {
         document.getElementById('dropdown-save-menu')?.classList.add('hidden');
     }
 });
+
+// Fallback ảnh lỗi
+window.onErrorFallback = function(imgElement) {
+    imgElement.src = '/Asset/logo/logo.png'; 
+    imgElement.onerror = null; 
+};

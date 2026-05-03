@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MobiMeg Data Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        dark: {
+                            bg: '#050505',
+                            card: '#0a0a0a',
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            hover: 'rgba(255, 255, 255, 0.12)'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            background-color: #050505; 
+            color: #e4e4e7;
+            -webkit-font-smoothing: antialiased; 
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.3); }
+
+        .loader {
+            border: 2px solid rgba(255,255,255,0.1);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        .loader.border-black {
+            border-color: rgba(0,0,0,0.1);
+            border-left-color: #000000;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .copy-success { background-color: #ffffff !important; color: #000000 !important; }
+        
+        /* Glassmorphism cho ảnh */
+        .glass-badge {
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-white/20">
+
+    <!-- Header -->
+    <header class="bg-dark-card border-b border-dark-border sticky top-0 z-50 backdrop-blur-md bg-opacity-90">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-gradient-to-tr from-gray-200 to-white rounded-xl flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-layer-group text-black text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-white tracking-wide">MobiMeg Vault</h1>
+                    <p class="text-xs text-gray-500 font-mono mt-0.5" id="totalCount">Đang kết nối API...</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="fetchData()" id="btnRefresh" class="h-10 px-4 rounded-lg bg-dark-card hover:bg-dark-hover border border-dark-border text-sm font-medium transition-colors flex items-center gap-2 text-gray-300 hover:text-white shadow-sm">
+                    <i class="fa-solid fa-rotate-right"></i> <span class="hidden sm:inline">Làm mới</span>
+                </button>
+                <button onclick="triggerScrape()" id="btnScrape" class="h-10 px-5 rounded-lg bg-white hover:bg-gray-200 text-black text-sm font-bold tracking-wide uppercase transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(255,255,255,0.3)] hover:shadow-[0_0_20px_rgba(255,255,255,0.5)]">
+                    <i class="fa-solid fa-bolt"></i> Cào Ngay
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Progress Monitor Panel (Ẩn mặc định) -->
+    <div id="progressPanel" class="max-w-7xl mx-auto w-full px-6 mt-6 hidden transition-all duration-500 opacity-0 transform -translate-y-4">
+        <div class="bg-blue-900/20 border border-blue-500/30 rounded-xl p-4 flex items-center justify-between shadow-[0_0_20px_rgba(59,130,246,0.1)]">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                    <div class="loader" style="border-left-color: #3b82f6;"></div>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-blue-400 tracking-wide uppercase">Hệ thống đang hoạt động</h3>
+                    <p id="progressText" class="text-xs text-blue-200/70 font-mono mt-1">Đang kết nối tới máy chủ...</p>
+                </div>
+            </div>
+            <span class="text-[10px] uppercase font-bold tracking-widest text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded-md border border-blue-500/20 flex items-center gap-2">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                </span>
+                Live
+            </span>
+        </div>
+    </div>
+
+    <!-- Error/Notice Panel -->
+    <div id="errorPanel" class="max-w-7xl mx-auto w-full px-6 mt-6 hidden">
+        <div class="bg-red-900/20 border border-red-500/30 rounded-xl p-4 flex items-center gap-3 shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+            <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-triangle-exclamation text-red-400 text-xs"></i>
+            </div>
+            <p id="errorText" class="text-sm text-red-300 font-medium"></p>
+        </div>
+    </div>
+
+    <!-- Main Content (Grid Dữ liệu) -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-6 py-8">
+        
+        <!-- Loading Skeleton -->
+        <div id="loadingSkeleton" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 hidden">
+            <!-- Được render qua JS -->
+        </div>
+
+        <!-- Data Container -->
+        <div id="dataContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Dữ liệu API sẽ đổ vào đây -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-32 opacity-60">
+            <div class="w-20 h-20 bg-dark-card border border-dark-border rounded-2xl flex items-center justify-center mb-5 shadow-inner">
+                <i class="fa-solid fa-ghost text-3xl text-gray-500"></i>
+            </div>
+            <h3 class="text-lg font-medium text-white mb-1">Kho dữ liệu trống</h3>
+            <p class="text-sm text-gray-500">Hãy nhấn "Cào Ngay" để thu thập tài khoản mới.</p>
+        </div>
+
+    </main>
+
+    <script>
+        // ==========================================
+        // CẤU HÌNH API GIAO TIẾP
+        // ==========================================
+        const API_URL = "https://script.google.com/macros/s/AKfycbwFAZet3mWVronOUAgzpqqHUmfDheWWFMqWutuUDy8MeHkASyZltNzjbVu3lprHWG9z/exec";
+        const API_TOKEN = "HunqIDF"; 
+
+        let monitorInterval = null;
+
+        // Bật Loading giả lập (Skeleton)
+        function showLoading() {
+            document.getElementById('dataContainer').innerHTML = '';
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('errorPanel').classList.add('hidden');
+            
+            const skeleton = document.getElementById('loadingSkeleton');
+            skeleton.innerHTML = '';
+            for(let i=0; i<8; i++) {
+                skeleton.innerHTML += `
+                    <div class="bg-dark-card border border-dark-border rounded-2xl overflow-hidden animate-pulse shadow-sm">
+                        <div class="w-full h-44 bg-white/5"></div>
+                        <div class="p-5 space-y-4">
+                            <div class="h-4 bg-white/5 rounded w-5/6"></div>
+                            <div class="h-4 bg-white/5 rounded w-1/2 mb-4"></div>
+                            <div class="h-10 bg-white/5 rounded-lg w-full"></div>
+                            <div class="h-10 bg-white/5 rounded-lg w-full"></div>
+                        </div>
+                    </div>`;
+            }
+            skeleton.classList.remove('hidden');
+            
+            const btnRefresh = document.getElementById('btnRefresh');
+            btnRefresh.innerHTML = '<div class="loader"></div>';
+            btnRefresh.disabled = true;
+        }
+
+        // FETCH DATA TỪ GOOGLE SHEETS
+        async function fetchData() {
+            showLoading();
+            try {
+                const response = await fetch(`${API_URL}?token=${API_TOKEN}&action=get_data`);
+                const result = await response.json();
+
+                document.getElementById('loadingSkeleton').classList.add('hidden');
+                
+                const btnRefresh = document.getElementById('btnRefresh');
+                btnRefresh.innerHTML = '<i class="fa-solid fa-rotate-right"></i> <span class="hidden sm:inline">Làm mới</span>';
+                btnRefresh.disabled = false;
+
+                if(result.success) {
+                    document.getElementById('totalCount').innerHTML = `<span class="text-white font-bold">${result.count}</span> tài khoản được lưu trữ`;
+                    renderData(result.data);
+                } else {
+                    showError(result.error || "Lỗi xác thực Token hoặc lỗi từ máy chủ.");
+                }
+            } catch (error) {
+                document.getElementById('loadingSkeleton').classList.add('hidden');
+                const btnRefresh = document.getElementById('btnRefresh');
+                btnRefresh.innerHTML = '<i class="fa-solid fa-rotate-right"></i> <span class="hidden sm:inline">Làm mới</span>';
+                btnRefresh.disabled = false;
+                
+                showError("Lỗi kết nối mạng. Hãy đảm bảo URL API Google Web App của bạn đang hoạt động.");
+            }
+        }
+
+        // VẼ DỮ LIỆU LÊN GRID
+        function renderData(dataArray) {
+            const container = document.getElementById('dataContainer');
+            container.innerHTML = '';
+
+            if(!dataArray || dataArray.length === 0) {
+                document.getElementById('emptyState').classList.remove('hidden');
+                document.getElementById('totalCount').innerText = "Trống";
+                return;
+            }
+
+            // Xếp mới nhất lên đầu
+            dataArray.reverse().forEach(item => {
+                const fallbackImg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMWExYTFhIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEwIiBmaWxsPSIjNTU1IiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+                let imgUrl = item.image ? item.image : fallbackImg;
+                
+                // Format ngày tháng đẹp
+                let dateObj = new Date(item.timestamp);
+                let dateStr = dateObj.toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit'}) + ' • ' + dateObj.toLocaleTimeString('vi-VN', {hour: '2-digit', minute:'2-digit'});
+
+                const card = document.createElement('div');
+                card.className = "bg-dark-card border border-dark-border rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(255,255,255,0.04)] flex flex-col group";
+                
+                card.innerHTML = `
+                    <div class="relative w-full h-44 bg-black border-b border-dark-border overflow-hidden">
+                        <img src="${imgUrl}" class="w-full h-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" onerror="this.src='${fallbackImg}'" loading="lazy">
+                        
+                        <div class="absolute top-3 right-3 glass-badge text-[10px] font-mono px-2.5 py-1 rounded-md text-gray-200 border border-white/10 shadow-sm flex items-center gap-1.5">
+                            <i class="fa-regular fa-clock text-gray-400"></i> ${dateStr}
+                        </div>
+                        
+                        <a href="${item.url}" target="_blank" class="absolute bottom-3 right-3 w-8 h-8 rounded-full glass-badge flex items-center justify-center text-white/70 hover:text-white border border-white/10 hover:bg-white/20 transition-colors opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0" title="Mở bài viết gốc">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    </div>
+                    
+                    <div class="p-5 flex-1 flex flex-col">
+                        <h2 class="text-sm font-semibold text-gray-100 leading-snug mb-5 line-clamp-2" title="${item.title}">
+                            ${item.title}
+                        </h2>
+                        
+                        <div class="mt-auto space-y-3">
+                            <!-- Field ID -->
+                            <div class="flex items-center gap-2">
+                                <div class="w-9 h-9 rounded-lg bg-white/5 border border-dark-border flex items-center justify-center shrink-0 text-gray-500">
+                                    <i class="fa-solid fa-user text-xs"></i>
+                                </div>
+                                <input type="text" readonly value="${item.account_id}" class="flex-1 bg-[#121212] border border-dark-border rounded-lg px-3 py-2 text-xs font-mono text-gray-200 outline-none focus:border-blue-500/50 transition-colors">
+                                <button onclick="copyData(this, '${item.account_id}')" class="copy-btn w-9 h-9 shrink-0 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/15 border border-dark-border text-gray-400 hover:text-white transition-all active:scale-95" title="Copy ID">
+                                    <i class="fa-regular fa-copy text-sm"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Field Pass -->
+                            <div class="flex items-center gap-2">
+                                <div class="w-9 h-9 rounded-lg bg-white/5 border border-dark-border flex items-center justify-center shrink-0 text-gray-500">
+                                    <i class="fa-solid fa-key text-xs"></i>
+                                </div>
+                                <input type="text" readonly value="${item.password}" class="flex-1 bg-[#121212] border border-dark-border rounded-lg px-3 py-2 text-xs font-mono text-gray-200 outline-none focus:border-blue-500/50 transition-colors">
+                                <button onclick="copyData(this, '${item.password}')" class="copy-btn w-9 h-9 shrink-0 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/15 border border-dark-border text-gray-400 hover:text-white transition-all active:scale-95" title="Copy Password">
+                                    <i class="fa-regular fa-copy text-sm"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // HÀM SAO CHÉP (COPY TO CLIPBOARD)
+        function copyData(btn, text) {
+            // Xử lý clipboard an toàn
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text);
+            } else {
+                // Fallback method
+                let textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try { document.execCommand('copy'); } catch (error) { console.error("Copy failed", error); }
+                textArea.remove();
+            }
+
+            // UI Feedback
+            const icon = btn.querySelector('i');
+            btn.classList.add('copy-success');
+            icon.className = "fa-solid fa-check text-sm";
+            
+            setTimeout(() => {
+                btn.classList.remove('copy-success');
+                icon.className = "fa-regular fa-copy text-sm";
+            }, 1000);
+        }
+
+        // HIỂN THỊ LỖI
+        function showError(msg) {
+            const panel = document.getElementById('errorPanel');
+            document.getElementById('errorText').innerText = msg;
+            panel.classList.remove('hidden');
+            setTimeout(() => panel.classList.add('hidden'), 8000); // Tự ẩn sau 8s
+        }
+
+        // ==========================================
+        // CHỨC NĂNG CÀO TỨC THÌ (MANUAL TRIGGER)
+        // ==========================================
+
+        async function triggerScrape() {
+            const btn = document.getElementById('btnScrape');
+            btn.innerHTML = '<div class="loader border-black"></div> <span class="ml-1">Đang phát lệnh</span>';
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+
+            try {
+                const response = await fetch(`${API_URL}?token=${API_TOKEN}&action=scrape_now`);
+                const result = await response.json();
+
+                if(result.success) {
+                    showProgressPanel();
+                    startMonitoring();
+                } else {
+                    // Nếu hệ thống báo đang cào dở
+                    showError(result.message); 
+                    resetScrapeButton();
+                    // Bật theo dõi luôn nếu status không phải là IDLE/DONE
+                    if (result.status && result.status !== "DONE" && result.status !== "IDLE") {
+                        showProgressPanel();
+                        startMonitoring();
+                    }
+                }
+            } catch (error) {
+                showError("Không thể kết nối đến máy chủ để gửi lệnh cào.");
+                resetScrapeButton();
+            }
+        }
+
+        // UI ĐIỀU KHIỂN BẢNG TIẾN TRÌNH
+        function showProgressPanel() {
+            const panel = document.getElementById('progressPanel');
+            panel.classList.remove('hidden');
+            setTimeout(() => {
+                panel.classList.remove('opacity-0', '-translate-y-4');
+            }, 10);
+        }
+
+        function hideProgressPanel() {
+            const panel = document.getElementById('progressPanel');
+            panel.classList.add('opacity-0', '-translate-y-4');
+            setTimeout(() => {
+                panel.classList.add('hidden');
+            }, 500);
+        }
+
+        function resetScrapeButton() {
+            const btn = document.getElementById('btnScrape');
+            btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Cào Ngay';
+            btn.disabled = false;
+            btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+
+        // LIÊN TỤC HỎI SERVER XEM CÀO TỚI ĐÂU RỒI
+        function startMonitoring() {
+            if (monitorInterval) clearInterval(monitorInterval);
+            
+            // Lần đầu tiên gọi tiến trình hiện chữ ngay cho mượt
+            document.getElementById('progressText').innerText = "Đang đánh thức máy chủ Google...";
+
+            monitorInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`${API_URL}?token=${API_TOKEN}&action=get_progress`);
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        const status = result.current_status;
+                        document.getElementById('progressText').innerText = status;
+
+                        // Nếu cào xong hoặc báo lỗi
+                        if (status === "DONE" || status === "IDLE" || status.includes("LỖI")) {
+                            clearInterval(monitorInterval);
+                            
+                            if (status.includes("LỖI")) {
+                                showError(status);
+                            }
+
+                            document.getElementById('progressText').innerText = "Đã hoàn tất quá trình cào!";
+                            
+                            setTimeout(() => {
+                                hideProgressPanel();
+                                resetScrapeButton();
+                                fetchData(); // Tự động làm mới giao diện khi cào xong
+                            }, 2500);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Lỗi mạng khi lấy tiến độ", e);
+                }
+            }, 3000); // Cứ 3 giây hỏi Google 1 lần
+        }
+
+        // Chạy ngay hàm lấy dữ liệu khi load web xong
+        document.addEventListener('DOMContentLoaded', fetchData);
+    </script>
+</body>
+</html>

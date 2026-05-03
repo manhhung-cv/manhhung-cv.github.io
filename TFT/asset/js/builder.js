@@ -1,6 +1,6 @@
 // =========================================================
-// HÀM TEAM BUILDER - TỐI ƯU GIAO DIỆN & MOBILE
-// ==========================================
+// HÀM TEAM BUILDER - GIAO DIỆN SOLID PREMIUM (SIÊU MƯỢT)
+// =========================================================
 
 async function loadBuilderData() {
     const gridContainer = document.getElementById('grid-builder');
@@ -94,22 +94,22 @@ async function loadBuilderData() {
             const activeTraitsArray = [];
             for (const [name, count] of Object.entries(traitCounts)) {
                 const traitData = window._builderMasterTraits[name.toLowerCase()];
-                let style = 'bg-zinc-100 dark:bg-premium-card text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-premium-border';
+                let style = 'bg-zinc-100 dark:bg-premium-surface text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-premium-border';
                 let isActive = false;
                 if (traitData?.levels) {
                     const sortedLevels = [...traitData.levels].sort((a, b) => parseInt(b.milestone) - parseInt(a.milestone));
                     for (let i = 0; i < sortedLevels.length; i++) {
                         if (count >= parseInt(sortedLevels[i].milestone)) {
                             isActive = true;
-                            if (i === 0 && sortedLevels.length > 2) style = 'bg-premium-gold text-black border-transparent';
-                            else if (i === 0 || i === 1) style = 'bg-blue-500 text-white border-transparent';
-                            else style = 'bg-emerald-500 text-white border-transparent';
+                            if (i === 0 && sortedLevels.length > 2) style = 'bg-premium-gold text-black border-premium-gold';
+                            else if (i === 0 || i === 1) style = 'bg-blue-500 text-white border-blue-500';
+                            else style = 'bg-emerald-500 text-white border-emerald-500';
                             break;
                         }
                     }
                 } else if (count >= 1) {
                     isActive = true;
-                    style = 'bg-premium-gold text-black border-transparent';
+                    style = 'bg-premium-gold text-black border-premium-gold';
                 }
                 activeTraitsArray.push({ name, count, style, isActive });
             }
@@ -129,7 +129,7 @@ async function loadBuilderData() {
                 if (selectedSet.has(id)) {
                     selectedSet.delete(id);
                 } else {
-                    if (selectedSet.size >= max) return uiAlert('Giới hạn', `Chỉ được chọn tối đa ${max} mục!`, 'info');
+                    if (selectedSet.size >= max) return uiAlert('GIỚI HẠN', `Chỉ được chọn tối đa ${max} mục!`, 'info');
                     selectedSet.add(id);
                 }
                 window._renderVisualSelectorGrid();
@@ -139,11 +139,9 @@ async function loadBuilderData() {
                 window._vsActiveFilter = val;
                 document.querySelectorAll('.vs-filter-btn').forEach(btn => {
                     if (btn.dataset.val === val) {
-                        btn.classList.add('bg-premium-gold', 'text-black', 'border-transparent');
-                        btn.classList.remove('bg-zinc-100', 'dark:bg-premium-card', 'text-zinc-600', 'dark:text-zinc-400');
+                        btn.className = "vs-filter-btn shrink-0 px-4 py-2 text-[10px] font-black rounded-full border border-premium-gold bg-premium-gold text-black uppercase outline-none transition-colors";
                     } else {
-                        btn.classList.remove('bg-premium-gold', 'text-black', 'border-transparent');
-                        btn.classList.add('bg-zinc-100', 'dark:bg-premium-card', 'text-zinc-600', 'dark:text-zinc-400');
+                        btn.className = "vs-filter-btn shrink-0 px-4 py-2 text-[10px] font-bold rounded-full border bg-zinc-100 dark:bg-premium-surface text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold/50 hover:bg-zinc-200 dark:hover:bg-[#27272a] transition-colors uppercase outline-none";
                     }
                 });
                 window._renderVisualSelectorGrid();
@@ -169,49 +167,50 @@ async function loadBuilderData() {
                 }
 
                 if (items.length === 0) {
-                    container.innerHTML = '<p class="col-span-full text-center text-xs text-zinc-500 py-6 uppercase tracking-wider font-bold">Không có kết quả</p>';
+                    container.innerHTML = '<p class="col-span-full text-center text-xs text-zinc-500 py-10 uppercase tracking-widest font-bold">KHÔNG CÓ KẾT QUẢ</p>';
                 } else {
                     container.innerHTML = items.map(i => {
                         const isSel = selectedSet.has(i.name);
-                        const borderStyle = isSel ? 'border-2 border-premium-gold' : 'border-2 border-transparent hover:border-zinc-300 dark:hover:border-zinc-700';
-                        const checkIcon = isSel ? `<div class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-premium-gold flex items-center justify-center border border-black z-20"><i class="fa-solid fa-check text-[9px] text-black font-bold"></i></div>` : '';
+                        const borderStyle = isSel ? 'border-premium-gold' : 'border-zinc-300 dark:border-premium-border hover:border-premium-gold/50';
+                        const checkIcon = isSel ? `<div class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-premium-gold flex items-center justify-center border-2 border-white dark:border-[#1c1c1e] z-20"><i class="fa-solid fa-check text-[10px] text-black font-black"></i></div>` : '';
 
                         return `
-                            <div class="flex flex-col items-center relative gap-1 cursor-pointer" onclick="window._toggleSelection('${escapeJS(i.name)}')">
-                                <div class="relative w-full aspect-square bg-black ${borderStyle} transition-colors">
-                                    <img src="${i.image}" class="w-full h-full object-cover object-[80%] pointer-events-none" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">
-                                    ${checkIcon}
+                            <div class="flex flex-col items-center relative gap-1.5 cursor-pointer group transition-transform hover:scale-105" onclick="window._toggleSelection('${escapeJS(i.name)}')">
+                                <div class="relative w-full aspect-square bg-black rounded-2xl border-[1.5px] ${borderStyle} transition-colors overflow-hidden">
+                                    <img src="${i.image}" class="w-full h-full object-cover object-[80%] opacity-80 group-hover:opacity-100 transition-opacity pointer-events-none" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">
                                 </div>
-                                <span class="text-[9px] font-bold ${isSel ? 'text-premium-gold' : 'text-zinc-600 dark:text-zinc-400'} truncate w-full text-center uppercase tracking-wide">${i.name}</span>
+                                ${checkIcon}
+                                <span class="text-[9px] font-bold ${isSel ? 'text-premium-gold' : 'text-zinc-600 dark:text-zinc-400'} truncate w-full text-center uppercase tracking-wider">${i.name}</span>
                             </div>
                         `;
                     }).join('');
                 }
-                if (countText) countText.innerHTML = `Đã chọn: <span class="text-premium-gold ml-1">${selectedSet.size} / ${max}</span>`;
+                if (countText) countText.innerHTML = `ĐÃ CHỌN: <span class="text-premium-gold ml-1 font-black">${selectedSet.size} / ${max}</span>`;
             };
 
             const filtersHTML = isChamp
-                ? `<div class="flex gap-2 overflow-x-auto no-scrollbar py-1 mb-2">
-                     <button onclick="window._setVsFilter('all')" class="vs-filter-btn px-3 py-1 text-[10px] font-bold border transition-colors bg-premium-gold text-black border-transparent uppercase" data-val="all">Tất cả</button>
-                     ${[1, 2, 3, 4, 5].map(c => `<button onclick="window._setVsFilter('${c}')" class="vs-filter-btn px-3 py-1 text-[10px] font-bold border bg-zinc-100 dark:bg-premium-card text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold transition-colors uppercase" data-val="${c}">${c}$</button>`).join('')}
+                ? `<div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 mb-3">
+                     <button onclick="window._setVsFilter('all')" class="vs-filter-btn shrink-0 px-4 py-2 text-[10px] font-black rounded-full border border-premium-gold bg-premium-gold text-black uppercase outline-none transition-colors" data-val="all">TẤT CẢ</button>
+                     ${[1, 2, 3, 4, 5].map(c => `<button onclick="window._setVsFilter('${c}')" class="vs-filter-btn shrink-0 px-4 py-2 text-[10px] font-bold rounded-full border bg-zinc-100 dark:bg-premium-surface text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold/50 hover:bg-zinc-200 dark:hover:bg-[#27272a] transition-colors uppercase outline-none" data-val="${c}">${c}$</button>`).join('')}
                    </div>`
-                : `<div class="flex gap-2 overflow-x-auto no-scrollbar py-1 mb-2">
-                     <button onclick="window._setVsFilter('all')" class="vs-filter-btn px-3 py-1 text-[10px] font-bold border transition-colors bg-premium-gold text-black border-transparent uppercase" data-val="all">Tất cả</button>
-                     <button onclick="window._setVsFilter('normal')" class="vs-filter-btn px-3 py-1 text-[10px] font-bold border bg-zinc-100 dark:bg-premium-card text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold transition-colors uppercase" data-val="normal">Cơ bản</button>
-                     <button onclick="window._setVsFilter('artifact')" class="vs-filter-btn px-3 py-1 text-[10px] font-bold border bg-zinc-100 dark:bg-premium-card text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold transition-colors uppercase" data-val="artifact">Tạo Tác</button>
-                     <button onclick="window._setVsFilter('radiant')" class="vs-filter-btn px-3 py-1 text-[10px] font-bold border bg-zinc-100 dark:bg-premium-card text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold transition-colors uppercase" data-val="radiant">Ánh Sáng</button>
+                : `<div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 mb-3">
+                     <button onclick="window._setVsFilter('all')" class="vs-filter-btn shrink-0 px-4 py-2 text-[10px] font-black rounded-full border border-premium-gold bg-premium-gold text-black uppercase outline-none transition-colors" data-val="all">TẤT CẢ</button>
+                     <button onclick="window._setVsFilter('normal')" class="vs-filter-btn shrink-0 px-4 py-2 text-[10px] font-bold rounded-full border bg-zinc-100 dark:bg-premium-surface text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold/50 transition-colors uppercase outline-none" data-val="normal">CƠ BẢN</button>
+                     <button onclick="window._setVsFilter('artifact')" class="vs-filter-btn shrink-0 px-4 py-2 text-[10px] font-bold rounded-full border bg-zinc-100 dark:bg-premium-surface text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold/50 transition-colors uppercase outline-none" data-val="artifact">TẠO TÁC</button>
+                     <button onclick="window._setVsFilter('radiant')" class="vs-filter-btn shrink-0 px-4 py-2 text-[10px] font-bold rounded-full border bg-zinc-100 dark:bg-premium-surface text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-premium-border hover:border-premium-gold/50 transition-colors uppercase outline-none" data-val="radiant">ÁNH SÁNG</button>
                    </div>`;
 
             const html = `
                 <div class="flex flex-col text-left">
-                    <div class="flex items-center justify-between mb-3">
-                        <span id="vs-count-text" class="text-xs text-zinc-500 font-bold uppercase tracking-wider">Đã chọn: <span class="text-premium-gold ml-1">0 / ${max}</span></span>
+                    <div class="flex items-center justify-between mb-4">
+                        <span id="vs-count-text" class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">ĐÃ CHỌN: <span class="text-premium-gold ml-1 font-black">0 / ${max}</span></span>
                     </div>
-                    <div class="relative w-full mb-3">
-                        <input type="text" placeholder="TÌM KIẾM..." oninput="window._vsSearchQuery = this.value; window._renderVisualSelectorGrid()" class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-sm px-3 py-2 text-xs text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold uppercase tracking-wider transition-colors">
+                    <div class="relative w-full mb-2">
+                        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-xs"></i>
+                        <input type="text" placeholder="TÌM KIẾM..." oninput="window._vsSearchQuery = this.value; window._renderVisualSelectorGrid()" class="w-full bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border rounded-full py-3 pl-10 pr-4 text-xs font-bold text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold uppercase tracking-wider transition-colors">
                     </div>
                     ${filtersHTML}
-                    <div id="vs-grid-container" class="grid grid-cols-5 sm:grid-cols-6 gap-x-2 gap-y-4 max-h-[300px] overflow-y-auto no-scrollbar pt-1 pb-4"></div>
+                    <div id="vs-grid-container" class="grid grid-cols-5 sm:grid-cols-6 gap-x-3 gap-y-4 max-h-[350px] overflow-y-auto no-scrollbar pt-2 pb-4 pr-1"></div>
                 </div>
             `;
 
@@ -235,16 +234,16 @@ async function loadBuilderData() {
                         const img = data?.image || '/Asset/logo/logo.png';
 
                         return `
-                            <div class="flex flex-col items-center w-[36px] shrink-0 relative group cursor-pointer" onclick="window._manualData['${type}'] = window._manualData['${type}'].filter(x => x !== '${escapeJS(name)}'); window.renderManualSelections();" title="Bỏ chọn ${name}">
-                                <div class="w-full aspect-square border border-zinc-300 dark:border-zinc-700 bg-black overflow-hidden relative transition-colors group-hover:border-red-500">
+                            <div class="flex flex-col items-center w-[44px] shrink-0 relative group cursor-pointer transition-transform hover:scale-105" onclick="window._manualData['${type}'] = window._manualData['${type}'].filter(x => x !== '${escapeJS(name)}'); window.renderManualSelections();" title="Bỏ chọn ${name}">
+                                <div class="w-full aspect-square rounded-xl border-[1.5px] border-zinc-300 dark:border-premium-border bg-black overflow-hidden relative transition-colors group-hover:border-red-500">
                                     <img src="${img}" class="w-full h-full object-cover object-[80%] transition-opacity group-hover:opacity-30">
-                                    <i class="fa-solid fa-xmark absolute inset-0 m-auto text-red-500 text-sm opacity-0 group-hover:opacity-100 flex justify-center items-center font-bold"></i>
+                                    <i class="fa-solid fa-xmark absolute inset-0 m-auto text-red-500 text-base opacity-0 group-hover:opacity-100 flex justify-center items-center font-black"></i>
                                 </div>
                             </div>
                         `;
                     }).join('');
                 } else {
-                    container.innerHTML = '<span class="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Tự động</span>';
+                    container.innerHTML = '<span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-2">TỰ ĐỘNG</span>';
                 }
             });
         };
@@ -269,131 +268,132 @@ async function loadBuilderData() {
         const renderBuilderInterface = () => {
             const allTraits = [...new Set(champsData.flatMap(c => c.traits.map(t => t.name)))].sort();
             const traitButtonsHTML = allTraits.map(trait => `
-                <button class="builder-filter-trait-btn shrink-0 px-3 py-1 border text-[10px] font-bold transition-colors outline-none flex items-center gap-1.5 uppercase ${window._builderActiveTraits.has(trait) ? 'bg-premium-gold text-black border-premium-gold' : 'bg-zinc-100 dark:bg-premium-card border-zinc-200 dark:border-premium-border text-zinc-600 dark:text-zinc-400 hover:border-premium-gold'}" data-trait="${trait}">
+                <button class="builder-filter-trait-btn shrink-0 px-4 py-2 rounded-full border text-[10px] font-bold transition-colors outline-none flex items-center gap-1.5 uppercase ${window._builderActiveTraits.has(trait) ? 'bg-premium-gold text-black border-premium-gold' : 'bg-zinc-100 dark:bg-premium-surface border-zinc-200 dark:border-premium-border text-zinc-600 dark:text-zinc-400 hover:border-premium-gold/50 hover:bg-zinc-200 dark:hover:bg-[#27272a]'}" data-trait="${trait}">
                     <div class="w-3.5 h-3.5 bg-current shrink-0" style="-webkit-mask-image: url('./asset/traits/${getTraitIconName(trait)}.svg'); mask-image: url('./asset/traits/${getTraitIconName(trait)}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div>
                     ${trait}
                 </button>
             `).join('');
 
-            gridContainer.className = "flex flex-col gap-5 w-full pb-20";
+            gridContainer.className = "flex flex-col gap-6 w-full pb-24";
             
             gridContainer.innerHTML = `
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between px-1 mb-3 gap-3 sm:gap-2">
-                    <h3 class="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-widest flex items-center gap-2 shrink-0">
-                        <i class="fa-solid fa-chess-board text-premium-gold"></i> BÀN CỜ
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between px-2 mb-2 mt-2 gap-4 sm:gap-2">
+                    <h3 class="text-sm font-black text-zinc-900 dark:text-white uppercase tracking-widest flex items-center gap-2 shrink-0">
+                        <i class="fa-solid fa-chess-board text-premium-gold text-lg"></i> BÀN CỜ
                     </h3>
                     
-                    <div class="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
-                        <div class="flex items-center bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-sm h-8 px-2.5 gap-2 flex-1 min-w-0 sm:max-w-[200px]">
-                            <i class="fa-solid fa-barcode text-[10px] text-zinc-500 shrink-0"></i>
+                    <div class="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
+                        <div class="flex items-center bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border rounded-full h-10 px-4 gap-2 flex-1 min-w-0 sm:max-w-[220px]">
+                            <i class="fa-solid fa-barcode text-xs text-zinc-500 shrink-0"></i>
                             <input type="text" id="live-tft-code" readonly value="" placeholder="0 tướng..." 
-                                class="flex-1 bg-transparent text-[11px] font-mono font-bold text-zinc-600 dark:text-premium-gold outline-none truncate w-full min-w-0">
-                            <button onclick="window.copyLiveCode()" id="btn-copy-live" class="text-zinc-500 hover:text-premium-gold transition-colors text-xs outline-none shrink-0" title="Copy mã">
+                                class="flex-1 bg-transparent text-[11px] font-mono font-bold text-zinc-700 dark:text-premium-gold outline-none truncate w-full min-w-0">
+                            <button onclick="window.copyLiveCode()" id="btn-copy-live" class="text-zinc-500 hover:text-premium-gold transition-colors text-sm outline-none shrink-0" title="Copy mã">
                                 <i class="fa-regular fa-copy"></i>
                             </button>
                         </div>
 
-                        <div class="flex items-center gap-1.5 shrink-0">
-                            <button onclick="document.getElementById('manual-config-wrapper').classList.toggle('hidden')" class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-premium-card border border-zinc-200 dark:border-premium-border text-zinc-600 dark:text-zinc-400 hover:border-premium-gold hover:text-premium-gold transition-colors outline-none" title="Cấu hình nâng cao">
-                                <i class="fa-solid fa-sliders text-xs"></i>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <button onclick="document.getElementById('manual-config-wrapper').classList.toggle('hidden')" class="w-10 h-10 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border text-zinc-600 dark:text-zinc-400 hover:border-premium-gold hover:text-premium-gold transition-colors outline-none" title="Cấu hình nâng cao">
+                                <i class="fa-solid fa-sliders text-sm"></i>
                             </button>
-                            <button onclick="window.openLoadMenu()" class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-premium-card border border-zinc-200 dark:border-premium-border text-zinc-600 dark:text-zinc-400 hover:border-premium-gold hover:text-premium-gold transition-colors outline-none" title="Mở kho Đội hình">
-                                <i class="fa-solid fa-folder-open text-xs"></i>
+                            <button onclick="window.openLoadMenu()" class="w-10 h-10 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border text-zinc-600 dark:text-zinc-400 hover:border-premium-gold hover:text-premium-gold transition-colors outline-none" title="Mở kho Đội hình">
+                                <i class="fa-solid fa-folder-open text-sm"></i>
                             </button>
-                            <button onclick="window.saveLocalBoard()" class="w-8 h-8 flex items-center justify-center bg-premium-gold border border-premium-gold text-black hover:bg-yellow-500 transition-colors outline-none" title="Lưu">
-                                <i class="fa-solid fa-floppy-disk text-xs"></i>
+                            <button onclick="window.saveLocalBoard()" class="w-10 h-10 rounded-full flex items-center justify-center bg-premium-gold border border-premium-gold text-black hover:bg-yellow-400 transition-colors outline-none" title="Lưu">
+                                <i class="fa-solid fa-floppy-disk text-sm"></i>
                             </button>
-                            <button onclick="window.clearBuilderBoard()" class="w-8 h-8 flex items-center justify-center bg-zinc-100 dark:bg-premium-card border border-zinc-200 dark:border-premium-border text-red-500 hover:border-red-500 transition-colors outline-none" title="Xóa">
-                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            <button onclick="window.clearBuilderBoard()" class="w-10 h-10 rounded-full flex items-center justify-center bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border text-red-500 hover:border-red-500 hover:bg-red-500/10 transition-colors outline-none" title="Xóa">
+                                <i class="fa-solid fa-trash-can text-sm"></i>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div id="builder-trait-tracker" class="flex flex-wrap items-center gap-2 px-1 min-h-[28px]"></div>
+                <div id="builder-trait-tracker" class="flex flex-wrap items-center gap-2 px-2 min-h-[32px]"></div>
                 
                 <div class="relative w-full max-w-[500px] mx-auto aspect-[2/1] overflow-visible" id="builder-board-container"></div>
                 
-                <div id="builder-status-bar" class="min-h-[24px]"></div>
+                <div id="builder-status-bar" class="min-h-[28px] mt-2"></div>
 
-                <div id="manual-config-wrapper" class="hidden mt-2 bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border p-4 flex flex-col gap-5">
-                    <h4 class="text-xs font-bold text-premium-gold uppercase tracking-widest border-b border-zinc-200 dark:border-premium-border pb-2">THÔNG SỐ ĐỘI HÌNH</h4>
-                    <div class="flex gap-3">
-                        <label class="flex-1 flex flex-col gap-1.5">
-                            <span class="text-[10px] font-bold text-zinc-500 uppercase">Tên Đội Hình</span>
-                            <input type="text" id="builder-manual-title" placeholder="Tự động..." class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-sm px-3 py-2 text-xs text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold transition-colors">
+                <div id="manual-config-wrapper" class="hidden mt-4 bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border rounded-3xl p-6 md:p-8 flex flex-col gap-6">
+                    <h4 class="text-xs font-black text-premium-gold uppercase tracking-widest border-b border-zinc-200 dark:border-premium-border pb-3">THÔNG SỐ ĐỘI HÌNH</h4>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <label class="flex-1 flex flex-col gap-2">
+                            <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Tên Đội Hình</span>
+                            <input type="text" id="builder-manual-title" placeholder="Tự động..." class="w-full bg-zinc-100 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-premium-border rounded-xl px-4 py-3 text-xs font-bold text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold transition-colors">
                         </label>
-                        <label class="flex-1 flex flex-col gap-1.5">
-                            <span class="text-[10px] font-bold text-zinc-500 uppercase">Nhãn (Fast 8...)</span>
-                            <input type="text" id="builder-manual-tags" placeholder="Cách nhau dấu phẩy..." class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-sm px-3 py-2 text-xs text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold transition-colors">
+                        <label class="flex-1 flex flex-col gap-2">
+                            <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Nhãn (Fast 8...)</span>
+                            <input type="text" id="builder-manual-tags" placeholder="Cách nhau dấu phẩy..." class="w-full bg-zinc-100 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-premium-border rounded-xl px-4 py-3 text-xs font-bold text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold transition-colors">
                         </label>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="flex flex-col gap-1.5">
-                            <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-bold text-zinc-500 uppercase">Đi Chợ (Max 10)</span>
-                                <button onclick="window.openVisualSelector('carousel')" class="text-[10px] text-premium-gold uppercase font-bold hover:underline">CHỌN</button>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between items-center px-1">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">ĐI CHỢ (MAX 10)</span>
+                                <button onclick="window.openVisualSelector('carousel')" class="text-[10px] text-premium-gold uppercase font-black hover:underline tracking-wider">CHỌN <i class="fa-solid fa-arrow-right text-[9px] ml-0.5"></i></button>
                             </div>
-                            <div id="manual-carousel-container" class="flex flex-wrap gap-2 min-h-[38px] p-2 bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-premium-border items-center">
-                                <span class="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">TỰ ĐỘNG</span>
+                            <div id="manual-carousel-container" class="flex flex-wrap gap-2.5 min-h-[48px] p-3 bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-premium-border rounded-2xl items-center">
+                                <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-2">TỰ ĐỘNG</span>
                             </div>
                         </div>
 
-                        <div class="flex flex-col gap-1.5">
-                            <div class="flex justify-between items-center">
-                                <span class="text-[10px] font-bold text-zinc-500 uppercase">Đầu Game (Max 5)</span>
-                                <button onclick="window.openVisualSelector('champ')" class="text-[10px] text-premium-gold uppercase font-bold hover:underline">CHỌN</button>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between items-center px-1">
+                                <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">ĐẦU GAME (MAX 5)</span>
+                                <button onclick="window.openVisualSelector('champ')" class="text-[10px] text-premium-gold uppercase font-black hover:underline tracking-wider">CHỌN <i class="fa-solid fa-arrow-right text-[9px] ml-0.5"></i></button>
                             </div>
-                            <div id="manual-early-container" class="flex flex-wrap gap-2 min-h-[38px] p-2 bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-premium-border items-center">
-                                <span class="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">TỰ ĐỘNG</span>
+                            <div id="manual-early-container" class="flex flex-wrap gap-2.5 min-h-[48px] p-3 bg-zinc-50 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-premium-border rounded-2xl items-center">
+                                <span class="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-2">TỰ ĐỘNG</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="flex flex-col gap-2 border-t border-zinc-200 dark:border-premium-border pt-4">
-                        <div class="flex flex-wrap justify-between items-center gap-2 mb-1">
-                            <span class="text-[10px] font-bold text-zinc-500 uppercase">Lên Cấp</span>
+                    <div class="flex flex-col gap-4 border-t border-zinc-200 dark:border-premium-border pt-5">
+                        <div class="flex flex-wrap justify-between items-center gap-3 mb-2 px-1">
+                            <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">LÊN CẤP</span>
                             <div class="flex gap-2">
-                                <button onclick="window.setPresetLeveling('fast8')" class="text-[9px] font-bold uppercase text-zinc-500 hover:text-premium-gold">Fast 8</button>
-                                <button onclick="window.setPresetLeveling('reroll1')" class="text-[9px] font-bold uppercase text-zinc-500 hover:text-premium-gold">RR 1$</button>
-                                <button onclick="window.setPresetLeveling('reroll2')" class="text-[9px] font-bold uppercase text-zinc-500 hover:text-premium-gold">RR 2$</button>
-                                <button onclick="window.setPresetLeveling('reroll3')" class="text-[9px] font-bold uppercase text-zinc-500 hover:text-premium-gold">RR 3$</button>
-                                <button onclick="window.setPresetLeveling('clear')" class="text-[10px] text-red-500 ml-2"><i class="fa-solid fa-trash"></i></button>
+                                <button onclick="window.setPresetLeveling('fast8')" class="text-[9px] font-black uppercase text-zinc-500 hover:text-premium-gold px-3 py-1.5 bg-zinc-100 dark:bg-premium-surface rounded-full border border-zinc-200 dark:border-premium-border">Fast 8</button>
+                                <button onclick="window.setPresetLeveling('reroll1')" class="text-[9px] font-black uppercase text-zinc-500 hover:text-premium-gold px-3 py-1.5 bg-zinc-100 dark:bg-premium-surface rounded-full border border-zinc-200 dark:border-premium-border">RR 1$</button>
+                                <button onclick="window.setPresetLeveling('reroll2')" class="text-[9px] font-black uppercase text-zinc-500 hover:text-premium-gold px-3 py-1.5 bg-zinc-100 dark:bg-premium-surface rounded-full border border-zinc-200 dark:border-premium-border">RR 2$</button>
+                                <button onclick="window.setPresetLeveling('reroll3')" class="text-[9px] font-black uppercase text-zinc-500 hover:text-premium-gold px-3 py-1.5 bg-zinc-100 dark:bg-premium-surface rounded-full border border-zinc-200 dark:border-premium-border">RR 3$</button>
+                                <button onclick="window.setPresetLeveling('clear')" class="text-[10px] text-red-500 ml-1 hover:bg-red-500/10 px-2 py-1.5 rounded-full transition-colors"><i class="fa-solid fa-trash"></i></button>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        <div class="grid grid-cols-3 sm:grid-cols-6 gap-3">
                             ${[4, 5, 6, 7, 8, 9].map(lvl => `
-                                <div class="flex flex-col border border-zinc-200 dark:border-premium-border bg-zinc-50 dark:bg-black">
-                                    <span class="bg-zinc-100 dark:bg-premium-card text-[10px] text-center font-bold text-zinc-500 py-1 uppercase border-b border-zinc-200 dark:border-premium-border">LV ${lvl}</span>
-                                    <input type="text" id="lvl-${lvl}" placeholder="-" class="w-full text-center bg-transparent text-xs text-premium-gold font-bold py-1.5 focus:outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-700">
+                                <div class="flex flex-col border border-zinc-200 dark:border-premium-border rounded-xl overflow-hidden bg-zinc-50 dark:bg-[#0a0a0a]">
+                                    <span class="bg-zinc-100 dark:bg-premium-surface text-[9px] text-center font-black text-zinc-500 py-1.5 uppercase border-b border-zinc-200 dark:border-premium-border tracking-widest">LV ${lvl}</span>
+                                    <input type="text" id="lvl-${lvl}" placeholder="-" class="w-full text-center bg-transparent text-xs text-premium-gold font-black py-2.5 focus:outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600 transition-colors focus:bg-white dark:focus:bg-[#121212]">
                                 </div>
                             `).join('')}
                         </div>
                         
-                        <div class="flex flex-wrap sm:flex-nowrap justify-end gap-2 mt-4 pt-4 border-t border-zinc-200 dark:border-premium-border">
-                            <button onclick="window.openImportModal()" class="flex-1 sm:flex-none px-4 py-2 bg-zinc-100 dark:bg-premium-card text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border text-[11px] font-bold uppercase hover:border-premium-gold transition-colors">Nhập Mã</button>
-                            <button onclick="window.downloadBoardJSON()" class="flex-1 sm:flex-none px-4 py-2 bg-zinc-100 dark:bg-premium-card text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border text-[11px] font-bold uppercase hover:border-premium-gold transition-colors">Tải JSON</button>
-                            <button onclick="window.shareToFirebase()" class="w-full sm:w-auto px-4 py-2 bg-premium-gold text-black text-[11px] font-bold uppercase hover:bg-yellow-500 transition-colors">Đăng Bàn Cờ</button>
+                        <div class="flex flex-wrap sm:flex-nowrap justify-end gap-3 mt-4 pt-5 border-t border-zinc-200 dark:border-premium-border">
+                            <button onclick="window.openImportModal()" class="flex-1 sm:flex-none px-5 py-2.5 rounded-full bg-zinc-100 dark:bg-premium-surface text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border text-[11px] font-black uppercase tracking-widest hover:border-premium-gold transition-colors"><i class="fa-solid fa-file-import mr-1.5 text-zinc-500"></i> NHẬP MÃ</button>
+                            <button onclick="window.downloadBoardJSON()" class="flex-1 sm:flex-none px-5 py-2.5 rounded-full bg-zinc-100 dark:bg-premium-surface text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border text-[11px] font-black uppercase tracking-widest hover:border-premium-gold transition-colors"><i class="fa-solid fa-download mr-1.5 text-zinc-500"></i> TẢI JSON</button>
+                            <button onclick="window.shareToFirebase()" class="w-full sm:w-auto px-6 py-2.5 rounded-full bg-premium-gold text-black text-[11px] font-black uppercase tracking-widest hover:bg-yellow-400 transition-colors"><i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> ĐĂNG CLOUD</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex flex-col bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border mt-4">
-                    <div class="flex flex-col sm:flex-row gap-3 p-3 border-b border-zinc-200 dark:border-premium-border bg-zinc-50 dark:bg-black">
-                        <div class="flex items-center gap-4 shrink-0 px-2">
-                            <button onclick="window.setBuilderTab('champ')" class="text-[12px] font-bold uppercase tracking-wider transition-colors pb-1 border-b-2 ${window._builderActiveTab === 'champ' ? 'text-premium-gold border-premium-gold' : 'text-zinc-500 border-transparent hover:text-zinc-800 dark:hover:text-white'}">TƯỚNG</button>
-                            <button onclick="window.setBuilderTab('item')" class="text-[12px] font-bold uppercase tracking-wider transition-colors pb-1 border-b-2 ${window._builderActiveTab === 'item' ? 'text-premium-gold border-premium-gold' : 'text-zinc-500 border-transparent hover:text-zinc-800 dark:hover:text-white'}">TRANG BỊ</button>
+                <div class="flex flex-col bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border mt-6 rounded-3xl overflow-hidden">
+                    <div class="flex flex-col sm:flex-row gap-4 p-4 border-b border-zinc-200 dark:border-premium-border bg-zinc-50 dark:bg-[#0a0a0a]">
+                        <div class="flex items-center gap-2 shrink-0 px-1">
+                            <button onclick="window.setBuilderTab('champ')" class="px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-colors outline-none ${window._builderActiveTab === 'champ' ? 'bg-premium-gold text-black' : 'bg-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-premium-surface'}">TƯỚNG</button>
+                            <button onclick="window.setBuilderTab('item')" class="px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-colors outline-none ${window._builderActiveTab === 'item' ? 'bg-premium-gold text-black' : 'bg-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-premium-surface'}">TRANG BỊ</button>
                         </div>
                         <div class="relative w-full flex-1">
-                            <input type="text" id="builder-search-input" value="${window._builderSearchQuery}" placeholder="TÌM KIẾM..." oninput="window.updateBuilderSearch(this.value)" class="w-full bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border rounded-sm px-3 py-1.5 text-xs text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold uppercase tracking-wider transition-colors">
+                            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 text-xs"></i>
+                            <input type="text" id="builder-search-input" value="${window._builderSearchQuery}" placeholder="TÌM KIẾM..." oninput="window.updateBuilderSearch(this.value)" class="w-full bg-zinc-100 dark:bg-[#121212] border border-zinc-200 dark:border-premium-border rounded-full py-2.5 pl-10 pr-4 text-xs font-bold text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold uppercase tracking-wider transition-colors">
                         </div>
                     </div>
-                    <div id="builder-trait-filters" class="flex items-center gap-2 overflow-x-auto no-scrollbar p-3 border-b border-zinc-100 dark:border-premium-border ${window._builderActiveTab === 'champ' ? '' : 'hidden'}">
+                    <div id="builder-trait-filters" class="flex items-center gap-2 overflow-x-auto no-scrollbar p-3 border-b border-zinc-100 dark:border-premium-border bg-zinc-50 dark:bg-premium-card ${window._builderActiveTab === 'champ' ? '' : 'hidden'}">
                         ${traitButtonsHTML}
                     </div>
-                    <div class="p-3 bg-white dark:bg-premium-card">
-                        <div class="flex flex-col gap-6 max-h-[350px] overflow-y-auto no-scrollbar relative" id="builder-pool-container"></div>
+                    <div class="p-4 bg-transparent">
+                        <div class="flex flex-col gap-6 max-h-[380px] overflow-y-auto no-scrollbar relative pr-1" id="builder-pool-container"></div>
                     </div>
                 </div>
             `;
@@ -432,9 +432,9 @@ async function loadBuilderData() {
 
         window.copyLiveCode = () => {
             const code = document.getElementById('live-tft-code')?.value;
-            if (!code) return uiAlert('Lỗi', 'Bàn cờ đang trống!', 'error');
+            if (!code) return uiAlert('LỖI', 'Bàn cờ đang trống!', 'error');
             navigator.clipboard.writeText(code);
-            uiAlert('Thành công', 'Đã chép mã TFT', 'info');
+            uiAlert('THÀNH CÔNG', 'Đã chép mã TFT', 'info');
         };
 
         const renderBoard = () => {
@@ -449,17 +449,17 @@ async function loadBuilderData() {
             const activeTraits = calculateActiveTraits();
             tracker.innerHTML = activeTraits.length > 0 ? activeTraits.map(t => {
                 const iconName = getTraitIconName(t.name);
-                return `<div class="flex items-center gap-1.5 px-2 py-1 border ${t.style} uppercase font-bold"><div class="w-3.5 h-3.5 bg-current shrink-0" style="-webkit-mask-image: url('./asset/traits/${iconName}.svg'); mask-image: url('./asset/traits/${iconName}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div><span class="text-[10px]">${t.name}</span><div class="px-1.5 py-0.5 bg-black/20 text-current"><span class="text-[10px]">${t.count}</span></div></div>`;
-            }).join('') : '<span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">CHƯA KÍCH HỆ</span>';
+                return `<div class="flex items-center gap-1.5 px-3 py-1.5 border rounded-full ${t.style} uppercase font-black tracking-widest text-[9px] transition-transform hover:scale-105 cursor-default"><div class="w-3.5 h-3.5 bg-current shrink-0" style="-webkit-mask-image: url('./asset/traits/${iconName}.svg'); mask-image: url('./asset/traits/${iconName}.svg'); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center;"></div><span>${t.name}</span><div class="px-1.5 py-0.5 bg-black/20 text-current rounded-full ml-0.5 border border-white/10"><span class="text-[9px]">${t.count}</span></div></div>`;
+            }).join('') : '<span class="text-[10px] font-black text-zinc-500 uppercase tracking-widest px-2">CHƯA KÍCH HỆ</span>';
 
             if (window._builderActiveTool) {
                 const toolName = window._builderActiveTool.id;
                 const isMove = window._builderActiveTool.type === 'move';
                 const isItem = window._builderActiveTool.type === 'item';
-                let actionText = isMove ? `DI CHUYỂN: ${toolName}` : isItem ? `GHÉP: ${toolName}` : `CHỌN: ${toolName}`;
-                statusBar.innerHTML = `<div class="mx-auto mt-2 px-4 py-2 bg-premium-gold text-black text-[10px] font-bold uppercase tracking-widest text-center w-max max-w-full">${actionText}</div>`;
+                let actionText = isMove ? `ĐANG DI CHUYỂN: ${toolName}` : isItem ? `ĐANG GHÉP ĐỒ: ${toolName}` : `ĐANG CHỌN: ${toolName}`;
+                statusBar.innerHTML = `<div class="mx-auto mt-1 px-5 py-2 rounded-full bg-premium-gold text-black text-[10px] font-black uppercase tracking-widest text-center w-max max-w-full animate-pulse">${actionText}</div>`;
             } else {
-                statusBar.innerHTML = '<p class="text-center text-[10px] text-zinc-500 uppercase font-bold tracking-wider mt-2">CHỌN TƯỚNG/ĐỒ ĐỂ XẾP</p>';
+                statusBar.innerHTML = '<p class="text-center text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-2 px-4 py-1.5 rounded-full bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border w-max mx-auto">CHỌN TƯỚNG/ĐỒ ĐỂ XẾP</p>';
             }
 
             const hexClip = "clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);";
@@ -472,7 +472,7 @@ async function loadBuilderData() {
                     const cellState = window._builderBoardState[r][c];
                     const isSelected = window._builderActiveTool?.type === 'move' && window._builderActiveTool.r === r && window._builderActiveTool.c === c;
                     
-                    const moveHighlight = isSelected ? 'z-30 opacity-100 ring-2 ring-premium-gold' : 'opacity-100';
+                    const moveHighlight = isSelected ? 'z-30 opacity-100 scale-110 drop-shadow-[0_0_10px_rgba(212,175,55,0.8)]' : 'opacity-100 hover:scale-105';
 
                     if (cellState) {
                         const cData = window._builderMasterChamps[cellState.champ];
@@ -482,19 +482,20 @@ async function loadBuilderData() {
                         if (cData?.cost === 4) bgBorder = 'bg-purple-500';
                         if (cData?.cost === 5) bgBorder = 'bg-premium-gold';
 
-                        const itemsHTML = `<div class="absolute -bottom-2 left-0 w-full flex justify-center gap-[1px] z-20 pointer-events-none">${cellState.items.map(itemName => `<img src="${window._builderMasterItems[itemName]?.image}" class="w-[16px] h-[16px] border border-black bg-black object-cover" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">`).join('')}</div>`;
+                        const itemsHTML = `<div class="absolute -bottom-2 left-0 w-full flex justify-center gap-[1px] z-20 pointer-events-none">${cellState.items.map(itemName => `<img src="${window._builderMasterItems[itemName]?.image}" class="w-[18px] h-[18px] border-[1.5px] border-black rounded-full bg-black object-cover" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">`).join('')}</div>`;
 
                         boardHTML += `
-                            <div class="absolute z-20 transition-opacity cursor-pointer ${moveHighlight}" style="width: 13.333%; height: 30.769%; left: ${left}%; top: ${top}%;" draggable="true" ondragstart="window.handleBuilderDragStart(event, 'move', '${escapeJS(cellState.champ)}', ${r}, ${c})" onclick="window.handleHexClick(${r}, ${c})" ondragover="event.preventDefault(); this.classList.add('opacity-70');" ondragleave="this.classList.remove('opacity-70');" ondrop="window.handleBuilderDrop(event, ${r}, ${c}); this.classList.remove('opacity-70');">
+                            <div class="absolute z-20 transition-transform cursor-pointer ${moveHighlight}" style="width: 13.333%; height: 30.769%; left: ${left}%; top: ${top}%;" draggable="true" ondragstart="window.handleBuilderDragStart(event, 'move', '${escapeJS(cellState.champ)}', ${r}, ${c})" onclick="window.handleHexClick(${r}, ${c})" ondragover="event.preventDefault(); this.classList.add('opacity-70');" ondragleave="this.classList.remove('opacity-70');" ondrop="window.handleBuilderDrop(event, ${r}, ${c}); this.classList.remove('opacity-70');">
                                 <div class="absolute inset-0 ${bgBorder}" style="${hexClip}"></div>
                                 <img src="${cData?.image}" class="absolute w-[94%] h-[94%] left-[3%] top-[3%] object-cover object-[80%] bg-black pointer-events-none" style="${hexClip}" onerror="this.onerror=null; this.src='/Asset/logo/logo.png';">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" style="${hexClip}"></div>
                                 ${itemsHTML}
-                                <div class="absolute -top-1 -right-0 z-40 cursor-pointer" onclick="event.stopPropagation(); window.removeBuilderEntity(${r}, ${c})"><div class="w-4 h-4 bg-red-500 text-white flex items-center justify-center border border-black"><i class="fa-solid fa-xmark text-[9px]"></i></div></div>
+                                <div class="absolute -top-1.5 -right-1 z-40 cursor-pointer transition-transform hover:scale-125" onclick="event.stopPropagation(); window.removeBuilderEntity(${r}, ${c})"><div class="w-5 h-5 bg-red-500 text-white flex items-center justify-center rounded-full border-2 border-[#1c1c1e]"><i class="fa-solid fa-xmark text-[10px] font-black"></i></div></div>
                             </div>`;
                     } else {
                         boardHTML += `<div class="absolute z-10 cursor-pointer group" style="width: 13.333%; height: 30.769%; left: ${left}%; top: ${top}%;" onclick="window.handleHexClick(${r}, ${c})" ondragover="event.preventDefault(); this.classList.add('opacity-100');" ondragleave="this.classList.remove('opacity-100');" ondrop="window.handleBuilderDrop(event, ${r}, ${c}); this.classList.remove('opacity-100');">
-                            <div class="absolute inset-0 bg-zinc-200 dark:bg-premium-border opacity-50 group-hover:opacity-100 group-hover:bg-premium-gold transition-colors" style="${hexClip}"></div>
-                            <div class="absolute w-[96%] h-[96%] left-[2%] top-[2%] bg-zinc-50 dark:bg-black" style="${hexClip}"></div>
+                            <div class="absolute inset-0 bg-zinc-200 dark:bg-premium-surface opacity-50 group-hover:opacity-100 group-hover:bg-premium-gold/80 transition-colors" style="${hexClip}"></div>
+                            <div class="absolute w-[96%] h-[96%] left-[2%] top-[2%] bg-zinc-50 dark:bg-[#0a0a0a]" style="${hexClip}"></div>
                         </div>`;
                     }
                 }
@@ -507,7 +508,7 @@ async function loadBuilderData() {
             const pool = document.getElementById('builder-pool-container');
             if (!pool) return;
             const query = window._builderSearchQuery.toLowerCase();
-            const gridClass = "grid grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-1.5";
+            const gridClass = "grid grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-3";
             let poolHTML = '';
 
             if (window._builderActiveTab === 'champ') {
@@ -517,22 +518,23 @@ async function loadBuilderData() {
                     if (champsInTier.length === 0) return;
                     
                     let tierColor = 'text-zinc-500 dark:text-zinc-400'; 
+                    let borderActive = 'border-premium-gold';
                     if (tier === 2) tierColor = 'text-emerald-500'; 
                     if (tier === 3) tierColor = 'text-blue-500'; 
                     if (tier === 4) tierColor = 'text-purple-500'; 
                     if (tier === 5) tierColor = 'text-premium-gold';
                     
                     poolHTML += `
-                    <div class="flex flex-col gap-2">
-                        <div class="flex items-center gap-2 sticky top-0 bg-white dark:bg-premium-card z-20 py-1 border-b border-zinc-100 dark:border-premium-border">
-                            <h4 class="text-[11px] font-bold ${tierColor} uppercase tracking-wider">${tier} VÀNG</h4>
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center gap-2 sticky top-0 bg-white dark:bg-premium-card z-20 py-2 border-b border-zinc-200 dark:border-premium-border px-1">
+                            <h4 class="text-[11px] font-black ${tierColor} uppercase tracking-widest">${tier} VÀNG</h4>
                         </div>
                         <div class="${gridClass}">
                             ${champsInTier.map(champ => `
-                                <div class="relative w-full aspect-square bg-black border-2 transition-colors cursor-pointer ${window._builderActiveTool?.id === champ.name ? 'border-premium-gold' : 'border-transparent hover:border-zinc-500'}" onclick="window.selectBuilderTool('champ', '${escapeJS(champ.name)}')" draggable="true" ondragstart="window.handleBuilderDragStart(event, 'champ', '${escapeJS(champ.name)}')">
-                                    <img src="${champ.image}" class="w-full h-full object-cover object-[80%] pointer-events-none opacity-80 hover:opacity-100">
-                                    <div class="absolute bottom-0 left-0 w-full bg-black/80 py-0.5 text-center pointer-events-none">
-                                        <span class="block text-[8px] font-bold text-white uppercase tracking-widest">${window.escapeHTML(champ.name)}</span>
+                                <div class="relative w-full aspect-square bg-black rounded-2xl border-[1.5px] transition-transform cursor-pointer overflow-hidden ${window._builderActiveTool?.id === champ.name ? borderActive + ' scale-105' : 'border-zinc-300 dark:border-premium-border hover:border-premium-gold/50 hover:scale-105'}" onclick="window.selectBuilderTool('champ', '${escapeJS(champ.name)}')" draggable="true" ondragstart="window.handleBuilderDragStart(event, 'champ', '${escapeJS(champ.name)}')">
+                                    <img src="${champ.image}" class="w-full h-full object-cover object-[80%] pointer-events-none opacity-80 hover:opacity-100 transition-opacity">
+                                    <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-3 pb-1.5 text-center pointer-events-none">
+                                        <span class="block text-[8px] font-black text-white uppercase tracking-widest">${window.escapeHTML(champ.name)}</span>
                                     </div>
                                 </div>
                             `).join('')}
@@ -546,21 +548,21 @@ async function loadBuilderData() {
                     if (itemsInCat.length === 0) return;
                     
                     poolHTML += `
-                    <div class="flex flex-col gap-2">
-                        <div class="flex items-center gap-2 sticky top-0 bg-white dark:bg-premium-card z-20 py-1 border-b border-zinc-100 dark:border-premium-border">
-                            <h4 class="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">${cat.name}</h4>
+                    <div class="flex flex-col gap-3">
+                        <div class="flex items-center gap-2 sticky top-0 bg-white dark:bg-premium-card z-20 py-2 border-b border-zinc-200 dark:border-premium-border px-1">
+                            <h4 class="text-[11px] font-black text-zinc-600 dark:text-zinc-300 uppercase tracking-widest">${cat.name}</h4>
                         </div>
                         <div class="${gridClass}">
                             ${itemsInCat.map(item => `
-                                <div class="relative w-full aspect-square bg-black border-2 transition-colors cursor-pointer ${window._builderActiveTool?.id === item.name ? 'border-premium-gold' : 'border-transparent hover:border-zinc-500'}" onclick="window.selectBuilderTool('item', '${escapeJS(item.name)}')" draggable="true" ondragstart="window.handleBuilderDragStart(event, 'item', '${escapeJS(item.name)}')">
-                                    <img src="${item.image}" class="w-full h-full object-cover pointer-events-none">
+                                <div class="relative w-full aspect-square bg-black rounded-xl border-[1.5px] transition-transform cursor-pointer overflow-hidden ${window._builderActiveTool?.id === item.name ? 'border-premium-gold scale-105' : 'border-zinc-300 dark:border-premium-border hover:border-premium-gold/50 hover:scale-105'}" onclick="window.selectBuilderTool('item', '${escapeJS(item.name)}')" draggable="true" ondragstart="window.handleBuilderDragStart(event, 'item', '${escapeJS(item.name)}')">
+                                    <img src="${item.image}" class="w-full h-full object-cover pointer-events-none opacity-90 hover:opacity-100 transition-opacity">
                                 </div>
                             `).join('')}
                         </div>
                     </div>`;
                 });
             }
-            pool.innerHTML = poolHTML || '<p class="text-center text-xs font-bold text-zinc-500 uppercase tracking-wider py-8">KHÔNG TÌM THẤY</p>';
+            pool.innerHTML = poolHTML || '<p class="text-center text-xs font-bold text-zinc-500 uppercase tracking-widest py-10">KHÔNG TÌM THẤY</p>';
         };
 
         const attachFilterEvents = () => {
@@ -599,7 +601,7 @@ async function loadBuilderData() {
                 } else if (tool.type === 'item') {
                     if (cell) {
                         if (cell.items.length < 3) cell.items.push(tool.id);
-                        else uiAlert('Đầy đồ', 'Tướng chỉ mang tối đa 3 trang bị.', 'info');
+                        else uiAlert('ĐẦY ĐỒ', 'Tướng chỉ mang tối đa 3 trang bị.', 'info');
                         window._builderActiveTool = null;
                     }
                 } else if (tool.type === 'move') {
@@ -654,7 +656,7 @@ async function loadBuilderData() {
                         btn.classList.remove('bg-premium-gold', 'text-black', 'border-premium-gold');
                     }, 1500);
                 }
-            }).catch(() => uiAlert('Lỗi', 'Không thể copy!', 'error'));
+            }).catch(() => uiAlert('LỖI', 'Không thể copy!', 'error'));
         };
 
         window.autoSaveBoard = () => {
@@ -671,13 +673,15 @@ async function loadBuilderData() {
         window.saveLocalBoard = () => {
             const data = window.getAllSavedData();
             if (data.manual.length >= 5) {
-                uiAlert('Bộ nhớ đầy', 'Tối đa 5 bản lưu. Hãy xóa bớt!', 'error');
+                uiAlert('BỘ NHỚ ĐẦY', 'Tối đa 5 bản lưu. Hãy xóa bớt!', 'error');
                 return;
             }
 
             const inputHTML = `
-                <input type="text" id="custom-save-name" placeholder="TÊN ĐỘI HÌNH..." 
-                    class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-sm px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold mt-2">
+                <div class="mt-4 mb-2">
+                    <input type="text" id="custom-save-name" placeholder="TÊN ĐỘI HÌNH..." 
+                        class="w-full bg-zinc-100 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-premium-border rounded-xl px-4 py-3 text-xs font-black uppercase tracking-wider text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold transition-colors">
+                </div>
             `;
 
             uiConfirm('LƯU ĐỘI HÌNH', inputHTML, () => {
@@ -685,7 +689,7 @@ async function loadBuilderData() {
                 const saveName = nameInput ? nameInput.value.trim() : '';
 
                 if (!saveName) {
-                    setTimeout(() => uiAlert('Lỗi', 'Tên không được trống!', 'error'), 100);
+                    setTimeout(() => uiAlert('LỖI', 'Tên không được để trống!', 'error'), 100);
                     return;
                 }
 
@@ -695,7 +699,7 @@ async function loadBuilderData() {
                     board: JSON.parse(JSON.stringify(window._builderBoardState))
                 });
                 localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(data));
-                setTimeout(() => uiAlert('Thành công', `Đã lưu: <span class="text-premium-gold">${saveName}</span>`, 'info'), 100);
+                setTimeout(() => uiAlert('THÀNH CÔNG', `Đã lưu: <span class="text-premium-gold font-black">${saveName}</span>`, 'info'), 100);
             });
         };
 
@@ -829,7 +833,7 @@ async function loadBuilderData() {
             };
         };
 
-        window.clearBuilderBoard = () => uiConfirm('LÀM SẠCH', 'Xóa toàn bộ bàn cờ?', () => {
+        window.clearBuilderBoard = () => uiConfirm('LÀM SẠCH', 'Bạn có chắc muốn xóa toàn bộ bàn cờ?', () => {
             window._builderBoardState = Array(4).fill(null).map(() => Array(7).fill(null));
             window._builderActiveTool = null;
             window.autoSaveBoard();
@@ -838,28 +842,28 @@ async function loadBuilderData() {
 
         window.downloadBoardJSON = () => { 
             const out = generateJSONPayload(); 
-            if (!out) { uiAlert('Lỗi', 'Bàn cờ trống!', 'error'); return; }
+            if (!out) { uiAlert('LỖI', 'Bàn cờ đang trống!', 'error'); return; }
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify([out], null, 4)); 
             const link = document.createElement('a'); 
             link.setAttribute("href", dataStr); 
-            link.setAttribute("download", "tft_comp.json"); 
+            link.setAttribute("download", "tft_comp_premium.json"); 
             link.click(); 
         };
 
         window.shareToFirebase = () => {
-            if (!generateJSONPayload()) { uiAlert('Lỗi', 'Bàn cờ trống!', 'error'); return; }
+            if (!generateJSONPayload()) { uiAlert('LỖI', 'Bàn cờ đang trống!', 'error'); return; }
             uiAlert('CHIA SẺ CLOUD', `
-                <div class="flex flex-col gap-3 mt-2">
-                    <input type="text" id="share-author-name" placeholder="TÊN TÁC GIẢ..." class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-sm px-3 py-2 text-xs font-bold uppercase tracking-wider text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold transition-colors">
-                    <div class="flex justify-center p-1 min-h-[78px]"><div id="recaptcha-container"></div></div>
-                    <button id="btn-upload-fs" onclick="window.processFS()" class="w-full py-2 bg-premium-gold text-black font-bold uppercase tracking-wider border border-transparent rounded-sm hover:bg-yellow-500 transition-colors">TẢI LÊN</button>
+                <div class="flex flex-col gap-4 mt-3">
+                    <input type="text" id="share-author-name" placeholder="TÊN TÁC GIẢ..." class="w-full bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border rounded-xl px-4 py-3 text-xs font-black uppercase tracking-widest text-zinc-800 dark:text-white focus:outline-none focus:border-premium-gold transition-colors">
+                    <div class="flex justify-center p-2 min-h-[78px] bg-zinc-50 dark:bg-[#0a0a0a] rounded-xl border border-zinc-200 dark:border-premium-border"><div id="recaptcha-container"></div></div>
+                    <button id="btn-upload-fs" onclick="window.processFS()" class="w-full py-3 bg-premium-gold text-black font-black uppercase tracking-widest rounded-xl hover:bg-yellow-400 transition-colors outline-none mt-1">TẢI LÊN CLOUD</button>
                 </div>
             `);
             setTimeout(() => { if (window.grecaptcha) grecaptcha.render('recaptcha-container', { 'sitekey': RECAPTCHA_SITE_KEY, 'theme': 'dark' }); }, 100);
         };
 
        window.processFS = async () => {
-            if (!grecaptcha.getResponse()) return uiAlert('LỖI', 'Chưa xác nhận Captcha!', 'error');
+            if (!grecaptcha.getResponse()) return uiAlert('LỖI', 'Vui lòng xác nhận Captcha!', 'error');
             const btn = document.getElementById('btn-upload-fs');
             const authorInput = document.getElementById('share-author-name');
             const authorName = (authorInput && authorInput.value.trim() !== '') ? authorInput.value.trim() : 'ẨN DANH';
@@ -893,22 +897,26 @@ async function loadBuilderData() {
 
                 closeModal();
                 
-                uiAlert('THÀNH CÔNG', `
-                    <div class="flex flex-col gap-3 mt-2">
-                        <p class="text-xs text-zinc-500 uppercase font-bold tracking-wider">MÃ CỘNG ĐỒNG</p>
-                        <div class="flex">
-                            <input type="text" readonly value="${shareCode}" class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border p-2 text-xs font-mono text-premium-gold outline-none text-center rounded-l-sm">
-                            <button id="btn-cp-web" onclick="window.copyShareCode('${shareCode}', 'btn-cp-web')" class="px-3 bg-premium-gold text-black border border-premium-gold text-xs font-bold uppercase rounded-r-sm hover:bg-yellow-500">COPY</button>
+                uiAlert('TẢI LÊN THÀNH CÔNG', `
+                    <div class="flex flex-col gap-4 mt-3">
+                        <div class="flex flex-col gap-1.5">
+                            <p class="text-[10px] text-zinc-500 uppercase font-black tracking-widest pl-1">MÃ CỘNG ĐỒNG</p>
+                            <div class="flex bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border rounded-xl overflow-hidden p-1">
+                                <input type="text" readonly value="${shareCode}" class="w-full bg-transparent p-2 text-xs font-mono font-bold text-premium-gold outline-none text-center">
+                                <button id="btn-cp-web" onclick="window.copyShareCode('${shareCode}', 'btn-cp-web')" class="px-5 rounded-lg bg-premium-gold text-black font-black text-[10px] uppercase tracking-widest hover:bg-yellow-400 transition-colors outline-none">COPY</button>
+                            </div>
                         </div>
-                        <p class="text-xs text-zinc-500 uppercase font-bold tracking-wider mt-2">MÃ CLIENT GAME</p>
-                        <div class="flex">
-                            <input type="text" readonly value="${riotCode}" class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border p-2 text-xs font-mono text-premium-gold outline-none text-center rounded-l-sm">
-                            <button id="btn-cp-riot" onclick="window.copyShareCode('${riotCode}', 'btn-cp-riot')" class="px-3 bg-premium-gold text-black border border-premium-gold text-xs font-bold uppercase rounded-r-sm hover:bg-yellow-500">COPY</button>
+                        <div class="flex flex-col gap-1.5">
+                            <p class="text-[10px] text-zinc-500 uppercase font-black tracking-widest pl-1">MÃ CLIENT GAME</p>
+                            <div class="flex bg-zinc-100 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border rounded-xl overflow-hidden p-1">
+                                <input type="text" readonly value="${riotCode}" class="w-full bg-transparent p-2 text-xs font-mono font-bold text-premium-gold outline-none text-center">
+                                <button id="btn-cp-riot" onclick="window.copyShareCode('${riotCode}', 'btn-cp-riot')" class="px-5 rounded-lg bg-premium-gold text-black font-black text-[10px] uppercase tracking-widest hover:bg-yellow-400 transition-colors outline-none">COPY</button>
+                            </div>
                         </div>
                     </div>
                 `, 'info');
             } catch (e) {
-                uiAlert('LỖI', 'Không kết nối được Server.', 'error');
+                uiAlert('LỖI', 'Không thể kết nối đến Máy Chủ Cloud.', 'error');
                 btn.disabled = false;
                 btn.innerText = 'THỬ LẠI';
             }
@@ -916,27 +924,27 @@ async function loadBuilderData() {
 
         window.openImportModal = () => {
             uiAlert('NHẬP ĐỘI HÌNH', `
-                <div class="flex flex-col gap-4 mt-2">
-                    <div class="flex flex-col gap-1.5">
-                        <span class="text-[10px] font-bold text-premium-gold uppercase tracking-widest">MÃ CỘNG ĐỒNG (TFTH-...)</span>
-                        <div class="flex">
-                            <input type="text" id="imp-cloud-code" class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-l-sm px-3 py-2 text-xs font-mono text-zinc-800 dark:text-white outline-none focus:border-premium-gold">
-                            <button id="btn-imp-cloud" onclick="window.doImpCloud()" class="px-3 bg-premium-gold text-black font-bold text-[10px] uppercase rounded-r-sm hover:bg-yellow-500 transition-colors">TẢI</button>
+                <div class="flex flex-col gap-5 mt-4">
+                    <div class="flex flex-col gap-2">
+                        <span class="text-[10px] font-black text-premium-gold uppercase tracking-widest pl-1">MÃ CỘNG ĐỒNG (TFTH-...)</span>
+                        <div class="flex p-1 bg-zinc-100 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-premium-border rounded-xl">
+                            <input type="text" id="imp-cloud-code" class="w-full bg-transparent px-3 py-2 text-xs font-mono font-bold text-zinc-800 dark:text-white outline-none">
+                            <button id="btn-imp-cloud" onclick="window.doImpCloud()" class="px-5 rounded-lg bg-premium-gold text-black font-black text-[10px] uppercase tracking-widest hover:bg-yellow-400 transition-colors outline-none">TẢI</button>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1.5">
-                        <span class="text-[10px] font-bold text-premium-gold uppercase tracking-widest">MÃ GAME (02...)</span>
-                        <div class="flex">
-                            <input type="text" id="imp-tft-code" class="w-full bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-l-sm px-3 py-2 text-xs font-mono text-zinc-800 dark:text-white outline-none focus:border-premium-gold">
-                            <button onclick="window.doImpCode()" class="px-3 bg-premium-gold text-black font-bold text-[10px] uppercase rounded-r-sm hover:bg-yellow-500 transition-colors">NHẬP</button>
+                    <div class="flex flex-col gap-2">
+                        <span class="text-[10px] font-black text-premium-gold uppercase tracking-widest pl-1">MÃ GAME (02...)</span>
+                        <div class="flex p-1 bg-zinc-100 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-premium-border rounded-xl">
+                            <input type="text" id="imp-tft-code" class="w-full bg-transparent px-3 py-2 text-xs font-mono font-bold text-zinc-800 dark:text-white outline-none">
+                            <button onclick="window.doImpCode()" class="px-5 rounded-lg bg-premium-gold text-black font-black text-[10px] uppercase tracking-widest hover:bg-yellow-400 transition-colors outline-none">NHẬP</button>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-1.5">
-                        <span class="text-[10px] font-bold text-premium-gold uppercase tracking-widest">TỪ FILE JSON</span>
+                    <div class="flex flex-col gap-2">
+                        <span class="text-[10px] font-black text-premium-gold uppercase tracking-widest pl-1 border-t border-zinc-200 dark:border-premium-border pt-4">TỪ FILE JSON</span>
                         <input type="file" id="fs-file" accept=".json" class="hidden" onchange="const r=new FileReader(); r.onload=e=>document.getElementById('imp-area').value=e.target.result; r.readAsText(this.files[0])">
-                        <button onclick="document.getElementById('fs-file').click()" class="w-full py-1.5 bg-zinc-100 dark:bg-premium-card border border-zinc-200 dark:border-premium-border text-zinc-600 dark:text-zinc-300 text-[10px] font-bold uppercase rounded-sm hover:border-premium-gold transition-colors">CHỌN FILE</button>
-                        <textarea id="imp-area" class="w-full h-16 bg-zinc-100 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-sm p-2 text-[10px] font-mono outline-none focus:border-premium-gold"></textarea>
-                        <button onclick="window.doImpJSON()" class="w-full py-2 bg-premium-gold text-black font-bold text-xs uppercase rounded-sm hover:bg-yellow-500 transition-colors mt-1">NHẬP JSON</button>
+                        <button onclick="document.getElementById('fs-file').click()" class="w-full py-2.5 bg-white dark:bg-premium-surface border border-zinc-200 dark:border-premium-border text-zinc-600 dark:text-zinc-300 text-[10px] font-black uppercase tracking-widest rounded-xl hover:border-premium-gold transition-colors outline-none"><i class="fa-solid fa-folder-open mr-1.5"></i> CHỌN FILE</button>
+                        <textarea id="imp-area" class="w-full h-20 bg-zinc-100 dark:bg-[#0a0a0a] border border-zinc-200 dark:border-premium-border rounded-xl p-3 text-[10px] font-mono outline-none focus:border-premium-gold mt-1 text-zinc-600 dark:text-zinc-400"></textarea>
+                        <button onclick="window.doImpJSON()" class="w-full py-3 bg-premium-gold text-black font-black text-[11px] uppercase tracking-widest rounded-xl hover:bg-yellow-400 transition-colors mt-1 outline-none">XỬ LÝ JSON</button>
                     </div>
                 </div>
             `);
@@ -944,7 +952,7 @@ async function loadBuilderData() {
 
         window.doImpCode = () => {
             const val = document.getElementById('imp-tft-code').value.trim();
-            if (!val || !val.startsWith('02') || !val.includes('TFTSet')) return uiAlert('Lỗi', 'Mã không hợp lệ!', 'error');
+            if (!val || !val.startsWith('02') || !val.includes('TFTSet')) return uiAlert('LỖI', 'Mã Game không hợp lệ!', 'error');
 
             try {
                 const core = val.substring(2, val.indexOf('TFTSet'));
@@ -980,13 +988,13 @@ async function loadBuilderData() {
                     }
                 }
                 window.autoSaveBoard(); closeModal(); renderBoard(); renderPool();
-                uiAlert('THÀNH CÔNG', `Đã xếp ${champsFound.length} tướng!`, 'info');
-            } catch (e) { uiAlert('Lỗi', 'Phân tích mã thất bại.', 'error'); }
+                uiAlert('THÀNH CÔNG', `Đã xếp <span class="text-premium-gold font-black">${champsFound.length}</span> tướng lên bàn cờ!`, 'info');
+            } catch (e) { uiAlert('LỖI', 'Phân tích mã Game thất bại.', 'error'); }
         };
 
         window.doImpJSON = () => {
             const val = document.getElementById('imp-area').value.trim();
-            if (!val) return uiAlert('Lỗi', 'Chưa có JSON!', 'error');
+            if (!val) return uiAlert('LỖI', 'Chưa có nội dung JSON!', 'error');
             try {
                 const data = JSON.parse(val);
                 const parsed = Array.isArray(data) ? data[0] : data;
@@ -1012,18 +1020,18 @@ async function loadBuilderData() {
                 if (parsed.CompQuickStart && parsed.CompQuickStart.carousel) window._manualData.carousel = parsed.CompQuickStart.carousel.map(x => x.item);
 
                 window.autoSaveBoard(); closeModal(); window.renderManualSelections(); renderBoard(); renderPool();
-                uiAlert('THÀNH CÔNG', 'Đã tải Đội Hình từ JSON!', 'info');
-            } catch (e) { uiAlert('Lỗi', 'JSON không hợp lệ.', 'error'); }
+                uiAlert('THÀNH CÔNG', 'Đã tải Đội Hình từ tệp JSON!', 'info');
+            } catch (e) { uiAlert('LỖI', 'Cấu trúc JSON không hợp lệ.', 'error'); }
         };
 
         window.doImpCloud = async () => {
             const codeInput = document.getElementById('imp-cloud-code');
             const val = codeInput ? codeInput.value.trim().toUpperCase() : '';
-            if (!val || !val.startsWith('TFTH-')) return uiAlert('Lỗi', 'Mã không hợp lệ!', 'error');
+            if (!val || !val.startsWith('TFTH-')) return uiAlert('LỖI', 'Mã Cloud không hợp lệ (Phải bắt đầu bằng TFTH-)!', 'error');
 
             const btn = document.getElementById('btn-imp-cloud');
             const oldText = btn.innerHTML;
-            btn.disabled = true; btn.innerHTML = '...';
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
 
             try {
                 const docRef = window._fsDoc(window._db, "shared_comps", val);
@@ -1031,7 +1039,7 @@ async function loadBuilderData() {
 
                 if (!docSnap.exists()) {
                     btn.disabled = false; btn.innerHTML = oldText;
-                    return uiAlert('Lỗi', 'Không tìm thấy đội hình!', 'error');
+                    return uiAlert('LỖI', 'Không tìm thấy đội hình với mã này trên Cloud!', 'error');
                 }
 
                 const parsed = docSnap.data();
@@ -1079,11 +1087,11 @@ async function loadBuilderData() {
                 }
 
                 window.autoSaveBoard(); closeModal(); window.renderManualSelections(); renderBoard(); renderPool();
-                uiAlert('THÀNH CÔNG', `Tải đội hình từ: <br><span class="text-premium-gold text-sm font-bold uppercase mt-2 block">${parsed.author || 'ẨN DANH'}</span>`, 'info');
+                uiAlert('THÀNH CÔNG', `Tải đội hình từ tác giả:<br><span class="text-premium-gold text-[15px] font-black uppercase tracking-widest mt-3 block">${parsed.author || 'ẨN DANH'}</span>`, 'info');
 
             } catch (e) {
                 btn.disabled = false; btn.innerHTML = oldText;
-                uiAlert('Lỗi', 'Mất kết nối.', 'error');
+                uiAlert('LỖI', 'Mất kết nối Máy chủ.', 'error');
             }
         };
 
@@ -1093,28 +1101,32 @@ async function loadBuilderData() {
 
             if (data.auto) {
                 listHTML += `
-                    <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-black border border-zinc-200 dark:border-premium-border rounded-sm mb-4">
+                    <div class="flex items-center justify-between p-4 bg-zinc-50 dark:bg-premium-surface border border-zinc-200 dark:border-premium-border rounded-2xl mb-5">
                         <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-robot text-zinc-500"></i>
-                            <span class="text-xs font-bold text-zinc-800 dark:text-white uppercase">${data.auto.name}</span>
+                            <div class="w-8 h-8 rounded-full bg-zinc-200 dark:bg-[#0a0a0a] flex items-center justify-center border border-zinc-300 dark:border-premium-border">
+                                <i class="fa-solid fa-robot text-zinc-500"></i>
+                            </div>
+                            <span class="text-xs font-black text-zinc-800 dark:text-white uppercase tracking-wider">${data.auto.name}</span>
                         </div>
-                        <button onclick="window.loadSpecificBoard('auto', null)" class="px-4 py-1.5 bg-zinc-200 dark:bg-premium-card text-zinc-800 dark:text-white border border-zinc-300 dark:border-premium-border hover:border-premium-gold text-[10px] font-bold uppercase rounded-sm transition-colors">TẢI</button>
+                        <button onclick="window.loadSpecificBoard('auto', null)" class="px-5 py-2 bg-white dark:bg-premium-card text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border hover:border-premium-gold text-[10px] font-black uppercase rounded-full transition-colors outline-none tracking-widest">TẢI MỚI</button>
                     </div>
                 `;
             }
 
             if (data.manual && data.manual.length > 0) {
-                listHTML += `<span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 block border-b border-zinc-200 dark:border-premium-border pb-1">CÁ NHÂN</span>`;
+                listHTML += `<span class="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-3 block border-b border-zinc-200 dark:border-premium-border pb-1.5 pl-1">CÁ NHÂN</span>`;
                 data.manual.forEach(item => {
                     listHTML += `
-                        <div class="flex items-center justify-between p-3 bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border rounded-sm mb-2 group">
-                            <div class="flex items-center gap-3 truncate pr-2">
-                                <i class="fa-solid fa-bookmark text-premium-gold"></i>
-                                <span class="text-xs font-bold text-zinc-800 dark:text-white uppercase truncate">${window.escapeHTML(item.name)}</span>
+                        <div class="flex items-center justify-between p-4 bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border rounded-2xl mb-3 group hover:border-premium-gold/50 transition-colors">
+                            <div class="flex items-center gap-3 truncate pr-3">
+                                <div class="w-8 h-8 rounded-full bg-premium-gold/10 flex items-center justify-center border border-premium-gold/20 shrink-0">
+                                    <i class="fa-solid fa-bookmark text-premium-gold text-[11px]"></i>
+                                </div>
+                                <span class="text-[11px] font-black text-zinc-800 dark:text-white uppercase truncate tracking-wide">${window.escapeHTML(item.name)}</span>
                             </div>
                             <div class="flex items-center gap-2 shrink-0">
-                                <button onclick="window.loadSpecificBoard('manual', ${item.id})" class="px-4 py-1.5 bg-zinc-100 dark:bg-black text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border hover:border-premium-gold text-[10px] font-bold uppercase rounded-sm transition-colors">TẢI</button>
-                                <button onclick="window.deleteSpecificBoard(${item.id})" class="w-8 h-8 flex items-center justify-center rounded-sm bg-zinc-100 dark:bg-black text-red-500 border border-zinc-200 dark:border-premium-border hover:border-red-500 transition-colors"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
+                                <button onclick="window.loadSpecificBoard('manual', ${item.id})" class="px-5 py-2 bg-zinc-100 dark:bg-premium-surface text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border hover:border-premium-gold text-[10px] font-black uppercase rounded-full transition-colors outline-none tracking-widest">TẢI</button>
+                                <button onclick="window.deleteSpecificBoard(${item.id})" class="w-8 h-8 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-premium-surface text-red-500 border border-zinc-200 dark:border-premium-border hover:border-red-500 hover:bg-red-500/10 transition-colors outline-none"><i class="fa-solid fa-trash-can text-[11px]"></i></button>
                             </div>
                         </div>
                     `;
@@ -1122,32 +1134,32 @@ async function loadBuilderData() {
             }
 
             if (data.shared && data.shared.length > 0) {
-                listHTML += `<span class="text-[10px] font-bold text-premium-gold uppercase tracking-widest mb-2 mt-4 block border-b border-zinc-200 dark:border-premium-border pb-1">ĐÃ ĐĂNG TẢI</span>`;
+                listHTML += `<span class="text-[10px] font-black text-premium-gold uppercase tracking-widest mb-3 mt-6 block border-b border-zinc-200 dark:border-premium-border pb-1.5 pl-1">ĐÃ ĐĂNG TẢI LÊN CLOUD</span>`;
                 [...data.shared].reverse().forEach(item => {
                     listHTML += `
-                        <div class="flex items-center justify-between p-3 bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border rounded-sm mb-2">
-                            <div class="flex flex-col gap-1 truncate pr-2">
-                                <span class="text-[11px] font-bold text-premium-gold uppercase truncate">${window.escapeHTML(item.name)}</span>
-                                <div class="flex items-center gap-2 text-[9px] text-zinc-500 font-mono">
-                                    <span class="bg-zinc-100 dark:bg-black px-1 border border-zinc-200 dark:border-premium-border">${item.id}</span>
+                        <div class="flex items-center justify-between p-4 bg-white dark:bg-premium-card border border-zinc-200 dark:border-premium-border rounded-2xl mb-3 hover:border-premium-gold/50 transition-colors">
+                            <div class="flex flex-col gap-1.5 truncate pr-3">
+                                <span class="text-[11px] font-black text-premium-gold uppercase truncate tracking-wide">${window.escapeHTML(item.name)}</span>
+                                <div class="flex items-center gap-2 text-[10px] text-zinc-500 font-mono font-bold">
+                                    <span class="bg-zinc-100 dark:bg-[#0a0a0a] px-2.5 py-1 rounded-md border border-zinc-200 dark:border-premium-border">${item.id}</span>
                                 </div>
                             </div>
-                            <button onclick="window.copyShareCode('${item.id}', 'btn-hist-${item.id}')" id="btn-hist-${item.id}" class="px-3 py-1.5 bg-zinc-100 dark:bg-black text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border hover:border-premium-gold text-[10px] font-bold uppercase rounded-sm transition-colors shrink-0">COPY MÃ</button>
+                            <button onclick="window.copyShareCode('${item.id}', 'btn-hist-${item.id}')" id="btn-hist-${item.id}" class="px-4 py-2 bg-zinc-100 dark:bg-premium-surface text-zinc-800 dark:text-white border border-zinc-200 dark:border-premium-border hover:border-premium-gold text-[10px] font-black uppercase rounded-full transition-colors shrink-0 outline-none tracking-widest">COPY MÃ</button>
                         </div>
                     `;
                 });
             }
 
             if (!data.auto && data.manual.length === 0 && (!data.shared || data.shared.length === 0)) {
-                listHTML += `<p class="text-center text-xs font-bold text-zinc-500 uppercase tracking-widest py-4">TRỐNG</p>`;
+                listHTML += `<div class="flex flex-col items-center justify-center py-10 gap-3"><i class="fa-solid fa-box-open text-3xl text-zinc-400 dark:text-zinc-600"></i><p class="text-center text-xs font-black text-zinc-500 uppercase tracking-widest">KHO LƯU TRỮ TRỐNG</p></div>`;
             }
 
-            uiAlert('KHO ĐỘI HÌNH', `<div class="flex flex-col mt-2 max-h-[350px] overflow-y-auto no-scrollbar">${listHTML}</div>`);
+            uiAlert('KHO ĐỘI HÌNH', `<div class="flex flex-col mt-3 max-h-[400px] overflow-y-auto no-scrollbar pr-1">${listHTML}</div>`);
         };
         
         renderBuilderInterface();
 
     } catch (error) {
-        gridContainer.innerHTML = `<div class="p-4 text-center text-red-500 text-xs font-bold uppercase">Lỗi Builder: ${error.message}</div>`;
+        gridContainer.innerHTML = `<div class="p-5 text-center text-red-500 text-xs font-bold uppercase tracking-widest bg-[#121212] border border-red-900/50 rounded-2xl">Lỗi Builder: ${error.message}</div>`;
     }
 }
