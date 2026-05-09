@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Salon OS | Dual Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
+        .tab-active { background: #1e293b; color: white; }
+        .mobile-nav-active { color: #4f46e5; transform: translateY(-3px); }
+        .custom-card { transition: all 0.2s ease; border: 1px solid #f1f5f9; }
+        .custom-card:hover { border-color: #e2e8f0; transform: translateY(-2px); box-shadow: 0 10px 20px -10px rgba(0,0,0,0.05); }
+        /* Ẩn thanh cuộn */
+        ::-webkit-scrollbar { display: none; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="text-slate-900 overflow-x-hidden">
+
+    <div id="loader" class="fixed inset-0 bg-white z-[100] flex items-center justify-center">
+        <div class="w-10 h-10 border-4 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <div id="loginScreen" class="fixed inset-0 bg-slate-900 z-[90] flex items-center justify-center p-6 hidden">
+        <div class="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center">
+            <h1 class="text-2xl font-black mb-8 tracking-tighter">SALON OS</h1>
+            <input type="password" id="tokenInput" placeholder="Nhập mã truy cập..." class="w-full bg-slate-50 p-4 rounded-2xl text-center outline-none focus:ring-2 focus:ring-slate-200 mb-4 font-bold">
+            <button onclick="handleLogin()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-all">XÁC THỰC</button>
+        </div>
+    </div>
+
+    <div id="app" class="hidden min-h-screen flex flex-col md:flex-row">
+        
+        <aside class="hidden md:flex w-72 bg-white border-r border-slate-100 flex-col p-8 sticky top-0 h-screen shrink-0">
+            <div class="font-black text-2xl mb-12 tracking-tighter">SALON OS</div>
+            <nav id="desktopNav" class="flex-1 space-y-2">
+                </nav>
+            <div class="pt-6 border-t border-slate-50">
+                <div class="flex items-center gap-3 mb-6 p-2">
+                    <div class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold" id="userInitial">A</div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest" id="userRole">Role</p>
+                        <p class="text-sm font-bold text-slate-800" id="userName">User Name</p>
+                    </div>
+                </div>
+                <button onclick="logout()" class="w-full text-left px-4 py-3 text-red-500 font-bold text-sm hover:bg-red-50 rounded-xl transition-all">
+                    <i class="fa-solid fa-power-off mr-3"></i> Đăng xuất
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col min-w-0">
+            
+            <header class="glass sticky top-0 z-40 px-6 py-4 flex justify-between items-center border-b border-slate-100/50 md:bg-white/50">
+                <div>
+                    <h2 id="tabTitle" class="text-xl md:text-2xl font-extrabold tracking-tight capitalize">Bảng điều khiển</h2>
+                    <p class="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5" id="tabSubtitle">Quản lý salon của bạn</p>
+                </div>
+                <div class="flex gap-2">
+                    <div class="relative hidden sm:block">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                        <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Tìm kiếm..." class="bg-slate-100/50 border-none pl-10 pr-4 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-slate-200">
+                    </div>
+                    <button onclick="fetchData()" class="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all shadow-sm"><i class="fa-solid fa-rotate"></i></button>
+                    <button onclick="openCreateModal()" class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-lg shadow-slate-200"><i class="fa-solid fa-plus"></i></button>
+                </div>
+            </header>
+
+            <div id="contentArea" class="p-4 md:p-8 space-y-4 pb-24 md:pb-8">
+                </div>
+        </main>
+
+        <nav class="md:hidden fixed bottom-0 left-0 right-0 glass border-t border-slate-100 px-6 py-3 flex justify-between items-center z-50 safe-area-bottom">
+            <button onclick="switchTab('Bookings')" id="m-nav-Bookings" class="mobile-nav-item flex flex-col items-center gap-1 transition-all">
+                <i class="fa-solid fa-calendar-check text-lg"></i>
+                <span class="text-[9px] font-bold uppercase tracking-tighter">Lịch</span>
+            </button>
+            <button onclick="switchTab('Staff')" id="m-nav-Staff" class="mobile-nav-item flex flex-col items-center gap-1 text-slate-300 transition-all">
+                <i class="fa-solid fa-user-group text-lg"></i>
+                <span class="text-[9px] font-bold uppercase tracking-tighter">Thợ</span>
+            </button>
+            <button onclick="switchTab('Services')" id="m-nav-Services" class="mobile-nav-item flex flex-col items-center gap-1 text-slate-300 transition-all">
+                <i class="fa-solid fa-scissors text-lg"></i>
+                <span class="text-[9px] font-bold uppercase tracking-tighter">Dịch vụ</span>
+            </button>
+            <button onclick="openMoreMenu()" id="m-nav-More" class="mobile-nav-item flex flex-col items-center gap-1 text-slate-300 transition-all">
+                <i class="fa-solid fa-ellipsis text-lg"></i>
+                <span class="text-[9px] font-bold uppercase tracking-tighter">Thêm</span>
+            </button>
+        </nav>
+    </div>
+
+    <div id="modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b flex justify-between items-center bg-slate-50/50">
+                <h3 id="modalTitle" class="font-bold text-lg">Thêm bản ghi mới</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-900"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div id="modalContent" class="p-8 space-y-4 overflow-y-auto pr-4"></div>
+            <div class="p-6 border-t bg-slate-50/50 flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-6 py-3 font-bold text-slate-400">HUỶ</button>
+                <button id="saveBtn" class="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-slate-200">LƯU LẠI</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxW-FOvtBxpycC5A0SLvBAIRWGWA7AtHGTHHJns9wJ2soRPDBVNQEMqgZNg8z1fRSglmw/exec';
+        let db = {};
+        let currentTab = 'Bookings';
+        let searchKeyword = '';
+
+        // --- AUTH & INIT ---
+        async function init() {
+            const token = sessionStorage.getItem('sys_token');
+            if(!token) {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('loginScreen').classList.remove('hidden');
+                return;
+            }
+            document.getElementById('app').classList.remove('hidden');
+            document.getElementById('userName').innerText = sessionStorage.getItem('sys_owner');
+            document.getElementById('userRole').innerText = sessionStorage.getItem('sys_role');
+            document.getElementById('userInitial').innerText = sessionStorage.getItem('sys_owner').charAt(0).toUpperCase();
+
+            await fetchData();
+            document.getElementById('loader').classList.add('hidden');
+        }
+
+        async function handleLogin() {
+            const token = document.getElementById('tokenInput').value;
+            const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ action: 'dashboard_login', token }) });
+            const result = await res.json();
+            if(result.status === 'success') {
+                sessionStorage.setItem('sys_token', token);
+                sessionStorage.setItem('sys_role', result.user.role);
+                sessionStorage.setItem('sys_owner', result.user.owner);
+                location.reload();
+            } else alert('Mã truy cập sai!');
+        }
+
+        async function fetchData() {
+            const token = sessionStorage.getItem('sys_token');
+            const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ action: 'fetch_all_tabs', token }) });
+            const result = await res.json();
+            db = result.data;
+            renderDesktopNav();
+            renderView();
+        }
+
+        // --- RENDER GIAO DIỆN ---
+        function renderDesktopNav() {
+            const nav = document.getElementById('desktopNav');
+            const tabs = Object.keys(db);
+            nav.innerHTML = tabs.map(t => `
+                <button onclick="switchTab('${t}')" id="d-nav-${t}" class="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-bold transition-all ${t === currentTab ? 'tab-active' : 'text-slate-400 hover:bg-slate-50'}">
+                    <span>${t}</span>
+                    <span class="text-[10px] opacity-40 font-black">${db[t].rows.length}</span>
+                </button>
+            `).join('');
+        }
+
+        function switchTab(name) {
+            currentTab = name;
+            document.getElementById('tabTitle').innerText = name;
+            
+            // Cập nhật Nav desktop
+            document.querySelectorAll('#desktopNav button').forEach(el => el.classList.remove('tab-active'));
+            document.querySelectorAll('#desktopNav button').forEach(el => el.classList.add('text-slate-400', 'hover:bg-slate-50'));
+            if(document.getElementById('d-nav-'+name)) document.getElementById('d-nav-'+name).classList.add('tab-active');
+
+            // Cập nhật Nav mobile
+            document.querySelectorAll('.mobile-nav-item').forEach(el => {
+                el.classList.remove('mobile-nav-active', 'text-indigo-600');
+                el.classList.add('text-slate-300');
+            });
+            if(document.getElementById('m-nav-'+name)) document.getElementById('m-nav-'+name).classList.add('mobile-nav-active', 'text-indigo-600');
+
+            renderView();
+        }
+
+        function renderView() {
+            const area = document.getElementById('contentArea');
+            area.innerHTML = '';
+            const data = db[currentTab];
+            if(!data) return;
+
+            let filtered = data.rows.filter(r => r.some(cell => String(cell).toLowerCase().includes(searchKeyword.toLowerCase())));
+
+            // PHÂN CHIA HIỂN THỊ THEO TAB
+            if(currentTab === 'Bookings') renderBookings(filtered, area);
+            else if(currentTab === 'Staff') renderStaff(filtered, area);
+            else renderGeneric(filtered, data.headers, area);
+        }
+
+        // --- MẪU HIỂN THỊ THÔNG MINH ---
+        function renderBookings(rows, container) {
+            // Hiển thị Card mượt mà (Mobile-optimized nhưng Desktop vẫn đẹp)
+            container.className = "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4";
+            rows.forEach(row => {
+                let statusColor = row[9] === 'Hoàn thành' ? 'bg-emerald-50 text-emerald-600' : row[9] === 'Đã huỷ' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600';
+                
+                const card = document.createElement('div');
+                card.className = "custom-card bg-white p-6 rounded-[2rem] space-y-4";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[10px] font-black text-slate-300 uppercase tracking-widest">${row[1]}</p>
+                            <h4 class="font-extrabold text-slate-800 text-lg">${row[2]}</h4>
+                            <p class="text-xs font-bold text-slate-400">${row[3]}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${statusColor}">${row[9]}</span>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-2xl flex justify-between items-center">
+                        <div class="text-[11px] font-bold text-slate-500">
+                            <i class="fa-solid fa-clock mr-1 text-slate-300"></i> ${row[5]}
+                        </div>
+                        <div class="text-[11px] font-bold text-slate-500">
+                            <i class="fa-solid fa-user-tie mr-1 text-slate-300"></i> ${row[6]}
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <a href="tel:${row[3]}" class="flex-1 bg-emerald-50 text-emerald-600 py-3 rounded-xl flex items-center justify-center text-sm"><i class="fa-solid fa-phone"></i></a>
+                        <button onclick="openEditModal('${row[10]}')" class="flex-1 bg-slate-50 text-slate-400 py-3 rounded-xl flex items-center justify-center text-sm"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderStaff(rows, container) {
+            container.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
+            rows.forEach(row => {
+                const card = document.createElement('div');
+                card.className = "custom-card bg-white p-5 rounded-[2rem] flex items-center gap-4";
+                card.innerHTML = `
+                    <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-500 flex items-center justify-center text-xl font-black">${row[1].charAt(0)}</div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-slate-800">${row[1]}</h4>
+                        <p class="text-xs text-slate-400 font-medium">${row[5] || 'Chuyên viên'}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] font-black text-indigo-500 uppercase">${row[4]} Năm KN</p>
+                        <span class="text-[9px] font-bold text-slate-300 uppercase">${row[3]}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderGeneric(rows, headers, container) {
+            // Hiển thị dạng bảng tối giản cho Desktop, dạng Card cho Mobile
+            const isMobile = window.innerWidth < 768;
+            if(isMobile) {
+                container.className = "space-y-3";
+                rows.forEach(row => {
+                    const card = document.createElement('div');
+                    card.className = "bg-white p-5 rounded-3xl border border-slate-50";
+                    card.innerHTML = `<p class="text-xs font-black text-slate-800 mb-1">${row[1] || row[0]}</p><p class="text-[10px] text-slate-400 font-bold uppercase">${row[0]}</p>`;
+                    container.appendChild(card);
+                });
+            } else {
+                container.className = "bg-white rounded-[2rem] border border-slate-50 overflow-hidden";
+                const table = document.createElement('table');
+                table.className = "w-full text-left text-sm";
+                table.innerHTML = `
+                    <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <tr>${headers.map(h => `<th class="p-4">${h}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-50 text-slate-600 font-medium">
+                        ${rows.map(r => `<tr>${r.map(c => `<td class="p-4 truncate max-w-[200px]">${c}</td>`).join('')}</tr>`).join('')}
+                    </tbody>
+                `;
+                container.appendChild(table);
+            }
+        }
+
+        // --- CÁC HÀM CRUD (FORM) ---
+        function openCreateModal() {
+            const headers = db[currentTab].headers;
+            document.getElementById('modalTitle').innerText = 'Thêm mới vào ' + currentTab;
+            document.getElementById('modalContent').innerHTML = headers.map((h, i) => `
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-300 tracking-widest mb-2 ml-4">${h}</label>
+                    <input type="text" id="inp-${i}" class="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-slate-200 text-sm font-bold">
+                </div>
+            `).join('');
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const data = db[currentTab];
+            let row = data.rows.find(r => currentTab === 'Bookings' ? r[10] == id : r[0] == id);
+            document.getElementById('modalTitle').innerText = 'Chỉnh sửa';
+            document.getElementById('modalContent').innerHTML = data.headers.map((h, i) => `
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-300 tracking-widest mb-2 ml-4">${h}</label>
+                    <input type="text" id="inp-${i}" value="${row[i]}" class="w-full bg-slate-50 border-none p-4 rounded-2xl outline-none focus:ring-2 focus:ring-slate-200 text-sm font-bold">
+                </div>
+            `).join('');
+            
+            document.getElementById('saveBtn').onclick = () => saveAction('update', id);
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        async function saveAction(op, id = '') {
+            const headers = db[currentTab].headers;
+            const rowData = headers.map((_, i) => document.getElementById(`inp-${i}`).value);
+            const token = sessionStorage.getItem('sys_token');
+            const res = await fetch(API_URL, { method:'POST', body: JSON.stringify({ action: 'crud', token, tabName: currentTab, operation: op, rowId: id || rowData[0], rowData }) });
+            if((await res.json()).status === 'success') location.reload();
+        }
+
+        function handleSearch() {
+            searchKeyword = document.getElementById('searchInput').value;
+            renderView();
+        }
+
+        function openMoreMenu() {
+            // Chức năng Mobile: Hiện các tab phụ như Logs, Branches
+            const sideTabs = Object.keys(db).filter(t => !['Bookings', 'Staff', 'Services'].includes(t));
+            const area = document.getElementById('contentArea');
+            area.innerHTML = '<h3 class="font-black text-slate-300 uppercase tracking-widest mb-4 px-4">Quản trị hệ thống</h3>';
+            const grid = document.createElement('div');
+            grid.className = "grid grid-cols-2 gap-4 px-2";
+            sideTabs.forEach(t => {
+                grid.innerHTML += `<button onclick="switchTab('${t}')" class="bg-white p-8 rounded-[2rem] border border-slate-50 flex flex-col items-center gap-2 active:scale-95 transition-all"><i class="fa-solid fa-folder text-slate-100 text-2xl"></i><span class="text-[10px] font-black uppercase text-slate-500">${t}</span></button>`;
+            });
+            grid.innerHTML += `<button onclick="logout()" class="bg-rose-50 p-8 rounded-[2rem] flex flex-col items-center gap-2"><i class="fa-solid fa-power-off text-rose-500 text-2xl"></i><span class="text-[10px] font-black uppercase text-rose-500">Thoát</span></button>`;
+            area.appendChild(grid);
+        }
+
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+        function logout() { sessionStorage.clear(); location.reload(); }
+
+        init();
+    </script>
+</body>
+</html>
