@@ -33,6 +33,12 @@ const DEFAULT_CONFIG = {
         phoneLink: "0909123456",
         zaloLink: "https://zalo.me/0909123456"
     },
+    heroBlock: {
+        sliderImages: [
+            "./BGMT.jpg",
+            "./BG.jpg",
+        ]
+    },
     homeFeatures: {
         categories: [
             { icon: "fa-scissors", name: "Cắt" },
@@ -253,7 +259,7 @@ function renderOffers() {
 function renderFeed() {
     document.getElementById('feedContainer').innerHTML = appConfig.feed.map((f, index) => {
         const mediaHtml = f.isVideo
-            ? `<video src="${f.url || f.img}" class="w-full h-full object-cover" loop playsinline muted></video>
+            ? `<video src="${f.url || f.img}" class="w-full h-full object-cover" loop playsinline></video>
                    <div class="play-btn-overlay absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 pointer-events-none">
                         <i class="fa-solid fa-play text-white/60 text-7xl drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]"></i>
                    </div>`
@@ -279,7 +285,7 @@ function renderFeed() {
                     </h3>
                     <div class="relative mb-5 pointer-events-auto">
                         <p id="desc-${index}" class="text-sm font-medium drop-shadow-md text-slate-200 line-clamp-2 transition-all duration-300">
-                            ${f.title} - Tự tin khẳng định phong cách. Sản phẩm chính hãng cao cấp, phục hồi chuyên sâu.
+                            ${f.title}
                         </p>
                         <button onclick="window.toggleDescription('desc-${index}', this); event.stopPropagation();" class="text-[11px] font-black text-slate-400 mt-1 hover:text-white uppercase tracking-wider">
                             Xem thêm
@@ -514,8 +520,8 @@ async function init() {
             contact: DEFAULT_CONFIG.contact,
             heroBlock: {
                 isFlashSale: firestoreData?.heroBlock?.isFlashSale || false,
-                sliderImages: (firestoreData?.heroBlock?.sliderImages?.length > 0) ? firestoreData.heroBlock.sliderImages : ["./BGMT.jpg"],
-                flashSale: firestoreData?.heroBlock?.flashSale || { title: "Giảm 30% Hóa Chất", desc: "Chỉ áp dụng hôm nay", endHoursFromNow: 3, btnText: "GIỮ CHỖ NGAY" },
+                sliderImages: (firestoreData?.heroBlock?.sliderImages?.length > 0) ? firestoreData.heroBlock.sliderImages : ["./BGMT.jpg","./BG.jpg"],
+                flashSale: firestoreData?.heroBlock?.flashSale,
                 normalBooking: { title: "Trải Nghiệm Đẳng Cấp", desc: "Đặt lịch để giữ chỗ ngay hôm nay.", btnText: "ĐẶT LỊCH NGAY", icon: "fa-calendar-check" }
             },
             homeFeatures: {
