@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mai Tây - Admin Panel Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .toggle-checkbox:checked { right: 0; border-color: #10b981; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #10b981; }
+        .toggle-checkbox { right: 0; z-index: 1; border-color: #e2e8f0; transition: all 0.3s; }
+        .toggle-label { width: 3rem; height: 1.5rem; background-color: #cbd5e1; border-radius: 9999px; transition: all 0.3s; }
+        .upload-overlay { background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body class="h-screen w-screen flex justify-center p-4 md:p-8 overflow-y-auto">
+
+    <div id="view-login" class="w-full max-w-md bg-white rounded-[2rem] shadow-xl p-8 border border-slate-100 m-auto">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 bg-slate-900 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
+                <i class="fa-solid fa-lock text-white text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900">Salon Admin</h1>
+        </div>
+        <form id="loginForm" class="space-y-4">
+            <input type="email" id="email" placeholder="Email quản trị" required class="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl font-medium text-sm outline-none">
+            <input type="password" id="password" placeholder="Mật khẩu" required class="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl font-medium text-sm outline-none">
+            <p id="loginError" class="text-xs font-bold text-rose-500 hidden text-center"></p>
+            <button type="submit" id="btnLogin" class="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-transform shadow-lg shadow-slate-900/20">Đăng nhập</button>
+        </form>
+    </div>
+
+    <div id="view-admin" class="hidden w-full max-w-6xl bg-transparent flex-col gap-6">
+        
+        <header class="bg-white rounded-[2rem] px-6 py-4 flex justify-between items-center shadow-sm border border-slate-100">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-sliders text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-black text-slate-900">Bảng Điều Khiển Pro</h1>
+                    <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Tích hợp Cloudinary</p>
+                </div>
+            </div>
+            <button id="btnLogout" class="text-xs font-bold text-rose-500 hover:text-rose-600 px-4 py-2 bg-rose-50 rounded-xl">Đăng xuất</button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-24">
+            
+            <div class="space-y-6">
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-900 mb-5"><i class="fa-solid fa-store mr-2 text-slate-400"></i>Cơ Bản & Liên Hệ</h2>
+                    <div class="space-y-4">
+                        <input type="text" id="genName" placeholder="Tên Tiệm" class="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-sm outline-none">
+                        <div class="flex gap-2">
+                            <select id="ohStatus" class="w-1/3 bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-[11px] outline-none">
+                                <option value="1">🟢 Mở bình thường</option>
+                                <option value="2">🟡 Sắp đóng/Muộn</option>
+                                <option value="3">🔴 Đang đóng cửa</option>
+                            </select>
+                            <input type="text" id="ohText" placeholder="Giờ mở cửa" class="w-2/3 bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-sm outline-none">
+                        </div>
+                        <input type="text" id="contactPhone" placeholder="SĐT Hotline" class="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-sm outline-none">
+                        <input type="text" id="contactZalo" placeholder="Link Zalo" class="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-sm outline-none">
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-sm font-black uppercase tracking-widest text-slate-900"><i class="fa-solid fa-bolt mr-2 text-rose-500"></i>Flash Sale</h2>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="isFlashSale" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="isFlashSale" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <input type="text" id="fsTitle" placeholder="Tiêu đề Flash Sale" class="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-sm outline-none">
+                        <textarea id="fsDesc" rows="2" placeholder="Mô tả" class="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-sm outline-none resize-none"></textarea>
+                        <div class="flex gap-4">
+                            <input type="number" id="fsHours" placeholder="Giờ" class="w-1/3 bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-sm outline-none">
+                            <input type="text" id="fsBtnText" placeholder="Tên Nút" class="w-2/3 bg-slate-50 border border-slate-200 p-3 rounded-xl font-semibold text-sm outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-sm font-black uppercase tracking-widest text-slate-900"><i class="fa-solid fa-images mr-2 text-slate-400"></i>Ảnh Bìa (Slider)</h2>
+                        <button onclick="addSliderItem()" class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-lg">+ Thêm Ảnh</button>
+                    </div>
+                    <div id="sliderContainer" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-sm font-black uppercase tracking-widest text-slate-900"><i class="fa-solid fa-video mr-2 text-slate-400"></i>Bản Tin (Feed)</h2>
+                        <button onclick="addFeedItem()" class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-lg">+ Thêm Bài</button>
+                    </div>
+                    <div id="feedContainer" class="space-y-6 max-h-[600px] overflow-y-auto pr-2 no-scrollbar"></div>
+                </div>
+
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-5">
+                        <h2 class="text-sm font-black uppercase tracking-widest text-slate-900"><i class="fa-solid fa-bullhorn mr-2 text-slate-400"></i>Dòng Chữ Chạy</h2>
+                        <button onclick="addMarqueeItem()" class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-3 py-1.5 rounded-lg">+ Thêm</button>
+                    </div>
+                    <div id="marqueeContainer" class="space-y-3"></div>
+                </div>
+
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                    <h2 class="text-sm font-black uppercase tracking-widest text-slate-900 mb-5"><i class="fa-solid fa-ticket mr-2 text-slate-400"></i>Ưu Đãi / Voucher</h2>
+                    <div id="offersContainer" class="space-y-4"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-slate-100 flex justify-center lg:justify-end gap-4 z-50">
+            <span id="saveMessage" class="flex items-center text-xs font-bold px-4"></span>
+            <button id="btnSave" class="bg-slate-900 text-white px-8 py-3.5 rounded-xl font-black uppercase tracking-widest text-xs active:scale-95 transition-transform shadow-xl flex items-center gap-2">
+                <i class="fa-solid fa-floppy-disk"></i> LƯU LÊN CLOUD
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+        // ==========================================
+        // CẤU HÌNH API
+        // ==========================================
+        // 1. Firebase (Đã tích hợp đúng của bạn)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTnDNOzI-8JYFfrxtJclFxe7vY27PM6FU",
+            authDomain: "salon-mt.firebaseapp.com",
+            projectId: "salon-mt",
+            storageBucket: "salon-mt.firebasestorage.app",
+            messagingSenderId: "1086041756251",
+            appId: "1:1086041756251:web:5f7c4cc7144cc59be8a57e",
+            measurementId: "G-3BV9HNVP29"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // 2. Cloudinary (ĐIỀN VÀO ĐÂY SAU KHI LÀM BƯỚC 1)
+        const CLOUD_NAME = "YOUR_CLOUD_NAME"; // VD: dxabcd123
+        const UPLOAD_PRESET = "YOUR_UPLOAD_PRESET"; // VD: salon_upload
+
+        let rootAppConfig = {};
+
+        // ==========================================
+        // LOGIC CLOUDINARY UPLOAD
+        // ==========================================
+        window.triggerUpload = (inputId, isVideo = false) => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = isVideo ? 'video/*' : 'image/*';
+            fileInput.onchange = async (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+
+                // Hiện UI Loading
+                const targetInput = document.getElementById(inputId);
+                const originalVal = targetInput.value;
+                targetInput.value = "Đang tải lên Cloudinary...";
+                targetInput.disabled = true;
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('upload_preset', UPLOAD_PRESET);
+
+                    const resourceType = isVideo ? 'video' : 'image';
+                    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await res.json();
+                    if(data.secure_url) {
+                        targetInput.value = data.secure_url; // Trả link về ô input
+                    } else {
+                        throw new Error("Lỗi Cloudinary");
+                    }
+                } catch (err) {
+                    alert("Tải lên thất bại. Vui lòng kiểm tra lại Cloud Name và Upload Preset.");
+                    targetInput.value = originalVal;
+                } finally {
+                    targetInput.disabled = false;
+                }
+            };
+            fileInput.click();
+        };
+
+        // ==========================================
+        // DOM RENDER LOGIC (SLIDER, FEED, MARQUEE)
+        // ==========================================
+        
+        // --- SLIDER ---
+        window.removeNode = (btn) => btn.closest('.data-node').remove();
+        window.addSliderItem = (url = "") => {
+            const id = 'slide_' + Date.now() + Math.random().toString(36).substr(2, 5);
+            const html = `
+                <div class="data-node flex gap-2 items-center">
+                    <input type="text" id="${id}" value="${url}" placeholder="URL Ảnh Bìa" class="flex-1 bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs outline-none slider-url">
+                    <button onclick="triggerUpload('${id}', false)" class="bg-blue-50 text-blue-500 p-2.5 rounded-xl hover:bg-blue-100" title="Tải ảnh lên"><i class="fa-solid fa-cloud-arrow-up"></i></button>
+                    <button onclick="removeNode(this)" class="bg-rose-50 text-rose-500 p-2.5 rounded-xl hover:bg-rose-100"><i class="fa-solid fa-trash"></i></button>
+                </div>`;
+            document.getElementById('sliderContainer').insertAdjacentHTML('beforeend', html);
+        };
+
+        // --- MARQUEE ---
+        window.addMarqueeItem = (text = "", isHighlight = false) => {
+            const html = `
+                <div class="data-node flex gap-2 items-center bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <input type="text" value="${text}" placeholder="Nội dung thông báo..." class="mq-text flex-1 bg-transparent text-xs outline-none">
+                    <label class="flex items-center gap-1 cursor-pointer">
+                        <input type="checkbox" class="mq-highlight" ${isHighlight ? 'checked' : ''}><span class="text-[9px] font-bold text-slate-400">HOT</span>
+                    </label>
+                    <button onclick="removeNode(this)" class="text-rose-500 p-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>`;
+            document.getElementById('marqueeContainer').insertAdjacentHTML('beforeend', html);
+        };
+
+        // --- FEED (BẢN TIN) ---
+        window.addFeedItem = (feed = { id: 'f'+Date.now(), isVideo: false, title: "", url: "", img: "", fomoText: "", fomoIcon: "fa-star" }) => {
+            const vidId = 'vid_' + Date.now() + Math.random().toString(36).substr(2, 5);
+            const imgId = 'img_' + Date.now() + Math.random().toString(36).substr(2, 5);
+            
+            const html = `
+                <div class="data-node feed-item bg-slate-50 p-4 rounded-2xl border border-slate-200 relative">
+                    <button onclick="removeNode(this)" class="absolute top-3 right-3 text-rose-500 hover:bg-rose-100 w-6 h-6 rounded flex items-center justify-center"><i class="fa-solid fa-trash text-xs"></i></button>
+                    
+                    <div class="flex items-center gap-3 mb-3">
+                        <label class="text-xs font-bold">Loại:</label>
+                        <select class="fd-type bg-white border border-slate-200 rounded p-1 text-xs outline-none">
+                            <option value="false" ${!feed.isVideo ? 'selected' : ''}>🖼️ Chỉ có Ảnh</option>
+                            <option value="true" ${feed.isVideo ? 'selected' : ''}>🎥 Video</option>
+                        </select>
+                    </div>
+
+                    <input type="text" class="fd-title w-full bg-white border border-slate-200 p-2.5 rounded-lg text-xs font-bold mb-3 outline-none" placeholder="Tiêu đề bài viết" value="${feed.title}">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 mb-1">Ảnh (Thumbnail)</label>
+                            <div class="flex gap-1">
+                                <input type="text" id="${imgId}" class="fd-img flex-1 bg-white border border-slate-200 p-2 rounded-lg text-[10px] outline-none" value="${feed.img}" placeholder="Link ảnh">
+                                <button onclick="triggerUpload('${imgId}', false)" class="bg-blue-50 text-blue-500 px-2 rounded-lg"><i class="fa-solid fa-upload"></i></button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-400 mb-1">Video URL (Nếu chọn loại Video)</label>
+                            <div class="flex gap-1">
+                                <input type="text" id="${vidId}" class="fd-url flex-1 bg-white border border-slate-200 p-2 rounded-lg text-[10px] outline-none" value="${feed.url || ''}" placeholder="Link Video (MP4)">
+                                <button onclick="triggerUpload('${vidId}', true)" class="bg-blue-50 text-blue-500 px-2 rounded-lg"><i class="fa-solid fa-upload"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <input type="text" class="fd-fomo-text flex-1 bg-white border border-slate-200 p-2 rounded-lg text-[10px] outline-none" placeholder="Text FOMO (VD: Sắp kín lịch)" value="${feed.fomoText}">
+                        <select class="fd-fomo-icon bg-white border border-slate-200 p-2 rounded-lg text-[10px] outline-none">
+                            <option value="fa-star text-yellow-400" ${feed.fomoIcon.includes('star') ? 'selected' : ''}>⭐ Ngôi sao</option>
+                            <option value="fa-fire text-orange-500" ${feed.fomoIcon.includes('fire') ? 'selected' : ''}>🔥 Lửa</option>
+                            <option value="fa-bolt text-yellow-400" ${feed.fomoIcon.includes('bolt') ? 'selected' : ''}>⚡ Tia sét</option>
+                            <option value="fa-hourglass-half text-rose-400" ${feed.fomoIcon.includes('hourglass') ? 'selected' : ''}>⏳ Đồng hồ cát</option>
+                        </select>
+                    </div>
+                </div>`;
+            document.getElementById('feedContainer').insertAdjacentHTML('beforeend', html);
+        };
+
+        // ==========================================
+        // FIREBASE LOAD & SAVE
+        // ==========================================
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                document.getElementById('view-login').classList.add('hidden');
+                document.getElementById('view-admin').classList.remove('hidden');
+                document.getElementById('view-admin').classList.add('flex');
+                await loadData();
+            } else {
+                document.getElementById('view-login').classList.remove('hidden');
+                document.getElementById('view-admin').classList.add('hidden');
+            }
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try { await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
+            catch (error) { document.getElementById('loginError').innerText = "Sai email hoặc mật khẩu!"; document.getElementById('loginError').classList.remove('hidden'); }
+        });
+        document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
+
+        // ==========================================
+        // FIREBASE LOAD & SAVE (BẢN UPDATE CHỐNG SẬP)
+        // ==========================================
+        async function loadData() {
+            try {
+                const docSnap = await getDoc(doc(db, "configs", "appConfig"));
+                
+                // NẾU DATABASE CÓ DATA, LẤY DATA. NẾU KHÔNG CÓ HOẶC TRỐNG, TỰ TẠO KHUNG TRỐNG
+                if (docSnap.exists() && Object.keys(docSnap.data()).length > 0) {
+                    rootAppConfig = docSnap.data();
+                } else {
+                    rootAppConfig = {}; 
+                }
+
+                // LỚP PHÒNG THỦ: Đảm bảo các Object con luôn tồn tại, dù trên Firebase có bị mất
+                rootAppConfig.general = rootAppConfig.general || {};
+                rootAppConfig.general.openHours = rootAppConfig.general.openHours || {};
+                rootAppConfig.contact = rootAppConfig.contact || {};
+                rootAppConfig.heroBlock = rootAppConfig.heroBlock || {};
+                rootAppConfig.heroBlock.flashSale = rootAppConfig.heroBlock.flashSale || {};
+                rootAppConfig.heroBlock.sliderImages = rootAppConfig.heroBlock.sliderImages || [];
+                rootAppConfig.homeFeatures = rootAppConfig.homeFeatures || {};
+                rootAppConfig.homeFeatures.marqueeTexts = rootAppConfig.homeFeatures.marqueeTexts || [];
+                rootAppConfig.offers = rootAppConfig.offers || [];
+                rootAppConfig.feed = rootAppConfig.feed || [];
+
+                // Đổ dữ liệu ra Form (dùng toán tử || "" để nếu không có data thì để trống thay vì báo lỗi)
+                document.getElementById('genName').value = rootAppConfig.general.name || "";
+                document.getElementById('ohText').value = rootAppConfig.general.openHours.text || "";
+                document.getElementById('ohStatus').value = rootAppConfig.general.openHours.status || 1;
+                document.getElementById('contactPhone').value = rootAppConfig.contact.phoneDisplay || "";
+                document.getElementById('contactZalo').value = rootAppConfig.contact.zaloLink || "";
+
+                // Flash Sale
+                document.getElementById('isFlashSale').checked = rootAppConfig.heroBlock.isFlashSale || false;
+                document.getElementById('fsTitle').value = rootAppConfig.heroBlock.flashSale.title || "";
+                document.getElementById('fsDesc').value = rootAppConfig.heroBlock.flashSale.desc || "";
+                document.getElementById('fsHours').value = rootAppConfig.heroBlock.flashSale.endHoursFromNow || 3;
+                document.getElementById('fsBtnText').value = rootAppConfig.heroBlock.flashSale.btnText || "";
+
+                // Arrays (Slider, Marquee, Feed, Offers)
+                document.getElementById('sliderContainer').innerHTML = '';
+                rootAppConfig.heroBlock.sliderImages.forEach(img => addSliderItem(img));
+
+                document.getElementById('marqueeContainer').innerHTML = '';
+                rootAppConfig.homeFeatures.marqueeTexts.forEach(m => addMarqueeItem(m.text, m.isHighlight));
+
+                document.getElementById('feedContainer').innerHTML = '';
+                rootAppConfig.feed.forEach(f => addFeedItem(f));
+
+                const offersDiv = document.getElementById('offersContainer');
+                offersDiv.innerHTML = '';
+                rootAppConfig.offers.forEach((o, i) => {
+                    offersDiv.innerHTML += `
+                        <div class="offer-item bg-slate-50 p-4 rounded-2xl border border-slate-200" data-idx="${i}">
+                            <div class="font-bold text-xs mb-2 uppercase text-slate-500">${o.type || "Ưu đãi"}</div>
+                            <input type="text" class="of-title w-full bg-white border border-slate-200 p-2 rounded mb-2 text-xs" value="${o.title || ""}" placeholder="Tiêu đề">
+                            <input type="text" class="of-desc w-full bg-white border border-slate-200 p-2 rounded mb-2 text-[11px]" value="${o.desc || ""}" placeholder="Mô tả">
+                            <input type="text" class="of-code w-full bg-white border border-slate-200 p-2 rounded font-mono text-rose-500 text-xs" value="${o.code || ""}" placeholder="Mã giảm giá">
+                        </div>`;
+                });
+                
+            } catch (error) { 
+                console.error("Lỗi khi load dữ liệu:", error); 
+                alert("Lỗi kết nối dữ liệu. Vui lòng thử lại!");
+            }
+        }
+
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            const btn = document.getElementById('btnSave');
+            btn.innerHTML = 'ĐANG LƯU...';
+            
+            try {
+                // Gom data Cơ Bản
+                rootAppConfig.general.name = document.getElementById('genName').value;
+                rootAppConfig.general.openHours.text = document.getElementById('ohText').value;
+                rootAppConfig.general.openHours.status = parseInt(document.getElementById('ohStatus').value);
+                
+                // Gom data Liên Hệ
+                const phoneInput = document.getElementById('contactPhone').value;
+                rootAppConfig.contact.phoneDisplay = phoneInput;
+                rootAppConfig.contact.phoneLink = phoneInput.replace(/[^0-9]/g, ''); // Xóa ký tự lạ để làm link gọi
+                rootAppConfig.contact.zaloLink = document.getElementById('contactZalo').value;
+
+                // Gom data Flash Sale
+                rootAppConfig.heroBlock.isFlashSale = document.getElementById('isFlashSale').checked;
+                rootAppConfig.heroBlock.flashSale.title = document.getElementById('fsTitle').value;
+                rootAppConfig.heroBlock.flashSale.desc = document.getElementById('fsDesc').value;
+                rootAppConfig.heroBlock.flashSale.endHoursFromNow = parseFloat(document.getElementById('fsHours').value) || 3;
+                rootAppConfig.heroBlock.flashSale.btnText = document.getElementById('fsBtnText').value;
+
+                // Gom data Mảng (Slider, Marquee, Feed, Offers)
+                rootAppConfig.heroBlock.sliderImages = Array.from(document.querySelectorAll('.slider-url')).map(el => el.value).filter(v => v);
+                
+                rootAppConfig.homeFeatures.marqueeTexts = Array.from(document.querySelectorAll('#marqueeContainer .data-node')).map(el => ({
+                    text: el.querySelector('.mq-text').value,
+                    isHighlight: el.querySelector('.mq-highlight').checked
+                }));
+                
+                rootAppConfig.feed = Array.from(document.querySelectorAll('.feed-item')).map((el, index) => ({
+                    id: 'f' + index,
+                    isVideo: el.querySelector('.fd-type').value === 'true',
+                    title: el.querySelector('.fd-title').value,
+                    img: el.querySelector('.fd-img').value,
+                    url: el.querySelector('.fd-url').value,
+                    fomoText: el.querySelector('.fd-fomo-text').value,
+                    fomoIcon: el.querySelector('.fd-fomo-icon').value
+                }));
+
+                Array.from(document.querySelectorAll('.offer-item')).forEach(el => {
+                    const idx = el.dataset.idx;
+                    if(rootAppConfig.offers[idx]) {
+                        rootAppConfig.offers[idx].title = el.querySelector('.of-title').value;
+                        rootAppConfig.offers[idx].desc = el.querySelector('.of-desc').value;
+                        rootAppConfig.offers[idx].code = el.querySelector('.of-code').value;
+                    }
+                });
+
+                // Đẩy lên Firestore
+                await setDoc(doc(db, "configs", "appConfig"), rootAppConfig);
+                
+                document.getElementById('saveMessage').innerHTML = '<span class="text-emerald-500">Lưu thành công!</span>';
+                setTimeout(() => document.getElementById('saveMessage').innerHTML = '', 3000);
+            } catch (err) {
+                console.error("Lỗi khi lưu:", err);
+                alert("Lỗi lưu dữ liệu. Đảm bảo bạn đã cấp quyền ghi (Rules) trên Firestore.");
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> LƯU LÊN CLOUD';
+            }
+        });
+        document.getElementById('btnSave').addEventListener('click', async () => {
+            const btn = document.getElementById('btnSave');
+            btn.innerHTML = 'ĐANG LƯU...';
+            try {
+                // Gom data
+                rootAppConfig.general.name = document.getElementById('genName').value;
+                rootAppConfig.general.openHours.text = document.getElementById('ohText').value;
+                rootAppConfig.general.openHours.status = parseInt(document.getElementById('ohStatus').value);
+                const phoneInput = document.getElementById('contactPhone').value;
+                rootAppConfig.contact.phoneDisplay = phoneInput;
+                rootAppConfig.contact.phoneLink = phoneInput.replace(/[^0-9]/g, '');
+                rootAppConfig.contact.zaloLink = document.getElementById('contactZalo').value;
+
+                rootAppConfig.heroBlock.isFlashSale = document.getElementById('isFlashSale').checked;
+                rootAppConfig.heroBlock.flashSale.title = document.getElementById('fsTitle').value;
+                rootAppConfig.heroBlock.flashSale.desc = document.getElementById('fsDesc').value;
+                rootAppConfig.heroBlock.flashSale.endHoursFromNow = parseFloat(document.getElementById('fsHours').value);
+                rootAppConfig.heroBlock.flashSale.btnText = document.getElementById('fsBtnText').value;
+
+                // Arrays
+                rootAppConfig.heroBlock.sliderImages = Array.from(document.querySelectorAll('.slider-url')).map(el => el.value).filter(v => v);
+                rootAppConfig.homeFeatures.marqueeTexts = Array.from(document.querySelectorAll('#marqueeContainer .data-node')).map(el => ({
+                    text: el.querySelector('.mq-text').value,
+                    isHighlight: el.querySelector('.mq-highlight').checked
+                }));
+                
+                rootAppConfig.feed = Array.from(document.querySelectorAll('.feed-item')).map((el, index) => ({
+                    id: 'f' + index,
+                    isVideo: el.querySelector('.fd-type').value === 'true',
+                    title: el.querySelector('.fd-title').value,
+                    img: el.querySelector('.fd-img').value,
+                    url: el.querySelector('.fd-url').value,
+                    fomoText: el.querySelector('.fd-fomo-text').value,
+                    fomoIcon: el.querySelector('.fd-fomo-icon').value
+                }));
+
+                Array.from(document.querySelectorAll('.offer-item')).forEach(el => {
+                    const idx = el.dataset.idx;
+                    rootAppConfig.offers[idx].title = el.querySelector('.of-title').value;
+                    rootAppConfig.offers[idx].desc = el.querySelector('.of-desc').value;
+                    rootAppConfig.offers[idx].code = el.querySelector('.of-code').value;
+                });
+
+                await setDoc(doc(db, "configs", "appConfig"), rootAppConfig);
+                
+                document.getElementById('saveMessage').innerHTML = '<span class="text-emerald-500">Lưu thành công!</span>';
+                setTimeout(() => document.getElementById('saveMessage').innerHTML = '', 3000);
+            } catch (err) {
+                console.log(err);
+                alert("Lỗi lưu dữ liệu. Vui lòng thử lại.");
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> LƯU LÊN CLOUD';
+            }
+        });
+    </script>
+</body>
+</html>
