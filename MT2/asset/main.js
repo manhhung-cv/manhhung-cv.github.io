@@ -75,7 +75,7 @@ window.rateStar = rateStar;
 window.submitFeedback = submitFeedback;
 window.toggleDescription = toggleDescription;
 window.togglePlay = togglePlay;
-
+window.selectTime = selectTime;
 // ==========================================
 // 3. CÁC HÀM XỬ LÝ GIAO DIỆN CHÍNH
 // ==========================================
@@ -404,6 +404,10 @@ function selectService(id) {
 
 function selectStaff(id) { selection.staff = db.staff.find(st => st.id === id); selection.time = null; document.getElementById('timeSlotGrid').innerHTML = ''; nextStep(); }
 
+function selectTime(timeStr) {
+    selection.time = timeStr;
+}
+
 function renderDateSelector() {
     let html = ''; const tzOffset = new Date().getTimezoneOffset() * 60000; const today = new Date(Date.now() - tzOffset); const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
     for (let i = 0; i < 30; i++) {
@@ -435,7 +439,7 @@ function generateGrid(busySlots) {
     for (let m = openMins; m <= closeMins - dur; m += 30) {
         const timeLabel = `${Math.floor(m / 60).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`; const slotStart = new Date(`${selection.date}T${timeLabel}:00+07:00`).getTime(); let isBusy = false;
         if (isToday && m <= currentMins) isBusy = true; for (let busy of busySlots) if (slotStart < busy.end && (slotStart + dur * 60000) > busy.start) isBusy = true;
-        html += `<label class="card-radio block ${isBusy ? 'opacity-30 pointer-events-none' : 'cursor-pointer'} shadow-sm rounded-[1rem]"><input type="radio" name="time" class="hidden" onchange="selection.time='${timeLabel}'" ${isBusy ? 'disabled' : ''}><div class="border border-transparent rounded-[1rem] py-3 text-center bg-white transition-all"><span class="font-bold text-xs text-slate-700">${timeLabel}</span></div></label>`;
+        html += `<label class="card-radio block ${isBusy ? 'opacity-30 pointer-events-none' : 'cursor-pointer'} shadow-sm rounded-[1rem]"><input type="radio" name="time" class="hidden" onchange="window.selectTime('${timeLabel}')" ${isBusy ? 'disabled' : ''}><div class="border border-transparent rounded-[1rem] py-3 text-center bg-white transition-all"><span class="font-bold text-xs text-slate-700">${timeLabel}</span></div></label>`;
     }
     grid.innerHTML = html || '<p class="col-span-4 text-center text-xs font-bold text-slate-400 py-4 bg-white rounded-xl">Kín lịch hôm nay</p>';
 }
