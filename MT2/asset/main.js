@@ -1,27 +1,128 @@
 // ==========================================
-// 1. IMPORT FIREBASE SDK (FIRESTORE)
+// 1. CẤU HÌNH GIAO DIỆN CHÍNH (APP_CONFIG)
+// Quản lý toàn bộ nội dung tĩnh của App tại đây
 // ==========================================
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+const APP_CONFIG = {
+    general: {
+        name: "Mai Tây Hair Salon",
+        slogan: "Premium Hair Studio",
+        rating: "5.0",
+        openHours: {
+            status: 1, // 1: Mở cửa (Pulse Xanh), 2: Bảo trì (Pulse Vàng), 3: Đóng cửa (Đỏ)
+            text: "Mở cửa từ 8h đến 20h",
+            reason: ""
+        },
+        version: "v1.0.2" // Đổi version để ép trình duyệt cập nhật cache
+    },
 
-const firebaseConfig = {
-    apiKey: "AIzaSyCTnDNOzI-8JYFfrxtJclFxe7vY27PM6FU",
-    authDomain: "salon-mt.firebaseapp.com",
-    projectId: "salon-mt",
-    storageBucket: "salon-mt.firebasestorage.app",
-    messagingSenderId: "1086041756251",
-    appId: "1:1086041756251:web:5f7c4cc7144cc59be8a57e",
-    measurementId: "G-3BV9HNVP29"
+    contact: {
+        phoneDisplay: "0909 123 456",
+        phoneLink: "0909123456",
+        zaloLink: "https://zalo.me/0909123456"
+    },
+
+    heroBlock: {
+        sliderImages: [
+            "./BGMT.jpg",
+            "./BG.jpg"
+        ],
+        isFlashSale: true, // Đã bật TRUE để kích hoạt giao diện đếm ngược
+        normalBooking: {
+            title: "Trải Nghiệm Đẳng Cấp",
+            desc: "Đặt lịch để giữ chỗ ngay hôm nay.",
+            btnText: "ĐẶT LỊCH NGAY",
+            icon: "fa-calendar-check"
+        },
+        flashSale: {
+            title: "Flash Sale Đặc Quyền Vip",
+            desc: "Giảm ngay 50% cho 5 khách hàng đặt lịch sớm nhất trong ngày. Giữ chỗ ngay trước khi kết thúc!",
+            btnText: "SĂN DEAL NGAY",
+            // Đặt thời điểm kết thúc tuyệt đối (Năm-Tháng-Ngày T Giờ:Phút:Giây)
+            endTime: "2026-05-12T23:59:59"
+        }
+    },
+
+    homeFeatures: {
+        categories: [
+            { icon: "fa-scissors", name: "Cắt" },
+            { icon: "fa-fill-drip", name: "Nhuộm" },
+            { icon: "fa-wind", name: "Uốn" },
+            { icon: "fa-spa", name: "Phục hồi" }
+        ],
+        marqueeTexts: [
+            { text: "🎉 Chào mừng bạn đến với hệ thống Mai Tây Hair Salon", isHighlight: true },
+            { text: "✨ Trải nghiệm dịch vụ làm đẹp đẳng cấp 5 sao", isHighlight: false },
+            { text: "🔥 Đang có Flash Sale cực sốc - Đặt lịch ngay!", isHighlight: true }
+        ]
+    },
+
+    offers: [
+        {
+            type: "Ưu đãi",
+            title: "Giảm 20% Dịch Vụ Hóa Chất",
+            desc: "Áp dụng cho hóa đơn từ 500k trở lên. Nhập mã lúc thanh toán.",
+            code: "MAITAY20",
+            gradient: "from-slate-500 to-slate-800",
+            icon: "fa-gift"
+        },
+        {
+            type: "Voucher",
+            title: "Miễn Phí Hấp Phục Hồi Keratin",
+            desc: "Dành riêng cho khách hàng lần đầu tiên sử dụng dịch vụ.",
+            code: "NEWBIE",
+            gradient: "from-rose-500 to-rose-800",
+            icon: "fa-ticket"
+        }
+    ],
+
+    feed: [
+        {
+            isVideo: true,
+            url: "https://res.cloudinary.com/dt8zhfng8/video/upload/v1778504963/cobek2edjzufp98eknbp.mp4",
+            img: "https://res.cloudinary.com/dt8zhfng8/video/upload/v1778504963/cobek2edjzufp98eknbp.mp4",
+            fomoText: "Sắp hết chỗ",
+            fomoIcon: "fa-bolt",
+            title: "Kiểu uốn layer bồng bềnh tự nhiên chuẩn Hàn Quốc cho các nàng công sở"
+        },
+        {
+            isVideo: true,
+            url: "https://res.cloudinary.com/dt8zhfng8/video/upload/q_auto/f_auto/v1778505437/ghgxwzhekglanycyx9p6.mp4",
+            img: "https://res.cloudinary.com/dt8zhfng8/video/upload/q_auto/f_auto/v1778505437/ghgxwzhekglanycyx9p6.mp4",
+            fomoText: "Sắp hết chỗ",
+            fomoIcon: "fa-bolt",
+            title: "Kiểu uốn layer bồng bềnh tự nhiên chuẩn Hàn Quốc cho các nàng công sở"
+        }
+    ],
+
+    store: [
+        {
+            id: 'P1',
+            name: 'by Hunq',
+            sub: 'Design & Build',
+            brand: 'Hunq',
+            price: 'Liên hệ',
+            desc: 'Gói thiết kế & phát triển Web App chuyên nghiệp, tối ưu hóa UI/UX.',
+            themeColor: '#f59e0b',
+            img: '/Asset/logo/logo.png'
+        },
+        {
+            id: 'P2',
+            name: 'Pro Premium',
+            sub: 'System Architecture',
+            brand: 'Hunq',
+            price: 'Liên hệ',
+            desc: 'Xây dựng hệ thống quản lý toàn diện với hiệu suất cao.',
+            themeColor: '#06b6d4',
+            img: '/Asset/logo/logo.png'
+        }
+    ]
 };
-
-const app = initializeApp(firebaseConfig);
-const dbFirestore = getFirestore(app);
 
 // ==========================================
 // 1.5 CUSTOM MODAL SYSTEM (THAY THẾ ALERT/CONFIRM)
 // ==========================================
 const CustomModal = {
-    show: function({ type = 'alert', title = 'Thông báo', message, icon = 'fa-bell', iconBg = 'bg-slate-100', iconColor = 'text-slate-900' }) {
+    show: function ({ type = 'alert', title = 'Thông báo', message, icon = 'fa-bell', iconBg = 'bg-slate-100', iconColor = 'text-slate-900' }) {
         return new Promise((resolve) => {
             const overlay = document.getElementById('custom-modal-overlay');
             const box = document.getElementById('custom-modal-box');
@@ -50,8 +151,7 @@ const CustomModal = {
 
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
-            
-            // Trigger animation
+
             requestAnimationFrame(() => {
                 overlay.classList.remove('opacity-0'); overlay.classList.add('opacity-100');
                 box.classList.remove('scale-95'); box.classList.add('scale-100');
@@ -71,7 +171,7 @@ const CustomModal = {
             btnCancel.onclick = () => close(false);
         });
     },
-    alert: function(message, type = 'info') {
+    alert: function (message, type = 'info') {
         let icon = 'fa-bell', iconBg = 'bg-blue-50', iconColor = 'text-blue-500', title = 'Thông báo';
         if (type === 'success') {
             icon = 'fa-check'; iconBg = 'bg-emerald-50'; iconColor = 'text-emerald-500'; title = 'Thành công';
@@ -82,54 +182,24 @@ const CustomModal = {
         }
         return this.show({ type: 'alert', title, message, icon, iconBg, iconColor });
     },
-    confirm: function(message) {
+    confirm: function (message) {
         return this.show({
             type: 'confirm', title: 'Xác nhận', message,
             icon: 'fa-circle-question', iconBg: 'bg-amber-50', iconColor: 'text-amber-500'
         });
     }
 };
-window.CustomModal = CustomModal; // Export global
+window.CustomModal = CustomModal;
 
 // ==========================================
-// 2. CẤU HÌNH TĨNH & BIẾN TOÀN CỤC
+// 2. BIẾN TOÀN CỤC & GOOGLE APPS SCRIPT API
 // ==========================================
-// [Giữ nguyên như cũ...]
-const DEFAULT_CONFIG = {
-    general: {
-        name: "Mai Tây Hair Salon",
-        slogan: "Premium Hair Studio",
-        rating: "5.0",
-        openHours: { status: 1, text: "Mở cửa từ 8h đến 20h", reason: "" },
-        version: "v1.0.0"
-    },
-    contact: {
-        phoneDisplay: "0909123456",
-        phoneLink: "0909123456",
-        zaloLink: "https://zalo.me/0909123456"
-    },
-    heroBlock: {
-        sliderImages: [
-            "./BGMT.jpg",
-            "./BG.jpg",
-        ]
-    },
-    homeFeatures: {
-        categories: [
-            { icon: "fa-scissors", name: "Cắt" },
-            { icon: "fa-fill-drip", name: "Nhuộm" },
-            { icon: "fa-wind", name: "Uốn" },
-            { icon: "fa-spa", name: "Phục hồi" }
-        ]
-    }
-};
-
 const API_URL = 'https://script.google.com/macros/s/AKfycby7YKcoWqaZ1a5Rf7abzThUDl_G7pPiHVuTdn8xyXdqgz8tE6ZYWutHLjI0-3-t1gsxFQ/exec';
 let db = { branches: [], services: [], staff: [] };
 let selection = { branch: null, service: null, staff: null, date: null, time: null };
 let currentStep = 1;
 let countdownInterval;
-let appConfig = {}; 
+let appConfig = APP_CONFIG; // Gán toàn cục từ config tĩnh
 let currentSlide = 0;
 let feedObserver;
 
@@ -154,7 +224,6 @@ window.selectTime = selectTime;
 // ==========================================
 // 3. CÁC HÀM XỬ LÝ GIAO DIỆN CHÍNH
 // ==========================================
-// [Giữ nguyên toàn bộ logic Render / Tab / Animation đến hàm nextStep]
 const viewIntro = document.getElementById('view-intro');
 if (viewIntro) {
     viewIntro.addEventListener('scroll', function () {
@@ -249,12 +318,12 @@ function renderHomeFeatures() {
 
         const parent = marqueeContainer.parentElement;
         marqueeContainer.style.animation = 'none';
-        
+
         setTimeout(() => {
             if (marqueeContainer.scrollWidth > parent.clientWidth) {
                 const scrollDist = marqueeContainer.scrollWidth - parent.clientWidth + 10;
                 marqueeContainer.style.setProperty('--scroll-dist', `-${scrollDist}px`);
-                const duration = scrollDist / 15; 
+                const duration = scrollDist / 15;
                 marqueeContainer.style.animation = `marquee-dynamic ${duration}s ease-in-out infinite alternate`;
             }
         }, 100);
@@ -312,7 +381,7 @@ function renderDynamicHero() {
                     ${conf.btnText}
                 </button>
             </div>`;
-        startCountdown(conf.endHoursFromNow);
+        startCountdown(conf.endTime);
     } else {
         const conf = appConfig.heroBlock.normalBooking;
         container.innerHTML = `
@@ -328,25 +397,45 @@ function renderDynamicHero() {
             </div>`;
     }
 }
-function startCountdown(hoursToAdd) {
-    const endTime = new Date(new Date().getTime() + hoursToAdd * 60 * 60 * 1000);
+
+function startCountdown(endTimeString) {
+    const endTime = new Date(endTimeString).getTime();
+
+    // Đảm bảo xóa interval cũ nếu có để tránh lỗi chạy nhanh đè lên nhau
+    if (countdownInterval) clearInterval(countdownInterval);
+
     countdownInterval = setInterval(() => {
-        const diff = endTime - new Date();
+        const now = new Date().getTime();
+        const diff = endTime - now;
+
         if (diff > 0) {
-            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            // Tính tổng số giờ còn lại (nếu thời gian > 24h thì cộng dồn thẳng vào giờ hiển thị)
+            const h = Math.floor(diff / (1000 * 60 * 60));
             const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const s = Math.floor((diff % (1000 * 60)) / 1000);
-            const hStr = h < 10 ? '0' + h : h; const mStr = m < 10 ? '0' + m : m; const sStr = s < 10 ? '0' + s : s;
+
+            // Format thêm số 0 ở trước nếu < 10
+            const hStr = h < 10 ? '0' + h : h;
+            const mStr = m < 10 ? '0' + m : m;
+            const sStr = s < 10 ? '0' + s : s;
+
             if (document.getElementById('cd-hour')) document.getElementById('cd-hour').innerText = hStr;
             if (document.getElementById('cd-min')) document.getElementById('cd-min').innerText = mStr;
             if (document.getElementById('cd-sec')) document.getElementById('cd-sec').innerText = sStr;
             if (document.getElementById('di-hour')) document.getElementById('di-hour').innerText = hStr;
             if (document.getElementById('di-min')) document.getElementById('di-min').innerText = mStr;
             if (document.getElementById('di-sec')) document.getElementById('di-sec').innerText = sStr;
-        } else { clearInterval(countdownInterval); }
+        } else {
+            // Khi hết thời gian, dừng đếm và đưa các số về 00
+            clearInterval(countdownInterval);
+            const ids = ['cd-hour', 'cd-min', 'cd-sec', 'di-hour', 'di-min', 'di-sec'];
+            ids.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerText = '00';
+            });
+        }
     }, 1000);
 }
-
 function renderOffers() {
     document.getElementById('offersContainer').innerHTML = appConfig.offers.map(o => `
             <div class="flex bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden relative">
@@ -369,12 +458,28 @@ function renderOffers() {
 
 function renderFeed() {
     document.getElementById('feedContainer').innerHTML = appConfig.feed.map((f, index) => {
+        // Chỉ tải trước tài nguyên cho 3 feed đầu tiên khi mới vào app
+        const isPreloaded = index < 3;
+
         const mediaHtml = f.isVideo
-            ? `<video src="${f.url || f.img}" class="w-full h-full object-cover" loop playsinline></video>
-                   <div class="play-btn-overlay absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 pointer-events-none">
-                        <i class="fa-solid fa-play text-white/60 text-7xl drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]"></i>
-                   </div>`
-            : `<img src="${f.img}" class="w-full h-full object-cover">`;
+            ? `<div class="media-loader absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-0">
+                    <span class="w-8 h-8 border-[3px] border-slate-800 border-t-white rounded-full animate-spin mb-3"></span>
+                    <span class="text-[9px] text-slate-400 font-bold tracking-[0.2em] uppercase">Đang tải...</span>
+               </div>
+               <video ${isPreloaded ? `src="${f.url}"` : `data-src="${f.url}"`} 
+                      poster="${f.img || ''}" 
+                      class="w-full h-full object-cover relative z-10 transition-opacity duration-300" 
+                      loop playsinline preload="${isPreloaded ? 'auto' : 'none'}"></video>
+               
+               <div class="play-btn-overlay absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 pointer-events-none z-20">
+                    <i class="fa-solid fa-play text-white/60 text-7xl drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]"></i>
+               </div>`
+            : `<div class="media-loader absolute inset-0 flex flex-col items-center justify-center bg-slate-950 z-0">
+                    <span class="w-8 h-8 border-[3px] border-slate-800 border-t-white rounded-full animate-spin mb-3"></span>
+               </div>
+               <img ${isPreloaded ? `src="${f.img}"` : `data-src="${f.img}"`} 
+                    class="w-full h-full object-cover relative z-10 lazy-img" 
+                    onload="this.previousElementSibling.style.display='none'">`;
 
         const fomoTagHtml = f.fomoText ? `
                 <div class="flex items-center gap-2 mb-3">
@@ -386,10 +491,10 @@ function renderFeed() {
             ` : '';
 
         return `
-            <div class="feed-item snap-start w-full h-full relative bg-slate-900 flex justify-center items-center overflow-hidden cursor-pointer" onclick="window.togglePlay(this)">
+            <div class="feed-item snap-start w-full h-full relative bg-slate-950 flex justify-center items-center overflow-hidden cursor-pointer" onclick="window.togglePlay(this)">
                 ${mediaHtml}
-                <div class="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none"></div>
-                <div class="absolute bottom-[100px] left-5 right-5 text-white z-10 pointer-events-none">
+                <div class="absolute bottom-0 left-0 right-0 h-[60%] bg-gradient-to-t from-black via-black/60 to-transparent pointer-events-none z-20"></div>
+                <div class="absolute bottom-[100px] left-5 right-5 text-white z-30 pointer-events-none">
                     ${fomoTagHtml}
                     <h3 class="font-black text-xl mb-1.5 drop-shadow-lg flex items-center gap-1.5 text-white pointer-events-auto">
                         Mai Tây Hair Salon <i class="fa-solid fa-circle-check text-blue-500 text-sm"></i>
@@ -442,9 +547,9 @@ function checkAndShowSwipeHint() {
         const hideHint = () => {
             hint.classList.remove('opacity-100');
             hint.classList.add('opacity-0');
-            setTimeout(() => hint.classList.add('hidden'), 500); 
-            localStorage.setItem('blinkHintSeen', 'true'); 
-            
+            setTimeout(() => hint.classList.add('hidden'), 500);
+            localStorage.setItem('blinkHintSeen', 'true');
+
             container.removeEventListener('scroll', hideHint);
             container.removeEventListener('touchstart', hideHint);
         };
@@ -458,12 +563,13 @@ function setupVideoAutoplay() {
     const feedItems = document.querySelectorAll('.feed-item');
     const container = document.getElementById('feedContainer');
     if (feedObserver) feedObserver.disconnect();
-    
+
     feedObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             const video = entry.target.querySelector('video');
+            const img = entry.target.querySelector('img.lazy-img');
             const index = Array.from(feedItems).indexOf(entry.target);
-            
+
             const scrollToNext = () => {
                 if (index < feedItems.length - 1) {
                     const nextItem = feedItems[index + 1];
@@ -474,18 +580,62 @@ function setupVideoAutoplay() {
             if (entry.isIntersecting) {
                 if (blinkAutoScrollTimer) clearTimeout(blinkAutoScrollTimer);
 
+                // --- 1. KÍCH HOẠT LOAD MEDIA HIỆN TẠI NẾU CHƯA CÓ ---
+                if (video && video.hasAttribute('data-src')) {
+                    video.src = video.getAttribute('data-src');
+                    video.removeAttribute('data-src');
+                    video.setAttribute('preload', 'auto');
+                    video.load();
+                } else if (img && img.hasAttribute('data-src')) {
+                    img.src = img.getAttribute('data-src');
+                    img.removeAttribute('data-src');
+                }
+
+                // --- 2. PRELOAD NGẦM 3 FEED TIẾP THEO ---
+                for (let i = 1; i <= 3; i++) {
+                    if (index + i < feedItems.length) {
+                        const nextItem = feedItems[index + i];
+                        const nextVid = nextItem.querySelector('video');
+                        const nextImg = nextItem.querySelector('img.lazy-img');
+
+                        if (nextVid && nextVid.hasAttribute('data-src')) {
+                            nextVid.src = nextVid.getAttribute('data-src');
+                            nextVid.removeAttribute('data-src');
+                            nextVid.setAttribute('preload', 'auto');
+                            nextVid.load(); // Kích hoạt trình duyệt đệm trước video
+                        } else if (nextImg && nextImg.hasAttribute('data-src')) {
+                            nextImg.src = nextImg.getAttribute('data-src');
+                            nextImg.removeAttribute('data-src');
+                        }
+                    }
+                }
+
+                // --- 3. XỬ LÝ AUTOPLAY & HIỆU ỨNG LOADING KHI MẠNG YẾU ---
                 if (video) {
-                    video.play().catch(e => { });
-                    video.onended = scrollToNext; 
+                    const loader = entry.target.querySelector('.media-loader');
+
+                    // Bật spinner nếu video bị khựng lại để buffer
+                    video.onwaiting = () => { if (loader) loader.style.display = 'flex'; };
+
+                    // Tắt spinner khi video đủ dữ liệu chạy tiếp
+                    video.onplaying = () => { if (loader) loader.style.display = 'none'; };
+                    video.oncanplay = () => { if (loader) loader.style.display = 'none'; };
+                    video.onerror = () => { if (loader) loader.style.display = 'none'; console.log("Lỗi tải video"); };
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(e => { /* Bỏ qua lỗi Auto-play bị chặn bởi trình duyệt */ });
+                    }
+                    video.onended = scrollToNext;
                 } else {
                     blinkAutoScrollTimer = setTimeout(() => {
                         scrollToNext();
                     }, 10000);
                 }
             } else {
+                // Tạm dừng video khi lướt qua để tiết kiệm tài nguyên
                 if (video) {
                     video.pause();
-                    video.onended = null; 
+                    video.onended = null;
                 }
                 if (blinkAutoScrollTimer) clearTimeout(blinkAutoScrollTimer);
             }
@@ -498,14 +648,14 @@ function setupVideoAutoplay() {
 function switchTab(tabName) {
     const targetPane = document.getElementById('view-' + tabName);
     if (!targetPane) return;
-    
+
     document.querySelectorAll('.view-pane').forEach(el => el.classList.remove('active'));
     targetPane.classList.add('active');
 
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(el => {
         el.classList.remove('active', 'text-slate-900', '!text-white', '!text-white/60');
-        el.classList.add('text-slate-400'); 
+        el.classList.add('text-slate-400');
     });
 
     const activeNav = document.getElementById('nav-' + tabName);
@@ -519,14 +669,13 @@ function switchTab(tabName) {
     if (bottomNav) {
         if (tabName === 'feed') {
             bottomNav.classList.add('!bg-black/40', '!border-white/10', '!shadow-[0_20px_40px_-10px_rgba(0,0,0,0.5)]');
-            bottomNav.classList.remove('bg-white/95', 'border-slate-200'); 
+            bottomNav.classList.remove('bg-white/95', 'border-slate-200');
             navItems.forEach(el => {
-                el.classList.remove('text-slate-400'); 
+                el.classList.remove('text-slate-400');
                 if (el !== activeNav) el.classList.add('!text-white/60');
             });
             if (activeNav) activeNav.classList.add('!text-white');
-            
-            // Hiện Hint khi vào tab Feed
+
             checkAndShowSwipeHint();
 
         } else {
@@ -560,7 +709,7 @@ function switchTab(tabName) {
 }
 
 // ==========================================
-// 4. LOGIC ĐẶT LỊCH & QUY TRÌNH GAS (ĐÃ SỬA THÀNH CUSTOM MODAL)
+// 4. LOGIC ĐẶT LỊCH & QUY TRÌNH GAS
 // ==========================================
 
 function switchBookingSubTab(subTab) {
@@ -640,11 +789,11 @@ function selectService(id) {
     nextStep();
 }
 
-function selectStaff(id) { 
-    selection.staff = db.staff.find(st => st.id === id); 
-    selection.time = null; 
-    document.getElementById('timeSlotGrid').innerHTML = ''; 
-    nextStep(); 
+function selectStaff(id) {
+    selection.staff = db.staff.find(st => st.id === id);
+    selection.time = null;
+    document.getElementById('timeSlotGrid').innerHTML = '';
+    nextStep();
 }
 
 function selectTime(timeStr) {
@@ -652,17 +801,17 @@ function selectTime(timeStr) {
 }
 
 function renderDateSelector() {
-    let html = ''; 
-    const tzOffset = new Date().getTimezoneOffset() * 60000; 
-    const today = new Date(Date.now() - tzOffset); 
+    let html = '';
+    const tzOffset = new Date().getTimezoneOffset() * 60000;
+    const today = new Date(Date.now() - tzOffset);
     const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    
+
     for (let i = 0; i < 30; i++) {
-        let d = new Date(today); 
-        d.setDate(today.getDate() + i); 
-        const isoDate = d.toISOString().split('T')[0]; 
+        let d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const isoDate = d.toISOString().split('T')[0];
         const dayName = i === 0 ? 'Hôm nay' : dayNames[d.getDay()];
-        
+
         html += `
         <label class="group shrink-0 cursor-pointer snap-start">
             <input type="radio" name="date" class="hidden" value="${isoDate}" onclick="window.selectDate('${isoDate}')">
@@ -675,60 +824,60 @@ function renderDateSelector() {
     document.getElementById('customDatePicker').innerHTML = html;
 }
 
-function jumpToToday() { 
+function jumpToToday() {
     const todayIso = new Date(Date.now() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-    selectDate(todayIso); 
-    document.getElementById('customDatePicker').scrollTo({ left: 0, behavior: 'smooth' }); 
+    selectDate(todayIso);
+    document.getElementById('customDatePicker').scrollTo({ left: 0, behavior: 'smooth' });
 }
 
 function selectDate(isoDate) {
-    selection.date = isoDate; 
-    selection.time = null; 
+    selection.date = isoDate;
+    selection.time = null;
     const radio = document.querySelector(`input[name="date"][value="${isoDate}"]`);
-    if (radio) { 
-        radio.checked = true; 
-        radio.closest('label').scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); 
+    if (radio) {
+        radio.checked = true;
+        radio.closest('label').scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
     fetchTimeSlots();
 }
 
 async function fetchTimeSlots() {
-    if (!selection.date) return; 
-    document.getElementById('timeSlotGrid').innerHTML = ''; 
+    if (!selection.date) return;
+    document.getElementById('timeSlotGrid').innerHTML = '';
     document.getElementById('timeLoading').classList.remove('hidden');
-    
-    try { 
-        const res = await fetch(`${API_URL}?action=getBusy&date=${selection.date}&staffName=${encodeURIComponent(selection.staff.name)}`); 
-        const result = await res.json(); 
-        generateGrid(result.busySlots || []); 
-    } catch (e) { 
-        generateGrid([]); 
-    } 
+
+    try {
+        const res = await fetch(`${API_URL}?action=getBusy&date=${selection.date}&staffName=${encodeURIComponent(selection.staff.name)}`);
+        const result = await res.json();
+        generateGrid(result.busySlots || []);
+    } catch (e) {
+        generateGrid([]);
+    }
     document.getElementById('timeLoading').classList.add('hidden');
 }
 
 function generateGrid(busySlots) {
-    const grid = document.getElementById('timeSlotGrid'); 
-    const dur = parseInt(selection.service.duration); 
+    const grid = document.getElementById('timeSlotGrid');
+    const dur = parseInt(selection.service.duration);
     const parseTime = str => parseInt(String(str).split(':')[0] || 0) * 60 + parseInt(String(str).split(':')[1] || 0);
-    const branch = db.branches.find(b => b.id === selection.branch.id) || { openTime: "08:00", closeTime: "20:00" }; 
-    const openMins = parseTime(branch.openTime); 
+    const branch = db.branches.find(b => b.id === selection.branch.id) || { openTime: "08:00", closeTime: "20:00" };
+    const openMins = parseTime(branch.openTime);
     const closeMins = parseTime(branch.closeTime);
-    const now = new Date(Date.now() - (new Date().getTimezoneOffset() * 60000)); 
-    const currentMins = now.getUTCHours() * 60 + now.getUTCMinutes(); 
+    const now = new Date(Date.now() - (new Date().getTimezoneOffset() * 60000));
+    const currentMins = now.getUTCHours() * 60 + now.getUTCMinutes();
     const isToday = selection.date === now.toISOString().split('T')[0];
-    
+
     let html = "";
     for (let m = openMins; m <= closeMins - dur; m += 30) {
-        const timeLabel = `${Math.floor(m / 60).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`; 
-        const slotStart = new Date(`${selection.date}T${timeLabel}:00+07:00`).getTime(); 
+        const timeLabel = `${Math.floor(m / 60).toString().padStart(2, '0')}:${(m % 60).toString().padStart(2, '0')}`;
+        const slotStart = new Date(`${selection.date}T${timeLabel}:00+07:00`).getTime();
         let isBusy = false;
-        
-        if (isToday && m <= currentMins) isBusy = true; 
+
+        if (isToday && m <= currentMins) isBusy = true;
         for (let busy of busySlots) {
             if (slotStart < busy.end && (slotStart + dur * 60000) > busy.start) isBusy = true;
         }
-        
+
         html += `
         <label class="group block ${isBusy ? 'opacity-30 pointer-events-none' : 'cursor-pointer'}">
             <input type="radio" name="time" class="hidden" onclick="window.selectTime('${timeLabel}')" ${isBusy ? 'disabled' : ''}>
@@ -741,11 +890,10 @@ function generateGrid(busySlots) {
 }
 
 function nextStep() {
-    if (currentStep === 1 && !selection.branch) return; 
-    if (currentStep === 2 && !selection.service) return; 
-    if (currentStep === 3 && !selection.staff) return; 
-    
-    // Đã thay thế alert bằng CustomModal
+    if (currentStep === 1 && !selection.branch) return;
+    if (currentStep === 2 && !selection.service) return;
+    if (currentStep === 3 && !selection.staff) return;
+
     if (currentStep === 4 && (!selection.date || !selection.time)) {
         CustomModal.alert("Vui lòng chọn ngày và giờ.", "warning");
         return;
@@ -753,32 +901,32 @@ function nextStep() {
 
     if (currentStep === 5) return document.getElementById('finalForm').dispatchEvent(new Event('submit'));
     if (currentStep === 3 && !selection.date) jumpToToday();
-    
-    currentStep++; updateStepUI(); 
+
+    currentStep++; updateStepUI();
     document.getElementById('booking-flow-container').scrollTo(0, 0);
 }
 
-function prevStep() { 
-    if (currentStep > 1) { 
-        currentStep--; updateStepUI(); 
-    } 
+function prevStep() {
+    if (currentStep > 1) {
+        currentStep--; updateStepUI();
+    }
 }
 
 function updateStepUI() {
     for (let i = 1; i <= 5; i++) {
         const step = document.getElementById(`step${i}`);
-        if (i === currentStep) { step.classList.remove('hidden'); step.classList.add('flex'); } 
+        if (i === currentStep) { step.classList.remove('hidden'); step.classList.add('flex'); }
         else { step.classList.add('hidden'); step.classList.remove('flex'); }
     }
-    
+
     const dots = document.getElementById('progressDots').children;
     for (let i = 0; i < 5; i++) {
         dots[i].className = i < currentStep ? "w-4 h-2 rounded-full bg-slate-900 transition-all" : "w-2 h-2 rounded-full bg-slate-200 transition-all";
     }
     document.getElementById('stepCounter').innerText = currentStep;
-    
+
     const btnBack = document.getElementById('btnBack');
-    if (currentStep === 1) { btnBack.classList.add('opacity-0', 'pointer-events-none'); btnBack.classList.remove('opacity-100', 'pointer-events-auto'); } 
+    if (currentStep === 1) { btnBack.classList.add('opacity-0', 'pointer-events-none'); btnBack.classList.remove('opacity-100', 'pointer-events-auto'); }
     else { btnBack.classList.remove('opacity-0', 'pointer-events-none'); btnBack.classList.add('opacity-100', 'pointer-events-auto'); }
 
     const actionBtn = document.getElementById('bookingAction');
@@ -786,96 +934,81 @@ function updateStepUI() {
     else actionBtn.classList.remove('hidden');
 
     if (currentStep === 5) {
-        document.getElementById('btnNext').innerHTML = 'XÁC NHẬN ĐẶT LỊCH <i class="fa-solid fa-check ml-1"></i>'; 
+        document.getElementById('btnNext').innerHTML = 'XÁC NHẬN ĐẶT LỊCH <i class="fa-solid fa-check ml-1"></i>';
         const dP = selection.date.split('-');
         const dateObj = new Date(selection.date);
         const dayNames = ['Chủ Nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
-        
+
         document.getElementById('sumDayOfWeek').innerText = `${dayNames[dateObj.getDay()]}, ${dP[2]}/${dP[1]}/${dP[0]}`;
         document.getElementById('sumTime').innerText = selection.time;
-        document.getElementById('sumBranch').innerText = selection.branch.name; 
+        document.getElementById('sumBranch').innerText = selection.branch.name;
         document.getElementById('sumService').innerText = selection.service.name;
         document.getElementById('sumStaff').innerText = selection.staff.name;
-    } else { document.getElementById('btnNext').innerText = 'TIẾP TỤC'; } 
+    } else { document.getElementById('btnNext').innerText = 'TIẾP TỤC'; }
 }
 
 async function submitBooking() {
-    // Kểm tra chọn giờ (đã dùng CustomModal)
     if (!selection.time) {
         CustomModal.alert("Vui lòng chọn giờ hẹn.", "warning");
         return;
     }
 
-    const btn = document.getElementById('btnNext'); 
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ĐANG XỬ LÝ'; 
+    const btn = document.getElementById('btnNext');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ĐANG XỬ LÝ';
     btn.disabled = true;
-    
+
     const startTime = new Date(`${selection.date}T${selection.time}:00+07:00`);
-    const payload = { 
-        action: 'book', 
-        data: { 
-            branchName: selection.branch.name, 
-            serviceName: selection.service.name, 
-            staffName: selection.staff.name, 
-            startTime: startTime.toISOString(), 
-            endTime: new Date(startTime.getTime() + selection.service.duration * 60000).toISOString(), 
-            name: document.getElementById('cusName').value, 
-            phone: document.getElementById('cusPhone').value, 
-            email: document.getElementById('cusEmail').value 
-        } 
+    const payload = {
+        action: 'book',
+        data: {
+            branchName: selection.branch.name,
+            serviceName: selection.service.name,
+            staffName: selection.staff.name,
+            startTime: startTime.toISOString(),
+            endTime: new Date(startTime.getTime() + selection.service.duration * 60000).toISOString(),
+            name: document.getElementById('cusName').value,
+            phone: document.getElementById('cusPhone').value,
+            email: document.getElementById('cusEmail').value
+        }
     };
-    
-    try { 
-        // 1. Gửi request đặt lịch
-        await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) }); 
-        
-        // 2. Hiện thông báo thành công
+
+    try {
+        await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
         await CustomModal.alert("ĐẶT LỊCH THÀNH CÔNG! Hẹn gặp bạn tại Salon.", "success");
-        
-        // 3. RESET LOGIC UI MÀ KHÔNG CẦN RELOAD TRANG
-        
-        // Xóa form điền thông tin
-        document.getElementById('finalForm').reset(); 
-        
-        // Trả các biến lưu trữ về null
+
+        document.getElementById('finalForm').reset();
         selection = { branch: null, service: null, staff: null, date: null, time: null };
-        
-        // Xóa sạch DOM của các bước sau
+
         document.getElementById('listService').innerHTML = '';
         document.getElementById('listStaff').innerHTML = '';
         document.getElementById('timeSlotGrid').innerHTML = '';
-        
-        // Bỏ check các radio buttons hiện tại (Chi nhánh, Ngày)
+
         document.querySelectorAll('input[name="branch"]').forEach(el => el.checked = false);
         document.querySelectorAll('input[name="date"]').forEach(el => el.checked = false);
-        
-        // Đưa step về lại Bước 1 và cập nhật UI
+
         currentStep = 1;
         updateStepUI();
-        
-        // Cuộn container lên trên cùng cho mượt
         document.getElementById('booking-flow-container').scrollTo({ top: 0, behavior: 'smooth' });
 
-    } catch (e) { 
+    } catch (e) {
         CustomModal.alert("Lỗi kết nối. Vui lòng thử lại!", "error");
     } finally {
-        // Luôn trả lại trạng thái nút bấm dù thành công hay thất bại
-        btn.innerHTML = 'XÁC NHẬN ĐẶT LỊCH <i class="fa-solid fa-check ml-1"></i>'; 
-        btn.disabled = false; 
+        btn.innerHTML = 'XÁC NHẬN ĐẶT LỊCH <i class="fa-solid fa-check ml-1"></i>';
+        btn.disabled = false;
     }
 }
 
 async function lookupBooking() {
-    const phone = document.getElementById('lookupPhone').value; 
-    if (!phone) return; 
-    const btn = document.getElementById('btnLookup'); 
+    const phone = document.getElementById('lookupPhone').value;
+    if (!phone) return;
+    const btn = document.getElementById('btnLookup');
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-    
+
     try {
-        const res = await fetch(`${API_URL}?action=lookup&phone=${encodeURIComponent(phone)}`); 
-        const result = await res.json(); 
+        const res = await fetch(`${API_URL}?action=lookup&phone=${encodeURIComponent(phone)}`);
+        const result = await res.json();
         const container = document.getElementById('lookupResults');
-        
+
         if (!result.bookings || result.bookings.length === 0) {
             container.innerHTML = '<div class="bg-white p-4 rounded-xl text-center text-[11px] font-bold text-slate-400 uppercase border border-slate-100">Không tìm thấy lịch hẹn nào</div>';
         } else {
@@ -890,21 +1023,20 @@ async function lookupBooking() {
                     <button onclick="window.cancelBooking('${b.eventId}')" class="w-full py-3 text-rose-500 font-bold text-[10px] uppercase tracking-widest bg-white border border-rose-100 rounded-xl shadow-sm hover:bg-rose-50 active:scale-95 transition-all">Huỷ Lịch Này</button>
                 </div>`).join('');
         }
-    } catch (e) { 
+    } catch (e) {
         CustomModal.alert("Lỗi tra cứu thông tin!", "error");
     } finally { btn.innerHTML = '<i class="fa-solid fa-arrow-right"></i>'; }
 }
 
 async function cancelBooking(id) {
-    // Sử dụng CustomModal thay cho window.confirm
     const isConfirmed = await CustomModal.confirm("Bạn có chắc chắn muốn huỷ lịch hẹn này?");
     if (!isConfirmed) return;
-    
-    try { 
-        await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'cancel', eventId: id }) }); 
+
+    try {
+        await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'cancel', eventId: id }) });
         await CustomModal.alert("Đã huỷ thành công!", "success");
-        lookupBooking(); 
-    } catch (e) { 
+        lookupBooking();
+    } catch (e) {
         CustomModal.alert("Lỗi huỷ lịch, vui lòng thử lại sau!", "error");
     }
 }
@@ -915,83 +1047,57 @@ function rateStar(index) {
 }
 
 async function submitFeedback(e) {
-    e.preventDefault(); 
-    const btn = document.getElementById('btnSubmitFeedback'); 
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitFeedback');
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ĐANG GỬI...'; btn.disabled = true;
-    
+
     const payload = { action: 'feedback', data: { rating: document.getElementById('fbRating').value, name: document.getElementById('fbName').value, phone: document.getElementById('fbPhone').value, message: document.getElementById('fbMessage').value } };
-    try { 
-        await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) }); 
-        await CustomModal.alert("Cảm ơn bạn đã đóng góp ý kiến!", "success");
-        document.getElementById('nativeFeedbackForm').reset(); rateStar(5); 
-    }
-    catch (error) { 
+    try {
+        await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
         await CustomModal.alert("Cảm ơn bạn đã đóng góp ý kiến!", "success");
         document.getElementById('nativeFeedbackForm').reset(); rateStar(5);
-    } finally { 
-        btn.innerHTML = 'GỬI GÓP Ý'; btn.disabled = false; 
+    }
+    catch (error) {
+        await CustomModal.alert("Cảm ơn bạn đã đóng góp ý kiến!", "success");
+        document.getElementById('nativeFeedbackForm').reset(); rateStar(5);
+    } finally {
+        btn.innerHTML = 'GỬI GÓP Ý'; btn.disabled = false;
     }
 }
 
 // ==========================================
-// 5. HÀM KHỞI TẠO CHÍNH VÀ CÁC LOGIC CÒN LẠI GIỮ NGUYÊN
-// ==========================================
-// ==========================================
-// 5. HÀM KHỞI TẠO CHÍNH (CÓ LOGIC AUTO-UPDATE PWA)
+// 5. HÀM KHỞI TẠO CHÍNH
 // ==========================================
 async function init() {
     startLoadingAnimation();
 
     try {
-        const docRef = doc(dbFirestore, "configs", "appConfig");
-        const docSnap = await getDoc(docRef);
-        const firestoreData = docSnap.exists() ? docSnap.data() : {};
-
-        const cloudVersion = firestoreData?.general?.version || DEFAULT_CONFIG.general.version;
+        const currentVersion = appConfig.general.version;
         const localVersion = localStorage.getItem('MAITAY_APP_VERSION');
 
-        // Hiển thị version ngay trên màn hình loading
         const versionEl = document.getElementById('loading-version-display');
         if (versionEl) {
-            versionEl.innerText = cloudVersion;
+            versionEl.innerText = currentVersion;
             versionEl.classList.remove('opacity-0');
         }
 
-        // Logic kiểm tra phiên bản và ép cập nhật
-        if (localVersion && localVersion !== cloudVersion) {
-            localStorage.setItem('MAITAY_APP_VERSION', cloudVersion);
-            localStorage.removeItem('blinkHintSeen'); 
+        // Logic cập nhật PWA nếu version khác nhau
+        if (localVersion && localVersion !== currentVersion) {
+            localStorage.setItem('MAITAY_APP_VERSION', currentVersion);
+            localStorage.removeItem('blinkHintSeen');
 
             const minimalText = document.querySelector('.minimal-text');
-            if (minimalText) minimalText.innerText = `Cập nhật ${cloudVersion}...`;
+            if (minimalText) minimalText.innerText = `Cập nhật ${currentVersion}...`;
 
             setTimeout(() => {
                 const cleanUrl = window.location.href.split('?')[0];
                 window.location.replace(`${cleanUrl}?v=${new Date().getTime()}`);
-            }, 600); // Giảm thời gian chờ reset xuống 600ms
-            
-            return; 
-        } else if (!localVersion) {
-            localStorage.setItem('MAITAY_APP_VERSION', cloudVersion);
-        }
+            }, 600);
 
-        // Merge dữ liệu
-        appConfig = {
-            general: { ...DEFAULT_CONFIG.general, ...(firestoreData?.general || {}) },
-            contact: firestoreData?.contact || DEFAULT_CONFIG.contact,
-            heroBlock: {
-                isFlashSale: firestoreData?.heroBlock?.isFlashSale || false,
-                sliderImages: (firestoreData?.heroBlock?.sliderImages?.length > 0) ? firestoreData.heroBlock.sliderImages : ["./BGMT.jpg","./BG.jpg"],
-                flashSale: firestoreData?.heroBlock?.flashSale,
-                normalBooking: firestoreData?.heroBlock?.normalBooking || { title: "Trải Nghiệm Đẳng Cấp", desc: "Đặt lịch để giữ chỗ ngay hôm nay.", btnText: "ĐẶT LỊCH NGAY", icon: "fa-calendar-check" }
-            },
-            homeFeatures: {
-                categories: firestoreData?.homeFeatures?.categories || DEFAULT_CONFIG.homeFeatures.categories,
-                marqueeTexts: (firestoreData?.homeFeatures?.marqueeTexts?.length > 0) ? firestoreData.homeFeatures.marqueeTexts : [{ text: "🎉 Chào mừng bạn đến với hệ thống Mai Tây Hair Salon", isHighlight: true }]
-            },
-            offers: firestoreData?.offers || [],
-            feed: firestoreData?.feed || []
-        };
+            return;
+        } else if (!localVersion) {
+            localStorage.setItem('MAITAY_APP_VERSION', currentVersion);
+        }
 
         applyConfig();
         renderHeroSlider();
@@ -1000,12 +1106,11 @@ async function init() {
         renderOffers();
         renderFeed();
 
-        // TĂNG TỐC ĐỘ: Giảm thời gian chờ tối thiểu xuống 800ms
         const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
         await minLoadingTime;
         finishLoadingAnimation();
 
-        // Tải ngầm dữ liệu GAS (không đợi dữ liệu này xong mới mở app)
+        // Tải ngầm dữ liệu GAS
         fetch(`${API_URL}?action=init`)
             .then(res => res.json())
             .then(data => {
@@ -1040,7 +1145,7 @@ function initAboutAnimations() {
     }
     const revealElements = document.querySelectorAll('.glass-reveal');
     const revealObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); }});
+        entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); } });
     }, { root: viewAbout, threshold: 0.1, rootMargin: "0px 0px -30px 0px" });
     setTimeout(() => { revealElements.forEach(el => revealObserver.observe(el)); }, 200);
 }
@@ -1069,15 +1174,16 @@ function updateTOCActiveState() {
 }
 updateTOCActiveState();
 
-const storeData = [
-    { id: 'P1', name: 'by Hunq', sub: 'Design & Build', brand: 'Hunq', price: 'Liên hệ', desc: 'Thiết kế & phát triển bởi Đinh Mạnh Hùng.', themeColor: '#f59e0b', img: '/Asset/logo/logo.png' },
-    { id: 'P2', name: 'by Hunq', sub: 'Design & Build', brand: 'Hunq', price: 'Liên hệ', desc: 'Thiết kế & phát triển bởi Đinh Mạnh Hùng.', themeColor: '#06b6d4', img: '/Asset/logo/logo.png' },
-];
-
+// ==========================================
+// RENDER CỬA HÀNG (ĐÃ TÍCH HỢP VÀO APP_CONFIG)
+// ==========================================
 function renderStoreList() {
     const container = document.getElementById('storeContainer');
-    if (!container) return;
-    container.innerHTML = storeData.map((p) => `
+    // Kiểm tra xem container và dữ liệu store có tồn tại không
+    if (!container || !appConfig.store || appConfig.store.length === 0) return;
+
+    // Trỏ tới appConfig.store thay vì storeData tĩnh
+    container.innerHTML = appConfig.store.map((p) => `
         <div class="w-full h-screen snap-center flex flex-col justify-center items-center relative px-6 pt-10 pb-20">
             <div class="text-center mb-8 relative z-20">
                 <p class="text-[10px] font-bold uppercase tracking-[0.4em] mb-3" style="color: ${p.themeColor}">${p.brand}</p>
@@ -1110,8 +1216,8 @@ function renderStoreList() {
             const scrollY = container.scrollTop;
             plxBlocks.forEach(block => {
                 const speed = parseFloat(block.getAttribute('data-speed'));
-                const rot = block.getAttribute('data-rot');                 
-                const yOffset = -(scrollY * speed); 
+                const rot = block.getAttribute('data-rot');
+                const yOffset = -(scrollY * speed);
                 block.style.transform = `translateY(${yOffset}px) rotate(${rot}deg)`;
             });
         });
