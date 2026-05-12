@@ -1,5 +1,5 @@
 // ==========================================
-// 1. CẤU HÌNH GIAO DIỆN CHÍNH (APP_CONFIG)
+// CẤU HÌNH GIAO DIỆN CHÍNH (APP_CONFIG)
 // Quản lý toàn bộ nội dung tĩnh của App tại đây
 // ==========================================
 const APP_CONFIG = {
@@ -118,6 +118,53 @@ const APP_CONFIG = {
     ]
 };
 
+
+// ==========================================
+// 1. IMPORT FIREBASE & CẤU HÌNH
+// ==========================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCTnDNOzI-8JYFfrxtJclFxe7vY27PM6FU",
+    authDomain: "salon-mt.firebaseapp.com",
+    projectId: "salon-mt",
+    storageBucket: "salon-mt.firebasestorage.app",
+    messagingSenderId: "1086041756251",
+    appId: "1:1086041756251:web:5f7c4cc7144cc59be8a57e",
+    measurementId: "G-3BV9HNVP29"
+};
+
+const app = initializeApp(firebaseConfig);
+const firebaseDb = getFirestore(app);
+// ==========================================
+// 2. DỮ LIỆU DỰ PHÒNG (FALLBACK_CONFIG)
+// Giữ lại nội dung tĩnh cũ để dự phòng khi mất mạng
+// ==========================================
+const FALLBACK_CONFIG = {
+    general: {
+        name: "Mai Tây Hair Salon",
+        slogan: "Premium Hair Studio",
+        rating: "5.0",
+        openHours: { status: 1, text: "Mở cửa từ 8h đến 20h", reason: "" },
+        version: "v1.0.2"
+    },
+    contact: { phoneDisplay: "0909 123 456", phoneLink: "0909123456", zaloLink: "https://zalo.me/0909123456" },
+    heroBlock: {
+        sliderImages: ["./BGMT.jpg", "./BG.jpg"],
+        isFlashSale: true,
+        normalBooking: { title: "Trải Nghiệm Đẳng Cấp", desc: "Đặt lịch để giữ chỗ ngay hôm nay.", btnText: "ĐẶT LỊCH NGAY", icon: "fa-calendar-check" },
+        flashSale: { title: "Flash Sale Đặc Quyền Vip", desc: "Giảm ngay 50% cho 5 khách hàng...", btnText: "SĂN DEAL NGAY", endTime: "2026-05-12T23:59:59" }
+    },
+    homeFeatures: { /* ... (Giữ nguyên mảng categories, marqueeTexts) ... */ },
+    offers: [ /* ... (Giữ nguyên) ... */],
+    feed: [ /* ... (Giữ nguyên) ... */],
+    store: [ /* ... (Giữ nguyên) ... */]
+};
+
+// Khởi tạo biến toàn cục
+let appConfig = FALLBACK_CONFIG;
+
 // ==========================================
 // 1.5 CUSTOM MODAL SYSTEM (THAY THẾ ALERT/CONFIRM)
 // ==========================================
@@ -199,7 +246,6 @@ let db = { branches: [], services: [], staff: [] };
 let selection = { branch: null, service: null, staff: null, date: null, time: null };
 let currentStep = 1;
 let countdownInterval;
-let appConfig = APP_CONFIG; // Gán toàn cục từ config tĩnh
 let currentSlide = 0;
 let feedObserver;
 
@@ -1072,7 +1118,18 @@ async function init() {
     startLoadingAnimation();
 
     try {
-        const currentVersion = appConfig.general.version;
+        // Kéo dữ liệu từ Cloud Firestore
+        const docRef = doc(firebaseDb, 'artifacts', 'maitay-app', 'public', 'data', 'config', 'main');
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            appConfig = docSnap.data();
+            console.log("Đã đồng bộ cấu hình từ Firebase Cloud.");
+        } else {
+            console.warn("Chưa có data trên Cloud, dùng Fallback mặc định.");
+        }
+
+        const currentVersion = appConfig.general?.version || FALLBACK_CONFIG.general.version;
         const localVersion = localStorage.getItem('MAITAY_APP_VERSION');
 
         const versionEl = document.getElementById('loading-version-display');
@@ -1093,38 +1150,49 @@ async function init() {
                 const cleanUrl = window.location.href.split('?')[0];
                 window.location.replace(`${cleanUrl}?v=${new Date().getTime()}`);
             }, 600);
-
             return;
         } else if (!localVersion) {
             localStorage.setItem('MAITAY_APP_VERSION', currentVersion);
         }
 
+        // Gắn dữ liệu lên UI
         applyConfig();
         renderHeroSlider();
         renderDynamicHero();
         renderHomeFeatures();
         renderOffers();
         renderFeed();
+        if (typeof renderStoreList === "function") renderStoreList();
 
         const minLoadingTime = new Promise(resolve => setTimeout(resolve, 800));
         await minLoadingTime;
         finishLoadingAnimation();
 
         // Tải ngầm dữ liệu GAS
+        // Tải ngầm dữ liệu GAS
         fetch(`${API_URL}?action=init`)
             .then(res => res.json())
             .then(data => {
-                db = data;
+                // SỬA LẠI THÀNH DÒNG NÀY: Gán thẳng vào biến db cũ
+                db = data; 
                 renderBranches();
                 renderDateSelector();
             })
             .catch(e => console.error("GAS Load Error:", e));
-
     } catch (e) {
-        console.error("Init Error:", e);
+        console.error("Lỗi khởi tạo hoặc mất kết nối:", e);
+        // Nếu lỗi Firebase, giao diện vẫn load tiếp với FALLBACK_CONFIG
+        applyConfig();
+        renderHeroSlider();
+        renderDynamicHero();
+        renderHomeFeatures();
+        renderOffers();
+        renderFeed();
+        if (typeof renderStoreList === "function") renderStoreList();
         finishLoadingAnimation();
     }
 }
+
 init();
 
 function initAboutAnimations() {

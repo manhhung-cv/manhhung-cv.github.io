@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quản Trị Mai Tây Salon</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        primary: '#4f46e5', // Indigo-600: Thân thiện, dễ nhìn
+                        primaryHover: '#4338ca',
+                        surface: '#ffffff',
+                        background: '#f8fafc',
+                        danger: '#ef4444'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #f8fafc; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Hiệu ứng chuyển Tab */
+        .tab-content { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .tab-content.active { display: block; opacity: 1; animation: slideUp 0.3s ease-out forwards; }
+        
+        @keyframes slideUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Nút Toggle Switch mượt mà */
+        .toggle-checkbox:checked { right: 0; border-color: #4f46e5; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #4f46e5; }
+
+        /* Input đẹp hơn */
+        .input-field {
+            width: 100%; padding: 0.75rem 1rem; border-radius: 0.75rem;
+            border: 1px solid #e2e8f0; background-color: #f8fafc;
+            font-size: 0.875rem; transition: all 0.2s;
+        }
+        .input-field:focus {
+            outline: none; border-color: #4f46e5; background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        .form-label { display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 0.25rem; }
+        .form-hint { font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem; display: block; }
+        
+        /* Ảnh Thumbnail */
+        .img-preview { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background-color: #e2e8f0; flex-shrink: 0; border: 1px solid #cbd5e1;}
+    </style>
+</head>
+<body class="font-sans text-slate-800 antialiased h-screen flex flex-col overflow-hidden">
+
+    <!-- App Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shrink-0 shadow-sm">
+        <div class="px-4 py-3 flex justify-between items-center max-w-5xl mx-auto w-full">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-primary text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-900 text-lg leading-none">Bảng Quản Trị</h1>
+                    <div class="flex items-center gap-2 mt-1">
+                        <p class="text-xs text-slate-500">Admin UID: <span id="admin-uid" class="font-mono font-bold text-primary">Đang tải...</span></p>
+                        <button onclick="logoutAdmin()" id="btn-logout" class="hidden text-[10px] bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 px-2 py-0.5 rounded font-bold transition-colors">Thoát</button>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-save-cloud" onclick="saveToCloud()" class="bg-primary hover:bg-primaryHover text-white text-sm font-semibold px-5 py-2.5 rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-95">
+                <i class="fa-solid fa-cloud-arrow-up"></i> <span class="hidden sm:inline">Lưu Cloud & Lấy Mã</span>
+            </button>
+        </div>
+
+        <!-- Scrollable Tabs -->
+        <div class="bg-white border-t border-slate-100">
+            <div class="flex overflow-x-auto hide-scrollbar max-w-5xl mx-auto px-2 py-2 gap-2" id="tab-buttons">
+                <!-- Sẽ được thêm class active bằng JS -->
+                <button onclick="switchTab('general')" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white whitespace-nowrap transition-all flex items-center gap-2" data-target="general">
+                    <i class="fa-solid fa-circle-info"></i> Thông tin chung
+                </button>
+                <button onclick="switchTab('hero')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-transparent text-slate-600 hover:bg-slate-100 whitespace-nowrap transition-all flex items-center gap-2" data-target="hero">
+                    <i class="fa-solid fa-image"></i> Banners & Flash Sale
+                </button>
+                <button onclick="switchTab('features')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-transparent text-slate-600 hover:bg-slate-100 whitespace-nowrap transition-all flex items-center gap-2" data-target="features">
+                    <i class="fa-solid fa-list-ul"></i> Danh mục & Thông báo
+                </button>
+                <button onclick="switchTab('offers')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-transparent text-slate-600 hover:bg-slate-100 whitespace-nowrap transition-all flex items-center gap-2" data-target="offers">
+                    <i class="fa-solid fa-ticket"></i> Ưu đãi (Voucher)
+                </button>
+                <button onclick="switchTab('feed')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-transparent text-slate-600 hover:bg-slate-100 whitespace-nowrap transition-all flex items-center gap-2" data-target="feed">
+                    <i class="fa-brands fa-tiktok"></i> Video/Ảnh (Feed)
+                </button>
+                <button onclick="switchTab('store')" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium bg-transparent text-slate-600 hover:bg-slate-100 whitespace-nowrap transition-all flex items-center gap-2" data-target="store">
+                    <i class="fa-solid fa-bag-shopping"></i> Dịch vụ (Cửa hàng)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 pb-32">
+        <div class="max-w-3xl mx-auto w-full">
+
+            <!-- TAB: GENERAL & CONTACT -->
+            <div id="tab-general" class="tab-content active">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Thông tin Cửa hàng</h2>
+                    <p class="text-sm text-slate-500">Các thông tin cơ bản hiển thị ở đầu trang web.</p>
+                </div>
+                
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Tên Salon</label>
+                            <input type="text" id="g_name" onchange="updateVal('general.name', this.value)" class="input-field" placeholder="VD: Mai Tây Hair Salon">
+                        </div>
+                        <div>
+                            <label class="form-label">Slogan (Khẩu hiệu)</label>
+                            <input type="text" id="g_slogan" onchange="updateVal('general.slogan', this.value)" class="input-field" placeholder="VD: Premium Hair Studio">
+                        </div>
+                        <div>
+                            <label class="form-label">Điểm đánh giá</label>
+                            <span class="form-hint">Hiển thị cạnh ngôi sao (VD: 5.0)</span>
+                            <input type="text" id="g_rating" onchange="updateVal('general.rating', this.value)" class="input-field">
+                        </div>
+                        <div>
+                            <label class="form-label">Phiên bản (Version)</label>
+                            <span class="form-hint">Đổi số này để ép web làm mới bộ nhớ (Cache)</span>
+                            <input type="text" id="g_version" onchange="updateVal('general.version', this.value)" class="input-field">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                    <h3 class="font-bold text-slate-800 mb-4 border-b pb-2">Trạng thái đóng/mở cửa</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Tình trạng hiện tại</label>
+                            <select id="g_oh_status" onchange="updateVal('general.openHours.status', parseInt(this.value))" class="input-field cursor-pointer">
+                                <option value="1">🟢 Mở cửa bình thường</option>
+                                <option value="2">🟡 Đang bảo trì / Nâng cấp</option>
+                                <option value="3">🔴 Đã đóng cửa</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">Lời nhắn trạng thái</label>
+                            <span class="form-hint">Dòng chữ nhỏ khi khách bấm vào chấm tròn</span>
+                            <input type="text" id="g_oh_text" onchange="updateVal('general.openHours.text', this.value)" class="input-field" placeholder="VD: Mở cửa từ 8h đến 20h">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-800 mb-4 border-b pb-2">Thông tin Liên hệ (Nút gọi điện)</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="form-label">Số điện thoại (Nhìn thấy)</label>
+                            <input type="text" id="c_phoneDisp" onchange="updateVal('contact.phoneDisplay', this.value)" class="input-field" placeholder="VD: 0909 123 456">
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="form-label">Số điện thoại (Để bấm gọi)</label>
+                                <span class="form-hint">Viết liền không dấu cách</span>
+                                <input type="text" id="c_phoneLink" onchange="updateVal('contact.phoneLink', this.value)" class="input-field" placeholder="VD: 0909123456">
+                            </div>
+                            <div>
+                                <label class="form-label">Link Zalo của Shop</label>
+                                <span class="form-hint">Đường link dẫn đến Zalo OA hoặc Zalo cá nhân</span>
+                                <input type="text" id="c_zaloLink" onchange="updateVal('contact.zaloLink', this.value)" class="input-field" placeholder="VD: https://zalo.me/0909123456">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: HERO & FLASH SALE -->
+            <div id="tab-hero" class="tab-content">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Hình nền & Sự kiện</h2>
+                    <p class="text-sm text-slate-500">Quản lý ảnh trượt (Slider) và sự kiện Flash Sale đếm ngược.</p>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                    <h3 class="font-bold text-slate-800 mb-2">Ảnh nền Slider</h3>
+                    <span class="form-hint">Dán link ảnh (hoặc đường dẫn file). Nên dùng ảnh ngang chất lượng cao.</span>
+                    <div id="h_sliderImages_container" class="space-y-3 mt-4">
+                        <!-- JS Injected -->
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 flex justify-between items-center bg-indigo-50 border-indigo-100">
+                    <div>
+                        <h3 class="font-bold text-indigo-900 text-lg">Kích hoạt Flash Sale</h3>
+                        <p class="text-sm text-indigo-700">Bật lên để hiển thị đồng hồ đếm ngược thay vì giao diện đặt lịch bình thường.</p>
+                    </div>
+                    <!-- Toggle Switch -->
+                    <div class="relative inline-block w-12 mr-2 align-middle select-none">
+                        <input type="checkbox" name="toggle" id="h_isFlashSale" onchange="updateVal('heroBlock.isFlashSale', this.checked); toggleFlashSaleUI();" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer border-slate-300 z-10 top-0 left-0 transition-transform duration-200 checked:translate-x-6 checked:border-primary"/>
+                        <label for="h_isFlashSale" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer transition-colors duration-200"></label>
+                    </div>
+                </div>
+
+                <!-- Normal Booking UI -->
+                <div id="h_normal_ui" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 opacity-50 transition-opacity">
+                    <h3 class="font-bold text-slate-800 mb-4 border-b pb-2">Giao diện Đặt lịch (Khi TẮT Flash sale)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label">Tiêu đề chính</label>
+                            <input type="text" id="h_n_title" onchange="updateVal('heroBlock.normalBooking.title', this.value)" class="input-field">
+                        </div>
+                        <div>
+                            <label class="form-label">Chữ trên nút bấm</label>
+                            <input type="text" id="h_n_btn" onchange="updateVal('heroBlock.normalBooking.btnText', this.value)" class="input-field">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="form-label">Mô tả ngắn</label>
+                            <input type="text" id="h_n_desc" onchange="updateVal('heroBlock.normalBooking.desc', this.value)" class="input-field">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="form-label">Icon nút bấm</label>
+                            <span class="form-hint">Mã icon từ FontAwesome (VD: fa-calendar-check, fa-phone)</span>
+                            <div class="flex gap-2">
+                                <input type="text" id="h_n_icon" onchange="updateVal('heroBlock.normalBooking.icon', this.value)" class="input-field font-mono flex-1">
+                                <button onclick="openIconPicker('static', 'h_n_icon')" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 px-4 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2">
+                                    <i class="fa-solid fa-icons"></i> Chọn
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flash Sale UI -->
+                <div id="h_flash_ui" class="bg-white p-5 rounded-2xl border border-red-200 shadow-sm mb-6 border-t-4 border-t-red-500 hidden">
+                    <h3 class="font-bold text-red-600 mb-4 border-b pb-2 text-lg flex items-center gap-2"><i class="fa-solid fa-bolt"></i> Cấu hình Flash Sale đếm ngược</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="form-label text-red-700">Tiêu đề chiến dịch</label>
+                            <input type="text" id="h_f_title" onchange="updateVal('heroBlock.flashSale.title', this.value)" class="input-field border-red-200 focus:border-red-500">
+                        </div>
+                        <div>
+                            <label class="form-label text-red-700">Giờ kết thúc đếm ngược</label>
+                            <span class="form-hint text-red-400">Bấm vào biểu tượng lịch để chọn ngày giờ</span>
+                            <input type="datetime-local" id="h_f_time" onchange="updateFlashSaleTime(this.value)" class="input-field border-red-200 focus:border-red-500 cursor-pointer">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="form-label text-red-700">Chữ trên nút bấm</label>
+                            <input type="text" id="h_f_btn" onchange="updateVal('heroBlock.flashSale.btnText', this.value)" class="input-field border-red-200 focus:border-red-500">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="form-label text-red-700">Mô tả chương trình khuyến mãi</label>
+                            <textarea id="h_f_desc" onchange="updateVal('heroBlock.flashSale.desc', this.value)" class="input-field border-red-200 focus:border-red-500 h-24 resize-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: FEATURES -->
+            <div id="tab-features" class="tab-content">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold text-slate-800">Danh mục & Thanh thông báo</h2>
+                    <p class="text-sm text-slate-500">4 nút danh mục tròn (Cắt, Nhuộm...) và dòng chữ chạy ngang.</p>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h3 class="font-bold text-slate-800">Danh mục dịch vụ chính</h3>
+                        <button onclick="addArrayItem('categories')" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-semibold transition-colors"><i class="fa-solid fa-plus mr-1"></i> Thêm mới</button>
+                    </div>
+                    <span class="form-hint mb-4">Lấy mã icon tại: <a href="https://fontawesome.com/icons" target="_blank" class="text-primary hover:underline">FontAwesome</a> (VD: fa-scissors, fa-wind)</span>
+                    <div id="feat_categories_list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- JS Injected -->
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h3 class="font-bold text-slate-800">Thanh chữ chạy ngang (Marquee)</h3>
+                        <button onclick="addArrayItem('marqueeTexts')" class="text-sm bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-semibold transition-colors"><i class="fa-solid fa-plus mr-1"></i> Thêm dòng</button>
+                    </div>
+                    <div id="feat_marquee_list" class="flex flex-col gap-3">
+                        <!-- JS Injected -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: OFFERS -->
+            <div id="tab-offers" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Mã giảm giá (Voucher)</h2>
+                        <p class="text-sm text-slate-500">Các thẻ khuyến mãi hiển thị trượt ngang.</p>
+                    </div>
+                    <button onclick="addArrayItem('offers')" class="text-sm bg-primary hover:bg-primaryHover text-white px-4 py-2 rounded-xl font-semibold transition-all shadow-md"><i class="fa-solid fa-plus mr-1"></i> Thêm Voucher</button>
+                </div>
+                
+                <div id="offers_list" class="flex flex-col gap-6">
+                    <!-- JS Injected -->
+                </div>
+            </div>
+
+            <!-- TAB: FEED -->
+            <div id="tab-feed" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Kênh Video/Ảnh (Showcase)</h2>
+                        <p class="text-sm text-slate-500">Giống Tiktok/Reels hiển thị theo dạng lưới.</p>
+                    </div>
+                    <button onclick="addArrayItem('feed')" class="text-sm bg-primary hover:bg-primaryHover text-white px-4 py-2 rounded-xl font-semibold transition-all shadow-md"><i class="fa-solid fa-plus mr-1"></i> Thêm Video</button>
+                </div>
+                
+                <div id="feed_list" class="flex flex-col gap-6">
+                    <!-- JS Injected -->
+                </div>
+            </div>
+
+            <!-- TAB: STORE -->
+            <div id="tab-store" class="tab-content">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">Dịch vụ & Sản phẩm</h2>
+                        <p class="text-sm text-slate-500">Danh sách các dịch vụ chi tiết hiển thị ở cuối trang.</p>
+                    </div>
+                    <button onclick="addArrayItem('store')" class="text-sm bg-primary hover:bg-primaryHover text-white px-4 py-2 rounded-xl font-semibold transition-all shadow-md"><i class="fa-solid fa-plus mr-1"></i> Thêm Dịch vụ</button>
+                </div>
+                
+                <div id="store_list" class="flex flex-col gap-6">
+                    <!-- JS Injected -->
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Icon Picker Modal (Bảng chọn Icon) -->
+    <div id="icon-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] hidden items-center justify-center p-4 transition-opacity opacity-0" style="transition: opacity 0.2s ease;">
+        <div class="bg-white rounded-3xl w-full max-w-sm flex flex-col shadow-2xl transform scale-95 transition-transform h-[70vh]" id="icon-modal-content" style="transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-3xl shrink-0">
+                <h3 class="font-bold text-slate-800 text-lg flex items-center gap-2"><i class="fa-solid fa-face-smile-wink text-primary"></i> Chọn Icon</h3>
+                <button onclick="closeIconPicker()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-3 border-b border-slate-100 bg-slate-50 shrink-0">
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="icon-search" oninput="renderIconGrid(this.value)" class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm focus:border-primary focus:outline-none shadow-sm" placeholder="Tìm theo tên (VD: star, heart...)">
+                </div>
+            </div>
+            <div class="p-4 flex-1 overflow-y-auto hide-scrollbar bg-white rounded-b-3xl">
+                <div id="icon-grid" class="grid grid-cols-5 gap-3">
+                    <!-- JS Injected -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal (Cửa sổ lấy mã) -->
+    <div id="export-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden items-center justify-center p-4 transition-opacity opacity-0" style="transition: opacity 0.3s ease;">
+        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl transform scale-95 transition-transform" id="modal-content" style="transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-white rounded-t-2xl">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-lg"><i class="fa-solid fa-check-circle text-green-500 mr-2"></i> Tạo mã thành công!</h3>
+                    <p class="text-sm text-slate-500 mt-1">Copy toàn bộ đoạn mã dưới đây và dán đè vào file cấu hình của ứng dụng.</p>
+                </div>
+                <button onclick="closeExportModal()" class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-0 flex-1 overflow-y-auto bg-slate-900 text-slate-300 relative group">
+                <div class="absolute top-0 w-full flex justify-end p-4 pointer-events-none">
+                    <button onclick="copyGeneratedCode()" class="pointer-events-auto bg-white hover:bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg shadow-lg font-bold text-sm transition-colors flex items-center gap-2">
+                        <i class="fa-regular fa-copy"></i> Bấm để Copy
+                    </button>
+                </div>
+                <!-- Vùng chứa code -->
+                <pre class="p-6 pt-16"><code id="export-code" class="text-sm font-mono whitespace-pre-wrap break-words"></code></pre>
+            </div>
+            
+            <div class="p-5 flex justify-end gap-3 bg-white rounded-b-2xl border-t border-slate-100">
+                <button onclick="closeExportModal()" class="px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Đóng cửa sổ</button>
+                <button onclick="copyGeneratedCode()" class="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-primary hover:bg-primaryHover shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-check"></i> Đã copy xong
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thông báo nổi (Toast) -->
+    <div id="toast" class="fixed bottom-[-50px] left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl z-[60] text-sm font-semibold flex items-center gap-3 transition-all duration-300 opacity-0">
+        <i class="fa-solid fa-circle-check text-green-400 text-lg"></i>
+        <span id="toast-message">Thành công!</span>
+    </div>
+
+    <!-- Khung Đăng Nhập (Login Overlay) -->
+    <div id="login-overlay" class="fixed inset-0 bg-slate-900/95 backdrop-blur-md z-[200] flex items-center justify-center transition-opacity duration-300">
+        <div class="bg-white p-8 rounded-3xl w-full max-w-md shadow-2xl transform transition-transform">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-indigo-50 text-primary rounded-2xl flex items-center justify-center font-bold text-3xl mx-auto mb-4 border border-indigo-100">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-slate-900">Đăng Nhập Quản Trị</h2>
+                <p class="text-sm text-slate-500 mt-2">Nhập email và mật khẩu được cấp phép</p>
+            </div>
+            
+            <form onsubmit="event.preventDefault(); loginAdmin();">
+                <div class="space-y-4">
+                    <div>
+                        <label class="form-label text-slate-700">Email</label>
+                        <input type="email" id="login-email" class="input-field border-slate-200" placeholder="admin@maitay.com" required>
+                    </div>
+                    <div>
+                        <label class="form-label text-slate-700">Mật khẩu</label>
+                        <input type="password" id="login-password" class="input-field border-slate-200" placeholder="••••••••" required>
+                    </div>
+                    
+                    <div id="login-error" class="text-red-500 text-sm hidden font-medium text-center bg-red-50 py-2 rounded-lg">Sai email hoặc mật khẩu!</div>
+                    
+                    <button type="submit" id="btn-login" class="w-full bg-primary hover:bg-primaryHover text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2 mt-4">
+                        Đăng Nhập <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Màn hình chờ tải Cloud -->
+    <div id="cloud-overlay" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex flex-col items-center justify-center text-white transition-opacity duration-300 opacity-0 pointer-events-none">
+        <i class="fa-solid fa-cloud-arrow-down text-5xl mb-4 animate-bounce text-primary"></i>
+        <h2 class="text-xl font-bold mb-2">Đang kết nối Máy chủ...</h2>
+        <p class="text-slate-300 text-sm" id="cloud-status">Đang tải dữ liệu</p>
+    </div>
+
+    <script>
+        // Data gốc (APP_CONFIG)
+        var config = {
+            general: {
+                name: "Mai Tây Hair Salon",
+                slogan: "Premium Hair Studio",
+                rating: "5.0",
+                openHours: { status: 1, text: "Mở cửa từ 8h đến 20h", reason: "" },
+                version: "v1.0.2"
+            },
+            contact: { phoneDisplay: "0909 123 456", phoneLink: "0909123456", zaloLink: "https://zalo.me/0909123456" },
+            heroBlock: {
+                sliderImages: ["./BGMT.jpg", "./BG.jpg"],
+                isFlashSale: true,
+                normalBooking: { title: "Trải Nghiệm Đẳng Cấp", desc: "Đặt lịch để giữ chỗ ngay hôm nay.", btnText: "ĐẶT LỊCH NGAY", icon: "fa-calendar-check" },
+                flashSale: { title: "Flash Sale Đặc Quyền Vip", desc: "Giảm ngay 50% cho 5 khách hàng đặt lịch sớm nhất trong ngày. Giữ chỗ ngay trước khi kết thúc!", btnText: "SĂN DEAL NGAY", endTime: "2026-05-12T23:59:59" }
+            },
+            homeFeatures: {
+                categories: [
+                    { icon: "fa-scissors", name: "Cắt" }, { icon: "fa-fill-drip", name: "Nhuộm" },
+                    { icon: "fa-wind", name: "Uốn" }, { icon: "fa-spa", name: "Phục hồi" }
+                ],
+                marqueeTexts: [
+                    { text: "🎉 Chào mừng bạn đến với hệ thống Mai Tây Hair Salon", isHighlight: true },
+                    { text: "✨ Trải nghiệm dịch vụ làm đẹp đẳng cấp 5 sao", isHighlight: false },
+                    { text: "🔥 Đang có Flash Sale cực sốc - Đặt lịch ngay!", isHighlight: true }
+                ]
+            },
+            offers: [
+                { type: "Ưu đãi", title: "Giảm 20% Dịch Vụ Hóa Chất", desc: "Áp dụng cho hóa đơn từ 500k trở lên. Nhập mã lúc thanh toán.", code: "MAITAY20", gradient: "from-slate-500 to-slate-800", icon: "fa-gift" },
+                { type: "Voucher", title: "Miễn Phí Hấp Phục Hồi Keratin", desc: "Dành riêng cho khách hàng lần đầu tiên sử dụng dịch vụ.", code: "NEWBIE", gradient: "from-rose-500 to-rose-800", icon: "fa-ticket" }
+            ],
+            feed: [
+                { isVideo: true, url: "https://res.cloudinary.com/dt8zhfng8/video/upload/v1778504963/cobek2edjzufp98eknbp.mp4", img: "https://res.cloudinary.com/dt8zhfng8/video/upload/v1778504963/cobek2edjzufp98eknbp.mp4", fomoText: "Sắp hết chỗ", fomoIcon: "fa-bolt", title: "Kiểu uốn layer bồng bềnh tự nhiên chuẩn Hàn Quốc cho các nàng công sở" },
+                { isVideo: true, url: "https://res.cloudinary.com/dt8zhfng8/video/upload/q_auto/f_auto/v1778505437/ghgxwzhekglanycyx9p6.mp4", img: "https://res.cloudinary.com/dt8zhfng8/video/upload/q_auto/f_auto/v1778505437/ghgxwzhekglanycyx9p6.mp4", fomoText: "Sắp hết chỗ", fomoIcon: "fa-bolt", title: "Nhuộm Balayage thời thượng" }
+            ],
+            store: [
+                { id: 'P1', name: 'by Hunq', sub: 'Design & Build', brand: 'Hunq', price: 'Liên hệ', desc: 'Gói thiết kế & phát triển Web App chuyên nghiệp, tối ưu hóa UI/UX.', themeColor: '#f59e0b', img: '/Asset/logo/logo.png' },
+                { id: 'P2', name: 'Pro Premium', sub: 'System Architecture', brand: 'Hunq', price: 'Liên hệ', desc: 'Xây dựng hệ thống quản lý toàn diện với hiệu suất cao.', themeColor: '#06b6d4', img: '/Asset/logo/logo.png' }
+            ]
+        };
+
+        // Hàm tiện ích: Cập nhật biến config từ text path
+        function updateVal(path, value) {
+            const keys = path.split('.');
+            let current = config;
+            for (let i = 0; i < keys.length - 1; i++) current = current[keys[i]];
+            current[keys[keys.length - 1]] = value;
+        }
+
+        // Khởi tạo các input dạng text thông thường
+        function initForms() {
+            // Tab Chung
+            document.getElementById('g_name').value = config.general.name;
+            document.getElementById('g_slogan').value = config.general.slogan;
+            document.getElementById('g_rating').value = config.general.rating;
+            document.getElementById('g_version').value = config.general.version;
+            document.getElementById('g_oh_status').value = config.general.openHours.status;
+            document.getElementById('g_oh_text').value = config.general.openHours.text;
+            
+            document.getElementById('c_phoneDisp').value = config.contact.phoneDisplay;
+            document.getElementById('c_phoneLink').value = config.contact.phoneLink;
+            document.getElementById('c_zaloLink').value = config.contact.zaloLink;
+
+            // Tab Hero
+            document.getElementById('h_isFlashSale').checked = config.heroBlock.isFlashSale;
+            toggleFlashSaleUI();
+
+            document.getElementById('h_n_title').value = config.heroBlock.normalBooking.title;
+            document.getElementById('h_n_desc').value = config.heroBlock.normalBooking.desc;
+            document.getElementById('h_n_btn').value = config.heroBlock.normalBooking.btnText;
+            document.getElementById('h_n_icon').value = config.heroBlock.normalBooking.icon;
+
+            document.getElementById('h_f_title').value = config.heroBlock.flashSale.title;
+            document.getElementById('h_f_desc').value = config.heroBlock.flashSale.desc;
+            document.getElementById('h_f_btn').value = config.heroBlock.flashSale.btnText;
+            
+            // Xử lý datetime-local (cắt bỏ phần giây rườm rà)
+            let isoTime = config.heroBlock.flashSale.endTime;
+            if(isoTime) document.getElementById('h_f_time').value = isoTime.substring(0, 16);
+
+            // Render lại các mảng danh sách
+            renderSliderImages();
+            renderCategories();
+            renderMarquees();
+            renderOffers();
+            renderFeed();
+            renderStore();
+        }
+
+        // Xử lý riêng cho DateTime
+        function updateFlashSaleTime(val) {
+            // Thêm :00 giây vào để chuẩn định dạng cũ
+            let finalTime = val + ":00";
+            updateVal('heroBlock.flashSale.endTime', finalTime);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.getElementById('tab-' + tabId).classList.add('active');
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.target === tabId) {
+                    btn.classList.replace('bg-transparent', 'bg-primary');
+                    btn.classList.replace('text-slate-600', 'text-white');
+                } else {
+                    btn.classList.replace('bg-primary', 'bg-transparent');
+                    btn.classList.replace('text-white', 'text-slate-600');
+                }
+            });
+        }
+
+        function toggleFlashSaleUI() {
+            const isFlash = document.getElementById('h_isFlashSale').checked;
+            const flashUI = document.getElementById('h_flash_ui');
+            const normalUI = document.getElementById('h_normal_ui');
+            
+            if(isFlash) {
+                flashUI.classList.remove('hidden');
+                normalUI.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                flashUI.classList.add('hidden');
+                normalUI.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            t.style.bottom = '30px';
+            t.style.opacity = '1';
+            setTimeout(() => {
+                t.style.bottom = '-50px';
+                t.style.opacity = '0';
+            }, 3000);
+        }
+
+        // Render: Ảnh nền Slider
+        function renderSliderImages() {
+            const cont = document.getElementById('h_sliderImages_container');
+            let html = config.heroBlock.sliderImages.map((img, i) => `
+                <div class="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                    <img src="${img}" onerror="this.src='https://placehold.co/100x100/e2e8f0/94a3b8?text=Lỗi+Ảnh'" class="img-preview">
+                    <input type="text" value="${img}" onchange="updateArrayItemVal('hero_img', ${i}, '', this.value)" class="input-field flex-1" placeholder="Dán link ảnh vào đây">
+                    <button onclick="removeArrayItem('hero_img', ${i})" class="w-10 h-10 flex items-center justify-center rounded-lg bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-colors" title="Xóa ảnh này"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+            html += `<button onclick="addArrayItem('hero_img')" class="mt-3 text-sm font-semibold text-primary hover:text-primaryHover flex items-center gap-1"><i class="fa-solid fa-plus-circle"></i> Thêm ảnh nữa</button>`;
+            cont.innerHTML = html;
+        }
+
+        // Render: Danh mục (Categories)
+        function renderCategories() {
+            const cont = document.getElementById('feat_categories_list');
+            cont.innerHTML = config.homeFeatures.categories.map((c, i) => `
+                <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center gap-4 relative group">
+                    <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-xl text-slate-700 shadow-sm border border-slate-100 shrink-0">
+                        <i class="fa-solid ${c.icon}"></i>
+                    </div>
+                    <div class="flex-1 space-y-2">
+                        <div>
+                            <label class="text-[10px] text-slate-500 uppercase font-bold">Tên nút</label>
+                            <input type="text" value="${c.name}" onchange="updateArrayItemVal('cat', ${i}, 'name', this.value)" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-sm font-semibold focus:border-primary focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-500 uppercase font-bold mb-1 block">Mã Icon</label>
+                            <div class="flex gap-2">
+                                <input type="text" value="${c.icon}" onchange="updateArrayItemVal('cat', ${i}, 'icon', this.value)" class="w-full bg-white border border-slate-200 rounded px-2 py-1 text-xs font-mono text-slate-500 focus:border-primary focus:outline-none">
+                                <button onclick="openIconPicker('array', null, 'cat', ${i}, 'icon')" class="px-3 bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-600 transition-colors"><i class="fa-solid fa-icons"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="removeArrayItem('cat', ${i})" class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md hover:bg-red-600 transition-colors opacity-0 group-hover:opacity-100"><i class="fa-solid fa-times text-xs"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // Render: Marquee
+        function renderMarquees() {
+            const cont = document.getElementById('feat_marquee_list');
+            cont.innerHTML = config.homeFeatures.marqueeTexts.map((m, i) => `
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center gap-3">
+                    <div class="flex flex-col items-center justify-center gap-1 shrink-0 px-2 cursor-pointer" title="Đánh dấu nổi bật (Đổi màu)">
+                        <input type="checkbox" ${m.isHighlight ? 'checked' : ''} onchange="updateArrayItemVal('marquee', ${i}, 'isHighlight', this.checked)" class="w-5 h-5 rounded text-primary focus:ring-primary accent-primary cursor-pointer">
+                        <span class="text-[9px] text-slate-500">Nổi bật</span>
+                    </div>
+                    <input type="text" value="${m.text}" onchange="updateArrayItemVal('marquee', ${i}, 'text', this.value)" class="input-field flex-1" placeholder="Nhập nội dung thông báo">
+                    <button onclick="removeArrayItem('marquee', ${i})" class="w-10 h-10 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // Render: Offers (Vouchers)
+        function renderOffers() {
+            const cont = document.getElementById('offers_list');
+            cont.innerHTML = config.offers.map((o, i) => `
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm relative">
+                    <button onclick="removeArrayItem('offers', ${i})" class="absolute top-4 right-4 text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 w-8 h-8 rounded-full flex justify-center items-center transition-colors"><i class="fa-solid fa-trash text-sm"></i></button>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pr-10">
+                        <div><label class="form-label">Loại nhãn (Tag)</label><input type="text" value="${o.type}" onchange="updateArrayItemVal('offers', ${i}, 'type', this.value)" class="input-field" placeholder="VD: Voucher, Ưu đãi"></div>
+                        <div><label class="form-label">Mã Code (Mã nhập)</label><input type="text" value="${o.code}" onchange="updateArrayItemVal('offers', ${i}, 'code', this.value)" class="input-field font-mono text-primary font-bold" placeholder="VD: GIAM20K"></div>
+                        <div class="md:col-span-2"><label class="form-label">Tiêu đề Voucher</label><input type="text" value="${o.title}" onchange="updateArrayItemVal('offers', ${i}, 'title', this.value)" class="input-field font-semibold"></div>
+                        <div class="md:col-span-2"><label class="form-label">Mô tả điều kiện</label><input type="text" value="${o.desc}" onchange="updateArrayItemVal('offers', ${i}, 'desc', this.value)" class="input-field"></div>
+                        
+                        <!-- Advance setting -->
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 md:col-span-2 flex gap-4 mt-2">
+                             <div class="flex-1">
+                                <label class="text-xs font-semibold text-slate-600 block mb-1">Mã Icon (Góc thẻ)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" value="${o.icon}" onchange="updateArrayItemVal('offers', ${i}, 'icon', this.value)" class="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm font-mono">
+                                    <button onclick="openIconPicker('array', null, 'offers', ${i}, 'icon')" class="px-3 bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-600 transition-colors"><i class="fa-solid fa-icons"></i></button>
+                                </div>
+                             </div>
+                             <div class="flex-1"><label class="text-xs font-semibold text-slate-600 block mb-1">Màu nền (Tailwind Gradient)</label><input type="text" value="${o.gradient}" onchange="updateArrayItemVal('offers', ${i}, 'gradient', this.value)" class="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm font-mono"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render: Feed (Showcase Video)
+        function renderFeed() {
+            const cont = document.getElementById('feed_list');
+            cont.innerHTML = config.feed.map((f, i) => `
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-col md:flex-row gap-5 relative">
+                    <!-- Ảnh đại diện / Video Preview -->
+                    <div class="w-full md:w-32 h-32 bg-slate-100 rounded-xl overflow-hidden shrink-0 border border-slate-200 relative flex justify-center items-center group">
+                        <img src="${f.img}" onerror="this.src='https://placehold.co/150x150/e2e8f0/94a3b8?text=No+Img'" class="w-full h-full object-cover">
+                        ${f.isVideo ? '<div class="absolute inset-0 flex items-center justify-center bg-black/20"><i class="fa-solid fa-play text-white text-3xl drop-shadow-md"></i></div>' : ''}
+                    </div>
+
+                    <div class="flex-1 space-y-4">
+                        <div class="flex justify-between items-start">
+                            <label class="flex items-center gap-2 cursor-pointer bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-semibold border border-indigo-100">
+                                <input type="checkbox" ${f.isVideo ? 'checked' : ''} onchange="updateArrayItemVal('feed', ${i}, 'isVideo', this.checked)" class="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"> 
+                                Đây là Video (Không phải ảnh)
+                            </label>
+                            <button onclick="removeArrayItem('feed', ${i})" class="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"><i class="fa-solid fa-trash"></i> Xóa bài</button>
+                        </div>
+                        
+                        <div><label class="form-label">Tiêu đề video/ảnh</label><input type="text" value="${f.title}" onchange="updateArrayItemVal('feed', ${i}, 'title', this.value)" class="input-field font-semibold" placeholder="VD: Mẫu tóc uốn layer mới nhất"></div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="form-label">Link File Gốc (Video/Ảnh)</label><input type="text" value="${f.url}" onchange="updateArrayItemVal('feed', ${i}, 'url', this.value)" class="input-field text-xs text-blue-600"></div>
+                            <div>
+                                <label class="form-label">Link Ảnh bìa (Thumbnail)</label>
+                                <span class="form-hint text-[10px]">Thường dán giống hệt link File Gốc nếu là ảnh, hoặc link ảnh cắt từ video.</span>
+                                <input type="text" value="${f.img}" onchange="updateArrayItemVal('feed', ${i}, 'img', this.value)" class="input-field text-xs">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4 bg-slate-50 p-3 rounded-xl">
+                            <div class="flex-1"><label class="text-xs font-semibold text-slate-600 block mb-1">Nhãn dán góc (Tùy chọn)</label><input type="text" value="${f.fomoText}" onchange="updateArrayItemVal('feed', ${i}, 'fomoText', this.value)" class="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm" placeholder="VD: Sắp hết chỗ"></div>
+                            <div class="flex-1">
+                                <label class="text-xs font-semibold text-slate-600 block mb-1">Icon nhãn dán</label>
+                                <div class="flex gap-2">
+                                    <input type="text" value="${f.fomoIcon}" onchange="updateArrayItemVal('feed', ${i}, 'fomoIcon', this.value)" class="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-sm font-mono" placeholder="VD: fa-fire">
+                                    <button onclick="openIconPicker('array', null, 'feed', ${i}, 'fomoIcon')" class="px-3 bg-white border border-slate-200 rounded hover:bg-slate-100 text-slate-600 transition-colors"><i class="fa-solid fa-icons"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Render: Store (Products & Services)
+        function renderStore() {
+            const cont = document.getElementById('store_list');
+            cont.innerHTML = config.store.map((s, i) => `
+                <div class="bg-white border border-slate-200 p-5 rounded-2xl shadow-sm flex flex-col md:flex-row gap-5 relative">
+                     <!-- Cột Trái: Ảnh và Màu -->
+                     <div class="w-full md:w-32 flex flex-col gap-3 shrink-0">
+                        <img src="${s.img}" onerror="this.src='https://placehold.co/150x150/${s.themeColor.replace('#','')}/ffffff?text=Icon'" class="w-full aspect-square object-cover rounded-xl border border-slate-200 bg-slate-50">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-600 block text-center mb-1">Màu chủ đạo</label>
+                            <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg p-1">
+                                <input type="color" value="${s.themeColor}" onchange="updateArrayItemVal('store', ${i}, 'themeColor', this.value)" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent">
+                                <span class="text-xs font-mono text-slate-500">${s.themeColor}</span>
+                            </div>
+                        </div>
+                     </div>
+
+                     <!-- Cột Phải: Thông tin -->
+                     <div class="flex-1 space-y-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex gap-2">
+                                <span class="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider">Mã: ${s.id}</span>
+                            </div>
+                            <button onclick="removeArrayItem('store', ${i})" class="text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"><i class="fa-solid fa-trash"></i> Xóa dịch vụ</button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="form-label">Tên Dịch vụ / Sản phẩm</label><input type="text" value="${s.name}" onchange="updateArrayItemVal('store', ${i}, 'name', this.value)" class="input-field font-bold text-lg text-slate-900" placeholder="VD: Gội Đầu Dưỡng Sinh"></div>
+                            <div><label class="form-label">Giá tiền</label><input type="text" value="${s.price}" onchange="updateArrayItemVal('store', ${i}, 'price', this.value)" class="input-field font-bold text-primary" placeholder="VD: 250.000đ"></div>
+                            <div><label class="form-label">Thương hiệu / Phân loại</label><input type="text" value="${s.brand}" onchange="updateArrayItemVal('store', ${i}, 'brand', this.value)" class="input-field" placeholder="VD: Dịch vụ VIP"></div>
+                            <div><label class="form-label">Nhãn nhỏ (Badge góc)</label><input type="text" value="${s.sub}" onchange="updateArrayItemVal('store', ${i}, 'sub', this.value)" class="input-field" placeholder="VD: Best Seller"></div>
+                        </div>
+                        
+                        <div><label class="form-label">Mô tả chi tiết</label><textarea onchange="updateArrayItemVal('store', ${i}, 'desc', this.value)" class="input-field h-20 resize-none">${s.desc}</textarea></div>
+                        <div><label class="form-label">Link ảnh minh họa</label><input type="text" value="${s.img}" onchange="updateArrayItemVal('store', ${i}, 'img', this.value)" class="input-field text-xs" placeholder="Dán link ảnh vào đây"></div>
+                     </div>
+                </div>
+            `).join('');
+        }
+
+        function updateArrayItemVal(type, index, key, value) {
+            if (type === 'hero_img') { config.heroBlock.sliderImages[index] = value; renderSliderImages(); }
+            if (type === 'cat') config.homeFeatures.categories[index][key] = value;
+            if (type === 'marquee') config.homeFeatures.marqueeTexts[index][key] = value;
+            if (type === 'offers') config.offers[index][key] = value;
+            if (type === 'feed') { config.feed[index][key] = value; renderFeed(); } // Render để update ảnh liền
+            if (type === 'store') { config.store[index][key] = value; renderStore(); } // Render để update ảnh/màu liền
+        }
+
+        function removeArrayItem(type, index) {
+            if (!confirm("Bạn có chắc chắn muốn xóa mục này không? Thao tác không thể hoàn tác.")) return;
+            if (type === 'hero_img') { config.heroBlock.sliderImages.splice(index, 1); renderSliderImages(); }
+            if (type === 'cat') { config.homeFeatures.categories.splice(index, 1); renderCategories(); }
+            if (type === 'marquee') { config.homeFeatures.marqueeTexts.splice(index, 1); renderMarquees(); }
+            if (type === 'offers') { config.offers.splice(index, 1); renderOffers(); }
+            if (type === 'feed') { config.feed.splice(index, 1); renderFeed(); }
+            if (type === 'store') { config.store.splice(index, 1); renderStore(); }
+            showToast("Đã xóa thành công!");
+        }
+
+        function addArrayItem(type) {
+            if (type === 'hero_img') { config.heroBlock.sliderImages.push("https://placehold.co/800x400/e2e8f0/94a3b8?text=Anh+Moi"); renderSliderImages(); }
+            if (type === 'categories') { config.homeFeatures.categories.push({ icon: "fa-star", name: "Mục Mới" }); renderCategories(); }
+            if (type === 'marqueeTexts') { config.homeFeatures.marqueeTexts.push({ text: "Gõ thông báo mới vào đây...", isHighlight: false }); renderMarquees(); }
+            if (type === 'offers') { config.offers.push({ type: "Khuyến mãi", title: "Tên Voucher Mới", desc: "Mô tả điều kiện...", code: "MAKHUYENMAI", gradient: "from-blue-500 to-indigo-600", icon: "fa-gift" }); renderOffers(); }
+            if (type === 'feed') { config.feed.push({ isVideo: false, url: "https://placehold.co/400x600/e2e8f0/94a3b8", img: "https://placehold.co/400x600/e2e8f0/94a3b8", fomoText: "Mới", fomoIcon: "fa-star", title: "Mô tả hình ảnh/video mới" }); renderFeed(); }
+            if (type === 'store') { config.store.push({ id: `DV${Math.floor(Math.random()*1000)}`, name: 'Tên Dịch Vụ Mới', sub: 'Nhãn nhỏ', brand: 'Thương hiệu', price: '0đ', desc: 'Mô tả ngắn...', themeColor: '#4f46e5', img: 'https://placehold.co/200x200' }); renderStore(); }
+            showToast("Đã thêm một mục mới!");
+        }
+
+        // --- XỬ LÝ NÚT LƯU & LẤY MÁ (EXPORT) ---
+        function openExportModal() {
+            const modal = document.getElementById('export-modal');
+            const codeBlock = document.getElementById('export-code');
+            
+            // Format object thành chuỗi JS đẹp mắt
+            const jsonStr = JSON.stringify(config, null, 4);
+            const jsStr = `// Cấu hình mới nhất được tải từ Cloud\nconst APP_CONFIG = ${jsonStr};`;
+            
+            codeBlock.textContent = jsStr;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Hiệu ứng Fade In và Scale
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('modal-content').classList.replace('scale-95', 'scale-100');
+            }, 10);
+        }
+
+        function closeExportModal() {
+            const modal = document.getElementById('export-modal');
+            modal.classList.add('opacity-0');
+            document.getElementById('modal-content').classList.replace('scale-100', 'scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300); // Đợi CSS transition chạy xong
+        }
+
+        function copyGeneratedCode() {
+            const codeText = document.getElementById('export-code').textContent;
+            
+            // Hàm Copy an toàn
+            const fallbackCopy = (text) => {
+                let textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed"; 
+                document.body.appendChild(textArea);
+                textArea.focus(); textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast("Đã Copy thành công! Vui lòng dán vào app.");
+                    closeExportModal();
+                } catch (err) {
+                    alert("Trình duyệt không hỗ trợ copy tự động. Vui lòng copy thủ công.");
+                }
+                document.body.removeChild(textArea);
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(codeText).then(() => {
+                    showToast("Đã Copy thành công! Vui lòng dán vào app.");
+                    closeExportModal();
+                }).catch(() => fallbackCopy(codeText));
+            } else {
+                fallbackCopy(codeText);
+            }
+        }
+
+        // --- BẢNG CHỌN ICON (ICON PICKER) ---
+        const faIconsList = [
+            "fa-scissors", "fa-fill-drip", "fa-wind", "fa-spa", "fa-spray-can", "fa-hot-tub-person", "fa-pump-soap",
+            "fa-star", "fa-heart", "fa-check", "fa-fire", "fa-bolt", "fa-ticket", "fa-gift", "fa-calendar-check", "fa-calendar-days",
+            "fa-clock", "fa-phone", "fa-comment-dots", "fa-bell", "fa-tag", "fa-gem", "fa-crown", "fa-camera",
+            "fa-video", "fa-image", "fa-music", "fa-store", "fa-shop", "fa-bag-shopping", "fa-cart-shopping",
+            "fa-user", "fa-users", "fa-location-dot", "fa-chevron-right", "fa-circle-check", "fa-leaf", "fa-droplet",
+            "fa-eye", "fa-magic", "fa-brush", "fa-cut", "fa-thumbs-up", "fa-hand-sparkles", "fa-award", "fa-medal",
+            "fa-certificate", "fa-ribbon", "fa-percent", "fa-coins", "fa-money-bill-wave", "fa-credit-card"
+        ];
+
+        let currentIconTarget = null; // Lưu trữ nơi cần chèn icon vào
+
+        function openIconPicker(type, id, arrayType, index, key) {
+            currentIconTarget = { type, id, arrayType, index, key };
+            document.getElementById('icon-search').value = '';
+            renderIconGrid(''); // Hiển thị tất cả
+            
+            const modal = document.getElementById('icon-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Animation
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                document.getElementById('icon-modal-content').classList.replace('scale-95', 'scale-100');
+            }, 10);
+        }
+
+        function closeIconPicker() {
+            const modal = document.getElementById('icon-modal');
+            modal.classList.add('opacity-0');
+            document.getElementById('icon-modal-content').classList.replace('scale-100', 'scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200);
+        }
+
+        function renderIconGrid(filterText) {
+            const grid = document.getElementById('icon-grid');
+            const term = filterText.toLowerCase();
+            const filtered = faIconsList.filter(icon => icon.includes(term));
+            
+            if(filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-5 text-center text-slate-400 py-8 text-sm">Không tìm thấy icon nào.</div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(icon => `
+                <button onclick="selectIcon('${icon}')" class="aspect-square flex flex-col items-center justify-center gap-1 text-slate-600 bg-slate-50 hover:bg-primary hover:text-white rounded-2xl transition-all border border-slate-100 active:scale-95 group" title="${icon}">
+                    <i class="fa-solid ${icon} text-2xl group-hover:scale-110 transition-transform"></i>
+                </button>
+            `).join('');
+        }
+
+        function selectIcon(iconClass) {
+            if (currentIconTarget.type === 'static') {
+                const input = document.getElementById(currentIconTarget.id);
+                input.value = iconClass;
+                // Kích hoạt sự kiện onchange thủ công để lưu dữ liệu
+                input.dispatchEvent(new Event('change'));
+            } else if (currentIconTarget.type === 'array') {
+                // Gọi hàm update mảng có sẵn
+                updateArrayItemVal(currentIconTarget.arrayType, currentIconTarget.index, currentIconTarget.key, iconClass);
+            }
+            
+            closeIconPicker();
+            showToast("Đã chọn Icon: " + iconClass);
+        }
+
+        // Gán các hàm cần thiết lên window để module Firebase bên dưới có thể gọi được
+        window.initForms = initForms;
+        window.showToast = showToast;
+        window.openExportModal = openExportModal;
+    </script>
+
+    <!-- MÔ-ĐUN FIREBASE: KẾT NỐI VÀ ĐỒNG BỘ CLOUD -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Môi trường mặc định
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'maitay-app';
+        
+        // Sử dụng cấu hình Firebase của người dùng
+        const firebaseConfig = {
+            apiKey: "AIzaSyCTnDNOzI-8JYFfrxtJclFxe7vY27PM6FU",
+            authDomain: "salon-mt.firebaseapp.com",
+            projectId: "salon-mt",
+            storageBucket: "salon-mt.firebasestorage.app",
+            messagingSenderId: "1086041756251",
+            appId: "1:1086041756251:web:5f7c4cc7144cc59be8a57e",
+            measurementId: "G-3BV9HNVP29"
+        };
+
+        let app, auth, db, currentUser;
+
+        if (Object.keys(firebaseConfig).length > 0) {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            setupAuthListener();
+        }
+
+        // Lắng nghe trạng thái đăng nhập
+        function setupAuthListener() {
+            onAuthStateChanged(auth, async (user) => {
+                const loginOverlay = document.getElementById('login-overlay');
+                const logoutBtn = document.getElementById('btn-logout');
+                
+                if (user) {
+                    // Đã đăng nhập
+                    currentUser = user;
+                    document.getElementById('admin-uid').innerText = user.uid;
+                    logoutBtn.classList.remove('hidden');
+                    
+                    // Ẩn form đăng nhập, hiện màn hình loading
+                    loginOverlay.classList.add('opacity-0', 'pointer-events-none');
+                    
+                    await fetchCloudData();
+                } else {
+                    // Chưa đăng nhập / Đã đăng xuất
+                    currentUser = null;
+                    document.getElementById('admin-uid').innerText = 'Vui lòng đăng nhập';
+                    logoutBtn.classList.add('hidden');
+                    
+                    // Hiện form đăng nhập
+                    loginOverlay.classList.remove('opacity-0', 'pointer-events-none');
+                    
+                    // Nạp data mặc định cho UI ở background
+                    window.initForms(); 
+                }
+            });
+        }
+
+        // Kéo dữ liệu từ Cloud về
+        async function fetchCloudData() {
+            const overlay = document.getElementById('cloud-overlay');
+            const statusEl = document.getElementById('cloud-status');
+            
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            statusEl.innerText = "Đang tải cấu hình từ Firestore...";
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    window.config = docSnap.data();
+                    console.log("Đã đồng bộ với Cloud.");
+                } else {
+                    console.log("Chưa có data trên Cloud, dùng mặc định.");
+                }
+
+                window.initForms(); 
+                setTimeout(() => {
+                    overlay.classList.add('opacity-0', 'pointer-events-none');
+                    window.showToast("Đã kết nối máy chủ!");
+                }, 500);
+
+            } catch (error) {
+                console.error("Lỗi tải data:", error);
+                statusEl.innerText = "Lỗi kết nối đọc dữ liệu!";
+                setTimeout(() => {
+                    overlay.classList.add('opacity-0', 'pointer-events-none');
+                }, 2000);
+            }
+        }
+
+        // Hàm Xử lý Đăng Nhập
+        window.loginAdmin = async function() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('login-error');
+            const btn = document.getElementById('btn-login');
+
+            if(!email || !password) return;
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang xử lý...';
+            btn.disabled = true;
+            errorEl.classList.add('hidden');
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // Đăng nhập thành công, onAuthStateChanged sẽ tự động bắt sự kiện
+            } catch (error) {
+                console.error("Lỗi đăng nhập:", error);
+                errorEl.innerText = "Sai email hoặc mật khẩu!";
+                errorEl.classList.remove('hidden');
+                btn.innerHTML = 'Đăng Nhập <i class="fa-solid fa-arrow-right"></i>';
+                btn.disabled = false;
+            }
+        };
+
+        // Hàm Đăng xuất
+        window.logoutAdmin = async function() {
+            const btn = document.getElementById('btn-logout');
+            btn.innerText = "Đang thoát...";
+            try {
+                await signOut(auth);
+                btn.innerText = "Thoát";
+                window.showToast("Đã đăng xuất an toàn!");
+            } catch (error) {
+                console.error("Lỗi đăng xuất:", error);
+            }
+        };
+
+        // Hàm được gọi khi bấm nút Lưu Cloud
+        window.saveToCloud = async function() {
+            if (!app || !currentUser) {
+                window.showToast("Vui lòng đăng nhập để lưu Cloud!");
+                return;
+            }
+            
+            const btn = document.getElementById('btn-save-cloud');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang lưu...';
+            btn.disabled = true;
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main');
+                // Ghi đè cấu hình mới lên Cloud
+                await setDoc(docRef, window.config);
+                
+                window.showToast("Đã đồng bộ dữ liệu lên Cloud thành công!");
+                window.openExportModal(); // Hiện Modal để backup
+            } catch (error) {
+                console.error("Lỗi lưu:", error);
+                alert("Lỗi khi lưu! Có thể do bạn không có quyền Admin trên Database.");
+            } finally {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        };
+    </script>
+</body>
+</html>
