@@ -1,6 +1,6 @@
 /**
  * PWA Force Add to Home Screen - CHỈ DÀNH CHO IPHONE/IOS
- * Cập nhật: Giữ nguyên 3 bước hướng dẫn chi tiết bằng chữ + Video PiP. Tối ưu không gian hiển thị.
+ * Tích hợp: Nhận diện In-App, Video PiP (đã fix lỗi source), Icon chuẩn iOS, Bố cục tối ưu.
  */
 
 (function() {
@@ -49,14 +49,14 @@
                 .pwa-video-overlay i { font-size: 28px; margin-bottom: 4px; }
                 .pwa-video-overlay span { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
 
-                /* STEPS STYLES */
-                .pwa-steps { width: 100%; max-width: 300px; text-align: left; padding: 14px; border-radius: 16px; background: #ffffff; border: 1px solid #f1f5f9; box-sizing: border-box; margin-bottom: 14px; box-shadow: 0 4px 15px -5px rgba(0,0,0,0.03); }
-                .pwa-step { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+                /* STEPS & IOS ICONS STYLES */
+                .pwa-steps { width: 100%; max-width: 300px; text-align: left; padding: 14px 16px; border-radius: 16px; background: #ffffff; border: 1px solid #f1f5f9; box-sizing: border-box; margin-bottom: 14px; box-shadow: 0 4px 15px -5px rgba(0,0,0,0.03); }
+                .pwa-step { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
                 .pwa-step:last-child { margin-bottom: 0; }
                 .pwa-s-icon { 
-                    width: 22px; height: 22px; background: #f8fafc; border-radius: 6px;
+                    width: 32px; height: 32px; background: #ffffff; border-radius: 8px;
                     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-                    border: 1px solid #e2e8f0; font-weight: 800; font-size: 11px; color: var(--pwa-primary);
+                    box-shadow: 0 2px 6px rgba(0,0,0,0.06); border: 1px solid #f8fafc;
                 }
                 .pwa-s-text { font-size: 11.5px; color: var(--pwa-text-sec); margin: 0; line-height: 1.4; }
                 .pwa-s-text strong { color: var(--pwa-text); font-weight: 800; }
@@ -112,7 +112,10 @@
                     <p class="pwa-desc">Xem video hoặc làm theo 3 bước dưới đây.</p>
                     
                     <div class="pwa-video-card" id="pwa-video-trigger">
-                        <video id="pwa-instruction-video" playsinline webkit-playsinline src="./asset/guide.mp4" poster="./asset/poster.jpg"></video>
+                        <video id="pwa-instruction-video" playsinline webkit-playsinline preload="metadata" poster="./asset/poster.jpg">
+                            <source src="./asset/guide.mp4" type="video/mp4">
+                            <p>Trình duyệt không hỗ trợ video.</p>
+                        </video>
                         <div class="pwa-video-overlay" id="pwa-video-overlay">
                             <i class="fa-solid fa-circle-play"></i>
                             <span>Xem video hướng dẫn (PiP)</span>
@@ -121,20 +124,37 @@
 
                     <div class="pwa-steps">
                         <div class="pwa-step">
-                            <div class="pwa-s-icon">1</div>
-                            <p class="pwa-s-text">Nhấn nút <strong>Mở Menu Cài Đặt</strong> bên dưới.</p>
+                            <div class="pwa-s-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2">
+                                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"></path>
+                                    <polyline points="16 6 12 2 8 6"></polyline>
+                                    <line x1="12" y1="2" x2="12" y2="15"></line>
+                                </svg>
+                            </div>
+                            <p class="pwa-s-text">Nhấn nút <strong>Chia sẻ</strong> bên dưới.</p>
                         </div>
                         <div class="pwa-step">
-                            <div class="pwa-s-icon">2</div>
-                            <p class="pwa-s-text">Vuốt menu lên, chọn <strong>"Thêm vào MH chính"</strong> (Add to Home Screen).</p>
+                            <div class="pwa-s-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                                </svg>
+                            </div>
+                            <p class="pwa-s-text">Vuốt lên, tìm & chọn <strong>"Thêm vào MH chính"</strong> (Add to Home Screen).</p>
                         </div>
                         <div class="pwa-step">
-                            <div class="pwa-s-icon">3</div>
+                            <div class="pwa-s-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                </svg>
+                            </div>
                             <p class="pwa-s-text">Nhấn nút <strong>Thêm</strong> ở góc trên bên phải màn hình.</p>
                         </div>
                     </div>
 
-                    <button class="pwa-btn" id="pwa-share-btn">Mở Menu Cài Đặt</button>
+                    <button class="pwa-btn" id="pwa-share-btn">Hoặc nhấn vào đây để cài đặt</button>
                 `;
             }
 
@@ -157,9 +177,15 @@
                 const overlay = document.getElementById('pwa-video-overlay');
                 const shareBtn = document.getElementById('pwa-share-btn');
 
-                // Kích hoạt PiP khi nhấn vào video
+                // Kích hoạt PiP khi nhấn vào video (Đã bao bọc Try-Catch và kiểm tra lỗi)
                 trigger.addEventListener('click', async () => {
                     try {
+                        if (video.error) {
+                            overlay.querySelector('span').innerText = "LỖI TẢI VIDEO!";
+                            overlay.querySelector('i').className = "fa-solid fa-triangle-exclamation text-rose-500";
+                            return;
+                        }
+
                         overlay.style.opacity = '0';
                         await video.play();
                         
@@ -170,6 +196,7 @@
                         }
                     } catch (error) {
                         console.error("PiP Error:", error);
+                        overlay.style.opacity = '1';
                     }
                 });
 
