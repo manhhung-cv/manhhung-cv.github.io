@@ -503,8 +503,12 @@ function renderOffers() {
 }
 
 function renderFeed() {
-    document.getElementById('feedContainer').innerHTML = appConfig.feed.map((f, index) => {
-        // Chỉ tải trước tài nguyên cho 3 feed đầu tiên khi mới vào app
+    // 1. Tạo bản sao và đảo ngược mảng để đưa bài mới nhất lên đầu
+    const reversedFeed = [...appConfig.feed].reverse();
+
+    // 2. Dùng mảng đã đảo ngược để render
+    document.getElementById('feedContainer').innerHTML = reversedFeed.map((f, index) => {
+        // Chỉ tải trước tài nguyên cho 3 feed đầu tiên (lúc này chính là 3 bài mới nhất)
         const isPreloaded = index < 3;
 
         const mediaHtml = f.isVideo
@@ -555,6 +559,7 @@ function renderFeed() {
                 </div>
             </div>
         `}).join('');
+        
     setupVideoAutoplay();
 }
 
@@ -1292,3 +1297,46 @@ function renderStoreList() {
     };
 }
 renderStoreList();
+
+// Tính năng: Auto-active Table of Contents cho tab Giới thiệu
+function initAboutScrollSpy() {
+    const aboutView = document.getElementById('view-about');
+    const tocLinks = document.querySelectorAll('.toc-minimal a');
+    const sections = ['sec-intro', 'sec-journey', 'sec-stylists', 'sec-contact']
+        .map(id => document.getElementById(id))
+        .filter(el => el !== null);
+
+    if (!aboutView || tocLinks.length === 0 || sections.length === 0) return;
+
+    // Cấu hình vùng kích hoạt (Trigger zone)
+    const observerOptions = {
+        root: aboutView, // Chỉ theo dõi trong vùng cuộn của tab About
+        rootMargin: '-20% 0px -40% 0px', // Đẩy điểm bắt kiện vào giữa màn hình để mượt hơn
+        threshold: 0
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const currentId = entry.target.id;
+                
+                // Xóa active cũ và gán active mới
+                tocLinks.forEach(link => {
+                    link.classList.remove('active');
+                    // Kiểm tra xem link nào chứa id của section đang hiển thị
+                    if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(currentId)) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+        });
+    }, observerOptions);
+
+    // Kích hoạt theo dõi cho từng section
+    sections.forEach(section => observer.observe(section));
+}
+
+// Chạy hàm này khi DOM tải xong
+document.addEventListener('DOMContentLoaded', () => {
+    initAboutScrollSpy();
+});
