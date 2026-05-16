@@ -23,8 +23,8 @@ const APP_CONFIG = {
 
     heroBlock: {
         sliderImages: [
-            "./BGMT.jpg",
-            "./BG.jpg"
+            "./asset/images/BGMT.jpg",
+            "./asset/images/BGMT.jpg"
         ],
         isFlashSale: true, // Đã bật TRUE để kích hoạt giao diện đếm ngược
         normalBooking: {
@@ -123,7 +123,24 @@ const APP_CONFIG = {
 // 1. IMPORT FIREBASE & CẤU HÌNH
 // ==========================================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// THÊM CÁC IMPORT CHO AUTHENTICATION
+import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signInWithPopup, 
+    GoogleAuthProvider, 
+    sendPasswordResetEmail, 
+    onAuthStateChanged, 
+    updateProfile,
+    signOut,
+    updatePassword,
+    EmailAuthProvider,         
+    reauthenticateWithCredential,
+    signInWithRedirect,   
+    getRedirectResult
+} from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCTnDNOzI-8JYFfrxtJclFxe7vY27PM6FU",
@@ -137,6 +154,493 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const firebaseDb = getFirestore(app);
+
+// KHỞI TẠO AUTHENTICATION
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+// ==========================================
+// THÊM: LOGIC CHO TAB THÀNH VIÊN (MEMBER AUTH)
+// ==========================================
+let currentAuthMode = 'login'; // login | register | forgot
+
+// Hàm quản lý chuyển đổi UI Form
+window.toggleAuthMode = (mode) => {
+    currentAuthMode = mode;
+    const nameInput = document.getElementById('authName');
+    const passInput = document.getElementById('authPass');
+    const title = document.getElementById('auth-title');
+    const subtitle = document.getElementById('auth-subtitle');
+    const btnSubmit = document.getElementById('btn-auth-submit');
+    const btnForgot = document.getElementById('btn-forgot-pass');
+    const socialGroup = document.getElementById('social-login-group');
+    
+    // Reset tabs
+    document.getElementById('btn-tab-login').className = "flex-1 py-2.5 text-[11px] font-bold text-slate-500 rounded-lg transition-all hover:text-slate-700";
+    document.getElementById('btn-tab-register').className = "flex-1 py-2.5 text-[11px] font-bold text-slate-500 rounded-lg transition-all hover:text-slate-700";
+
+    if (mode === 'login') {
+        document.getElementById('btn-tab-login').className = "flex-1 py-2.5 text-[11px] font-bold text-slate-900 bg-white shadow-sm rounded-lg transition-all";
+        nameInput.classList.add('hidden'); nameInput.required = false;
+        passInput.classList.remove('hidden'); passInput.required = true;
+        btnForgot.classList.remove('hidden');
+        socialGroup.classList.remove('hidden');
+        title.innerText = "Chào mừng trở lại";
+        subtitle.innerText = "Vui lòng đăng nhập để tiếp tục";
+        btnSubmit.innerText = "ĐĂNG NHẬP";
+    } else if (mode === 'register') {
+        document.getElementById('btn-tab-register').className = "flex-1 py-2.5 text-[11px] font-bold text-slate-900 bg-white shadow-sm rounded-lg transition-all";
+        nameInput.classList.remove('hidden'); nameInput.required = true;
+        passInput.classList.remove('hidden'); passInput.required = true;
+        btnForgot.classList.add('hidden');
+        socialGroup.classList.remove('hidden');
+        title.innerText = "Đăng ký thành viên";
+        subtitle.innerText = "Mở khóa nhiều đặc quyền từ Mai Tây";
+        btnSubmit.innerText = "TẠO TÀI KHOẢN";
+    } else if (mode === 'forgot') {
+        document.getElementById('btn-tab-login').className = "flex-1 py-2.5 text-[11px] font-bold text-slate-900 bg-white shadow-sm rounded-lg transition-all";
+        nameInput.classList.add('hidden'); nameInput.required = false;
+        passInput.classList.add('hidden'); passInput.required = false;
+        btnForgot.classList.add('hidden');
+        socialGroup.classList.add('hidden');
+        title.innerText = "Khôi phục mật khẩu";
+        subtitle.innerText = "Nhập email đã đăng ký để đặt lại";
+        btnSubmit.innerText = "GỬI LIÊN KẾT ĐẶT LẠI";
+    }
+};
+
+// Hàm xử lý Submit Form (Đăng nhập/Đăng ký/Khôi phục)
+window.handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-auth-submit');
+    const originalText = btn.innerText;
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i>';
+    btn.disabled = true;
+
+    const email = document.getElementById('authEmail').value;
+    const pass = document.getElementById('authPass').value;
+    const name = document.getElementById('authName').value;
+
+    try {
+        if (currentAuthMode === 'login') {
+            await signInWithEmailAndPassword(auth, email, pass);
+        } 
+        else if (currentAuthMode === 'register') {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+            await updateProfile(userCredential.user, { displayName: name });
+        } 
+        else if (currentAuthMode === 'forgot') {
+            await sendPasswordResetEmail(auth, email);
+            CustomModal.alert("Đã gửi liên kết khôi phục. Vui lòng kiểm tra Email!", "success");
+            toggleAuthMode('login');
+        }
+    } catch (error) {
+        let errorMsg = "Có lỗi xảy ra, vui lòng thử lại!";
+        if (error.code === 'auth/email-already-in-use') errorMsg = "Email này đã được sử dụng!";
+        if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') errorMsg = "Tài khoản hoặc mật khẩu không chính xác!";
+        if (error.code === 'auth/weak-password') errorMsg = "Mật khẩu quá yếu, ít nhất 6 ký tự!";
+        CustomModal.alert(errorMsg, "error");
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
+};
+
+// Đăng nhập bằng Google dạng Popup chuẩn
+window.handleGoogleLogin = async () => {
+    try {
+        const result = await signInWithPopup(auth, googleProvider);
+        
+        // Đã sửa 'user' thành 'result.user'
+        if (result.user) {
+            console.log("Đăng nhập thành công tài khoản:", result.user.email);
+            // Giao diện sẽ tự động chuyển sang tab Thành viên nhờ hàm onAuthStateChanged
+        }
+    } catch (error) {
+        console.error("Lỗi đăng nhập Google Popup:", error);
+        
+        // Xử lý các trường hợp lỗi phổ biến để báo cho người dùng
+        if (error.code === 'auth/popup-closed-by-user') {
+            CustomModal.alert("Bạn đã đóng cửa sổ đăng nhập trước khi hoàn tất.", "warning");
+        } else if (error.code === 'auth/account-exists-with-different-credential') {
+            CustomModal.alert("Email này đã được đăng ký bằng tài khoản Mật khẩu. Vui lòng đăng nhập bằng mật khẩu!", "warning");
+        } else if (error.code === 'auth/blocked-by-popup-blocker') {
+            CustomModal.alert("Trình duyệt của bạn đang chặn hiển thị cửa sổ Popup. Vui lòng cấp quyền mở Popup cho trang web này!", "error");
+        } else {
+            CustomModal.alert("Lỗi hệ thống: " + error.code, "error");
+        }
+    }
+};
+// Xử lý kết quả sau khi Google chuyển hướng về lại trang web
+getRedirectResult(auth)
+    .then((result) => {
+        if (result) {
+            console.log("Đăng nhập Google thành công:", result.user.email);
+            // Giao diện sẽ tự chuyển sang tab Thành viên nhờ onAuthStateChanged
+        }
+    })
+    .catch((error) => {
+        console.error("Lỗi Redirect Google:", error);
+        
+        // Bắt chính xác lỗi trùng email
+        if (error.code === 'auth/account-exists-with-different-credential') {
+            CustomModal.alert("Email này đã được đăng ký bằng tài khoản Mật khẩu. Vui lòng đăng nhập bằng mật khẩu!", "warning");
+        } 
+        // Bắt lỗi chặn Popup/Redirect
+        else if (error.code === 'auth/web-storage-unsupported') {
+            CustomModal.alert("Trình duyệt đang chặn Cookie. Vui lòng mở bằng tab thường hoặc Safari tắt 'Prevent cross-site tracking'.", "error");
+        } 
+        else {
+            CustomModal.alert("Lỗi đăng nhập Google: " + error.code, "error");
+        }
+    });
+// Đăng xuất
+window.handleLogout = async () => {
+    const isConfirm = await CustomModal.confirm("Bạn có chắc muốn đăng xuất?");
+    if (isConfirm) {
+        await signOut(auth);
+    }
+};
+
+// Thêm các biến hàm vào window để gọi từ HTML
+window.toggleEditProfileForm = toggleEditProfileForm;
+window.handleSaveProfile = handleSaveProfile;
+
+// Lắng nghe trạng thái đăng nhập hệ thống
+onAuthStateChanged(auth, async (user) => {
+    const authSection = document.getElementById('member-auth-section');
+    const profileSection = document.getElementById('member-profile-section');
+    
+    // Khai báo các phần tử thẻ QR ngoài trang chủ
+    const homeQrLoggedOut = document.getElementById('home-qr-logged-out');
+    const homeQrLoggedIn = document.getElementById('home-qr-logged-in');
+    
+    if (user) {
+        // Tab Thành viên
+        authSection.classList.add('hidden');
+        authSection.classList.remove('flex');
+        profileSection.classList.remove('hidden');
+        profileSection.classList.add('flex');
+
+        document.getElementById('profile-uid').innerText = user.uid.substring(0, 10).toUpperCase();
+        
+        document.getElementById('qr-loading').style.display = 'flex';
+        document.getElementById('profile-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${user.uid}&color=0f172a`;
+
+        // UI Trang chủ (Ẩn đăng nhập, hiện QR)
+        if (homeQrLoggedOut && homeQrLoggedIn) {
+            homeQrLoggedOut.classList.add('hidden');
+            homeQrLoggedOut.classList.remove('flex');
+            homeQrLoggedIn.classList.remove('hidden');
+            
+            document.getElementById('home-qr-loading').style.display = 'flex';
+            document.getElementById('home-mini-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${user.uid}&color=0f172a`;
+        }
+
+        await loadUserProfile(user);
+
+    } else {
+        // Tab Thành viên
+        authSection.classList.remove('hidden');
+        authSection.classList.add('flex');
+        profileSection.classList.add('hidden');
+        profileSection.classList.remove('flex');
+        document.getElementById('authForm').reset();
+        
+        // XÓA TRỐNG FORM ĐẶT LỊCH KHI ĐĂNG XUẤT (THÊM ĐOẠN NÀY)
+        if (document.getElementById('finalForm')) document.getElementById('finalForm').reset();
+        
+        // UI Trang chủ (Hiện nút đăng nhập, ẩn QR)
+        if (homeQrLoggedOut && homeQrLoggedIn) {
+            homeQrLoggedOut.classList.remove('hidden');
+            homeQrLoggedOut.classList.add('flex');
+            homeQrLoggedIn.classList.add('hidden');
+        }
+    }
+});
+
+// ==========================================
+// CÁC HÀM XỬ LÝ GIAO DIỆN & BẢO MẬT TÀI KHOẢN
+// ==========================================
+window.toggleSensitiveInfo = toggleSensitiveInfo;
+window.toggleChangePasswordForm = toggleChangePasswordForm;
+window.handleChangePassword = handleChangePassword;
+window.togglePasswordVisibility = togglePasswordVisibility;
+
+// 1. Hàm tạo chuỗi che giấu dữ liệu (Masking)
+function maskEmail(email) {
+    if (!email) return 'Chưa cập nhật';
+    const parts = email.split('@');
+    if (parts.length !== 2) return email;
+    const name = parts[0];
+    const domain = parts[1];
+    const maskedName = name.length > 2 ? name.substring(0, 2) + '*'.repeat(name.length - 2) : name.substring(0, 1) + '***';
+    return `${maskedName}@${domain}`;
+}
+
+function maskPhone(phone) {
+    if (!phone) return 'Chưa cập nhật';
+    if (phone.length < 6) return phone;
+    return phone.substring(0, 3) + ' *** ' + phone.substring(phone.length - 3);
+}
+
+// 2. Logic Bật/Tắt hiển thị dữ liệu thật (Email, SĐT)
+function toggleSensitiveInfo(type) {
+    const maskedEl = document.getElementById(`view-${type}-masked`);
+    const realEl = document.getElementById(`view-${type}-real`);
+    const iconEl = document.getElementById(`icon-toggle-${type}`);
+    
+    if (realEl.classList.contains('hidden')) {
+        realEl.classList.remove('hidden');
+        maskedEl.classList.add('hidden');
+        iconEl.classList.replace('fa-eye-slash', 'fa-eye');
+        iconEl.classList.add('text-slate-900');
+    } else {
+        realEl.classList.add('hidden');
+        maskedEl.classList.remove('hidden');
+        iconEl.classList.replace('fa-eye', 'fa-eye-slash');
+        iconEl.classList.remove('text-slate-900');
+    }
+}
+
+// 3. Hàm bật/tắt hiển thị mật khẩu (Nút con mắt trong Form)
+function togglePasswordVisibility(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.replace('fa-eye-slash', 'fa-eye');
+        icon.classList.add('text-slate-900');
+    } else {
+        input.type = "password";
+        icon.classList.replace('fa-eye', 'fa-eye-slash');
+        icon.classList.remove('text-slate-900');
+    }
+}
+
+// 4. Logic Đóng/Mở form Đổi mật khẩu
+function toggleChangePasswordForm(show) {
+    const form = document.getElementById('profile-password-mode');
+    const btnShow = document.getElementById('btn-show-password-form');
+    if (show) {
+        form.classList.remove('hidden');
+        btnShow.classList.add('hidden');
+    } else {
+        form.classList.add('hidden');
+        btnShow.classList.remove('hidden');
+        form.reset();
+        
+        // Reset lại type password và icon con mắt khi đóng form
+        ['old-password', 'new-password', 'confirm-password'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.type = "password";
+        });
+        ['icon-old-pass', 'icon-new-pass', 'icon-confirm-pass'].forEach(id => {
+            const icon = document.getElementById(id);
+            if(icon) {
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+                icon.classList.remove('text-slate-900');
+            }
+        });
+    }
+}
+
+// 5. Logic Xử lý Xác thực và Cập nhật mật khẩu mới
+async function handleChangePassword(e) {
+    e.preventDefault();
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const isGoogleAccount = user.providerData.some(p => p.providerId === 'google.com');
+    if (isGoogleAccount) {
+        CustomModal.alert("Tài khoản của bạn đang liên kết với Google. Không thể đổi mật khẩu tại đây.", "warning");
+        toggleChangePasswordForm(false);
+        return;
+    }
+
+    const oldPass = document.getElementById('old-password').value;
+    const newPass = document.getElementById('new-password').value;
+    const confirmPass = document.getElementById('confirm-password').value;
+
+    if (newPass !== confirmPass) {
+        CustomModal.alert("Mật khẩu xác nhận không khớp!", "warning");
+        return;
+    }
+
+    if (oldPass === newPass) {
+        CustomModal.alert("Mật khẩu mới phải khác mật khẩu hiện tại!", "warning");
+        return;
+    }
+
+    const btn = document.getElementById('btn-save-password');
+    const originalText = btn.innerHTML;
+    
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+    btn.disabled = true;
+
+    try {
+        const credential = EmailAuthProvider.credential(user.email, oldPass);
+        await reauthenticateWithCredential(user, credential);
+        await updatePassword(user, newPass);
+        
+        await CustomModal.alert("Mật khẩu đã được cập nhật thành công!", "success");
+        toggleChangePasswordForm(false);
+        
+    } catch (error) {
+        console.error("Lỗi đổi mật khẩu:", error);
+        if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+            CustomModal.alert("Mật khẩu hiện tại không chính xác!", "error");
+        } else if (error.code === 'auth/weak-password') {
+            CustomModal.alert("Mật khẩu mới quá yếu. Vui lòng nhập ít nhất 6 ký tự.", "warning");
+        } else {
+            CustomModal.alert("Lỗi không xác định. Vui lòng thử lại sau.", "error");
+        }
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
+
+// Hàm tải dữ liệu hồ sơ cá nhân từ bộ lưu trữ đám mây biệt lập
+async function loadUserProfile(user) {
+    const userDocRef = doc(firebaseDb, 'users', user.uid);
+    // Ưu tiên sử dụng ảnh profile từ tài khoản Google, nếu không có sẽ tự tạo ảnh đại diện ký tự mặc định
+    let defaultAvatar = user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=f1f5f9&color=0f172a&bold=true`;
+    
+    let profileData = {
+        name: user.displayName || '',
+        email: user.email || '',
+        photoURL: defaultAvatar,
+        phone: '',
+        gender: '',
+        facebook: '',
+        tiktok: '',
+        instagram: ''
+    };
+
+    try {
+        const docSnap = await getDoc(userDocRef);
+        if (docSnap.exists()) {
+            profileData = { ...profileData, ...docSnap.data() };
+        } else {
+            // Thiết lập tài liệu cá nhân ban đầu nếu tài khoản mới đăng nhập lần đầu
+            await setDoc(userDocRef, profileData);
+        }
+    } catch (e) {
+        console.error("Lỗi xác thực quyền truy cập dữ liệu cá nhân:", e);
+    }
+
+    if (document.getElementById('home-mini-name')) {
+        document.getElementById('home-mini-name').innerText = profileData.name || 'Thành viên';
+    }
+
+    // Kết xuất dữ liệu ra chế độ hiển thị giao diện công khai cho người dùng (View Mode)
+    document.getElementById('profile-name').innerText = profileData.name || 'Thành viên';
+    document.getElementById('view-name').innerText = profileData.name || 'Chưa cập nhật';
+    document.getElementById('view-gender').innerText = profileData.gender || 'Chưa cập nhật';
+// ĐỒNG BỘ ĐIỀN SẴN VÀO FORM ĐẶT LỊCH NHANH (THÊM ĐOẠN NÀY)
+    if (document.getElementById('cusName')) document.getElementById('cusName').value = profileData.name || '';
+    if (document.getElementById('cusPhone')) document.getElementById('cusPhone').value = profileData.phone || '';
+    if (document.getElementById('cusEmail')) document.getElementById('cusEmail').value = profileData.email || '';
+
+    // Thay thế đoạn gán Email & SĐT cũ bằng đoạn này:
+    document.getElementById('view-email-real').innerText = profileData.email || 'Chưa cập nhật';
+    document.getElementById('view-email-masked').innerText = maskEmail(profileData.email);
+    
+    document.getElementById('view-phone-real').innerText = profileData.phone || 'Chưa cập nhật';
+    document.getElementById('view-phone-masked').innerText = maskPhone(profileData.phone);
+    
+    // Đảm bảo trạng thái ban đầu luôn là bị che mỗi khi tải lại Profile
+    document.getElementById('view-email-real').classList.add('hidden');
+    document.getElementById('view-email-masked').classList.remove('hidden');
+    document.getElementById('icon-toggle-email').className = 'fa-solid fa-eye-slash text-[10px]';
+    
+    document.getElementById('view-phone-real').classList.add('hidden');
+    document.getElementById('view-phone-masked').classList.remove('hidden');
+    document.getElementById('icon-toggle-phone').className = 'fa-solid fa-eye-slash text-[10px]';
+    // Rà soát cấu hình hiển thị trạng thái các liên kết mạng xã hội
+    const setSocialLink = (linkId, url) => {
+        const element = document.getElementById(linkId);
+        if (url) {
+            element.href = url;
+            element.classList.remove('opacity-40', 'pointer-events-none');
+        } else {
+            element.href = '#';
+            element.classList.add('opacity-40', 'pointer-events-none');
+        }
+    };
+    setSocialLink('link-fb', profileData.facebook);
+    setSocialLink('link-tiktok', profileData.tiktok);
+    setSocialLink('link-ig', profileData.instagram);
+
+    // Đồng bộ điền sẵn dữ liệu vào các ô nhập của Form chỉnh sửa (Edit Mode)
+    document.getElementById('edit-name').value = profileData.name;
+    document.getElementById('edit-phone').value = profileData.phone;
+    document.getElementById('edit-gender').value = profileData.gender;
+    document.getElementById('edit-fb').value = profileData.facebook;
+    document.getElementById('edit-tiktok').value = profileData.tiktok;
+    document.getElementById('edit-ig').value = profileData.instagram;
+}
+
+// Chuyển đổi qua lại giữa Form chỉnh sửa thông tin và bảng hiển thị
+function toggleEditProfileForm(show) {
+    const viewMode = document.getElementById('profile-view-mode');
+    const editMode = document.getElementById('profile-edit-mode');
+    if (show) {
+        viewMode.classList.add('hidden');
+        editMode.classList.remove('hidden');
+    } else {
+        viewMode.classList.remove('hidden');
+        editMode.classList.add('hidden');
+    }
+}
+
+// Hàm xử lý lưu thông tin cập nhật tài khoản
+async function handleSaveProfile(e) {
+    e.preventDefault();
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const btn = document.getElementById('btn-save-profile');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ĐANG LƯU...';
+    btn.disabled = true;
+
+    const userDocRef = doc(firebaseDb, 'users', user.uid);
+    const updatedData = {
+        name: document.getElementById('edit-name').value,
+        phone: document.getElementById('edit-phone').value,
+        gender: document.getElementById('edit-gender').value,
+        facebook: document.getElementById('edit-fb').value,
+        tiktok: document.getElementById('edit-tiktok').value,
+        instagram: document.getElementById('edit-ig').value,
+    };
+
+    try {
+        // Lưu thông tin trực tiếp vào Firestore với cơ chế Merge tránh mất mát các trường dữ liệu khác
+        await setDoc(userDocRef, updatedData, { merge: true });
+        
+        // Đồng bộ cập nhật tên hiển thị cơ sở của hệ thống Authentication nếu có thay đổi
+        if (updatedData.name !== user.displayName) {
+            await updateProfile(user, { displayName: updatedData.name });
+        }
+
+        CustomModal.alert("Cập nhật thông tin tài khoản thành công!", "success");
+        await loadUserProfile(user);
+        
+        // CẬP NHẬT LẠI FORM ĐẶT LỊCH SAU KHI ĐỔI HỒ SƠ (THÊM ĐOẠN NÀY)
+        if (document.getElementById('cusName')) document.getElementById('cusName').value = document.getElementById('edit-name').value;
+        if (document.getElementById('cusPhone')) document.getElementById('cusPhone').value = document.getElementById('edit-phone').value;
+
+        toggleEditProfileForm(false);
+    } catch (error) {
+        console.error("Lỗi lưu trữ dữ liệu:", error);
+        CustomModal.alert("Không thể lưu thông tin. Vui lòng kiểm tra lại quyền hạn hoặc kết nối!", "error");
+    } finally {
+        btn.innerText = "LƯU LẠI";
+        btn.disabled = false;
+    }
+}
 // ==========================================
 // 2. DỮ LIỆU DỰ PHÒNG (FALLBACK_CONFIG)
 // Giữ lại nội dung tĩnh cũ để dự phòng khi mất mạng
@@ -151,7 +655,7 @@ const FALLBACK_CONFIG = {
     },
     contact: { phoneDisplay: "0909 123 456", phoneLink: "0909123456", zaloLink: "https://zalo.me/0909123456" },
     heroBlock: {
-        sliderImages: ["./BGMT.jpg", "./BG.jpg"],
+        sliderImages: ["./asset/images/BGMT.jpg", "./asset/images/BGMT.jpg"],
         isFlashSale: true,
         normalBooking: { title: "Trải Nghiệm Đẳng Cấp", desc: "Đặt lịch để giữ chỗ ngay hôm nay.", btnText: "ĐẶT LỊCH NGAY", icon: "fa-calendar-check" },
         flashSale: { title: "Flash Sale Đặc Quyền Vip", desc: "Giảm ngay 50% cho 5 khách hàng...", btnText: "SĂN DEAL NGAY", endTime: "2026-05-12T23:59:59" }
@@ -549,13 +1053,10 @@ function renderFeed() {
                     <h3 class="font-black text-xl mb-1.5 drop-shadow-lg flex items-center gap-1.5 text-white pointer-events-auto">
                         Mai Tây Hair Salon <i class="fa-solid fa-circle-check text-blue-500 text-sm"></i>
                     </h3>
-                    <div class="relative mb-5 pointer-events-auto">
+                    <div class="relative  pointer-events-auto">
                         <p id="desc-${index}" class="text-sm font-medium drop-shadow-md text-slate-200 line-clamp-2 transition-all duration-300">${f.title}</p>
                         <button onclick="window.toggleDescription('desc-${index}', this); event.stopPropagation();" class="text-[11px] font-black text-slate-400 mt-1 hover:text-white uppercase tracking-wider">Xem thêm</button>
                     </div>
-                    <button onclick="window.switchTab('booking'); event.stopPropagation();" class="pointer-events-auto w-full flex justify-center items-center gap-2 text-xs font-black bg-white text-slate-900 px-4 py-4 rounded-2xl active:scale-95 transition-transform shadow-[0_4px_20px_rgba(255,255,255,0.2)]">
-                        <i class="fa-solid fa-calendar-check text-slate-900"></i> GIỮ CHỖ NGAY
-                    </button>
                 </div>
             </div>
         `}).join('');
