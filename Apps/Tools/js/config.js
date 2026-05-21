@@ -141,7 +141,7 @@ export const TOOLS = [
     {
         id: 'text-counter',
         catId: 'text',
-        name: 'AIO Text Tools',
+        name: 'Định dạng văn bản',
         icon: 'fas fa-font',
         desc: 'Bộ công cụ: Đếm ký tự, chuẩn hóa, lọc Email/Link, tạo Lorem Ipsum và so sánh (Diff).',
         tags: ['text', 'văn bản', 'đếm ký tự', 'lorem ipsum', 'chuẩn hóa', 'diff']
@@ -233,7 +233,7 @@ export const TOOLS = [
     {
         id: 'fake-data-generator',
         catId: 'dev',
-        name: 'Tạo Dữ liệu Giả',
+        name: 'Tạo Dữ liệu ảo',
         icon: 'fas fa-database',
         desc: 'Sinh ra hàng ngàn dòng dữ liệu ngẫu nhiên (Tên, SĐT, Email chuẩn Việt Nam) dưới dạng JSON, CSV, SQL.',
         tags: ['dữ liệu', 'data', 'fake', 'mock', 'json', 'csv', 'sql', 'test']
@@ -294,15 +294,13 @@ export const TOOLS = [
         desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
         tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
     },
-    // Mới
     {
-        id: 'speed-test',
-        catId: 'speed-test',
-        name: 'speed-test',
+        id: 'note-pro',
+        catId: 'entertainment',
+        name: 'Ghi chú',
         icon: 'fa-solid fa-bolt',
-        desc: 'speed-test.',
-        tags: ['speed-test']
-    }
-
+        desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
+        tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
+    },
     
 ];
