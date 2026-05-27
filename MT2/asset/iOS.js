@@ -79,140 +79,159 @@
             host.id = 'pwa-guide-container';
             let content = '';
 
+            // Thêm CSS riêng cho Bottom Sheet và Animation trực tiếp vào head
+            const customStyle = document.createElement('style');
+            customStyle.textContent = `
+                @keyframes bounceDown {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(10px); }
+                }
+                .animate-bounce-down { animation: bounceDown 1.5s infinite ease-in-out; }
+                .liquid-glass-sheet {
+                    background: rgba(255, 255, 255, 0.85);
+                    backdrop-filter: blur(25px);
+                    -webkit-backdrop-filter: blur(25px);
+                    border-top: 1px solid rgba(255, 255, 255, 0.5);
+                }
+                #pwa-guide-container {
+                    position: relative;
+                    z-index: 9999999;
+                }
+            `;
+            document.head.appendChild(customStyle);
+
             if (state === 'in_app') {
                 content = `
-                    <div class="pwa-icon-box warning">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                    </div>
-                    <h3 class="pwa-title">Trình duyệt hạn chế</h3>
-                    <p class="pwa-desc">Bạn đang mở ứng dụng trong trình duyệt nội bộ của mạng xã hội.</p>
-                    <div class="pwa-steps">
-                        <p class="pwa-s-text" style="text-align: center; font-size: 13px;">Nhấn vào biểu tượng <strong>Ba chấm (...)</strong> hoặc <strong>Mũi tên</strong> và chọn:<br><br><strong style="color: #0f172a; font-size: 14px;">"Mở bằng trình duyệt"</strong><br>hoặc <strong>"Open in Safari"</strong>.</p>
+                    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[999999] flex items-center justify-center p-6">
+                        <div class="bg-white p-8 rounded-[2rem] shadow-2xl text-center border border-slate-100 max-w-sm w-full relative overflow-hidden">
+                            <div class="absolute -top-10 -right-10 w-32 h-32 bg-amber-100 rounded-full blur-2xl opacity-60"></div>
+                            
+                            <div class="relative z-10">
+                                <div class="w-16 h-16 bg-amber-50 text-amber-500 rounded-[1.25rem] flex items-center justify-center mx-auto mb-6 shadow-sm border border-amber-100">
+                                    <i class="fa-solid fa-compass text-3xl"></i>
+                                </div>
+                                <h3 class="text-xl font-black text-slate-900 mb-2 tracking-tight">Trình duyệt hạn chế</h3>
+                                <p class="text-[13px] text-slate-500 font-medium mb-6 leading-relaxed">
+                                    Bạn đang mở app trong mạng xã hội. Để đặt lịch và trải nghiệm mượt mà nhất, vui lòng mở bằng trình duyệt gốc.
+                                </p>
+                                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 text-left mb-6">
+                                    <p class="text-sm font-medium text-slate-700 leading-relaxed">
+                                        Nhấn vào biểu tượng <strong>Ba chấm (...)</strong> hoặc <strong>Mũi tên chia sẻ</strong> ở góc màn hình và chọn:<br><br>
+                                        <span class="font-black text-slate-900 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm block text-center uppercase tracking-widest text-[10px]">Mở bằng trình duyệt</span>
+                                    </p>
+                                </div>
+                                <button onclick="document.getElementById('pwa-guide-container').remove(); document.body.classList.remove('pwa-locked');" class="text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Bỏ qua</button>
+                            </div>
+                        </div>
                     </div>
                 `;
             } else if (state === 'non_safari') {
                 content = `
-                    <div class="pwa-icon-box danger">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <div class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[999999] flex items-center justify-center p-6">
+                        <div class="bg-white p-8 rounded-[2rem] shadow-2xl text-center border border-slate-100 max-w-sm w-full relative overflow-hidden">
+                            <div class="absolute -top-10 -right-10 w-32 h-32 bg-rose-100 rounded-full blur-2xl opacity-60"></div>
+
+                            <div class="relative z-10">
+                                <div class="w-16 h-16 bg-rose-50 text-rose-500 rounded-[1.25rem] flex items-center justify-center mx-auto mb-6 shadow-sm border border-rose-100">
+                                    <i class="fa-brands fa-safari text-3xl"></i>
+                                </div>
+                                <h3 class="text-xl font-black text-slate-900 mb-2 tracking-tight">Sử dụng Safari</h3>
+                                <p class="text-[13px] text-slate-500 font-medium mb-6 leading-relaxed">
+                                    Apple chỉ cho phép cài đặt ứng dụng vào màn hình chính thông qua trình duyệt Safari mặc định.
+                                </p>
+                                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-6 flex items-center justify-between gap-3">
+                                    <span class="text-xs text-slate-400 font-mono truncate bg-white py-2 px-3 rounded-xl border border-slate-100 flex-1 text-left" id="pwa-current-url">${window.location.href}</span>
+                                    <button id="pwa-copy-btn" class="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center shrink-0 active:scale-95 transition-all shadow-md">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                </div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Hãy copy link và dán vào Safari</p>
+                                <button onclick="document.getElementById('pwa-guide-container').remove(); document.body.classList.remove('pwa-locked');" class="text-[11px] font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Bỏ qua</button>
+                            </div>
+                        </div>
                     </div>
-                    <h3 class="pwa-title">Sử dụng Safari</h3>
-                    <p class="pwa-desc">Để cài đặt ứng dụng, bạn cần sử dụng trình duyệt Safari gốc trên iPhone.</p>
-                    <div class="pwa-steps">
-                        <p class="pwa-s-text" style="text-align: center; margin-bottom: 10px;">Sao chép liên kết và dán vào <strong>Safari</strong>:</p>
-                        <div class="pwa-copy-box" id="pwa-current-url">${window.location.href}</div>
-                    </div>
-                    <button class="pwa-btn" id="pwa-copy-btn">Sao chép liên kết</button>
                 `;
             } else if (state === 'safari') {
                 content = `
-                    <div class="pwa-icon-box">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-                    </div>
-                    <h3 class="pwa-title">Cài đặt ứng dụng</h3>
-                    <p class="pwa-desc">Xem video hoặc làm theo 3 bước dưới đây.</p>
-                    
-                    <div class="pwa-video-card" id="pwa-video-trigger">
-                        <video id="pwa-instruction-video" playsinline webkit-playsinline preload="metadata" poster="./asset/poster.jpg">
-                            <source src="./asset/guide.mp4" type="video/mp4">
-                            <p>Trình duyệt không hỗ trợ video.</p>
-                        </video>
-                        <div class="pwa-video-overlay" id="pwa-video-overlay">
-                            <i class="fa-solid fa-circle-play"></i>
-                            <span>Xem video hướng dẫn (PiP)</span>
-                        </div>
-                    </div>
+                    <div class="fixed inset-0 bg-slate-900/40 z-[999999] flex flex-col justify-end transition-opacity">
+                        <div class="flex-1 w-full cursor-pointer" onclick="document.getElementById('pwa-guide-container').remove(); document.body.classList.remove('pwa-locked');"></div>
+                        
+                        <div class="liquid-glass-sheet w-full rounded-t-[2.5rem] p-8 pb-12 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] relative">
+                            
+                            <div class="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-6"></div>
+                            
+                            <div class="flex items-center gap-4 mb-6">
+                                <img src="/Asset/logo/iconApps.png" class="w-14 h-14 rounded-2xl shadow-md border border-white" onerror="this.src='https://ui-avatars.com/api/?name=MT&background=0f172a&color=fff'">
+                                <div>
+                                    <h3 class="text-xl font-black text-slate-900 tracking-tight">Cài đặt Mai Tây App</h3>
+                                    <p class="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Trải nghiệm mượt mà hơn</p>
+                                </div>
+                                <button onclick="document.getElementById('pwa-guide-container').remove(); document.body.classList.remove('pwa-locked');" class="ml-auto w-8 h-8 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center active:scale-95 transition-transform"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
 
-                    <div class="pwa-steps">
-                        <div class="pwa-step">
-                            <div class="pwa-s-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2">
-                                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"></path>
-                                    <polyline points="16 6 12 2 8 6"></polyline>
-                                    <line x1="12" y1="2" x2="12" y2="15"></line>
-                                </svg>
+                            <div class="space-y-4 mb-6 bg-white/50 p-5 rounded-2xl border border-white shadow-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0 shadow-sm border border-white"><i class="fa-solid fa-arrow-up-from-bracket"></i></div>
+                                    <p class="text-sm font-medium text-slate-700">1. Nhấn nút <strong>Chia sẻ</strong> ở thanh menu dưới cùng.</p>
+                                </div>
+                                <div class="w-[1px] h-4 bg-slate-200 ml-4"></div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-slate-50 text-slate-600 flex items-center justify-center shrink-0 shadow-sm border border-white"><i class="fa-solid fa-plus text-sm"></i></div>
+                                    <p class="text-sm font-medium text-slate-700">2. Chọn <strong>Thêm vào MH chính</strong> (Add to Home Screen).</p>
+                                </div>
                             </div>
-                            <p class="pwa-s-text">Nhấn nút <strong>Chia sẻ</strong> bên dưới.</p>
-                        </div>
-                        <div class="pwa-step">
-                            <div class="pwa-s-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="12" y1="8" x2="12" y2="16"></line>
-                                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                                </svg>
+
+                            <button id="pwa-share-btn" class="w-full bg-slate-900 text-white py-4 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] active:scale-95 transition-all shadow-[0_8px_20px_-5px_rgba(15,23,42,0.3)] hover:bg-slate-800 flex items-center justify-center gap-2 mb-4">
+                                <i class="fa-solid fa-arrow-up-from-bracket text-[13px] mb-[1px]"></i> Mở Bảng Chia Sẻ Ngay
+                            </button>
+
+                            <div class="flex flex-col items-center justify-center text-blue-500 animate-bounce-down mt-2">
+                                <span class="text-[10px] font-black uppercase tracking-widest mb-2">Hoặc nhấn vào đây</span>
+                                <i class="fa-solid fa-arrow-down text-2xl"></i>
                             </div>
-                            <p class="pwa-s-text">Vuốt lên, tìm & chọn <strong>"Thêm vào MH chính"</strong> (Add to Home Screen).</p>
-                        </div>
-                        <div class="pwa-step">
-                            <div class="pwa-s-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2">
-                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                                </svg>
-                            </div>
-                            <p class="pwa-s-text">Nhấn nút <strong>Thêm</strong> ở góc trên bên phải màn hình.</p>
                         </div>
                     </div>
-
-                    <button class="pwa-btn" id="pwa-share-btn">Hoặc nhấn vào đây để cài đặt</button>
                 `;
             }
 
-            host.innerHTML = `<div class="pwa-fullscreen">${content}</div>`;
+            host.innerHTML = content;
             document.body.appendChild(host);
             document.body.classList.add('pwa-locked');
 
+            // Gắn sự kiện cho nút Copy ở non_safari
             if (state === 'non_safari') {
                 const copyBtn = document.getElementById('pwa-copy-btn');
-                copyBtn.addEventListener('click', () => {
-                    navigator.clipboard.writeText(window.location.href).then(() => {
-                        copyBtn.textContent = 'Đã sao chép liên kết!';
-                        copyBtn.style.background = '#10b981';
-                        setTimeout(() => { copyBtn.textContent = 'Sao chép liên kết'; copyBtn.style.background = ''; }, 3000);
+                if (copyBtn) {
+                    copyBtn.addEventListener('click', () => {
+                        navigator.clipboard.writeText(window.location.href).then(() => {
+                            const icon = copyBtn.querySelector('i');
+                            icon.className = 'fa-solid fa-check';
+                            copyBtn.classList.replace('bg-slate-900', 'bg-emerald-500');
+                            setTimeout(() => {
+                                icon.className = 'fa-regular fa-copy';
+                                copyBtn.classList.replace('bg-emerald-500', 'bg-slate-900');
+                            }, 3000);
+                        });
                     });
-                });
-            } else if (state === 'safari') {
-                const video = document.getElementById('pwa-instruction-video');
-                const trigger = document.getElementById('pwa-video-trigger');
-                const overlay = document.getElementById('pwa-video-overlay');
+                }
+            }
+
+            // Gắn sự kiện cho nút Web Share API ở safari
+            if (state === 'safari') {
                 const shareBtn = document.getElementById('pwa-share-btn');
-
-                // Kích hoạt PiP khi nhấn vào video (Đã bao bọc Try-Catch và kiểm tra lỗi)
-                trigger.addEventListener('click', async () => {
-                    try {
-                        if (video.error) {
-                            overlay.querySelector('span').innerText = "LỖI TẢI VIDEO!";
-                            overlay.querySelector('i').className = "fa-solid fa-triangle-exclamation text-rose-500";
-                            return;
+                if (shareBtn) {
+                    shareBtn.addEventListener('click', () => {
+                        if (navigator.share) {
+                            navigator.share({
+                                title: 'Mai Tây Studio',
+                                text: 'Ứng dụng đặt lịch Mai Tây Hair Salon',
+                                url: window.location.href
+                            }).catch((error) => console.log('Chia sẻ bị hủy hoặc lỗi:', error));
                         }
-
-                        overlay.style.opacity = '0';
-                        await video.play();
-                        
-                        if (video.requestPictureInPicture) {
-                            await video.requestPictureInPicture();
-                        } else if (video.webkitSetPresentationMode) {
-                            video.webkitSetPresentationMode("picture-in-picture");
-                        }
-                    } catch (error) {
-                        console.error("PiP Error:", error);
-                        overlay.style.opacity = '1';
-                    }
-                });
-
-                // Gọi Web Share API
-                shareBtn.addEventListener('click', () => {
-                    if (navigator.share) {
-                        navigator.share({
-                            title: 'Mai Tây Studio',
-                            text: 'Ứng dụng đặt lịch Mai Tây Hair Salon',
-                            url: window.location.href
-                        }).catch(() => {}); 
-                    }
-                });
+                    });
+                }
             }
         },
-
         init() {
             const ua = navigator.userAgent;
             const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

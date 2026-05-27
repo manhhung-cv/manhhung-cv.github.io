@@ -302,5 +302,13 @@ export const TOOLS = [
         desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
         tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
     },
+    {
+        id: 'choronotype',
+        catId: 'life',
+        name: 'Giấc sinh học Choronotype',
+        icon: 'fa-solid fa-bolt',
+        desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
+        tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
+    },
     
 ];

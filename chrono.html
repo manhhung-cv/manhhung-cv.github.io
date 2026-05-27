@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChronoLife Pro - Khám Phá Nhịp Sinh Học Cá Nhân</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#090d16',
+                        darkCard: '#111827',
+                        accentPurp: '#6366f1',
+                        accentBlue: '#3b82f6',
+                        accentCyan: '#06b6d4',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #090d16;
+            background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+                              radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 40%);
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        .option-btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col">
+
+    <nav class="border-b border-gray-800 bg-darkCard/80 backdrop-blur-md sticky top-0 z-50 px-4 py-3 sm:px-6">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-gradient-to-tr from-accentPurp to-accentCyan p-2 rounded-xl text-white">
+                    <i class="fa-solid fa-clock-rotate-left text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-indigo-200 to-cyan-300 bg-clip-text text-transparent">ChronoLife Pro</h1>
+                    <p class="text-xs text-gray-400 hidden sm:block">Thuật toán phân tích giấc ngủ The Power of When</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+                <button onclick="openQuiz()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm px-4 py-2 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-600/20 hover:scale-105 active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-square-poll-horizontal"></i>
+                    <span>Làm Trắc Nghiệm Chuẩn</span>
+                </button>
+                <div class="relative group">
+                    <button class="bg-gray-800 hover:bg-gray-700 p-2.5 rounded-xl border border-gray-700 text-gray-300 flex items-center gap-2 text-sm" id="chronotypeMenuBtn">
+                        <span id="currentTypeBadge">Nhóm: Gấu 🐻</span>
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                    <div class="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-xl hidden group-hover:block hover:block z-50">
+                        <div class="p-1.5 space-y-1">
+                            <button onclick="setChronotype('lion')" class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center gap-2">🦁 Sư Tử (Lion)</button>
+                            <button onclick="setChronotype('bear')" class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center gap-2">🐻 Gấu (Bear)</button>
+                            <button onclick="setChronotype('wolf')" class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center gap-2">🐺 Sói (Wolf)</button>
+                            <button onclick="setChronotype('dolphin')" class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-gray-700 flex items-center gap-2">🐬 Cá Heo (Dolphin)</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 space-y-8">
+        
+        <div id="introBanner" class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/20 p-6 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="space-y-3 max-w-2xl text-center md:text-left">
+                <span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-xs font-semibold bg-indigo-400/10 text-indigo-300">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                    Diagnostic System v2.0
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white">Bạn có đang sống lệch múi giờ với chính mình?</h2>
+                <p class="text-gray-300 text-sm leading-relaxed">
+                    Phiên bản phân tích nâng cao với 15 câu hỏi tiêu chuẩn. Thuật toán sẽ quét chất lượng giấc ngủ của bạn trước, sau đó xác định đỉnh cao tư duy để tái cấu trúc lại hoàn toàn lịch làm việc.
+                </p>
+            </div>
+            <button onclick="openQuiz()" class="w-full md:w-auto px-6 py-3.5 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white rounded-2xl font-bold hover:from-indigo-600 hover:to-cyan-600 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/10 group whitespace-nowrap">
+                <span>Khởi Chạy Thuật Toán</span>
+                <i class="fa-solid fa-microchip transition-transform group-hover:translate-x-1"></i>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div class="lg:col-span-5 space-y-8">
+                <div class="bg-darkCard border border-gray-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-16 -top-16 w-36 h-36 bg-indigo-500/10 blur-3xl rounded-full"></div>
+                    <div class="flex items-start justify-between">
+                        <div class="space-y-1">
+                            <span class="text-xs font-bold uppercase tracking-wider text-accentCyan" id="profileTypeSubtitle">Chronotype Phổ Biến</span>
+                            <h3 class="text-3xl font-black text-white flex items-center gap-2" id="profileTypeName">🐻 Nhóm Gấu</h3>
+                        </div>
+                        <div class="text-4xl" id="profileIcon">🐻</div>
+                    </div>
+                    <div class="mt-6 p-4 rounded-2xl bg-gray-900/50 border border-gray-800">
+                        <p class="text-sm text-gray-300 leading-relaxed italic" id="profileDescription"></p>
+                    </div>
+                    <div class="mt-6 grid grid-cols-2 gap-4">
+                        <div class="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+                            <div class="flex items-center gap-1.5 text-emerald-400 font-bold text-xs mb-1"><i class="fa-solid fa-circle-check"></i> Điểm Mạnh</div>
+                            <ul class="text-xs text-gray-400 space-y-1" id="profileStrengths"></ul>
+                        </div>
+                        <div class="p-3 bg-amber-500/5 border border-amber-500/10 rounded-2xl">
+                            <div class="flex items-center gap-1.5 text-amber-400 font-bold text-xs mb-1"><i class="fa-solid fa-triangle-exclamation"></i> Thách Thức</div>
+                            <ul class="text-xs text-gray-400 space-y-1" id="profileWeaknesses"></ul>
+                        </div>
+                    </div>
+                    <div class="mt-6 border-t border-gray-800 pt-5 flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-accentPurp">
+                            <i class="fa-solid fa-lightbulb text-lg"></i>
+                        </div>
+                        <div class="text-xs">
+                            <p class="text-gray-400 font-medium">Bí quyết năng lượng:</p>
+                            <p class="text-white font-bold" id="profileQuickTip"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-3xl p-6 shadow-xl relative">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-person-running text-accentCyan"></i>
+                            Bộ Giả Lập Trạng Thái 24h
+                        </h3>
+                    </div>
+                    <div class="bg-gray-900/60 p-4 rounded-2xl border border-gray-800/80 mb-6">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="text-sm font-semibold text-gray-400">Đang quét lúc:</span>
+                            <span class="text-2xl font-black text-indigo-400 bg-indigo-950/40 px-3.5 py-1 rounded-xl border border-indigo-500/20" id="simTimeLabel">10:00</span>
+                        </div>
+                        <input type="range" id="timeSlider" min="0" max="23" value="10" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-indigo-500 mb-2">
+                        <div class="flex justify-between text-[10px] text-gray-500 px-1">
+                            <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-brain text-purple-400 w-4"></i> Độ Tập Trung Trí Não</span>
+                                <span class="text-purple-400 font-bold" id="metricFocusVal"></span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden"><div id="metricFocusBar" class="bg-gradient-to-r from-purple-500 to-indigo-500 h-2 rounded-full"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-bolt text-amber-400 w-4"></i> Năng Lượng Thể Chất</span>
+                                <span class="text-amber-400 font-bold" id="metricEnergyVal"></span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden"><div id="metricEnergyBar" class="bg-gradient-to-r from-amber-500 to-orange-500 h-2 rounded-full"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-fire-burner text-emerald-400 w-4"></i> Trao Đổi Chất</span>
+                                <span class="text-emerald-400 font-bold" id="metricMetabolismVal"></span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden"><div id="metricMetabolismBar" class="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-400 font-medium flex items-center gap-1.5"><i class="fa-solid fa-moon text-blue-400 w-4"></i> Áp Lực Buồn Ngủ</span>
+                                <span class="text-blue-400 font-bold" id="metricSleepVal"></span>
+                            </div>
+                            <div class="w-full bg-gray-800 h-2 rounded-full overflow-hidden"><div id="metricSleepBar" class="bg-gradient-to-r from-blue-500 to-slate-500 h-2 rounded-full"></div></div>
+                        </div>
+                    </div>
+                    <div class="mt-6 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-xs">
+                        <div class="font-bold text-indigo-400 flex items-center gap-1.5 mb-1.5"><i class="fa-solid fa-terminal"></i> KẾT LUẬN HỆ THỐNG</div>
+                        <p id="simHealthTip" class="text-gray-300 leading-relaxed"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 space-y-8">
+                <div class="bg-darkCard border border-gray-800 rounded-3xl p-6 shadow-xl flex flex-col">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-chart-line text-accentPurp"></i> Biểu Đồ Chu Kỳ Năng Lượng 24h
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="relative w-full h-[300px] flex-grow">
+                        <canvas id="energyCurveChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-darkCard border border-gray-800 rounded-3xl p-6 shadow-xl">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-check text-emerald-400"></i> Thời Gian Biểu Tối Ưu (Khuyên dùng)
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="relative border-l-2 border-gray-800 ml-4 pl-6 space-y-6" id="scheduleTimeline"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="quizModal" class="fixed inset-0 bg-darkBg/95 backdrop-blur-md z-[100] overflow-y-auto hidden">
+        <div class="min-h-screen flex items-center justify-center p-4 sm:p-6 py-10">
+            <div class="bg-darkCard border border-gray-800 w-full max-w-2xl rounded-3xl shadow-2xl p-6 sm:p-8 relative">
+                <button onclick="closeQuiz()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 w-8 h-8 rounded-full flex items-center justify-center transition-all"><i class="fa-solid fa-xmark"></i></button>
+                <div class="mb-6">
+                    <span class="text-xs font-bold text-accentPurp uppercase tracking-wider">Khám Phá Nhịp Sinh Học - The Power Of When</span>
+                    <h3 class="text-xl font-bold text-white mt-1">Bài Kiểm Tra Sàng Lọc Lâm Sàng (15 Câu)</h3>
+                    <div class="mt-4">
+                        <div class="flex justify-between text-xs text-gray-400 mb-1">
+                            <span id="quizStepLabel">Câu hỏi 1 / 15</span>
+                            <span id="quizPercentLabel">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-800 h-1.5 rounded-full"><div id="quizProgressBar" class="bg-gradient-to-r from-accentPurp to-accentCyan h-1.5 rounded-full" style="width: 0%"></div></div>
+                    </div>
+                </div>
+                <div id="quizContent" class="space-y-6">
+                    <h4 id="questionTitle" class="text-lg font-bold text-gray-100 leading-relaxed"></h4>
+                    <div id="optionsList" class="space-y-3"></div>
+                </div>
+                <div class="mt-8 flex justify-between items-center border-t border-gray-800 pt-5">
+                    <button id="prevQuestionBtn" onclick="prevQuestion()" class="text-xs font-semibold text-gray-400 hover:text-white flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-800 hover:bg-gray-800 transition-all disabled:opacity-50" disabled>
+                        <i class="fa-solid fa-arrow-left"></i> Quay lại
+                    </button>
+                    <span class="text-[10px] text-gray-500">Mô phỏng thuật toán chuẩn TS. Michael Breus</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="resultModal" class="fixed inset-0 bg-darkBg/95 backdrop-blur-md z-[101] overflow-y-auto hidden">
+        <div class="min-h-screen flex items-center justify-center p-4">
+            <div class="bg-darkCard border border-gray-800 w-full max-w-xl rounded-3xl shadow-2xl p-8 text-center space-y-6 relative overflow-hidden">
+                <div class="absolute -right-16 -top-16 w-36 h-36 bg-emerald-500/10 blur-3xl rounded-full"></div>
+                <div class="w-20 h-20 bg-gradient-to-tr from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-4xl mx-auto shadow-lg shadow-emerald-500/20"><i class="fa-solid fa-dna text-white"></i></div>
+                <div class="space-y-2">
+                    <h3 class="text-2xl font-black text-white">Phân Tích Hoàn Tất!</h3>
+                    <p class="text-gray-300 text-sm">Hệ thống đã nhận diện thành công mã gen đồng hồ sinh học của bạn.</p>
+                </div>
+                <div class="p-6 bg-gray-900/50 rounded-2xl border border-gray-800 max-w-sm mx-auto">
+                    <div id="computedIcon" class="text-5xl mb-2">🐻</div>
+                    <h4 id="computedName" class="text-2xl font-bold text-accentCyan">Nhóm Gấu (Bear)</h4>
+                </div>
+                <div class="pt-2">
+                    <button onclick="applyQuizResultAndClose()" class="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-indigo-500 to-cyan-500 text-white rounded-2xl font-bold hover:opacity-90 transition-all shadow-lg shadow-indigo-500/20">
+                        Áp Dụng Dữ Liệu Vào Bảng Điều Khiển
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CHRONOTYPE DATA CONSTANTS (Giữ nguyên database Data/Metrics của bạn) ---
+        const CHRONO_PROFILES = {
+            lion: {
+                name: "🦁 Nhóm Sư Tử", subtitle: "Người dậy sớm (Early Birds)", icon: "🦁",
+                description: "Chiếm khoảng 15% dân số. Bạn thức dậy đầy năng lượng lúc bình minh. Cấu trúc sinh học này hoàn hảo để phân tích hệ thống phức tạp vào sáng sớm, nhưng sẽ cạn pin rất nhanh khi hoàng hôn buông xuống.",
+                strengths: ["Kỷ luật sắt đá", "Logic và phân tích tốt lúc sáng", "Năng lượng bùng nổ đầu ngày"],
+                weaknesses: ["Sập nguồn sau 18:00", "Khó thức khuya, dễ nổi cáu", "Nhạy cảm với việc thiếu ngủ"],
+                quickTip: "Xử lý code Backend, thuật toán khó hoặc họp quan trọng ngay trong buổi sáng. Đừng cố gắng làm việc vào buổi tối.",
+                chartData: {
+                    energy: [40, 20, 10, 5, 20, 60, 90, 100, 95, 80, 75, 70, 55, 45, 40, 35, 30, 20, 15, 10, 10, 15, 25, 35],
+                    focus: [30, 10, 5, 5, 30, 70, 95, 100, 90, 85, 70, 65, 50, 40, 35, 30, 25, 20, 10, 5, 5, 10, 15, 25]
+                },
+                schedule: [
+                    { time: "05:30 - 06:30", act: "Thức dậy & Khởi động", desc: "Đón ánh sáng mặt trời để ngắt quá trình tiết Melatonin.", icon: "fa-sun" },
+                    { time: "07:00 - 10:00", act: "Deep Work (Code/Logic khó)", desc: "Đỉnh cao tuyệt đối của não bộ. Block calendar và làm việc độc lập.", icon: "fa-laptop-code" },
+                    { time: "10:30 - 12:00", act: "Hội họp & Xử lý Email", desc: "Tận dụng năng lượng còn lại để giao tiếp.", icon: "fa-users" },
+                    { time: "12:00 - 13:00", act: "Ăn trưa nhẹ", desc: "Hạn chế Carbs để tránh sập năng lượng buổi chiều.", icon: "fa-utensils" },
+                    { time: "13:30 - 16:30", act: "Task hành chính đơn giản", desc: "Code UI, fix bug nhẹ hoặc viết document. Trí não bạn đang đi xuống.", icon: "fa-file-code" },
+                    { time: "17:00 - 18:00", act: "Rời khỏi công việc & Vận động", desc: "Tuyệt đối không làm thêm giờ. Tập thể dục hồi phục.", icon: "fa-dumbbell" },
+                    { time: "21:30 - 22:00", act: "Đi ngủ", desc: "Tắt màn hình và đi ngủ sớm để duy trì phong độ ngày mai.", icon: "fa-bed" }
+                ],
+                metrics: {
+                    0: [30, 40, 20, 90], 1: [20, 20, 15, 95], 2: [10, 10, 10, 100], 3: [5, 5, 5, 100], 4: [5, 20, 10, 95], 5: [30, 40, 20, 80], 6: [70, 60, 35, 40], 7: [90, 80, 50, 15], 8: [95, 90, 60, 5], 9: [100, 95, 75, 5], 10: [100, 100, 80, 5], 11: [90, 95, 85, 10], 12: [80, 85, 90, 15], 13: [70, 75, 80, 25], 14: [50, 60, 70, 40], 15: [40, 55, 65, 50], 16: [35, 50, 60, 55], 17: [30, 45, 55, 60], 18: [25, 40, 50, 65], 19: [20, 35, 45, 70], 20: [15, 30, 35, 75], 21: [10, 25, 30, 80], 22: [5, 15, 25, 85], 23: [5, 10, 20, 90]
+                }
+            },
+            bear: {
+                name: "🐻 Nhóm Gấu", subtitle: "Nhịp sinh học Mặt trời", icon: "🐻",
+                description: "Đại diện cho 55% dân số. Lịch 9-to-5 sinh ra là dành cho bạn. Bạn hoạt động ổn định, tỉnh táo lên từ giữa sáng và duy trì sự bền bỉ cho đến giữa chiều.",
+                strengths: ["Thích nghi hoàn hảo với xã hội", "Duy trì phong độ đều đặn", "Ngủ ngon, dễ vào giấc"],
+                weaknesses: ["Luôn buồn ngủ lúc 2-3h chiều", "Cần ngủ đủ 8 tiếng không thể thiếu", "Phụ thuộc vào báo thức để dậy"],
+                quickTip: "Chống lại cơn buồn ngủ lúc 14:00 bằng cách đi dạo nhẹ. Xử lý các task quan trọng nhất từ 10:00 sáng đến 12:00 trưa.",
+                chartData: {
+                    energy: [20, 10, 5, 5, 10, 30, 60, 75, 85, 95, 100, 90, 75, 60, 55, 65, 75, 80, 70, 55, 45, 35, 25, 20],
+                    focus: [15, 5, 5, 5, 10, 25, 50, 70, 85, 90, 100, 95, 80, 60, 50, 60, 75, 80, 65, 50, 40, 30, 20, 15]
+                },
+                schedule: [
+                    { time: "07:00 - 08:00", act: "Thức dậy & Khởi động", desc: "Không được bấm hoãn báo thức. Tắm nước ấm để giãn cơ.", icon: "fa-sun" },
+                    { time: "09:00 - 10:00", act: "Check Email & Lập kế hoạch", desc: "Caffeine bắt đầu phát huy tác dụng tốt nhất vào lúc này.", icon: "fa-mug-hot" },
+                    { time: "10:00 - 13:00", act: "Khung giờ vàng (Deep Work)", desc: "Trạng thái tập trung tuyệt đối. Giải quyết dự án khó.", icon: "fa-laptop-code" },
+                    { time: "13:30 - 15:00", act: "Nghỉ ngơi hoặc Họp nhẹ", desc: "Vùng trũng năng lượng. Nếu có thể hãy chợp mắt 20 phút.", icon: "fa-bed" },
+                    { time: "15:00 - 17:00", act: "Tương tác xã hội & Code nhẹ", desc: "Năng lượng phục hồi, lý tưởng để trao đổi team hoặc review code.", icon: "fa-comments" },
+                    { time: "18:00 - 19:00", act: "Tập luyện thể thao", desc: "Sức mạnh cơ bắp đang ở đỉnh, hãy tập gym hoặc chạy bộ.", icon: "fa-dumbbell" },
+                    { time: "22:30 - 23:00", act: "Tắt thiết bị, chuẩn bị ngủ", desc: "Bắt đầu ngắt màn hình xanh để não bộ tiết Melatonin.", icon: "fa-moon" }
+                ],
+                metrics: {
+                    0: [15, 20, 10, 90], 1: [10, 10, 10, 95], 2: [5, 5, 5, 100], 3: [5, 5, 5, 100], 4: [5, 5, 5, 100], 5: [10, 10, 10, 95], 6: [20, 20, 15, 80], 7: [50, 60, 30, 40], 8: [70, 75, 45, 15], 9: [85, 85, 55, 5], 10: [100, 95, 65, 5], 11: [95, 100, 75, 5], 12: [80, 90, 85, 10], 13: [60, 75, 90, 20], 14: [50, 60, 80, 35], 15: [60, 55, 70, 45], 16: [75, 65, 65, 50], 17: [80, 75, 60, 55], 18: [80, 80, 55, 60], 19: [65, 70, 50, 65], 20: [50, 55, 45, 70], 21: [40, 45, 35, 75], 22: [30, 35, 25, 80], 23: [20, 25, 15, 85]
+                }
+            },
+            wolf: {
+                name: "🐺 Nhóm Sói", subtitle: "Cú Đêm (Night Owls)", icon: "🐺",
+                description: "Chiếm khoảng 15-20%. Nhóm Sói thường ghét cay đắng các cuộc họp lúc 8h sáng. Não bộ của bạn sắc bén, đột phá và sáng tạo nhất khi mặt trời lặn.",
+                strengths: ["Khả năng sáng tạo đột phá", "Tư duy phản biện tốt", "Làm việc độc lập cực hiệu quả lúc đêm"],
+                weaknesses: ["Hay bị sếp đánh giá là uể oải sáng", "Rất dễ bị Jetlag xã hội", "Chế độ ăn đêm dễ gây bệnh"],
+                quickTip: "Tuyệt đối không làm việc phân tích mạnh vào lúc 9h sáng. Dành việc khó nhất cho khung 17:00 đến tối mịt.",
+                chartData: {
+                    energy: [45, 30, 15, 5, 5, 10, 20, 30, 45, 55, 60, 65, 70, 65, 75, 80, 85, 90, 100, 95, 85, 75, 65, 55],
+                    focus: [50, 35, 20, 5, 5, 5, 15, 25, 35, 45, 55, 60, 65, 60, 75, 80, 85, 90, 100, 95, 80, 70, 60, 55]
+                },
+                schedule: [
+                    { time: "08:00 - 09:00", act: "Thức dậy miễn cưỡng", desc: "Tắm nước mát, bật đèn sáng để ép cơ thể tỉnh táo.", icon: "fa-bell" },
+                    { time: "09:30 - 11:30", act: "Task nhàn rỗi", desc: "Chỉ đọc tài liệu, trả lời tin nhắn. Chưa nên động vào code phức tạp.", icon: "fa-envelope-open" },
+                    { time: "12:00 - 13:00", act: "Ăn trưa năng lượng", desc: "Nạp protein chuẩn bị cho lúc não bộ bắt đầu tăng tốc.", icon: "fa-utensils" },
+                    { time: "14:00 - 17:00", act: "Giải quyết việc trung bình", desc: "Bắt đầu code, xử lý các báo cáo và meeting.", icon: "fa-briefcase" },
+                    { time: "17:00 - 21:00", act: "Cơn lốc Sáng Tạo (Peak Work)", desc: "Bộ não nảy số cực nhanh. Giải quyết các kiến trúc hóc búa nhất.", icon: "fa-lightbulb" },
+                    { time: "21:30 - 23:00", act: "Thư giãn cá nhân", desc: "Lúc này mọi người đã đi ngủ, bạn tận hưởng không gian riêng.", icon: "fa-gamepad" },
+                    { time: "00:00 - 00:30", act: "Bắt buộc đi ngủ", desc: "Dù còn tỉnh cũng phải nhắm mắt để tránh kiệt sức hôm sau.", icon: "fa-moon" }
+                ],
+                metrics: {
+                    0: [45, 55, 30, 45], 1: [30, 40, 20, 65], 2: [15, 25, 10, 85], 3: [5, 10, 5, 95], 4: [5, 5, 5, 100], 5: [5, 5, 5, 100], 6: [10, 10, 5, 95], 7: [20, 15, 10, 85], 8: [30, 25, 15, 75], 9: [45, 35, 25, 60], 10: [55, 45, 35, 45], 11: [60, 55, 45, 35], 12: [65, 60, 55, 25], 13: [70, 65, 65, 20], 14: [65, 70, 75, 15], 15: [75, 75, 80, 10], 16: [80, 80, 85, 5], 17: [85, 85, 90, 5], 18: [90, 90, 85, 5], 19: [100, 95, 75, 5], 20: [95, 100, 65, 10], 21: [85, 90, 55, 15], 22: [75, 80, 45, 25], 23: [65, 70, 35, 35]
+                }
+            },
+            dolphin: {
+                name: "🐬 Nhóm Cá Heo", subtitle: "Mất Ngủ/Nhạy Cảm", icon: "🐬",
+                description: "Chỉ chiếm 10%. Cá heo biểu trưng cho người có hệ thần kinh nhạy cảm, dễ lo âu và rất thính ngủ. Trạng thái năng lượng của bạn phân bổ thành nhiều đợt sóng ngắn trong ngày thay vì 1 đường liền.",
+                strengths: ["Cực kỳ thông minh, nhạy bén", "Chi tiết và chủ nghĩa hoàn hảo", "Khả năng làm nhiều việc một lúc"],
+                weaknesses: ["Chất lượng giấc ngủ rất kém", "Thường xuyên stress, kiệt sức", "Dễ rơi vào trầm cảm nhẹ"],
+                quickTip: "Ngưng hoàn toàn Caffeine sau 12h trưa. Sử dụng phương pháp làm việc Pomodoro thay vì ngồi lỳ 4 tiếng.",
+                chartData: {
+                    energy: [20, 15, 10, 5, 10, 25, 40, 55, 75, 85, 90, 80, 75, 70, 65, 60, 65, 75, 80, 85, 75, 60, 45, 30],
+                    focus: [15, 10, 5, 5, 10, 20, 35, 50, 70, 85, 95, 90, 80, 75, 65, 60, 70, 80, 85, 90, 75, 50, 35, 25]
+                },
+                schedule: [
+                    { time: "06:30 - 07:00", act: "Tỉnh giấc & Cố gắng dậy", desc: "Không check điện thoại ngay để tránh tăng Cortisol (hormone stress).", icon: "fa-spa" },
+                    { time: "08:00 - 10:00", act: "Xử lý việc tồn đọng", desc: "Làm việc tự do, nhẹ nhàng. Chuẩn bị tinh thần cho đợt sóng tập trung.", icon: "fa-list-check" },
+                    { time: "10:00 - 12:30", act: "Đợt sóng Deep Work số 1", desc: "Code, tư duy logic, viết document. Lúc này não bạn sắc bén nhất.", icon: "fa-bolt" },
+                    { time: "13:00 - 15:00", act: "Ăn trưa nhẹ & Tản bộ", desc: "Cố gắng thư giãn. Cá heo không nên ép mình ngủ trưa nếu không chợp mắt được.", icon: "fa-walkie-talkie" },
+                    { time: "15:00 - 17:00", act: "Đợt sóng Deep Work số 2", desc: "Hoàn thiện nốt phần logic dở dang của buổi sáng.", icon: "fa-laptop-code" },
+                    { time: "18:00 - 19:00", act: "Xả Stress cơ thể", desc: "Tập thể thao, dọn nhà cửa, tắm nước ấm.", icon: "fa-broom" },
+                    { time: "22:00 - 23:00", act: "Quy trình Wind-down", desc: "Tuyệt đối không suy nghĩ việc công ty. Đọc sách giấy để dễ ngủ.", icon: "fa-bed" }
+                ],
+                metrics: {
+                    0: [20, 15, 10, 85], 1: [15, 10, 10, 90], 2: [10, 5, 5, 95], 3: [5, 5, 5, 100], 4: [5, 10, 5, 95], 5: [10, 25, 10, 85], 6: [25, 40, 20, 70], 7: [40, 55, 30, 50], 8: [55, 75, 40, 30], 9: [75, 85, 50, 15], 10: [85, 90, 60, 10], 11: [90, 80, 70, 10], 12: [80, 75, 75, 15], 13: [75, 70, 80, 20], 14: [70, 65, 75, 25], 15: [65, 60, 70, 35], 16: [60, 65, 65, 45], 17: [65, 75, 60, 55], 18: [75, 80, 55, 65], 19: [80, 85, 50, 70], 20: [85, 75, 45, 75], 21: [75, 60, 35, 80], 22: [60, 45, 25, 85], 23: [45, 30, 15, 90]
+                }
+            }
+        };
+
+        // --- BỘ CÂU HỎI TIÊU CHUẨN 15 CÂU (TWO-PHASE ALGORITHM) ---
+        // Lớp 1 (Câu 1-5): Quét gen Dolphin (Mất ngủ, nhạy cảm).
+        // Lớp 2 (Câu 6-15): Trục phân loại Morningness - Eveningness (Sư Tử, Gấu, Sói).
+        const QUIZ_QUESTIONS = [
+            // PHASE 1: DOLPHIN SCREENING
+            { id: 1, title: "Khi có một âm thanh nhỏ hoặc ánh sáng hắt vào phòng lúc đang ngủ, bạn sẽ:",
+              options: [
+                { text: "Bừng tỉnh ngay lập tức và rất trằn trọc để ngủ lại", score: { dolphin: 3, bear: 0, lion: 0, wolf: 0 } },
+                { text: "Có thể lơ mơ nhận ra nhưng ngủ lại được ngay", score: { bear: 2, dolphin: 0, lion: 0, wolf: 0 } },
+                { text: "Phụ thuộc vào việc lúc đó là nửa đêm hay gần sáng", score: { wolf: 2, dolphin: 0, lion: 0, bear: 0 } },
+                { text: "Không hề hay biết gì, tôi ngủ rất say", score: { lion: 2, bear: 1, wolf: 1, dolphin: 0 } }
+              ] },
+            { id: 2, title: "Khi vừa đặt lưng xuống giường sau một ngày mệt mỏi, tâm trí bạn thường:",
+              options: [
+                { text: "Trống rỗng, thư giãn và sập nguồn ngay lập tức", score: { lion: 3, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Suy nghĩ vẩn vơ một chút rồi chìm vào giấc ngủ", score: { bear: 3, lion: 1, wolf: 0, dolphin: 0 } },
+                { text: "Đột nhiên nảy ra ý tưởng mới hoặc muốn cầm điện thoại lướt tiếp", score: { wolf: 3, dolphin: 1, bear: 0, lion: 0 } },
+                { text: "Liên tục 'nhảy số', căng thẳng hoặc lo âu về ngày mai", score: { dolphin: 4, wolf: 0, bear: 0, lion: 0 } }
+              ] },
+            { id: 3, title: "Bạn có thường xuyên thức giấc giữa đêm không?",
+              options: [
+                { text: "Gần như đêm nào cũng bị tỉnh giấc và rất khó ngủ lại", score: { dolphin: 4, wolf: 0, bear: 0, lion: 0 } },
+                { text: "Tôi thức rất khuya nên ít khi bị tỉnh giữa giấc", score: { wolf: 3, dolphin: 0, bear: 0, lion: 0 } },
+                { text: "Thỉnh thoảng thức giấc đi vệ sinh, nhưng ngủ lại được", score: { bear: 3, dolphin: 1, wolf: 0, lion: 0 } },
+                { text: "Rất hiếm khi, tôi ngủ một mạch tới sáng", score: { lion: 3, bear: 1, wolf: 0, dolphin: 0 } }
+              ] },
+            { id: 4, title: "Đánh giá tính cách của bạn trong công việc:",
+              options: [
+                { text: "Logic, kỷ luật thép, thích hoàn thành việc từ sớm", score: { lion: 3, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Hòa đồng, dễ tính, thích làm việc theo quy trình đều đặn", score: { bear: 3, lion: 1, wolf: 0, dolphin: 0 } },
+                { text: "Sáng tạo, bốc đồng, làm việc theo cảm hứng", score: { wolf: 3, dolphin: 1, bear: 0, lion: 0 } },
+                { text: "Cực kỳ cầu toàn, phân tích chi tiết và hay tự tạo áp lực", score: { dolphin: 4, wolf: 0, bear: 0, lion: 0 } }
+              ] },
+            { id: 5, title: "Khi gặp áp lực lớn (stress) hoặc mệt mỏi, thói quen ăn uống của bạn thay đổi thế nào?",
+              options: [
+                { text: "Ăn uống đúng giờ để giữ sức khỏe dù có bận", score: { lion: 3, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Thèm đồ ăn ngọt, đồ ăn vặt liên tục", score: { bear: 3, lion: 0, wolf: 1, dolphin: 0 } },
+                { text: "Thèm ăn đêm nhiều hơn bình thường", score: { wolf: 3, dolphin: 0, bear: 0, lion: 0 } },
+                { text: "Chán ăn, cồn cào ruột gan hoặc quên luôn cả việc ăn uống", score: { dolphin: 4, wolf: 0, bear: 0, lion: 0 } }
+              ] },
+            // PHASE 2: MEQ SPECTRUM
+            { id: 6, title: "Nếu bạn được hoàn toàn tự do chọn giờ thức dậy (không báo thức, không quy định công ty):",
+              options: [
+                { text: "Trước 6:00 sáng", score: { lion: 4, bear: 0, wolf: 0, dolphin: 1 } },
+                { text: "Từ 6:30 đến 8:00 sáng", score: { bear: 4, lion: 1, wolf: 0, dolphin: 1 } },
+                { text: "Từ 8:30 đến 10:30 sáng hoặc muộn hơn", score: { wolf: 4, bear: 0, lion: 0, dolphin: 1 } },
+                { text: "Rất lộn xộn, phụ thuộc vào đêm qua tôi trằn trọc ra sao", score: { dolphin: 3, wolf: 1, bear: 0, lion: 0 } }
+              ] },
+            { id: 7, title: "Cảm giác của bạn trong 30-45 phút đầu tiên sau khi mở mắt:",
+              options: [
+                { text: "Tỉnh táo 100%, sẵn sàng làm việc hoặc tập thể dục ngay", score: { lion: 4, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Hơi mơ màng, cần rửa mặt và uống nước để khởi động", score: { bear: 4, lion: 1, dolphin: 1, wolf: 0 } },
+                { text: "Cực kỳ uể oải, ghét bị ai đó bắt chuyện ngay lúc này", score: { wolf: 4, dolphin: 1, bear: 0, lion: 0 } },
+                { text: "Cơ thể mệt mỏi nhưng não bộ đã bắt đầu căng thẳng suy nghĩ", score: { dolphin: 3, wolf: 1, bear: 0, lion: 0 } }
+              ] },
+            { id: 8, title: "Vào khoảng thời gian 14:00 (2 giờ chiều), bạn thường cảm thấy thế nào?",
+              options: [
+                { text: "Năng lượng tuột dốc nhanh, chỉ muốn làm việc nhẹ nhàng", score: { lion: 3, bear: 0, dolphin: 1, wolf: 0 } },
+                { text: "Buồn ngủ dữ dội, rất thèm chợp mắt một lúc", score: { bear: 4, lion: 1, dolphin: 1, wolf: 0 } },
+                { text: "Bình thường, phong độ vẫn đang lên từ từ", score: { wolf: 3, dolphin: 1, bear: 0, lion: 0 } },
+                { text: "Khá tỉnh táo do cơ thể đã vượt qua cơn mệt mỏi buổi sáng", score: { dolphin: 3, wolf: 1, bear: 0, lion: 0 } }
+              ] },
+            { id: 9, title: "Thời điểm nào não bộ của bạn đạt 'đỉnh cao' nhất để giải quyết các bài toán logic/code hóc búa?",
+              options: [
+                { text: "Sáng sớm (Từ 7:00 đến 10:00)", score: { lion: 4, bear: 1, wolf: 0, dolphin: 1 } },
+                { text: "Giữa ngày (Từ 10:00 đến 14:00)", score: { bear: 4, lion: 1, dolphin: 1, wolf: 0 } },
+                { text: "Chiều muộn đến đêm khuya (Từ 17:00 đến tối mịt)", score: { wolf: 4, dolphin: 1, bear: 0, lion: 0 } },
+                { text: "Thất thường thành từng đợt ngắn, đôi khi là nửa đêm", score: { dolphin: 3, wolf: 1, bear: 0, lion: 0 } }
+              ] },
+            { id: 10, title: "Đánh giá sự phụ thuộc của bạn vào Caffeine (Trà, Cà phê):",
+              options: [
+                { text: "Ít dùng, tôi tự tỉnh táo được vào buổi sáng", score: { lion: 3, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Cần 1-2 ly vào sáng hoặc trưa để chạy đua với công việc", score: { bear: 3, wolf: 1, lion: 0, dolphin: 0 } },
+                { text: "Cần nhiều vào buổi sáng để mở mắt, tối lại tự tỉnh", score: { wolf: 4, bear: 0, lion: 0, dolphin: 0 } },
+                { text: "Nên tránh xa vì nó làm tim đập nhanh và mất ngủ nghiêm trọng", score: { dolphin: 4, wolf: 0, bear: 0, lion: 0 } }
+              ] },
+            { id: 11, title: "Nếu phải tham gia một buổi tiệc hoặc chạy deadline bắt đầu lúc 22:00, bạn sẽ:",
+              options: [
+                { text: "Chắc chắn từ chối hoặc sẽ ngủ gật trước bàn làm việc", score: { lion: 4, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Cố gắng theo nhưng sẽ ngáp liên tục", score: { bear: 3, lion: 1, dolphin: 1, wolf: 0 } },
+                { text: "Tham gia nhưng thấy khá nhạy cảm và mệt mỏi với âm thanh lớn", score: { dolphin: 3, bear: 1, wolf: 0, lion: 0 } },
+                { text: "Năng lượng bùng nổ, đây là khung giờ hoạt động yêu thích của tôi!", score: { wolf: 4, dolphin: 0, bear: 0, lion: 0 } }
+              ] },
+            { id: 12, title: "Cơn đói của bạn xuất hiện mạnh mẽ nhất vào lúc nào?",
+              options: [
+                { text: "Vừa mở mắt dậy đã thấy cồn cào, phải ăn sáng ngay", score: { lion: 4, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Giữa trưa và đầu buổi tối (theo đúng chuẩn 3 bữa)", score: { bear: 3, lion: 1, dolphin: 1, wolf: 0 } },
+                { text: "Lười ăn sáng, nhưng lại cực kỳ thèm ăn vào lúc 21:00 - đêm", score: { wolf: 4, dolphin: 1, bear: 0, lion: 0 } },
+                { text: "Không có quy luật, đôi khi làm việc say mê rồi bỏ bữa", score: { dolphin: 3, wolf: 1, bear: 0, lion: 0 } }
+              ] },
+            { id: 13, title: "Vào ngày nghỉ cuối tuần, lịch ngủ của bạn so với ngày thường thế nào?",
+              options: [
+                { text: "Giống hệt ngày thường, đồng hồ sinh học của tôi rất cứng", score: { lion: 4, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Thức khuya hơn một chút và dậy muộn hơn khoảng 1 tiếng", score: { bear: 4, lion: 1, wolf: 1, dolphin: 0 } },
+                { text: "Ngủ nướng bù đến tận trưa chiều vì thiếu ngủ cả tuần", score: { wolf: 4, dolphin: 1, bear: 0, lion: 0 } },
+                { text: "Vẫn khó ngủ, chất lượng giấc ngủ không khá hơn là mấy", score: { dolphin: 4, wolf: 1, bear: 0, lion: 0 } }
+              ] },
+            { id: 14, title: "Bạn tự nhận thấy độ dài giấc ngủ nào khiến bạn thỏa mãn nhất?",
+              options: [
+                { text: "Chỉ cần 6 - 7 tiếng, ngủ nhiều hơn làm tôi uể oải", score: { lion: 3, dolphin: 1, bear: 0, wolf: 0 } },
+                { text: "Bắt buộc phải đủ 8 tiếng, nếu không sẽ mệt mỏi", score: { bear: 4, lion: 0, wolf: 1, dolphin: 0 } },
+                { text: "Có thể ngủ 9 - 10 tiếng nếu không ai gọi dậy", score: { wolf: 3, bear: 1, lion: 0, dolphin: 0 } },
+                { text: "Rất ít khi ngủ được trọn vẹn 1 đêm dài mà không gián đoạn", score: { dolphin: 4, wolf: 0, bear: 0, lion: 0 } }
+              ] },
+            { id: 15, title: "Khi làm bài kiểm tra nhịp sinh học này, mục đích chính của bạn là:",
+              options: [
+                { text: "Tìm cách tối ưu hiệu suất để trở nên vượt trội trong công việc", score: { lion: 2, bear: 1, wolf: 0, dolphin: 0 } },
+                { text: "Xây dựng lịch trình sinh hoạt cân bằng, khỏe mạnh hơn", score: { bear: 2, lion: 1, wolf: 0, dolphin: 0 } },
+                { text: "Giải mã lý do tại sao tôi ghét làm việc vào buổi sáng", score: { wolf: 2, dolphin: 1, bear: 0, lion: 0 } },
+                { text: "Tìm lời giải cho sự cạn kiệt năng lượng và khó ngủ của tôi", score: { dolphin: 3, wolf: 0, bear: 0, lion: 0 } }
+              ] }
+        ];
+
+        // --- STATE MANAGEMENT ---
+        let currentChronotype = "bear"; 
+        let quizAnswers = [];
+        let currentQuestionIndex = 0;
+        let energyChartInstance = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateDashboard(currentChronotype);
+            const slider = document.getElementById('timeSlider');
+            slider.addEventListener('input', (e) => updateSimulation(parseInt(e.target.value)));
+            updateSimulation(10);
+        });
+
+        function openQuiz() {
+            quizAnswers = [];
+            currentQuestionIndex = 0;
+            document.getElementById('quizModal').classList.remove('hidden');
+            renderQuestion();
+        }
+
+        function closeQuiz() {
+            document.getElementById('quizModal').classList.add('hidden');
+        }
+
+        function renderQuestion() {
+            const q = QUIZ_QUESTIONS[currentQuestionIndex];
+            const total = QUIZ_QUESTIONS.length;
+            const progressPercent = Math.round(((currentQuestionIndex + 1) / total) * 100);
+            
+            document.getElementById('quizStepLabel').innerText = `Câu hỏi ${currentQuestionIndex + 1} / ${total}`;
+            document.getElementById('quizPercentLabel').innerText = `${progressPercent}%`;
+            document.getElementById('quizProgressBar').style.width = `${progressPercent}%`;
+            document.getElementById('questionTitle').innerText = q.title;
+            
+            const listContainer = document.getElementById('optionsList');
+            listContainer.innerHTML = "";
+            
+            q.options.forEach((opt) => {
+                const button = document.createElement('button');
+                button.className = "option-btn w-full text-left p-4 rounded-2xl bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-indigo-500/50 flex items-center justify-between text-sm font-medium transition-all group duration-250";
+                button.innerHTML = `
+                    <span class="text-gray-200 group-hover:text-white">${opt.text}</span>
+                    <span class="w-6 h-6 rounded-full border border-gray-700 flex items-center justify-center group-hover:border-indigo-500 text-xs text-transparent group-hover:text-indigo-400"><i class="fa-solid fa-check"></i></span>
+                `;
+                button.onclick = () => selectOption(opt.score);
+                listContainer.appendChild(button);
+            });
+
+            const prevBtn = document.getElementById('prevQuestionBtn');
+            prevBtn.disabled = currentQuestionIndex === 0;
+            prevBtn.classList.toggle('opacity-50', currentQuestionIndex === 0);
+        }
+
+        function selectOption(score) {
+            quizAnswers[currentQuestionIndex] = score;
+            if (currentQuestionIndex < QUIZ_QUESTIONS.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            } else {
+                calculateResult();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        }
+
+        function calculateResult() {
+            let scores = { lion: 0, bear: 0, wolf: 0, dolphin: 0 };
+            
+            quizAnswers.forEach(ans => {
+                for (let key in ans) {
+                    scores[key] += (ans[key] || 0);
+                }
+            });
+
+            // THUẬT TOÁN ĐÁNH GIÁ CHUẨN: Ưu tiên lọc gen Dolphin trước
+            let finalType = "bear";
+            
+            // Theo thang điểm 15 câu, nếu điểm Dolphin vượt trên mức kháng cự (ví dụ >= 16 điểm) -> Xếp ngay vào Dolphin.
+            if (scores.dolphin >= 16) {
+                finalType = "dolphin";
+            } else {
+                // Phân cực điểm số Morningness/Eveningness cho 3 nhóm còn lại
+                const diurnal = { lion: scores.lion, bear: scores.bear, wolf: scores.wolf };
+                finalType = Object.keys(diurnal).reduce((a, b) => diurnal[a] > diurnal[b] ? a : b);
+            }
+
+            const profile = CHRONO_PROFILES[finalType];
+            document.getElementById('computedIcon').innerText = profile.icon;
+            document.getElementById('computedName').innerText = profile.name + ` (${profile.subtitle})`;
+            
+            currentChronotype = finalType;
+            document.getElementById('quizModal').classList.add('hidden');
+            document.getElementById('resultModal').classList.remove('hidden');
+        }
+
+        function applyQuizResultAndClose() {
+            document.getElementById('resultModal').classList.add('hidden');
+            document.getElementById('introBanner').classList.add('hidden');
+            updateDashboard(currentChronotype);
+        }
+
+        function setChronotype(type) {
+            currentChronotype = type;
+            updateDashboard(type);
+        }
+
+        function updateDashboard(type) {
+            const profile = CHRONO_PROFILES[type];
+            if (!profile) return;
+
+            document.getElementById('currentTypeBadge').innerText = `Nhóm: ${profile.icon} ${profile.name.split(' ').slice(1).join(' ')}`;
+            document.getElementById('profileTypeSubtitle').innerText = profile.subtitle;
+            document.getElementById('profileTypeName').innerText = profile.name;
+            document.getElementById('profileIcon').innerText = profile.icon;
+            document.getElementById('profileDescription').innerText = `"${profile.description}"`;
+            document.getElementById('profileQuickTip').innerText = profile.quickTip;
+
+            const strengthsList = document.getElementById('profileStrengths');
+            strengthsList.innerHTML = profile.strengths.map(s => `<li>• ${s}</li>`).join('');
+
+            const weaknessesList = document.getElementById('profileWeaknesses');
+            weaknessesList.innerHTML = profile.weaknesses.map(w => `<li>• ${w}</li>`).join('');
+
+            renderTimeline(profile.schedule);
+            renderEnergyChart(profile.chartData);
+            updateSimulation(parseInt(document.getElementById('timeSlider').value));
+        }
+
+        function renderTimeline(schedule) {
+            const container = document.getElementById('scheduleTimeline');
+            container.innerHTML = schedule.map(item => `
+                <div class="relative group">
+                    <div class="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-darkBg border-2 border-indigo-500 group-hover:scale-125 transition-transform"></div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-4 bg-gray-900/40 hover:bg-gray-900/80 border border-gray-800 hover:border-gray-700 rounded-2xl transition-all">
+                        <div class="flex items-start gap-3.5">
+                            <div class="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center text-accentPurp mt-0.5">
+                                <i class="fa-solid ${item.icon}"></i>
+                            </div>
+                            <div>
+                                <span class="text-xs font-bold text-accentCyan bg-cyan-950/40 border border-cyan-800/30 px-2 py-0.5 rounded-md">${item.time}</span>
+                                <h4 class="text-sm font-bold text-white mt-1.5">${item.act}</h4>
+                                <p class="text-xs text-gray-400 mt-1">${item.desc}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderEnergyChart(chartData) {
+            const ctx = document.getElementById('energyCurveChart').getContext('2d');
+            const hoursLabels = Array.from({length: 24}, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+
+            if (energyChartInstance) energyChartInstance.destroy();
+
+            const energyGradient = ctx.createLinearGradient(0, 0, 0, 300);
+            energyGradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+            energyGradient.addColorStop(1, 'rgba(99, 102, 241, 0)');
+
+            const focusGradient = ctx.createLinearGradient(0, 0, 0, 300);
+            focusGradient.addColorStop(0, 'rgba(168, 85, 247, 0.3)');
+            focusGradient.addColorStop(1, 'rgba(168, 85, 247, 0)');
+
+            energyChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hoursLabels,
+                    datasets: [
+                        { label: 'Năng Lượng Cơ Thể (%)', data: chartData.energy, borderColor: '#6366f1', borderWidth: 3, backgroundColor: energyGradient, fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 6 },
+                        { label: 'Tỉnh Táo & Focus (%)', data: chartData.focus, borderColor: '#a855f7', borderWidth: 2, borderDash: [5, 5], backgroundColor: focusGradient, fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: '#111827', titleColor: '#f3f4f6', bodyColor: '#d1d5db', borderColor: '#374151', borderWidth: 1, padding: 10 } },
+                    scales: { y: { min: 0, max: 100, grid: { color: '#1f2937' }, ticks: { color: '#9ca3af', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 9 }, maxTicksLimit: 12 } } }
+                }
+            });
+        }
+
+        function updateSimulation(hour) {
+            document.getElementById('simTimeLabel').innerText = `${hour.toString().padStart(2, '0')}:00`;
+            const profile = CHRONO_PROFILES[currentChronotype];
+            if (!profile || !profile.metrics) return;
+
+            const [focus, energy, metabolism, sleepPressure] = profile.metrics[hour];
+
+            document.getElementById('metricFocusVal').innerText = `${focus}%`; document.getElementById('metricFocusBar').style.width = `${focus}%`;
+            document.getElementById('metricEnergyVal').innerText = `${energy}%`; document.getElementById('metricEnergyBar').style.width = `${energy}%`;
+            document.getElementById('metricMetabolismVal').innerText = `${metabolism}%`; document.getElementById('metricMetabolismBar').style.width = `${metabolism}%`;
+            document.getElementById('metricSleepVal').innerText = `${sleepPressure}%`; document.getElementById('metricSleepBar').style.width = `${sleepPressure}%`;
+
+            let advice = "";
+            if (sleepPressure > 80) advice = "Hệ thần kinh tiết cực nhiều Melatonin. Lúc này cần ngủ sâu và ngắt kết nối hoàn toàn màn hình điện tử.";
+            else if (focus >= 90) advice = "Khả năng phân tích/Code sắc bén nhất. Khóa toàn bộ thông báo và tập trung xử lý hệ thống cốt lõi.";
+            else if (energy >= 80 && metabolism >= 70) advice = "Thể lực tốt và trao đổi chất mạnh. Phù hợp tuyệt vời để vận động cường độ cao hoặc chạy bộ.";
+            else if (energy < 60 && sleepPressure > 30 && sleepPressure < 70) advice = "Cảnh báo vùng trũng sinh lý. Đừng review code hay ra quyết định. Đi dạo 10 phút hoặc pha trà.";
+            else if (focus >= 70 && energy >= 70) advice = "Trạng thái ổn định trung bình, lý tưởng cho Meeting, thảo luận Team và giao tiếp.";
+            else advice = "Mức năng lượng dưới trung bình. Phù hợp dọn dẹp task cũ, trả lời Email hoặc thư giãn đầu óc.";
+
+            document.getElementById('simHealthTip').innerText = `Tại mốc ${hour}h: ` + advice;
+        }
+    </script>
+</body>
+</html>

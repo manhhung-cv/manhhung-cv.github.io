@@ -1,6 +1,24 @@
+// --- CONFIGURATION FIREBASE & CLOUDINARY ---
+const firebaseConfig = {
+    apiKey: "AIzaSyAr9tTx-Q0OWrJ4Iaslb33-o1PJLe1S3GQ",
+    authDomain: "lovstory-b6e07.firebaseapp.com",
+    projectId: "lovstory-b6e07",
+    databaseURL: "https://lovstory-b6e07-default-rtdb.asia-southeast1.firebasedatabase.app", // <--- THÊM DÒNG NÀY
+    storageBucket: "lovstory-b6e07.firebasestorage.app",
+    messagingSenderId: "810969018898",
+    appId: "1:810969018898:web:c8e525581a77ed7d515ecb",
+    measurementId: "G-1RP88QT28C"
+};
 
-const SUPABASE_URL = 'https://xeenspuseysqaisfcxbo.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhlZW5zcHVzZXlzcWFpc2ZjeGJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc3NzE0NDMsImV4cCI6MjA4MzM0NzQ0M30.uJ52xnUvw2wT_QJEw4Rx_DSB5rddc32_Ie0RY9hqNKw';
+// Cấu hình Cloudinary Unsigned Upload
+const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dpx768v9a/image/upload'; 
+const CLOUDINARY_UPLOAD_PRESET = 'love_diary_preset'; // Bạn cần tạo một Unsigned Preset trong cài đặt Cloudinary
+
+// Khởi tạo Firebase
+// Khởi tạo Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 // Data Schema 6.0
 const DEFAULT_DATA = {
@@ -34,7 +52,12 @@ const DEFAULT_DATA = {
     },
     secretNotes: [],
     loveLog: [], 
-    sLocations: []
+    sLocations: [],
+    customCloudinary: {
+        cloudName: 'dt8zhfng8',
+        uploadPreset: 'Love-File'
+    },
+    secretPin: ''
 };
 
 const THEMES = {
@@ -53,9 +76,6 @@ const GRADIENTS = [
     'bg-gradient-to-r from-amber-400 to-orange-500',
     'bg-gradient-to-r from-indigo-400 to-blue-500',
 ];
-
-let supabaseClient = null;
-try { supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch (e) { console.error(e); }
 
 let currentUser = null;
 let currentCoupleCode = null;
@@ -427,13 +447,10 @@ window.onfocus = () => {
 async function initApp() {
     renderBackground();
 
-    if (!supabaseClient) { Modal.alert("Lỗi kết nối Supabase!"); return; }
-
-    const { data: { session }, error } = await supabaseClient.auth.getSession();
-
-    if (error) { showLoginScreen(); }
-    else if (session) {
-        currentUser = session.user;
+    // Lắng nghe trạng thái đăng nhập của Firebase thay vì GetSession như Supabase
+    auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        currentUser = user;
         document.getElementById('auth-msg').innerText = "Đang khôi phục dữ liệu...";
         try {
             await checkPairingStatus();
@@ -443,22 +460,45 @@ async function initApp() {
             document.getElementById('auth-msg').innerText = "Lỗi tải dữ liệu. Vui lòng thử lại.";
             document.getElementById('retry-btn').classList.remove('hidden');
         }
-    } else { showLoginScreen(); }
-
-    supabaseClient.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && !currentUser && session) {
-            currentUser = session.user;
-            try {
-                await checkPairingStatus();
-                document.getElementById('auth-screen').classList.add('hidden-screen');
-            } catch (e) { Modal.alert(e.message); }
-        } else if (event === 'SIGNED_OUT') { showLoginScreen(); }
-    });
+    } else {
+        showLoginScreen();
+    }
+});
 
     setInterval(updateCountdown, 1000);
-
-    // Audio Listeners
     audioPlayer.addEventListener('ended', nextSong);
+}
+
+async function handleRegister() {
+    const email = document.getElementById('reg-email').value;
+    const password = document.getElementById('reg-password').value;
+    
+    try {
+        // Thay thế bằng hàm tạo tài khoản chuẩn của Firebase Auth SDK
+        await auth.createUserWithEmailAndPassword(email, password);
+        Modal.alert("Đăng ký thành công! Hãy đăng nhập.");
+        toggleAuthMode();
+    } catch (error) {
+        console.error("Register error:", error);
+        Modal.alert("Đăng ký thất bại: " + error.message);
+    }
+}
+
+async function handleRegister() {
+    const email = document.getElementById('reg-email').value;
+    const password = document.getElementById('reg-password').value;
+    try {
+        await auth.createUserWithEmailAndPassword(email, password);
+        Modal.alert("Đăng ký thành công! Hãy đăng nhập.");
+        toggleAuthMode();
+    } catch (error) {
+        Modal.alert("Đăng ký thất bại: " + error.message);
+    }
+}
+
+async function logout() { 
+    await auth.signOut(); 
+    location.reload(); 
 }
 
 function showLoginScreen() {
@@ -474,31 +514,34 @@ function toggleAuthMode() {
     document.getElementById('login-form').classList.toggle('hidden');
     document.getElementById('register-form').classList.toggle('hidden');
 }
+
+// ĐÂY LÀ HÀM CHUẨN SẼ GIỮ LẠI
 async function handleLogin() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) Modal.alert(error.message);
+    
+    try {
+        // Hàm chuẩn của Firebase Auth SDK
+        await auth.signInWithEmailAndPassword(email, password);
+        Modal.showToast("Đăng nhập thành công!");
+    } catch (error) {
+        console.error("Login error:", error);
+        Modal.alert("Đăng nhập thất bại: " + error.message);
+    }
 }
-async function handleRegister() {
-    const email = document.getElementById('reg-email').value;
-    const password = document.getElementById('reg-password').value;
-    const { error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) Modal.alert(error.message);
-    else Modal.alert("Đăng ký thành công! Hãy đăng nhập.");
-}
-async function logout() { await supabaseClient.auth.signOut(); location.reload(); }
 
 async function checkPairingStatus() {
     if (!currentUser) throw new Error("No user");
-    const { data: profile, error } = await supabaseClient.from('profiles').select('couple_id').eq('id', currentUser.id).single();
-    if (error && error.code !== 'PGRST116') throw error;
+    
+    // Đọc document từ collection 'profiles' trong Firestore
+    const docRef = db.collection('profiles').doc(currentUser.uid);
+    const docSnap = await docRef.get();
 
-    if (!profile || !profile.couple_id) {
+    if (!docSnap.exists || !docSnap.data().couple_id) {
         document.getElementById('pairing-screen').classList.remove('hidden-screen');
         document.getElementById('app-container').classList.add('hidden-screen');
     } else {
-        currentCoupleCode = profile.couple_id;
+        currentCoupleCode = docSnap.data().couple_id;
         document.getElementById('pairing-screen').classList.add('hidden-screen');
         document.getElementById('app-container').classList.remove('hidden-screen');
         document.getElementById('display-couple-code').innerText = currentCoupleCode;
@@ -506,89 +549,68 @@ async function checkPairingStatus() {
     }
 }
 
-function determineUserIdentity() {
-    let changed = false;
-    if (!appData.user1.id) { appData.user1.id = currentUser.id; changed = true; }
-    else if (appData.user1.id !== currentUser.id && !appData.user2.id) { appData.user2.id = currentUser.id; changed = true; }
-
-    if (appData.user1.id === currentUser.id) myUserIndex = 1;
-    else if (appData.user2.id === currentUser.id) myUserIndex = 2;
-    else myUserIndex = 0;
-
-    if (changed) saveData();
-}
-
 async function createCoupleCode() {
     const code = 'LOVE-' + Math.floor(100000 + Math.random() * 900000);
-    const { error } = await supabaseClient.from('couples').insert([{ id: code, data: DEFAULT_DATA }]);
-    if (error) return Modal.alert("Lỗi: " + error.message);
-    await supabaseClient.from('profiles').upsert({ id: currentUser.id, couple_id: code });
-    await checkPairingStatus();
+    
+    try {
+        // Tạo document phòng cưới mới trong collection 'couples'
+        await db.collection('couples').doc(code).set({ data: DEFAULT_DATA });
+        // Cập nhật profile bản thân trong collection 'profiles'
+        await db.collection('profiles').doc(currentUser.uid).set({ couple_id: code });
+        await checkPairingStatus();
+    } catch (error) {
+        Modal.alert("Lỗi tạo phòng: " + error.message);
+    }
 }
-
 async function joinCouple() {
     const code = document.getElementById('join-code-input').value.toUpperCase().trim();
     if (!code) return Modal.alert("Vui lòng nhập mã!");
 
-    // Thêm hiệu ứng loading visual nếu muốn, ở đây giữ logic cũ
-    const { data } = await supabaseClient.from('couples').select('id').eq('id', code).single();
-    if (!data) return Modal.alert("Mã không tồn tại hoặc sai!");
+    // Kiểm tra phòng có tồn tại trên Firestore không
+    const docSnap = await db.collection('couples').doc(code).get();
+    if (!docSnap.exists) return Modal.alert("Mã không tồn tại hoặc sai!");
 
-    await supabaseClient.from('profiles').upsert({ id: currentUser.id, couple_id: code });
+    await db.collection('profiles').doc(currentUser.uid).set({ couple_id: code });
     await checkPairingStatus();
 }
 
-// Thay thế hàm changeCoupleCode cũ bằng hàm này
 async function changeCoupleCode() {
-    // 1. Nhập mã mới qua Modal
     const newCodeRaw = await Modal.prompt("Nhập mã cặp đôi MỚI mà bạn muốn đặt (Ví dụ: LOVE-FOREVER):", currentCoupleCode);
-
-    // Nếu bấm Hủy hoặc để trống
     if (newCodeRaw === null || newCodeRaw.trim() === "") return;
 
     const newCode = newCodeRaw.trim().toUpperCase();
-
-    // Validate cơ bản
     if (newCode === currentCoupleCode) return Modal.alert("Đây là mã hiện tại rồi!");
     if (newCode.length < 2) return Modal.alert("Mã quá ngắn! Hãy nhập ít nhất 2 ký tự.");
 
     try {
-        // 2. Kiểm tra xem mã mới đã có ai dùng chưa
-        const { data: existing, error: checkError } = await supabaseClient
-            .from('couples')
-            .select('id')
-            .eq('id', newCode)
-            .single();
-
-        // Nếu query không lỗi và tìm thấy dữ liệu => Mã đã tồn tại
-        if (existing) {
-            return Modal.alert(`Tiếc quá! Mã "${newCode}" đã có cặp đôi khác sử dụng. Vui lòng chọn mã khác.`);
+        // Kiểm tra phòng mới có ai dùng chưa
+        const checkSnapshot = await database.ref('couples/' + newCode).once('value');
+        if (checkSnapshot.exists()) {
+            return Modal.alert(`Tiếc quá! Mã "${newCode}" đã có cặp đôi khác sử dụng.`);
         }
 
-        // 3. Nếu chưa trùng, bắt đầu quy trình chuyển đổi
-        // A. Tạo phòng mới với dữ liệu hiện tại (Copy Data)
-        const { error: createError } = await supabaseClient
-            .from('couples')
-            .insert([{ id: newCode, data: appData }]);
+        // Copy dữ liệu sang node mới
+        await database.ref('couples/' + newCode).set({ data: appData });
 
-        if (createError) throw new Error("Lỗi tạo mã mới: " + createError.message);
+        // Tìm tất cả các profiles đang chung mã cũ để cập nhật sang mã mới
+        const profilesSnapshot = await database.ref('profiles').once('value');
+        const allProfiles = profilesSnapshot.val() || {};
+        
+        const updates = {};
+        Object.keys(allProfiles).forEach(uid => {
+            if (allProfiles[uid].couple_id === currentCoupleCode) {
+                updates['profiles/' + uid + '/couple_id'] = newCode;
+            }
+        });
+        
+        // Thực hiện cập nhật hàng loạt profiles
+        await database.ref().update(updates);
 
-        // B. Cập nhật tất cả thành viên (Bạn và Người ấy) đang ở mã cũ sang mã mới
-        // Logic: Tìm tất cả profile đang có couple_id là mã cũ, đổi thành mã mới
-        const { error: updateProfileError } = await supabaseClient
-            .from('profiles')
-            .update({ couple_id: newCode })
-            .eq('couple_id', currentCoupleCode);
+        // Xóa phòng cũ
+        await database.ref('couples/' + currentCoupleCode).remove();
 
-        if (updateProfileError) throw new Error("Lỗi cập nhật thành viên: " + updateProfileError.message);
-
-        // C. (Tùy chọn) Xóa phòng cũ đi cho sạch database
-        await supabaseClient.from('couples').delete().eq('id', currentCoupleCode);
-
-        // 4. Thông báo và tải lại
         await Modal.alert(`Thành công! Mã cặp đôi của hai bạn đã đổi thành: ${newCode}`);
         location.reload();
-
     } catch (err) {
         console.error(err);
         Modal.alert("Có lỗi xảy ra: " + err.message);
@@ -596,18 +618,27 @@ async function changeCoupleCode() {
 }
 
 async function loadCloudData() {
-    const { data } = await supabaseClient.from('couples').select('data').eq('id', currentCoupleCode).single();
-    if (data && data.data) appData = { ...DEFAULT_DATA, ...data.data };
-    determineUserIdentity();
+    const docSnap = await db.collection('couples').doc(currentCoupleCode).get();
+    if (docSnap.exists && docSnap.data().data) {
+        appData = { ...DEFAULT_DATA, ...docSnap.data().data };
+    }
+    
+    if (typeof determineUserIdentity === 'function') determineUserIdentity();
     applyTheme();
     refreshUI();
     initMusicPlayer();
-    setupRealtimeListener();
+    setupRealtimeListener(); 
 }
+
 async function saveData() {
-    if (currentCoupleCode) await supabaseClient.from('couples').update({ data: appData }).eq('id', currentCoupleCode);
+    if (currentCoupleCode) {
+        // Cập nhật object appData trực tiếp vào document của cặp đôi
+        await db.collection('couples').doc(currentCoupleCode).set({ data: appData }, { merge: true });
+    }
     refreshUI();
 }
+
+
 function refreshUI() {
     loadSettingsToUI();
     updateHomePage();
@@ -707,11 +738,16 @@ async function saveSettings(btn) {
         bg: document.getElementById('set-bg-url').value,
         opacity: document.getElementById('set-opacity').value // <--- DÒNG MỚI
     };
+    // Thêm vào block cập nhật appData trước khi gọi lệnh saveData():
+appData.customCloudinary = {
+    cloudName: document.getElementById('set-cloud-name') ? document.getElementById('set-cloud-name').value.trim() : '',
+    uploadPreset: document.getElementById('set-upload-preset') ? document.getElementById('set-upload-preset').value.trim() : ''
+};
 
     const bgFile = document.getElementById('set-bg-file').files[0];
     if (bgFile) {
         try {
-            const url = await uploadToSupabase(bgFile, 'backgrounds');
+            const url = await uploadToCloudinary(bgFile, 'backgrounds');
             appData.theme.bg = url;
             document.getElementById('set-bg-url').value = url;
         } catch (e) { Modal.alert("Lỗi upload nền: " + e.message); }
@@ -1775,7 +1811,7 @@ async function handleFileSelect(input) {
             else if (file.type.startsWith('audio')) type = 'audio'; // <--- MỚI THÊM
 
             // 2. Upload lên Supabase (folder 'files' cho gọn)
-            const publicUrl = await uploadToSupabase(file, 'files');
+            const publicUrl = await uploadToCloudinary(file, 'files');
 
             // 3. Lưu vào danh sách tạm
             tempDiaryMedia.push({
@@ -2114,6 +2150,10 @@ function loadSettingsToUI() {
         document.getElementById('set-font').value = appData.theme.font;
         document.getElementById('set-bg-url').value = appData.theme.bg;
     }
+if (appData.customCloudinary) {
+    if(document.getElementById('set-cloud-name')) document.getElementById('set-cloud-name').value = appData.customCloudinary.cloudName || '';
+    if(document.getElementById('set-upload-preset')) document.getElementById('set-upload-preset').value = appData.customCloudinary.uploadPreset || '';
+}
 }
 
 async function saveSettings(btn) {
@@ -2187,7 +2227,7 @@ async function saveSettings(btn) {
 async function uploadAvatar(input, i) {
     const file = input.files[0];
     if (!file) return;
-    try { const url = await uploadToSupabase(file, 'avatars'); document.getElementById(`set-ava-${i}`).value = url; } catch (e) { Modal.alert(e.message); }
+    try { const url = await uploadToCloudinary(file, 'avatars'); document.getElementById(`set-ava-${i}`).value = url; } catch (e) { Modal.alert(e.message); }
 }
 
 function updateFileCount() { const n = document.getElementById('diary-files').files.length; document.getElementById('file-count').innerText = n > 0 ? `${n} file đã chọn` : "Chọn ảnh/video"; }
@@ -2263,22 +2303,86 @@ async function addComment(postId) {
     await saveData();
 }
 
-async function uploadToSupabase(file, folder) {
-    // ĐÃ XÓA: Dòng kiểm tra kích thước file 10MB
-    // if (file.size > 10 * 1024 * 1024) ...
+// Hàm bổ trợ chuyển file thành chuỗi mã hóa
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
 
-    const fileExt = file.name.split('.').pop();
-    // Tạo tên file ngẫu nhiên tránh trùng
-    const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+async function uploadToCloudinaryPro(file, folder) {
+    // Lấy mã PIN do người dùng cài đặt
+    const encryptionKey = appData.secretPin ? appData.secretPin.trim() : '';
+    
+    if (!encryptionKey) {
+        throw new Error("Vui lòng thiết lập và nhập mã PIN bảo mật trong cài đặt trước khi tải lên hình ảnh!");
+    }
 
-    // Upload thẳng lên Supabase
-    const { error } = await supabaseClient.storage.from('love_gallery').upload(fileName, file, { cacheControl: '3600', upsert: false });
+    // 1. CHUYỂN FILE SANG BASE64 VÀ MÃ HÓA CỨNG QUA SECRET PIN
+    const base64Data = await fileToBase64(file);
+    const encryptedString = CryptoJS.AES.encrypt(base64Data, encryptionKey).toString();
 
-    if (error) throw error;
+    // Biến chuỗi text đã mã hóa thành một file Blob thô
+    const encryptedBlob = new Blob([encryptedString], { type: 'text/plain' });
+    
+    // 2. PHÂN ĐỊNH HỆ THỐNG API (CÁ NHÂN HOẶC MẶC ĐỊNH)
+    let cloudName = 'dpx768v9a'; 
+    let uploadPreset = 'love_diary_preset'; 
 
-    // Lấy Public URL trả về
-    const { data: { publicUrl } } = supabaseClient.storage.from('love_gallery').getPublicUrl(fileName);
-    return publicUrl;
+    if (appData.customCloudinary && appData.customCloudinary.cloudName && appData.customCloudinary.uploadPreset) {
+        cloudName = appData.customCloudinary.cloudName.trim();
+        uploadPreset = appData.customCloudinary.uploadPreset.trim();
+    }
+
+    // Bắt buộc đẩy vào phân hệ /raw/ của Cloudinary vì file đã bị mã hóa thành text
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`;
+
+    const formData = new FormData();
+    formData.append('file', encryptedBlob, `${Date.now()}_secure.dat`); // Đuôi file thô .dat
+    formData.append('upload_preset', uploadPreset);
+    formData.append('tags', folder);
+
+    const response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData
+    });
+
+    if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error?.message || "Lỗi khi upload lên Cloud");
+    }
+
+    const data = await response.json();
+    return data.secure_url; // Trả về link URL của file mã hóa công khai
+}
+
+
+async function fetchAndDecryptMedia(url) {
+    if (!url) return '/Asset/logo/iconApps.png';
+    
+    const encryptionKey = appData.secretPin ? appData.secretPin.trim() : '';
+    // Nếu chưa thiết lập mã PIN, trả về ảnh giữ chỗ (placeholder) bảo mật
+    if (!encryptionKey) return '/Asset/logo/iconApps.png'; 
+
+    try {
+        // Tải chuỗi mã hóa từ Cloudinary
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Không thể tải file mã hóa từ Cloud");
+        const encryptedText = await response.text();
+
+        // Tiến hành giải mã bằng mã PIN của người dùng
+        const bytes = CryptoJS.AES.decrypt(encryptedText, encryptionKey);
+        const originalBase64 = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!originalBase64) throw new Error("Sai mã PIN hoặc file bị lỗi cấu trúc");
+        return originalBase64; // Trả về chuỗi dạng data:image/... để nạp vào thẻ src
+    } catch (e) {
+        console.error("Lỗi giải mã file:", e);
+        return '/Asset/logo/iconApps.png'; // Trả về ảnh lỗi nếu giải mã thất bại
+    }
 }
 /* --- IPHONE SWIPE NAVIGATION LOGIC --- */
 /* --- NAVIGATION LOGIC (SỬA LỖI VỊ TRÍ) --- */
@@ -2420,39 +2524,63 @@ let galleryFiles = []; // Chứa danh sách tất cả file
 let selectedFiles = new Set(); // Chứa các file path đang chọn
 
 // 1. Hàm Load Gallery (Quét các thư mục trong Storage)
+// Thay thế tính năng quét thư mục Storage bằng việc bóc tách mảng dữ liệu có sẵn trong bài viết và gallery toàn cục
 async function loadGallery() {
     const grid = document.getElementById('gallery-grid');
-    grid.innerHTML = '<div class="col-span-3 text-center py-10"><div class="loader"></div><p class="mt-2 text-xs text-gray-400">Đang quét file...</p></div>';
-
+    grid.innerHTML = '';
     selectedFiles.clear();
     updateGalleryToolbar();
 
-    // Các thư mục cần quét trong Bucket 'love_gallery'
-    const folders = ['posts', 'events', 'avatars', 'backgrounds', 'files', 'general'];
     let allFiles = [];
 
+    // Cách làm mới mượt mà: Thu thập toàn bộ media từ các bài viết Diary và bộ sưu tập được lưu trong appData
+    if (appData.diary) {
+        appData.diary.forEach(post => {
+            if (post.media) {
+                post.media.forEach(m => {
+                    allFiles.push({
+                        name: m.name || 'Ảnh nhật ký',
+                        path: m.url, // Dùng URL làm định danh duy nhất để xóa/chọn
+                        type: m.type === 'video' ? 'video/mp4' : 'image/jpeg',
+                        url: m.url
+                    });
+                });
+            }
+        });
+    }
+    
+    // Thu thập thêm dữ liệu từ các sự kiện
+    if (appData.events) {
+        appData.events.forEach(e => {
+            if(e.bg) {
+                allFiles.push({ name: e.name, path: e.bg, type: 'image/jpeg', url: e.bg });
+            }
+        });
+    }
+
+    galleryFiles = allFiles;
+    renderGallery();
+}
+
+// Chỉnh sửa hàm xóa file đính kèm trong vùng ghi chú bí mật
+async function deleteSecretFile(fileUrl, index) {
+    if (!confirm("Bạn có chắc chắn muốn gỡ liên kết tệp đính kèm này khỏi ghi chú?")) return;
+
     try {
-        for (const folder of folders) {
-            const { data, error } = await supabaseClient.storage.from('love_gallery').list(folder, { limit: 100, offset: 0 });
-            if (data) {
-                // Map thêm thông tin folder vào file name
-                const filesWithUrl = data.map(f => ({
-                    name: f.name,
-                    folder: folder,
-                    path: `${folder}/${f.name}`,
-                    type: f.metadata.mimetype,
-                    size: (f.metadata.size / 1024 / 1024).toFixed(2) + ' MB',
-                    url: supabaseClient.storage.from('love_gallery').getPublicUrl(`${folder}/${f.name}`).data.publicUrl
-                }));
-                allFiles = [...allFiles, ...filesWithUrl];
+        tempNoteFiles.splice(index, 1);
+        
+        if (editingNoteId) {
+            const noteIndex = appData.secretNotes.findIndex(n => n.id === editingNoteId);
+            if (noteIndex !== -1) {
+                appData.secretNotes[noteIndex].files = tempNoteFiles;
+                await saveData();
             }
         }
-
-        galleryFiles = allFiles.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); // Mới nhất lên đầu
-        renderGallery();
-
+        renderNoteFilesPreview();
+        Modal.showToast("Đã gỡ tệp đính kèm thành công!");
     } catch (e) {
-        grid.innerHTML = `<div class="col-span-3 text-center text-red-400 text-xs">Lỗi: ${e.message}</div>`;
+        console.error(e);
+        Modal.alert("Không thể gỡ file: " + e.message);
     }
 }
 
@@ -2481,6 +2609,7 @@ function toggleGallerySelectMode() {
 // 2. Cập nhật Render Gallery (Quan trọng)
 function renderGallery() {
     const grid = document.getElementById('gallery-grid');
+    if (!grid) return;
     grid.innerHTML = '';
 
     if (galleryFiles.length === 0) {
@@ -2492,30 +2621,30 @@ function renderGallery() {
         const isSelected = selectedFiles.has(file.path);
         const isVideo = file.type && file.type.startsWith('video');
 
-        const div = document.createElement('div');
-        // Thêm animation scale nhẹ khi hiện
-        div.className = `gallery-item relative aspect-square bg-gray-100 overflow-hidden cursor-pointer group rounded-3xl transition-all ${isSelected ? 'ring-2 ring-love-500 transform scale-95' : ''}`;
+        // Tạo một ID ngẫu nhiên và duy nhất cho thẻ img/video này để chờ giải mã nạp vào sau
+        const secureMediaId = `gallery-media-${index}-${Math.random().toString(36).substr(2, 5)}`;
 
-        // LOGIC CLICK MỚI:
+        const div = document.createElement('div');
+        div.className = `gallery-item relative aspect-square bg-gray-900 overflow-hidden cursor-pointer group rounded-3xl transition-all ${isSelected ? 'ring-2 ring-love-500 transform scale-95' : ''}`;
+
         div.onclick = () => {
             if (isGallerySelectMode) {
-                // Nếu đang ở chế độ chọn -> Tích chọn
                 toggleSelectFile(file.path);
             } else {
-                // Nếu chế độ thường -> Mở Lightbox
                 openGalleryLightbox(index);
             }
         };
 
+        // Render cấu trúc khung kèm hiệu ứng mờ (blur) tạm thời
         let mediaHtml = '';
         if (isVideo) {
-            mediaHtml = `<video src="${file.url}" class="w-full h-full object-cover pointer-events-none"></video>
-                         <div class="absolute inset-0 flex items-center justify-center"><i class="fas fa-play text-white opacity-80 drop-shadow-md"></i></div>`;
+            mediaHtml = `
+                <video id="${secureMediaId}" class="w-full h-full object-cover pointer-events-none blur-[4px]"></video>
+                <div class="absolute inset-0 flex items-center justify-center"><i class="fas fa-play text-white opacity-80 drop-shadow-md"></i></div>`;
         } else {
-            mediaHtml = `<img src="${file.url}" loading="lazy" class="w-full h-full object-cover pointer-events-none">`;
+            mediaHtml = `<img id="${secureMediaId}" src="/Asset/logo/iconApps.png" class="w-full h-full object-cover pointer-events-none blur-[4px]">`;
         }
 
-        // Overlay checkbox (Chỉ hiện khi ở chế độ Chọn hoặc đã chọn)
         const checkCircle = `
             <div class="absolute top-2 right-2 w-5 h-5 rounded-full border-2 border-white ${isSelected ? 'bg-love-500 border-love-500' : 'bg-black/30'} flex items-center justify-center transition-all ${isGallerySelectMode || isSelected ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}">
                 ${isSelected ? '<i class="fas fa-check text-white text-[10px]"></i>' : ''}
@@ -2524,6 +2653,15 @@ function renderGallery() {
 
         div.innerHTML = mediaHtml + checkCircle;
         grid.appendChild(div);
+
+        // KÍCH HOẠT GIẢI MÃ BẤT ĐỒNG BỘ CHO TỪNG TẤM ẢNH/VIDEO
+        fetchAndDecryptMedia(file.url).then(decodedSrc => {
+            const mediaEl = document.getElementById(secureMediaId);
+            if (mediaEl) {
+                mediaEl.src = decodedSrc;
+                mediaEl.classList.remove('blur-[4px]'); // Giải mã xong thì gỡ blur
+            }
+        });
     });
 }
 
@@ -2551,12 +2689,18 @@ function updateLightboxContent() {
     const isVideo = file.type && file.type.startsWith('video');
 
     document.getElementById('lightbox-current').innerText = currentLightboxIndex + 1;
+    
+    // Gắn hiệu ứng loading tạm thời
+    container.innerHTML = '<div class="text-white text-xs"><i class="fas fa-spinner fa-spin mr-2"></i>Đang giải mã tệp tin mật...</div>';
 
-    if (isVideo) {
-        container.innerHTML = `<video src="${file.url}" controls autoplay class="max-w-[95vw] max-h-[80vh] rounded-lg shadow-2xl"></video>`;
-    } else {
-        container.innerHTML = `<img src="${file.url}" class="max-w-[95vw] max-h-[80vh] rounded-lg shadow-2xl object-contain select-none" draggable="false">`;
-    }
+    // Chạy giải mã hình ảnh phóng to
+    fetchAndDecryptMedia(file.url).then(decodedSrc => {
+        if (isVideo) {
+            container.innerHTML = `<video src="${decodedSrc}" controls autoplay class="max-w-[95vw] max-h-[80vh] rounded-lg shadow-2xl bg-black outline-none"></video>`;
+        } else {
+            container.innerHTML = `<img src="${decodedSrc}" class="max-w-[95vw] max-h-[80vh] rounded-lg shadow-2xl object-contain select-none" draggable="false">`;
+        }
+    });
 }
 
 // 3. Chuyển ảnh (Next/Prev)
@@ -2658,47 +2802,6 @@ function updateGalleryToolbar() {
     else toolbar.classList.add('hidden');
 }
 
-// 4. Xử lý Xóa File
-async function deleteSelectedFiles() {
-    if (selectedFiles.size === 0) return;
-
-    if (await Modal.confirm(`Bạn có chắc muốn xóa vĩnh viễn ${selectedFiles.size} file này? Dữ liệu bài viết liên quan có thể bị lỗi ảnh.`)) {
-        const paths = Array.from(selectedFiles);
-        const { error } = await supabaseClient.storage.from('love_gallery').remove(paths);
-
-        if (error) Modal.alert("Lỗi xóa: " + error.message);
-        else {
-            Modal.alert("Đã xóa thành công!");
-            loadGallery(); // Reload lại
-        }
-    }
-}
-
-// 5. Xử lý Tải xuống
-async function downloadSelectedFiles() {
-    if (selectedFiles.size === 0) return;
-    Modal.alert(`Đang chuẩn bị tải ${selectedFiles.size} file...`);
-
-    const paths = Array.from(selectedFiles);
-
-    // Duyệt qua từng file để tải (Browser sẽ chặn nếu popup quá nhiều, đây là cách cơ bản)
-    for (const path of paths) {
-        const { data, error } = await supabaseClient.storage.from('love_gallery').download(path);
-        if (!error) {
-            const url = URL.createObjectURL(data);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = path.split('/').pop(); // Lấy tên file
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-    }
-}
-
-/* --- GALLERY UPLOAD LOGIC --- */
-
 // 1. Bật/Tắt Form Upload
 function toggleGalleryUpload() {
     const form = document.getElementById('gallery-upload-form');
@@ -2742,10 +2845,9 @@ async function executeGalleryUpload(btn) {
         // Duyệt qua từng file để upload
         for (const file of files) {
             try {
-                // Tái sử dụng hàm uploadToSupabase cũ, nhưng cho phép truyền folder tùy ý
-                // Lưu ý: Hàm cũ uploadToSupabase(file, folder) đã có sẵn logic
-                await uploadToSupabase(file, folder);
-                successCount++;
+                // Tái sử dụng hàm uploadToCloudinary cũ, nhưng cho phép truyền folder tùy ý
+                // Lưu ý: Hàm cũ uploadToCloudinary(file, folder) đã có sẵn logic
+await uploadToCloudinaryPro(file, folder); // <-- ĐÃ SỬA THÀNH HÀM MỚI CHUẨN                successCount++;
             } catch (err) {
                 console.error(err);
                 errorCount++;
@@ -2830,30 +2932,32 @@ async function handleHeartClick() {
 function setupRealtimeListener() {
     if (!currentCoupleCode) return;
 
-    // Lắng nghe thay đổi trên bảng 'couples' đúng dòng id của mình
-    supabaseClient
-        .channel('public:couples')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'couples', filter: `id=eq.${currentCoupleCode}` }, payload => {
-            const newData = payload.new.data;
+    // Lắng nghe thay đổi thời gian thực từ Firestore document
+    db.collection('couples').doc(currentCoupleCode).onSnapshot(doc => {
+        if (!doc.exists) return;
+        const res = doc.data();
+        if (!res || !res.data) return;
 
-            // So sánh xem có ai vừa bấm tim không
-            const oldT1 = appData.heartTimestamp?.u1 || 0;
-            const oldT2 = appData.heartTimestamp?.u2 || 0;
-            const newT1 = newData.heartTimestamp?.u1 || 0;
-            const newT2 = newData.heartTimestamp?.u2 || 0;
+        const newData = res.data;
 
-            // Cập nhật dữ liệu cục bộ
-            appData = newData;
-            refreshUI(); // Cập nhật lại giao diện (số ngày, avatar...) nếu có thay đổi khác
+        // So sánh timestamp bắn tim cũ và mới
+        const oldT1 = appData.heartTimestamp?.u1 || 0;
+        const oldT2 = appData.heartTimestamp?.u2 || 0;
+        const newT1 = newData.heartTimestamp?.u1 || 0;
+        const newT2 = newData.heartTimestamp?.u2 || 0;
 
-            // Nếu có timestamp mới (lớn hơn cũ) -> Kích hoạt mưa
-            // (Chỉ kích hoạt nếu thời gian bấm cách hiện tại không quá 5s - tránh mưa khi load trang lại)
-            const now = Date.now();
-            if ((newT1 > oldT1 && now - newT1 < 5000) || (newT2 > oldT2 && now - newT2 < 5000)) {
-                checkAndTriggerRain(newT1, newT2);
-            }
-        })
-        .subscribe();
+        appData = newData;
+        
+        loadSettingsToUI();
+        updateHomePage();
+        
+        const now = Date.now();
+        if ((newT1 > oldT1 && now - newT1 < 5000) || (newT2 > oldT2 && now - newT2 < 5000)) {
+            checkAndTriggerRain(newT1, newT2);
+        }
+    }, error => {
+        console.error("Lỗi lắng nghe Firestore Realtime:", error);
+    });
 }
 
 // 3. Logic kiểm tra BÃO hay MƯA THƯỜNG
@@ -2958,47 +3062,55 @@ function switchPickerTab(tabId) {
 // 3. Xử lý Tab CLOUD (Mini Gallery)
 async function loadMiniGallery(filterFolder = 'all') {
     const grid = document.getElementById('mini-gallery-grid');
-    grid.innerHTML = '<div class="col-span-3 text-center py-10"><div class="loader"></div></div>';
+    if (!grid) return;
+    grid.innerHTML = '';
 
     let files = [];
-    const folders = filterFolder === 'all' ? ['avatars', 'backgrounds', 'posts', 'events', 'general'] : [filterFolder];
 
-    try {
-        for (const folder of folders) {
-            const { data } = await supabaseClient.storage.from('love_gallery').list(folder, { limit: 20, sortBy: { column: 'created_at', order: 'desc' } });
-            if (data) {
-                const mapped = data.map(f => ({
-                    url: supabaseClient.storage.from('love_gallery').getPublicUrl(`${folder}/${f.name}`).data.publicUrl,
-                    type: f.metadata.mimetype
-                }));
-                files = [...files, ...mapped];
+    // Thu thập dữ liệu hình ảnh mã hóa có sẵn từ diary
+    if (appData.diary) {
+        appData.diary.forEach(post => {
+            if (post.media) {
+                post.media.forEach(m => {
+                    files.push({ url: m.url, type: m.type });
+                });
             }
-        }
-
-        // Render
-        grid.innerHTML = '';
-        if (files.length === 0) {
-            grid.innerHTML = '<div class="col-span-3 text-center py-10 text-gray-400 text-xs italic">Không có ảnh nào.</div>';
-            return;
-        }
-
-        files.forEach(file => {
-            const isVideo = file.type && file.type.startsWith('video');
-            const div = document.createElement('div');
-            div.className = "aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer relative group hover:ring-2 ring-love-500";
-            div.onclick = () => returnFile(file.url);
-
-            if (isVideo) {
-                div.innerHTML = `<video src="${file.url}" class="w-full h-full object-cover"></video><div class="absolute inset-0 flex items-center justify-center"><i class="fas fa-play text-white drop-shadow"></i></div>`;
-            } else {
-                div.innerHTML = `<img src="${file.url}" class="w-full h-full object-cover">`;
-            }
-            grid.appendChild(div);
         });
-
-    } catch (e) {
-        grid.innerHTML = `<div class="col-span-3 text-center text-red-400 text-xs">Lỗi tải ảnh</div>`;
     }
+
+    if (files.length === 0) {
+        grid.innerHTML = '<div class="col-span-3 text-center py-10 text-gray-400 text-xs italic">Không có ảnh nào có sẵn.</div>';
+        return;
+    }
+
+    files.forEach((file, index) => {
+        const isVideo = file.type === 'video';
+        const miniSecureId = `mini-secure-media-${index}-${Math.random().toString(36).substr(2, 5)}`;
+        
+        const div = document.createElement('div');
+        div.className = "aspect-square bg-gray-900 rounded-lg overflow-hidden cursor-pointer relative group hover:ring-2 ring-love-500";
+        
+        // Vì hàm returnFile(url) cần trả về link gốc đã mã hóa để lưu vào DB, ta vẫn truyền file.url gốc vào đây
+        div.onclick = () => returnFile(file.url);
+
+        if (isVideo) {
+            div.innerHTML = `
+                <video id="${miniSecureId}" class="w-full h-full object-cover blur-[2px]"></video>
+                <div class="absolute inset-0 flex items-center justify-center"><i class="fas fa-play text-white drop-shadow text-xs"></i></div>`;
+        } else {
+            div.innerHTML = `<img id="${miniSecureId}" src="/Asset/logo/iconApps.png" class="w-full h-full object-cover blur-[2px]">`;
+        }
+        grid.appendChild(div);
+
+        // KÍCH HOẠT TIẾN TRÌNH GIẢI MÃ NGẦM CHO MINI GALLERY
+        fetchAndDecryptMedia(file.url).then(decodedSrc => {
+            const miniEl = document.getElementById(miniSecureId);
+            if (miniEl) {
+                miniEl.src = decodedSrc;
+                miniEl.classList.remove('blur-[2px]'); // Gỡ bỏ blur sau khi hiển thị ảnh thật
+            }
+        });
+    });
 }
 
 // 4. Xử lý Tab UPLOAD
@@ -3012,7 +3124,7 @@ async function handlePickerUpload(input) {
 
     try {
         // Mặc định upload vào folder 'general' hoặc 'posts'
-        const url = await uploadToSupabase(file, 'general');
+        const url = await uploadToCloudinary(file, 'general');
         returnFile(url);
     } catch (e) {
         Modal.alert("Lỗi upload: " + e.message);
@@ -4601,9 +4713,9 @@ async function handleSecretNoteFiles(input) {
     
     try {
         for (const file of files) {
-            // Giả sử bạn đã có hàm uploadToSupabase từ các phần trước
+            // Giả sử bạn đã có hàm uploadToCloudinary từ các phần trước
             // Nếu chưa có, file sẽ không upload được. Hãy báo tôi nếu cần hàm này.
-            const url = await uploadToSupabase(file, 'secrets'); 
+            const url = await uploadToCloudinary(file, 'secrets'); 
             
             const type = file.type.startsWith('image') ? 'image' : (file.type.startsWith('video') ? 'video' : 'file');
             
@@ -4698,58 +4810,7 @@ function renderNoteFilesPreview() {
 }
 
 // 2. Hàm Xóa File trực tiếp trên Supabase
-async function deleteSecretFile(fileUrl, index) {
-    if (!confirm("CẢNH BÁO: Hành động này sẽ xóa vĩnh viễn file này khỏi bộ nhớ đám mây ngay lập tức, kể cả khi bạn không Lưu ghi chú.\n\nBạn có chắc chắn không?")) {
-        return;
-    }
 
-    try {
-        Modal.showToast("Đang xóa file...");
-
-        // 1. Trích xuất đường dẫn file từ URL
-        // URL thường dạng: .../storage/v1/object/public/secrets/folder/filename.ext
-        // Cần lấy: secrets/folder/filename.ext hoặc folder/filename.ext tùy bucket
-        
-        // Giả sử bucket là 'secrets'. Ta cần lấy path sau chữ 'secrets/'
-        // Cách đơn giản nhất nếu bạn dùng cơ chế đặt tên file của uploadToSupabase:
-        // Cần biết tên file trên server.
-        
-        // TỐT NHẤT: Ta nên tách path từ URL
-        const urlObj = new URL(fileUrl);
-        const pathParts = urlObj.pathname.split('/secrets/'); 
-        // pathParts[1] sẽ là phần đuôi "filename.jpg" hoặc "folder/filename.jpg"
-        
-        if (pathParts.length < 2) throw new Error("Không xác định được đường dẫn file");
-        const filePath = pathParts[1]; 
-
-        // 2. Gọi Supabase để xóa
-        // Lưu ý: Cần import supabase object hoặc dùng hàm có sẵn
-        const { data, error } = await supabase.storage
-            .from('secrets')
-            .remove([decodeURIComponent(filePath)]); // decode để xử lý tên có dấu cách/%20
-
-        if (error) throw error;
-
-        // 3. Xóa thành công -> Cập nhật giao diện
-        tempNoteFiles.splice(index, 1);
-        
-        // 4. Nếu đang sửa ghi chú cũ, cập nhật luôn vào appData để đồng bộ
-        if (editingNoteId) {
-            const noteIndex = appData.secretNotes.findIndex(n => n.id === editingNoteId);
-            if (noteIndex !== -1) {
-                appData.secretNotes[noteIndex].files = tempNoteFiles;
-                await saveData(); // Lưu AppData ngay lập tức để tránh mất đồng bộ
-            }
-        }
-
-        renderNoteFilesPreview();
-        Modal.showToast("Đã xóa file vĩnh viễn!");
-
-    } catch (e) {
-        console.error("Lỗi xóa file:", e);
-        Modal.alert("Không thể xóa file: " + e.message);
-    }
-}
 
 /* --- LOGIC TAB 5: LOVE TRACKING --- */
 
