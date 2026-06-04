@@ -93,6 +93,8 @@
 <body class="bg-white dark:bg-yt_dark text-zinc-900 dark:text-zinc-50 transition-colors duration-300 font-sans h-screen flex flex-col overflow-hidden selection:bg-accent selection:text-white">
 
     <audio id="native-audio-player" class="hidden" preload="metadata"></audio>
+    <!-- Trick lỏ: File audio im lặng chạy ngầm để giữ Session của OS sống khi tắt màn hình -->
+    <audio id="silent-audio-trick" loop src="data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA" class="hidden"></audio>
 
     <header class="px-4 py-3 flex justify-between items-center bg-white/90 dark:bg-yt_dark/90 backdrop-blur-md sticky top-0 z-30 shrink-0">
         <div class="flex items-center gap-2 cursor-pointer" onclick="app.switchTabNav('home')">
@@ -226,7 +228,7 @@
             </div>
             
             <div class="text-center text-xs text-zinc-400 font-medium mb-10">
-                Phiên bản 3.0 (Native Audio & Background Play)
+                Phiên bản 3.4 (Lockscreen Resume Trick)
             </div>
         </div>
 
@@ -300,8 +302,8 @@
                 <!-- Overlay Audio Mode (Hiện khi phát bằng Native Audio) -->
                 <div id="audio-mode-overlay" class="absolute inset-0 bg-yt_dark hidden flex-col items-center justify-center z-30 pointer-events-none">
                     <img id="audio-mode-thumb" src="" class="absolute inset-0 w-full h-full object-cover opacity-20 blur-sm">
-                    <i class="ph-fill ph-headphones text-5xl text-accent mb-2 relative z-40 animate-pulse"></i>
-                    <span class="text-white font-medium text-sm relative z-40 mb-4">Đang phát nhạc nền (Native)</span>
+                    <i id="audio-mode-icon" class="ph-fill ph-headphones text-5xl text-accent mb-2 relative z-40 animate-pulse"></i>
+                    <span id="audio-mode-status" class="text-white font-medium text-sm relative z-40 mb-4">Đang phát nhạc nền (Native)</span>
                     <button onclick="app.toggleAudioMode(); event.stopPropagation();" class="pointer-events-auto relative z-40 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-xs font-bold transition-colors border border-white/20">
                         Chuyển sang Video
                     </button>
@@ -327,14 +329,14 @@
                 </div>
 
                 <!-- Nút Tác vụ -->
-                <div class="flex gap-2.5 mb-6 pb-1">
-                    <button id="btn-watch-party" onclick="app.switchTabNav('watch-party'); app.minimizeDetail();" class="flex-1 bg-zinc-100 dark:bg-yt_gray py-2.5 rounded-full flex justify-center items-center gap-1.5 text-[12px] font-bold shrink-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 text-zinc-800 dark:text-zinc-200">
+                <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-1 -mx-4 px-4 md:mx-0 md:px-0">
+                    <button id="btn-watch-party" onclick="app.switchTabNav('watch-party'); app.minimizeDetail();" class="bg-zinc-100 dark:bg-yt_gray px-4 py-2.5 rounded-full flex justify-center items-center gap-1.5 text-[12px] font-bold shrink-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 text-zinc-800 dark:text-zinc-200">
                         <i class="ph-bold ph-users-three text-lg text-accent"></i> Nghe chung
                     </button>
-                    <button onclick="app.openYoutubeLink()" class="flex-1 bg-zinc-100 dark:bg-yt_gray py-2.5 rounded-full flex justify-center items-center gap-1.5 text-[12px] font-bold shrink-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-zinc-800 dark:text-zinc-200">
+                    <button onclick="app.openYoutubeLink()" class="bg-zinc-100 dark:bg-yt_gray px-4 py-2.5 rounded-full flex justify-center items-center gap-1.5 text-[12px] font-bold shrink-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-zinc-800 dark:text-zinc-200">
                         <i class="ph-bold ph-youtube-logo text-red-500 text-lg"></i> YouTube
                     </button>
-                    <button onclick="app.showCopyModal()" class="flex-1 bg-zinc-100 dark:bg-yt_gray py-2.5 rounded-full flex justify-center items-center gap-1.5 text-[12px] font-bold shrink-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-zinc-800 dark:text-zinc-200">
+                    <button onclick="app.showCopyModal()" class="bg-zinc-100 dark:bg-yt_gray px-4 py-2.5 rounded-full flex justify-center items-center gap-1.5 text-[12px] font-bold shrink-0 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-zinc-800 dark:text-zinc-200">
                         <i class="ph-bold ph-share-network text-blue-500 text-lg"></i> Chia sẻ
                     </button>
                 </div>
@@ -472,6 +474,7 @@
             <h3 class="text-lg font-bold mb-4">Thêm Truyện</h3>
             <div class="space-y-3">
                 <input type="text" id="add-url" placeholder="Link YouTube..." onblur="app.fetchYouTubeData(this.value)" class="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-accent rounded-lg py-3 px-4 text-[13px] outline-none">
+                <input type="text" id="add-audio-url" placeholder="Link Audio tĩnh (MP3/M4A) - Để nghe nền (Tuỳ chọn)" class="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-accent rounded-lg py-3 px-4 text-[13px] outline-none">
                 <input type="text" id="add-title" placeholder="Tên truyện (Sẽ tải tự động nếu có thể)" class="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-accent rounded-lg py-3 px-4 text-[13px] outline-none">
                 <input type="text" id="add-author" placeholder="Tác giả" class="w-full bg-zinc-100 dark:bg-zinc-800 border border-transparent focus:border-accent rounded-lg py-3 px-4 text-[13px] outline-none">
             </div>
@@ -530,7 +533,7 @@
         let stories = [
             {
                 id: 1, title: 'Phàm Nhân Tu Tiên (Bản Full)', youtubeId: 'jfKfPfyJRdk', 
-                author: 'Vong Ngữ', audioUrl: 'https://cdn.pixabay.com/audio/2022/04/27/audio_67b36fecf5.mp3', // Link test MP3 thật để thử background play
+                author: 'Vong Ngữ', audioUrl: 'https://cdn.pixabay.com/audio/2022/04/27/audio_67b36fecf5.mp3', // Có Audio để test
                 description: 'Hành trình tu tiên chân thực, logic của Hàn Lập.',
                 genres: ['Tiên hiệp', 'Huyền huyễn'], voice: 'Nam', timestamp: 1717000000, views: 125000, rating: 4.8,
                 reviews: [{ user: 'Bình An', rating: 5, text: 'Truyện hay nhất từng nghe.', date: '2 ngày trước' }],
@@ -538,7 +541,7 @@
             },
             {
                 id: 2, title: 'Ma Thổi Đèn - Tinh Tuyệt Cổ Thành', youtubeId: '5qap5aO4i9A',
-                author: 'Thiên Hạ Bá Xướng', audioUrl: null, 
+                author: 'Thiên Hạ Bá Xướng', audioUrl: null, // Không có Audio
                 description: 'Đạo mộ kinh dị, bí ẩn và cuốn hút. Bối cảnh chân thực rùng rợn.',
                 genres: ['Kinh dị', 'Trinh thám'], voice: 'Nam', timestamp: 1716000000, views: 89000, rating: 4.9,
                 reviews: [],
@@ -546,7 +549,7 @@
             },
             {
                 id: 3, title: 'Đại Phụng Đả Canh Nhân', youtubeId: 'DWcJFNfaw9c',
-                author: 'Mại Báo Tiểu Lang Quân', audioUrl: 'https://cdn.pixabay.com/audio/2022/10/18/audio_31c2730e64.mp3',
+                author: 'Mại Báo Tiểu Lang Quân', audioUrl: 'https://cdn.pixabay.com/audio/2022/10/18/audio_31c2730e64.mp3', // Có Audio để test
                 description: 'Phá án ly kỳ, hài hước xả stress cực mạnh.',
                 genres: ['Hài hước', 'Trinh thám', 'Xuyên không'], voice: 'Nam', timestamp: 1717500000, views: 350000, rating: 4.6,
                 reviews: [],
@@ -566,9 +569,9 @@
             // Player States
             ytPlayer: null,
             nativeAudio: null,
-            usingNativeAudio: false, // True nếu đang nghe qua <audio> thay vì Youtube
+            usingNativeAudio: false, 
             isPlaying: false,
-            isAudioMode: false, // UI State bật/tắt audio
+            isAudioMode: false, 
             playbackRate: 1,
             progressInterval: null,
             
@@ -592,7 +595,6 @@
 
         const app = {
             init() {
-                // Initialize Native Audio Element
                 state.nativeAudio = document.getElementById('native-audio-player');
                 this.setupNativeAudioEvents();
 
@@ -614,6 +616,7 @@
                     if (state.usingNativeAudio) {
                         state.isPlaying = true;
                         this.updatePlayPauseUI(true);
+                        this.playSilentAudioTrick(); // Gọi trick giữ session
                     }
                 });
                 state.nativeAudio.addEventListener('pause', () => {
@@ -639,16 +642,33 @@
                         artwork: [{ src: story.thumbnail, sizes: '512x512', type: 'image/jpeg' }]
                     });
 
-                    navigator.mediaSession.setActionHandler('play', () => this.togglePlayPause());
-                    navigator.mediaSession.setActionHandler('pause', () => this.togglePlayPause());
+                    navigator.mediaSession.setActionHandler('play', () => {
+                        this.togglePlayPause();
+                    });
+                    navigator.mediaSession.setActionHandler('pause', () => {
+                        this.togglePlayPause();
+                    });
                     navigator.mediaSession.setActionHandler('seekbackward', () => this.seekPlayer(-10));
                     navigator.mediaSession.setActionHandler('seekforward', () => this.seekPlayer(10));
+                }
+            },
+            
+            // Hàm Trick Lỏ: Khởi động file Audio tĩnh độ dài 1s để lừa hệ điều hành
+            playSilentAudioTrick() {
+                const silentAudio = document.getElementById('silent-audio-trick');
+                if(silentAudio && silentAudio.paused) {
+                    silentAudio.play().catch(e => console.log("Không thể khởi động trick audio do thiếu tương tác người dùng"));
                 }
             },
 
             toggleAudioMode() {
                 const story = stories.find(s => s.id === state.currentStoryId);
                 if (!story) return;
+
+                if (!story.audioUrl && !state.isAudioMode) {
+                    this.createToast('Truyện chưa có link Audio gốc. Vui lòng đóng góp link Audio để phát nền!');
+                    return; // Chặn nếu không có link audio
+                }
 
                 state.isAudioMode = !state.isAudioMode;
                 const wrapper = document.getElementById('youtube-player');
@@ -660,21 +680,13 @@
                     overlay.classList.remove('hidden'); overlay.classList.add('flex');
                     btnSub.classList.add('text-accent');
                     
-                    // NẾU CÓ AUDIO GỐC -> CHUYỂN SANG NATIVE AUDIO (Để phát dưới nền)
-                    if (story.audioUrl) {
-                        this.switchToNativeAudio(story.audioUrl);
-                        this.createToast('Đã chuyển sang Audio chuẩn (Phát nền & Tắt màn hình)');
-                    } else {
-                        // CHỈ HIDE VIDEO
-                        this.createToast('Chế độ Audio (Tiết kiệm pin)');
-                    }
-
+                    this.switchToNativeAudio(story.audioUrl);
+                    this.createToast('Chế độ Audio: Phát nền & Tắt màn hình thoải mái!');
                 } else {
                     wrapper.classList.remove('opacity-0');
                     overlay.classList.remove('flex'); overlay.classList.add('hidden');
                     btnSub.classList.remove('text-accent');
                     
-                    // NẾU ĐANG DÙNG NATIVE AUDIO -> CHUYỂN VỀ YOUTUBE
                     if (state.usingNativeAudio) {
                         this.switchToYouTubeVideo();
                     }
@@ -683,32 +695,29 @@
             },
 
             switchToNativeAudio(audioUrl) {
-                // Lấy thời gian từ Youtube
                 let currentTime = 0;
                 if (state.ytPlayer && typeof state.ytPlayer.getCurrentTime === 'function') {
                     currentTime = state.ytPlayer.getCurrentTime();
-                    state.ytPlayer.pauseVideo(); // Dừng YT
+                    state.ytPlayer.pauseVideo(); 
                 }
                 
                 state.usingNativeAudio = true;
                 
-                // Cấu hình & Phát Native Audio
                 if(state.nativeAudio.src !== audioUrl) {
                     state.nativeAudio.src = audioUrl;
                 }
                 state.nativeAudio.currentTime = currentTime;
                 state.nativeAudio.playbackRate = state.playbackRate;
-                state.nativeAudio.play();
+                state.nativeAudio.play().catch(e => console.log("Trình duyệt chặn autoplay"));
+                
+                this.playSilentAudioTrick(); // Bật trick
             },
 
             switchToYouTubeVideo() {
-                // Lấy thời gian từ Native Audio
                 const currentTime = state.nativeAudio.currentTime;
-                state.nativeAudio.pause(); // Dừng Audio
-                
+                state.nativeAudio.pause(); 
                 state.usingNativeAudio = false;
                 
-                // Cấu hình & Phát Youtube
                 if (state.ytPlayer && typeof state.ytPlayer.seekTo === 'function') {
                     state.ytPlayer.seekTo(currentTime, true);
                     state.ytPlayer.playVideo();
@@ -925,8 +934,8 @@
                 document.getElementById('detail-rating').innerHTML = `<i class="ph-fill ph-star text-yellow-500"></i> ${story.rating.toFixed(1)}`;
                 
                 const btnWp = document.getElementById('btn-watch-party');
-                if(!story.audioUrl) btnWp.disabled = true;
-                else btnWp.disabled = false;
+                btnWp.disabled = false;
+                btnWp.innerHTML = `<i class="ph-fill ph-users-three text-xl text-accent"></i><span class="text-[11px] font-bold">Nghe chung</span>`;
 
                 document.getElementById('detail-tags-text').innerHTML = story.genres.map(g => 
                     `<span class="bg-zinc-200 dark:bg-zinc-800 text-[10px] px-2 py-0.5 rounded font-medium text-zinc-600 dark:text-zinc-400">${g}</span>`
@@ -941,6 +950,10 @@
                 document.getElementById('audio-mode-overlay').classList.add('hidden');
                 document.getElementById('audio-mode-overlay').classList.remove('flex');
                 document.getElementById('sub-btn-audio').classList.remove('text-accent');
+                if(state.nativeAudio) {
+                    state.nativeAudio.pause();
+                    state.nativeAudio.currentTime = 0;
+                }
                 
                 this.initPlayer(story.youtubeId);
                 this.setupMediaSession(story);
@@ -998,7 +1011,6 @@
                 } else {
                     state.ytPlayer = new YT.Player('youtube-player', {
                         height: '100%', width: '100%', videoId: videoId,
-                        // Thêm allow="picture-in-picture" cho Youtube Iframe
                         playerVars: { 'playsinline': 1, 'rel': 0, 'controls': 0, 'disablekb': 1 },
                         events: {
                             'onReady': this.onPlayerReady.bind(this),
@@ -1012,6 +1024,10 @@
 
             togglePlayPause(e) {
                 if (e) e.stopPropagation();
+                
+                // Gọi trick này mỗi khi tương tác để đảm bảo session được kích hoạt
+                this.playSilentAudioTrick();
+
                 if (state.usingNativeAudio) {
                     if (state.nativeAudio.paused) state.nativeAudio.play();
                     else state.nativeAudio.pause();
@@ -1069,7 +1085,7 @@
             },
 
             onPlayerStateChange(event) {
-                if (state.usingNativeAudio) return; // Bỏ qua event Youtube nếu đang nghe Audio
+                if (state.usingNativeAudio) return; 
 
                 if (event.data === YT.PlayerState.PLAYING) {
                     state.isPlaying = true;
@@ -1086,6 +1102,9 @@
 
                     clearInterval(state.progressInterval);
                     state.progressInterval = setInterval(() => this.updateProgressBarUI(), 500);
+                    
+                    // Khi Iframe phát, cũng bật trick âm thanh để giữ session (nếu trình duyệt cho phép)
+                    this.playSilentAudioTrick();
 
                 } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
                     state.isPlaying = false;
@@ -1176,8 +1195,7 @@
 
             openCreateRoomModal() {
                 const modal = document.getElementById('create-room-modal');
-                const validStories = stories.filter(s => s.audioUrl !== null);
-                document.getElementById('room-story-selector').innerHTML = validStories.map(s => `
+                document.getElementById('room-story-selector').innerHTML = stories.map(s => `
                     <label class="flex items-center gap-2 p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer">
                         <input type="checkbox" value="${s.id}" class="wp-story-cb">
                         <img src="${s.thumbnail}" class="w-8 h-8 rounded object-cover">
@@ -1240,10 +1258,20 @@
             },
 
             submitNewStory() {
-                const url = document.getElementById('add-url').value; const title = document.getElementById('add-title').value; const author = document.getElementById('add-author').value || 'Đang cập nhật';
+                const url = document.getElementById('add-url').value; 
+                const audioUrl = document.getElementById('add-audio-url').value || null;
+                const title = document.getElementById('add-title').value; 
+                const author = document.getElementById('add-author').value || 'Đang cập nhật';
+                
                 if(!url || !title) return this.createToast('Nhập đủ thông tin!');
                 let ytId = 'jfKfPfyJRdk'; if(url.includes('v=')) ytId = url.split('v=')[1].substring(0,11); else if (url.includes('youtu.be/')) ytId = url.split('youtu.be/')[1].substring(0,11);
-                stories.unshift({ id: Date.now(), title, youtubeId: ytId, author: author, audioUrl: null, description: 'Chưa có mô tả', genres: ['Khác'], voice: 'Nam', timestamp: Date.now(), views: 0, rating: 0, reviews: [], thumbnail: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` });
+                
+                stories.unshift({ 
+                    id: Date.now(), title, youtubeId: ytId, author: author, audioUrl: audioUrl, 
+                    description: 'Chưa có mô tả', genres: ['Khác'], voice: 'Nam', timestamp: Date.now(), 
+                    views: 0, rating: 0, reviews: [], thumbnail: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` 
+                });
+                
                 this.renderStories(); this.hideAddModal(); this.createToast('Đã thêm thành công!');
             },
 
