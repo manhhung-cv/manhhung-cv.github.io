@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Học Tiếng Đức - Bảng Chữ Cái & Phát Âm</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Nunito', 'sans-serif'] },
+                    colors: { primary: '#ef4444', secondary: '#facc15', dark: '#1f2937' } // Màu cờ Đức (Đen, Đỏ, Vàng)
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+        .hidden-info { filter: blur(6px); opacity: 0.4; transition: all 0.3s; user-select: none; }
+        .hidden-info:hover { filter: blur(0px); opacity: 1; } /* Cho phép hover để xem lén */
+        .tab-active { border-bottom: 4px solid #ef4444; color: #ef4444; font-weight: bold; }
+        .sub-tab-active { background-color: #ef4444; color: white; }
+        
+        /* Mic animation */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .recording { animation: pulse-ring 2s infinite; background-color: #ef4444; color: white; }
+        
+        /* Game Animations */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            50% { transform: translateX(8px); }
+            75% { transform: translateX(-8px); }
+        }
+        .shake-err { animation: shake 0.4s ease-in-out; border-color: #ef4444 !important; }
+        .input-success { border-color: #22c55e !important; background-color: #f0fdf4; }
+        
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.5); }
+        }
+        .floating-score {
+            position: absolute; color: #f59e0b; font-weight: 900; font-size: 1.5rem;
+            animation: float-up 1s ease-out forwards; pointer-events: none; z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
+
+    <!-- Header / Navigation -->
+    <header class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center gap-2 text-2xl font-bold text-dark">
+                    <img src="https://upload.wikimedia.org/wikipedia/en/b/ba/Flag_of_Germany.svg" alt="Germany" class="w-8 h-5 rounded-sm shadow-sm">
+                    DeutschLernen
+                </div>
+                <!-- Mobile Menu Button -->
+                <button id="mobile-menu-btn" class="md:hidden text-2xl"><i class="fas fa-bars"></i></button>
+            </div>
+            
+            <!-- Main Tabs -->
+            <nav id="main-nav" class="hidden md:flex flex-col md:flex-row gap-2 md:gap-8 pb-2 md:pb-0">
+                <button onclick="switchMode('alphabet')" id="nav-alphabet" class="main-tab tab-active py-2 px-1 text-lg transition-colors">Bảng chữ cái</button>
+                <button onclick="switchMode('numbers')" id="nav-numbers" class="main-tab py-2 px-1 text-lg text-gray-500 hover:text-primary transition-colors">Số đếm</button>
+                <button onclick="switchMainTab('vocab')" id="nav-vocab" class="main-tab py-2 px-1 text-lg text-gray-500 hover:text-primary transition-colors" data-target="vocab">Từ vựng</button>
+                <button onclick="switchMainTab('grammar')" id="nav-grammar" class="main-tab py-2 px-1 text-lg text-gray-500 hover:text-primary transition-colors" data-target="grammar">Ngữ pháp</button>
+                <button onclick="switchMainTab('settings')" id="nav-settings" class="main-tab py-2 px-1 text-lg text-gray-500 hover:text-primary transition-colors" data-target="settings"><i class="fas fa-cog"></i> Cài đặt</button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-6xl mx-auto w-full px-4 py-8">
+        
+        <!-- SECTION: LEARNING (Alphabet & Numbers) -->
+        <section id="tab-learning" class="main-section block">
+            <!-- Sub Tabs -->
+            <div class="flex flex-wrap gap-2 mb-8 bg-gray-200 p-1 rounded-lg inline-flex">
+                <button onclick="switchSubTab('chart')" class="sub-tab sub-tab-active px-4 py-2 rounded-md font-semibold transition-colors" data-target="chart" id="title-chart"><i class="fas fa-table-cells text-sm mr-1"></i> Học chữ</button>
+                <button onclick="switchSubTab('listen')" class="sub-tab px-4 py-2 rounded-md font-semibold text-gray-600 hover:bg-gray-300 transition-colors" data-target="listen"><i class="fas fa-headphones text-sm mr-1"></i> Luyện nghe</button>
+                <button onclick="switchSubTab('speak')" class="sub-tab px-4 py-2 rounded-md font-semibold text-gray-600 hover:bg-gray-300 transition-colors" data-target="speak"><i class="fas fa-microphone text-sm mr-1"></i> Luyện nói</button>
+                <button onclick="switchSubTab('test')" class="sub-tab px-4 py-2 rounded-md font-semibold text-gray-600 hover:bg-gray-300 transition-colors" data-target="test"><i class="fas fa-list-check text-sm mr-1"></i> Kiểm tra</button>
+            </div>
+
+            <!-- Sub Section: Chart -->
+            <div id="sub-chart" class="sub-section block">
+                <!-- Control Panel -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-wrap gap-4 items-center justify-between">
+                    <span class="font-bold text-gray-700"><i class="fas fa-eye mr-2"></i> Chế độ hiển thị:</span>
+                    <div class="flex flex-wrap gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked onchange="toggleView('ipa', this.checked)" class="w-4 h-4 text-primary accent-primary"> Phiên âm (IPA)
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked onchange="toggleView('viet', this.checked)" class="w-4 h-4 text-primary accent-primary"> Vietsub
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked onchange="toggleView('tip', this.checked)" class="w-4 h-4 text-primary accent-primary"> Mẹo đọc
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked onchange="toggleView('word', this.checked)" class="w-4 h-4 text-primary accent-primary"> Từ vựng
+                        </label>
+                    </div>
+                    <div class="text-sm text-gray-500 italic">Mẹo: Tắt các mục để tự kiểm tra trí nhớ. Hover chuột vào vùng mờ để xem lén.</div>
+                </div>
+
+                <!-- Alphabet Grid -->
+                <div id="alphabet-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Cards injected by JS -->
+                </div>
+            </div>
+
+            <!-- Sub Section: Listening -->
+            <div id="sub-listen" class="sub-section hidden max-w-2xl mx-auto">
+                <div class="bg-white p-6 rounded-2xl shadow-lg text-center border-t-4 border-primary relative overflow-hidden">
+                    <h2 class="text-2xl font-bold mb-4" id="listen-title">Luyện Nghe Bảng Chữ Cái</h2>
+                    
+                    <div class="flex justify-center gap-4 mb-4">
+                        <button onclick="setListenLevel(1)" id="btn-lvl-1" class="px-4 py-2 bg-primary text-white rounded-lg font-bold">Cấp 1: Ký tự đơn</button>
+                        <button onclick="setListenLevel(2)" id="btn-lvl-2" class="px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg font-bold">Cấp 2: Chuỗi ký tự</button>
+                        <button onclick="setListenLevel(3)" id="btn-lvl-3" class="px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg font-bold">Cấp 3: Tính giờ (60s)</button>
+                    </div>
+
+                    <div class="flex justify-between items-center bg-gray-100 p-3 rounded-xl mb-6">
+                        <div class="text-lg font-bold text-gray-700">Điểm: <span id="listen-score" class="text-3xl text-primary drop-shadow-sm">0</span></div>
+                        <div class="text-lg font-bold text-orange-500">Combo: <span id="listen-combo" class="text-2xl">x1</span> <i class="fas fa-fire animate-pulse"></i></div>
+                    </div>
+
+                    <div id="listen-game-area" class="py-4 relative">
+                        <div id="timer-display" class="hidden text-xl font-bold text-red-500 mb-4">Thời gian: <span id="time-left">60</span>s</div>
+                        <div class="text-gray-600 mb-6 text-lg" id="listen-instruction">Bấm loa để nghe và nhập đáp án. (Hệ thống sẽ tự động qua câu mới)</div>
+                        
+                        <button onclick="playListenAudio()" class="w-24 h-24 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl shadow-[0_10px_20px_rgba(59,130,246,0.3)] transition-transform transform hover:scale-105 active:scale-95 mx-auto flex items-center justify-center mb-8 relative z-10">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                        
+                        <div class="flex justify-center gap-2 relative">
+                            <input type="text" id="listen-input" autocomplete="off" placeholder="Nhập đáp án..." class="border-2 border-gray-300 rounded-xl px-4 py-3 text-2xl w-48 text-center uppercase focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all duration-200">
+                            <button onclick="checkListenAnswer()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-bold text-lg transition-transform active:scale-95"><i class="fas fa-check"></i></button>
+                            <!-- Container for floating points -->
+                            <div id="score-anim-container" class="absolute top-0 right-10 w-full h-full pointer-events-none flex items-center justify-center"></div>
+                        </div>
+                        
+                        <div id="listen-feedback" class="mt-6 text-xl font-bold h-8 transition-all"></div>
+                    </div>
+                    
+                    <button onclick="startListenGame()" id="btn-start-listen" class="hidden w-full py-4 bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-black text-xl rounded-xl shadow-lg transform transition-transform active:scale-95 uppercase tracking-wider">Bắt đầu thử thách</button>
+                </div>
+            </div>
+
+            <!-- Sub Section: Speaking -->
+            <div id="sub-speak" class="sub-section hidden max-w-2xl mx-auto">
+                <div class="bg-white p-6 rounded-2xl shadow-lg text-center border-t-4 border-secondary">
+                    <h2 class="text-2xl font-bold mb-2" id="speak-title">Luyện Phát Âm Chữ Cái</h2>
+                    <p class="text-gray-500 mb-8">Bấm vào biểu tượng Micro và đọc to ký tự hiển thị trên màn hình.</p>
+                    <h2 class="text-2xl font-bold mb-2">Luyện Phát Âm</h2>
+                    <p class="text-gray-500 mb-8">Bấm vào biểu tượng Micro và đọc to chữ cái hiển thị trên màn hình.</p>
+
+                    <div class="text-8xl font-black text-dark mb-2" id="speak-target">A</div>
+                    <div class="text-gray-500 mb-8 text-lg" id="speak-hint">IPA: [aː] | Vietsub: A</div>
+
+                    <button onclick="toggleRecording()" id="btn-mic" class="w-24 h-24 bg-gray-200 text-gray-600 rounded-full text-4xl shadow-md transition-all mx-auto flex items-center justify-center mb-6">
+                        <i class="fas fa-microphone"></i>
+                    </button>
+                    
+                    <div id="speak-status" class="text-lg text-gray-600 h-8 mb-4">Sẵn sàng...</div>
+                    <div id="speak-result" class="text-xl font-bold h-8 mb-6"></div>
+
+                    <button onclick="nextSpeakTarget()" class="px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-bold transition-colors">Đổi chữ cái khác <i class="fas fa-random ml-1"></i></button>
+                    
+                    <div class="mt-8 p-4 bg-yellow-50 text-yellow-800 text-sm rounded-lg text-left">
+                        <i class="fas fa-info-circle mr-1"></i> <b>Lưu ý:</b> Trình nhận diện giọng nói (STT) với từng chữ cái đơn lẻ có thể không chính xác 100%. Nếu bạn đọc đúng âm mà máy nhận diện thành một từ bắt đầu bằng chữ đó, hệ thống vẫn có thể châm chước.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub Section: Test (Quiz) -->
+            <div id="sub-test" class="sub-section hidden max-w-2xl mx-auto">
+                 <div class="bg-white p-6 rounded-2xl shadow-lg border-t-4 border-blue-500">
+                    <h2 class="text-2xl font-bold mb-4 text-center">Kiểm tra kiến thức</h2>
+                    <div id="quiz-container" class="text-center">
+                        <div class="text-lg text-gray-600 mb-4">Nghe âm thanh và chọn đáp án tương ứng:</div>
+                        <button onclick="playQuizAudio()" class="w-20 h-20 bg-blue-100 text-blue-600 hover:bg-blue-200 rounded-full text-3xl shadow-sm transition-colors mx-auto flex items-center justify-center mb-8">
+                            <i class="fas fa-play"></i>
+                        </button>
+                        
+                        <div class="grid grid-cols-2 gap-4 max-w-md mx-auto" id="quiz-options">
+                            <!-- Options injected by JS -->
+                        </div>
+                        
+                        <div id="quiz-feedback" class="mt-6 text-xl font-bold h-8"></div>
+                    </div>
+                 </div>
+            </div>
+
+            <!-- Letter Detail Modal -->
+            <div id="letter-modal" class="fixed inset-0 bg-gray-900 bg-opacity-60 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm">
+                <div class="bg-white rounded-3xl max-w-md w-full p-6 relative transform scale-95 transition-transform duration-300 shadow-2xl" id="letter-modal-content">
+                    <button onclick="closeModal()" class="absolute top-4 right-4 w-10 h-10 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full flex items-center justify-center transition-colors"><i class="fas fa-times"></i></button>
+                    
+                    <div class="text-center">
+                        <div class="text-gray-500 text-sm font-bold uppercase tracking-widest mb-2">Chi tiết chữ cái</div>
+                        <div class="text-8xl font-black text-primary mb-2 drop-shadow-md" id="modal-char">A</div>
+                        <button onclick="speakText(document.getElementById('modal-char').innerText)" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-full font-bold hover:bg-blue-100 transition-colors mb-6 shadow-sm"><i class="fas fa-volume-up mr-2"></i>Nghe phát âm</button>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                <div class="text-xs text-gray-400 mb-1">Phiên âm Quốc tế</div>
+                                <div class="font-mono font-bold text-lg text-gray-700" id="modal-ipa">[aː]</div>
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                <div class="text-xs text-gray-400 mb-1">Đọc bồi (Vietsub)</div>
+                                <div class="font-bold text-lg text-blue-600" id="modal-viet">A</div>
+                            </div>
+                        </div>
+
+                        <!-- Khẩu hình miệng -->
+                        <div class="bg-yellow-50 rounded-2xl p-4 mb-6 border border-yellow-100 text-left">
+                            <div class="flex items-center justify-center mb-3 text-yellow-700 font-bold"><i class="fas fa-lips mr-2"></i> Trực quan Khẩu hình miệng</div>
+                            <div class="flex flex-col sm:flex-row items-center gap-4">
+                                <div id="modal-mouth-svg" class="shrink-0 bg-white p-3 rounded-2xl shadow-sm border border-yellow-200 flex items-center justify-center w-28 h-28"></div>
+                                <div class="text-left space-y-2">
+                                    <p id="modal-mouth-instruction" class="text-sm font-bold text-yellow-900 leading-snug"></p>
+                                    <div class="h-px bg-yellow-200 w-full my-2"></div>
+                                    <p id="modal-tip" class="text-sm text-yellow-800 font-medium leading-snug"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Từ vựng ví dụ -->
+                        <div class="bg-green-50 rounded-2xl p-4 border border-green-100">
+                            <div class="text-xs font-bold text-green-600 uppercase mb-2">Ví dụ / Example</div>
+                            <div class="flex items-center justify-center gap-3">
+                                <span class="text-xl font-bold text-gray-800" id="modal-word">der Apfel</span>
+                                <button id="modal-word-audio" class="w-8 h-8 bg-green-200 text-green-700 rounded-full hover:bg-green-300 transition-colors flex justify-center items-center"><i class="fas fa-play text-xs"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION: VOCABULARY (Coming Soon) -->
+        <section id="tab-vocab" class="main-section hidden">
+            <div class="flex flex-col items-center justify-center py-20 text-center">
+                <i class="fas fa-book-open text-6xl text-gray-300 mb-4"></i>
+                <h2 class="text-3xl font-bold text-gray-700 mb-2">Phần Từ Vựng</h2>
+                <p class="text-gray-500 text-lg">Tính năng đang được phát triển. Vui lòng quay lại sau!</p>
+            </div>
+        </section>
+
+        <!-- SECTION: GRAMMAR (Coming Soon) -->
+        <section id="tab-grammar" class="main-section hidden">
+            <div class="flex flex-col items-center justify-center py-20 text-center">
+                <i class="fas fa-pencil-ruler text-6xl text-gray-300 mb-4"></i>
+                <h2 class="text-3xl font-bold text-gray-700 mb-2">Phần Ngữ Pháp</h2>
+                <p class="text-gray-500 text-lg">Tính năng đang được phát triển. Vui lòng quay lại sau!</p>
+            </div>
+        </section>
+
+        <!-- SECTION: SETTINGS -->
+        <section id="tab-settings" class="main-section hidden max-w-2xl mx-auto">
+            <div class="bg-white p-6 rounded-2xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-2"><i class="fas fa-cog text-gray-500 mr-2"></i>Cài đặt hệ thống</h2>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2">Giọng đọc (Phụ thuộc vào trình duyệt/hệ điều hành):</label>
+                        <select id="voice-select" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-primary focus:outline-none">
+                            <option>Đang tải danh sách giọng đọc...</option>
+                        </select>
+                        <p class="text-sm text-gray-500 mt-1">Khuyên dùng các giọng có chữ "German" hoặc "de-DE".</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2 flex justify-between">
+                            <span>Tốc độ đọc:</span>
+                            <span id="rate-val" class="text-primary">1.0</span>
+                        </label>
+                        <input type="range" id="rate-slider" min="0.5" max="2" value="1" step="0.1" class="w-full accent-primary">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2 flex justify-between">
+                            <span>Âm điệu (Pitch):</span>
+                            <span id="pitch-val" class="text-primary">1.0</span>
+                        </label>
+                        <input type="range" id="pitch-slider" min="0" max="2" value="1" step="0.1" class="w-full accent-primary">
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <button onclick="testVoice()" class="w-full bg-gray-800 text-white py-3 rounded-lg font-bold hover:bg-gray-700 transition-colors">
+                            <i class="fas fa-volume-up mr-2"></i> Nghe thử giọng đọc (Hallo, wie geht es dir?)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Data & Script -->
+    <script>
+        // --- DATA: GERMAN ALPHABET ---
+        const alphabetData = [
+            { char: 'A', ipa: '[aː]', viet: 'A (kéo dài)', tip: 'Há miệng to, tròn đều, phát âm sâu hơn tiếng Việt.', word: 'der Apfel (Quả táo)', mouth: 'wide' },
+            { char: 'B', ipa: '[beː]', viet: 'Bê', tip: 'Mím chặt hai môi và bật ra, tạo độ rung (âm hữu thanh).', word: 'das Buch (Quyển sách)', mouth: 'closed' },
+            { char: 'C', ipa: '[tseː]', viet: 'Xê', tip: 'Hai hàm răng khép hờ, đầu lưỡi chạm mặt sau răng cửa dưới.', word: 'der Computer (Máy tính)', mouth: 'smile' },
+            { char: 'D', ipa: '[deː]', viet: 'Đê', tip: 'Đầu lưỡi chạm ngạc cứng phía sau răng trên.', word: 'Danke (Cảm ơn)', mouth: 'smile' },
+            { char: 'E', ipa: '[eː]', viet: 'Ê (kéo dài)', tip: 'Miệng bè ngang (như cười), kéo dài âm thanh.', word: 'der Elefant (Con voi)', mouth: 'smile' },
+            { char: 'F', ipa: '[ɛf]', viet: 'Ép', tip: 'Răng trên đặt nhẹ lên môi dưới, đẩy hơi ra (âm vô thanh).', word: 'die Familie (Gia đình)', mouth: 'teeth-lip' },
+            { char: 'G', ipa: '[ɡeː]', viet: 'Gê', tip: 'Cuống lưỡi nâng lên chạm ngạc mềm (âm hữu thanh).', word: 'Gut (Tốt)', mouth: 'smile' },
+            { char: 'H', ipa: '[haː]', viet: 'Ha', tip: 'Há miệng to, đẩy luồng hơi mạnh từ cổ họng ra.', word: 'der Hund (Con chó)', mouth: 'wide' },
+            { char: 'I', ipa: '[iː]', viet: 'I (kéo dài)', tip: 'Miệng bè ngang (như mỉm cười rộng), âm dài.', word: 'der Igel (Con nhím)', mouth: 'smile' },
+            { char: 'J', ipa: '[jɔt]', viet: 'Dót / Yót', tip: 'Lưỡi cong lên gần ngạc cứng, giống âm "Y" trong tiếng Việt.', word: 'Ja (Vâng/Có)', mouth: 'smile' },
+            { char: 'K', ipa: '[kaː]', viet: 'Kha (bật hơi)', tip: 'Giống G nhưng phải bật hơi mạnh từ cuống họng.', word: 'die Katze (Con mèo)', mouth: 'smile' },
+            { char: 'L', ipa: '[ɛl]', viet: 'Eo (L cong lưỡi)', tip: 'Đầu lưỡi uốn cong chạm vào ngạc ngay sau răng cửa trên.', word: 'Liebe (Tình yêu)', mouth: 'smile' },
+            { char: 'M', ipa: '[ɛm]', viet: 'Em', tip: 'Mím chặt hai môi, đẩy hơi qua mũi (âm mũi).', word: 'die Mutter (Mẹ)', mouth: 'closed' },
+            { char: 'N', ipa: '[ɛn]', viet: 'En', tip: 'Đầu lưỡi chạm ngạc trên, hơi thoát qua mũi.', word: 'die Nacht (Ban đêm)', mouth: 'smile' },
+            { char: 'O', ipa: '[oː]', viet: 'Ô (kéo dài)', tip: 'Chu môi tròn, giữ môi căng cứng khi phát âm.', word: 'das Ohr (Cái tai)', mouth: 'round' },
+            { char: 'P', ipa: '[peː]', viet: 'Phê (bật hơi)', tip: 'Mím chặt môi và bật hơi mạnh ra (khác với B).', word: 'die Post (Bưu điện)', mouth: 'closed' },
+            { char: 'Q', ipa: '[kuː]', viet: 'Khu', tip: 'Chu môi thu hẹp, luồng hơi đi thẳng ra trước.', word: 'die Quelle (Nguồn gốc)', mouth: 'narrow-round' },
+            { char: 'R', ipa: '[ɛʁ]', viet: 'E-rờ', tip: 'Âm R rung ở cổ họng sâu (không rung đầu lưỡi như tiếng Việt).', word: 'Rot (Màu đỏ)', mouth: 'smile' },
+            { char: 'S', ipa: '[ɛs]', viet: 'És', tip: 'Hai hàm răng khép hờ, hơi rít qua kẽ răng.', word: 'die Sonne (Mặt trời)', mouth: 'smile' },
+            { char: 'T', ipa: '[teː]', viet: 'Thê (bật hơi)', tip: 'Đầu lưỡi chạm ngạc, bật hơi dứt khoát và mạnh.', word: 'der Tag (Ngày)', mouth: 'smile' },
+            { char: 'U', ipa: '[uː]', viet: 'U (kéo dài)', tip: 'Chu môi thu hẹp nhất có thể, kéo dài âm.', word: 'die Uhr (Đồng hồ)', mouth: 'narrow-round' },
+            { char: 'V', ipa: '[faʊ]', viet: 'Phau', tip: 'Răng trên đặt lên môi dưới, đọc như chữ F.', word: 'der Vogel (Con chim)', mouth: 'teeth-lip' },
+            { char: 'W', ipa: '[veː]', viet: 'Vê', tip: 'Răng trên chạm môi dưới, tạo độ rung nhẹ.', word: 'das Wasser (Nước)', mouth: 'teeth-lip' },
+            { char: 'X', ipa: '[ɪks]', viet: 'Ích-s', tip: 'Phát âm như KS kết hợp nhanh.', word: 'das Xylofon (Đàn mộc cầm)', mouth: 'smile' },
+            { char: 'Y', ipa: '[ˈʏpsilɔn]', viet: 'Íp-xi-lon', tip: 'Môi chu tròn (như U) nhưng phát âm (như I).', word: 'Yoga (Yoga)', mouth: 'narrow-round' },
+            { char: 'Z', ipa: '[t͡sɛt]', viet: 'Xết', tip: 'Âm tắc xát TS, đầu lưỡi bật từ ngạc xuống răng dưới.', word: 'die Zeit (Thời gian)', mouth: 'smile' },
+            { char: 'Ä', ipa: '[ɛː]', viet: 'E (mở miệng to)', tip: 'Mở to miệng như đang nói A, nhưng phát âm E.', word: 'die Äpfel (Những quả táo)', mouth: 'wide' },
+            { char: 'Ö', ipa: '[øː]', viet: 'Ơ (tròn môi)', tip: 'Môi chu tròn như nói O, nhưng phát âm E.', word: 'das Öl (Dầu)', mouth: 'round' },
+            { char: 'Ü', ipa: '[yː]', viet: 'Uy (tròn môi)', tip: 'Môi chu hẹp như U, nhưng cố gắng phát âm I.', word: 'die Übung (Bài tập)', mouth: 'narrow-round' },
+            { char: 'ß', ipa: '[ɛsˈt͡sɛt]', viet: 'Ét-xét', tip: 'Phát âm như chữ S kéo dài, hơi rít mạnh.', word: 'Groß (Lớn)', mouth: 'smile' }
+        ];
+
+        // --- DATA: GERMAN NUMBERS ---
+        const numberData = [
+            { char: '0', ipa: '[nʊl]', viet: 'Nun', tip: 'Đọc âm U ngắn, uốn lưỡi âm L ở cuối.', word: 'null', mouth: 'round' },
+            { char: '1', ipa: '[aɪ̯ns]', viet: 'Ain-s', tip: 'Đọc vần Ai, xì âm S nhẹ ở cuối.', word: 'eins', mouth: 'smile' },
+            { char: '2', ipa: '[t͡svaɪ̯]', viet: 'Xvai', tip: 'Âm Z đọc là TS, kết hợp vần Ai.', word: 'zwei', mouth: 'smile' },
+            { char: '3', ipa: '[dʁaɪ̯]', viet: 'Đ-rai', tip: 'Âm R hơi rung ở cổ họng, vần Ai.', word: 'drei', mouth: 'smile' },
+            { char: '4', ipa: '[fiːɐ̯]', viet: 'Phia', tip: 'Chữ V đọc như F, kéo dài âm I, kết thúc bằng âm A nhẹ (er).', word: 'vier', mouth: 'teeth-lip' },
+            { char: '5', ipa: '[fʏnf]', viet: 'Phuyn-f', tip: 'Âm Ü tròn môi như U nhưng phát âm I, kết thúc bật âm F.', word: 'fünf', mouth: 'narrow-round' },
+            { char: '6', ipa: '[zɛks]', viet: 'Zếch-s', tip: 'S đầu đọc như Z, chs đọc như KS.', word: 'sechs', mouth: 'smile' },
+            { char: '7', ipa: '[ˈziːbən]', viet: 'Zi-bần', tip: 'S đầu đọc như Z, kéo dài âm I.', word: 'sieben', mouth: 'smile' },
+            { char: '8', ipa: '[axt]', viet: 'Ach-t', tip: 'Âm ch khạc nhẹ từ cổ họng (như kh), bật âm T.', word: 'acht', mouth: 'wide' },
+            { char: '9', ipa: '[nɔɪ̯n]', viet: 'Noi-n', tip: 'Vần eu đọc như Oi tiếng Việt.', word: 'neun', mouth: 'round' },
+            { char: '10', ipa: '[t͡seːn]', viet: 'Xên', tip: 'Âm Z đọc là TS, kéo dài âm E.', word: 'zehn', mouth: 'smile' },
+            { char: '11', ipa: '[ɛlf]', viet: 'Eo-f', tip: 'Đọc âm E, uốn lưỡi L và bật F.', word: 'elf', mouth: 'smile' },
+            { char: '12', ipa: '[t͡svœlf]', viet: 'Xvớp-f', tip: 'Âm Ö tròn môi, v đọc là f.', word: 'zwölf', mouth: 'round' },
+            { char: '20', ipa: '[ˈt͡svant͡sɪç]', viet: 'Xvan-xịch', tip: 'Đuôi -ig thường đọc như âm -ich (khạc nhẹ).', word: 'zwanzig', mouth: 'smile' },
+            { char: '30', ipa: '[ˈdʁaɪ̯sɪç]', viet: 'Đrai-xịch', tip: 'Dùng ß, không dùng z như các số chục khác.', word: 'dreißig', mouth: 'smile' },
+            { char: '40', ipa: '[ˈfɪʁt͡sɪç]', viet: 'Phia-xịch', tip: 'Ghép vier và zig.', word: 'vierzig', mouth: 'teeth-lip' },
+            { char: '50', ipa: '[ˈfʏnft͡sɪç]', viet: 'Phuyn-f-xịch', tip: 'Ghép fünf và zig.', word: 'fünfzig', mouth: 'narrow-round' },
+            { char: '100', ipa: '[ˈhʊndɐt]', viet: 'Hun-đợt', tip: 'Âm H rõ, er đọc như a nhẹ.', word: 'hundert', mouth: 'wide' }
+        ];
+
+        // --- GLOBAL VARIABLES & GAME AUDIO ---
+        let currentMode = 'alphabet';
+        let currentData = alphabetData;
+        let isProcessingAnswer = false;
+
+        let synth = window.speechSynthesis;
+        let voices = [];
+        let selectedVoice = null;
+        let speechRate = 1.0;
+        let speechPitch = 1.0;
+        
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSfx(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.2);
+            }
+        }
+
+        // --- SVG MOUTH SHAPES & INSTRUCTIONS ---
+        function getMouthInstruction(type) {
+            switch(type) {
+                case 'wide':
+                    return "Há to miệng theo chiều dọc. Cằm hạ xuống dưới. Lưỡi đặt thấp tự nhiên.";
+                case 'round':
+                    return "Chu môi ra phía trước, mở lổ tròn to. Khoang miệng hở rộng bên trong.";
+                case 'narrow-round':
+                    return "Môi chu chặt ra phía trước, lổ hở rất nhỏ (như đang huýt sáo). Cơ môi căng.";
+                case 'smile':
+                    return "Khóe miệng kéo căng sang hai bên (như mỉm cười). Hai hàm răng gần như khép hờ hở một chút.";
+                case 'teeth-lip':
+                    return "Hàm răng trên đặt nhẹ lên phần trong của môi dưới. Đẩy luồng hơi ma sát qua khe răng và môi.";
+                case 'closed':
+                default:
+                    return "Hai môi mím chặt lại với nhau. Ngắt luồng hơi hoàn toàn trước khi bật ra khỏi miệng.";
+            }
+        }
+
+        function getMouthSVG(type) {
+            const baseClass = "w-full h-full drop-shadow-md";
+            const lip = "#f43f5e"; // Màu môi đỏ hồng (Rose 500)
+            const dark = "#27272a"; // Màu vòm miệng tối (Zinc 800)
+            const teeth = "#ffffff"; // Màu răng
+            
+            switch(type) {
+                case 'wide': // Há to
+                    return `<svg viewBox="0 0 100 100" class="${baseClass}">
+                        <path d="M 20 50 Q 50 15 80 50 Q 50 90 20 50 Z" fill="${lip}" />
+                        <path d="M 25 50 Q 50 25 75 50 Q 50 80 25 50 Z" fill="${dark}" />
+                        <path d="M 30 45 Q 50 48 70 45 L 67 52 Q 50 55 33 52 Z" fill="${teeth}" />
+                        <path d="M 33 58 Q 50 65 67 58 L 65 52 Q 50 55 35 52 Z" fill="${teeth}" />
+                    </svg>`;
+                    
+                case 'round': // Tròn môi
+                    return `<svg viewBox="0 0 100 100" class="${baseClass}">
+                        <circle cx="50" cy="50" r="30" fill="${lip}" />
+                        <circle cx="50" cy="50" r="16" fill="${dark}" />
+                        <path d="M 35 25 Q 50 20 65 25" stroke="white" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.4"/>
+                    </svg>`;
+                    
+                case 'narrow-round': // Chu hẹp
+                    return `<svg viewBox="0 0 100 100" class="${baseClass}">
+                        <circle cx="50" cy="50" r="22" fill="${lip}" />
+                        <circle cx="50" cy="50" r="8" fill="${dark}" />
+                        <path d="M 25 50 L 15 50 M 75 50 L 85 50 M 50 25 L 50 15 M 50 75 L 50 85" stroke="${lip}" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+                        <path d="M 32 32 L 25 25 M 68 68 L 75 75 M 68 32 L 75 25 M 32 68 L 25 75" stroke="${lip}" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+                    </svg>`;
+                    
+                case 'smile': // Bè ngang
+                    return `<svg viewBox="0 0 100 100" class="${baseClass}">
+                        <path d="M 10 50 Q 50 20 90 50 Q 50 80 10 50 Z" fill="${lip}" />
+                        <path d="M 15 50 Q 50 30 85 50 Q 50 70 15 50 Z" fill="${teeth}" />
+                        <path d="M 18 50 Q 50 50 82 50" stroke="${dark}" stroke-width="2" fill="none" opacity="0.5" />
+                    </svg>`;
+                    
+                case 'teeth-lip': // Răng cắn môi
+                    return `<svg viewBox="0 0 100 100" class="${baseClass}">
+                        <path d="M 15 50 Q 50 25 85 50 Q 50 85 15 50 Z" fill="${lip}" />
+                        <path d="M 20 50 Q 50 35 80 50 Q 50 75 20 50 Z" fill="${dark}" />
+                        <path d="M 20 50 Q 50 75 80 50 Q 50 60 20 50 Z" fill="${lip}" />
+                        <path d="M 25 50 Q 50 42 75 50 L 70 58 Q 50 62 30 58 Z" fill="${teeth}" />
+                    </svg>`;
+                    
+                case 'closed': // Mím môi
+                default:
+                    return `<svg viewBox="0 0 100 100" class="${baseClass}">
+                        <path d="M 15 50 Q 50 20 85 50 Q 50 80 15 50 Z" fill="${lip}" />
+                        <path d="M 15 50 Q 50 50 85 50" stroke="#9f1239" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.7"/>
+                        <path d="M 30 35 Q 50 30 70 35" stroke="white" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.4"/>
+                    </svg>`;
+            }
+        }
+
+        // --- UI & TAB MANAGEMENT ---
+        document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+            const nav = document.getElementById('main-nav');
+            nav.classList.toggle('hidden');
+            nav.classList.toggle('flex');
+        });
+
+        function switchMainTab(tabId) {
+            document.querySelectorAll('.main-section').forEach(el => el.classList.add('hidden'));
+            
+            // Xử lý logic gộp chung learning section
+            let targetSectionId = (tabId === 'vocab' || tabId === 'grammar' || tabId === 'settings') ? tabId : 'learning';
+            document.getElementById('tab-' + targetSectionId).classList.remove('hidden');
+            
+            if(tabId !== 'alphabet' && tabId !== 'numbers') {
+                document.querySelectorAll('.main-tab').forEach(el => {
+                    el.classList.remove('tab-active');
+                    el.classList.add('text-gray-500');
+                });
+                const activeNav = document.getElementById('nav-' + tabId);
+                if(activeNav) {
+                    activeNav.classList.add('tab-active');
+                    activeNav.classList.remove('text-gray-500');
+                }
+            }
+            
+            if(window.innerWidth < 768) {
+                document.getElementById('main-nav').classList.add('hidden');
+                document.getElementById('main-nav').classList.remove('flex');
+            }
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            currentData = mode === 'alphabet' ? alphabetData : numberData;
+
+            // Đổi màu Nav Header
+            document.querySelectorAll('.main-tab').forEach(el => {
+                el.classList.remove('tab-active');
+                el.classList.add('text-gray-500');
+            });
+            document.getElementById('nav-' + mode).classList.add('tab-active');
+            document.getElementById('nav-' + mode).classList.remove('text-gray-500');
+
+            switchMainTab(mode); // Route vào chung một khu vực #tab-learning
+
+            // Đổi tiêu đề động theo Mode
+            document.getElementById('title-chart').innerHTML = mode === 'alphabet' ? '<i class="fas fa-table-cells text-sm mr-1"></i> Học chữ' : '<i class="fas fa-sort-numeric-up text-sm mr-1"></i> Học số';
+            document.getElementById('listen-title').innerText = mode === 'alphabet' ? 'Luyện Nghe Bảng Chữ Cái' : 'Luyện Nghe Số Đếm';
+            document.getElementById('speak-title').innerText = mode === 'alphabet' ? 'Luyện Phát Âm Chữ Cái' : 'Luyện Phát Âm Số Đếm';
+
+            // Reset và Render lại dữ liệu
+            renderGrid();
+            resetListenGame();
+            if(!document.getElementById('sub-listen').classList.contains('hidden')) nextListenQuestion();
+            if(!document.getElementById('sub-speak').classList.contains('hidden')) nextSpeakTarget();
+            if(!document.getElementById('sub-test').classList.contains('hidden')) generateQuiz();
+        }
+
+        function switchSubTab(tabId) {
+            document.querySelectorAll('.sub-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById('sub-' + tabId).classList.remove('hidden');
+            
+            document.querySelectorAll('.sub-tab').forEach(el => {
+                if(el.dataset.target === tabId) {
+                    el.classList.add('sub-tab-active');
+                    el.classList.remove('text-gray-600', 'hover:bg-gray-300');
+                } else {
+                    el.classList.remove('sub-tab-active');
+                    el.classList.add('text-gray-600', 'hover:bg-gray-300');
+                }
+            });
+
+            if(tabId === 'listen') nextListenQuestion();
+            if(tabId === 'speak') nextSpeakTarget();
+            if(tabId === 'test') generateQuiz();
+        }
+
+        // --- SPEECH SYNTHESIS (Settings) ---
+        function populateVoiceList() {
+            voices = synth.getVoices().sort((a, b) => {
+                if(a.lang.includes('de') && !b.lang.includes('de')) return -1;
+                if(!a.lang.includes('de') && b.lang.includes('de')) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            
+            const voiceSelect = document.getElementById('voice-select');
+            voiceSelect.innerHTML = '';
+            
+            voices.forEach((voice, i) => {
+                const option = document.createElement('option');
+                option.textContent = `${voice.name} (${voice.lang})`;
+                option.value = i;
+                
+                if(voice.lang.includes('de-DE') && !selectedVoice) {
+                    selectedVoice = voice;
+                    option.selected = true;
+                }
+                
+                voiceSelect.appendChild(option);
+            });
+
+            if(!selectedVoice && voices.length > 0) {
+                selectedVoice = voices[0];
+            }
+        }
+
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        }
+        setTimeout(populateVoiceList, 500);
+
+        document.getElementById('voice-select').addEventListener('change', (e) => {
+            selectedVoice = voices[e.target.value];
+        });
+
+        document.getElementById('rate-slider').addEventListener('input', (e) => {
+            speechRate = e.target.value;
+            document.getElementById('rate-val').textContent = speechRate;
+        });
+
+        document.getElementById('pitch-slider').addEventListener('input', (e) => {
+            speechPitch = e.target.value;
+            document.getElementById('pitch-val').textContent = speechPitch;
+        });
+
+        function speakText(text) {
+            if (synth.speaking) synth.cancel(); 
+            
+            const utterThis = new SpeechSynthesisUtterance(text);
+            if (selectedVoice) utterThis.voice = selectedVoice;
+            utterThis.lang = selectedVoice ? selectedVoice.lang : 'de-DE'; 
+            utterThis.rate = speechRate;
+            utterThis.pitch = speechPitch;
+            
+            synth.speak(utterThis);
+        }
+
+        function testVoice() {
+            speakText("Hallo, wie geht es dir? Willkommen zum Deutschlernen!");
+        }
+
+        // --- SUB-TAB: LEARNING CHART & MODAL ---
+        function renderGrid() {
+            const grid = document.getElementById('alphabet-grid');
+            grid.innerHTML = '';
+            
+            currentData.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-5 rounded-2xl shadow-sm border border-gray-200 hover:shadow-lg hover:border-primary transition-all cursor-pointer relative overflow-hidden group transform hover:-translate-y-1";
+                card.onclick = () => speakText(item.char);
+                
+                card.innerHTML = `
+                    <button onclick="event.stopPropagation(); openLetterDetails(${index})" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-primary hover:text-white transition-colors z-10 focus:outline-none" title="Xem chi tiết">
+                        <i class="fas fa-search-plus text-sm"></i>
+                    </button>
+                    <div class="text-5xl font-black text-center text-dark mb-4 drop-shadow-sm">${item.char}</div>
+                    
+                    <div class="space-y-2 text-sm border-t border-gray-100 pt-3">
+                        <div class="flex justify-between toggle-ipa"><span class="text-gray-500">IPA:</span> <span class="font-mono font-bold text-gray-700">${item.ipa}</span></div>
+                        <div class="flex justify-between toggle-viet"><span class="text-gray-500">Vietsub:</span> <span class="font-bold text-blue-600">${item.viet}</span></div>
+                        <div class="toggle-tip bg-yellow-50 p-2 rounded-lg text-yellow-800 text-xs mt-2 truncate"><i class="fas fa-lightbulb text-yellow-500 mr-1"></i> ${item.tip}</div>
+                        <div class="toggle-word text-center text-gray-700 font-semibold mt-2 pt-2 border-t border-dashed truncate">${item.word}</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function openLetterDetails(index) {
+            const item = currentData[index];
+            document.getElementById('modal-char').innerText = item.char;
+            document.getElementById('modal-ipa').innerText = item.ipa;
+            document.getElementById('modal-viet').innerText = item.viet;
+            document.getElementById('modal-tip').innerText = item.tip;
+            
+            // Xóa chữ tiếng Việt trong ngoặc để giọng đọc phát âm chuẩn
+            const cleanWord = item.word.split('(')[0].trim();
+            document.getElementById('modal-word').innerText = item.word;
+            document.getElementById('modal-word-audio').onclick = () => speakText(cleanWord);
+            
+            // Render SVG miệng và chú thích
+            document.getElementById('modal-mouth-svg').innerHTML = getMouthSVG(item.mouth);
+            document.getElementById('modal-mouth-instruction').innerText = getMouthInstruction(item.mouth);
+
+            const modal = document.getElementById('letter-modal');
+            const content = document.getElementById('letter-modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+            
+            speakText(item.char);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('letter-modal');
+            const content = document.getElementById('letter-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function toggleView(className, isVisible) {
+            const elements = document.querySelectorAll('.toggle-' + className);
+            elements.forEach(el => {
+                if(isVisible) {
+                    el.classList.remove('hidden-info');
+                } else {
+                    el.classList.add('hidden-info');
+                }
+            });
+        }
+
+        // --- SUB-TAB: LISTENING GAME ---
+        let listenLevel = 1;
+        let listenTarget = "";
+        let listenScore = 0;
+        let listenStreak = 0;
+        let listenMultiplier = 1;
+        let listenTimer = null;
+        let listenTimeLeft = 60;
+        let isListenGameRunning = false;
+
+        function setListenLevel(level) {
+            listenLevel = level;
+            document.querySelectorAll('[id^="btn-lvl-"]').forEach(btn => {
+                btn.classList.remove('bg-primary', 'text-white');
+                btn.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            document.getElementById('btn-lvl-' + level).classList.add('bg-primary', 'text-white');
+            document.getElementById('btn-lvl-' + level).classList.remove('bg-gray-200', 'text-gray-700');
+
+            resetListenGame();
+
+            if(level === 3) {
+                document.getElementById('listen-game-area').classList.add('hidden');
+                document.getElementById('btn-start-listen').classList.remove('hidden');
+            } else {
+                document.getElementById('listen-game-area').classList.remove('hidden');
+                document.getElementById('btn-start-listen').classList.add('hidden');
+                nextListenQuestion();
+            }
+        }
+
+        function resetListenGame() {
+            listenScore = 0;
+            listenStreak = 0;
+            listenMultiplier = 1;
+            document.getElementById('listen-score').textContent = listenScore;
+            document.getElementById('listen-combo').textContent = "x" + listenMultiplier;
+            const inputEl = document.getElementById('listen-input');
+            inputEl.value = "";
+            inputEl.classList.remove('shake-err', 'input-success');
+            document.getElementById('listen-feedback').textContent = "";
+            clearInterval(listenTimer);
+            document.getElementById('timer-display').classList.add('hidden');
+            isListenGameRunning = false;
+            isProcessingAnswer = false;
+        }
+
+        function startListenGame() {
+            resetListenGame();
+            listenTimeLeft = 60;
+            isListenGameRunning = true;
+            document.getElementById('btn-start-listen').classList.add('hidden');
+            document.getElementById('listen-game-area').classList.remove('hidden');
+            document.getElementById('timer-display').classList.remove('hidden');
+            document.getElementById('time-left').textContent = listenTimeLeft;
+            
+            listenTimer = setInterval(() => {
+                listenTimeLeft--;
+                document.getElementById('time-left').textContent = listenTimeLeft;
+                if(listenTimeLeft <= 0) {
+                    clearInterval(listenTimer);
+                    isListenGameRunning = false;
+                    document.getElementById('listen-feedback').innerHTML = `<span class="text-red-500">Hết giờ! Điểm: ${listenScore}</span>`;
+                    document.getElementById('btn-start-listen').textContent = "Chơi lại";
+                    document.getElementById('btn-start-listen').classList.remove('hidden');
+                    document.getElementById('listen-input').disabled = true;
+                }
+            }, 1000);
+
+            document.getElementById('listen-input').disabled = false;
+            nextListenQuestion();
+        }
+
+        function nextListenQuestion() {
+            const inputEl = document.getElementById('listen-input');
+            inputEl.value = "";
+            inputEl.classList.remove('shake-err', 'input-success');
+            document.getElementById('listen-feedback').textContent = "";
+            inputEl.focus();
+
+            if(listenLevel === 1 || listenLevel === 3) {
+                const randomItem = currentData[Math.floor(Math.random() * currentData.length)];
+                listenTarget = randomItem.char;
+            } else if (listenLevel === 2) {
+                const length = Math.floor(Math.random() * 2) + 3;
+                listenTarget = "";
+                for(let i=0; i<length; i++) {
+                     listenTarget += currentData[Math.floor(Math.random() * currentData.length)].char;
+                }
+            }
+            
+            setTimeout(playListenAudio, 300);
+        }
+
+        function playListenAudio() {
+            if(listenLevel === 2) {
+                let currentRate = speechRate;
+                speechRate = Math.max(0.3, currentRate - 0.5);
+                let spelledText = listenTarget.split('').join('. '); 
+                speakText(spelledText);
+                speechRate = currentRate;
+            } else {
+                speakText(listenTarget);
+            }
+        }
+
+        function spawnFloatingScore(points) {
+            const container = document.getElementById('score-anim-container');
+            const el = document.createElement('div');
+            el.className = 'floating-score';
+            el.innerHTML = `+${points}`;
+            el.style.left = `calc(50% + ${Math.random() * 40 - 20}px)`;
+            container.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function checkListenAnswer() {
+            if(listenLevel === 3 && !isListenGameRunning) return;
+            if(isProcessingAnswer) return;
+
+            const inputEl = document.getElementById('listen-input');
+            const input = inputEl.value.trim().toUpperCase();
+            if(!input) return;
+
+            const feedback = document.getElementById('listen-feedback');
+            inputEl.classList.remove('shake-err', 'input-success');
+            void inputEl.offsetWidth; 
+            
+            isProcessingAnswer = true;
+
+            if(input === listenTarget.toUpperCase()) {
+                playSfx('correct');
+                inputEl.classList.add('input-success');
+                
+                listenStreak++;
+                if (listenStreak > 10) listenMultiplier = 4;
+                else if (listenStreak > 5) listenMultiplier = 3;
+                else if (listenStreak > 2) listenMultiplier = 2;
+                
+                let pointsEarned = (listenLevel === 2 ? 30 : 10) * listenMultiplier;
+                listenScore += pointsEarned;
+                
+                document.getElementById('listen-score').textContent = listenScore;
+                document.getElementById('listen-combo').textContent = "x" + listenMultiplier;
+                spawnFloatingScore(pointsEarned);
+
+                feedback.innerHTML = `<span class="text-green-500 drop-shadow-sm"><i class="fas fa-check-circle"></i> Tuyệt vời! ${listenMultiplier > 1 ? `(Combo x${listenMultiplier})` : ''}</span>`;
+                
+                // AUTO NEXT: Đợi 0.8s để thấy feedback rồi đổi câu
+                setTimeout(() => {
+                    nextListenQuestion();
+                    isProcessingAnswer = false;
+                }, 800);
+            } else {
+                playSfx('wrong');
+                inputEl.classList.add('shake-err');
+                
+                listenStreak = 0;
+                listenMultiplier = 1;
+                document.getElementById('listen-combo').textContent = "x" + listenMultiplier;
+
+                feedback.innerHTML = `<span class="text-red-500"><i class="fas fa-times-circle"></i> Sai! Đáp án là <b>${listenTarget}</b></span>`;
+                
+                // AUTO NEXT: Đợi 1.5s nhìn đáp án rồi đổi câu
+                setTimeout(() => {
+                    nextListenQuestion();
+                    isProcessingAnswer = false;
+                }, 1500);
+            }
+        }
+
+        document.getElementById('listen-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                checkListenAnswer();
+            }
+        });
+
+        // --- SUB-TAB: SPEAKING (Web Speech API) ---
+        let recognition = null;
+        let isRecording = false;
+        let speakTargetObj = null;
+
+        if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'de-DE'; 
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 3;
+
+            recognition.onstart = function() {
+                isRecording = true;
+                const btn = document.getElementById('btn-mic');
+                btn.classList.add('recording');
+                btn.classList.remove('bg-gray-200', 'text-gray-600');
+                document.getElementById('speak-status').innerHTML = '<span class="text-primary font-bold"><i class="fas fa-circle text-xs mr-1 animate-pulse"></i> Đang nghe... Hãy nói ngay!</span>';
+                document.getElementById('speak-result').textContent = "";
+            };
+
+            recognition.onresult = function(event) {
+                const results = event.results[0];
+                let transcript = results[0].transcript.trim().toUpperCase();
+                
+                let matched = false;
+                for(let i=0; i < results.length; i++) {
+                    let text = results[i].transcript.trim().toUpperCase();
+                    let targetWord = speakTargetObj.word.toUpperCase();
+
+                    if (text === speakTargetObj.char || 
+                        text === targetWord || 
+                        text.startsWith(speakTargetObj.char) ||
+                        (currentMode === 'alphabet' && speakTargetObj.char === 'ß' && (text.includes('S') || text.includes('ESZETT'))) ||
+                        (currentMode === 'alphabet' && speakTargetObj.char === 'Ä' && text.startsWith('E')) ||
+                        (currentMode === 'alphabet' && speakTargetObj.char === 'Ö' && text.startsWith('O')) ||
+                        (currentMode === 'alphabet' && speakTargetObj.char === 'Ü' && text.startsWith('U')) ||
+                        (currentMode === 'alphabet' && speakTargetObj.char === 'J' && text.startsWith('Y'))
+                        ) {
+                        matched = true;
+                        transcript = text; 
+                        break;
+                    }
+                }
+
+                if (matched) {
+                    document.getElementById('speak-result').innerHTML = `<span class="text-green-600"><i class="fas fa-check-circle"></i> Rất tốt! Bạn đọc là: "${transcript}"</span>`;
+                } else {
+                    document.getElementById('speak-result').innerHTML = `<span class="text-red-500"><i class="fas fa-times-circle"></i> Chưa chuẩn. Máy nghe thành: "${transcript}"</span>`;
+                }
+            };
+
+            recognition.onerror = function(event) {
+                document.getElementById('speak-status').innerHTML = '<span class="text-red-500">Lỗi mic: ' + event.error + '</span>';
+                stopRecordingUI();
+            };
+
+            recognition.onend = function() {
+                stopRecordingUI();
+            };
+        } else {
+            document.getElementById('sub-speak').innerHTML = '<div class="p-8 text-center text-red-500 text-xl font-bold">Trình duyệt của bạn không hỗ trợ tính năng nhận diện giọng nói. Vui lòng sử dụng Chrome, Edge hoặc Safari bản mới.</div>';
+        }
+
+        function toggleRecording() {
+            if(!recognition) return;
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function stopRecordingUI() {
+            isRecording = false;
+            const btn = document.getElementById('btn-mic');
+            btn.classList.remove('recording');
+            btn.classList.add('bg-gray-200', 'text-gray-600');
+            if(document.getElementById('speak-status').textContent.includes('Đang nghe')) {
+                 document.getElementById('speak-status').innerHTML = 'Sẵn sàng...';
+            }
+        }
+
+        function nextSpeakTarget() {
+            speakTargetObj = currentData[Math.floor(Math.random() * currentData.length)];
+            document.getElementById('speak-target').textContent = speakTargetObj.char;
+            document.getElementById('speak-hint').textContent = `IPA: ${speakTargetObj.ipa} | Vietsub: ${speakTargetObj.viet}`;
+            document.getElementById('speak-result').textContent = "";
+            document.getElementById('speak-status').textContent = "Sẵn sàng...";
+        }
+
+        // --- SUB-TAB: TEST (Quiz) ---
+        let currentQuizAnswer = null;
+
+        function generateQuiz() {
+            document.getElementById('quiz-feedback').textContent = "";
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+
+            let shuffled = [...currentData].sort(() => 0.5 - Math.random());
+            let options = shuffled.slice(0, 4);
+            currentQuizAnswer = options[Math.floor(Math.random() * 4)];
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "py-4 text-3xl font-bold bg-gray-100 hover:bg-gray-200 border-2 border-gray-200 rounded-xl transition-colors";
+                btn.textContent = opt.char;
+                btn.onclick = () => checkQuizAnswer(opt.char, btn);
+                optionsContainer.appendChild(btn);
+            });
+
+            setTimeout(playQuizAudio, 500);
+        }
+
+        function playQuizAudio() {
+            if(currentQuizAnswer) speakText(currentQuizAnswer.char);
+        }
+
+        function checkQuizAnswer(selectedChar, btnElement) {
+            if(isProcessingAnswer) return;
+            isProcessingAnswer = true;
+
+            const btns = document.getElementById('quiz-options').querySelectorAll('button');
+            btns.forEach(b => b.disabled = true); 
+
+            if(selectedChar === currentQuizAnswer.char) {
+                playSfx('correct');
+                btnElement.classList.replace('bg-gray-100', 'bg-green-100');
+                btnElement.classList.replace('border-gray-200', 'border-green-500');
+                btnElement.classList.add('text-green-700');
+                document.getElementById('quiz-feedback').innerHTML = '<span class="text-green-500"><i class="fas fa-check"></i> Chính xác!</span>';
+                
+                // AUTO NEXT (Quiz)
+                setTimeout(() => {
+                    generateQuiz();
+                    isProcessingAnswer = false;
+                }, 1000);
+            } else {
+                playSfx('wrong');
+                btnElement.classList.replace('bg-gray-100', 'bg-red-100');
+                btnElement.classList.replace('border-gray-200', 'border-red-500');
+                document.getElementById('quiz-feedback').innerHTML = `<span class="text-red-500"><i class="fas fa-times"></i> Sai rồi, đáp án là ${currentQuizAnswer.char}</span>`;
+                
+                btns.forEach(b => {
+                    if(b.textContent === currentQuizAnswer.char) {
+                        b.classList.replace('bg-gray-100', 'bg-green-100');
+                        b.classList.replace('border-gray-200', 'border-green-500');
+                    }
+                });
+
+                // AUTO NEXT (Quiz)
+                setTimeout(() => {
+                    generateQuiz();
+                    isProcessingAnswer = false;
+                }, 2000);
+            }
+        }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            renderGrid();
+            nextListenQuestion();
+        };
+    </script>
+</body>
+</html>
