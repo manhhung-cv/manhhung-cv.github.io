@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo Giải Pháp Ẩn Tiêu Đề YouTube Iframe</title>
+  <!-- Sử dụng Tailwind CSS để có giao diện hiện đại, sang trọng -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* CSS hỗ trợ biến động cho Demo 1 */
+    :root {
+      --crop-top: -60px;
+      --crop-bottom: 60px;
+      --extra-height: 120px;
+    }
+    
+    .cropped-iframe-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border-radius: 0.75rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+    }
+
+    .cropped-iframe-container iframe {
+      position: absolute;
+      top: var(--crop-top);
+      left: 0;
+      width: 100%;
+      height: calc(100% + var(--extra-height));
+      pointer-events: none; /* Khóa tương tác chuột */
+    }
+
+    /* Đèn giả lập vùng hiển thị bị mất */
+    .guideline-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #ef4444;
+      z-index: 10;
+      display: none;
+    }
+    .guideline-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: #ef4444;
+      z-index: 10;
+      display: none;
+    }
+    .show-guidelines .guideline-top,
+    .show-guidelines .guideline-bottom {
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-red-600 rounded-lg text-white">
+          <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M23.498 6.163a3.003 3.003 0 0 0-2.11-2.108C19.515 3.514 12 3.514 12 3.514s-7.516 0-9.388.541a3.003 3.003 0 0 0-2.11 2.108C0 8.036 0 12 0 12s0 3.964.502 5.837a3.003 3.003 0 0 0 2.11 2.108C4.485 20.486 12 20.486 12 20.486s7.515 0 9.388-.541a3.003 3.003 0 0 0 2.11-2.108C24 15.964 24 12 24 12s0-3.964-.502-5.837zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight">Giải Pháp Ẩn Tiêu Đề YouTube</h1>
+          <p class="text-xs text-slate-400">Khắc phục giới hạn tham số showinfo=0 từ YouTube</p>
+        </div>
+      </div>
+      
+      <!-- Bộ chọn Video ID để test -->
+      <div class="flex items-center gap-2 bg-slate-800 p-1.5 rounded-lg border border-slate-700 w-full sm:w-auto">
+        <span class="text-xs text-slate-400 pl-2 font-medium shrink-0">Thử Video ID:</span>
+        <input type="text" id="video-id-input" value="dQw4w9WgXcQ" class="bg-slate-900 border border-slate-700 text-xs rounded px-2 py-1 w-28 text-center focus:outline-none focus:border-red-500 font-mono" placeholder="dQw4w9WgXcQ">
+        <button id="btn-update-video" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded font-medium transition-all">Áp dụng</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-8 space-y-12">
+    
+    <!-- Phần giải thích nguyên nhân -->
+    <section class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 sm:p-8">
+      <h2 class="text-2xl font-bold text-slate-100 mb-3 flex items-center gap-2">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500"></span>
+        Tại sao không thể ẩn trực tiếp?
+      </h2>
+      <p class="text-slate-300 leading-relaxed text-sm sm:text-base">
+        Kể từ tháng 9 năm 2018, YouTube đã chính thức gỡ bỏ tính năng của tham số <code class="bg-slate-800 text-red-400 px-1.5 py-0.5 rounded font-mono text-sm">showinfo=0</code>. Mục đích là để bảo vệ nhận diện thương hiệu của YouTube và đảm bảo người dùng luôn biết rõ nguồn gốc video họ đang xem. Mọi nỗ lực can thiệp bằng CSS trực tiếp vào bên trong <code class="bg-slate-800 text-red-400 px-1.5 py-0.5 rounded font-mono text-sm">iframe</code> đều thất bại do cơ chế bảo mật trình duyệt <span class="text-amber-400 font-semibold">Same-Origin Policy</span> (bất đồng tên miền).
+      </p>
+      <div class="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex gap-3 items-start">
+        <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+        <p class="text-xs text-amber-300/90 leading-relaxed">
+          <strong>Lưu ý quan trọng:</strong> Các phương pháp dưới đây đều là các mẹo (workaround) can thiệp bên ngoài lớp bọc video. Mỗi phương pháp có những đánh đổi riêng về giao diện hoặc tính tương tác. Hãy trải nghiệm thực tế dưới đây!
+        </p>
+      </div>
+    </section>
+
+    <!-- DEMO 1: CSS CROPPING -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div class="lg:col-span-7 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-xl font-bold flex items-center gap-2 text-indigo-400">
+            <span class="bg-indigo-500/10 text-indigo-400 px-2.5 py-1 rounded text-xs">Mẹo 1</span>
+            CSS Cropping (Cắt rìa hiển thị)
+          </h3>
+          <!-- Nút hiện đường căn chỉnh chỉ dẫn -->
+          <button id="toggle-guidelines" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+            Hiện đường cắt ranh giới
+          </button>
+        </div>
+
+        <!-- Khung Video Demo 1 -->
+        <div id="demo1-wrapper" class="cropped-iframe-container border border-indigo-500/30">
+          <!-- Đường line hướng dẫn minh họa -->
+          <div class="guideline-top"></div>
+          <div class="guideline-bottom"></div>
+          
+          <iframe id="iframe-demo1" src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1&controls=0&rel=0&loop=1&playlist=dQw4w9WgXcQ" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        </div>
+
+        <p class="text-xs text-slate-400 italic">
+          * Video đang được cấu hình tự phát, tắt tiếng, lặp lại và ẩn thanh điều khiển của YouTube để tăng hiệu quả tối giản.
+        </p>
+      </div>
+
+      <!-- Bảng điều khiển tương tác Demo 1 -->
+      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+        <div>
+          <h4 class="font-bold text-slate-200 text-base mb-2">Trình điều khiển trực quan</h4>
+          <p class="text-xs text-slate-400">Kéo thử các thanh trượt bên dưới để hiểu cách ẩn phần đầu video chứa Tiêu đề (Title).</p>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Khoảng cách đẩy lên trên -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Độ lệch đẩy lên trên (Top Offset):</span>
+              <span id="val-top" class="font-mono text-indigo-400 font-bold">-60px</span>
+            </div>
+            <input type="range" id="range-top" min="-120" max="0" value="-60" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            <p class="text-[11px] text-slate-500 mt-1">Đẩy iframe lên trên âm bao nhiêu px để giấu thanh tiêu đề.</p>
+          </div>
+
+          <!-- Chiều cao tăng thêm -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300">Chiều cao bù thêm (Extra Height):</span>
+              <span id="val-height" class="font-mono text-indigo-400 font-bold">120px</span>
+            </div>
+            <input type="range" id="range-height" min="0" max="240" value="120" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+            <p class="text-[11px] text-slate-500 mt-1">Phải tăng thêm chiều cao tương ứng của iframe để không bị khoảng trống đen ở đáy.</p>
+          </div>
+        </div>
+
+        <!-- Đoạn code sinh ra tương ứng -->
+        <div class="space-y-2">
+          <span class="text-xs font-semibold text-slate-300">CSS tạo ra:</span>
+          <pre class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] font-mono text-emerald-400 overflow-x-auto"><code id="code-snippet">.container {
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 16/9;
+}
+iframe {
+  position: absolute;
+  top: -60px;
+  height: calc(100% + 120px);
+}</code></pre>
+        </div>
+
+        <div class="p-3 bg-indigo-500/5 rounded-lg border border-indigo-500/10 text-xs text-indigo-300 space-y-1">
+          <p><strong>Cơ chế:</strong> <code>overflow: hidden</code> ở thẻ cha đóng vai trò như một khuôn cắt cố định tỉ lệ 16:9. Thẻ <code>iframe</code> bên trong được phóng cao lên và dịch chuyển lên trên để đưa vùng tiêu đề ra khỏi khuôn cắt này.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- DEMO 2: YOUTUBE API + CUSTOM CONTROLS -->
+    <section class="space-y-6">
+      <h3 class="text-xl font-bold flex items-center gap-2 text-emerald-400">
+        <span class="bg-emerald-500/10 text-emerald-400 px-2.5 py-1 rounded text-xs">Mẹo 2</span>
+        YouTube API + Nút Điều Khiển Custom (Không thể bấm trực tiếp vào video)
+      </h3>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+        
+        <!-- Video Container (Tương tác bị khóa hoàn toàn bằng pointer-events) -->
+        <div class="md:col-span-7 flex flex-col justify-between">
+          <div class="relative bg-black rounded-2xl overflow-hidden aspect-ratio-container shadow-2xl border border-slate-800 w-full aspect-[16/9]">
+            
+            <!-- Target Div cho YouTube API (Sẽ bị thay thế bởi Iframe) -->
+            <div id="yt-api-player" class="w-full h-full"></div>
+
+            <!-- Tấm chắn trong suốt chặn click (Ngăn YouTube kích hoạt giao diện tiêu đề) -->
+            <div class="absolute inset-0 z-10 cursor-default bg-transparent"></div>
+
+            <!-- Custom Control Bar phủ lên video dạng Glassmorphism cực đẹp -->
+            <div class="absolute bottom-4 left-4 right-4 z-20 bg-slate-950/70 backdrop-blur-md border border-slate-800/80 px-4 py-3 rounded-xl flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3">
+                <!-- Nút Play/Pause -->
+                <button id="api-play-pause" class="w-8 h-8 rounded-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 flex items-center justify-center transition-all focus:outline-none shadow-md">
+                  <!-- Play Icon -->
+                  <svg id="icon-play" class="w-4 h-4 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <!-- Pause Icon (hidden by default) -->
+                  <svg id="icon-pause" class="w-4 h-4 hidden" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                  </svg>
+                </button>
+
+                <!-- Trạng thái trạng thái -->
+                <span id="playback-status" class="text-xs text-slate-300 font-medium">Đang tải API...</span>
+              </div>
+
+              <!-- Thanh tiến trình mô phỏng (Có thể kéo thả) -->
+              <div class="flex-1 max-w-xs sm:max-w-md bg-slate-800 h-1.5 rounded-full relative cursor-pointer" id="progress-bar-container">
+                <div id="progress-bar-fill" class="bg-emerald-500 h-full rounded-full w-0 transition-all duration-100"></div>
+              </div>
+
+              <!-- Loa / Tắt tiếng -->
+              <div class="flex items-center gap-2">
+                <button id="api-mute-toggle" class="text-slate-400 hover:text-white transition">
+                  <!-- Volume up icon -->
+                  <svg id="icon-unmuted" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                  </svg>
+                  <!-- Mute icon (hidden by default) -->
+                  <svg id="icon-muted" class="w-5 h-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zm14.828-9.9a9 9 0 010 12.728M5.586 15"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <p class="text-xs text-slate-400 mt-2 italic">
+            * Nhấp chuột vào khu vực video sẽ hoàn toàn không phản hồi gì (do tấm chắn bảo vệ), loại bỏ khả năng làm xuất hiện tiêu đề. Điều khiển hoàn toàn thông qua thanh công cụ custom ở dưới.
+          </p>
+        </div>
+
+        <!-- Giải thích kỹ thuật -->
+        <div class="md:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between">
+          <div class="space-y-4">
+            <h4 class="font-bold text-slate-200 text-base">Giải pháp Custom Controls hoạt động thế nào?</h4>
+            <ul class="space-y-2.5 text-xs text-slate-300">
+              <li class="flex items-start gap-2">
+                <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Sử dụng <strong>YouTube Iframe Player API</strong> để khởi tạo video dưới dạng biến đối tượng Javascript.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Truyền tham số cấu hình: ẩn thanh điều khiển gốc (<code class="bg-slate-800 text-red-400 px-1 py-0.2 rounded font-mono">controls: 0</code>), tắt đề xuất (<code class="bg-slate-800 text-red-400 px-1 py-0.2 rounded font-mono">rel: 0</code>).</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Tạo một lớp màng bảo vệ bằng CSS (Overlay Div) nằm đè lên trên Iframe. Ngăn chặn bất kỳ hành vi click chuột trực tiếp nào vào video làm kích hoạt thanh Header của YouTube.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <svg class="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                <span>Xây dựng thanh điều khiển hoàn toàn mới bằng HTML/JS gọi đến các hàm điều khiển API như <code class="bg-slate-800 text-emerald-400 px-1 py-0.2 rounded font-mono">player.playVideo()</code> hay <code class="bg-slate-800 text-emerald-400 px-1 py-0.2 rounded font-mono">player.mute()</code>.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-800 space-y-2">
+            <div class="text-xs text-slate-400">Trạng thái API hiện tại:</div>
+            <div class="flex items-center gap-2">
+              <span id="api-indicator" class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+              <span id="api-indicator-text" class="text-xs font-mono text-slate-300">Đang chờ khởi tạo...</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- BẢNG SO SÁNH CÁC PHƯƠNG ÁN -->
+    <section class="bg-slate-900/40 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-6">
+      <div>
+        <h3 class="text-xl font-bold text-slate-100">Bảng Đánh Giá Quyết Định</h3>
+        <p class="text-xs text-slate-400 mt-1">Nên chọn phương pháp nào tối ưu nhất cho dự án của bạn?</p>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-300 border-collapse">
+          <thead>
+            <tr class="border-b border-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider">
+              <th class="pb-3 pr-4">Phương pháp</th>
+              <th class="pb-3 px-4">Giao diện (Độ sạch)</th>
+              <th class="pb-3 px-4">Trải nghiệm tương tác</th>
+              <th class="pb-3 px-4">Đánh đổi kỹ thuật</th>
+              <th class="pb-3 pl-4 text-right">Khuyên dùng cho</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/80">
+            <tr>
+              <td class="py-4 pr-4 font-semibold text-indigo-400">1. CSS Cropping (Cắt rìa)</td>
+              <td class="py-4 px-4 text-xs">
+                <span class="text-emerald-400">Sạch 100%</span>, ẩn hoàn toàn mọi nút và tiêu đề.
+              </td>
+              <td class="py-4 px-4 text-xs text-slate-400">
+                Thường cấu hình tự chạy (autoplay) và tắt tiếng (muted), người dùng không thể bấm trực tiếp.
+              </td>
+              <td class="py-4 px-4 text-xs text-rose-400">
+                Mất đi khoảng 5-10% chi tiết rìa trên và dưới của khung hình video (bị zoom nhẹ).
+              </td>
+              <td class="py-4 pl-4 text-right text-xs font-medium">
+                Video nền (Background video), Hero Section, Intro.
+              </td>
+            </tr>
+            <tr>
+              <td class="py-4 pr-4 font-semibold text-emerald-400">2. YouTube API + Custom Controls</td>
+              <td class="py-4 px-4 text-xs">
+                <span class="text-emerald-400">Rất sạch</span>, nút tùy chỉnh theo đúng nhận diện thương hiệu của bạn.
+              </td>
+              <td class="py-4 px-4 text-xs text-emerald-400">
+                Tương tác tuyệt vời. Người dùng kiểm soát play/pause, tắt tiếng hoàn toàn bằng nút của bạn.
+              </td>
+              <td class="py-4 px-4 text-xs text-amber-400">
+                Cần viết thêm code Javascript điều khiển API. Đôi khi tốn một vài giây để load thư viện API từ xa.
+              </td>
+              <td class="py-4 pl-4 text-right text-xs font-medium">
+                Trang giới thiệu sản phẩm chính, Khóa học, Landing page bán hàng.
+              </td>
+            </tr>
+            <tr>
+              <td class="py-4 pr-4 font-semibold text-amber-400">3. Tự Host Video (HTML5 / Plyr)</td>
+              <td class="py-4 px-4 text-xs">
+                <span class="text-emerald-400">Sạch tuyệt đối</span>, hoàn toàn không có logo bên thứ ba.
+              </td>
+              <td class="py-4 px-4 text-xs">
+                Kiểm soát 100% các nút chức năng, giao diện và cả phụ đề độc lập.
+              </td>
+              <td class="py-4 px-4 text-xs text-rose-400">
+                Tốn băng thông máy chủ của bạn để truyền tải video. Cần nén video tốt để tránh tải chậm.
+              </td>
+              <td class="py-4 pl-4 text-right text-xs font-medium">
+                Sản phẩm cao cấp tối giản, Dự án doanh nghiệp lớn cần bảo mật video.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950/80 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 space-y-2">
+      <p>Trang web mô phỏng xây dựng bởi AI. Mã nguồn HTML/CSS/JS tương thích trên mọi thiết bị di động.</p>
+      <p class="text-slate-600">Lưu ý: Chất lượng phát của API phụ thuộc vào đường truyền tới máy chủ của YouTube.</p>
+    </div>
+  </footer>
+
+  <!-- NHÚNG YOUTUBE PLAYER API -->
+  <script>
+    // --- KHAI BÁO CÁC BIẾN TOÀN CỤC ---
+    let player;
+    let progressInterval;
+    let currentVideoId = 'dQw4w9WgXcQ'; // ID Video mẫu mặc định
+
+    // --- CẤU HÌNH PHƯƠNG PHÁP 1: CSS CROPPING ---
+    const rangeTop = document.getElementById('range-top');
+    const rangeHeight = document.getElementById('range-height');
+    const valTop = document.getElementById('val-top');
+    const valHeight = document.getElementById('val-height');
+    const codeSnippet = document.getElementById('code-snippet');
+    const demo1Wrapper = document.getElementById('demo1-wrapper');
+    const toggleGuidelinesBtn = document.getElementById('toggle-guidelines');
+
+    function updateCropStyles() {
+      const topVal = rangeTop.value;
+      const heightVal = rangeHeight.value;
+
+      // Cập nhật biến CSS động trên root hoặc phần tử wrapper
+      document.documentElement.style.setProperty('--crop-top', `${topVal}px`);
+      document.documentElement.style.setProperty('--extra-height', `${heightVal}px`);
+
+      // Cập nhật số hiển thị trực tiếp
+      valTop.textContent = `${topVal}px`;
+      valHeight.textContent = `${heightVal}px`;
+
+      // Cập nhật đoạn code mẫu
+      codeSnippet.innerHTML = `.container {
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 16/9;
+}
+iframe {
+  position: absolute;
+  top: ${topVal}px;
+  height: calc(100% + ${heightVal}px);
+  width: 100%;
+}`;
+    }
+
+    rangeTop.addEventListener('input', updateCropStyles);
+    rangeHeight.addEventListener('input', updateCropStyles);
+
+    // Bật/tắt đường ranh giới cắt
+    toggleGuidelinesBtn.addEventListener('click', () => {
+      demo1Wrapper.classList.toggle('show-guidelines');
+      if (demo1Wrapper.classList.contains('show-guidelines')) {
+        toggleGuidelinesBtn.classList.add('bg-red-950/30', 'text-red-400', 'border-red-800');
+        toggleGuidelinesBtn.innerHTML = `
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+          </svg>
+          Ẩn đường cắt ranh giới
+        `;
+      } else {
+        toggleGuidelinesBtn.classList.remove('bg-red-950/30', 'text-red-400', 'border-red-800');
+        toggleGuidelinesBtn.innerHTML = `
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          Hiện đường cắt ranh giới
+        `;
+      }
+    });
+
+
+    // --- CẤU HÌNH PHƯƠNG PHÁP 2: YOUTUBE API ---
+    // Nạp thư viện API động từ xa
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    // Hàm gọi tự động khi API YouTube tải xong hoàn toàn
+    function onYouTubeIframeAPIReady() {
+      // Cập nhật trạng thái chỉ báo
+      const indicator = document.getElementById('api-indicator');
+      const indicatorText = document.getElementById('api-indicator-text');
+      if (indicator) {
+        indicator.classList.remove('bg-red-500');
+        indicator.classList.add('bg-emerald-500');
+        indicatorText.textContent = 'API Đã Sẵn Sàng!';
+      }
+
+      initPlayer(currentVideoId);
+    }
+
+    function initPlayer(videoId) {
+      if (player) {
+        player.destroy(); // Hủy player cũ nếu có
+      }
+
+      player = new YT.Player('yt-api-player', {
+        height: '100%',
+        width: '100%',
+        videoId: videoId,
+        playerVars: {
+          'autoplay': 1,
+          'controls': 0,      // Ẩn thanh điều khiển mặc định
+          'disablekb': 1,      // Tắt tương tác phím tắt
+          'fs': 0,             // Tắt nút toàn màn hình mặc định
+          'modestbranding': 1, // Tối giản hóa nhận diện thương hiệu
+          'rel': 0,            // Tắt hiện video đề xuất liên quan
+          'showinfo': 0,       // Khai báo thêm đề phòng trình duyệt cũ
+          'iv_load_policy': 3, // Tắt chú thích trên video
+          'mute': 1            // Cần tự động tắt tiếng để tự động phát mượt mà
+        },
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+
+    // Khi Player đã tải video xong và sẵn sàng
+    function onPlayerReady(event) {
+      document.getElementById('playback-status').textContent = 'Sẵn Sàng Phát (Tắt Tiếng)';
+      // Tự động phát
+      event.target.playVideo();
+      startProgressBarUpdate();
+    }
+
+    // Khi Trạng thái của Player thay đổi (Play, Pause, Buffering...)
+    function onPlayerStateChange(event) {
+      const btnPlayPause = document.getElementById('api-play-pause');
+      const iconPlay = document.getElementById('icon-play');
+      const iconPause = document.getElementById('icon-pause');
+      const statusText = document.getElementById('playback-status');
+
+      switch (event.data) {
+        case YT.PlayerState.PLAYING:
+          iconPlay.classList.add('hidden');
+          iconPause.classList.remove('hidden');
+          statusText.textContent = 'Đang phát...';
+          startProgressBarUpdate();
+          break;
+        case YT.PlayerState.PAUSED:
+          iconPlay.classList.remove('hidden');
+          iconPause.classList.add('hidden');
+          statusText.textContent = 'Đã tạm dừng';
+          clearInterval(progressInterval);
+          break;
+        case YT.PlayerState.BUFFERING:
+          statusText.textContent = 'Đang tải dữ liệu...';
+          break;
+        case YT.PlayerState.ENDED:
+          iconPlay.classList.remove('hidden');
+          iconPause.classList.add('hidden');
+          statusText.textContent = 'Đã phát hết';
+          clearInterval(progressInterval);
+          break;
+      }
+    }
+
+    // Khởi động vòng lặp cập nhật thanh tiến trình mô phỏng
+    function startProgressBarUpdate() {
+      clearInterval(progressInterval);
+      progressInterval = setInterval(() => {
+        if (player && player.getDuration) {
+          const duration = player.getDuration();
+          const currentTime = player.getCurrentTime();
+          if (duration > 0) {
+            const pct = (currentTime / duration) * 100;
+            document.getElementById('progress-bar-fill').style.width = pct + '%';
+          }
+        }
+      }, 500);
+    }
+
+    // --- XỬ LÝ SỰ KIỆN TRÊN THANH ĐIỀU KHIỂN CUSTOM ---
+
+    // Nút Play/Pause
+    document.getElementById('api-play-pause').addEventListener('click', () => {
+      if (!player) return;
+      const state = player.getPlayerState();
+      if (state === YT.PlayerState.PLAYING) {
+        player.pauseVideo();
+      } else {
+        player.playVideo();
+      }
+    });
+
+    // Nút Mute / Unmute
+    const muteBtn = document.getElementById('api-mute-toggle');
+    const iconUnmuted = document.getElementById('icon-unmuted');
+    const iconMuted = document.getElementById('icon-muted');
+
+    muteBtn.addEventListener('click', () => {
+      if (!player) return;
+      if (player.isMuted()) {
+        player.unMute();
+        iconUnmuted.classList.remove('hidden');
+        iconMuted.classList.add('hidden');
+        document.getElementById('playback-status').textContent = 'Đã bật âm thanh';
+      } else {
+        player.mute();
+        iconUnmuted.classList.add('hidden');
+        iconMuted.classList.remove('hidden');
+        document.getElementById('playback-status').textContent = 'Đã tắt tiếng';
+      }
+    });
+
+    // Tua video khi click vào thanh tiến trình
+    const progressContainer = document.getElementById('progress-bar-container');
+    progressContainer.addEventListener('click', (e) => {
+      if (!player || !player.getDuration) return;
+      
+      const rect = progressContainer.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const width = rect.width;
+      const clickPct = clickX / width;
+      
+      const duration = player.getDuration();
+      if (duration > 0) {
+        const targetTime = duration * clickPct;
+        player.seekTo(targetTime, true);
+        document.getElementById('progress-bar-fill').style.width = (clickPct * 100) + '%';
+      }
+    });
+
+
+    // --- HÀM CẬP NHẬT VIDEO KHÁC KHI USER NHẬP ID ---
+    const btnUpdateVideo = document.getElementById('btn-update-video');
+    const videoIdInput = document.getElementById('video-id-input');
+
+    btnUpdateVideo.addEventListener('click', () => {
+      let inputVal = videoIdInput.value.trim();
+      
+      // Xử lý nếu người dùng dán cả URL
+      if (inputVal.includes('youtube.com') || inputVal.includes('youtu.be')) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = inputVal.match(regExp);
+        if (match && match[2].length === 11) {
+          inputVal = match[2];
+        } else {
+          alert('Không tìm thấy Video ID hợp lý từ liên kết bạn dán. Vui lòng kiểm tra lại!');
+          return;
+        }
+      }
+
+      if (inputVal.length !== 11) {
+        // Thay vì alert thô sơ, ta cập nhật trực tiếp dòng trạng thái
+        document.getElementById('playback-status').textContent = 'Video ID phải có 11 ký tự!';
+        return;
+      }
+
+      currentVideoId = inputVal;
+      videoIdInput.value = inputVal;
+
+      // Cập nhật cả 2 Demo
+      
+      // 1. Cập nhật Demo 1 Iframe
+      const iframeDemo1 = document.getElementById('iframe-demo1');
+      iframeDemo1.src = `https://www.youtube.com/embed/${currentVideoId}?autoplay=1&mute=1&controls=0&rel=0&loop=1&playlist=${currentVideoId}`;
+
+      // 2. Cập nhật Demo 2 API
+      if (typeof YT !== 'undefined' && YT.Player) {
+        document.getElementById('playback-status').textContent = 'Đang nạp video mới...';
+        initPlayer(currentVideoId);
+      }
+    });
+
+  </script>
+</body>
+</html>
