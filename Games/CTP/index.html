@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cờ Tỷ Phú Muliplayer V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Tùy chỉnh thanh cuộn */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+        /* --- CSS BÀN CỜ RESPONSIVE VỚI CONTAINER QUERIES --- */
+        .board-wrapper {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            /* Container query giúp các thành phần con tự scale theo chiều rộng khối này */
+            container-type: inline-size;
+        }
+
+        .monopoly-board {
+            display: grid;
+            grid-template-columns: 1.6fr repeat(9, 1fr) 1.6fr;
+            grid-template-rows: 1.6fr repeat(9, 1fr) 1.6fr;
+            gap: clamp(1px, 0.2cqw, 2px);
+            background-color: #1e293b;
+            border: clamp(3px, 1cqw, 8px) solid #0f172a;
+            border-radius: clamp(6px, 2cqw, 16px);
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        
+        .board-center {
+            grid-column: 2 / 11;
+            grid-row: 2 / 11;
+            background: radial-gradient(circle, #f8fafc 0%, #e2e8f0 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: clamp(3px, 1cqw, 8px);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .space {
+            background-color: #f8fafc;
+            display: flex;
+            position: relative;
+            text-align: center;
+            overflow: hidden;
+            color: #0f172a;
+        }
+
+        .space-name {
+            font-weight: 900;
+            text-transform: uppercase;
+            line-height: 1.1;
+            padding: 0 1px;
+            text-align: center;
+            font-size: 1.7cqw; /* Tự scale theo width bàn cờ */
+        }
+
+        .space-price {
+            font-family: monospace;
+            font-weight: bold;
+            color: #334155;
+            font-size: 1.4cqw;
+        }
+
+        .space-icon {
+            font-size: 2.8cqw;
+            margin: 0.5cqw 0;
+            filter: drop-shadow(0 1px 1px rgba(0,0,0,0.1));
+        }
+
+        /* Góc bàn cờ */
+        .corner-name { font-size: 2cqw; }
+        .corner-icon { font-size: 5cqw; margin-top: 1cqw; }
+
+        /* Vị trí người chơi */
+        .tokens-container {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-content: center;
+            gap: 2px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .player-token {
+            width: 3cqw;
+            height: 3cqw;
+            border-radius: 50%;
+            border: clamp(1px, 0.3cqw, 2px) solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Thanh sở hữu */
+        .owner-bar { position: absolute; z-index: 5; box-shadow: 0 0 4px rgba(0,0,0,0.3); }
+        .owner-bottom { bottom: 0; left: 0; width: 100%; height: 1.2cqw; }
+        .owner-top { top: 0; left: 0; width: 100%; height: 1.2cqw; }
+        .owner-left { left: 0; top: 0; width: 1.2cqw; height: 100%; }
+        .owner-right { right: 0; top: 0; width: 1.2cqw; height: 100%; }
+
+        /* Cho các mặt xoay trái phải */
+        .w-side-text { width: 16cqw; }
+
+        .bg-pattern {
+            background-color: #0f172a;
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        @keyframes roll {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+        .rolling { animation: roll 0.5s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans h-screen flex flex-col overflow-hidden selection:bg-blue-500 selection:text-white">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-opacity duration-300">
+        <div class="p-6 bg-slate-800 rounded-2xl shadow-2xl flex flex-col items-center border border-slate-700">
+            <i class="fas fa-sack-dollar text-5xl text-yellow-500 mb-4 animate-bounce"></i>
+            <h2 class="text-xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent">Đang kết nối vào phòng...</h2>
+        </div>
+    </div>
+
+    <!-- Header (Scoreboard thống kê trực tiếp) -->
+    <header class="bg-slate-900 border-b border-slate-700 flex flex-col shadow-md z-20 pb-2">
+        <div class="flex items-center justify-between px-3 sm:px-4 py-2 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-dice text-yellow-500 text-xl drop-shadow"></i>
+                <h1 class="font-black text-sm sm:text-base tracking-widest uppercase text-slate-200">Cờ Tỷ Phú</h1>
+            </div>
+            <button id="btn-reset" class="text-slate-500 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-800" title="Khởi tạo lại phòng">
+                <i class="fas fa-rotate-right"></i>
+            </button>
+        </div>
+        
+        <!-- Player Stats (Tiền & Bất Động Sản) -->
+        <div id="header-players" class="flex items-center justify-center gap-2 px-2 pt-2 flex-wrap min-h-[40px]">
+            <!-- Sẽ được tiêm qua JS -->
+            <div class="text-xs text-slate-500 font-bold">Đang tải người chơi...</div>
+        </div>
+    </header>
+
+    <!-- Main Content: Bàn Cờ Toàn Màn Hình -->
+    <main class="flex-1 overflow-hidden relative bg-slate-900">
+        
+        <!-- Bàn Cờ (Có padding-bottom để tránh bị che bởi nút Action) -->
+        <div class="w-full h-full p-2 sm:p-4 pb-48 lg:pb-32 bg-pattern flex items-start lg:items-center justify-center overflow-auto custom-scrollbar relative z-10">
+            <div class="board-wrapper">
+                <div id="board" class="monopoly-board">
+                    <!-- Javascript sẽ tiêm các ô cờ vào đây -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Action Overlay (Cố định ở dưới cùng, đè lên bàn cờ) -->
+        <div class="fixed bottom-4 sm:bottom-6 left-1/2 transform -translate-x-1/2 z-40 w-[92%] max-w-md pointer-events-none flex flex-col items-center gap-2">
+            
+            <!-- Latest Action Log -->
+            <div id="latest-log" class="pointer-events-auto max-w-full text-xs text-yellow-400 font-semibold bg-slate-900/90 border border-slate-700 px-4 py-1.5 rounded-full backdrop-blur-sm shadow-lg hidden truncate">
+                <!-- Log tiêm qua JS -->
+            </div>
+
+            <!-- Nút điều khiển -->
+            <div class="pointer-events-auto w-full bg-slate-800/95 backdrop-blur-md p-3 sm:p-4 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] border border-slate-600 flex flex-col gap-2 transition-all">
+                
+                <div id="turn-indicator" class="text-center font-bold text-sm sm:text-base py-1.5 rounded-lg transition-colors duration-300">
+                    Đang chờ hệ thống...
+                </div>
+
+                <div id="join-section" class="hidden w-full">
+                    <button id="btn-join" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 text-white font-black uppercase tracking-wider py-3 px-4 rounded-xl shadow-lg transform active:scale-95 transition-all">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Tham Gia Chơi
+                    </button>
+                </div>
+
+                <div id="action-buttons" class="grid grid-cols-2 gap-2 hidden w-full">
+                    <button id="btn-roll" class="col-span-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 text-white font-black uppercase tracking-wider py-3.5 sm:py-4 px-4 rounded-xl shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2 text-base sm:text-lg">
+                        <i class="fas fa-dice text-xl"></i> Lắc Xúc Xắc
+                    </button>
+                    
+                    <button id="btn-buy" class="hidden bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold py-3 px-2 rounded-xl shadow-lg transform active:scale-95">
+                        Mua Đất
+                    </button>
+                    <button id="btn-end-turn" class="hidden bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold py-3 px-2 rounded-xl shadow-lg transform active:scale-95">
+                        Bỏ qua
+                    </button>
+                </div>
+                <div id="pending-action-text" class="text-center text-yellow-400 text-xs mt-1 hidden font-bold animate-pulse">
+                    Đang đứng trên đất trống. Mua không?
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-monopoly-app';
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPNfagT0sb7JxbgIEiJxCG9dABOahvWjA",
+            authDomain: "masoi-hunq.firebaseapp.com",
+            projectId: "masoi-hunq",
+            storageBucket: "masoi-hunq.firebasestorage.app",
+            messagingSenderId: "925639662907",
+            appId: "1:925639662907:web:c67ff0b838aa53ac16ab1e"
+        };
+        const COLORS = ["#ef4444", "#3b82f6", "#10b981", "#f59e0b"];
+        const START_MONEY = 15000;
+        const ROOM_ID = 'main_room_1';
+
+        const SPACES = [
+            { id: 0, name: "BẮT ĐẦU", type: "go", text: "NHẬN $2000", icon: "fa-arrow-left text-red-600" },
+            { id: 1, name: "Đ. Láng", type: "property", group: "brown", price: 600, rent: 20 },
+            { id: 2, name: "Khí vận", type: "chance", icon: "fa-question text-yellow-500" },
+            { id: 3, name: "Đ. Nguyễn Trãi", type: "property", group: "brown", price: 600, rent: 40 },
+            { id: 4, name: "Thuế TN", type: "tax", amount: 200, icon: "fa-file-invoice-dollar text-slate-400" },
+            { id: 5, name: "Bến xe Nam", type: "station", price: 2000, rent: 250, icon: "fa-bus text-slate-700" },
+            { id: 6, name: "Đ. Giảng Võ", type: "property", group: "lightblue", price: 1000, rent: 60 },
+            { id: 7, name: "Cơ hội", type: "chest", icon: "fa-gem text-blue-400" },
+            { id: 8, name: "Đ. Cát Linh", type: "property", group: "lightblue", price: 1000, rent: 60 },
+            { id: 9, name: "T.Đ Thắng", type: "property", group: "lightblue", price: 1200, rent: 80 },
+            { id: 10, name: "THĂM TÙ", type: "jail", icon: "fa-bars text-slate-800" },
+            { id: 11, name: "H.B.Trưng", type: "property", group: "pink", price: 1400, rent: 100 },
+            { id: 12, name: "Điện Lực", type: "utility", price: 1500, rent: 100, icon: "fa-lightbulb text-yellow-500" },
+            { id: 13, name: "L.T.Kiệt", type: "property", group: "pink", price: 1400, rent: 100 },
+            { id: 14, name: "T.H.Đạo", type: "property", group: "pink", price: 1600, rent: 120 },
+            { id: 15, name: "Bến xe Bắc", type: "station", price: 2000, rent: 250, icon: "fa-bus text-slate-700" },
+            { id: 16, name: "Đ.B.Phủ", type: "property", group: "orange", price: 1800, rent: 140 },
+            { id: 17, name: "Khí vận", type: "chance", icon: "fa-question text-yellow-500" },
+            { id: 18, name: "Nam Kỳ", type: "property", group: "orange", price: 1800, rent: 140 },
+            { id: 19, name: "Pasteur", type: "property", group: "orange", price: 2000, rent: 160 },
+            { id: 20, name: "BÃI ĐỖ XE", type: "parking", icon: "fa-car text-red-500" },
+            { id: 21, name: "Lê Lợi", type: "property", group: "red", price: 2200, rent: 180 },
+            { id: 22, name: "Cơ hội", type: "chest", icon: "fa-gem text-blue-400" },
+            { id: 23, name: "Ng. Huệ", type: "property", group: "red", price: 2200, rent: 180 },
+            { id: 24, name: "Đồng Khởi", type: "property", group: "red", price: 2400, rent: 200 },
+            { id: 25, name: "Bến xe Đông", type: "station", price: 2000, rent: 250, icon: "fa-bus text-slate-700" },
+            { id: 26, name: "Hàm Nghi", type: "property", group: "yellow", price: 2600, rent: 220 },
+            { id: 27, name: "Tôn Thất Đạm", type: "property", group: "yellow", price: 2600, rent: 220 },
+            { id: 28, name: "Cấp Nước", type: "utility", price: 1500, rent: 100, icon: "fa-faucet-drip text-blue-500" },
+            { id: 29, name: "T.Đ.Thắng", type: "property", group: "yellow", price: 2800, rent: 240 },
+            { id: 30, name: "VÀO TÙ", type: "gotojail", icon: "fa-gavel text-slate-800" },
+            { id: 31, name: "Lê Duẩn", type: "property", group: "green", price: 3000, rent: 260 },
+            { id: 32, name: "N.T.M.Khai", type: "property", group: "green", price: 3000, rent: 260 },
+            { id: 33, name: "Khí vận", type: "chance", icon: "fa-question text-yellow-500" },
+            { id: 34, name: "Đ.T.Hoàng", type: "property", group: "green", price: 3200, rent: 280 },
+            { id: 35, name: "Bến xe Tây", type: "station", price: 2000, rent: 250, icon: "fa-bus text-slate-700" },
+            { id: 36, name: "Cơ hội", type: "chest", icon: "fa-gem text-blue-400" },
+            { id: 37, name: "N.Đ.Chiểu", type: "property", group: "blue", price: 3500, rent: 350 },
+            { id: 38, name: "Thuế VIP", type: "tax", amount: 1000, icon: "fa-gem text-slate-400" },
+            { id: 39, name: "Ng. Văn Cừ", type: "property", group: "blue", price: 4000, rent: 500 }
+        ];
+
+        const GROUP_COLORS = {
+            "brown": "#8b4513", "lightblue": "#87ceeb", "pink": "#ff69b4", "orange": "#ffa500",
+            "red": "#ef4444", "yellow": "#facc15", "green": "#22c55e", "blue": "#3b82f6"
+        };
+        const DICE_ICONS = ["fa-dice-one", "fa-dice-two", "fa-dice-three", "fa-dice-four", "fa-dice-five", "fa-dice-six"];
+
+        if (!firebaseConfig) {
+            document.body.innerHTML = '<div class="p-10 text-white font-bold text-center mt-20">Lỗi: Không tìm thấy Firebase Config!</div>';
+            throw new Error("Missing Firebase config");
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let gameState = null;
+        let unsubscribeSnap = null;
+        let isRollingAnim = false;
+
+        const boardEl = document.getElementById('board');
+        const overlayEl = document.getElementById('loading-overlay');
+        const headerPlayersEl = document.getElementById('header-players');
+        const latestLogEl = document.getElementById('latest-log');
+        const joinSection = document.getElementById('join-section');
+        const btnJoin = document.getElementById('btn-join');
+        const turnIndicator = document.getElementById('turn-indicator');
+        const actionButtons = document.getElementById('action-buttons');
+        const btnRoll = document.getElementById('btn-roll');
+        const btnBuy = document.getElementById('btn-buy');
+        const btnEndTurn = document.getElementById('btn-end-turn');
+        const pendingActionText = document.getElementById('pending-action-text');
+        let die1El;
+        let die2El;
+        const btnReset = document.getElementById('btn-reset');
+
+        function getGridPosition(id) {
+            if (id === 0) return { col: 11, row: 11 };
+            if (id >= 1 && id <= 9) return { col: 11 - id, row: 11 };
+            if (id === 10) return { col: 1, row: 11 };
+            if (id >= 11 && id <= 19) return { col: 1, row: 11 - (id - 10) };
+            if (id === 20) return { col: 1, row: 1 };
+            if (id >= 21 && id <= 29) return { col: 1 + (id - 20), row: 1 };
+            if (id === 30) return { col: 11, row: 1 };
+            if (id >= 31 && id <= 39) return { col: 11, row: 1 + (id - 30) };
+            return { col: 1, row: 1 };
+        }
+
+        function buildBoardUI() {
+            boardEl.innerHTML = `
+                <div class="board-center">
+                    <i class="fas fa-sack-dollar text-yellow-500 drop-shadow-lg" style="font-size: 8cqw; margin-bottom: 1cqw;"></i>
+                    <h2 class="font-black uppercase tracking-widest text-slate-800 drop-shadow-md transform -skew-x-12" style="font-size: 5cqw; line-height: 1;">
+                        Cờ Tỷ Phú
+                    </h2>
+                    
+                    <div id="dice-display" class="flex gap-4 bg-white border-2 border-slate-200 rounded-xl shadow-xl transition-all" style="padding: 2cqw; margin-top: 4cqw;">
+                        <i class="fas fa-dice-one text-red-500 drop-shadow" id="die1" style="font-size: 6cqw;"></i>
+                        <i class="fas fa-dice-one text-blue-500 drop-shadow" id="die2" style="font-size: 6cqw;"></i>
+                    </div>
+                </div>
+            `;
+
+            die1El = document.getElementById('die1');
+            die2El = document.getElementById('die2');
+
+            SPACES.forEach(space => {
+                const pos = getGridPosition(space.id);
+                const spaceDiv = document.createElement('div');
+                spaceDiv.style.gridColumn = pos.col;
+                spaceDiv.style.gridRow = pos.row;
+                spaceDiv.id = `space-${space.id}`;
+
+                let isCorner = [0, 10, 20, 30].includes(space.id);
+                let side = 'bottom';
+                if (space.id > 10 && space.id < 20) side = 'left';
+                if (space.id > 20 && space.id < 30) side = 'top';
+                if (space.id > 30 && space.id < 40) side = 'right';
+                if (isCorner) side = 'corner';
+
+                spaceDiv.className = `space ${isCorner ? 'rounded-md' : 'rounded-sm'} border border-slate-300`;
+
+                let html = ``;
+                const iconHtml = space.icon ? `<i class="fas ${space.icon} space-icon"></i>` : '';
+                const priceHtml = space.price ? `<div class="space-price">$${space.price}</div>` : (space.text && !isCorner ? `<div class="space-price">${space.text}</div>` : '');
+                const color = space.group ? GROUP_COLORS[space.group] : 'transparent';
+
+                if (isCorner) {
+                    let rotation = '';
+                    if(space.id === 10) rotation = 'rotate-90';
+                    if(space.id === 20) rotation = 'rotate-180';
+                    if(space.id === 30) rotation = '-rotate-90';
+                    
+                    html += `
+                        <div class="flex flex-col items-center justify-center w-full h-full bg-slate-200 ${rotation}">
+                            <div class="space-name corner-name">${space.name}</div>
+                            ${space.icon ? `<i class="fas ${space.icon} corner-icon drop-shadow-sm"></i>` : ''}
+                        </div>
+                        <div class="tokens-container" id="tokens-${space.id}"></div>
+                    `;
+                } else {
+                    if (side === 'bottom') {
+                        spaceDiv.classList.add('flex-col');
+                        html += `
+                            ${space.group ? `<div class="w-full border-b border-slate-800" style="background-color: ${color}; height: 20%; min-height: 4px;"></div>` : ''}
+                            <div class="flex-1 flex flex-col items-center justify-start w-full pt-1">
+                                <div class="space-name">${space.name}</div>
+                                ${iconHtml} ${priceHtml}
+                            </div>
+                            <div class="owner-bar owner-bottom hidden" id="owner-${space.id}"></div>
+                        `;
+                    } 
+                    else if (side === 'top') {
+                        spaceDiv.classList.add('flex-col-reverse');
+                        html += `
+                            ${space.group ? `<div class="w-full border-t border-slate-800" style="background-color: ${color}; height: 20%; min-height: 4px;"></div>` : ''}
+                            <div class="flex-1 flex flex-col items-center justify-start w-full pb-1 rotate-180">
+                                <div class="space-name">${space.name}</div>
+                                ${iconHtml} ${priceHtml}
+                            </div>
+                            <div class="owner-bar owner-top hidden" id="owner-${space.id}"></div>
+                        `;
+                    }
+                    else if (side === 'left') {
+                        spaceDiv.classList.add('flex-row-reverse');
+                        html += `
+                            ${space.group ? `<div class="h-full border-l border-slate-800" style="background-color: ${color}; width: 20%; min-width: 4px;"></div>` : ''}
+                            <div class="flex-1 flex items-center justify-center h-full relative">
+                                <div class="absolute flex flex-col items-center justify-center -rotate-90 w-side-text">
+                                    <div class="space-name">${space.name}</div>
+                                    ${iconHtml} ${priceHtml}
+                                </div>
+                            </div>
+                            <div class="owner-bar owner-left hidden" id="owner-${space.id}"></div>
+                        `;
+                    }
+                    else if (side === 'right') {
+                        spaceDiv.classList.add('flex-row');
+                        html += `
+                            ${space.group ? `<div class="h-full border-r border-slate-800" style="background-color: ${color}; width: 20%; min-width: 4px;"></div>` : ''}
+                            <div class="flex-1 flex items-center justify-center h-full relative">
+                                <div class="absolute flex flex-col items-center justify-center rotate-90 w-side-text">
+                                    <div class="space-name">${space.name}</div>
+                                    ${iconHtml} ${priceHtml}
+                                </div>
+                            </div>
+                            <div class="owner-bar owner-right hidden" id="owner-${space.id}"></div>
+                        `;
+                    }
+                    html += `<div class="tokens-container" id="tokens-${space.id}"></div>`;
+                }
+
+                spaceDiv.innerHTML = html;
+                boardEl.appendChild(spaceDiv);
+            });
+        }
+
+        const getDocRef = () => doc(db, 'artifacts', appId, 'public', 'data', 'monopoly', ROOM_ID);
+
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth error:", err);
+            }
+        }
+
+        async function initializeRoomData() {
+            const docRef = getDocRef();
+            const snap = await getDoc(docRef);
+            if (!snap.exists()) {
+                await setDoc(docRef, {
+                    players: {}, turnOrder: [], currentTurnIndex: 0, properties: {},
+                    logs: ["Phòng mới đã được tạo thành công."], state: "waiting", 
+                    actionPending: null, dice: [1, 1], lastActionAt: Date.now()
+                });
+            }
+        }
+
+        function addLog(message, currentLogs = []) {
+            let logs = [...currentLogs, message];
+            if (logs.length > 50) logs = logs.slice(logs.length - 50);
+            return logs;
+        }
+
+        async function joinGame() {
+            if (!currentUser || !gameState) return;
+            const uid = currentUser.uid;
+            if (gameState.players && gameState.players[uid]) return; 
+            if (gameState.turnOrder && gameState.turnOrder.length >= 4) {
+                alert("Phòng đã đầy (tối đa 4 người)!"); return;
+            }
+
+            const playerCount = gameState.turnOrder ? gameState.turnOrder.length : 0;
+            const newPlayer = {
+                name: `Tỷ phú ${playerCount + 1}`,
+                color: COLORS[playerCount % COLORS.length],
+                position: 0, money: START_MONEY, inJail: false
+            };
+
+            const updatedPlayers = { ...gameState.players, [uid]: newPlayer };
+            const updatedTurnOrder = [...(gameState.turnOrder || []), uid];
+            const stateUpdate = {
+                players: updatedPlayers, turnOrder: updatedTurnOrder,
+                logs: addLog(`🎉 ${newPlayer.name} đã tham gia bàn cờ.`, gameState.logs)
+            };
+
+            if (updatedTurnOrder.length >= 2 && gameState.state === "waiting") {
+                stateUpdate.state = "playing";
+                stateUpdate.logs = addLog(`🚀 Trò chơi bắt đầu! Lượt của ${updatedPlayers[updatedTurnOrder[0]].name}.`, stateUpdate.logs);
+            }
+            await updateDoc(getDocRef(), stateUpdate);
+        }
+
+        async function resetGame() {
+            await setDoc(getDocRef(), {
+                players: {}, turnOrder: [], currentTurnIndex: 0, properties: {},
+                logs: ["🔄 Bàn cờ đã được khởi tạo lại."], state: "waiting",
+                actionPending: null, dice: [1, 1], lastActionAt: Date.now()
+            });
+        }
+
+        async function startRollDice() {
+            if (!currentUser || !gameState || gameState.state !== "playing") return;
+            const uid = currentUser.uid;
+            if (gameState.turnOrder[gameState.currentTurnIndex] !== uid) return;
+            if (gameState.actionPending) return;
+
+            isRollingAnim = true;
+            btnRoll.disabled = true;
+            die1El.classList.add('rolling');
+            die2El.classList.add('rolling');
+
+            let fakeRolls = 0;
+            const interval = setInterval(() => {
+                die1El.className = `fas ${DICE_ICONS[Math.floor(Math.random() * 6)]} text-red-500 drop-shadow rolling`;
+                die2El.className = `fas ${DICE_ICONS[Math.floor(Math.random() * 6)]} text-blue-500 drop-shadow rolling`;
+                fakeRolls++;
+                if(fakeRolls > 10) { clearInterval(interval); processActualRollAndMove(); }
+            }, 60);
+        }
+
+        async function processActualRollAndMove() {
+            const uid = currentUser.uid;
+            const die1 = Math.floor(Math.random() * 6) + 1;
+            const die2 = Math.floor(Math.random() * 6) + 1;
+            const totalRoll = die1 + die2;
+
+            const player = gameState.players[uid];
+            let newPos = player.position + totalRoll;
+            let newMoney = player.money;
+            let logs = [...(gameState.logs || [])];
+            logs = addLog(`🎲 ${player.name} đổ ${totalRoll}.`, logs);
+
+            if (newPos >= 40) {
+                newPos = newPos - 40;
+                newMoney += 200;
+                logs = addLog(`💰 ${player.name} qua Bắt Đầu, +$200.`, logs);
+            }
+
+            const landedSpace = SPACES[newPos];
+            let actionPending = null;
+            let currentTurnIndex = gameState.currentTurnIndex;
+            
+            if (['property', 'station', 'utility'].includes(landedSpace.type)) {
+                const owner = gameState.properties[landedSpace.id]?.owner;
+                if (!owner) {
+                    if (newMoney >= landedSpace.price) {
+                        actionPending = "buy_or_pass";
+                        logs = addLog(`🏠 ${player.name} đến ${landedSpace.name}.`, logs);
+                    } else {
+                        logs = addLog(`❌ ${player.name} đến ${landedSpace.name} nhưng thiếu tiền.`, logs);
+                        currentTurnIndex = (currentTurnIndex + 1) % gameState.turnOrder.length; 
+                    }
+                } else if (owner !== uid) {
+                    const rent = landedSpace.rent;
+                    newMoney -= rent;
+                    gameState.players[owner].money += rent;
+                    logs = addLog(`💸 ${player.name} nộp $${rent} cho ${gameState.players[owner].name}.`, logs);
+                    currentTurnIndex = (currentTurnIndex + 1) % gameState.turnOrder.length;
+                } else {
+                    logs = addLog(`😎 ${player.name} đi dạo trên đất nhà.`, logs);
+                    currentTurnIndex = (currentTurnIndex + 1) % gameState.turnOrder.length;
+                }
+            } else if (landedSpace.type === 'tax') {
+                newMoney -= landedSpace.amount;
+                logs = addLog(`🏛️ ${player.name} nộp thuế $${landedSpace.amount}.`, logs);
+                currentTurnIndex = (currentTurnIndex + 1) % gameState.turnOrder.length;
+            } else if (landedSpace.type === 'gotojail') {
+                newPos = 10;
+                player.inJail = true;
+                logs = addLog(`🚔 ${player.name} bị bắt VÀO TÙ!`, logs);
+                currentTurnIndex = (currentTurnIndex + 1) % gameState.turnOrder.length;
+            } else {
+                logs = addLog(`🚶 ${player.name} dừng ở ${landedSpace.name}.`, logs);
+                currentTurnIndex = (currentTurnIndex + 1) % gameState.turnOrder.length;
+            }
+
+            const updateObj = {
+                [`players.${uid}.position`]: newPos,
+                [`players.${uid}.money`]: newMoney,
+                [`players.${uid}.inJail`]: player.inJail || false,
+                dice: [die1, die2], logs: logs, actionPending: actionPending
+            };
+
+            if (!actionPending) updateObj.currentTurnIndex = currentTurnIndex;
+            if (!['tax', 'gotojail', 'chance', 'chest', 'go', 'parking', 'jail'].includes(landedSpace.type)) {
+                const owner = gameState.properties[landedSpace.id]?.owner;
+                if (owner && owner !== uid) updateObj[`players.${owner}.money`] = gameState.players[owner].money;
+            }
+
+            try { await updateDoc(getDocRef(), updateObj); } 
+            catch (err) { console.error(err); } 
+            finally { isRollingAnim = false; }
+        }
+
+        async function buyProperty() {
+            if (!currentUser || !gameState || gameState.actionPending !== "buy_or_pass") return;
+            const uid = currentUser.uid;
+            const player = gameState.players[uid];
+            const pos = player.position;
+            const space = SPACES[pos];
+
+            let newMoney = player.money - space.price;
+            let logs = addLog(`✅ ${player.name} đã mua ${space.name}.`, gameState.logs);
+
+            await updateDoc(getDocRef(), {
+                [`players.${uid}.money`]: newMoney, [`properties.${pos}`]: { owner: uid },
+                actionPending: null, currentTurnIndex: (gameState.currentTurnIndex + 1) % gameState.turnOrder.length, logs: logs
+            });
+        }
+
+        async function passTurn() {
+            if (!currentUser || !gameState) return;
+            let logs = addLog(`⏭️ ${gameState.players[currentUser.uid].name} bỏ qua mua đất.`, gameState.logs);
+            await updateDoc(getDocRef(), {
+                actionPending: null, currentTurnIndex: (gameState.currentTurnIndex + 1) % gameState.turnOrder.length, logs: logs
+            });
+        }
+
+        function updateBoardUI() {
+            if (!gameState) return;
+            document.querySelectorAll('.tokens-container').forEach(el => el.innerHTML = '');
+            document.querySelectorAll('.owner-bar').forEach(el => { el.classList.add('hidden'); el.style.backgroundColor = 'transparent'; });
+
+            if (gameState.properties) {
+                Object.keys(gameState.properties).forEach(spaceId => {
+                    const prop = gameState.properties[spaceId];
+                    if (prop.owner && gameState.players[prop.owner]) {
+                        const ownerColor = gameState.players[prop.owner].color;
+                        const ownerBar = document.getElementById(`owner-${spaceId}`);
+                        if (ownerBar) { ownerBar.style.backgroundColor = ownerColor; ownerBar.classList.remove('hidden'); }
+                    }
+                });
+            }
+
+            if (gameState.players) {
+                Object.values(gameState.players).forEach((player, index) => {
+                    const tokenCont = document.getElementById(`tokens-${player.position}`);
+                    if (tokenCont) {
+                        const dot = document.createElement('div');
+                        dot.className = 'player-token';
+                        dot.style.backgroundColor = player.color;
+                        dot.title = player.name;
+                        if(gameState.turnOrder && gameState.turnOrder[gameState.currentTurnIndex] === Object.keys(gameState.players)[index]) {
+                            dot.classList.add('animate-bounce');
+                            dot.style.boxShadow = `0 0 10px ${player.color}, 0 2px 4px rgba(0,0,0,0.6)`;
+                        }
+                        tokenCont.appendChild(dot);
+                    }
+                });
+            }
+
+            if (gameState.dice && !isRollingAnim) {
+                die1El.className = `fas ${DICE_ICONS[gameState.dice[0] - 1]} text-red-500 drop-shadow`;
+                die2El.className = `fas ${DICE_ICONS[gameState.dice[1] - 1]} text-blue-500 drop-shadow`;
+            }
+        }
+
+        function updatePanelUI() {
+            if (!gameState || !currentUser) return;
+            
+            const uid = currentUser.uid;
+            const isJoined = gameState.players && gameState.players[uid];
+            
+            // Tính số lượng BDS của từng người
+            const playerProps = {};
+            if (gameState.properties) {
+                Object.values(gameState.properties).forEach(prop => {
+                    if (prop.owner) {
+                        playerProps[prop.owner] = (playerProps[prop.owner] || 0) + 1;
+                    }
+                });
+            }
+
+            // --- CẬP NHẬT HEADER (Danh sách người chơi ngang) ---
+            if (gameState.turnOrder && gameState.turnOrder.length > 0) {
+                headerPlayersEl.innerHTML = '';
+                gameState.turnOrder.forEach((pUid, idx) => {
+                    const p = gameState.players[pUid];
+                    const isTurn = gameState.currentTurnIndex === idx;
+                    const propCount = playerProps[pUid] || 0;
+                    
+                    const el = document.createElement('div');
+                    el.className = `flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-sm transition-all ${
+                        isTurn ? 'bg-slate-700 border-yellow-400 ring-1 ring-yellow-400' : 'bg-slate-800 border-slate-600'
+                    }`;
+                    
+                    let highlightMe = pUid === uid ? '<i class="fas fa-user ml-1 text-slate-400 text-[8px]"></i>' : '';
+                    
+                    el.innerHTML = `
+                        <div class="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-white shadow" style="background-color: ${p.color}"></div>
+                        <div class="flex flex-col">
+                            <div class="font-bold text-[10px] sm:text-[11px] text-white leading-none max-w-[70px] truncate">${p.name}${highlightMe}</div>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <span class="font-mono font-bold text-[11px] sm:text-xs text-green-400 leading-none">$${p.money}</span>
+                                <span class="text-[9px] sm:text-[10px] font-bold text-slate-300 leading-none" title="Bất động sản"><i class="fas fa-home text-slate-400"></i> ${propCount}</span>
+                            </div>
+                        </div>
+                    `;
+                    headerPlayersEl.appendChild(el);
+                });
+            } else {
+                headerPlayersEl.innerHTML = '<div class="text-xs text-slate-500 font-bold">Chưa có người chơi</div>';
+            }
+
+            // --- CẬP NHẬT ACTION DOCK ---
+            if (!isJoined) {
+                joinSection.classList.remove('hidden');
+                actionButtons.classList.add('hidden');
+                if (gameState.turnOrder && gameState.turnOrder.length >= 4) {
+                    btnJoin.disabled = true;
+                    btnJoin.innerHTML = `<i class="fas fa-ban mr-2"></i> Phòng đã đầy`;
+                    btnJoin.className = "w-full bg-slate-700 text-slate-400 font-bold py-3 px-4 rounded-xl cursor-not-allowed";
+                } else { btnJoin.disabled = false; }
+            } else { joinSection.classList.add('hidden'); }
+
+            btnRoll.classList.add('hidden'); btnBuy.classList.add('hidden'); btnEndTurn.classList.add('hidden');
+            actionButtons.classList.add('hidden'); pendingActionText.classList.add('hidden');
+
+            if (gameState.state === "waiting") {
+                turnIndicator.textContent = `Chờ người tham gia (${gameState.turnOrder?.length || 0}/4)`;
+                turnIndicator.className = "text-center font-bold text-slate-400 py-1 text-sm";
+            } else if (gameState.state === "playing" && gameState.turnOrder) {
+                const currentTurnUid = gameState.turnOrder[gameState.currentTurnIndex];
+                if (currentTurnUid === uid) {
+                    turnIndicator.innerHTML = `<i class="fas fa-bolt text-yellow-400 mr-1"></i> TỚI LƯỢT BẠN!`;
+                    turnIndicator.className = "text-center font-black text-yellow-400 py-1 text-base drop-shadow-md animate-pulse";
+                    actionButtons.classList.remove('hidden');
+
+                    if (gameState.actionPending === "buy_or_pass") {
+                        btnBuy.classList.remove('hidden'); btnEndTurn.classList.remove('hidden'); pendingActionText.classList.remove('hidden');
+                    } else {
+                        btnRoll.classList.remove('hidden'); btnRoll.disabled = false;
+                    }
+                } else {
+                    turnIndicator.innerHTML = `<i class="fas fa-hourglass-half mr-1 text-slate-400"></i> Đợi ${gameState.players[currentTurnUid].name}...`;
+                    turnIndicator.className = "text-center font-semibold text-slate-300 py-1 text-sm";
+                }
+            }
+
+            // --- CẬP NHẬT LOG THÔNG BÁO MỚI NHẤT (Kiểu Toast) ---
+            if (gameState.logs && gameState.logs.length > 0) {
+                let lastLog = gameState.logs[gameState.logs.length - 1];
+                let formatted = lastLog.replace(/(\$\d+)/g, '<span class="text-green-400">$1</span>');
+                latestLogEl.innerHTML = formatted;
+                latestLogEl.classList.remove('hidden');
+            } else {
+                latestLogEl.classList.add('hidden');
+            }
+        }
+
+        async function startApp() {
+            buildBoardUI();
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUser = user;
+                    await initializeRoomData();
+                    if (unsubscribeSnap) unsubscribeSnap();
+                    unsubscribeSnap = onSnapshot(getDocRef(), (docSnap) => {
+                        if (docSnap.exists()) {
+                            gameState = docSnap.data();
+                            updateBoardUI(); updatePanelUI();
+                            overlayEl.style.opacity = '0';
+                            setTimeout(() => overlayEl.classList.add('hidden'), 300);
+                        }
+                    });
+                } else { currentUser = null; }
+            });
+            await initAuth();
+        }
+
+        btnJoin.addEventListener('click', joinGame);
+        btnRoll.addEventListener('click', startRollDice);
+        btnBuy.addEventListener('click', buyProperty);
+        btnEndTurn.addEventListener('click', passTurn);
+        btnReset.addEventListener('click', () => {
+            if(confirm("Làm mới phòng chơi? (Dữ liệu bị xoá)")) resetGame();
+        });
+
+        window.onload = startApp;
+    </script>
+</body>
+</html>

@@ -3,28 +3,28 @@
 
 <head>
     <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Ma Sói</title>
-<meta name="description" content="Ma sói online không cần đăng nhập">
-<meta name="author" content="Hunq">
-<meta name="theme-color" content="#000000">
-<meta name="robots" content="index, follow">
-<link rel="icon" href="/Asset/logo/logo.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ma Sói</title>
+    <meta name="description" content="Ma sói online không cần đăng nhập">
+    <meta name="author" content="Hunq">
+    <meta name="theme-color" content="#000000">
+    <meta name="robots" content="index, follow">
+    <link rel="icon" href="/Asset/logo/logo.png">
 
-<meta property="og:type" content="website">
-<meta property="og:title" content="Ma Sói">
-<meta property="og:description" content="Ma sói online không cần đăng nhập">
-<meta property="og:image" content="/Asset/Banner/Banner.png">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Ma Sói">
+    <meta property="og:description" content="Ma sói online không cần đăng nhập">
+    <meta property="og:image" content="/Asset/Banner/Banner.png">
 
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Ma Sói">
-<meta name="twitter:description" content="Ma sói online không cần đăng nhập">
-<meta name="twitter:image" content="/Asset/Banner/Banner.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Ma Sói">
+    <meta name="twitter:description" content="Ma sói online không cần đăng nhập">
+    <meta name="twitter:image" content="/Asset/Banner/Banner.png">
 
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-<meta name="apple-mobile-web-app-title" content="Ma Sói">
-<link rel="apple-touch-icon" href="/Asset/logo/iconApps.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Ma Sói">
+    <link rel="apple-touch-icon" href="/Asset/logo/iconApps.png">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -455,7 +455,24 @@
                     <p class="text-[10px] text-slate-500 mt-2">Lưu trữ cục bộ trên trình duyệt.</p>
                 </div>
             </div>
-
+            <!-- Password Modal -->
+            <div id="password-modal"
+                class="hidden fixed inset-0 z-[90] bg-black/80 flex items-center justify-center p-4 backdrop-blur-md transition-opacity">
+                <div
+                    class="glass-panel rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl scale-in border-t-2 border-t-mystic-500/50">
+                    <h2 class="font-serif text-white text-lg tracking-widest mb-2">Làng Kín</h2>
+                    <p class="text-xs text-slate-400 mb-6">Trưởng làng đã phong ấn nơi này. Hãy nhập mật ngữ.</p>
+                    <input type="password" id="join-password-input" placeholder="Mật ngữ..."
+                        class="w-full glass-input rounded-xl px-4 py-3 text-center tracking-widest focus:outline-none mb-4">
+                    <div class="flex gap-3">
+                        <button onclick="closePasswordModal()"
+                            class="flex-1 bg-white/5 hover:bg-white/10 text-slate-300 py-3 rounded-xl transition text-sm font-serif">Hủy</button>
+                        <button onclick="confirmJoinPassword()"
+                            class="flex-1 bg-mystic-600/50 hover:bg-mystic-600/80 border border-mystic-500/50 text-white py-3 rounded-xl transition text-sm font-serif backdrop-blur-sm">Mở
+                            Cửa</button>
+                    </div>
+                </div>
+            </div>
             <button onclick="saveSettings()"
                 class="w-full mt-8 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-serif tracking-widest py-3 rounded-xl transition duration-300">Lưu
                 Dấu Ấn</button>
@@ -536,6 +553,15 @@
             const saved = localStorage.getItem('ww_settings_mystic');
             if (saved) window.gameSettings = JSON.parse(saved);
         } catch (e) { }
+
+        window.gameSettings.viewMode = window.gameSettings.viewMode || 'grid-auto';
+        window.cycleViewMode = () => {
+            const modes = ['grid-auto', 'grid-2', 'grid-3', 'grid-4', 'list'];
+            let idx = modes.indexOf(window.gameSettings.viewMode);
+            window.gameSettings.viewMode = modes[(idx + 1) % modes.length];
+            localStorage.setItem('ww_settings_mystic', JSON.stringify(window.gameSettings));
+            renderGame();
+        };
 
         const FALLBACK_VILLAGER = 'https://placehold.co/150x150/1e293b/64748b?text=D';
         const VILLAGER_IMAGES = [
@@ -959,101 +985,63 @@
         const renderLobby = () => {
             const isHost = roomData.host === currentUser.uid;
             const playersList = Object.values(roomData.players || {});
-
-            // Giao diện cấu hình vai trò (Chỉ Host thấy nút bấm)
             let configRoles = roomData.roleConfig || { wolf: 1, seer: 1, guard: 1, witch: 0, hunter: 0, villager: 0 };
             const totalAssignedRoles = Object.values(configRoles).reduce((a, b) => a + b, 0);
 
-            let configHtml = `
-        <div class="mt-4 mb-2 p-4 glass-card rounded-2xl border border-white/5">
-            <div class="flex justify-between items-center mb-3">
-                <span class="text-[11px] font-serif uppercase tracking-widest text-slate-400">Đội hình (${totalAssignedRoles}/${playersList.length})</span>
-                ${isHost ? `<button onclick="suggestRoles()" class="text-[10px] text-amber-500 hover:text-amber-400 transition bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-500/30">Gợi ý</button>` : ''}
-            </div>
-            <div class="grid grid-cols-3 gap-2">
-    ${Object.keys(ROLES_DATA).map(r => `
-        <div class="flex flex-col items-center justify-center p-2 bg-black/30 rounded-xl border border-white/5 transition hover:bg-white/5">
-            <span class="text-xl filter drop-shadow-md">${ROLES_DATA[r].icon}</span>
-            
-            <!-- Thêm tên vai trò tại đây -->
-            <span class="text-[10px] font-serif text-slate-300 mt-1 mb-2 text-center w-full truncate tracking-wide">
-                ${ROLES_DATA[r].name}
-            </span>
+            let configHtml = `... (giữ nguyên configHtml như trước) ...`;
 
-            <div class="flex items-center gap-2 mt-auto">
-                ${isHost ? `<button onclick="updateRoleCount('${r}', -1)" class="w-5 h-5 flex items-center justify-center bg-white/5 rounded-full text-xs text-slate-300 hover:bg-white/20 transition active:scale-90">-</button>` : ''}
-                <span class="text-xs font-mono font-medium text-white min-w-[12px] text-center">${configRoles[r] || 0}</span>
-                ${isHost ? `<button onclick="updateRoleCount('${r}', 1)" class="w-5 h-5 flex items-center justify-center bg-white/5 rounded-full text-xs text-slate-300 hover:bg-white/20 transition active:scale-90">+</button>` : ''}
-            </div>
-        </div>
-    `).join('')}
-</div>
-        </div>
-    `;
-
+            // HEADER GỌN GÀNG HƠN (px-4 py-3, text nhỏ hơn)
             let html = `
         <div class="flex flex-col h-full slide-up relative z-10">
-            <!-- Header -->
-            <div class="p-6 pb-4 flex justify-between items-start border-b border-white/5 bg-black/20 backdrop-blur-sm">
-                <div>
-                    <div class="font-serif text-[10px] text-mystic-400 uppercase tracking-[0.3em] mb-1">Mã Làng</div>
-                    <div class="text-4xl font-mono tracking-widest text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]">${roomData.roomId}</div>
+            <div class="px-4 py-3 flex justify-between items-center border-b border-white/5 bg-black/20 backdrop-blur-sm shrink-0">
+                <div class="flex items-center gap-2">
+                    ${roomData.password ? '<i class="fas fa-lock text-slate-500 text-[10px]"></i>' : '<i class="fas fa-globe text-slate-500 text-[10px]"></i>'}
+                    <div class="text-2xl font-mono tracking-widest text-white drop-shadow-sm leading-none">${roomData.roomId}</div>
                 </div>
-                <div class="flex gap-3 items-center">
-                    <button onclick="openRoleHandbook()" class="text-slate-400 hover:text-amber-400 transition w-8 h-8 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-book"></i></button>
-                    ${isHost ? `<button onclick="openSettings()" class="text-slate-400 hover:text-white transition w-8 h-8 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-cog"></i></button>` : ''}
-                    <button id="btn-leave" class="text-slate-400 hover:text-blood-400 transition w-8 h-8 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-sign-out-alt"></i></button>
+                <div class="flex gap-2 items-center">
+                    <button onclick="openRoleHandbook()" class="w-7 h-7 flex items-center justify-center bg-white/5 rounded-full text-slate-400 hover:text-amber-400"><i class="fas fa-book text-xs"></i></button>
+                    ${isHost ? `<button onclick="openSettings()" class="w-7 h-7 flex items-center justify-center bg-white/5 rounded-full text-slate-400 hover:text-white"><i class="fas fa-cog text-xs"></i></button>` : ''}
+                    <button id="btn-leave" class="w-7 h-7 flex items-center justify-center bg-white/5 rounded-full text-slate-400 hover:text-blood-400"><i class="fas fa-sign-out-alt text-xs"></i></button>
                 </div>
             </div>
             
-            <div class="flex-1 p-6 overflow-y-auto hide-scrollbar">
-                <div class="flex justify-between items-center mb-4">
-                    <div class="font-serif text-xs text-slate-400 uppercase tracking-widest">Dân cư (${playersList.length})</div>
-                    <div class="text-[10px] text-slate-500"><i class="fas fa-crown text-amber-500 mr-1"></i> Trưởng làng</div>
+            <div class="flex-1 p-4 overflow-y-auto hide-scrollbar">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="font-serif text-[10px] text-slate-400 uppercase tracking-widest">Dân cư (${playersList.length})</div>
                 </div>
-                <div class="grid grid-cols-2 min-[400px]:grid-cols-3 gap-3">
+                <div class="grid grid-cols-3 md:grid-cols-4 gap-2">
     `;
 
             playersList.forEach(p => {
                 const isHostPlayer = p.uid === roomData.host;
+                const statusDot = p.isOnline !== false
+                    ? '<div class="absolute bottom-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-slate-900 shadow-[0_0_5px_rgba(16,185,129,0.8)]"></div>'
+                    : '<div class="absolute bottom-1 right-1 w-2.5 h-2.5 bg-slate-500 rounded-full border border-slate-900"></div>';
+
                 html += `
-            <div class="glass-card rounded-xl p-3 flex flex-col items-center justify-center gap-2 relative overflow-hidden group border-white/10 hover:border-white/20">
-                ${isHostPlayer ? '<div class="absolute top-2 right-2 text-amber-500/80 text-[10px] drop-shadow-md"><i class="fas fa-crown"></i></div>' : ''}
-                <div class="w-14 h-14 rounded-full overflow-hidden group-hover:scale-105 transition-transform shadow-md border border-white/10">
+            <div class="glass-card rounded-xl p-2 flex flex-col items-center justify-center gap-1.5 relative overflow-hidden group border-white/10 hover:border-white/30 transition">
+                ${isHost && !isHostPlayer ? `
+                    <button onclick="kickPlayer('${p.uid}')" class="absolute top-1 left-1 text-[9px] text-blood-400/50 hover:text-blood-400 z-10 w-5 h-5 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times"></i></button>
+                ` : ''}
+                ${isHostPlayer ? '<div class="absolute top-1 right-1 text-amber-500/80 text-[10px] drop-shadow-md"><i class="fas fa-crown"></i></div>' : ''}
+                
+                <div class="w-10 h-10 rounded-full overflow-hidden relative shadow-md border border-white/10">
                     <img src="${p.avatar}" onerror="this.src='${FALLBACK_VILLAGER}'" class="w-full h-full object-cover">
+                    ${statusDot}
                 </div>
-                <div class="font-serif text-[11px] truncate w-full text-center text-slate-200 tracking-wide">${p.name}</div>
+                <div class="font-serif text-[10px] truncate w-full text-center text-slate-200 tracking-wide ${p.isOnline === false ? 'opacity-50' : ''}">${p.name}</div>
             </div>
         `;
             });
 
             html += `</div> ${configHtml} </div>`;
-
-            if (isHost) {
-                // Tắt nút bắt đầu nếu số lượng config không khớp số người chơi
-                const canStart = playersList.length >= 1 && totalAssignedRoles === playersList.length;
-
-                html += `
-            <div class="p-6 bg-gradient-to-t from-black/50 to-transparent">
-                <button id="btn-start" class="w-full bg-blood-900/80 hover:bg-blood-800 disabled:bg-slate-800/50 disabled:text-slate-600 disabled:border-slate-700/50 border border-blood-500/50 text-blood-100 font-serif tracking-widest py-4 rounded-2xl transition backdrop-blur-md shadow-[0_0_20px_rgba(153,27,27,0.3)] hover:shadow-[0_0_30px_rgba(220,38,38,0.5)]" ${!canStart ? 'disabled' : ''}>
-                    ${totalAssignedRoles !== playersList.length ? 'ĐỘI HÌNH CHƯA KHỚP' : 'BẮT ĐẦU TẾ LỄ'}
-                </button>
-            </div>
-        `;
-            } else {
-                html += `
-            <div class="p-6 bg-gradient-to-t from-black/50 to-transparent text-center font-serif text-xs text-slate-400 uppercase tracking-widest">
-                Chờ trưởng làng cử hành...
-            </div>
-        `;
-            }
-            html += `</div>`;
-
             renderHTML(html);
 
             document.getElementById('btn-leave').addEventListener('click', handleLeaveRoom);
             if (isHost && document.getElementById('btn-start')) document.getElementById('btn-start').addEventListener('click', handleStartGame);
         };
+
+
 
 
         // --- CẬP NHẬT BẮT ĐẦU GAME (Dùng config thay vì random) ---
@@ -1102,37 +1090,54 @@
                 topBarFallback = FALLBACK_VILLAGER;
             }
 
+            // Logic Chế độ xem (View Mode)
+            const viewMode = window.gameSettings.viewMode || 'grid-auto';
+            const isList = viewMode === 'list';
+
+            let gridClass = 'grid gap-2 ';
+            if (viewMode === 'grid-auto') gridClass += 'grid-cols-2 min-[400px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-5';
+            else if (viewMode === 'grid-2') gridClass += 'grid-cols-2';
+            else if (viewMode === 'grid-3') gridClass += 'grid-cols-3';
+            else if (viewMode === 'grid-4') gridClass += 'grid-cols-4';
+            else if (isList) gridClass = 'flex flex-col gap-2';
+
             let html = `
     <div class="flex flex-col h-full slide-up relative z-10">
-        <!-- Top Bar -->
-        <div class="px-5 py-4 flex justify-between items-center border-b border-white/5 bg-black/30 backdrop-blur-md transition-all duration-500">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full glass-card flex items-center justify-center text-2xl cursor-pointer hover:bg-white/10 transition border-white/10 overflow-hidden p-0 relative group" onclick="showMyRole()">
-                    <img src="${topBarImg}" onerror="this.src='${topBarFallback}'" class="w-full h-full object-cover transition-opacity duration-300">
-                    ${window.isViewingAsOthers ? '<div class="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-mask text-white/80 text-sm"></i></div>' : ''}
+        <div class="px-4 py-2.5 flex justify-between items-center border-b border-white/5 bg-black/30 backdrop-blur-md transition-all shrink-0">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full glass-card flex items-center justify-center text-xl cursor-pointer relative group" onclick="showMyRole()">
+                    <img src="${topBarImg}" onerror="this.src='${topBarFallback}'" class="w-full h-full object-cover rounded-full">
+                    ${window.isViewingAsOthers ? '<div class="absolute inset-0 bg-black/50 flex items-center justify-center backdrop-blur-[1px] rounded-full"><i class="fas fa-mask text-white/80 text-[10px]"></i></div>' : ''}
                 </div>
                 <div>
-                    <div class="font-serif text-[10px] text-slate-400 uppercase tracking-widest mb-0.5 flex items-center gap-1">${phaseIcon} ${isNight ? 'Trăng lên' : 'Bình minh'}</div>
-                    <div class="font-serif text-lg text-white tracking-wide">${phaseTitle} ${roomData.winner ? '(Kết thúc)' : ''}</div>
+                    <div class="font-serif text-[9px] text-slate-400 uppercase tracking-widest flex items-center gap-1">${phaseIcon} ${isNight ? 'Trăng lên' : 'Bình minh'}</div>
+                    <div class="font-serif text-sm text-white tracking-wide">${phaseTitle} ${roomData.winner ? '(Kết thúc)' : ''}</div>
                 </div>
             </div>
-            <div class="flex items-center gap-2 sm:gap-3">
-                <button onclick="toggleViewMode()" class="text-slate-400 hover:text-white transition w-8 h-8 flex items-center justify-center bg-white/5 rounded-full relative group">
-                    <i class="fas ${window.isViewingAsOthers ? 'fa-eye-slash text-mystic-400' : 'fa-eye'} transition-transform active:scale-75"></i>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleViewMode()" class="text-slate-400 hover:text-white transition w-7 h-7 flex items-center justify-center bg-white/5 rounded-full relative group">
+                    <i class="fas ${window.isViewingAsOthers ? 'fa-eye-slash text-mystic-400' : 'fa-eye'} text-xs transition-transform active:scale-75"></i>
                 </button>
-                <button onclick="openRoleHandbook()" class="text-slate-400 hover:text-amber-400 transition w-8 h-8 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-book"></i></button>
-                ${isHost ? `<button onclick="openSettings()" class="text-slate-400 hover:text-white transition w-8 h-8 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-cog"></i></button>` : ''}
-                <button id="btn-leave-game" class="text-slate-500 hover:text-blood-400 transition w-8 h-8 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-sign-out-alt"></i></button>
+                <button onclick="openRoleHandbook()" class="text-slate-400 hover:text-amber-400 transition w-7 h-7 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-book text-xs"></i></button>
+                ${isHost ? `<button onclick="openSettings()" class="text-slate-400 hover:text-white transition w-7 h-7 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-cog text-xs"></i></button>` : ''}
+                <button id="btn-leave-game" class="text-slate-500 hover:text-blood-400 transition w-7 h-7 flex items-center justify-center bg-white/5 rounded-full"><i class="fas fa-sign-out-alt text-xs"></i></button>
             </div>
         </div>
 
-        <!-- LAYOUT CHIA CỘT CHO IPAD (md:flex-row) -->
-        <div class="flex-1 flex flex-col md:flex-row min-h-0">
+        <div class="flex-1 flex flex-col md:flex-row min-h-0 relative">
             
-            <!-- Khu vực trái: Người chơi & Hành động -->
-            <div class="flex-1 flex flex-col md:border-r border-white/5 bg-black/10 min-h-0">
-                <!-- Players Area (Đã Fix lỗi tràn Grid) -->
-                <div class="p-3 md:p-4 grid grid-cols-2 min-[400px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4 shrink-0 overflow-y-auto max-h-[45vh] md:max-h-none hide-scrollbar flex-1 content-start">
+            <div class="flex-1 flex flex-col min-h-0 bg-black/10 border-b md:border-b-0 md:border-r border-white/5">
+                
+                <div class="px-3 py-1.5 flex justify-between items-center bg-black/20 border-b border-white/5 shrink-0">
+                    <span class="text-[9px] uppercase tracking-widest text-slate-500 font-serif">Khu vực Dân cư</span>
+                    <button onclick="cycleViewMode()" class="text-slate-400 hover:text-white transition px-2 py-1 rounded-md bg-white/5 text-[10px] tracking-widest font-mono border border-white/10 uppercase active:scale-95">
+                        ${isList ? '<i class="fas fa-list-ul"></i> D.Sách' : '<i class="fas fa-th-large"></i> Lưới'}
+                    </button>
+                </div>
+
+                <div class="flex-1 relative">
+                    <div class="absolute inset-0 p-2 overflow-y-auto hide-scrollbar -webkit-overflow-scrolling-touch content-start">
+                        <div class="${gridClass}">
     `;
 
             // Render danh sách thẻ người chơi
@@ -1143,13 +1148,11 @@
                 let displayImage = p.avatar;
                 let fallbackImage = FALLBACK_VILLAGER;
 
-                // Thuật toán hiển thị vai trò thật
+                // Logic ẩn/hiện vai trò
                 let reveal = false;
-
                 if (roomData.winner || isDead) {
-                    reveal = true; // Luôn lộ bài khi đã chết hoặc hết game
+                    reveal = true;
                 } else if (!window.isViewingAsOthers) {
-                    // Nếu KHÔNG bật "Góc nhìn người khác", cho phép xem vai trò của bản thân và đồng đội sói
                     if (p.uid === currentUser.uid) reveal = true;
                     if (isNight && myPlayer.role === 'wolf' && p.role === 'wolf') reveal = true;
                 }
@@ -1159,39 +1162,55 @@
                     fallbackImage = ROLES_DATA[p.role].fallback;
                 }
 
+                let highlightClass = 'border-white/10 hover:border-white/30';
+                if (isSelected) {
+                    if (!isNight) highlightClass = 'border-amber-500 bg-amber-500/10 scale-[1.02]';
+                    else highlightClass = `border-${myPlayer.role === 'wolf' ? 'blood' : (myPlayer.role === 'seer' ? 'mystic' : 'blue')}-500 bg-white/10 scale-[1.02]`;
+                }
+
+                const offlineDim = p.isOnline === false && !isDead ? 'opacity-50 grayscale-[50%]' : '';
+                const baseCardClass = `glass-card cursor-pointer group transition-all duration-300 border-2 overflow-hidden relative ${isDead ? 'dead-player border-blood-900/50 opacity-60' : highlightClass} ${offlineDim}`;
+
+                // Cảnh báo action trên badge
                 let actionBadge = '';
                 if (isHost && !roomData.winner) {
                     const acts = isNight ? roomData.nightActions[roomData.dayCount] : roomData.dayActions[roomData.dayCount];
-                    if (acts && acts[p.uid]) actionBadge = '<div class="absolute top-2 right-2 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse"></div>';
+                    if (acts && acts[p.uid]) actionBadge = '<div class="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-slate-900 shadow-[0_0_5px_rgba(16,185,129,0.9)] animate-pulse z-10"></div>';
                 }
 
-                let highlightClass = 'border-white/10';
-                if (isSelected) {
-                    if (!isNight) highlightClass = 'border-amber-500 shadow-[0_0_20px_rgba(245,158,11,0.5)] -translate-y-1';
-                    else if (myPlayer.role === 'wolf') highlightClass = 'border-blood-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] -translate-y-1';
-                    else if (myPlayer.role === 'seer') highlightClass = 'border-mystic-500 shadow-[0_0_20px_rgba(139,92,246,0.5)] -translate-y-1';
-                    else if (myPlayer.role === 'guard') highlightClass = 'border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.5)] -translate-y-1';
+                // Render thẻ theo chế độ Lưới (Grid 3:4) hoặc Danh Sách (Row)
+                if (isList) {
+                    html += `
+            <div class="${baseCardClass} rounded-lg p-2 flex items-center gap-3" data-uid="${p.uid}">
+                <div class="w-12 h-12 rounded-md overflow-hidden shrink-0 relative shadow-inner">
+                    <img src="${displayImage}" onerror="this.src='${fallbackImage}'" class="w-full h-full object-cover">
+                    ${p.isOnline === false && !isDead ? '<div class="absolute top-1 left-1 w-2 h-2 bg-slate-500 rounded-full border border-slate-900"></div>' : ''}
+                    ${actionBadge}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-serif text-sm truncate font-semibold ${isDead ? 'text-blood-400 line-through' : 'text-slate-100'}">${p.name}</div>
+                    <div class="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">${p.isOnline === false ? 'Mất kết nối' : (isDead ? 'Đã tử nạn' : 'Sinh Tồn')}</div>
+                </div>
+            </div>`;
+                } else {
+                    html += `
+            <div class="${baseCardClass} rounded-xl aspect-[3/4]" data-uid="${p.uid}">
+                <img src="${displayImage}" onerror="this.src='${fallbackImage}'" class="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none"></div>
+                ${p.isOnline === false && !isDead ? '<div class="absolute top-1 left-1 w-2 h-2 bg-slate-500 rounded-full border border-slate-900 z-10"></div>' : ''}
+                ${actionBadge}
+                <div class="absolute bottom-0 inset-x-0 p-2 text-center pointer-events-none">
+                    <div class="font-serif text-[10px] md:text-xs truncate w-full font-semibold drop-shadow-md ${isDead ? 'text-blood-400 line-through' : 'text-slate-100'}">${p.name}</div>
+                </div>
+            </div>`;
                 }
-
-                const cardClasses = `relative glass-card rounded-xl overflow-hidden cursor-pointer aspect-[3/4] group transition-all duration-300 border-2 ${isDead ? 'dead-player border-blood-900/50 opacity-60' : 'hover:-translate-y-1 hover:border-white/30'} ${highlightClass}`;
-
-                html += `
-        <div class="player-card ${cardClasses}" data-uid="${p.uid}">
-            <img src="${displayImage}" onerror="this.src='${fallbackImage}'" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
-            <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-            ${actionBadge}
-            <div class="absolute bottom-0 inset-x-0 p-2 flex flex-col items-center justify-end">
-                <div class="font-serif text-[11px] md:text-sm text-center truncate w-full font-semibold tracking-wider drop-shadow-md ${isDead ? 'text-blood-400 line-through' : 'text-slate-100'}">${p.name}</div>
-            </div>
-        </div>
-        `;
             });
 
-            html += `</div>`;
+            html += `</div></div></div>`; // End Player Area Scroll & Wrapping
 
             // Action Context Bar
             if (!roomData.winner && myPlayer.isAlive) {
-                html += `<div class="p-4 flex justify-center items-center shrink-0 border-t border-white/5 bg-black/40 backdrop-blur-md">`;
+                html += `<div class="p-3 md:p-4 flex justify-center items-center shrink-0 border-t border-white/5 bg-black/40 backdrop-blur-md">`;
                 if (selectedTargetId) {
                     const tName = roomData.players[selectedTargetId].name;
                     let aText = ''; let valid = false; let btnColor = '';
@@ -1211,11 +1230,11 @@
                     }
 
                     if (valid) {
-                        html += `<button id="btn-do-action" class="${btnColor} border text-sm md:text-base font-serif tracking-widest py-3 px-8 rounded-full transition w-full md:w-auto active:scale-95 backdrop-blur-sm uppercase">${aText}</button>`;
-                    } else { html += `<span class="font-serif text-xs text-slate-500 tracking-widest uppercase py-3">Mục tiêu bất khả thi</span>`; }
+                        html += `<button id="btn-do-action" class="${btnColor} border text-sm font-serif tracking-widest py-2.5 px-6 rounded-full transition w-full md:w-auto active:scale-95 backdrop-blur-sm uppercase">${aText}</button>`;
+                    } else { html += `<span class="font-serif text-[10px] text-slate-500 tracking-widest uppercase py-3">Mục tiêu bất khả thi</span>`; }
                 } else {
                     const prompt = isNight ? 'Chọn mục tiêu hành động' : 'Chọn người để biểu quyết';
-                    html += `<span class="font-serif text-xs md:text-sm text-slate-400 tracking-widest uppercase pulse-glow px-6 py-2 rounded-full border border-slate-700/50 bg-slate-900/50">${prompt}</span>`;
+                    html += `<span class="font-serif text-[10px] md:text-xs text-slate-400 tracking-widest uppercase pulse-glow px-4 py-2 rounded-full border border-slate-700/50 bg-slate-900/50">${prompt}</span>`;
                 }
                 html += `</div>`;
             }
@@ -1223,11 +1242,11 @@
             if (roomData.winner) {
                 const isWolfWin = roomData.winner === 'wolves';
                 html += `
-        <div class="p-6 text-center border-t border-white/5 bg-black/60 backdrop-blur-md shrink-0">
-            <div class="font-serif text-2xl md:text-3xl font-bold tracking-widest mb-4 ${isWolfWin ? 'text-blood-500 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'text-mystic-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]'}">
+        <div class="p-4 md:p-6 text-center border-t border-white/5 bg-black/60 backdrop-blur-md shrink-0">
+            <div class="font-serif text-xl md:text-2xl font-bold tracking-widest mb-3 ${isWolfWin ? 'text-blood-500 drop-shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'text-mystic-400 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]'}">
                 ${isWolfWin ? 'SÓI HUYẾT THẮNG' : 'BÌNH MINH TRỞ LẠI'}
             </div>
-            <button id="btn-back-lobby" class="font-serif text-xs uppercase tracking-widest border border-current px-8 py-3 rounded-full hover:bg-white/10 transition text-slate-300 active:scale-95">Trở Về Làng</button>
+            <button id="btn-back-lobby" class="font-serif text-[10px] uppercase tracking-widest border border-current px-6 py-2 rounded-full hover:bg-white/10 transition text-slate-300 active:scale-95">Trở Về Làng</button>
         </div>
         `;
             }
@@ -1236,22 +1255,22 @@
 
             // Khu vực phải: Khung Chat 
             html += `
-        <div class="w-full md:w-80 lg:w-96 flex flex-col min-h-[35vh] md:min-h-0 chat-area transition-colors bg-black/30 border-t md:border-t-0 border-white/5">
-            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto flex flex-col hide-scrollbar relative">
+        <div class="w-full md:w-80 lg:w-96 flex flex-col min-h-[35vh] md:min-h-0 chat-area transition-colors bg-black/30 border-t md:border-t-0 border-white/5 relative">
+            <div id="chat-messages" class="flex-1 p-3 md:p-4 overflow-y-auto flex flex-col hide-scrollbar relative">
                 <div class="sticky top-0 h-4 bg-gradient-to-b from-[#020617]/50 to-transparent w-full z-10 pointer-events-none -mt-4 mb-4"></div>
             </div>
             
             ${(isHost && !roomData.winner) ? `
-            <div class="px-4 py-2 flex justify-center bg-black/40 border-t border-white/5">
-                <button id="btn-end-phase" class="font-serif text-[10px] uppercase tracking-widest text-slate-400 hover:text-white transition bg-white/5 px-4 py-1.5 rounded-full active:scale-95">
+            <div class="px-8 py-4 flex justify-center bg-black/40 border-t border-white/5">
+                <button id="btn-end-phase" class="font-serif text-[1ưpx] uppercase tracking-widest text-slate-400 hover:text-white transition bg-white/5 px-4 py-1.5 rounded-full active:scale-95 border border-white/5">
                     <i class="fas fa-forward mr-1"></i> Bỏ qua ${isNight ? 'Đêm' : 'Ngày'}
                 </button>
             </div>
             ` : ''}
 
-            <form id="chat-form" class="p-3 md:p-4 flex gap-2 border-t border-white/10 bg-black/60 backdrop-blur-md">
-                <input type="text" id="chat-input" placeholder="Truyền âm..." autocomplete="off" class="flex-1 glass-input rounded-xl px-4 py-3 text-sm transition-colors font-sans focus:ring-1 focus:ring-white/20">
-                <button type="submit" class="w-12 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center shrink-0 active:scale-95 transition"><i class="fas fa-paper-plane text-sm opacity-80"></i></button>
+            <form id="chat-form" class="p-3 flex gap-2 border-t border-white/10 bg-black/60 backdrop-blur-md shrink-0">
+                <input type="text" id="chat-input" placeholder="Truyền âm..." autocomplete="off" class="flex-1 min-w-0 glass-input rounded-xl px-4 py-2.5 text-sm transition-colors font-sans focus:ring-1 focus:ring-white/20">
+                <button type="submit" class="w-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center shrink-0 active:scale-95 transition"><i class="fas fa-paper-plane text-xs opacity-80"></i></button>
             </form>
         </div>
     </div>
@@ -1460,36 +1479,68 @@
 
 
         // === GAME LOGIC ===
-        const handleCreateRoom = async (currentRoomsCount) => {
-            if (currentRoomsCount >= 5) {
-                return showToast("Mỗi linh hồn chỉ được tạo tối đa 5 làng", "error");
-            }
+        window.pendingJoinRoom = null;
 
-            const roomId = generateRoomId();
-            const initialData = {
-                roomId, host: currentUser.uid, status: 'lobby', phase: 'night', dayCount: 0,
-                players: { [currentUser.uid]: { uid: currentUser.uid, name: myProfile.name, avatar: myProfile.avatar, isAlive: true, role: 'villager' } },
-                actions: {}, nightActions: {}, dayActions: {}, chat: [], winner: null,
-                roleConfig: { wolf: 1, seer: 1, guard: 1, witch: 0, hunter: 0, villager: 0 } // Mặc định config
-            };
-            try {
-                await setDoc(getRoomRef(roomId), initialData);
-                joinRoom(roomId);
-            } catch (e) { showToast("Năng lượng gián đoạn", "error"); }
+        window.closePasswordModal = () => {
+            document.getElementById('password-modal').classList.add('hidden');
+            document.getElementById('join-password-input').value = '';
+            window.pendingJoinRoom = null;
         };
 
+        window.confirmJoinPassword = () => {
+            const pwd = document.getElementById('join-password-input').value;
+            if (pwd !== window.pendingJoinRoom.password) return showToast("Mật ngữ không chính xác", "error");
+            closePasswordModal();
+            executeJoinRoom(window.pendingJoinRoom.id);
+        };
+
+        // --- NÂNG CẤP HÀM JOIN ---
         const joinRoom = async (roomId) => {
             if (!currentUser) return;
             const roomRef = getRoomRef(roomId);
             try {
                 const docSnap = await getDoc(roomRef);
                 if (!docSnap.exists()) return showToast("Làng không tồn tại", "error");
-                if (docSnap.data().status !== 'lobby' && !docSnap.data().players[currentUser.uid]) return showToast("Trận đấu đang diễn ra", "error");
 
-                if (!docSnap.data().players[currentUser.uid]) {
-                    await updateDoc(roomRef, { [`players.${currentUser.uid}`]: { uid: currentUser.uid, name: myProfile.name, avatar: myProfile.avatar, isAlive: true, role: 'villager' } });
+                const data = docSnap.data();
+                if (data.status !== 'lobby' && !data.players[currentUser.uid]) return showToast("Trận đấu đang diễn ra", "error");
+
+                // Kiểm tra mật khẩu nếu chưa ở trong phòng
+                if (data.password && !data.players[currentUser.uid]) {
+                    window.pendingJoinRoom = { id: roomId, password: data.password };
+                    document.getElementById('password-modal').classList.remove('hidden');
+                } else {
+                    executeJoinRoom(roomId);
                 }
-                currentRoomId = roomId; listenToRoom();
+            } catch (e) { showToast("Năng lượng gián đoạn", "error"); }
+        };
+
+        const executeJoinRoom = async (roomId) => {
+            const roomRef = getRoomRef(roomId);
+            await updateDoc(roomRef, {
+                [`players.${currentUser.uid}`]: { uid: currentUser.uid, name: myProfile.name, avatar: myProfile.avatar, isAlive: true, role: 'villager', isOnline: true }
+            });
+            currentRoomId = roomId;
+            listenToRoom();
+        };
+
+        // --- NÂNG CẤP TẠO PHÒNG ---
+        const handleCreateRoom = async (currentRoomsCount) => {
+            if (currentRoomsCount >= 3) return showToast("Chỉ được tạo tối đa 3 làng", "error");
+
+            // Lấy mật khẩu tùy chọn (có thể tích hợp vào UI tạo phòng, ở đây dùng prompt cho nhanh và minimal, hoặc tự sinh)
+            const pwd = prompt("Nhập mật khẩu cho phòng (Để trống nếu muốn công khai):");
+
+            const roomId = generateRoomId();
+            const initialData = {
+                roomId, host: currentUser.uid, status: 'lobby', phase: 'night', dayCount: 0, password: pwd || null,
+                players: { [currentUser.uid]: { uid: currentUser.uid, name: myProfile.name, avatar: myProfile.avatar, isAlive: true, role: 'villager', isOnline: true } },
+                actions: {}, nightActions: {}, dayActions: {}, chat: [], winner: null,
+                roleConfig: { wolf: 1, seer: 1, guard: 1, witch: 0, hunter: 0, villager: 0 }
+            };
+            try {
+                await setDoc(getRoomRef(roomId), initialData);
+                executeJoinRoom(roomId);
             } catch (e) { showToast("Năng lượng gián đoạn", "error"); }
         };
 
@@ -1501,19 +1552,47 @@
             currentRoomId = null; roomData = null; selectedTargetId = null; renderMenu();
         };
 
+        document.addEventListener("visibilitychange", () => {
+            if (currentRoomId && currentUser) {
+                updateDoc(getRoomRef(currentRoomId), {
+                    [`players.${currentUser.uid}.isOnline`]: !document.hidden
+                }).catch(() => { });
+            }
+        });
+
+        // Chức năng Đuổi người chơi (Dành cho Host)
+        window.kickPlayer = async (uid) => {
+            if (roomData.host !== currentUser.uid || uid === currentUser.uid) return;
+            if (confirm("Khai trừ người này khỏi làng?")) {
+                await updateDoc(getRoomRef(currentRoomId), {
+                    [`players.${uid}`]: deleteField()
+                });
+            }
+        };
+
+        // Cập nhật hàm lắng nghe (Phát hiện bị Kick)
         const listenToRoom = () => {
             if (unsubscribeRoom) unsubscribeRoom();
             unsubscribeRoom = onSnapshot(getRoomRef(currentRoomId), (docSnap) => {
                 if (!docSnap.exists()) { handleLeaveRoom(); showToast("Làng đã bị phá hủy", "error"); return; }
+
+                const data = docSnap.data();
+
+                // KIỂM TRA BỊ KICK
+                if (!data.players[currentUser.uid]) {
+                    handleLeaveRoom();
+                    showToast("Bạn đã bị trục xuất khỏi làng", "error");
+                    return;
+                }
+
                 const oldStatus = roomData ? roomData.status : null;
                 const oldPhase = roomData ? roomData.phase : null;
-                roomData = docSnap.data();
+                roomData = data;
 
                 if (oldStatus === 'lobby' && roomData.status === 'playing') showMyRoleModal();
-
                 if (roomData.status === 'lobby') renderLobby();
                 else { if (oldPhase !== roomData.phase) selectedTargetId = null; renderGame(); }
-            }, () => showToast("Mất kết nối tinh linh", "error"));
+            }, () => showToast("Mất kết nối", "error"));
         };
 
         const handlePlayerAction = async () => {

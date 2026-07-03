@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bàn Cờ Tỷ Phú</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        .board-wrapper {
+            container-type: inline-size;
+            container-name: board;
+        }
+        
+        .cell-name { font-size: clamp(0.4rem, 1.4cqw, 0.9rem); line-height: 1.1; }
+        .cell-price { font-size: clamp(0.4rem, 1.3cqw, 0.8rem); }
+        .cell-desc { font-size: clamp(0.35rem, 1cqw, 0.7rem); line-height: 1.2; }
+        .corner-title { font-size: clamp(0.6rem, 2.5cqw, 1.5rem); line-height: 1.1; }
+        
+        .board-cell {
+            outline: 1px solid #000;
+            outline-offset: -1px;
+        }
+
+        /* Styling cho quân cờ (Token) */
+        .player-token {
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 9999px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 0 #000;
+            transition: all 0.3s ease;
+        }
+        @container board (min-width: 600px) {
+            .player-token { width: 1.75rem; height: 1.75rem; font-size: 0.8rem; }
+        }
+
+        /* Tùy chỉnh thanh cuộn cho Game Panel */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #374151; }
+        ::-webkit-scrollbar-thumb { background: #6b7280; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen font-['Roboto',sans-serif] overflow-hidden flex flex-col xl:flex-row">
+
+    <!-- KHU VỰC BÀN CỜ (Trái) -->
+    <div class="flex-1 p-2 sm:p-4 flex items-center justify-center overflow-auto bg-gray-800">
+        <!-- Container chính -->
+        <div class="board-wrapper w-full max-w-[900px] aspect-square relative bg-[#f4f7f6] border-4 border-black shadow-2xl overflow-hidden box-border shrink-0">
+            
+            <!-- KHU VỰC TRUNG TÂM -->
+            <div id="khu-vuc-trung-tam" class="absolute inset-[15%] bg-[#f4f7f6] board-cell overflow-hidden z-10">
+                <div id="vung-hinh-anh" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                    <div class="relative transform -rotate-12 scale-110 sm:scale-125 mt-4 opacity-90">
+                        <span class="text-7xl sm:text-8xl md:text-9xl drop-shadow-md">🤑</span>
+                        <span class="absolute -top-10 -left-10 text-3xl sm:text-4xl transform -rotate-45">💸</span>
+                        <span class="absolute top-6 -left-20 text-3xl sm:text-4xl transform rotate-12">💸</span>
+                        <span class="absolute -bottom-6 -left-4 text-4xl sm:text-5xl md:text-6xl drop-shadow-sm">💰</span>
+                        <span class="absolute -top-4 -right-12 text-3xl sm:text-4xl md:text-5xl transform rotate-45">💵</span>
+                    </div>
+                </div>
+
+                <div id="div-co-hoi" class="absolute bottom-[12%] left-[8%] transform -rotate-45 flex flex-col items-center justify-center w-[28%] z-20">
+                    <div class="w-full aspect-[1.6/1] bg-[#da251d] border-2 border-black shadow-[4px_4px_0_rgba(0,0,0,0.2)]"></div>
+                    <span class="font-black mt-2 text-[#da251d] uppercase text-center w-[120%]" style="font-size: clamp(0.8rem, 3cqw, 2rem); text-shadow: -1.5px -1.5px 0 #fff, 1.5px -1.5px 0 #fff, -1.5px 1.5px 0 #fff, 1.5px 1.5px 0 #fff, 2px 2px 0 rgba(0,0,0,0.3);">CƠ HỘI</span>
+                </div>
+                
+                <div id="div-khi-van" class="absolute top-[8%] right-[8%] transform -rotate-45 flex flex-col items-center justify-center w-[28%] z-20">
+                    <span class="font-black mb-2 text-[#ffca28] uppercase text-center w-[120%]" style="font-size: clamp(0.8rem, 3cqw, 2rem); text-shadow: -1.5px -1.5px 0 #000, 1.5px -1.5px 0 #000, -1.5px 1.5px 0 #000, 1.5px 1.5px 0 #000, 2px 2px 0 rgba(0,0,0,0.3);">KHÍ VẬN</span>
+                    <div class="w-full aspect-[1.6/1] bg-[#ffca28] border-2 border-black shadow-[4px_4px_0_rgba(0,0,0,0.2)]"></div>
+                </div>
+
+                <div id="div-tieu-de" class="absolute bottom-[10%] right-[2%] transform -rotate-45 z-20 text-center">
+                    <h1 class="font-black tracking-tighter uppercase text-[#da251d] select-none" style="font-size: clamp(1.8rem, 6.5cqw, 4.5rem); text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0px 5px 0 rgba(0,0,0,0.3);">CỜ TỶ PHÚ !</h1>
+                </div>
+            </div>
+
+            <!-- 4 GÓC BÀN CỜ (Các Cell logic: 0, 10, 20, 30) -->
+            <div id="cell-0" class="absolute bottom-0 left-0 w-[15%] h-[15%] bg-[#f4f7f6] board-cell flex flex-col items-center justify-center z-20">
+                <div id="tokens-0" class="absolute inset-0 flex flex-wrap content-center justify-center gap-1 pointer-events-none z-30 p-1"></div>
+                <div class="transform rotate-45 flex flex-col items-center justify-center w-[140%] h-[140%] text-center p-1">
+                    <span class="text-red-600 corner-title font-black uppercase mb-1">Bắt Đầu</span>
+                    <span class="cell-desc font-bold">Lương tháng<br><span class="text-red-600">$2000</span><br>khi qua</span>
+                    <span class="text-red-600 text-xl sm:text-3xl mt-1">🡱</span>
+                </div>
+            </div>
+            
+            <div id="cell-10" class="absolute top-0 left-0 w-[15%] h-[15%] bg-[#f4f7f6] board-cell flex flex-col items-center justify-center z-20 overflow-hidden">
+                <div id="tokens-10" class="absolute inset-0 flex flex-wrap content-center justify-center gap-1 pointer-events-none z-30 p-1"></div>
+                <div class="transform rotate-[135deg] flex flex-col items-center justify-center w-[140%] h-[140%]">
+                    <div class="flex items-center gap-1">
+                        <span class="text-2xl sm:text-4xl">⛓️</span>
+                        <span class="corner-title font-black uppercase">Ở Tù</span>
+                    </div>
+                    <div class="w-[80%] border-t-2 border-black my-1"></div>
+                    <span class="corner-title font-black uppercase">Thăm</span>
+                </div>
+            </div>
+
+            <div id="cell-20" class="absolute top-0 right-0 w-[15%] h-[15%] bg-[#f4f7f6] board-cell flex flex-col items-center justify-center z-20 overflow-hidden">
+                <div id="tokens-20" class="absolute inset-0 flex flex-wrap content-center justify-center gap-1 pointer-events-none z-30 p-1"></div>
+                <div class="transform -rotate-[135deg] flex flex-col items-center justify-center w-[140%] h-[140%]">
+                    <span class="text-red-600 corner-title font-black uppercase text-center">Bãi Đậu Xe</span>
+                    <span class="text-3xl sm:text-5xl my-1">🚗</span>
+                    <span class="text-red-600 corner-title font-black uppercase">Miễn Phí</span>
+                </div>
+            </div>
+
+            <div id="cell-30" class="absolute bottom-0 right-0 w-[15%] h-[15%] bg-[#f4f7f6] board-cell flex flex-col items-center justify-center z-20 overflow-hidden">
+                <div id="tokens-30" class="absolute inset-0 flex flex-wrap content-center justify-center gap-1 pointer-events-none z-30 p-1"></div>
+                <div class="transform -rotate-[45deg] flex flex-col items-center justify-center w-[140%] h-[140%]">
+                    <span class="text-red-600 corner-title font-black uppercase text-center mb-1">Vào Tù</span>
+                    <span class="text-3xl sm:text-5xl">👮</span>
+                </div>
+            </div>
+
+            <!-- 4 CẠNH BÀN CỜ -->
+            <div id="bottom-row" class="absolute bottom-0 left-[15%] w-[70%] h-[15%] flex flex-row"></div>
+            <div id="top-row" class="absolute top-0 left-[15%] w-[70%] h-[15%] flex flex-row transform rotate-180"></div>
+            <div id="left-col" class="absolute flex flex-row" style="left: 7.5%; top: 50%; width: 70%; height: 15%; transform: translate(-50%, -50%) rotate(90deg);"></div>
+            <div id="right-col" class="absolute flex flex-row" style="left: 92.5%; top: 50%; width: 70%; height: 15%; transform: translate(-50%, -50%) rotate(-90deg);"></div>
+        </div>
+    </div>
+
+    <!-- BẢNG ĐIỀU KHIỂN (Phải/Dưới) -->
+    <div class="w-full xl:w-96 bg-gray-900 border-t xl:border-t-0 xl:border-l border-gray-700 flex flex-col shrink-0 h-[40vh] xl:h-screen text-white relative z-50">
+        
+        <!-- MÀN HÌNH SETUP -->
+        <div id="setup-screen" class="p-6 flex flex-col h-full overflow-y-auto">
+            <h2 class="text-2xl font-bold mb-4 text-center text-yellow-400">Thiết Lập Trò Chơi</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Số lượng người chơi (2-10):</label>
+                <input type="number" id="player-count" min="2" max="10" value="4" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white outline-none focus:border-yellow-400" onchange="generatePlayerInputs()">
+            </div>
+            <div id="player-inputs" class="flex-1 overflow-y-auto mb-4 space-y-2 pr-2">
+                <!-- Inputs generated via JS -->
+            </div>
+            <button onclick="startGame()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 px-4 rounded transition">
+                BẮT ĐẦU CHƠI
+            </button>
+        </div>
+
+        <!-- MÀN HÌNH TRÒ CHƠI -->
+        <div id="game-screen" class="hidden flex-col h-full">
+            <!-- Header Tên Lượt -->
+            <div class="p-4 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
+                <div>
+                    <div class="text-sm text-gray-400 uppercase tracking-wider">Lượt của</div>
+                    <div id="current-player-name" class="text-xl font-bold flex items-center gap-2">
+                        <span id="current-player-color" class="w-4 h-4 rounded-full inline-block"></span>
+                        <span>Player Name</span>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button id="btn-roll" onclick="rollDice()" class="bg-yellow-500 hover:bg-yellow-400 text-gray-900 font-bold py-2 px-6 rounded shadow uppercase transition">
+                        Đổ Xúc Xắc
+                    </button>
+                    <button id="btn-next" onclick="endTurn()" class="hidden bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded shadow uppercase transition">
+                        Kết Thúc Lượt
+                    </button>
+                </div>
+            </div>
+
+            <!-- Kết quả xúc xắc -->
+            <div id="dice-result" class="py-2 text-center text-lg font-bold text-yellow-400 bg-gray-800 border-b border-gray-700 hidden">
+                🎲 Đổ được: <span id="dice-value" class="text-2xl"></span>
+            </div>
+
+            <!-- Danh sách người chơi & Tiền bạc -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-2" id="players-list-ui">
+                <!-- Danh sách sinh bằng JS -->
+            </div>
+
+            <!-- Nhật ký trò chơi (Log) -->
+            <div class="h-1/3 bg-black/50 border-t border-gray-700 flex flex-col">
+                <div class="bg-gray-800 px-3 py-1 text-xs font-bold text-gray-400 border-b border-gray-700 uppercase">Nhật Ký</div>
+                <div id="game-log" class="flex-1 overflow-y-auto p-3 text-sm font-mono space-y-1">
+                    <div class="text-gray-400">Trò chơi bắt đầu!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script tạo bàn cờ và Game Engine -->
+    <script>
+        // 1. DATA BÀN CỜ
+        const bottomSpaces = [
+            { name: 'TÂN KỲ<br>TÂN QUÝ', price: '$400', color: 'bg-blue-800' },
+            { type: 'tax', name: 'THUẾ<br>ĐẶC BIỆT', desc: 'Trả $100' },
+            { name: 'LŨY<br>BÁN BÍCH', price: '$350', color: 'bg-blue-800' },
+            { type: 'chance', name: 'CƠ HỘI', icon: '❓', iconClass: 'text-red-600' },
+            { type: 'station', name: 'BẾN XE<br>MIỀN ĐÔNG', price: '$200', icon: '🛺' },
+            { name: 'QUANG<br>TRUNG', price: '$320', color: 'bg-green-600' },
+            { type: 'chest', name: 'KHÍ VẬN', icon: '💰', iconClass: 'text-yellow-500' },
+            { name: 'NGUYỄN<br>KIỆM', price: '$300', color: 'bg-green-600' },
+            { name: 'CỘNG HÒA', price: '$300', color: 'bg-green-600' }
+        ];
+
+        const topSpaces = [
+            { name: 'HUỲNH<br>TẤN PHÁT', price: '$200', color: 'bg-orange-500' },
+            { name: 'HÙNG<br>VƯƠNG', price: '$180', color: 'bg-orange-500' },
+            { type: 'chest', name: 'KHÍ VẬN', icon: '💰', iconClass: 'text-yellow-500' },
+            { name: 'HẬU GIANG', price: '$180', color: 'bg-orange-500' },
+            { type: 'station', name: 'BẾN XE<br>MIỀN TÂY', price: '$200', icon: '🛺' },
+            { name: 'AN DƯƠNG<br>VƯƠNG', price: '$160', color: 'bg-pink-400', txtColor: 'text-black' },
+            { name: 'NGUYỄN<br>TRÃI', price: '$140', color: 'bg-pink-400', txtColor: 'text-black' },
+            { type: 'utility', name: 'CÔNG TY<br>ĐIỆN LỰC', price: '$200', icon: '💡' },
+            { name: 'NGUYỄN<br>TẤT THÀNH', price: '$140', color: 'bg-pink-400', txtColor: 'text-black' }
+        ];
+
+        const leftSpaces = [
+            { name: 'TÔN ĐẢN', price: '$120', color: 'bg-sky-200', txtColor: 'text-black' },
+            { name: 'VÕ THỊ SÁU', price: '$100', color: 'bg-sky-200', txtColor: 'text-black' },
+            { type: 'chance', name: 'CƠ HỘI', icon: '❓', iconClass: 'text-red-600' },
+            { name: 'LƯƠNG ĐỊNH<br>CỦA', price: '$100', color: 'bg-sky-200', txtColor: 'text-black' },
+            { type: 'station', name: 'BẾN XE<br>CẦN THƠ', price: '$200', icon: '🛺' },
+            { type: 'tax', name: 'THUẾ<br>THU NHẬP', desc: 'Trả 10%<br>hoặc $200' },
+            { name: 'LÊ LỢI', price: '$60', color: 'bg-amber-800' },
+            { type: 'chest', name: 'KHÍ VẬN', icon: '💰', iconClass: 'text-yellow-500' },
+            { name: 'NGUYỄN<br>HUỆ', price: '$60', color: 'bg-amber-800' }
+        ];
+
+        const rightSpaces = [
+            { name: 'HOÀNG<br>VĂN THỤ', price: '$280', color: 'bg-yellow-400', txtColor: 'text-black' },
+            { type: 'utility', name: 'CÔNG TY<br>CẤP NƯỚC', price: '$200', icon: '🚰' },
+            { name: 'TRƯỜNG<br>CHINH', price: '$260', color: 'bg-yellow-400', txtColor: 'text-black' },
+            { name: 'LÊ ĐẠI HÀNH', price: '$260', color: 'bg-yellow-400', txtColor: 'text-black' },
+            { type: 'station', name: 'BẾN XE<br>CHỢ LỚN', price: '$200', icon: '🛺' },
+            { name: 'NGUYỄN<br>TRI PHƯƠNG', price: '$200', color: 'bg-red-600' },
+            { name: 'KHA VẠN<br>CÂN', price: '$220', color: 'bg-red-600' },
+            { type: 'chance', name: 'CƠ HỘI', icon: '❓', iconClass: 'text-red-600' },
+            { name: 'PHẠM<br>NGŨ LÃO', price: '$220', color: 'bg-red-600' }
+        ];
+
+        // Tạo mảng logical 40 ô để Game Engine sử dụng
+        const boardData = Array(40).fill(null);
+        boardData[0] = { name: "Bắt Đầu" };
+        boardData[10] = { name: "Ở Tù / Thăm" };
+        boardData[20] = { name: "Bãi Đậu Xe" };
+        boardData[30] = { name: "Vào Tù" };
+        
+        // Map dữ liệu vào đúng vị trí 0-39
+        leftSpaces.reverse().forEach((s, i) => boardData[i + 1] = s);  // 1-9
+        topSpaces.reverse().forEach((s, i) => boardData[i + 11] = s); // 11-19
+        rightSpaces.forEach((s, i) => boardData[i + 21] = s);         // 21-29
+        bottomSpaces.forEach((s, i) => boardData[i + 31] = s);        // 31-39
+
+        // Render HTML cho các ô cờ
+        function renderCell(space, logicalIndex) {
+            space.type = space.type || 'prop';
+            let innerContent = '';
+            let textColorClass = space.txtColor || 'text-white'; 
+
+            if (space.type === 'prop') {
+                innerContent = `<div class="h-[25%] ${space.color} ${textColorClass} w-full shrink-0 flex items-center justify-center border-b border-black"></div><div class="flex-1 flex flex-col items-center justify-between p-1 text-center font-bold uppercase text-black"><div class="cell-name mt-1">${space.name}</div><div class="cell-price mb-1">${space.price}</div></div>`;
+            } else if (space.type === 'station') {
+                innerContent = `<div class="flex-1 flex flex-col items-center justify-start pt-1 sm:pt-2 px-1 text-center font-bold uppercase text-black"><div class="cell-name mb-1">${space.name}</div><div class="text-lg sm:text-2xl">${space.icon}</div><div class="cell-price mt-auto mb-1">${space.price}</div></div>`;
+            } else if (space.type === 'utility') {
+                innerContent = `<div class="flex-1 flex flex-col items-center justify-start pt-1 sm:pt-2 px-1 text-center font-bold uppercase text-black"><div class="cell-name mb-1">${space.name}</div><div class="text-xl sm:text-3xl">${space.icon}</div><div class="cell-price mt-auto mb-1">${space.price}</div></div>`;
+            } else if (space.type === 'chance' || space.type === 'chest') {
+                innerContent = `<div class="flex-1 flex flex-col items-center justify-center p-1 text-center font-bold uppercase text-black"><div class="cell-name mb-1">${space.name}</div><div class="text-2xl sm:text-4xl ${space.iconClass}">${space.icon}</div></div>`;
+            } else if (space.type === 'tax') {
+                innerContent = `<div class="flex-1 flex flex-col items-center justify-start pt-1 sm:pt-2 px-1 text-center font-bold uppercase text-black"><div class="cell-name mb-1">${space.name}</div><div class="cell-desc mt-1 sm:mt-2">${space.desc}</div></div>`;
+            }
+
+            return `<div id="cell-${logicalIndex}" class="relative flex-1 bg-[#f4f7f6] flex flex-col box-border board-cell overflow-hidden">
+                        <div id="tokens-${logicalIndex}" class="absolute inset-0 flex flex-wrap content-center justify-center gap-1 pointer-events-none z-30 p-1"></div>
+                        ${innerContent}
+                    </div>`;
+        }
+
+        // Gắn vào DOM, truyền đúng logicalIndex
+        // Bottom: 31-39 (render ngược mảng ban đầu)
+        document.getElementById('bottom-row').innerHTML = bottomSpaces.map((s, i) => renderCell(s, 31 + i)).join('');
+        // Top: 11-19 (render mảng reverse)
+        document.getElementById('top-row').innerHTML = [...topSpaces].reverse().map((s, i) => renderCell(s, 11 + i)).join('');
+        // Left: 1-9 (render mảng gốc)
+        document.getElementById('left-col').innerHTML = [...leftSpaces].reverse().map((s, i) => renderCell(s, 9 - i)).join('');
+        // Right: 21-29 (render mảng gốc)
+        document.getElementById('right-col').innerHTML = rightSpaces.map((s, i) => renderCell(s, 29 - i)).join('');
+
+
+        // 2. GAME ENGINE JS
+        const COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f43f5e', '#84cc16', '#0ea5e9'];
+        let players = [];
+        let currentPlayerIndex = 0;
+        let hasRolled = false;
+
+        // Sinh ô nhập tên người chơi
+        function generatePlayerInputs() {
+            const count = parseInt(document.getElementById('player-count').value);
+            const container = document.getElementById('player-inputs');
+            container.innerHTML = '';
+            for(let i=0; i<count; i++) {
+                container.innerHTML += `
+                    <div class="flex items-center gap-2">
+                        <div class="w-6 h-6 rounded-full shrink-0 border border-white" style="background-color: ${COLORS[i]}"></div>
+                        <input type="text" id="p-name-${i}" value="Người chơi ${i+1}" class="flex-1 bg-gray-700 border border-gray-600 rounded p-1.5 text-white text-sm outline-none">
+                    </div>
+                `;
+            }
+        }
+        
+        // Khởi tạo game
+        function startGame() {
+            const count = parseInt(document.getElementById('player-count').value);
+            players = [];
+            for(let i=0; i<count; i++) {
+                players.push({
+                    id: i,
+                    name: document.getElementById(`p-name-${i}`).value || `Người chơi ${i+1}`,
+                    color: COLORS[i],
+                    position: 0,
+                    money: 15000 // Tiền ban đầu
+                });
+            }
+            
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('game-screen').classList.add('flex');
+            
+            currentPlayerIndex = 0;
+            updateBoard();
+            updateUI();
+            log(`Trò chơi bắt đầu với ${count} người chơi!`);
+        }
+
+        // Tung xúc xắc
+        function rollDice() {
+            if(hasRolled) return;
+            const dice1 = Math.floor(Math.random() * 6) + 1;
+            const dice2 = Math.floor(Math.random() * 6) + 1;
+            const total = dice1 + dice2;
+            
+            document.getElementById('dice-result').classList.remove('hidden');
+            document.getElementById('dice-value').innerText = `${dice1} + ${dice2} = ${total}`;
+            
+            const player = players[currentPlayerIndex];
+            log(`<span style="color:${player.color}">■</span> <b>${player.name}</b> tung được ${total}.`);
+            
+            movePlayer(player, total);
+            
+            hasRolled = true;
+            document.getElementById('btn-roll').classList.add('hidden');
+            document.getElementById('btn-next').classList.remove('hidden');
+        }
+
+        // Di chuyển
+        function movePlayer(player, steps) {
+            let oldPos = player.position;
+            let newPos = oldPos + steps;
+            
+            // Đi qua Bắt Đầu
+            if (newPos >= 40) {
+                newPos = newPos % 40;
+                player.money += 2000;
+                log(`<b>${player.name}</b> đi qua Bắt Đầu, nhận $2000!`);
+            }
+            
+            player.position = newPos;
+            updateBoard();
+            updateUI();
+            
+            // Hiển thị tên ô đích
+            let spaceName = boardData[newPos].name.replace('<br>', ' ');
+            log(`Đến ô: <b>${spaceName}</b>`);
+        }
+
+        // Kết thúc lượt
+        function endTurn() {
+            hasRolled = false;
+            document.getElementById('dice-result').classList.add('hidden');
+            document.getElementById('btn-roll').classList.remove('hidden');
+            document.getElementById('btn-next').classList.add('hidden');
+            
+            currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+            updateUI();
+        }
+
+        // Render quân cờ lên bàn
+        function updateBoard() {
+            // Xóa sạch token cũ
+            for(let i=0; i<40; i++) {
+                const container = document.getElementById(`tokens-${i}`);
+                if(container) container.innerHTML = '';
+            }
+            
+            // Vẽ lại
+            players.forEach(p => {
+                const container = document.getElementById(`tokens-${p.position}`);
+                if(container) {
+                    const token = document.createElement('div');
+                    token.className = 'player-token';
+                    token.style.backgroundColor = p.color;
+                    token.innerText = p.name.charAt(0).toUpperCase();
+                    container.appendChild(token);
+                }
+            });
+        }
+
+        // Cập nhật UI bảng điều khiển
+        function updateUI() {
+            const activePlayer = players[currentPlayerIndex];
+            document.getElementById('current-player-name').innerHTML = `
+                <span class="w-4 h-4 rounded-full inline-block border border-white" style="background-color: ${activePlayer.color}"></span>
+                <span>${activePlayer.name}</span>
+            `;
+            
+            const listUI = document.getElementById('players-list-ui');
+            listUI.innerHTML = players.map(p => `
+                <div class="bg-gray-800 rounded p-3 border-l-4 ${p.id === currentPlayerIndex ? 'border-yellow-400 bg-gray-700' : 'border-transparent'} transition">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="font-bold flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full" style="background-color: ${p.color}"></span>
+                            ${p.name}
+                        </div>
+                        <div class="text-green-400 font-bold tracking-wider">$${p.money.toLocaleString()}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="adjustMoney(${p.id}, 100)" class="flex-1 bg-green-900/50 hover:bg-green-700 text-green-300 text-xs py-1 rounded">+ Thu tiền</button>
+                        <button onclick="adjustMoney(${p.id}, -100)" class="flex-1 bg-red-900/50 hover:bg-red-700 text-red-300 text-xs py-1 rounded">- Trả tiền</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Thay đổi tiền (Popup nhập tay)
+        function adjustMoney(playerId, defaultVal) {
+            const player = players.find(p => p.id === playerId);
+            const action = defaultVal > 0 ? 'NHẬN' : 'TRẢ';
+            const amountStr = prompt(`Nhập số tiền ${player.name} muốn ${action}:`, "100");
+            
+            if(amountStr !== null && amountStr.trim() !== "" && !isNaN(amountStr)) {
+                const amount = parseInt(amountStr) * (defaultVal > 0 ? 1 : -1);
+                player.money += amount;
+                updateUI();
+                log(`<b>${player.name}</b> ${amount > 0 ? 'nhận được' : 'vừa trả'} $${Math.abs(amount).toLocaleString()}`);
+            }
+        }
+
+        // Ghi log
+        function log(msg) {
+            const logBox = document.getElementById('game-log');
+            logBox.innerHTML = `<div>${msg}</div>` + logBox.innerHTML;
+        }
+
+        // Khởi tạo UI lần đầu
+        generatePlayerInputs();
+
+    </script>
+</body>
+</html>

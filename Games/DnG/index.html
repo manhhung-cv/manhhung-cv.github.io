@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Draw & Guess - Pro Edition</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { 
+                        primary: '#1e1b4b', // Deep violet
+                        secondary: '#4338ca', // Indigo
+                        accent: '#f59e0b', // Amber/Orange game-like
+                        surface: '#ffffff', 
+                        bgLight: '#f1f5f9',
+                        panel: '#e0e7ff' // Indigo-50
+                    },
+                    boxShadow: { 
+                        'game': '0 4px 0 0 rgba(0, 0, 0, 0.1)',
+                        'game-active': '0 0px 0 0 rgba(0, 0, 0, 0.1)',
+                        'floating': '0 10px 25px -5px rgba(0, 0, 0, 0.2)' 
+                    },
+                    fontFamily: {
+                        sans: ['Nunito', 'Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+        
+        body {
+            font-family: 'Nunito', system-ui, sans-serif;
+            overflow: hidden; touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .minimal-input {
+            border: 2px solid transparent; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .minimal-input:focus {
+            outline: none; border-color: #f59e0b; box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+        }
+
+        #drawCanvas { cursor: crosshair; touch-action: none; width: 100%; height: 100%; }
+        
+        /* Game Buttons */
+        .game-btn {
+            transition: all 0.15s ease;
+        }
+        .game-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0px 0 0 rgba(0,0,0,0.1);
+        }
+
+        /* Tool active states */
+        .tool-btn { transition: all 0.2s; }
+        .tool-btn.active { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.15); background-color: #f59e0b; color: white; border-color: #d97706; }
+        
+        .color-btn { transition: all 0.2s; position: relative; }
+        .color-btn::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid transparent; transition: all 0.2s; }
+        .color-btn.active { transform: scale(1.1); z-index: 10; }
+        .color-btn.active::after { border-color: #f59e0b; }
+
+        /* View Management */
+        .view { display: none; height: 100vh; height: 100dvh; width: 100vw; flex-direction: column; }
+        .view.active { display: flex; animation: fadeIn 0.3s ease forwards; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pop { 0% { transform: scale(0.8); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        
+        .animate-pop { animation: pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        /* Responsive Container */
+        .responsive-container { max-width: 1200px; margin: 0 auto; width: 100%; height: 100%; display: flex; flex-direction: column; padding: 0.5rem; gap: 0.5rem; }
+        @media (min-width: 768px) {
+            .responsive-container { padding: 1rem; gap: 1rem; }
+        }
+
+        /* Custom Toast */
+        #toastContainer { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; align-items: center; pointer-events: none; }
+        .toast { background: white; color: #1e1b4b; padding: 0.75rem 1.5rem; border-radius: 999px; font-weight: 800; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); opacity: 0; transform: translateY(-20px) scale(0.9); }
+        .toast.show { opacity: 1; transform: translateY(0) scale(1); }
+    </style>
+</head>
+<body class="bg-bgLight text-primary dark:bg-slate-900 dark:text-white transition-colors duration-300">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer"></div>
+
+    <!-- ========================================== -->
+    <!-- VIEW: LOADING -->
+    <!-- ========================================== -->
+    <div id="view-loading" class="view active items-center justify-center p-4 bg-primary text-white">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-accent mb-6"></div>
+        <p class="text-xl font-black tracking-widest uppercase animate-pulse">Đang kết nối...</p>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW: LOGIN -->
+    <!-- ========================================== -->
+    <div id="view-login" class="view items-center justify-center p-4 bg-gradient-to-br from-secondary to-primary">
+        <div class="bg-white dark:bg-slate-800 p-8 rounded-[2rem] shadow-floating w-full max-w-sm text-center transform transition-all duration-300">
+            <div class="w-24 h-24 rounded-[1.5rem] rotate-3 bg-accent text-white flex items-center justify-center text-5xl mx-auto mb-6 shadow-lg border-4 border-white dark:border-slate-700">
+                <i class="fa-solid fa-paintbrush"></i>
+            </div>
+            <h1 class="text-3xl font-black mb-2 text-primary dark:text-white">Draw & Guess</h1>
+            <p class="text-sm font-bold text-gray-500 dark:text-gray-400 mb-8">Nét vẽ thần sầu, đoán mau kẻo lỡ</p>
+            
+            <form id="loginForm" class="space-y-5">
+                <input type="text" id="playerName" placeholder="Nhập tên của bạn..." required maxlength="12"
+                    class="w-full minimal-input bg-panel dark:bg-slate-700 dark:text-white rounded-2xl py-4 px-4 text-center font-black text-lg border-2 border-transparent">
+                <button type="submit" class="w-full game-btn bg-accent text-white font-black text-lg py-4 rounded-2xl shadow-game border-b-4 border-orange-600 hover:bg-orange-500">
+                    VÀO GAME NGAY
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW: DASHBOARD (ROOM MANAGEMENT) -->
+    <!-- ========================================== -->
+    <div id="view-dashboard" class="view">
+        <div class="responsive-container overflow-y-auto hide-scrollbar max-w-3xl">
+            <!-- Header -->
+            <header class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-3xl shadow-sm flex justify-between items-center shrink-0 border border-gray-100 dark:border-slate-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-accent rounded-full border-4 border-orange-200 flex items-center justify-center text-white font-black text-xl" id="dashAvatar">P</div>
+                    <div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Người chơi</p>
+                        <h2 id="dashPlayerName" class="text-xl font-black text-primary dark:text-white">Player</h2>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btnThemeToggle" class="w-12 h-12 flex items-center justify-center bg-panel dark:bg-slate-700 text-secondary dark:text-yellow-400 rounded-2xl font-bold transition hover:scale-105 active:scale-95">
+                        <i class="fa-solid fa-moon dark:hidden text-xl"></i>
+                        <i class="fa-solid fa-sun hidden dark:block text-xl"></i>
+                    </button>
+                    <button id="btnLogout" class="w-12 h-12 flex items-center justify-center bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-2xl font-bold transition hover:scale-105 active:scale-95">
+                        <i class="fa-solid fa-right-from-bracket text-xl"></i>
+                    </button>
+                </div>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 shrink-0">
+                <!-- Join Room -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700">
+                    <h3 class="text-base font-black mb-4 uppercase tracking-wide text-secondary dark:text-blue-400"><i class="fa-solid fa-right-to-bracket mr-2"></i>Vào phòng</h3>
+                    <div class="space-y-3">
+                        <input type="number" id="joinRoomCode" placeholder="Mã phòng (VD: 1234)" class="minimal-input w-full rounded-2xl px-4 py-3 text-center font-black text-xl bg-panel dark:bg-slate-700 dark:text-white tracking-widest" maxlength="4">
+                        <input type="password" id="joinRoomPass" placeholder="Mật khẩu (nếu có)" class="minimal-input w-full rounded-2xl px-4 py-3 text-center font-bold bg-gray-50 dark:bg-slate-900 dark:text-white">
+                        <button id="btnJoinRoom" class="w-full game-btn bg-secondary text-white font-black py-3 rounded-2xl shadow-game border-b-4 border-indigo-800">THAM GIA</button>
+                    </div>
+                </div>
+
+                <!-- Create Room -->
+                <div class="bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700">
+                    <h3 class="text-base font-black mb-4 uppercase tracking-wide text-green-600 dark:text-green-400"><i class="fa-solid fa-plus mr-2"></i>Tạo phòng mới</h3>
+                    <div class="space-y-3 h-full flex flex-col">
+                        <div>
+                            <label class="flex items-center gap-3 p-3 bg-panel dark:bg-slate-700 rounded-2xl cursor-pointer mb-3">
+                                <input type="checkbox" id="createHasPass" class="w-5 h-5 accent-accent rounded"> 
+                                <span class="font-bold text-sm">Phòng riêng tư (Có mật khẩu)</span>
+                            </label>
+                            <input type="password" id="createRoomPass" placeholder="Nhập mật khẩu..." class="minimal-input w-full rounded-2xl px-4 py-3 text-center font-bold bg-gray-50 dark:bg-slate-900 dark:text-white hidden mb-3">
+                        </div>
+                        <button id="btnCreateRoom" class="w-full game-btn bg-green-500 text-white font-black py-3 rounded-2xl shadow-game border-b-4 border-green-700 mt-auto">TẠO PHÒNG NGAY</button>
+                        <p id="roomLimitWarning" class="text-xs font-bold text-red-500 text-center hidden">Bạn đã đạt giới hạn tạo 5 phòng!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rooms List -->
+            <div class="flex-1 bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700 min-h-[250px] flex flex-col">
+                <div class="flex bg-panel dark:bg-slate-900 p-1 rounded-2xl mb-4">
+                    <button id="tabMyRooms" class="flex-1 py-2 text-sm font-black rounded-xl bg-white dark:bg-slate-700 shadow-sm text-primary dark:text-white transition-all">
+                        Phòng của tôi (<span id="roomCount">0/5</span>)
+                    </button>
+                    <button id="tabHistoryRooms" class="flex-1 py-2 text-sm font-bold rounded-xl text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white transition-all">
+                        Lịch sử
+                    </button>
+                </div>
+
+                <div id="myRoomsList" class="flex-1 overflow-y-auto space-y-3 hide-scrollbar"></div>
+                <div id="historyRoomsList" class="flex-1 overflow-y-auto space-y-3 hide-scrollbar hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW: LOBBY -->
+    <!-- ========================================== -->
+    <div id="view-lobby" class="view">
+        <div class="responsive-container max-w-2xl justify-center">
+            
+            <div class="bg-white dark:bg-slate-800 rounded-[2rem] shadow-floating border border-gray-100 dark:border-slate-700 overflow-hidden flex flex-col max-h-full">
+                <!-- Header Lobby -->
+                <div class="bg-primary p-6 text-center relative shrink-0">
+                    <button id="btnLeaveLobby" class="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <p class="text-white/70 text-xs font-bold uppercase tracking-widest mb-1">Mã Phòng Game</p>
+                    <h2 id="lobbyRoomCode" class="text-5xl font-black text-accent tracking-[0.2em]">1234</h2>
+                </div>
+
+                <!-- Settings -->
+                <div class="p-5 bg-panel dark:bg-slate-900 shrink-0">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-black text-sm uppercase text-secondary dark:text-blue-400">Cấu hình Game</h3>
+                        <i class="fa-solid fa-sliders text-gray-400"></i>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl text-center shadow-sm">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Điểm thắng</p>
+                            <input type="number" id="configPoints" class="w-full bg-transparent text-center font-black text-lg text-primary dark:text-white focus:outline-none" min="10" max="1000" disabled>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl text-center shadow-sm">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Thời gian (s)</p>
+                            <input type="number" id="configTime" class="w-full bg-transparent text-center font-black text-lg text-primary dark:text-white focus:outline-none" min="10" max="300" disabled>
+                        </div>
+                        <div class="bg-white dark:bg-slate-800 p-3 rounded-2xl text-center shadow-sm">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Chủ đề</p>
+                            <select id="configCategory" class="w-full bg-transparent text-center font-black text-sm md:text-base text-primary dark:text-white focus:outline-none appearance-none" disabled>
+                                <option value="all">Tất cả</option>
+                                <option value="animal">Động vật</option>
+                                <option value="object">Đồ vật</option>
+                            </select>
+                        </div>
+                    </div>
+                    <p id="hostConfigNotice" class="text-xs font-bold text-accent mt-3 text-center hidden"><i class="fa-solid fa-pen mr-1"></i> Bạn là chủ phòng, có thể sửa cấu hình</p>
+                </div>
+
+                <!-- Players -->
+                <div class="flex-1 p-5 overflow-hidden flex flex-col min-h-[200px]">
+                    <h3 class="font-black text-sm uppercase text-gray-500 mb-3 flex justify-between">
+                        <span>Đội hình</span>
+                        <span class="bg-gray-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg text-primary dark:text-white" id="playerCount">1/10</span>
+                    </h3>
+                    <div id="lobbyPlayerList" class="flex-1 overflow-y-auto space-y-2 hide-scrollbar pr-1">
+                        <!-- Players injected -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="p-5 bg-white dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700 shrink-0">
+                    <button id="btnStartGame" class="w-full game-btn bg-accent text-white py-4 rounded-2xl font-black text-xl shadow-game border-b-4 border-orange-600 hidden uppercase">Bắt Đầu Chơi</button>
+                    <div id="waitingHostMsg" class="w-full bg-panel dark:bg-slate-700 text-secondary dark:text-blue-300 text-center py-4 rounded-2xl font-bold uppercase tracking-wide hidden animate-pulse">
+                        Đang chờ chủ phòng...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW: GAME (Mobile First + Desktop Flex) -->
+    <!-- ========================================== -->
+    <div id="view-game" class="view">
+        <div class="responsive-container">
+            
+            <!-- Top Header Bar -->
+            <header class="flex justify-between items-center bg-white dark:bg-slate-800 px-3 py-2 md:py-3 md:px-5 rounded-2xl md:rounded-3xl shadow-sm shrink-0 border border-gray-100 dark:border-slate-700 relative z-20">
+                
+                <button id="btnLeaveGame" class="w-10 h-10 bg-red-100 dark:bg-red-500/20 text-red-600 rounded-xl flex items-center justify-center font-bold hover:bg-red-200 transition">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+
+                <div class="flex flex-col items-center flex-1 px-2">
+                    <span id="gameTurnInfo" class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest">Lượt vẽ</span>
+                    <span id="gameTurnName" class="text-sm md:text-lg font-black text-primary dark:text-white truncate max-w-[120px] md:max-w-[200px]">Bạn</span>
+                </div>
+                
+                <div class="flex flex-col items-center flex-1 border-x border-gray-100 dark:border-slate-700 px-2">
+                    <span id="gameCategory" class="text-[10px] md:text-xs font-bold text-accent uppercase tracking-widest">Chủ đề</span>
+                    <span id="secretWord" class="font-black text-sm md:text-xl tracking-[0.3em] text-primary dark:text-white uppercase">_ _ _</span>
+                </div>
+
+                <div class="flex flex-col items-center flex-1 px-2">
+                    <span class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-widest">Thời gian</span>
+                    <div class="flex items-center gap-1 text-red-500">
+                        <i class="fa-solid fa-clock text-xs"></i>
+                        <span id="timerDisplay" class="text-lg md:text-2xl font-black">60</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Game Area -->
+            <div class="flex flex-col lg:flex-row flex-1 min-h-0 gap-2 md:gap-4 mt-1 md:mt-2">
+                
+                <!-- Left: Canvas Area & Tools -->
+                <div class="flex flex-col flex-1 min-w-0 gap-2 md:gap-3 h-[50vh] lg:h-auto">
+                    <!-- Canvas -->
+                    <div id="canvasContainer" class="flex-1 bg-white rounded-2xl md:rounded-[2rem] border-4 border-panel dark:border-slate-700 relative shrink-0 overflow-hidden shadow-sm">
+                        <canvas id="drawCanvas" class="bg-white"></canvas>
+                        <!-- Block layer for guessers -->
+                        <div id="canvasOverlayBlock" class="absolute inset-0 z-10 hidden cursor-not-allowed"></div>
+                    </div>
+
+                    <!-- Toolbar (Scrollable on mobile) -->
+                    <div id="toolBar" class="bg-white dark:bg-slate-800 p-2 md:p-3 rounded-2xl md:rounded-3xl shadow-sm shrink-0 border border-gray-100 dark:border-slate-700 flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                        
+                        <!-- Colors -->
+                        <div class="flex items-center gap-2 px-2 shrink-0">
+                            <button class="w-7 h-7 md:w-9 md:h-9 rounded-full color-btn active bg-black" data-color="#000000"></button>
+                            <button class="w-7 h-7 md:w-9 md:h-9 rounded-full color-btn bg-red-500" data-color="#ef4444"></button>
+                            <button class="w-7 h-7 md:w-9 md:h-9 rounded-full color-btn bg-blue-500" data-color="#3b82f6"></button>
+                            <button class="w-7 h-7 md:w-9 md:h-9 rounded-full color-btn bg-green-500" data-color="#22c55e"></button>
+                            <button class="w-7 h-7 md:w-9 md:h-9 rounded-full color-btn bg-yellow-400" data-color="#facc15"></button>
+                        </div>
+                        
+                        <div class="w-px h-8 bg-gray-200 dark:bg-slate-700 shrink-0"></div>
+                        
+                        <!-- Tools -->
+                        <div class="flex items-center gap-1 md:gap-2 shrink-0">
+                            <button id="btnPencil" class="tool-btn active w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-pen"></i></button>
+                            <button id="btnFill" class="tool-btn bg-panel dark:bg-slate-700 text-secondary dark:text-blue-300 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-fill-drip"></i></button>
+                            <button id="btnEraser" class="tool-btn bg-panel dark:bg-slate-700 text-secondary dark:text-blue-300 w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-eraser"></i></button>
+                        </div>
+
+                        <div class="w-px h-8 bg-gray-200 dark:bg-slate-700 shrink-0"></div>
+                        
+                        <!-- Size -->
+                        <div class="flex items-center gap-2 shrink-0 px-2">
+                            <i class="fa-solid fa-circle text-[8px] text-gray-400"></i>
+                            <input type="range" id="brushSize" min="2" max="40" value="4" class="w-16 md:w-24 accent-accent">
+                            <i class="fa-solid fa-circle text-lg text-gray-400"></i>
+                        </div>
+
+                        <div class="w-px h-8 bg-gray-200 dark:bg-slate-700 shrink-0"></div>
+
+                        <!-- Actions (Undo/Redo/Clear) -->
+                        <div class="flex items-center gap-1 md:gap-2 shrink-0 pr-2">
+                            <button id="btnUndo" class="w-10 h-10 md:w-12 md:h-12 bg-panel dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-xl flex items-center justify-center font-bold text-lg hover:bg-gray-200 active:scale-95 transition"><i class="fa-solid fa-rotate-left"></i></button>
+                            <button id="btnRedo" class="w-10 h-10 md:w-12 md:h-12 bg-panel dark:bg-slate-700 text-gray-600 dark:text-gray-300 rounded-xl flex items-center justify-center font-bold text-lg hover:bg-gray-200 active:scale-95 transition"><i class="fa-solid fa-rotate-right"></i></button>
+                            <button id="btnClear" class="w-10 h-10 md:w-12 md:h-12 bg-red-100 dark:bg-red-500/20 text-red-500 rounded-xl flex items-center justify-center font-bold text-lg hover:bg-red-200 active:scale-95 transition"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right/Bottom: Chat & Scores -->
+                <div class="flex-1 lg:w-[380px] lg:flex-none flex flex-col gap-2 md:gap-3 shrink-0 min-h-[220px]">
+                    <!-- Scoreboard -->
+                    <div id="scoreBoard" class="flex gap-2 overflow-x-auto hide-scrollbar shrink-0">
+                        <!-- Scores injected here -->
+                    </div>
+
+                    <!-- Chat Box -->
+                    <div class="flex-1 bg-white dark:bg-slate-800 rounded-2xl md:rounded-3xl shadow-sm border border-gray-100 dark:border-slate-700 flex flex-col overflow-hidden relative">
+                        <div class="bg-panel dark:bg-slate-900 px-4 py-2 shrink-0 border-b border-gray-100 dark:border-slate-700">
+                            <h4 class="font-black text-xs uppercase tracking-widest text-secondary dark:text-blue-400">Trò chuyện & Đoán</h4>
+                        </div>
+                        
+                        <div id="chatMessages" class="flex-1 overflow-y-auto p-3 space-y-2 text-sm hide-scrollbar bg-gray-50/50 dark:bg-slate-800/50"></div>
+
+                        <form id="chatForm" class="p-2 md:p-3 shrink-0 bg-white dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700">
+                            <div class="relative">
+                                <input type="text" id="chatInput" placeholder="Nhập đáp án tại đây..." autocomplete="off" class="w-full bg-panel dark:bg-slate-700 dark:text-white rounded-xl py-3 pl-4 pr-12 text-sm font-bold focus:outline-none focus:ring-2 ring-accent border border-transparent">
+                                <button type="submit" class="absolute right-2 top-1/2 transform -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-lg bg-accent text-white font-bold hover:scale-105 active:scale-95 transition"><i class="fa-solid fa-paper-plane"></i></button>
+                            </div>
+                        </form>
+
+                        <!-- Block Chat Overlay for Drawer -->
+                        <div id="chatOverlay" class="absolute bottom-0 left-0 right-0 h-[65px] bg-white/95 dark:bg-slate-800/95 backdrop-blur flex items-center justify-center border-t border-gray-100 dark:border-slate-700 hidden z-10">
+                            <span class="text-sm font-black text-accent uppercase tracking-wide"><i class="fa-solid fa-pen-nib mr-2"></i> Bạn đang vẽ!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Overlay (Auto Next Round) -->
+    <div id="resultOverlay" class="fixed inset-0 bg-primary/80 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white dark:bg-slate-800 p-8 text-center max-w-[340px] w-full mx-4 rounded-[2.5rem] shadow-floating border-4 border-panel dark:border-slate-700 transform scale-90 transition-transform duration-500 cubic-bezier(0.175, 0.885, 0.32, 1.275)" id="resultCard">
+            <div id="resultIcon" class="text-6xl mb-4 animate-bounce">🎉</div>
+            <h2 id="resultTitle" class="text-3xl font-black mb-1 text-primary dark:text-white uppercase tracking-wide">Hết Vòng!</h2>
+            <p class="text-gray-500 dark:text-gray-400 mb-6 font-bold">Đáp án là: <br><span id="resultWord" class="font-black text-accent text-3xl uppercase tracking-widest mt-2 block">_</span></p>
+            
+            <div class="bg-panel dark:bg-slate-900 rounded-2xl p-4">
+                <p class="text-xs font-bold uppercase tracking-wider text-secondary dark:text-blue-400 mb-2">Vòng tiếp theo sau</p>
+                <div class="text-4xl font-black text-primary dark:text-white" id="autoNextCountdown">3</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE & JAVASCRIPT LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // ==========================================
+        // FIREBASE SETUP
+        // ==========================================
+        const firebaseConfig = {
+            apiKey: "AIzaSyAPNfagT0sb7JxbgIEiJxCG9dABOahvWjA",
+            authDomain: "masoi-hunq.firebaseapp.com",
+            projectId: "masoi-hunq",
+            storageBucket: "masoi-hunq.firebasestorage.app",
+            messagingSenderId: "925639662907",
+            appId: "1:925639662907:web:c67ff0b838aa53ac16ab1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        const appId = 'draw-and-guess';
+        const roomsRef = collection(db, 'artifacts', appId, 'public', 'data', 'rooms');
+
+        // ==========================================
+        // UTILS & MANAGERS
+        // ==========================================
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type === 'error' ? 'text-red-600 border-2 border-red-200' : 'text-green-600 border-2 border-green-200'}`;
+            toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'} mr-2"></i> ${message}`;
+            container.appendChild(toast);
+            
+            // Reflow
+            toast.offsetHeight;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        const themeManager = {
+            init() {
+                const storedTheme = localStorage.getItem('draw_theme');
+                if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            },
+            toggle() {
+                document.documentElement.classList.toggle('dark');
+                localStorage.setItem('draw_theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            }
+        };
+        themeManager.init();
+        document.getElementById('btnThemeToggle').onclick = themeManager.toggle;
+
+        const historyManager = {
+            get() { return JSON.parse(localStorage.getItem('draw_history') || '[]'); },
+            add(roomId) {
+                let hist = this.get().filter(id => id !== roomId); 
+                hist.unshift(roomId); 
+                if(hist.length > 10) hist = hist.slice(0, 10);
+                localStorage.setItem('draw_history', JSON.stringify(hist));
+            },
+            remove(roomId) {
+                let hist = this.get().filter(id => id !== roomId);
+                localStorage.setItem('draw_history', JSON.stringify(hist));
+            }
+        };
+        window.historyManager = historyManager; // Expose to global scope for inline onclicks
+
+        const DICT = {
+            animal: [
+                { word: "Con chó", aliases: ["cho", "con cho"] },
+                { word: "Con mèo", aliases: ["meo", "con meo"] },
+                { word: "Con vịt", aliases: ["vit", "con vit"] },
+                { word: "Con voi", aliases: ["voi", "con voi"] },
+                { word: "Cá mập", aliases: ["ca map"] }
+            ],
+            object: [
+                { word: "Cái bàn", aliases: ["ban", "cai ban"] },
+                { word: "Cái ghế", aliases: ["ghe", "cai ghe"] },
+                { word: "Xe đạp", aliases: ["xe dap"] },
+                { word: "Máy tính", aliases: ["may tinh", "pc", "laptop"] },
+                { word: "Điện thoại", aliases: ["dien thoai", "phone"] }
+            ]
+        };
+        const getAllWords = () => [...DICT.animal, ...DICT.object];
+
+        const appState = {
+            uid: '', 
+            name: localStorage.getItem('draw_name') || '',
+            roomId: null,
+            currentRoom: null, 
+            localTimerId: null,
+            isEndingRound: false,
+            isStartingRound: false,
+            undoStack: [] // Thêm stack để quản lý Undo/Redo
+        };
+
+        const DB = {
+            saveRoom: async (room) => { try { await setDoc(doc(roomsRef, room.id), room); } catch(e) {} },
+            updateRoom: async (id, data) => { try { await updateDoc(doc(roomsRef, id), data); } catch(e) {} },
+            deleteRoom: async (id) => { try { await deleteDoc(doc(roomsRef, id)); historyManager.remove(id); } catch(e) {} }
+        };
+
+        let dashboardUnsubscribe = null;
+        let roomUnsubscribe = null;
+
+        const views = {
+            loading: document.getElementById('view-loading'),
+            login: document.getElementById('view-login'),
+            dashboard: document.getElementById('view-dashboard'),
+            lobby: document.getElementById('view-lobby'),
+            game: document.getElementById('view-game')
+        };
+        
+        function switchView(viewName) {
+            Object.values(views).forEach(v => v.classList.remove('active'));
+            views[viewName].classList.add('active');
+            if (viewName === 'game') setTimeout(resizeCanvas, 150);
+        }
+
+        function normalizeStr(text) {
+            return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
+        }
+
+        // ==========================================
+        // CANVAS LOGIC (Nâng cấp + Undo/Redo)
+        // ==========================================
+        const canvas = document.getElementById('drawCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        let isDrawing = false;
+        let currentTool = 'pencil';
+        let currentColor = '#000000';
+        let currentSize = 4;
+        let currentPathObj = null;
+        let lastPos = null;
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            if(rect.width === 0) return;
+            
+            const dpr = window.devicePixelRatio || 1;
+            const logicalWidth = Math.round(rect.width);
+            const logicalHeight = Math.round(rect.height);
+            
+            canvas.width = logicalWidth * dpr;
+            canvas.height = logicalHeight * dpr;
+            canvas.style.width = `${logicalWidth}px`;
+            canvas.style.height = `${logicalHeight}px`;
+            
+            ctx.scale(dpr, dpr);
+            
+            if(appState.currentRoom && appState.currentRoom.paths) {
+                redrawCanvas(appState.currentRoom.paths);
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        function getNormPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { 
+                x: Math.round(((clientX - rect.left) / rect.width) * 10000) / 10000, 
+                y: Math.round(((clientY - rect.top) / rect.height) * 10000) / 10000
+            };
+        }
+
+        function getLogicalPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function handleStart(e) {
+            if (!canDraw()) return;
+            e.preventDefault();
+            isDrawing = true;
+            const pos = getLogicalPos(e);
+            const nPos = getNormPos(e);
+            
+            // Xóa Undo Stack khi có nét vẽ mới
+            appState.undoStack = [];
+
+            if(currentTool === 'fill') {
+                appState.currentRoom.paths.push({ t: 'f', c: currentColor, x: nPos.x, y: nPos.y });
+                redrawCanvas(appState.currentRoom.paths); // Render cục bộ ngay lập tức
+                syncCanvasThrottled(true); 
+                return;
+            }
+
+            currentPathObj = { t: currentTool === 'eraser' ? 'e' : 'p', c: currentColor, s: currentSize, p: [nPos.x, nPos.y] };
+            lastPos = pos;
+            
+            ctx.beginPath();
+            ctx.fillStyle = currentTool === 'eraser' ? '#ffffff' : currentColor;
+            ctx.arc(pos.x, pos.y, currentSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function handleMove(e) {
+            if (!isDrawing || currentTool === 'fill' || !canDraw()) return;
+            e.preventDefault();
+            const pos = getLogicalPos(e);
+            const nPos = getNormPos(e);
+            
+            const lastNX = currentPathObj.p[currentPathObj.p.length - 2];
+            const lastNY = currentPathObj.p[currentPathObj.p.length - 1];
+            
+            if (Math.abs(nPos.x - lastNX) > 0.001 || Math.abs(nPos.y - lastNY) > 0.001) {
+                currentPathObj.p.push(nPos.x, nPos.y);
+                
+                ctx.beginPath();
+                ctx.moveTo(lastPos.x, lastPos.y);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+                ctx.lineWidth = currentSize;
+                ctx.strokeStyle = currentTool === 'eraser' ? '#ffffff' : currentColor;
+                ctx.stroke();
+                
+                lastPos = pos;
+                syncCanvasThrottled(false);
+            }
+        }
+
+        function handleEnd(e) {
+            if (isDrawing && canDraw()) {
+                isDrawing = false;
+                if(currentPathObj && currentPathObj.p.length > 0) {
+                    const room = appState.currentRoom;
+                    if(room.paths[room.paths.length - 1] !== currentPathObj) {
+                        room.paths.push(currentPathObj);
+                    }
+                    syncCanvasThrottled(true);
+                }
+                currentPathObj = null;
+                lastPos = null;
+            }
+        }
+
+        canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('mousemove', handleMove); canvas.addEventListener('mouseup', handleEnd); canvas.addEventListener('mouseout', handleEnd);
+        canvas.addEventListener('touchstart', handleStart, {passive:false}); canvas.addEventListener('touchmove', handleMove, {passive:false}); canvas.addEventListener('touchend', handleEnd);
+
+        function canDraw() {
+            if (!appState.roomId) return false;
+            const room = appState.currentRoom;
+            return room && room.turnUid === appState.uid && room.state === 'playing';
+        }
+
+        let syncTimeout = null;
+        async function syncCanvasThrottled(immediate = false) {
+            if(!canDraw()) return;
+            const room = appState.currentRoom;
+            
+            if(currentPathObj && room.paths[room.paths.length - 1] !== currentPathObj) {
+                room.paths.push(currentPathObj);
+            }
+            
+            if(immediate) {
+                if(syncTimeout) clearTimeout(syncTimeout);
+                await DB.updateRoom(appState.roomId, { paths: appState.currentRoom.paths });
+                syncTimeout = null;
+                return;
+            }
+
+            if(syncTimeout) return;
+            syncTimeout = setTimeout(async () => {
+                if(appState.currentRoom && appState.roomId) {
+                    await DB.updateRoom(appState.roomId, { paths: appState.currentRoom.paths });
+                }
+                syncTimeout = null;
+            }, 60); 
+        }
+
+        function redrawCanvas(paths) {
+            const rect = canvas.getBoundingClientRect();
+            if(rect.width === 0) return;
+            const w = Math.round(rect.width);
+            const h = Math.round(rect.height);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, w, h);
+            if(!paths || paths.length === 0) return;
+            
+            paths.forEach(path => {
+                if (path.t === 'c') {
+                    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+                } else if (path.t === 'f') {
+                    floodFill(path.x * w, path.y * h, path.c);
+                } else if (path.t === 'p' || path.t === 'e') {
+                    if (!path.p || path.p.length < 2) return;
+                    ctx.beginPath();
+                    ctx.moveTo(path.p[0] * w, path.p[1] * h);
+                    for (let j = 2; j < path.p.length; j += 2) {
+                        ctx.lineTo(path.p[j] * w, path.p[j+1] * h);
+                    }
+                    ctx.lineCap = 'round'; 
+                    ctx.lineJoin = 'round';
+                    ctx.lineWidth = path.s;
+                    ctx.strokeStyle = path.t === 'e' ? '#ffffff' : path.c;
+                    ctx.stroke();
+                }
+            });
+        };
+
+        // Tools Setup
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentColor = e.target.dataset.color;
+                if(currentTool === 'eraser') setTool('pencil');
+            }
+        });
+        document.getElementById('brushSize').oninput = e => currentSize = e.target.value;
+        
+        const setTool = (tool) => {
+            currentTool = tool;
+            ['btnPencil', 'btnFill', 'btnEraser'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('active', 'bg-accent', 'text-white', 'border-orange-600');
+                if(id !== 'btnClear') el.classList.add('bg-panel', 'dark:bg-slate-700', 'text-secondary', 'dark:text-blue-300');
+            });
+            const activeBtn = document.getElementById('btn' + tool.charAt(0).toUpperCase() + tool.slice(1));
+            activeBtn.classList.remove('bg-panel', 'dark:bg-slate-700', 'text-secondary', 'dark:text-blue-300');
+            activeBtn.classList.add('active', 'bg-accent', 'text-white');
+        };
+        
+        document.getElementById('btnPencil').onclick = () => setTool('pencil');
+        document.getElementById('btnFill').onclick = () => setTool('fill');
+        document.getElementById('btnEraser').onclick = () => setTool('eraser');
+        
+        document.getElementById('btnClear').onclick = () => {
+            if(canDraw()){
+                appState.undoStack = [];
+                appState.currentRoom.paths = [{ t: 'c' }];
+                redrawCanvas(appState.currentRoom.paths); // Draw locally immediately
+                syncCanvasThrottled(true);
+            }
+        };
+
+        document.getElementById('btnUndo').onclick = () => {
+            if(!canDraw()) return;
+            const room = appState.currentRoom;
+            if(room.paths && room.paths.length > 0) {
+                const last = room.paths.pop();
+                appState.undoStack.push(last);
+                redrawCanvas(room.paths);
+                syncCanvasThrottled(true);
+            }
+        };
+
+        document.getElementById('btnRedo').onclick = () => {
+            if(!canDraw() || appState.undoStack.length === 0) return;
+            const room = appState.currentRoom;
+            const next = appState.undoStack.pop();
+            room.paths.push(next);
+            redrawCanvas(room.paths);
+            syncCanvasThrottled(true);
+        };
+
+        function hexToRgba(hex) {
+            const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16), 255] : [0,0,0,255];
+        }
+        function floodFill(startX, startY, fillColorHex) {
+            const dpr = window.devicePixelRatio || 1;
+            startX = Math.floor(startX * dpr); startY = Math.floor(startY * dpr);
+            
+            const w = canvas.width, h = canvas.height, imgData = ctx.getImageData(0,0,w,h), data = imgData.data;
+            const startPos = (startY*w+startX)*4, targetCol = [data[startPos], data[startPos+1], data[startPos+2], data[startPos+3]], fillCol = hexToRgba(fillColorHex);
+            const match = (p) => Math.abs(data[p]-targetCol[0])<=30 && Math.abs(data[p+1]-targetCol[1])<=30 && Math.abs(data[p+2]-targetCol[2])<=30;
+            if (match(startPos) && data[startPos]===fillCol[0] && data[startPos+1]===fillCol[1]) return;
+            const stack = [[startX, startY]];
+            while(stack.length) {
+                let [x, y] = stack.pop(), p = (y*w+x)*4;
+                while(x>=0 && match(p)) { x--; p-=4; }
+                x++; p+=4;
+                let spanA=false, spanB=false;
+                while(x<w && match(p)) {
+                    data[p]=fillCol[0]; data[p+1]=fillCol[1]; data[p+2]=fillCol[2]; data[p+3]=255;
+                    if(y>0){ if(match(p-w*4)){ if(!spanA){ stack.push([x,y-1]); spanA=true; } } else spanA=false; }
+                    if(y<h-1){ if(match(p+w*4)){ if(!spanB){ stack.push([x,y+1]); spanB=true; } } else spanB=false; }
+                    x++; p+=4;
+                }
+            }
+            ctx.putImageData(imgData,0,0);
+        }
+
+        // ==========================================
+        // APP LOGIC & SYNC
+        // ==========================================
+        async function initAuthAndApp() {
+            try {
+                await signInAnonymously(auth);
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        appState.uid = user.uid; 
+                        if(appState.name) {
+                            document.getElementById('dashPlayerName').textContent = appState.name;
+                            document.getElementById('dashAvatar').textContent = appState.name.charAt(0).toUpperCase();
+                            listenToDashboardRooms();
+                        } else {
+                            switchView('login');
+                        }
+                    }
+                });
+            } catch (error) {
+                showToast("Lỗi xác thực. Vui lòng tải lại trang.");
+            }
+        }
+
+        document.getElementById('loginForm').onsubmit = (e) => {
+            e.preventDefault();
+            const name = document.getElementById('playerName').value.trim();
+            if(name) {
+                appState.name = name;
+                localStorage.setItem('draw_name', name);
+                document.getElementById('dashPlayerName').textContent = appState.name;
+                document.getElementById('dashAvatar').textContent = appState.name.charAt(0).toUpperCase();
+                listenToDashboardRooms();
+            }
+        };
+
+        document.getElementById('btnLogout').onclick = () => {
+            localStorage.removeItem('draw_name'); appState.name=''; 
+            if(dashboardUnsubscribe) dashboardUnsubscribe();
+            switchView('login');
+        };
+
+        // Tabs Toggle in Dashboard
+        document.getElementById('tabMyRooms').onclick = () => {
+            document.getElementById('tabMyRooms').className = "flex-1 py-2 text-sm font-black rounded-xl bg-white dark:bg-slate-700 shadow-sm text-primary dark:text-white transition-all";
+            document.getElementById('tabHistoryRooms').className = "flex-1 py-2 text-sm font-bold rounded-xl text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white transition-all";
+            document.getElementById('myRoomsList').classList.remove('hidden');
+            document.getElementById('historyRoomsList').classList.add('hidden');
+        };
+        
+        document.getElementById('tabHistoryRooms').onclick = () => {
+            document.getElementById('tabHistoryRooms').className = "flex-1 py-2 text-sm font-black rounded-xl bg-white dark:bg-slate-700 shadow-sm text-primary dark:text-white transition-all";
+            document.getElementById('tabMyRooms').className = "flex-1 py-2 text-sm font-bold rounded-xl text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white transition-all";
+            document.getElementById('historyRoomsList').classList.remove('hidden');
+            document.getElementById('myRoomsList').classList.add('hidden');
+        };
+
+        function listenToDashboardRooms() {
+            if(dashboardUnsubscribe) dashboardUnsubscribe();
+            switchView('dashboard');
+            
+            dashboardUnsubscribe = onSnapshot(roomsRef, (snapshot) => {
+                const allRooms = [];
+                snapshot.forEach(doc => allRooms.push(doc.data()));
+                renderDashboard(allRooms);
+            }, (error) => showToast("Lỗi tải danh sách phòng"));
+        }
+        window.listenToDashboardRooms = listenToDashboardRooms; // Expose to global scope for inline onclicks
+
+        function renderDashboard(allRooms) {
+            const myRooms = allRooms.filter(r => r.hostId === appState.uid);
+            document.getElementById('roomCount').textContent = `${myRooms.length}/5`;
+            
+            const listMy = document.getElementById('myRoomsList');
+            listMy.innerHTML = '';
+            if(myRooms.length === 0) listMy.innerHTML = '<p class="text-sm font-bold text-gray-400 text-center py-6">Bạn chưa tạo phòng nào</p>';
+            
+            myRooms.forEach(r => {
+                listMy.innerHTML += `
+                    <div class="flex justify-between items-center bg-panel dark:bg-slate-900/50 p-3 md:p-4 rounded-2xl border border-transparent hover:border-indigo-200 transition-all">
+                        <div class="flex flex-col">
+                            <span class="text-lg font-black tracking-widest text-primary dark:text-white">${r.id}</span>
+                            <span class="text-xs font-bold text-gray-500 dark:text-gray-400 mt-1">${r.hasPass ? '<i class="fa-solid fa-lock text-orange-500"></i> Phòng kín' : '<i class="fa-solid fa-earth-americas text-green-500"></i> Công khai'}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="window.joinRoom('${r.id}', '${r.password}')" class="game-btn text-sm bg-secondary text-white px-4 py-2 rounded-xl font-black shadow-game border-b-4 border-indigo-800">Vào</button>
+                            <button onclick="window.deleteRoom('${r.id}')" class="game-btn text-sm bg-red-500 text-white px-4 py-2 rounded-xl font-black shadow-game border-b-4 border-red-700"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`;
+            });
+            appState.myRoomsCount = myRooms.length;
+
+            const histIds = historyManager.get();
+            const listHist = document.getElementById('historyRoomsList');
+            listHist.innerHTML = '';
+            if(histIds.length === 0) listHist.innerHTML = '<p class="text-sm font-bold text-gray-400 text-center py-6">Chưa tham gia phòng nào</p>';
+            
+            histIds.forEach(id => {
+                const r = allRooms.find(room => room.id === id);
+                if(r) {
+                    listHist.innerHTML += `
+                        <div class="flex justify-between items-center bg-panel dark:bg-slate-900/50 p-3 md:p-4 rounded-2xl">
+                            <div class="flex flex-col">
+                                <span class="text-lg font-black tracking-widest text-primary dark:text-white">${r.id}</span>
+                                <span class="text-xs font-bold text-green-600 dark:text-green-400 mt-1">Đang hoạt động (${r.players.length} người)</span>
+                            </div>
+                            <button onclick="window.joinRoom('${r.id}', '')" class="game-btn text-sm bg-accent text-white px-4 py-2 rounded-xl font-black shadow-game border-b-4 border-orange-600">Vào Lại</button>
+                        </div>`;
+                } else {
+                    listHist.innerHTML += `
+                        <div class="flex justify-between items-center bg-gray-50 dark:bg-slate-800 p-3 md:p-4 rounded-2xl opacity-60">
+                            <div class="flex flex-col">
+                                <span class="text-lg font-black tracking-widest text-gray-400">${id}</span>
+                                <span class="text-xs font-bold text-red-500 mt-1">Phòng đã giải tán</span>
+                            </div>
+                            <button onclick="window.historyManager.remove('${id}'); window.listenToDashboardRooms();" class="text-xs font-bold text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-xmark mr-1"></i> Xóa</button>
+                        </div>`;
+                }
+            });
+        }
+
+        window.deleteRoom = async (id) => { 
+            // Replace confirm with simple check, or custom modal. Using basic confirm for simplicity in destructive action.
+            if(confirm('Xóa phòng này?')) { await DB.deleteRoom(id); showToast('Đã xóa phòng', 'success'); } 
+        };
+
+        document.getElementById('createHasPass').onchange = (e) => {
+            document.getElementById('createRoomPass').style.display = e.target.checked ? 'block' : 'none';
+        };
+
+        document.getElementById('btnCreateRoom').onclick = async () => {
+            if(appState.myRoomsCount >= 5) {
+                document.getElementById('roomLimitWarning').classList.remove('hidden');
+                return;
+            }
+            
+            const id = Math.floor(1000 + Math.random() * 9000).toString();
+            const hasPass = document.getElementById('createHasPass').checked;
+            const pass = document.getElementById('createRoomPass').value;
+            
+            const room = {
+                id, hostId: appState.uid, hasPass, password: hasPass ? pass : '',
+                settings: { points: 100, time: 60, category: 'all' },
+                players: [{ uid: appState.uid, name: appState.name, score: 0 }],
+                state: 'waiting', turnUid: '', currentWordObj: null, paths: [], chat: [], endTime: 0, nextRoundTime: 0,
+                correctGuessers: [] 
+            };
+            
+            await DB.saveRoom(room);
+            await window.joinRoom(id, pass);
+        };
+
+        document.getElementById('btnJoinRoom').onclick = () => {
+            const code = document.getElementById('joinRoomCode').value;
+            const pass = document.getElementById('joinRoomPass').value;
+            if (code.length === 4) window.joinRoom(code, pass);
+            else showToast("Mã phòng phải gồm 4 chữ số!");
+        };
+
+        window.joinRoom = async (id, passInput = '') => {
+            const roomDoc = await getDoc(doc(roomsRef, id));
+            if(!roomDoc.exists()) return showToast('Không tìm thấy phòng!');
+            
+            const room = roomDoc.data();
+            if(room.hasPass && room.password !== passInput && room.hostId !== appState.uid) return showToast('Sai mật khẩu!');
+            
+            if(!room.players.find(p => p.uid === appState.uid)) {
+                room.players.push({ uid: appState.uid, name: appState.name, score: 0 });
+                await DB.updateRoom(id, { players: room.players });
+            }
+            
+            appState.roomId = id;
+            historyManager.add(id); 
+            if(dashboardUnsubscribe) dashboardUnsubscribe(); 
+            listenToRoom(id);
+        };
+
+        function listenToRoom(id) {
+            if(roomUnsubscribe) roomUnsubscribe();
+            roomUnsubscribe = onSnapshot(doc(roomsRef, id), (snapshot) => {
+                if(!snapshot.exists()) {
+                    showToast('Phòng đã bị xóa hoặc kết thúc.');
+                    appState.roomId = null;
+                    if(roomUnsubscribe) roomUnsubscribe();
+                    listenToDashboardRooms();
+                    return;
+                }
+                
+                const room = snapshot.data();
+                
+                if (isDrawing && appState.currentRoom && appState.currentRoom.paths) {
+                    room.paths = appState.currentRoom.paths;
+                }
+
+                appState.currentRoom = room;
+                
+                if(room.state === 'waiting') {
+                    if(!document.getElementById('view-lobby').classList.contains('active')) switchView('lobby');
+                    updateLobbyUI();
+                } else if(room.state === 'playing' || room.state === 'waiting_next') {
+                    if(!document.getElementById('view-game').classList.contains('active')) switchView('game');
+                    updateGameUI();
+                }
+            }, (error) => showToast("Mất kết nối với phòng!"));
+        }
+
+        async function handleLeaveRoom() {
+            const room = appState.currentRoom;
+            if(room) {
+                room.players = room.players.filter(p => p.uid !== appState.uid);
+                if(room.players.length === 0) {
+                     await DB.deleteRoom(room.id);
+                } else {
+                     let newHost = room.hostId;
+                     if(room.hostId === appState.uid) newHost = room.players[0].uid;
+                     await DB.updateRoom(room.id, { players: room.players, hostId: newHost });
+                }
+            }
+            appState.roomId = null;
+            if(roomUnsubscribe) roomUnsubscribe();
+            listenToDashboardRooms();
+        }
+
+        document.getElementById('btnLeaveLobby').onclick = handleLeaveRoom;
+        document.getElementById('btnLeaveGame').onclick = handleLeaveRoom;
+
+        function updateLobbyUI() {
+            const room = appState.currentRoom;
+            if(!room) return;
+
+            document.getElementById('lobbyRoomCode').textContent = room.id;
+            document.getElementById('playerCount').textContent = `${room.players.length}/10`;
+            
+            const isHost = room.hostId === appState.uid;
+            
+            ['Points', 'Time', 'Category'].forEach(key => {
+                const el = document.getElementById('config' + key);
+                el.disabled = !isHost;
+                el.value = room.settings[key.toLowerCase()];
+                
+                if(isHost) el.onchange = async (e) => {
+                    const r = appState.currentRoom;
+                    let val = e.target.value;
+                    if(el.type === 'number') {
+                        val = Math.max(parseInt(el.min), Math.min(parseInt(el.max), parseInt(val) || parseInt(el.min)));
+                        el.value = val;
+                    }
+                    r.settings[key.toLowerCase()] = val;
+                    await DB.updateRoom(r.id, { settings: r.settings });
+                };
+            });
+            
+            document.getElementById('hostConfigNotice').style.display = isHost ? 'block' : 'none';
+            document.getElementById('btnStartGame').style.display = isHost ? 'block' : 'none';
+            document.getElementById('waitingHostMsg').style.display = isHost ? 'none' : 'block';
+            
+            if(isHost) {
+                document.getElementById('btnStartGame').innerHTML = room.players.length < 2 ? '<i class="fa-solid fa-user-group mr-2"></i> CẦN ÍT NHẤT 2 NGƯỜI' : 'BẮT ĐẦU CHƠI';
+                document.getElementById('btnStartGame').disabled = room.players.length < 2;
+                document.getElementById('btnStartGame').className = room.players.length < 2 ? 'w-full game-btn bg-gray-400 text-white py-4 rounded-2xl font-black text-xl shadow-game border-b-4 border-gray-600 block uppercase' : 'w-full game-btn bg-accent text-white py-4 rounded-2xl font-black text-xl shadow-game border-b-4 border-orange-600 block uppercase';
+            }
+
+            const list = document.getElementById('lobbyPlayerList');
+            list.innerHTML = '';
+            room.players.forEach(p => {
+                const isMe = p.uid === appState.uid;
+                list.innerHTML += `
+                    <div class="flex items-center gap-3 p-3 bg-panel dark:bg-slate-900/50 rounded-2xl border border-transparent ${isMe ? 'border-indigo-200 dark:border-indigo-500/50' : ''}">
+                        <div class="w-10 h-10 rounded-xl bg-secondary text-white flex items-center justify-center font-black text-lg shadow-sm">${p.name.charAt(0).toUpperCase()}</div>
+                        <span class="text-base font-bold flex-1 text-primary dark:text-white">${p.name} ${isMe ? '<span class="text-[10px] bg-accent text-white px-2 py-0.5 rounded ml-2 uppercase">Bạn</span>' : ''}</span>
+                        ${p.uid === room.hostId ? '<div class="w-8 h-8 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center"><i class="fa-solid fa-crown text-sm"></i></div>' : ''}
+                    </div>`;
+            });
+        }
+
+        document.getElementById('btnStartGame').onclick = async () => {
+            const room = appState.currentRoom;
+            if(room && room.players.length >= 2) await startNewRound(room);
+        };
+
+        async function startNewRound(room) {
+            const curIdx = room.players.findIndex(p => p.uid === room.turnUid);
+            const nextIdx = (curIdx + 1) >= room.players.length ? 0 : (curIdx + 1);
+            const turnUid = room.players[nextIdx].uid;
+            
+            let words = room.settings.category === 'all' ? getAllWords() : DICT[room.settings.category];
+            if(!words || words.length === 0) words = getAllWords();
+            const wordObj = words[Math.floor(Math.random() * words.length)];
+            
+            const endTime = Date.now() + parseInt(room.settings.time) * 1000;
+            
+            appState.undoStack = []; // Reset undo when new round
+
+            await DB.updateRoom(room.id, {
+                turnUid: turnUid,
+                currentWordObj: wordObj,
+                state: 'playing',
+                endTime: endTime,
+                nextRoundTime: 0,
+                paths: [{t: 'c'}],
+                correctGuessers: [],
+                chat: [{sender: 'Hệ thống', text: `Vòng mới! Lượt vẽ của ${room.players[nextIdx].name}`, type: 'system'}]
+            });
+        }
+
+        function updateGameUI() {
+            const room = appState.currentRoom;
+            if(!room) return;
+
+            const isMyTurn = room.turnUid === appState.uid;
+            const drawer = room.players.find(p => p.uid === room.turnUid) || {};
+
+            document.getElementById('gameTurnName').textContent = isMyTurn ? 'Bạn' : (drawer.name || 'Bot');
+            document.getElementById('gameCategory').textContent = room.settings.category === 'animal' ? 'Động vật' : (room.settings.category === 'object' ? 'Đồ vật' : 'Tất cả');
+
+            if (room.state === 'playing' && room.endTime) {
+                 document.getElementById('timerDisplay').textContent = Math.max(0, Math.floor((room.endTime - Date.now()) / 1000));
+            }
+
+            if (room.currentWordObj) {
+                if(isMyTurn) {
+                    document.getElementById('secretWord').textContent = room.currentWordObj.word;
+                } else {
+                    document.getElementById('secretWord').textContent = room.currentWordObj.word.replace(/[a-zA-Záàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ]/gi, "_ ");
+                }
+            }
+
+            document.getElementById('canvasOverlayBlock').style.display = isMyTurn ? 'none' : 'block';
+            document.getElementById('toolBar').style.opacity = isMyTurn ? '1' : '0.5';
+            document.getElementById('toolBar').style.pointerEvents = isMyTurn ? 'auto' : 'none';
+            
+            // Render Canvas
+            if(room.paths && room.paths.length > 0) {
+                if (!(isMyTurn && isDrawing)) redrawCanvas(room.paths);
+            } else {
+                redrawCanvas([]);
+            }
+
+            const sb = document.getElementById('scoreBoard');
+            sb.innerHTML = '';
+            room.players.sort((a,b) => b.score - a.score).forEach(p => {
+                const isGuessed = room.correctGuessers && room.correctGuessers.includes(p.uid);
+                const isDrawer = p.uid === room.turnUid;
+                sb.innerHTML += `<div class="${isGuessed ? 'bg-green-100 dark:bg-green-900/50 border-green-300' : 'bg-white dark:bg-slate-700 border-gray-100 dark:border-slate-600'} px-3 md:px-4 py-2 rounded-xl border flex items-center gap-2 shadow-sm transition-colors">
+                    <span class="${isDrawer ? 'text-accent dark:text-orange-400 font-black' : 'text-gray-600 dark:text-gray-200 font-bold'}">${p.name}</span>
+                    <span class="${isGuessed ? 'text-green-600 dark:text-green-400': 'text-primary dark:text-white'} font-black text-base">${p.score}</span>
+                    ${isDrawer ? '<i class="fa-solid fa-pen text-[10px] text-accent ml-1"></i>' : ''}
+                </div>`;
+            });
+
+            document.getElementById('chatOverlay').style.display = isMyTurn ? 'flex' : 'none';
+            document.getElementById('chatInput').disabled = isMyTurn;
+
+            // TIMER & AUTO TRANSITION LOGIC
+            if (!appState.localTimerId) {
+                appState.localTimerId = setInterval(async () => {
+                    const r = appState.currentRoom;
+                    if(!r) return;
+
+                    if(r.state === 'playing' && r.endTime) {
+                         const t = Math.max(0, Math.floor((r.endTime - Date.now()) / 1000));
+                         document.getElementById('timerDisplay').textContent = t;
+                         
+                         // Host check end time
+                         if (t === 0 && r.hostId === appState.uid && !appState.isEndingRound) {
+                             appState.isEndingRound = true;
+                             const roomDoc = await getDoc(doc(roomsRef, r.id));
+                             if(roomDoc.exists() && roomDoc.data().state === 'playing') {
+                                 const latestRoom = roomDoc.data();
+                                 const anyGuessed = latestRoom.correctGuessers && latestRoom.correctGuessers.length > 0;
+                                 latestRoom.chat.push({
+                                     sender: 'Hệ thống', 
+                                     text: anyGuessed ? `Hết giờ! Đáp án: ${latestRoom.currentWordObj.word}` : `Không ai đoán đúng! Đáp án: ${latestRoom.currentWordObj.word}`, 
+                                     type: 'system'
+                                 });
+                                 await DB.updateRoom(r.id, {
+                                     state: 'waiting_next',
+                                     chat: latestRoom.chat,
+                                     nextRoundTime: Date.now() + 4000 // Chờ 4s
+                                 });
+                             }
+                             appState.isEndingRound = false;
+                         }
+                    } else if (r.state === 'waiting_next' && r.nextRoundTime) {
+                         const t = Math.max(0, Math.ceil((r.nextRoundTime - Date.now()) / 1000));
+                         document.getElementById('autoNextCountdown').textContent = t;
+                         
+                         // Host trigger next round automatically
+                         if (t <= 0 && r.hostId === appState.uid && !appState.isStartingRound) {
+                             appState.isStartingRound = true;
+                             await startNewRound(r);
+                             appState.isStartingRound = false;
+                         }
+                    }
+                }, 500);
+            }
+
+            const chatEl = document.getElementById('chatMessages');
+            const isScrolledToBottom = chatEl.scrollHeight - chatEl.clientHeight <= chatEl.scrollTop + 10;
+            
+            chatEl.innerHTML = '';
+            room.chat.forEach(msg => {
+                if(msg.type === 'system') chatEl.innerHTML += `<div class="text-center text-[10px] md:text-xs font-black text-gray-400 dark:text-gray-500 my-2 uppercase tracking-wide bg-gray-200/50 dark:bg-slate-700/50 rounded-full py-1.5 w-max mx-auto px-4">${msg.text}</div>`;
+                else if(msg.type === 'success') chatEl.innerHTML += `<div class="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 p-2.5 rounded-xl border border-green-200 dark:border-green-500/30 font-bold shadow-sm"><i class="fa-solid fa-check-circle mr-1"></i> <strong>${msg.sender}:</strong> ${msg.text}</div>`;
+                else chatEl.innerHTML += `<div class="bg-white dark:bg-slate-700 p-2.5 rounded-xl border border-gray-100 dark:border-slate-600 shadow-sm"><strong class="text-secondary dark:text-blue-300">${msg.sender}:</strong> <span class="text-primary dark:text-gray-200 font-medium">${msg.text}</span></div>`;
+            });
+            
+            if (isScrolledToBottom) chatEl.scrollTop = chatEl.scrollHeight;
+
+            const overlay = document.getElementById('resultOverlay');
+            if(room.state === 'waiting_next') {
+                if(room.currentWordObj) document.getElementById('resultWord').textContent = room.currentWordObj.word;
+                const anyGuessed = room.correctGuessers && room.correctGuessers.length > 0;
+                document.getElementById('resultIcon').textContent = anyGuessed ? '🎉' : '⏰';
+                document.getElementById('resultTitle').textContent = anyGuessed ? 'Có người đoán đúng!' : 'Hết Giờ!';
+                
+                overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            } else {
+                overlay.classList.add('opacity-0'); setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+
+        document.getElementById('chatForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if(!text) return;
+            input.value = '';
+
+            const room = appState.currentRoom;
+            if(!room || room.state !== 'playing' || room.turnUid === appState.uid) return;
+
+            if(room.correctGuessers && room.correctGuessers.includes(appState.uid)) {
+                room.chat.push({sender: 'Hệ thống', text: 'Suỵt! Bạn đã đoán đúng, hãy giữ bí mật!', type: 'system'});
+                updateGameUI(); 
+                return;
+            }
+
+            const normGuess = normalizeStr(text);
+            const isCorrect = normGuess === normalizeStr(room.currentWordObj.word) || 
+                              room.currentWordObj.aliases.some(a => normalizeStr(a) === normGuess);
+
+            const roomDoc = await getDoc(doc(roomsRef, appState.roomId));
+            if(!roomDoc.exists()) return;
+            const latestRoom = roomDoc.data();
+            
+            if(latestRoom.state !== 'playing') return;
+
+            if(isCorrect) {
+                if(!latestRoom.correctGuessers) latestRoom.correctGuessers = [];
+                if (latestRoom.correctGuessers.includes(appState.uid)) return;
+
+                const isFirstToGuess = latestRoom.correctGuessers.length === 0;
+                
+                latestRoom.correctGuessers.push(appState.uid);
+                latestRoom.chat.push({sender: appState.name, text: 'Đã tìm ra đáp án chính xác!!!', type: 'success'});
+                
+                const p = latestRoom.players.find(p => p.uid === appState.uid);
+                
+                if (isFirstToGuess) {
+                    if(p) p.score += 10;
+                    const d = latestRoom.players.find(p => p.uid === latestRoom.turnUid);
+                    if(d) d.score += 5; // Người vẽ
+                    
+                    const remaining = Math.floor((latestRoom.endTime - Date.now()) / 1000);
+                    if (remaining > 15) {
+                        latestRoom.endTime = Date.now() + 15 * 1000;
+                        latestRoom.chat.push({sender: 'Hệ thống', text: `${appState.name} quá nhanh! Thời gian rút xuống còn 15s.`, type: 'system'});
+                    } else {
+                        latestRoom.chat.push({sender: 'Hệ thống', text: `${appState.name} đoán đúng đầu tiên!`, type: 'system'});
+                    }
+                } else {
+                    if(p) p.score += 5;
+                    latestRoom.chat.push({sender: 'Hệ thống', text: `${appState.name} cũng đã đoán đúng!`, type: 'system'});
+                }
+                
+                if(latestRoom.correctGuessers.length >= latestRoom.players.length - 1) {
+                    latestRoom.state = 'waiting_next';
+                    latestRoom.endTime = Date.now(); 
+                    latestRoom.nextRoundTime = Date.now() + 4000;
+                    latestRoom.chat.push({sender: 'Hệ thống', text: `Tất cả đã đoán đúng! Đáp án: ${latestRoom.currentWordObj.word}`, type: 'system'});
+                }
+                
+                await DB.updateRoom(appState.roomId, {
+                    correctGuessers: latestRoom.correctGuessers,
+                    chat: latestRoom.chat,
+                    players: latestRoom.players,
+                    endTime: latestRoom.endTime,
+                    nextRoundTime: latestRoom.nextRoundTime || 0,
+                    state: latestRoom.state
+                });
+            } else {
+                latestRoom.chat.push({sender: appState.name, text, type: 'normal'});
+                await DB.updateRoom(appState.roomId, { chat: latestRoom.chat });
+            }
+        };
+
+        // STARTUP
+        initAuthAndApp();
+
+    </script>
+</body>
+</html>
