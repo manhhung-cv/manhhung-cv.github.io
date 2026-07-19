@@ -298,9 +298,9 @@ export const TOOLS = [
         id: 'note-pro',
         catId: 'entertainment',
         name: 'Ghi chú',
-        icon: 'fa-solid fa-bolt',
-        desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
-        tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
+        icon: 'fa-solid fa-note-sticky',
+        desc: 'Ghi chú nhanh có mã hoá',
+        tags: ['note', 'ghi chú', 'bảo mật']
     },
     {
         id: 'choronotype',
@@ -310,5 +310,30 @@ export const TOOLS = [
         desc: 'Hiệu ứng bảng LED chữ chạy động chuyên nghiệp. Tuỳ chỉnh màu sắc, tốc độ, và kiểu dáng linh hoạt dành cho concert hoặc sự kiện.',
         tags: ['led', 'bảng led', 'chữ chạy', 'cổ vũ', 'concert', 'marquee', 'idol', 'neon']
     },
+    {
+        id: 'lcd-test',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'LCD & Display Test',
+        icon: 'fa-solid fa-desktop',
+        desc: 'Bộ công cụ đo đạc thông số và phân tích chất lượng tấm nền toàn diện. Hỗ trợ kiểm tra điểm ảnh chết, độ đồng nhất, dải màu gradient, gamma và đo tần số quét (FPS/Hz).',
+        tags: ['lcd', 'test màn hình', 'điểm chết', 'dead pixel', 'fps', 'hz', 'tần số quét', 'display', 'gamma', 'monitor', 'phân giải']
+    },
+    {
+        id: 'key-mouse-test',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Key & Mouse Test',
+        icon: 'fa-solid fa-keyboard',
+        desc: 'Công cụ kiểm tra bàn phím và chuột, giúp xác định các phím bị kẹt, phản hồi chậm hoặc không hoạt động. Hỗ trợ đo tần số quét (FPS/Hz) của thiết bị đầu vào.',
+        tags: ['key', 'mouse', 'test bàn phím', 'test chuột', 'fps', 'hz', 'tần số quét', 'display', 'gamma', 'monitor', 'phân giải']
+    },
+    {
+        id: 'finance',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Finance',
+        icon: 'fa-solid fa-calculator',
+        desc: 'Công cụ quản lý tài chính cá nhân và doanh nghiệp.',
+        tags: ['finance', 'tài chính', 'quản lý', 'kế toán']
+    }
     
+
 ];

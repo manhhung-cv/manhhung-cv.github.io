@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Shiba Wars - Responsive</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #111;
+            touch-action: none; /* Prevent browser scrolling/bouncing */
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            /* Cursor styles */
+            cursor: grab;
+        }
+        
+        #gameCanvas:active {
+            cursor: grabbing;
+        }
+
+        .no-select {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        .hp-bar-fill {
+            transition: width 0.15s ease-out;
+        }
+
+        /* Safe area support for notched devices */
+        .safe-area-padded {
+            padding-top: max(1rem, env(safe-area-inset-top));
+            padding-bottom: max(1rem, env(safe-area-inset-bottom));
+            padding-left: max(1rem, env(safe-area-inset-left));
+            padding-right: max(1rem, env(safe-area-inset-right));
+        }
+    </style>
+</head>
+<body class="relative text-white font-sans no-select">
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Overlay -->
+    <div id="uiLayer" class="absolute top-0 left-0 w-full h-full pointer-events-none flex flex-col justify-between safe-area-padded z-10">
+        
+        <!-- Top HUD -->
+        <div class="flex flex-row justify-between items-start gap-2">
+            
+            <!-- Economy -->
+            <div class="bg-black/70 rounded-lg p-2 sm:p-4 border-2 border-yellow-500 shadow-lg backdrop-blur-md min-w-[80px] sm:min-w-[120px] pointer-events-auto">
+                <div class="text-yellow-400 text-xs sm:text-sm font-bold uppercase tracking-wider mb-1 text-center">Gold</div>
+                <div id="goldDisplay" class="text-xl sm:text-4xl font-extrabold text-white text-center">100</div>
+            </div>
+
+            <!-- Bases HP (Top Center) -->
+            <div class="flex gap-2 sm:gap-8 flex-1 max-w-xl mx-auto items-start pt-1 pointer-events-auto">
+                <!-- Player Base -->
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="text-blue-400 font-bold text-[10px] sm:text-sm mb-1 uppercase tracking-wide text-center drop-shadow-md">Player Base</div>
+                    <div class="w-full h-4 sm:h-6 bg-gray-800 rounded-full border-2 border-gray-600 overflow-hidden relative shadow-inner">
+                        <div id="playerHpBar" class="hp-bar-fill h-full bg-blue-500 w-full"></div>
+                        <div id="playerHpText" class="absolute inset-0 flex items-center justify-center text-[9px] sm:text-xs font-bold drop-shadow-md">1000/1000</div>
+                    </div>
+                </div>
+
+                <!-- Enemy Base -->
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="text-red-400 font-bold text-[10px] sm:text-sm mb-1 uppercase tracking-wide text-center drop-shadow-md">Enemy Base</div>
+                    <div class="w-full h-4 sm:h-6 bg-gray-800 rounded-full border-2 border-gray-600 overflow-hidden relative shadow-inner">
+                        <div id="enemyHpBar" class="hp-bar-fill h-full bg-red-500 w-full"></div>
+                        <div id="enemyHpText" class="absolute inset-0 flex items-center justify-center text-[9px] sm:text-xs font-bold drop-shadow-md">1000/1000</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spacer to balance header on desktop/landscape -->
+            <div class="hidden sm:block min-w-[120px]"></div>
+        </div>
+
+        <!-- Bottom Controls -->
+        <div class="flex justify-center sm:justify-start pointer-events-auto w-full max-w-md mx-auto sm:mx-0 sm:pb-4 pb-2">
+            <button id="spawnBtn" class="min-h-[64px] min-w-[200px] sm:min-w-[250px] w-full sm:w-auto relative inline-flex items-center justify-center px-6 py-3 transition-all duration-200 bg-blue-600 font-bold rounded-2xl hover:bg-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-400/50 shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border border-blue-400">
+                <div class="flex flex-col items-center">
+                    <span class="text-base sm:text-xl uppercase tracking-widest text-white drop-shadow-md">Spawn Shiba</span>
+                    <span class="text-xs text-blue-200 mt-1 font-semibold">Cost: 50 Gold</span>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="hidden absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center pointer-events-auto backdrop-blur-md">
+        <h1 id="gameOverText" class="text-5xl sm:text-8xl font-extrabold mb-8 tracking-widest text-center px-4"></h1>
+        <button onclick="location.reload()" class="min-h-[64px] min-w-[200px] px-8 py-4 bg-white text-black text-xl font-bold rounded-xl hover:bg-gray-200 transition shadow-[0_0_20px_rgba(255,255,255,0.5)] active:scale-95">Play Again</button>
+    </div>
+
+    <!-- Game Logic -->
+    <script>
+        /**
+         * ASSETS & CONSTANTS
+         */
+        const WORLD_WIDTH = 1774;
+        const WORLD_HEIGHT = 887;
+        const GROUND_Y = 750;
+
+        const ASSETS = {
+            map: new Image(),
+            shiba: new Image()
+        };
+        ASSETS.map.src = 'Map1.png';
+        ASSETS.shiba.src = 'Shiba.png';
+
+        const ANIMATIONS = {
+            walk:  { row: 0, frames: 8 },
+            attack:{ row: 1, frames: 8 },
+            idle:  { row: 2, frames: 7 },
+            death: { row: 3, frames: 8 }
+        };
+        const ANIM_SPEED = 100;
+
+        /**
+         * CAMERA SYSTEM
+         */
+        class Camera {
+            constructor() {
+                this.x = 0;
+                this.y = 0;
+                this.zoom = 1;
+                this.minZoom = 1;
+                this.maxZoom = 3;
+                this.targetUnit = null;
+            }
+
+            update(canvasWidth, canvasHeight) {
+                const isPortrait = canvasHeight > canvasWidth;
+
+                // Default fit for the entire map (landscape logic)
+                const fitZoom = Math.min(canvasWidth / WORLD_WIDTH, canvasHeight / WORLD_HEIGHT);
+
+                if (isPortrait) {
+                    // Mobile Portrait: Scale so map fills height nicely, enabling horizontal pan
+                    // Displaying approx 35-50% width is natively handled by framing against height
+                    this.minZoom = canvasHeight / WORLD_HEIGHT; 
+                } else {
+                    // Landscape modes
+                    this.minZoom = fitZoom;
+                }
+                
+                this.maxZoom = this.minZoom * 3;
+
+                // Clamp zoom level
+                this.zoom = Math.max(this.minZoom, Math.min(this.zoom, this.maxZoom));
+
+                const viewportW = canvasWidth / this.zoom;
+                const viewportH = canvasHeight / this.zoom;
+
+                // Auto-tracking camera logic (lerp)
+                if (this.targetUnit && !this.targetUnit.markedForRemoval) {
+                    const targetX = this.targetUnit.x - viewportW / 2;
+                    this.x += (targetX - this.x) * 0.1; // Smooth interpolation
+                }
+
+                // Center Y vertically relative to the world
+                this.y = (WORLD_HEIGHT - viewportH) / 2;
+
+                // Clamp X horizontally bounds so we don't look outside the map
+                const maxX = Math.max(0, WORLD_WIDTH - viewportW);
+                this.x = Math.max(0, Math.min(this.x, maxX));
+
+                // If fully zoomed out in landscape, explicitly center X
+                if (!isPortrait && this.zoom === fitZoom) {
+                    this.x = (WORLD_WIDTH - viewportW) / 2;
+                }
+            }
+        }
+
+        /**
+         * ENTITY CLASSES
+         */
+        class Base {
+            constructor(team, x, maxHp) {
+                this.team = team;
+                this.x = x;
+                this.y = GROUND_Y;
+                this.maxHp = maxHp;
+                this.hp = maxHp;
+                this.width = 150; 
+                this.height = 300;
+            }
+
+            takeDamage(amount) {
+                this.hp = Math.max(0, this.hp - amount);
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = this.team === 'player' ? '#2563eb' : '#dc2626';
+                
+                const drawX = this.team === 'player' ? this.x - this.width/2 : this.x - this.width/2;
+                const drawY = this.y - this.height;
+
+                // Main body
+                ctx.fillRect(drawX, drawY, this.width, this.height);
+                
+                // Battlements
+                for(let i=0; i<3; i++) {
+                    ctx.fillRect(drawX + (i * (this.width/3)) + 10, drawY - 30, (this.width/3) - 20, 30);
+                }
+
+                // Gateway
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(drawX + this.width/2 - 30, this.y - 80, 60, 80);
+            }
+        }
+
+        class Unit {
+            static nextId = 1;
+
+            constructor(team, x) {
+                this.id = Unit.nextId++;
+                this.team = team;
+                this.x = x;
+                this.y = GROUND_Y;
+                
+                // Stats
+                this.maxHp = 100;
+                this.hp = 100;
+                this.damage = 15;
+                this.speed = 1.2; 
+                this.attackRange = 40;
+                this.attackCooldown = 1000;
+                
+                // State
+                this.state = 'walk';
+                this.animTimer = 0;
+                this.currentFrame = 0;
+                this.attackTimer = 0;
+                this.markedForRemoval = false;
+
+                // Rendering properties (calculated dynamically)
+                this.frameWidth = 0;
+                this.frameHeight = 0;
+                this.hitboxRadius = 30; 
+            }
+
+            changeState(newState) {
+                if (this.state !== newState && this.state !== 'death') {
+                    this.state = newState;
+                    this.currentFrame = 0;
+                    this.animTimer = 0;
+                    if (newState === 'attack') this.attackTimer = this.attackCooldown;
+                }
+            }
+
+            takeDamage(amount) {
+                if (this.state === 'death') return;
+                
+                this.hp -= amount;
+                if (this.hp <= 0) {
+                    this.hp = 0;
+                    this.changeState('death');
+                }
+            }
+
+            update(deltaTime, enemyUnits, enemyBase) {
+                if (this.markedForRemoval) return;
+
+                // Animation update
+                this.animTimer += deltaTime;
+                if (this.animTimer >= ANIM_SPEED) {
+                    this.animTimer -= ANIM_SPEED;
+                    this.currentFrame++;
+
+                    const maxFrames = ANIMATIONS[this.state].frames;
+                    
+                    if (this.currentFrame >= maxFrames) {
+                        if (this.state === 'death') {
+                            this.currentFrame = maxFrames - 1;
+                            this.markedForRemoval = true;
+                        } else {
+                            this.currentFrame = 0;
+                        }
+                    }
+                }
+
+                if (this.state === 'death') return;
+
+                this.attackTimer -= deltaTime;
+
+                // Target acquisition
+                let target = null;
+                let minDistance = Infinity;
+
+                for (const enemy of enemyUnits) {
+                    if (enemy.state === 'death') continue;
+                    const dist = Math.abs(this.x - enemy.x) - (this.hitboxRadius + enemy.hitboxRadius);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        target = enemy;
+                    }
+                }
+
+                const baseDist = Math.abs(this.x - enemyBase.x) - (this.hitboxRadius + (enemyBase.width/2));
+                if (baseDist < minDistance) {
+                    minDistance = baseDist;
+                    target = enemyBase;
+                }
+
+                // State logic
+                if (target && minDistance <= this.attackRange) {
+                    this.changeState('attack');
+                    if (this.attackTimer <= 0) {
+                        target.takeDamage(this.damage);
+                        this.attackTimer = this.attackCooldown;
+                    }
+                } else {
+                    this.changeState('walk');
+                    const moveAmount = this.speed * (deltaTime / (1000/60)); 
+                    this.x += (this.team === 'player' ? moveAmount : -moveAmount);
+                }
+            }
+
+            draw(ctx) {
+                if (!ASSETS.shiba.complete || ASSETS.shiba.naturalWidth === 0) return;
+
+                if (this.frameWidth === 0) {
+                    this.frameWidth = ASSETS.shiba.width / 8; 
+                    this.frameHeight = ASSETS.shiba.height / 4; 
+                }
+
+                const sx = this.currentFrame * this.frameWidth;
+                const sy = ANIMATIONS[this.state].row * this.frameHeight;
+                
+                const dx = -this.frameWidth / 2;
+                const dy = -this.frameHeight;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (this.team === 'enemy') {
+                    ctx.scale(-1, 1);
+                }
+
+                ctx.drawImage(
+                    ASSETS.shiba,
+                    sx, sy, this.frameWidth, this.frameHeight,
+                    dx, dy, this.frameWidth, this.frameHeight
+                );
+
+                // Draw Health Bar
+                if (this.state !== 'death') {
+                    ctx.translate(0, -this.frameHeight - 10);
+                    if (this.team === 'enemy') ctx.scale(-1, 1); // Unflip for text
+                    
+                    const hpPercent = this.hp / this.maxHp;
+                    const barWidth = 40;
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(-barWidth/2, 0, barWidth, 6);
+                    ctx.fillStyle = this.team === 'player' ? '#3b82f6' : '#ef4444';
+                    ctx.fillRect(-barWidth/2, 0, barWidth * hpPercent, 6);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        /**
+         * GAME ENGINE
+         */
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d', { alpha: false }); // Optimize composite
+                
+                // Subsystems
+                this.camera = new Camera();
+                
+                // UI Map
+                this.ui = {
+                    goldDisplay: document.getElementById('goldDisplay'),
+                    playerHpBar: document.getElementById('playerHpBar'),
+                    enemyHpBar: document.getElementById('enemyHpBar'),
+                    playerHpText: document.getElementById('playerHpText'),
+                    enemyHpText: document.getElementById('enemyHpText'),
+                    spawnBtn: document.getElementById('spawnBtn'),
+                    gameOverScreen: document.getElementById('gameOverScreen'),
+                    gameOverText: document.getElementById('gameOverText')
+                };
+
+                // State
+                this.gold = 1000;
+                this.goldTimer = 0;
+                this.enemySpawnTimer = 0;
+                this.lastTime = performance.now();
+                this.isGameOver = false;
+
+                // World Entities (using world coordinates strictly)
+                this.playerBase = new Base('player', 150, 1000);
+                this.enemyBase = new Base('enemy', WORLD_WIDTH - 150, 1000);
+                this.units = [];
+
+                // Engine Loop Setup
+                this.resizeCanvas = this.resizeCanvas.bind(this);
+                this.loop = this.loop.bind(this);
+                
+                window.addEventListener('resize', this.resizeCanvas);
+                this.resizeCanvas();
+                this.setupInputs();
+
+                // Boot once assets finish mapping
+                Promise.all([
+                    this.loadImage(ASSETS.map),
+                    this.loadImage(ASSETS.shiba)
+                ]).then(() => {
+                    requestAnimationFrame(this.loop);
+                });
+            }
+
+            loadImage(img) {
+                return new Promise((resolve) => {
+                    if (img.complete) resolve();
+                    else img.onload = resolve;
+                });
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+                this.camera.update(this.canvas.width, this.canvas.height);
+            }
+
+            setupInputs() {
+                // Spawn Button
+                this.ui.spawnBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent camera pan interrupt
+                    if (this.gold >= 50 && !this.isGameOver) {
+                        this.gold -= 50;
+                        this.units.push(new Unit('player', this.playerBase.x + 50));
+                        this.updateUI();
+                    }
+                });
+
+                // Pointer/Touch Controls for Camera Panning
+                let isDragging = false;
+                let lastPointerX = 0;
+                let lastTapTime = 0;
+
+                this.canvas.addEventListener('pointerdown', (e) => {
+                    isDragging = true;
+                    lastPointerX = e.clientX;
+
+                    // Double Tap tracking logic
+                    const now = performance.now();
+                    if (now - lastTapTime < 300) {
+                        const worldX = (e.clientX / this.camera.zoom) + this.camera.x;
+                        this.findAndTrackUnit(worldX);
+                    }
+                    lastTapTime = now;
+                });
+
+                window.addEventListener('pointermove', (e) => {
+                    if (!isDragging) return;
+                    
+                    const deltaX = e.clientX - lastPointerX;
+                    // Move camera in opposite direction of drag
+                    this.camera.x -= deltaX / this.camera.zoom;
+                    lastPointerX = e.clientX;
+
+                    // Clear camera tracking if user manually pans
+                    if (Math.abs(deltaX) > 2) {
+                        this.camera.targetUnit = null;
+                    }
+                });
+
+                window.addEventListener('pointerup', () => {
+                    isDragging = false;
+                });
+
+                // Desktop Scroll to Zoom
+                this.canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault(); // Stop page scrolling
+                    const zoomAmount = e.deltaY * -0.001;
+                    this.camera.zoom += zoomAmount;
+                    this.camera.targetUnit = null; // Break tracking on manual zoom
+                }, { passive: false });
+            }
+
+            findAndTrackUnit(worldX) {
+                // Find nearest unit to tap (within reasonable range)
+                let nearest = null;
+                let minDist = 100; // Search radius
+
+                for (const unit of this.units) {
+                    if (unit.state === 'death') continue;
+                    const dist = Math.abs(unit.x - worldX);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = unit;
+                    }
+                }
+                
+                if (nearest) {
+                    this.camera.targetUnit = nearest;
+                }
+            }
+
+            updateUI() {
+                this.ui.goldDisplay.innerText = Math.floor(this.gold);
+                
+                const pPercent = Math.max(0, this.playerBase.hp / this.playerBase.maxHp * 100);
+                this.ui.playerHpBar.style.width = `${pPercent}%`;
+                this.ui.playerHpText.innerText = `${Math.ceil(this.playerBase.hp)}/${this.playerBase.maxHp}`;
+                
+                const ePercent = Math.max(0, this.enemyBase.hp / this.enemyBase.maxHp * 100);
+                this.ui.enemyHpBar.style.width = `${ePercent}%`;
+                this.ui.enemyHpText.innerText = `${Math.ceil(this.enemyBase.hp)}/${this.enemyBase.maxHp}`;
+
+                this.ui.spawnBtn.disabled = this.gold < 50;
+            }
+
+            update(deltaTime) {
+                if (this.isGameOver) return;
+
+                // Update Camera constraints
+                this.camera.update(this.canvas.width, this.canvas.height);
+
+                // Economy
+                this.goldTimer += deltaTime;
+                if (this.goldTimer >= 1000) {
+                    this.gold += 1;
+                    this.goldTimer -= 1000;
+                    this.updateUI();
+                }
+
+                // AI Spawner
+                this.enemySpawnTimer += deltaTime;
+                if (this.enemySpawnTimer >= 5000) {
+                    this.units.push(new Unit('enemy', this.enemyBase.x - 50));
+                    this.enemySpawnTimer -= 5000;
+                }
+
+                // Filter logic
+                const playerUnits = [];
+                const enemyUnits = [];
+                
+                // Single iteration to group units to avoid multiple array passes per frame
+                for (let i = 0; i < this.units.length; i++) {
+                    const u = this.units[i];
+                    if (!u.markedForRemoval) {
+                        if (u.team === 'player') playerUnits.push(u);
+                        else enemyUnits.push(u);
+                    }
+                }
+
+                // Update Logic
+                for (let i = 0; i < this.units.length; i++) {
+                    const unit = this.units[i];
+                    if (unit.team === 'player') {
+                        unit.update(deltaTime, enemyUnits, this.enemyBase);
+                    } else {
+                        unit.update(deltaTime, playerUnits, this.playerBase);
+                    }
+                }
+
+                // Cleanup
+                this.units = this.units.filter(u => !u.markedForRemoval);
+
+                // Win/Loss Condition
+                if (this.enemyBase.hp <= 0) {
+                    this.endGame(true);
+                } else if (this.playerBase.hp <= 0) {
+                    this.endGame(false);
+                }
+            }
+
+            draw() {
+                // Clear screen buffer
+                this.ctx.fillStyle = '#050505';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.ctx.save();
+                
+                // Apply Camera Transform
+                // screenX = (worldX - camera.x) * camera.zoom
+                // Achieved via scale -> then translate.
+                this.ctx.scale(this.camera.zoom, this.camera.zoom);
+                this.ctx.translate(-this.camera.x, -this.camera.y);
+
+                // Draw Background Mapping
+                if (ASSETS.map.complete) {
+                    this.ctx.drawImage(ASSETS.map, 0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+                }
+
+                // Draw Bases
+                this.playerBase.draw(this.ctx);
+                this.enemyBase.draw(this.ctx);
+
+                // Draw Units (In world coordinates)
+                for (let i = 0; i < this.units.length; i++) {
+                    this.units[i].draw(this.ctx);
+                }
+
+                this.ctx.restore();
+            }
+
+            endGame(isVictory) {
+                this.isGameOver = true;
+                this.ui.gameOverScreen.classList.remove('hidden');
+                
+                if (isVictory) {
+                    this.ui.gameOverText.innerText = 'VICTORY';
+                    this.ui.gameOverText.className = 'text-5xl sm:text-8xl font-extrabold mb-8 tracking-widest text-blue-400 drop-shadow-[0_0_30px_rgba(59,130,246,1)]';
+                } else {
+                    this.ui.gameOverText.innerText = 'DEFEAT';
+                    this.ui.gameOverText.className = 'text-5xl sm:text-8xl font-extrabold mb-8 tracking-widest text-red-500 drop-shadow-[0_0_30px_rgba(239,68,68,1)]';
+                }
+            }
+
+            loop(timestamp) {
+                const deltaTime = timestamp - this.lastTime;
+                this.lastTime = timestamp;
+
+                // Cap delta time to prevent large physics jumps if user changes tabs
+                const safeDelta = Math.min(deltaTime, 33); // max ~30 FPS delta step
+
+                this.update(safeDelta);
+                this.draw();
+
+                requestAnimationFrame(this.loop);
+            }
+        }
+
+        // Initialize Application
+        window.onload = () => {
+            new Game();
+        };
+
+    </script>
+</body>
+</html>

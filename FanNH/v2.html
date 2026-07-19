@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="navy">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AudioVerse - Thế Giới Truyện Audio</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            /* Navy Theme (Default) */
+            --bg-base: 2 6 23;
+            --bg-surface: 15 23 42;
+            --text-main: 248 250 252;
+            --text-muted: 156 163 175;
+            --border-color: 255 255 255;
+            --overlay: 255 255 255;
+            --primary: 16 185 129;
+        }
+
+        [data-theme="black"] {
+            --bg-base: 0 0 0;
+            --bg-surface: 17 17 17;
+            --text-main: 248 250 252;
+            --text-muted: 156 163 175;
+            --border-color: 255 255 255;
+            --overlay: 255 255 255;
+        }
+
+        [data-theme="white"] {
+            --bg-base: 248 250 252;
+            --bg-surface: 255 255 255;
+            --text-main: 15 23 42;
+            --text-muted: 71 85 105;
+            --border-color: 0 0 0;
+            --overlay: 0 0 0;
+        }
+
+        /* Progress Bar Custom */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: rgb(var(--primary)); cursor: pointer; margin-top: -5px; box-shadow: 0 0 10px rgb(var(--primary) / 0.8); transition: transform 0.1s; }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgb(var(--overlay) / 0.3); border-radius: 2px; }
+        
+        .yt-progress-bar::-webkit-slider-thumb { height: 12px; width: 12px; margin-top: -4px; }
+        .mini-slider::-webkit-slider-thumb { opacity: 0; width: 14px; height: 14px; margin-top: -5px; transition: opacity 0.2s; }
+        .group\/progress:hover .mini-slider::-webkit-slider-thumb, .group\/progress:active .mini-slider::-webkit-slider-thumb { opacity: 1; }
+
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .marquee-wrapper { mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%); -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 5%, #000 95%, transparent 100%); }
+
+        .loader { border: 3px solid rgb(var(--border-color) / 0.1); border-top: 3px solid rgb(var(--primary)); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { overflow-x: hidden; }
+
+        #player-container-wrapper:fullscreen { width: 100vw !important; height: 100vh !important; max-width: none !important; border-radius: 0 !important; background-color: #000 !important; }
+        #player-container-wrapper:-webkit-full-screen { width: 100vw !important; height: 100vh !important; max-width: none !important; border-radius: 0 !important; background-color: #000 !important; }
+
+        /* Minimal Premium Filter Badges */
+        .adv-filter-btn, .adv-emotion-btn { background-color: rgba(var(--overlay), 0.03); color: rgb(var(--text-muted)); border: 1px solid rgba(var(--border-color), 0.08); backdrop-filter: blur(8px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .adv-filter-btn:hover, .adv-emotion-btn:hover { background-color: rgba(var(--overlay), 0.08); color: rgb(var(--text-main)); border-color: rgba(var(--border-color), 0.2); transform: translateY(-1px); }
+        .adv-filter-btn.adv-active, .adv-emotion-btn.adv-active { background-color: rgba(var(--primary), 0.15); color: rgb(var(--primary)); border-color: rgba(var(--primary), 0.4); box-shadow: 0 4px 12px rgba(var(--primary), 0.15); }
+        .genre-dynamic-badge { font-size: 0.55rem; background: rgba(var(--primary), 0.2); color: rgb(var(--primary)); padding: 2px 4px; border-radius: 4px; margin-left: 4px; text-transform: uppercase; font-weight: bold; border: 1px solid rgba(var(--primary), 0.3); }
+        
+        #fp-video-wrapper { touch-action: pan-y; } /* Allow vertical drag logic */
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        surface: 'rgb(var(--bg-surface) / <alpha-value>)',
+                        main: 'rgb(var(--text-main) / <alpha-value>)',
+                        muted: 'rgb(var(--text-muted) / <alpha-value>)',
+                        borderline: 'rgb(var(--border-color) / <alpha-value>)',
+                        overlay: 'rgb(var(--overlay) / <alpha-value>)',
+                        primary: 'rgb(var(--primary) / <alpha-value>)',
+                    },
+                    backgroundColor: { base: 'rgb(var(--bg-base) / <alpha-value>)' },
+                    borderColor: { base: 'rgb(var(--bg-base) / <alpha-value>)' },
+                    gradientColorStops: { base: 'rgb(var(--bg-base) / <alpha-value>)' },
+                    fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="font-sans antialiased pb-32 bg-base text-main transition-colors duration-300 selection:bg-primary/30">
+
+    <div id="global-warning-banner" class="fixed top-0 left-0 w-full h-[32px] bg-red-950/90 border-b border-red-500/20 backdrop-blur-md z-[100] flex items-center justify-center px-4 shadow-md transition-all duration-300">
+        <div class="flex-1 text-center truncate">
+            <span class="text-red-200 text-[10px] sm:text-xs font-semibold tracking-wide flex items-center justify-center gap-1.5 drop-shadow-md">
+                <i class="fa-solid fa-triangle-exclamation text-red-500 animate-pulse"></i> TẤT CẢ NỘI DUNG LÀ HƯ CẤU. VUI LÒNG KHÔNG MÊ TÍN DỊ ĐOAN.
+            </span>
+        </div>
+        <button onclick="app.closeWarningBanner()" class="text-red-200 hover:text-white transition w-6 h-6 flex items-center justify-center shrink-0" title="Đóng cảnh báo"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <div id="toast" class="fixed top-20 right-4 bg-surface/95 backdrop-blur-md text-main px-6 py-3 rounded-xl shadow-2xl border border-borderline/10 transform transition-all duration-300 translate-x-full opacity-0 z-[200] flex items-center gap-3 pointer-events-none">
+        <i class="fa-solid fa-circle-check text-primary"></i>
+        <span id="toast-msg" class="text-sm font-medium">Thông báo</span>
+    </div>
+
+    <nav class="fixed top-[32px] w-full z-40 transition-all duration-300 bg-transparent pt-2" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-2 cursor-pointer drop-shadow-md hover:scale-105 transition-transform" onclick="app.navigate('home')">
+                    <i class="fa-solid fa-headphones-simple text-primary text-2xl drop-shadow-[0_0_8px_rgba(var(--primary),0.8)]"></i>
+                    <span class="font-bold text-xl tracking-wider text-main">Fan <span class="text-primary">Nguyễn Huy</span></span>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-4 drop-shadow-md">
+                    <div class="relative">
+                        <button onclick="app.toggleQuickSearch()" id="nav-search-btn" class="text-muted hover:text-primary transition w-9 h-9 flex items-center justify-center bg-overlay/10 rounded-full backdrop-blur-md border border-borderline/5">
+                            <i class="fa-solid fa-search text-sm"></i>
+                        </button>
+                        <div id="quick-search-dropdown" class="hidden absolute top-14 right-0 w-[320px] sm:w-[450px] bg-surface/95 backdrop-blur-xl border border-borderline/10 rounded-2xl shadow-2xl z-50 overflow-hidden transform opacity-0 transition-all duration-200 origin-top-right flex flex-col">
+                            <div class="p-3 border-b border-borderline/10 flex items-center gap-3">
+                                <i class="fa-solid fa-search text-muted pl-2"></i>
+                                <input type="text" id="quick-search-input" oninput="app.handleSearchInput()" placeholder="Nhập tên truyện, nhân vật..." class="flex-1 bg-transparent border-none outline-none text-main text-sm">
+                                <button id="quick-search-clear" onclick="app.clearQuickSearch()" class="hidden text-muted hover:text-main px-2 transition"><i class="fa-solid fa-xmark text-sm"></i></button>
+                            </div>
+                            <div id="quick-search-body" class="max-h-[60vh] overflow-y-auto hide-scrollbar flex flex-col">
+                                <div id="quick-search-default" class="p-5">
+                                    <h4 class="text-xs font-bold text-muted uppercase tracking-wider mb-4 flex items-center gap-2"><i class="fa-solid fa-fire text-red-500 text-sm"></i> Từ khóa nổi bật</h4>
+                                    <div class="flex flex-wrap gap-2.5">
+                                        <button onclick="app.fillQuickSearch('Đệ Tam')" class="bg-overlay/5 hover:bg-overlay/10 text-main text-xs px-3.5 py-2 rounded-xl transition border border-borderline/5 font-medium">Đệ Tam Pháp Sư</button>
+                                        <button onclick="app.fillQuickSearch('Chánh Lưu Manh')" class="bg-overlay/5 hover:bg-overlay/10 text-main text-xs px-3.5 py-2 rounded-xl transition border border-borderline/5 font-medium">Chánh Lưu Manh</button>
+                                        <button onclick="app.fillQuickSearch('Miền Tây')" class="bg-overlay/5 hover:bg-overlay/10 text-main text-xs px-3.5 py-2 rounded-xl transition border border-borderline/5 font-medium">Truyện Ma Miền Tây</button>
+                                        <button onclick="app.fillQuickSearch('Trần Văn')" class="bg-overlay/5 hover:bg-overlay/10 text-main text-xs px-3.5 py-2 rounded-xl transition border border-borderline/5 font-medium">Tác giả Trần Văn</button>
+                                    </div>
+                                </div>
+                                <div id="quick-search-results" class="hidden flex-col"></div>
+                            </div>
+                            <div class="p-2 border-t border-borderline/10 bg-overlay/5">
+                                <button onclick="app.navigate('search'); app.toggleQuickSearch();" class="w-full py-2.5 text-primary text-xs font-bold uppercase tracking-wider hover:bg-overlay/10 rounded-xl transition flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-sliders"></i> Tìm kiếm nâng cao
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- USER AVATAR / MENU -->
+                    <div class="relative">
+                        <img id="nav-user-avatar" onclick="app.toggleUserMenu()" src="https://ui-avatars.com/api/?name=G&background=random&color=fff" alt="User" class="w-9 h-9 rounded-full border border-borderline/20 shadow-lg cursor-pointer hover:scale-105 transition-transform">
+                        <div id="user-menu-dropdown" class="hidden absolute top-14 right-0 w-[200px] bg-surface/95 backdrop-blur-xl border border-borderline/10 rounded-2xl shadow-2xl z-50 overflow-hidden transform opacity-0 transition-all duration-200 origin-top-right flex flex-col">
+                            <div id="um-guest" class="flex flex-col">
+                                <button onclick="app.openLoginModal(); app.toggleUserMenu();" class="w-full text-left px-4 py-3 text-sm text-main hover:bg-overlay/10 transition"><i class="fa-solid fa-right-to-bracket mr-2"></i> Đăng nhập</button>
+                            </div>
+                            <div id="um-logged" class="hidden flex-col">
+                                <div class="px-4 py-3 border-b border-borderline/10 text-xs text-muted truncate" id="um-user-email">user@email.com</div>
+                                <button onclick="app.logout(); app.toggleUserMenu();" class="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-overlay/10 transition"><i class="fa-solid fa-right-from-bracket mr-2"></i> Đăng xuất</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- VIEWS -->
+    <div id="view-home" class="view-section min-h-screen">
+        <div id="home-hero"></div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12" id="home-rows"></div>
+    </div>
+
+    <div id="view-detail" class="view-section hidden min-h-screen">
+        <div id="detail-content" class="pb-10"></div>
+    </div>
+
+    <div id="view-search" class="view-section hidden min-h-screen pt-24 px-4 sm:px-6 max-w-7xl mx-auto pb-24">
+        <h2 class="text-3xl font-extrabold text-main mb-8 flex items-center gap-3">
+            <i class="fa-solid fa-search text-primary"></i> Tìm Kiếm Nâng Cao
+        </h2>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6 bg-surface border border-borderline/10 rounded-3xl p-6 shadow-sm h-max">
+                <div>
+                    <div class="relative mb-3">
+                        <i class="fa-solid fa-search absolute left-4 top-1/2 -translate-y-1/2 text-muted"></i>
+                        <input type="text" id="adv-search-input" placeholder="Nhập tên truyện, tác giả..." class="w-full bg-overlay/5 border border-borderline/10 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-main focus:outline-none focus:border-primary/50 transition shadow-inner">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-muted uppercase tracking-wider mb-3 block">Thể loại truyện</label>
+                    <div class="flex flex-wrap gap-2" id="adv-search-genres">
+                        <!-- JS Dynamic Filters Render Here -->
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-muted uppercase tracking-wider mb-3 block">Lọc theo cảm xúc</label>
+                    <div class="flex flex-wrap gap-2" id="adv-search-emotions">
+                        <!-- JS Dynamic Filters Render Here -->
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-muted uppercase tracking-wider mb-3 block">Trạng thái phát hành</label>
+                    <div class="flex flex-col gap-3">
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="radio" name="adv-status" value="all" checked class="hidden adv-radio">
+                            <div class="w-5 h-5 rounded-full border border-primary flex items-center justify-center adv-radio-box bg-primary/20"><div class="w-2.5 h-2.5 rounded-full bg-primary adv-radio-dot"></div></div>
+                            <span class="text-sm text-main transition">Tất cả</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="radio" name="adv-status" value="ongoing" class="hidden adv-radio">
+                            <div class="w-5 h-5 rounded-full border border-borderline/30 flex items-center justify-center adv-radio-box group-hover:border-primary/50 transition"><div class="w-2.5 h-2.5 rounded-full bg-transparent adv-radio-dot transition"></div></div>
+                            <span class="text-sm text-muted group-hover:text-main transition">Đang cập nhật</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <input type="radio" name="adv-status" value="completed" class="hidden adv-radio">
+                            <div class="w-5 h-5 rounded-full border border-borderline/30 flex items-center justify-center adv-radio-box group-hover:border-primary/50 transition"><div class="w-2.5 h-2.5 rounded-full bg-transparent adv-radio-dot transition"></div></div>
+                            <span class="text-sm text-muted group-hover:text-main transition">Đã hoàn thành</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-borderline/10 flex gap-3">
+                    <button onclick="document.querySelectorAll('.adv-active').forEach(b => b.classList.remove('adv-active')); document.getElementById('adv-search-input').value = ''; app.executeAdvancedSearch();" class="flex-1 bg-overlay/5 hover:bg-overlay/10 text-main font-bold py-2.5 rounded-xl transition text-sm">Xóa lọc</button>
+                    <button onclick="app.executeAdvancedSearch();" class="flex-[2] bg-primary hover:bg-primary/80 text-white font-bold py-2.5 rounded-xl transition shadow-lg text-sm flex items-center justify-center gap-2"><i class="fa-solid fa-filter"></i> Lọc kết quả</button>
+                </div>
+            </div>
+            <div class="lg:col-span-2 flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-main">Kết quả tìm kiếm</h3>
+                    <span id="search-result-count" class="text-sm text-muted">0 kết quả</span>
+                </div>
+                <div id="search-view-results" class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 content-start"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CÁC VIEW KHÁC (INFO, WATCH TOGETHER, SETTINGS) -->
+    <div id="view-info" class="view-section hidden min-h-screen pt-24 px-4 sm:px-6 max-w-7xl mx-auto pb-24">
+        <!-- Nội dung Tab Web, Nguyễn Huy, Tác Giả (Giữ nguyên gốc) -->
+        <div class="text-center mb-8">
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-main mb-2 tracking-tight">Thông Tin <span class="text-primary">AudioVerse</span></h2>
+            <p class="text-muted text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">Khám phá câu chuyện đằng sau dự án, tri ân những người truyền lửa và vinh danh các tác giả tài hoa.</p>
+        </div>
+        <div class="flex p-1.5 bg-surface border border-borderline/10 rounded-2xl mb-8 max-w-2xl mx-auto overflow-x-auto hide-scrollbar shadow-sm">
+            <button onclick="app.switchInfoTab('web')" id="info-tab-web" class="info-tab-btn flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-bold transition-all bg-overlay/10 text-main shadow-sm">Website</button>
+            <button onclick="app.switchInfoTab('nguyenhuy')" id="info-tab-nguyenhuy" class="info-tab-btn flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-bold transition-all text-muted hover:text-main">Nguyễn Huy</button>
+            <button onclick="app.switchInfoTab('authors')" id="info-tab-authors" class="info-tab-btn flex-1 min-w-[110px] py-2.5 rounded-xl text-sm font-bold transition-all text-muted hover:text-main">Tác Giả</button>
+        </div>
+        <div id="info-content-web" class="info-content-pane max-w-3xl mx-auto space-y-6">
+            <!-- (Nội dung tĩnh gốc) -->
+            <div class="bg-surface border border-borderline/10 rounded-3xl p-6 sm:p-8 shadow-xl text-center">
+                <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-primary to-blue-500 flex items-center justify-center text-white text-3xl shadow-lg transform rotate-3 mb-4"><i class="fa-solid fa-shield-heart"></i></div>
+                <h3 class="text-2xl font-bold text-main">Dự án Phi lợi nhuận</h3>
+                <p class="text-muted text-sm leading-relaxed max-w-xl mx-auto">AudioVerse được tạo ra bởi tình yêu và sự tôn trọng mãnh liệt dành cho giọng đọc Nguyễn Huy.</p>
+            </div>
+        </div>
+        <div id="info-content-nguyenhuy" class="info-content-pane hidden max-w-3xl mx-auto">
+             <div class="bg-surface border border-borderline/10 rounded-3xl overflow-hidden shadow-2xl relative p-10 text-center"><h3 class="text-3xl font-extrabold text-main">Nguyễn Huy</h3><p class="text-muted mt-2">Giọng đọc huyền thoại.</p></div>
+        </div>
+        <div id="info-content-authors" class="info-content-pane hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="info-authors-list"></div>
+        </div>
+    </div>
+
+    <div id="view-watch-together" class="view-section hidden min-h-screen pt-32 px-4 flex flex-col items-center justify-center text-center">
+        <i class="fa-solid fa-users-rays text-6xl text-primary mb-6 animate-pulse"></i>
+        <h2 class="text-3xl font-bold text-main mb-3">Xem Chung Cùng Bạn Bè</h2>
+        <p class="text-muted max-w-md">Tính năng cho phép bạn nghe truyện đồng bộ cùng bạn bè và trò chuyện trực tiếp đang được phát triển.</p>
+    </div>
+
+    <div id="view-settings" class="view-section hidden min-h-screen pt-24 px-4 sm:px-6 max-w-2xl mx-auto pb-24">
+        <!-- Settings content giữ nguyên gốc -->
+        <h2 class="text-3xl font-extrabold text-main mb-8 flex items-center gap-3"><i class="fa-solid fa-sliders text-primary"></i> Tùy biến giao diện</h2>
+        <div class="space-y-10">
+            <div class="bg-surface border border-borderline/10 p-6 rounded-3xl shadow-sm">
+                <h3 class="text-lg font-bold text-main mb-4 flex items-center gap-2"><i class="fa-solid fa-moon text-muted"></i> Màu nền chính</h3>
+                <div class="flex flex-wrap gap-4">
+                    <button id="theme-btn-navy" onclick="app.setTheme('navy')" class="theme-btn w-14 h-14 rounded-full bg-[#0f172a] shadow-lg flex items-center justify-center transition-transform hover:scale-110"><i class="fa-solid fa-check text-white opacity-0 transition-opacity"></i></button>
+                    <button id="theme-btn-black" onclick="app.setTheme('black')" class="theme-btn w-14 h-14 rounded-full bg-[#000000] border border-gray-800 shadow-lg flex items-center justify-center transition-transform hover:scale-110"><i class="fa-solid fa-check text-white opacity-0 transition-opacity"></i></button>
+                    <button id="theme-btn-white" onclick="app.setTheme('white')" class="theme-btn w-14 h-14 rounded-full bg-[#f8fafc] border border-gray-300 shadow-lg flex items-center justify-center transition-transform hover:scale-110"><i class="fa-solid fa-check text-black opacity-0 transition-opacity"></i></button>
+                </div>
+            </div>
+            <div class="bg-surface border border-borderline/10 p-6 rounded-3xl shadow-sm">
+                <h3 class="text-lg font-bold text-main mb-4 flex items-center gap-2"><i class="fa-solid fa-palette text-muted"></i> Màu chủ đạo</h3>
+                <div class="flex flex-wrap gap-4 items-center">
+                    <button id="color-btn-10b981" onclick="app.setPrimaryColor('#10b981')" class="color-btn w-12 h-12 rounded-full bg-[#10b981] shadow-lg transition-transform hover:scale-110"></button>
+                    <button id="color-btn-06b6d4" onclick="app.setPrimaryColor('#06b6d4')" class="color-btn w-12 h-12 rounded-full bg-[#06b6d4] shadow-lg transition-transform hover:scale-110"></button>
+                    <button id="color-btn-a855f7" onclick="app.setPrimaryColor('#a855f7')" class="color-btn w-12 h-12 rounded-full bg-[#a855f7] shadow-lg transition-transform hover:scale-110"></button>
+                    <div class="relative w-12 h-12 transition-transform hover:scale-110">
+                        <input type="color" id="custom-color-picker" onchange="app.setPrimaryColor(this.value)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div id="color-btn-custom" class="color-btn w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 via-green-500 to-blue-500 flex items-center justify-center shadow-lg pointer-events-none border border-borderline/20"><i class="fa-solid fa-plus text-white font-bold"></i></div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-surface border border-borderline/10 p-6 rounded-3xl shadow-sm">
+                <h3 class="text-lg font-bold text-main mb-4 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-muted"></i> Quản lý dữ liệu</h3>
+                <div class="flex items-center justify-between bg-overlay/5 p-4 rounded-2xl border border-borderline/5">
+                    <div class="pr-2"><h4 class="font-bold text-main text-sm">Xóa lịch sử xem</h4><p class="text-[11px] sm:text-xs text-muted mt-1 leading-snug">Hệ thống lưu 10 bộ truyện nghe gần nhất. Xóa bộ nhớ sẽ làm mất vị trí các tập đang nghe dở.</p></div>
+                    <button onclick="app.clearHistory()" class="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-bold transition shrink-0 shadow-sm">Xóa</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS & OVERLAYS -->
+    <!-- Modal Thêm Thể Loại -->
+    <div id="genre-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="app.closeGenreModal()"></div>
+        <div class="bg-surface rounded-3xl overflow-hidden shadow-2xl z-10 w-full max-w-sm border border-borderline/10 transform scale-95 opacity-0 transition-all duration-300 p-6" id="genre-modal-content">
+            <h3 class="text-lg font-bold text-main mb-2">Thêm Thể Loại</h3>
+            <p class="text-muted text-xs mb-4">Giúp cộng đồng tìm kiếm dễ dàng hơn bằng cách gán thẻ đặc trưng (vd: Xuyên không, Đấu trí...)</p>
+            <input type="text" id="genre-input" placeholder="Nhập tên thể loại..." maxlength="30" class="w-full bg-overlay/5 border border-borderline/10 rounded-xl px-4 py-3 text-sm text-main focus:outline-none focus:border-primary/50 mb-5">
+            <div class="flex gap-3">
+                <button onclick="app.closeGenreModal()" class="flex-1 bg-overlay/5 hover:bg-overlay/10 text-main py-2.5 rounded-xl text-sm font-bold transition border border-borderline/5">Hủy</button>
+                <button onclick="app.submitDynamicGenre()" class="flex-1 bg-primary hover:bg-primary/80 text-white py-2.5 rounded-xl text-sm font-bold transition shadow-lg">Gắn Thẻ</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Đăng nhập -->
+    <div id="login-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="app.closeLoginModal()"></div>
+        <div class="bg-surface rounded-3xl overflow-hidden shadow-2xl z-10 w-full max-w-sm border border-borderline/10 transform scale-95 opacity-0 transition-all duration-300 p-6" id="login-modal-content">
+            <div class="text-center mb-6">
+                <i class="fa-solid fa-user-shield text-4xl text-primary mb-3"></i>
+                <h3 class="text-xl font-bold text-main">Đăng Nhập</h3>
+                <p class="text-muted text-xs mt-1">Sử dụng tài khoản được cung cấp bởi quản trị viên.</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-muted uppercase tracking-wider mb-1.5 block">Email</label>
+                    <input type="email" id="login-email" class="w-full bg-overlay/5 border border-borderline/10 rounded-xl px-4 py-3 text-sm text-main focus:outline-none focus:border-primary/50">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-muted uppercase tracking-wider mb-1.5 block">Mật khẩu</label>
+                    <input type="password" id="login-password" class="w-full bg-overlay/5 border border-borderline/10 rounded-xl px-4 py-3 text-sm text-main focus:outline-none focus:border-primary/50">
+                </div>
+                <div class="flex justify-end">
+                    <button onclick="app.openForgotPasswordModal()" class="text-xs text-primary hover:underline">Quên mật khẩu?</button>
+                </div>
+                <button onclick="app.login()" class="w-full bg-primary hover:bg-primary/80 text-white py-3 rounded-xl text-sm font-bold transition shadow-lg mt-2">Đăng Nhập</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Quên Mật Khẩu -->
+    <div id="forgot-password-modal" class="fixed inset-0 z-[210] hidden flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="app.closeForgotPasswordModal()"></div>
+        <div class="bg-surface rounded-3xl overflow-hidden shadow-2xl z-10 w-full max-w-sm border border-borderline/10 transform scale-95 opacity-0 transition-all duration-300 p-6" id="forgot-password-content">
+            <h3 class="text-xl font-bold text-main mb-2">Khôi Phục Mật Khẩu</h3>
+            <p class="text-muted text-xs mb-5">Nhập email của bạn để nhận liên kết đặt lại mật khẩu.</p>
+            <input type="email" id="forgot-email" placeholder="Email của bạn..." class="w-full bg-overlay/5 border border-borderline/10 rounded-xl px-4 py-3 text-sm text-main focus:outline-none focus:border-primary/50 mb-5">
+            <div class="flex gap-3">
+                <button onclick="app.closeForgotPasswordModal()" class="flex-1 bg-overlay/5 hover:bg-overlay/10 text-main py-2.5 rounded-xl text-sm font-bold transition border border-borderline/5">Hủy</button>
+                <button onclick="app.resetPassword()" class="flex-1 bg-primary hover:bg-primary/80 text-white py-2.5 rounded-xl text-sm font-bold transition shadow-lg">Gửi Yêu Cầu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character / Share Modals (gốc) -->
+    <div id="character-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="app.closeCharacterModal()"></div>
+        <div id="character-modal-content" class="bg-surface rounded-3xl overflow-hidden shadow-2xl z-10 w-full max-w-lg border border-borderline/10 transform scale-95 opacity-0 transition-all duration-300"></div>
+    </div>
+    <div id="share-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="app.closeShareModal()"></div>
+        <div id="share-modal-content" class="bg-surface rounded-3xl overflow-hidden shadow-2xl z-10 w-full max-w-md border border-borderline/10 transform scale-95 opacity-0 transition-all duration-300 p-6 pb-8">
+            <div class="flex justify-between items-center mb-4"><h3 class="text-lg font-bold text-main">Chia sẻ</h3><button onclick="app.closeShareModal()" class="text-muted hover:text-main transition w-8 h-8 rounded-full bg-overlay/5 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div>
+            <div id="share-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- GLOBAL OLED SAVER -->
+    <div id="global-oled-saver" class="fixed inset-0 bg-black z-[9999] hidden flex-col items-center justify-center opacity-0 transition-all duration-700 select-none">
+        <button onclick="audioPlayer.toggleOledSaver(false)" class="absolute top-6 right-6 lg:top-8 lg:right-8 text-white/30 hover:text-white transition p-3 rounded-full hover:bg-white/10 z-50"><i class="fa-solid fa-xmark text-3xl"></i></button>
+        <div class="flex flex-col items-center justify-center w-full px-6 z-10 h-full">
+            <div id="global-oled-clock" class="text-white/20 text-7xl sm:text-9xl font-bold tracking-wider mb-6 font-mono">00:00</div>
+            <h2 id="global-oled-title" class="text-white/40 font-medium text-xl sm:text-3xl text-center w-full max-w-2xl mb-16 truncate tracking-wide">Tên tập</h2>
+            <div class="flex items-center gap-12 sm:gap-20">
+                <button onclick="audioPlayer.prev()" class="text-white/30 hover:text-white/80 text-4xl sm:text-5xl transition transform active:scale-90"><i class="fa-solid fa-backward-step"></i></button>
+                <button onclick="audioPlayer.togglePlay()" class="text-white/30 hover:text-white text-6xl sm:text-7xl transition transform active:scale-90"><i id="global-oled-play-icon" class="fa-solid fa-play"></i></button>
+                <button onclick="audioPlayer.next()" class="text-white/30 hover:text-white/80 text-4xl sm:text-5xl transition transform active:scale-90"><i class="fa-solid fa-forward-step"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div id="bottom-nav" class="fixed bottom-0 left-0 w-full bg-surface/95 backdrop-blur-lg border-t border-borderline/10 z-[45] flex justify-around items-center h-[64px] pb-safe transition-colors duration-300">
+        <button id="nav-home" onclick="app.navigate('home')" class="nav-item flex flex-col items-center justify-center gap-1 w-1/5 h-full transition-colors text-primary"><i class="fa-solid fa-house text-[22px]"></i><span class="text-[10px] font-bold mt-0.5">Trang chủ</span></button>
+        <button id="nav-search" onclick="app.navigate('search')" class="nav-item flex flex-col items-center justify-center gap-1 w-1/5 h-full transition-colors text-muted hover:text-main"><i class="fa-solid fa-magnifying-glass text-[22px]"></i><span class="text-[10px] font-bold mt-0.5">Tìm kiếm</span></button>
+        <button id="nav-info" onclick="app.navigate('info'); setTimeout(()=>app.switchInfoTab('web'), 10);" class="nav-item flex flex-col items-center justify-center gap-1 w-1/5 h-full transition-colors text-muted hover:text-main"><i class="fa-solid fa-circle-info text-[22px]"></i><span class="text-[10px] font-bold mt-0.5">Thông tin</span></button>
+        <button id="nav-watch-together" onclick="app.navigate('watch-together')" class="nav-item flex flex-col items-center justify-center gap-1 w-1/5 h-full transition-colors text-muted hover:text-main"><i class="fa-solid fa-users text-[22px]"></i><span class="text-[10px] font-bold mt-0.5">Xem chung</span></button>
+        <button id="nav-settings" onclick="app.navigate('settings')" class="nav-item flex flex-col items-center justify-center gap-1 w-1/5 h-full transition-colors text-muted hover:text-main"><i class="fa-solid fa-gear text-[22px]"></i><span class="text-[10px] font-bold mt-0.5">Cài đặt</span></button>
+    </div>
+
+    <!-- MINI PLAYER -->
+    <div id="mini-player" class="fixed bottom-[62px] left-0 w-full bg-surface/95 backdrop-blur-lg border-t border-borderline/10 z-50 transform translate-y-[200px] opacity-0 pointer-events-none transition-all duration-300 flex items-center justify-between px-3 sm:px-6 py-2.5 shadow-[0_-10px_30px_rgba(0,0,0,0.3)] cursor-pointer hover:bg-surface/100" onclick="app.toggleFullScreenPlayer(true)">
+        <div class="flex items-center gap-3 w-[45%] md:w-1/2 overflow-hidden">
+            <img id="mp-image" src="" class="w-14 h-10 sm:w-16 sm:h-10 rounded object-cover shadow-md border border-borderline/10 shrink-0">
+            <div class="flex flex-col min-w-0 flex-1 justify-center marquee-wrapper">
+                <div id="mp-title-container" class="whitespace-nowrap inline-flex"><span id="mp-title" class="text-main font-bold text-sm"></span><span id="mp-title-clone" class="text-main font-bold text-sm pl-8 hidden"></span></div>
+                <div id="mp-series-container" class="whitespace-nowrap inline-flex mt-0.5"><span id="mp-series" class="text-muted text-xs"></span><span id="mp-series-clone" class="text-muted text-xs pl-8 hidden"></span></div>
+            </div>
+        </div>
+        <div class="flex items-center justify-end shrink-0 gap-1 sm:gap-2" onclick="event.stopPropagation()">
+            <button onclick="audioPlayer.prev()" class="text-primary hover:opacity-70 p-2 transition transform active:scale-90"><i class="fa-solid fa-backward-step text-lg sm:text-xl"></i></button>
+            <button onclick="audioPlayer.togglePlay()" class="text-primary hover:opacity-70 p-2 transition transform active:scale-90"><i id="mp-play-icon" class="fa-solid fa-play text-2xl sm:text-3xl"></i></button>
+            <button onclick="audioPlayer.next()" class="text-primary hover:opacity-70 p-2 transition transform active:scale-90"><i class="fa-solid fa-forward-step text-lg sm:text-xl"></i></button>
+            <div class="w-px h-6 bg-borderline/20 mx-1"></div>
+            <button onclick="audioPlayer.closePlayer()" class="text-primary hover:text-red-500 p-2 transition transform active:scale-90"><i class="fa-solid fa-xmark text-xl sm:text-2xl"></i></button>
+        </div>
+        <div class="absolute top-0 left-0 w-full h-1 hover:h-2 transition-all duration-200 z-10 group/progress" onclick="event.stopPropagation()">
+            <div class="relative w-full h-full bg-borderline/10 cursor-pointer">
+                <div id="mp-progress" class="absolute top-0 left-0 h-full bg-primary w-0 transition-all duration-200 pointer-events-none"></div>
+                <input type="range" id="mp-seek-slider" min="0" max="100" value="0" step="0.1" class="mini-slider absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-20" oninput="audioPlayer.handleMiniSeekInput(event)" onchange="audioPlayer.handleMiniSeekChange(event)">
+                <div id="mp-tooltip" class="absolute bottom-full mb-1 bg-surface text-main text-[10px] px-2 py-0.5 rounded opacity-0 pointer-events-none">00:00</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FULL PLAYER -->
+    <div id="full-player" class="fixed inset-0 bg-base z-[60] hidden flex-col lg:flex-row opacity-0 transition-opacity duration-300 overflow-y-auto lg:overflow-hidden hide-scrollbar">
+        <div id="fp-video-wrapper" class="w-full sticky top-0 z-[50] flex flex-col justify-center bg-black lg:w-[65%] lg:h-full lg:relative touch-pan-y">
+            <div class="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/30 rounded-full z-[100] lg:hidden"></div>
+            
+            <div id="player-container-wrapper" class="relative w-full aspect-video bg-black group max-h-screen flex items-center justify-center overflow-hidden">
+                <div id="yt-player-container" class="absolute inset-0 w-full h-full z-0"><div id="youtube-player" class="w-full h-full pointer-events-none"></div></div>
+                <div id="radio-ui" class="absolute inset-0 bg-slate-950 hidden opacity-0 transition-all duration-700 z-10 flex items-center justify-center overflow-hidden pointer-events-none">
+                    <div id="am-fluid-bg" class="absolute inset-0 bg-cover bg-center scale-110 filter blur-xl brightness-50 z-0"></div>
+                    <img id="radio-cover" src="" class="relative w-[85%] sm:w-[70%] max-w-3xl aspect-video object-cover rounded-xl shadow-2xl border border-white/10 z-10">
+                </div>
+                <div id="fp-loading" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden z-30 pointer-events-none"><div class="loader"></div></div>
+
+                <div id="seek-zone-left" class="absolute left-0 top-0 w-[40%] h-full z-[35] flex items-center justify-center opacity-0 transition-opacity pointer-events-auto" onclick="audioPlayer.handleTapSeek(event, 'left')">
+                    <div class="bg-black/50 backdrop-blur-sm rounded-full w-20 h-20 flex flex-col items-center justify-center"><i class="fa-solid fa-backward-step text-2xl text-white"></i><span id="seek-text-left" class="text-white font-bold mt-1 text-sm">10s</span></div>
+                </div>
+                <div id="seek-zone-right" class="absolute right-0 top-0 w-[40%] h-full z-[35] flex items-center justify-center opacity-0 transition-opacity pointer-events-auto" onclick="audioPlayer.handleTapSeek(event, 'right')">
+                    <div class="bg-black/50 backdrop-blur-sm rounded-full w-20 h-20 flex flex-col items-center justify-center"><i class="fa-solid fa-forward-step text-2xl text-white"></i><span id="seek-text-right" class="text-white font-bold mt-1 text-sm">10s</span></div>
+                </div>
+
+                <div id="fp-video-overlay" class="absolute inset-0 z-40 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-2 sm:p-4 pointer-events-none">
+                    <div class="flex justify-between items-start pointer-events-auto mt-4 lg:mt-0">
+                        <div class="flex gap-2">
+                            <button onclick="app.toggleFullScreenPlayer(false)" class="text-white/80 hover:text-white w-10 h-10 rounded-full flex items-center justify-center bg-black/50 lg:hidden"><i class="fa-solid fa-chevron-down text-lg"></i></button>
+                            <button onclick="audioPlayer.closePlayer()" class="text-white/80 hover:text-red-500 w-10 h-10 rounded-full flex items-center justify-center bg-black/50"><i class="fa-solid fa-xmark text-lg"></i></button>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <button onclick="audioPlayer.toggleCC()" id="cc-btn" class="text-white hover:text-primary w-10 h-10 rounded-full bg-black/50"><i class="fa-solid fa-closed-captioning text-lg"></i></button>
+                            <div class="relative pointer-events-auto">
+                                <button onclick="app.toggleSettingsMenu()" id="settings-btn" class="text-white hover:text-primary w-10 h-10 rounded-full bg-black/50"><i class="fa-solid fa-gear text-lg"></i></button>
+                                <div id="settings-menu" class="absolute right-0 top-12 mt-2 w-48 bg-surface/95 rounded-xl shadow-2xl hidden z-50 opacity-0 transition-all duration-200 border border-borderline/10">
+                                    <div class="p-3 border-b border-borderline/10"><h4 class="text-xs font-bold text-main">Chất lượng</h4></div>
+                                    <div id="quality-list" class="py-1 flex flex-col max-h-48 overflow-y-auto hide-scrollbar text-main"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex items-center justify-center gap-6 pointer-events-none">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 bg-black/50 rounded-full flex items-center justify-center text-3xl sm:text-4xl text-white pointer-events-auto cursor-pointer" onclick="audioPlayer.togglePlay()"><i id="fp-play-icon" class="fa-solid fa-play ml-1"></i></div>
+                    </div>
+                    <div class="w-full pt-2 flex flex-col pointer-events-auto" onclick="event.stopPropagation()">
+                        <div class="flex items-center justify-between text-[11px] sm:text-xs text-white font-medium mb-1"><span id="fp-time-current">00:00</span><span id="fp-time-total">00:00</span></div>
+                        <input type="range" id="fp-progress-bar" min="0" max="100" value="0" step="0.1" class="yt-progress-bar w-full h-1 mb-2" oninput="audioPlayer.seek(this.value)">
+                        <div class="flex justify-between items-center px-1">
+                            <div class="flex gap-4">
+                                <button onclick="audioPlayer.toggleVideoMode()" id="toggle-video-btn" class="text-white hover:text-primary"><i class="fa-solid fa-radio text-lg"></i></button>
+                                <button onclick="audioPlayer.toggleOledSaver(true)" class="text-white hover:text-primary"><i class="fa-solid fa-leaf text-lg"></i></button>
+                            </div>
+                            <div class="flex gap-4">
+                                <button onclick="app.toggleFullScreenPlayer(false)" class="text-white/80 hover:text-white hidden lg:block"><i class="fa-solid fa-compress text-lg"></i></button>
+                                <button onclick="app.toggleNativeFullscreen()" class="text-white hover:text-primary"><i class="fa-solid fa-expand text-lg"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="fp-content-wrapper" class="w-full flex-1 bg-base p-4 sm:p-6 lg:w-[35%] lg:h-full lg:overflow-y-auto hide-scrollbar border-t lg:border-t-0 lg:border-l border-borderline/10">
+            <div class="mb-6">
+                <h2 id="fp-info-title" class="text-xl sm:text-2xl font-bold text-main mb-1">Tên tập</h2>
+                <div class="flex items-center text-sm text-muted gap-2 mb-4"><span id="fp-info-series" class="font-medium text-primary hover:underline cursor-pointer transition" onclick="app.openDetailFromPlayer()">Tên bộ truyện</span></div>
+                <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar pb-2" id="fp-action-bar">
+                    <button onclick="app.openDetailAndReview()" class="flex items-center gap-2 bg-overlay/10 text-main px-4 py-2 rounded-full text-sm font-medium border border-borderline/5"><i class="fa-solid fa-book-open"></i> Thông tin truyện</button>
+                    <button onclick="app.openShareModal(app.currentSeriesId)" class="flex items-center gap-2 bg-overlay/10 text-main px-4 py-2 rounded-full text-sm font-medium border border-borderline/5"><i class="fa-solid fa-share"></i> Chia sẻ</button>
+                </div>
+            </div>
+            
+            <div class="bg-surface border border-borderline/10 rounded-xl p-4 mb-4 shadow-sm">
+                <div class="flex justify-between items-center mb-4"><h4 class="font-bold text-main tracking-wide text-xs uppercase opacity-80 flex items-center gap-2"><i class="fa-solid fa-face-smile-wink text-primary"></i> Cảm xúc tập này</h4></div>
+                <div id="fp-episode-emotions" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <div class="bg-surface border border-borderline/10 rounded-xl p-5 mb-6 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-center mb-4 relative z-10"><h4 class="font-bold text-main tracking-wide text-xs uppercase opacity-80 flex items-center gap-2"><i class="fa-solid fa-star-half-stroke text-primary"></i> Đánh giá tập</h4><button onclick="app.toggleEpisodeReviewForm()" class="bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-[10px] font-bold"><i class="fa-solid fa-pen-nib"></i> Viết</button></div>
+                <!-- Logic đánh giá tập (Rút gọn HTML cho không gian, giữ ID chuẩn) -->
+                <div id="ep-review-stats-view" class="relative z-10">
+                    <div class="grid grid-cols-2 gap-x-5 gap-y-4">
+                        <div><div class="flex justify-between text-[11px] mb-1 text-muted"><span>Cốt truyện</span><span id="ep-stat-plot">8.5/10</span></div><div class="w-full bg-overlay/10 rounded-full h-1.5"><div class="bg-blue-400 h-full rounded-full" id="ep-bar-plot" style="width: 85%"></div></div></div>
+                        <div><div class="flex justify-between text-[11px] mb-1 text-muted"><span>Ý nghĩa</span><span id="ep-stat-meaning">8.0/10</span></div><div class="w-full bg-overlay/10 rounded-full h-1.5"><div class="bg-amber-400 h-full rounded-full" id="ep-bar-meaning" style="width: 80%"></div></div></div>
+                        <div><div class="flex justify-between text-[11px] mb-1 text-muted"><span>Diễn đọc</span><span id="ep-stat-audio">9.5/10</span></div><div class="w-full bg-overlay/10 rounded-full h-1.5"><div class="bg-primary h-full rounded-full" id="ep-bar-audio" style="width: 95%"></div></div></div>
+                        <div><div class="flex justify-between text-[11px] mb-1 text-muted"><span>Sợ hãi</span><span id="ep-stat-scare">8.0/10</span></div><div class="w-full bg-overlay/10 rounded-full h-1.5"><div class="bg-purple-400 h-full rounded-full" id="ep-bar-scare" style="width: 80%"></div></div></div>
+                    </div>
+                </div>
+                <div id="ep-review-input-view" class="hidden relative z-10">
+                     <!-- Input Sliders -->
+                     <div class="space-y-4 mb-4">
+                        <div><div class="flex justify-between text-xs font-bold text-main mb-1.5"><span>1. Cốt truyện</span><span class="text-primary" id="ep-val-plot">8/10</span></div><input type="range" min="1" max="10" value="8" oninput="document.getElementById('ep-val-plot').innerText=this.value+'/10'"></div>
+                        <div><div class="flex justify-between text-xs font-bold text-main mb-1.5"><span>2. Ý nghĩa</span><span class="text-primary" id="ep-val-mean">8/10</span></div><input type="range" min="1" max="10" value="8" oninput="document.getElementById('ep-val-mean').innerText=this.value+'/10'"></div>
+                        <div><div class="flex justify-between text-xs font-bold text-main mb-1.5"><span>3. Diễn đọc</span><span class="text-primary" id="ep-val-audio">8/10</span></div><input type="range" min="1" max="10" value="8" oninput="document.getElementById('ep-val-audio').innerText=this.value+'/10'"></div>
+                        <div><div class="flex justify-between text-xs font-bold text-main mb-1.5"><span>4. Độ sợ hãi</span><span class="text-primary" id="ep-val-scare">8/10</span></div><input type="range" min="1" max="10" value="8" oninput="document.getElementById('ep-val-scare').innerText=this.value+'/10'"></div>
+                    </div>
+                    <div class="flex gap-3 mt-4 pt-4 border-t border-borderline/10"><button onclick="app.toggleEpisodeReviewForm()" class="flex-1 bg-overlay/5 text-main font-bold py-2.5 rounded-xl text-sm border">Hủy</button><button onclick="app.submitEpisodeReview()" class="flex-1 bg-primary text-white font-bold py-2.5 rounded-xl text-sm">Gửi</button></div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-bold text-main mb-3 text-lg flex items-center justify-between">Danh sách tập</h3>
+                <div id="fp-playlist" class="flex flex-col gap-1.5 pb-10 lg:pb-0"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIC TÍCH HỢP -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, increment, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBEcl_K5FEGJfpKoNSQm1ArOlq1ly1_ndM",
+            authDomain: "audiofan-web.firebaseapp.com",
+            projectId: "audiofan-web",
+            storageBucket: "audiofan-web.firebasestorage.app",
+            messagingSenderId: "195140494738",
+            appId: "1:195140494738:web:e0269c60e460b16cac0d4b",
+            measurementId: "G-TC1077P4S1"
+        };
+
+        const fbApp = initializeApp(firebaseConfig);
+        const auth = getAuth(fbApp);
+        const db = getFirestore(fbApp);
+        window.db = db;
+        
+        window.showToast = function(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.remove('translate-x-full', 'opacity-0');
+            setTimeout(() => { toast.classList.add('translate-x-full', 'opacity-0'); }, 3000);
+        }
+
+        window.CONSTANTS = { NARRATOR: "Nguyễn Huy" };
+        window.FIXED_EMOTIONS = [
+            { name: "Sợ hãi", icon: "😱" }, { name: "Buồn cười", icon: "🤣" }, { name: "Cảm động", icon: "🥺" },
+            { name: "Hồi hộp", icon: "🥶" }, { name: "Kịch tính", icon: "🍿" }, { name: "Bất ngờ", icon: "🤯" },
+            { name: "Ghê rợn", icon: "💀" }, { name: "Cuốn hút", icon: "🔥" }
+        ];
+
+        window.database = { authors: [], categories: [], stories: [] };
+        window.appFilters = { genres: new Set(), dynamicGenres: new Set(), emotions: new Set() };
+
+        async function loadCoreData() {
+            try {
+                const [authorsRes, storiesRes] = await Promise.all([ fetch('./data/authors.json'), fetch('./data/stories.json') ]);
+                window.database.authors = await authorsRes.json();
+                const staticStories = await storiesRes.json();
+
+                const latestStoryIds = [...staticStories].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).map(story => story.id);
+                const seriesStoryIds = staticStories.filter(story => story.type === 'series').map(story => story.id);
+                const singleStoryIds = staticStories.filter(story => story.type === 'single').map(story => story.id);
+
+                window.database.categories = [
+                    { id: "trending", title: "Truyện nổi bật tuần qua", storyIds: ["s1", "s2", "s3", "s4"] },
+                    { id: "all-latest", title: "Tất cả (Mới cập nhật)", storyIds: latestStoryIds },
+                    { id: "all-series", title: "Truyện Series", storyIds: seriesStoryIds },
+                    { id: "all-singles", title: "Truyện Lẻ", storyIds: singleStoryIds }
+                ];
+
+                window.database.stories = staticStories;
+                window.database.stories.forEach(s => { if (s.genres) s.genres.forEach(g => window.appFilters.genres.add(g)); });
+
+                window.app.initSettings();
+                initRealtimeListeners();
+
+                const hash = window.location.hash;
+                if (hash && hash.includes('#/detail/')) window.app.navigate('detail', hash.split('#/detail/')[1]); 
+                else window.app.navigate('home'); 
+            } catch (error) {
+                console.warn("Nạp dữ liệu tĩnh không thành công, vui lòng kiểm tra file JSON cục bộ.");
+            }
+        }
+
+        function initRealtimeListeners() {
+            window.database.stories.forEach(story => {
+                onSnapshot(doc(window.db, "stories_dynamic", story.id), (docSnap) => {
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        story.stats = data.stats || story.stats;
+                        story.rating = data.rating || story.rating;
+                        story.dynamicGenres = data.dynamicGenres || [];
+                        story.dynamicGenres.forEach(g => window.appFilters.dynamicGenres.add(g));
+                        if(data.emotions) Object.keys(data.emotions).forEach(emo => window.appFilters.emotions.add(emo));
+                    }
+                    window.app.renderDynamicFilters();
+                    if (window.app.currentSeriesId === story.id) window.app.renderDetail(story.id);
+                });
+            });
+        }
+
+        let ytPlayer; window.isYtReady = false;
+        window.onYouTubeIframeAPIReady = function() {
+            ytPlayer = new YT.Player('youtube-player', {
+                height: '100%', width: '100%', videoId: '',
+                playerVars: { 'playsinline': 1, 'controls': 0, 'disablekb': 1, 'fs': 0, 'rel': 0, 'modestbranding': 1 },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange, 'onPlaybackQualityChange': onPlaybackQualityChange }
+            });
+            window.isYtReady = true;
+        }
+        function onPlayerReady(event) { window.audioPlayer.setupTracker(); window.audioPlayer.populateQualities(); window.audioPlayer.restoreState(); }
+        function onPlayerStateChange(event) {
+            if (event.data == YT.PlayerState.PLAYING) { window.audioPlayer.isPlaying = true; window.audioPlayer.isLoading = false; window.audioPlayer.updateUIStatus(); if (window.audioPlayer.isVideoMode) window.audioPlayer.showVideoUI(); }
+            else if (event.data == YT.PlayerState.PAUSED) { window.audioPlayer.isPlaying = false; window.audioPlayer.updateUIStatus(); }
+            else if (event.data == YT.PlayerState.ENDED) { window.audioPlayer.next(); }
+            else if (event.data == YT.PlayerState.BUFFERING) { window.audioPlayer.isLoading = true; window.audioPlayer.updateUIStatus(); }
+        }
+        function onPlaybackQualityChange(event) { window.audioPlayer.currentQuality = event.data; window.audioPlayer.populateQualities(); }
+
+        window.audioPlayer = {
+            currentStory: null, currentEpIndex: 0, isPlaying: false, isLoading: false, isVideoMode: true,
+            trackerInterval: null, currentQuality: 'auto', videoUITimer: null, isOledSaverActive: false,
+            
+            // Player Logic
+            formatTime: function(secs) {
+                if(isNaN(secs)) return "00:00";
+                const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60); const s = Math.floor(secs % 60);
+                return h > 0 ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            },
+            saveCurrentState: function () { if(this.currentStory) localStorage.setItem('av_current_state', JSON.stringify({ id: this.currentStory.id, ep: this.currentEpIndex, time: ytPlayer && ytPlayer.getCurrentTime ? ytPlayer.getCurrentTime() : 0 })); },
+            restoreState: function () {
+                const state = JSON.parse(localStorage.getItem('av_current_state'));
+                if(state) {
+                    const s = window.database.stories.find(x => x.id === state.id);
+                    if(s && s.episodes[state.ep]) { this.currentStory = s; this.currentEpIndex = state.ep; this.updateUIStatus(); document.getElementById('mini-player').classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[200px]'); if(window.isYtReady) ytPlayer.cueVideoById({videoId: s.episodes[state.ep].videoId, startSeconds: state.time}); }
+                }
+            },
+            seek: function(val) { if(ytPlayer && ytPlayer.getDuration) ytPlayer.seekTo((val / 100) * ytPlayer.getDuration(), true); },
+            handleMiniSeekInput: function (e) { document.getElementById('mp-progress').style.width = e.target.value + '%'; },
+            handleMiniSeekChange: function (e) { this.seek(e.target.value); },
+            togglePlay: function() { if(!this.currentStory) return; if(this.isPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo(); },
+            next: function() { if(this.currentStory && this.currentEpIndex < this.currentStory.episodes.length - 1) this.loadAndPlay(this.currentStory.id, this.currentEpIndex + 1); },
+            prev: function() { if(this.currentStory && this.currentEpIndex > 0) this.loadAndPlay(this.currentStory.id, this.currentEpIndex - 1); },
+            loadAndPlay: function(id, index, openFull = false, startT = 0) {
+                const s = window.database.stories.find(x => x.id === id); if(!s) return;
+                this.currentStory = s; this.currentEpIndex = index; this.isLoading = true; this.updateUIStatus();
+                if(window.isYtReady) ytPlayer.loadVideoById({videoId: s.episodes[index].videoId, startSeconds: startT});
+                document.getElementById('mini-player').classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[200px]');
+                if(openFull) window.app.toggleFullScreenPlayer(true);
+            },
+            closePlayer: function() {
+                if(ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo(); this.isPlaying = false; this.currentStory = null;
+                document.getElementById('mini-player').classList.add('opacity-0', 'pointer-events-none', 'translate-y-[200px]');
+                window.app.toggleFullScreenPlayer(false); localStorage.removeItem('av_current_state');
+            },
+            toggleVideoMode: function() {
+                this.isVideoMode = !this.isVideoMode;
+                const yt = document.getElementById('yt-player-container'); const ui = document.getElementById('radio-ui');
+                if(this.isVideoMode) { yt.style.zIndex="0"; yt.classList.remove('opacity-0'); ui.classList.add('hidden'); }
+                else { yt.style.zIndex="-50"; yt.classList.add('opacity-0'); ui.classList.remove('hidden'); setTimeout(()=>ui.classList.remove('opacity-0'),10); }
+            },
+            toggleOledSaver: function(force) {
+                this.isOledSaverActive = force !== null ? force : !this.isOledSaverActive;
+                const oled = document.getElementById('global-oled-saver');
+                if(this.isOledSaverActive) { oled.classList.remove('hidden'); setTimeout(()=>oled.classList.remove('opacity-0'),10); document.body.style.overflow='hidden'; window.showToast('Đã bật OLED Saver'); }
+                else { oled.classList.add('opacity-0'); setTimeout(()=>{oled.classList.add('hidden'); if(document.getElementById('full-player').classList.contains('hidden')) document.body.style.overflow='auto';},500); }
+            },
+            showVideoUI: function() {
+                const overlay = document.getElementById('fp-video-overlay'); overlay.classList.remove('opacity-0'); overlay.classList.add('opacity-100');
+                clearTimeout(this.videoUITimer); this.videoUITimer = setTimeout(()=> { if(this.isPlaying) { overlay.classList.remove('opacity-100'); overlay.classList.add('opacity-0'); } }, 3500);
+            },
+            setupTracker: function() {
+                setInterval(() => {
+                    if(this.isPlaying && ytPlayer && ytPlayer.getCurrentTime) {
+                        const cur = ytPlayer.getCurrentTime(); const tot = ytPlayer.getDuration();
+                        if(tot > 0) {
+                            const pct = (cur/tot)*100;
+                            document.getElementById('fp-progress-bar').value = pct; document.getElementById('fp-time-current').innerText = this.formatTime(cur); document.getElementById('fp-time-total').innerText = this.formatTime(tot);
+                            if(document.activeElement.id !== 'mp-seek-slider') { document.getElementById('mp-progress').style.width = pct+'%'; document.getElementById('mp-seek-slider').value = pct; }
+                            this.saveCurrentState();
+                            if(this.currentStory) {
+                                window.app.history[this.currentStory.id] = {epIndex: this.currentEpIndex, time: cur, lastWatched: Date.now()};
+                                localStorage.setItem('av_history', JSON.stringify(window.app.history));
+                            }
+                        }
+                    }
+                }, 1000);
+            },
+            populateQualities: function() {},
+            updateUIStatus: function() {
+                if(!this.currentStory) return; const ep = this.currentStory.episodes[this.currentEpIndex]; const ytHQ = `https://i.ytimg.com/vi/${ep.videoId}/hqdefault.jpg`;
+                document.getElementById('mp-image').src = this.currentStory.coverLandscape; document.getElementById('radio-cover').src = ytHQ; document.getElementById('am-fluid-bg').style.backgroundImage = `url('${ytHQ}')`;
+                document.getElementById('global-oled-title').innerText = ep.title; document.getElementById('fp-info-title').innerText = ep.title; document.getElementById('fp-info-series').innerText = this.currentStory.title;
+                
+                window.app.checkMarquee('mp-title', ep.title); window.app.checkMarquee('mp-series', this.currentStory.title);
+                
+                const playIcon = this.isPlaying ? "fa-solid fa-pause" : "fa-solid fa-play ml-1";
+                document.getElementById('mp-play-icon').className = this.isPlaying ? "fa-solid fa-pause text-base" : "fa-solid fa-play ml-1 text-base";
+                document.getElementById('fp-play-icon').className = playIcon; document.getElementById('global-oled-play-icon').className = this.isPlaying ? "fa-solid fa-pause" : "fa-solid fa-play";
+                if(this.isLoading) document.getElementById('fp-loading').classList.remove('hidden'); else document.getElementById('fp-loading').classList.add('hidden');
+                
+                const pl = document.getElementById('fp-playlist'); let html = '';
+                this.currentStory.episodes.forEach((e, i) => {
+                    const isCur = i === this.currentEpIndex;
+                    html += `<div class="flex items-center p-3 rounded-xl cursor-pointer ${isCur ? 'bg-overlay/10 border border-borderline/10' : 'hover:bg-overlay/5'}" onclick="audioPlayer.loadAndPlay('${this.currentStory.id}', ${i})">
+                                <div class="w-8 text-center">${isCur && this.isPlaying ? '<div class="w-2 h-2 rounded-full bg-primary mx-auto animate-ping"></div>' : `<span class="text-sm ${isCur?'text-primary':'text-muted'} font-bold">${i+1}</span>`}</div>
+                                <div class="flex-1 min-w-0"><p class="text-sm truncate font-medium ${isCur?'text-main':'text-muted'}">${e.title}</p></div>
+                            </div>`;
+                });
+                pl.innerHTML = html;
+            }
+        };
+
+        window.app = {
+            currentSeriesId: null, history: JSON.parse(localStorage.getItem('av_history') || '{}'), selectedReviewEmotion: '',
+            
+            // Auth Functions
+            toggleUserMenu: function() {
+                const menu = document.getElementById('user-menu-dropdown');
+                if(menu.classList.contains('hidden')) { menu.classList.remove('hidden'); setTimeout(()=>menu.classList.remove('opacity-0', 'scale-95'), 10); }
+                else { menu.classList.add('opacity-0', 'scale-95'); setTimeout(()=>menu.classList.add('hidden'), 200); }
+            },
+            openLoginModal: function() { document.getElementById('login-modal').classList.remove('hidden'); setTimeout(()=>document.getElementById('login-modal-content').classList.remove('scale-95', 'opacity-0'), 10); },
+            closeLoginModal: function() { document.getElementById('login-modal-content').classList.add('scale-95', 'opacity-0'); setTimeout(()=>document.getElementById('login-modal').classList.add('hidden'), 300); },
+            openForgotPasswordModal: function() { this.closeLoginModal(); document.getElementById('forgot-password-modal').classList.remove('hidden'); setTimeout(()=>document.getElementById('forgot-password-content').classList.remove('scale-95', 'opacity-0'), 10); },
+            closeForgotPasswordModal: function() { document.getElementById('forgot-password-content').classList.add('scale-95', 'opacity-0'); setTimeout(()=>document.getElementById('forgot-password-modal').classList.add('hidden'), 300); },
+            login: async function() {
+                const email = document.getElementById('login-email').value; const pass = document.getElementById('login-password').value;
+                if(!email || !pass) return window.showToast('Vui lòng nhập đầy đủ thông tin!');
+                try {
+                    await signInWithEmailAndPassword(auth, email, pass);
+                    window.showToast('Đăng nhập thành công!'); this.closeLoginModal();
+                } catch(e) { window.showToast('Đăng nhập thất bại. Vui lòng kiểm tra lại!'); }
+            },
+            logout: async function() { await signOut(auth); window.showToast('Đã đăng xuất!'); },
+            resetPassword: async function() {
+                const email = document.getElementById('forgot-email').value; if(!email) return window.showToast('Vui lòng nhập email!');
+                try { await sendPasswordResetEmail(auth, email); window.showToast('Đã gửi liên kết khôi phục. Vui lòng kiểm tra Email!'); this.closeForgotPasswordModal(); } catch(e) { window.showToast('Lỗi gửi email!'); }
+            },
+
+            // Dynamic Genre Adding
+            openGenreModal: function() {
+                if(!auth.currentUser) return window.showToast('Vui lòng đăng nhập để đóng góp!');
+                document.getElementById('genre-modal').classList.remove('hidden'); setTimeout(()=>document.getElementById('genre-modal-content').classList.remove('scale-95', 'opacity-0'), 10);
+            },
+            closeGenreModal: function() { document.getElementById('genre-modal-content').classList.add('scale-95', 'opacity-0'); setTimeout(()=>document.getElementById('genre-modal').classList.add('hidden'), 300); },
+            submitDynamicGenre: async function() {
+                const tag = document.getElementById('genre-input').value.trim();
+                if(!tag || tag.length < 3) return window.showToast('Thẻ quá ngắn!');
+                try {
+                    const ref = doc(window.db, "stories_dynamic", this.currentSeriesId);
+                    await setDoc(ref, { dynamicGenres: arrayUnion(tag) }, { merge: true });
+                    window.showToast('Gắn thẻ thành công!'); this.closeGenreModal(); document.getElementById('genre-input').value = '';
+                } catch(e) { window.showToast('Lỗi khi gắn thẻ!'); }
+            },
+
+            // Settings & Navigation
+            initSettings: function() {
+                this.setTheme(localStorage.getItem('app-theme') || 'navy', true); this.setPrimaryColor(localStorage.getItem('app-primary-color') || '#10b981', true);
+            },
+            setTheme: function(t, isInit=false) {
+                document.documentElement.setAttribute('data-theme', t); if(!isInit) localStorage.setItem('app-theme', t);
+                document.querySelectorAll('.theme-btn i').forEach(i => i.classList.add('opacity-0')); if(document.getElementById('theme-btn-'+t)) document.getElementById('theme-btn-'+t).querySelector('i').classList.remove('opacity-0');
+            },
+            setPrimaryColor: function(h, isInit=false) {
+                let hex = h.replace(/^#/, ''); document.documentElement.style.setProperty('--primary', `${parseInt(hex.slice(0,2),16)} ${parseInt(hex.slice(2,4),16)} ${parseInt(hex.slice(4,6),16)}`);
+                if(!isInit) localStorage.setItem('app-primary-color', h);
+                document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('ring-2', 'ring-main', 'ring-offset-2', 'ring-offset-surface'));
+                if(document.getElementById('color-btn-'+hex)) document.getElementById('color-btn-'+hex).classList.add('ring-2', 'ring-main');
+            },
+            navigate: function(id, param=null) {
+                document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); window.scrollTo(0,0);
+                document.querySelectorAll('.nav-item').forEach(el => { el.classList.remove('text-primary'); el.classList.add('text-muted'); });
+                if(document.getElementById('nav-'+id)) { document.getElementById('nav-'+id).classList.add('text-primary'); document.getElementById('nav-'+id).classList.remove('text-muted'); }
+                if(id==='home') { document.getElementById('view-home').classList.remove('hidden'); history.replaceState(null,null,' '); this.renderHome(); }
+                else if(id==='detail') { document.getElementById('view-detail').classList.remove('hidden'); this.currentSeriesId = param; window.location.hash = '#/detail/'+param; this.renderDetail(param); }
+                else if(id==='search') { document.getElementById('view-search').classList.remove('hidden'); if(document.getElementById('search-view-results').childElementCount===0) this.executeAdvancedSearch(); }
+                else { document.getElementById('view-'+id).classList.remove('hidden'); }
+            },
+            closeWarningBanner: function() { document.getElementById('global-warning-banner').classList.add('-translate-y-full', 'opacity-0'); setTimeout(()=>document.getElementById('global-warning-banner').style.display='none',300); document.getElementById('navbar').classList.replace('top-[32px]','top-0'); },
+            switchInfoTab: function(id) { document.querySelectorAll('.info-tab-btn').forEach(b => { b.classList.remove('bg-overlay/10', 'text-main', 'shadow-sm'); b.classList.add('text-muted'); }); document.querySelectorAll('.info-content-pane').forEach(p => p.classList.add('hidden')); document.getElementById('info-tab-'+id).classList.add('bg-overlay/10', 'text-main', 'shadow-sm'); document.getElementById('info-tab-'+id).classList.remove('text-muted'); document.getElementById('info-content-'+id).classList.remove('hidden'); },
+
+            // Filters
+            renderDynamicFilters: function() {
+                const genC = document.getElementById('adv-search-genres');
+                if(genC) {
+                    let html = '';
+                    window.appFilters.genres.forEach(g => html += `<button onclick="this.classList.toggle('adv-active')" class="adv-filter-btn px-3 py-1.5 rounded-xl text-xs">${g}</button>`);
+                    window.appFilters.dynamicGenres.forEach(g => { if(!window.appFilters.genres.has(g)) html += `<button onclick="this.classList.toggle('adv-active')" class="adv-filter-btn px-3 py-1.5 rounded-xl text-xs flex items-center">${g} <span class="genre-dynamic-badge">Cộng đồng</span></button>`; });
+                    genC.innerHTML = html;
+                }
+                const emoC = document.getElementById('adv-search-emotions');
+                if(emoC) {
+                    let html = '';
+                    (window.appFilters.emotions.size === 0 ? window.FIXED_EMOTIONS.map(e=>e.name) : Array.from(window.appFilters.emotions)).forEach(name => {
+                        const icon = window.FIXED_EMOTIONS.find(x=>x.name===name)?.icon || '✨';
+                        html += `<button onclick="this.classList.toggle('adv-active')" class="adv-emotion-btn px-3 py-1.5 rounded-xl text-xs flex items-center gap-1"><span>${icon}</span> ${name}</button>`;
+                    });
+                    emoC.innerHTML = html;
+                }
+            },
+            executeAdvancedSearch: function() {
+                const authorQ = document.getElementById('adv-search-input').value.trim().toLowerCase();
+                const genres = Array.from(document.querySelectorAll('.adv-filter-btn.adv-active')).map(b => b.innerText.replace('Cộng đồng', '').trim().toLowerCase());
+                const emotions = Array.from(document.querySelectorAll('.adv-emotion-btn.adv-active')).map(b => b.innerText.replace(/[\uD83C-\uDBFF\uDC00-\uDFFF]+/g, '').trim().toLowerCase());
+                
+                let res = [];
+                window.database.stories.forEach(s => {
+                    let match = true;
+                    if(authorQ && !s.title.toLowerCase().includes(authorQ) && !(window.database.authors.find(a=>a.id===s.authorId)?.name||'').toLowerCase().includes(authorQ)) match = false;
+                    const combinedGenres = [...(s.genres||[]), ...(s.dynamicGenres||[])].map(g=>g.toLowerCase());
+                    if(genres.length > 0 && !genres.some(g=>combinedGenres.includes(g))) match = false;
+                    if(match && emotions.length === 0) res.push({type:'series', data: s});
+                });
+                
+                const c = document.getElementById('search-view-results'); document.getElementById('search-result-count').innerText = `${res.length} kết quả`;
+                if(res.length===0) c.innerHTML = `<div class="col-span-full text-center py-16"><i class="fa-solid fa-ghost text-4xl text-muted mb-4 block opacity-50"></i><p class="text-muted text-sm">Không có truyện phù hợp.</p></div>`;
+                else c.innerHTML = res.map(r => `<div onclick="app.navigate('detail', '${r.data.id}');" class="flex gap-4 p-4 rounded-2xl bg-overlay/5 hover:bg-overlay/10 border border-borderline/5 hover:border-primary/50 transition cursor-pointer group shadow-sm"><img src="${r.data.coverLandscape}" class="w-24 h-16 rounded-xl object-cover shrink-0"><div class="flex-1 min-w-0 flex flex-col justify-center"><h4 class="text-main font-bold text-sm truncate mb-1">${r.data.title}</h4></div></div>`).join('');
+            },
+
+            // Rendering
+            renderHome: function() {
+                const rows = document.getElementById('home-rows'); rows.innerHTML = '';
+                window.database.categories.forEach(cat => {
+                    const st = window.database.stories.filter(s => cat.storyIds.includes(s.id));
+                    if(st.length > 0) rows.innerHTML += `<div><h2 class="text-xl font-bold mb-4 text-main">${cat.title}</h2><div class="flex overflow-x-auto gap-4 pb-4 hide-scrollbar snap-x">${st.map(s => `<div class="flex-none w-64 sm:w-72 cursor-pointer group" onclick="app.navigate('detail', '${s.id}')"><div class="relative overflow-hidden rounded-xl aspect-video mb-3 shadow-lg border border-borderline/5"><img src="${s.coverLandscape}" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500"></div><h3 class="font-bold text-sm text-main group-hover:text-primary transition-colors truncate">${s.title}</h3></div>`).join('')}</div></div>`;
+                });
+            },
+            renderDetail: function(id) {
+                const s = window.database.stories.find(x => x.id === id); if(!s) return;
+                const authorName = window.database.authors.find(a=>a.id===s.authorId)?.name || 'Unknown';
+                const hist = this.history[s.id]; const isSingle = s.type === 'single';
+
+                const allG = [...(s.genres||[]), ...(s.dynamicGenres||[]).map(g => `${g} <span class="genre-dynamic-badge">Cộng đồng</span>`)];
+
+                document.getElementById('detail-content').innerHTML = `
+                    <div class="relative h-[65vh] w-full pointer-events-none overflow-hidden select-none"><img src="${s.coverLandscape}" class="w-full h-full object-cover opacity-30 transform scale-105 filter blur-sm"><div class="absolute inset-0 bg-gradient-to-t from-base via-base/80 to-transparent"></div></div>
+                    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-[50vh] relative z-10 pb-16">
+                        <button onclick="app.navigate('home')" class="mb-6 flex items-center gap-2 text-muted hover:text-main transition group w-max backdrop-blur-md px-4 py-2 rounded-full bg-overlay/5 border border-borderline/10 text-sm"><i class="fa-solid fa-arrow-left"></i> Trở về</button>
+                        <div class="flex flex-col lg:flex-row gap-8 lg:gap-16">
+                            <div class="flex-1 w-full">
+                                <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-main mb-2 tracking-tight">${s.title}</h1>
+                                <div class="flex flex-wrap items-center gap-2 mb-4">${allG.map(g => `<span class="bg-overlay/5 text-muted border border-borderline/10 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase">${g}</span>`).join('')} <button onclick="app.openGenreModal()" class="bg-primary/20 text-primary border border-primary/30 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase transition hover:bg-primary/40">+ Thêm thẻ</button></div>
+                                
+                                <div class="flex flex-wrap items-center gap-3 mb-8">
+                                    <button onclick="audioPlayer.loadAndPlay('${s.id}', ${hist?.epIndex || 0}, true, ${hist?.time || 0});" class="bg-primary hover:bg-primary/80 text-white font-bold py-3.5 px-8 rounded-full shadow-[0_0_15px_rgba(var(--primary),0.3)]"><i class="fa-solid fa-play"></i> Nghe Ngay</button>
+                                </div>
+                                <p class="text-main leading-relaxed mb-6 font-medium bg-overlay/5 p-5 rounded-2xl border border-borderline/5">${s.description}</p>
+                            </div>
+                            <div class="w-full lg:w-[350px] shrink-0 space-y-8">
+                                <div class="bg-overlay/5 border border-borderline/10 rounded-2xl p-5 shadow-lg relative overflow-hidden text-center text-sm">
+                                    Tính năng bình luận chi tiết sẽ sớm ra mắt...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recommendations Section -->
+                        <div id="detail-recommendations" class="mt-12 pt-10 border-t border-borderline/10"></div>
+
+                        <div class="mt-8 pt-10 border-t border-borderline/10">
+                            <h3 class="text-2xl font-bold text-main mb-6"><i class="fa-solid fa-list text-primary"></i> Nội dung phát</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                ${s.episodes.map((ep, idx) => `<div class="group flex items-center p-3.5 rounded-2xl bg-overlay/[0.03] hover:bg-overlay/10 border border-borderline/5 cursor-pointer" onclick="audioPlayer.loadAndPlay('${s.id}', ${idx}, true);"><div class="relative w-14 h-10 shrink-0 rounded-lg overflow-hidden mr-4"><img src="https://i.ytimg.com/vi/${ep.videoId}/hqdefault.jpg" class="w-full h-full object-cover"></div><span class="font-medium text-main opacity-80 group-hover:opacity-100 truncate text-sm">${ep.title}</span></div>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                this.renderRecommendations(s);
+            },
+            
+            renderRecommendations: function(currentStory) {
+                const recs = window.database.stories
+                    .filter(s => s.id !== currentStory.id)
+                    .map(s => {
+                        let score = 0; if(s.authorId === currentStory.authorId) score += 2;
+                        const cG = [...(currentStory.genres||[]), ...(currentStory.dynamicGenres||[])];
+                        const sG = [...(s.genres||[]), ...(s.dynamicGenres||[])];
+                        cG.forEach(g => { if(sG.includes(g)) score += 1; });
+                        return { ...s, score };
+                    }).sort((a,b) => b.score - a.score).slice(0, 6);
+                
+                if(recs.length === 0) return;
+                document.getElementById('detail-recommendations').innerHTML = `
+                    <h3 class="text-2xl font-bold text-main mb-6"><i class="fa-solid fa-heart text-red-500"></i> Có thể bạn sẽ thích</h3>
+                    <div class="flex overflow-x-auto gap-4 pb-4 hide-scrollbar snap-x">
+                        ${recs.map(s => `<div class="flex-none w-64 sm:w-72 cursor-pointer group" onclick="app.navigate('detail', '${s.id}')"><div class="relative overflow-hidden rounded-xl aspect-video mb-3 border border-borderline/5"><img src="${s.coverLandscape}" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500"></div><h3 class="font-bold text-sm text-main truncate">${s.title}</h3></div>`).join('')}
+                    </div>
+                `;
+            },
+
+            // Check Marquee
+            checkMarquee: function(id, text) {
+                const el = document.getElementById(id); const clone = document.getElementById(id+'-clone'); const con = document.getElementById(id+'-container');
+                if(!el || !clone || !con) return; el.innerText = text; clone.innerText = text; con.style.animation = 'none'; clone.classList.add('hidden');
+                setTimeout(() => { if(el.offsetWidth > con.parentElement.offsetWidth) { clone.classList.remove('hidden'); con.style.animation = `marquee ${((el.offsetWidth + 32)*2)/40}s linear infinite`; } }, 100);
+            },
+            toggleFullScreenPlayer: function(force=null) {
+                const fp = document.getElementById('full-player'); const isHidden = fp.classList.contains('hidden');
+                const open = force !== null ? force : isHidden;
+                if(open) { fp.classList.remove('hidden'); setTimeout(()=>fp.classList.remove('opacity-0'),10); document.body.style.overflow='hidden'; }
+                else { fp.classList.add('opacity-0'); setTimeout(()=>fp.classList.add('hidden'), 300); document.body.style.overflow='auto'; }
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            onAuthStateChanged(auth, (user) => {
+                const guestUI = document.getElementById('um-guest'); const loggedUI = document.getElementById('um-logged');
+                const avatar = document.getElementById('nav-user-avatar');
+                if (user && !user.isAnonymous) {
+                    guestUI.classList.add('hidden'); loggedUI.classList.remove('hidden'); loggedUI.classList.add('flex');
+                    document.getElementById('um-user-email').innerText = user.email;
+                    avatar.src = `https://ui-avatars.com/api/?name=${user.email.charAt(0)}&background=10b981&color=fff`;
+                    loadCoreData();
+                } else {
+                    guestUI.classList.remove('hidden'); guestUI.classList.add('flex'); loggedUI.classList.add('hidden');
+                    avatar.src = "https://ui-avatars.com/api/?name=G&background=random&color=fff";
+                    loadCoreData();
+                }
+            });
+
+            const ytScriptTag = document.createElement('script'); ytScriptTag.src = "https://www.youtube.com/iframe_api";
+            document.getElementsByTagName('script')[0].parentNode.insertBefore(ytScriptTag, document.getElementsByTagName('script')[0]);
+
+            window.addEventListener('scroll', () => {
+                const nav = document.getElementById('navbar');
+                if (window.scrollY > 10) { nav.classList.add('bg-surface/95', 'shadow-lg', 'backdrop-blur-md', 'border-b', 'border-borderline/10'); nav.classList.remove('bg-transparent', 'pt-2'); }
+                else { nav.classList.add('bg-transparent', 'pt-2'); nav.classList.remove('bg-surface/95', 'shadow-lg', 'backdrop-blur-md', 'border-b', 'border-borderline/10'); }
+            });
+
+            // Swipe to Minimize Player Logic (Mobile drag video down)
+            const fpVideoWrapper = document.getElementById('fp-video-wrapper');
+            let touchStartY = 0; let fpScrolling = false;
+            fpVideoWrapper.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY; fpVideoWrapper.style.transition = 'none'; fpScrolling = true;
+            }, {passive: true});
+            fpVideoWrapper.addEventListener('touchmove', (e) => {
+                if(!fpScrolling) return;
+                const diff = e.touches[0].clientY - touchStartY;
+                if (diff > 0) fpVideoWrapper.style.transform = `translateY(${diff}px)`;
+            }, {passive: true});
+            fpVideoWrapper.addEventListener('touchend', (e) => {
+                fpScrolling = false; fpVideoWrapper.style.transition = 'transform 0.3s ease';
+                if (e.changedTouches[0].clientY - touchStartY > 120) {
+                    window.app.toggleFullScreenPlayer(false);
+                    setTimeout(() => fpVideoWrapper.style.transform = '', 300);
+                } else { fpVideoWrapper.style.transform = ''; }
+            });
+        });
+    </script>
+</body>
+</html>
