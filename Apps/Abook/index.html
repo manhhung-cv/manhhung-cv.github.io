@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AuraReader | Minimal Premium</title>
+    
+    <!-- Load nhiều phông chữ Tiếng Việt -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Nunito:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: 'var(--color-primary)',
+                        'brand-alpha': 'var(--color-primary-alpha)'
+                    },
+                    fontFamily: {
+                        'be-vietnam': ['"Be Vietnam Pro"', 'sans-serif'],
+                        'inter': ['Inter', '-apple-system', 'sans-serif'],
+                        'lora': ['Lora', 'Georgia', 'serif'],
+                        'merriweather': ['Merriweather', 'serif'],
+                        'nunito': ['Nunito', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --color-primary: #111111;
+            --color-primary-alpha: rgba(17, 17, 17, 0.08);
+            --bg-base: 252, 252, 252;
+            --text-base: 28, 28, 30;
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --panel-border: rgba(0, 0, 0, 0.08);
+            --highlight-color: rgba(255, 213, 79, 0.4);
+        }
+
+        body.theme-light { 
+            --bg-base: 252, 252, 252; 
+            --text-base: 28, 28, 30; 
+            --panel-bg: rgba(255, 255, 255, 0.95); 
+            --panel-border: rgba(0, 0, 0, 0.08);
+            background-color: rgb(var(--bg-base)); 
+            color: rgb(var(--text-base)); 
+        }
+        
+        body.theme-dark { 
+            --color-primary: #ffffff;
+            --color-primary-alpha: rgba(255, 255, 255, 0.12);
+            --bg-base: 10, 10, 12; 
+            --text-base: 224, 224, 224; 
+            --panel-bg: rgba(28, 28, 30, 0.95); 
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --highlight-color: rgba(255, 213, 79, 0.25);
+            background-color: rgb(var(--bg-base)); 
+            color: rgb(var(--text-base)); 
+        }
+        
+        body.theme-sepia { 
+            --color-primary: #433422;
+            --color-primary-alpha: rgba(67, 52, 34, 0.12);
+            --bg-base: 244, 236, 216; 
+            --text-base: 67, 52, 34; 
+            --panel-bg: rgba(244, 236, 216, 0.95); 
+            --panel-border: rgba(67, 52, 34, 0.1);
+            --highlight-color: rgba(186, 153, 114, 0.4);
+            background-color: rgb(var(--bg-base)); 
+            color: rgb(var(--text-base)); 
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--panel-border);
+        }
+        
+        .glass-modal {
+            background: var(--panel-bg);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.25);
+        }
+
+        body { transition: background-color 0.5s ease, color 0.5s ease; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: var(--color-primary-alpha); border-radius: 4px; }
+        
+        #viewer { width: 100%; height: 100%; overflow: hidden; }
+        #viewer iframe { border: none; background: transparent !important; }
+
+        .btn-icon { transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); color: var(--color-primary); }
+        .btn-icon:hover { transform: scale(1.08); background: var(--color-primary-alpha); }
+        .btn-icon:active { transform: scale(0.95); }
+
+        .slide-up { transform: translateY(0); opacity: 1; pointer-events: auto; }
+        .slide-down { transform: translateY(120%); opacity: 0; pointer-events: none; }
+        
+        .player-visible { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        .player-hidden { transform: translateY(150%) scale(0.95); opacity: 0; pointer-events: none; }
+
+        .hidden-important { display: none !important; }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            background: var(--panel-border);
+            border-radius: 99px;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px; width: 16px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: 1px solid var(--panel-border); border-radius: 6px; }
+    </style>
+</head>
+<body class="theme-light font-be-vietnam h-[100dvh] flex flex-col overflow-hidden antialiased selection:bg-[var(--highlight-color)]">
+
+    <!-- Header -->
+    <header id="main-header" class="fixed top-0 w-full z-30 h-16 glass-panel border-t-0 border-l-0 border-r-0 flex justify-between items-center px-4 sm:px-6 transition-transform duration-300">
+        <div class="flex items-center gap-2 sm:gap-3">
+            <button id="btn-toggle-library" class="w-10 h-10 rounded-full btn-icon flex items-center justify-center bg-[var(--color-primary-alpha)]" title="Thư Viện Sách">
+                <i class="fa-solid fa-book-bookmark text-[var(--color-primary)] text-sm"></i>
+            </button>
+            <label for="epub-upload" class="cursor-pointer flex items-center justify-center w-10 h-10 rounded-full btn-icon" title="Tải Sách Mới">
+                <i class="fa-solid fa-folder-plus text-[var(--color-primary)] text-sm"></i>
+            </label>
+            <input type="file" id="epub-upload" accept=".epub" class="hidden" />
+        </div>
+
+        <div class="flex-1 text-center px-2 flex flex-col justify-center overflow-hidden">
+            <h1 id="book-title" class="text-sm font-semibold tracking-wide truncate">AuraReader</h1>
+            <p id="book-progress" class="text-[10px] uppercase tracking-[0.2em] opacity-50 mt-1 truncate">Minimal Premium</p>
+        </div>
+
+        <div class="flex items-center gap-1 sm:gap-2">
+            <button id="btn-toggle-tts" class="w-10 h-10 rounded-full btn-icon flex items-center justify-center" title="Trình Đọc"><i class="fa-solid fa-headphones-simple"></i></button>
+            <button id="btn-toggle-toc" class="w-10 h-10 rounded-full btn-icon flex items-center justify-center" title="Mục Lục"><i class="fa-solid fa-bars-staggered"></i></button>
+            <button id="btn-toggle-settings" class="w-10 h-10 rounded-full btn-icon flex items-center justify-center" title="Cài Đặt"><i class="fa-solid fa-sliders"></i></button>
+        </div>
+    </header>
+
+    <!-- Khu vực đọc -->
+    <main id="main-content" class="flex-1 relative w-full h-full pt-16 pb-6">
+        <div id="viewer" class="flex-1 transition-opacity duration-300">
+            <div id="loading-state" class="flex flex-col items-center justify-center h-full opacity-40">
+                <i class="fa-solid fa-book-open text-4xl mb-4 font-light"></i>
+                <p class="text-xs font-medium tracking-widest uppercase">Mở thư viện để đọc</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Overlay mờ (Sửa thành trong suốt để preview cài đặt dễ nhìn) -->
+    <div id="overlay" class="fixed inset-0 bg-transparent z-40 transition-opacity duration-300 opacity-0 pointer-events-none"></div>
+
+    <!-- Mini Player (Mở rộng) -->
+    <div id="mini-player" class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md glass-modal rounded-3xl z-50 p-3 flex flex-col transition-all duration-500 player-hidden shadow-2xl border border-[var(--panel-border)]">
+        <!-- Main Bar -->
+        <div class="flex items-center justify-between w-full">
+            <div class="flex flex-col overflow-hidden flex-1 mr-3 pl-2">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse hidden" id="tts-active-dot"></span>
+                    <span id="tts-status-text" class="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] opacity-70">Đang nghỉ</span>
+                </div>
+                <select id="tts-engine-select" class="text-xs bg-transparent border-none outline-none font-medium text-[rgb(var(--text-base))] cursor-pointer truncate appearance-none w-full">
+                    <option value="google">Google Translate (Mượt)</option>
+                    <option value="elevenlabs">ElevenLabs (Cao cấp)</option>
+                    <option value="cartesia">Cartesia AI (Cao cấp)</option>
+                    <option value="eidosspeech">EidosSpeech</option>
+                    <option value="webspeech">Giọng Hệ Thống (Offline)</option>
+                </select>
+            </div>
+            
+            <div class="flex items-center gap-1 bg-[var(--color-primary-alpha)] rounded-2xl p-1">
+                <button id="tts-mini-settings-btn" class="w-8 h-8 rounded-full flex items-center justify-center text-xs btn-icon" title="Cài đặt giọng đọc"><i class="fa-solid fa-gear"></i></button>
+                <button id="tts-mini-speed" class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold btn-icon" title="Tốc độ đọc">1x</button>
+                <button id="tts-mini-stop" class="w-8 h-8 rounded-full flex items-center justify-center btn-icon text-red-500/80"><i class="fa-solid fa-stop"></i></button>
+                <button id="tts-mini-play" class="w-10 h-10 rounded-full bg-[var(--color-primary)] text-[rgb(var(--bg-base))] flex items-center justify-center hover:scale-105 transition-transform shadow-md">
+                    <i class="fa-solid fa-play ml-0.5" id="tts-mini-play-icon"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Cài đặt mở rộng (Tone, API Key) -->
+        <div id="mini-player-expanded" class="hidden flex-col gap-4 mt-3 pt-3 border-t border-[var(--panel-border)] px-2">
+            <div class="flex items-center justify-between gap-3">
+                <div class="flex items-center gap-2 w-28">
+                    <i class="fa-solid fa-wave-square text-[10px] opacity-50"></i>
+                    <label class="text-[10px] font-bold uppercase opacity-70">Tone Giọng</label>
+                </div>
+                <input type="range" id="tts-pitch-slider" min="0.5" max="2" step="0.1" value="1" class="flex-1 h-1">
+                <span id="tts-pitch-display" class="text-[10px] font-bold w-6 text-right">1.0</span>
+            </div>
+            
+            <div id="api-configs-container" class="space-y-2">
+                <p class="text-[9px] opacity-50 uppercase tracking-widest leading-tight mb-2">Mẹo: Ngăn cách nhiều key bằng dấu phẩy (,) để dự phòng khi hết Rate Limit</p>
+                
+                <div class="flex-col gap-1.5 pb-1 hidden" id="tts-eidos-config">
+                    <label class="text-[10px] font-bold uppercase opacity-70">Eidos API Key</label>
+                    <input type="password" id="tts-eidos-key" placeholder="Key1, Key2..." class="w-full text-xs p-2.5 rounded-xl bg-[var(--color-primary-alpha)] border border-[var(--panel-border)] outline-none text-[rgb(var(--text-base))] focus:border-blue-500 transition-colors">
+                </div>
+
+                <div class="flex-col gap-1.5 pb-1 hidden" id="tts-eleven-config">
+                    <label class="text-[10px] font-bold uppercase opacity-70">ElevenLabs API Key</label>
+                    <input type="password" id="tts-eleven-key" placeholder="Key1, Key2..." class="w-full text-xs p-2.5 rounded-xl bg-[var(--color-primary-alpha)] border border-[var(--panel-border)] outline-none text-[rgb(var(--text-base))] focus:border-blue-500 transition-colors">
+                </div>
+
+                <div class="flex-col gap-1.5 pb-1 hidden" id="tts-cartesia-config">
+                    <label class="text-[10px] font-bold uppercase opacity-70">Cartesia API Key</label>
+                    <input type="password" id="tts-cartesia-key" placeholder="Key1, Key2..." class="w-full text-xs p-2.5 rounded-xl bg-[var(--color-primary-alpha)] border border-[var(--panel-border)] outline-none text-[rgb(var(--text-base))] focus:border-blue-500 transition-colors">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Thư Viện Sách -->
+    <div id="library-panel" class="fixed top-auto bottom-0 right-0 sm:right-6 sm:bottom-6 w-full sm:w-[360px] glass-modal rounded-t-3xl sm:rounded-3xl z-50 transition-all duration-400 slide-down h-[70vh] sm:max-h-[70vh] flex flex-col shadow-2xl">
+        <div class="p-6 flex flex-col h-full">
+            <div class="flex justify-between items-center mb-4 shrink-0">
+                <h3 class="font-bold text-xs uppercase tracking-[0.15em] text-[var(--color-primary)] opacity-80">Thư Viện Của Bạn</h3>
+                <button class="close-panel-btn w-8 h-8 rounded-full btn-icon bg-[var(--color-primary-alpha)]"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto pr-1" id="library-list">
+                <li class="text-xs opacity-50 italic text-center mt-4">Đang tải dữ liệu...</li>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Cài đặt -->
+    <div id="settings-panel" class="fixed top-auto bottom-0 right-0 sm:right-6 sm:bottom-6 w-full sm:w-[360px] glass-modal rounded-t-3xl sm:rounded-3xl z-50 transition-all duration-400 slide-down flex flex-col shadow-2xl">
+        <div class="p-6 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="font-bold text-xs uppercase tracking-[0.15em] text-[var(--color-primary)] opacity-80">Giao diện</h3>
+                <button class="close-panel-btn w-8 h-8 rounded-full btn-icon bg-[var(--color-primary-alpha)]"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Chủ đề -->
+                <div class="space-y-3">
+                    <label class="text-[10px] font-bold uppercase tracking-widest opacity-50 block">Chủ đề</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="theme-btn py-3 rounded-2xl border border-transparent bg-[#ffffff] text-[#111111] shadow-sm transition-all text-xs font-semibold" data-theme="light">Sáng</button>
+                        <button class="theme-btn py-3 rounded-2xl border border-transparent bg-[#f4ecd8] text-[#433422] shadow-sm transition-all text-xs font-semibold" data-theme="sepia">Giấy</button>
+                        <button class="theme-btn py-3 rounded-2xl border border-transparent bg-[#1a1a1c] text-[#f4f4f5] shadow-sm transition-all text-xs font-semibold" data-theme="dark">Tối</button>
+                    </div>
+                </div>
+
+                <!-- Phông chữ -->
+                <div class="space-y-3">
+                    <label class="text-[10px] font-bold uppercase tracking-widest opacity-50 block">Phông chữ</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="font-btn py-2.5 px-1 rounded-2xl border border-transparent bg-[var(--color-primary-alpha)] text-xs font-be-vietnam transition-all" data-font="be-vietnam">Be Vietnam</button>
+                        <button class="font-btn py-2.5 px-1 rounded-2xl border border-transparent bg-[var(--color-primary-alpha)] text-xs font-inter transition-all" data-font="inter">Inter (Sans)</button>
+                        <button class="font-btn py-2.5 px-1 rounded-2xl border border-transparent bg-[var(--color-primary-alpha)] text-xs font-lora transition-all" data-font="lora">Lora (Serif)</button>
+                        <button class="font-btn py-2.5 px-1 rounded-2xl border border-transparent bg-[var(--color-primary-alpha)] text-xs font-merriweather transition-all" data-font="merriweather">Merriweather</button>
+                        <button class="font-btn py-2.5 px-1 col-span-2 rounded-2xl border border-transparent bg-[var(--color-primary-alpha)] text-xs font-nunito transition-all" data-font="nunito">Nunito</button>
+                    </div>
+                </div>
+                
+                <!-- Hình ảnh (Lọc màu/Ẩn) -->
+                <div class="space-y-3 pt-3 border-t border-[var(--panel-border)]">
+                    <label class="text-[10px] font-bold uppercase tracking-widest opacity-50 block">Ảnh minh hoạ</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="image-btn py-2.5 px-1 rounded-xl border border-transparent bg-[var(--color-primary-alpha)] text-[11px] font-medium transition-all" data-img="normal">Bình thường</button>
+                        <button class="image-btn py-2.5 px-1 rounded-xl border border-transparent bg-[var(--color-primary-alpha)] text-[11px] font-medium transition-all" data-img="dim">Tối ưu (Lọc)</button>
+                        <button class="image-btn py-2.5 px-1 rounded-xl border border-transparent bg-[var(--color-primary-alpha)] text-[11px] font-medium transition-all text-red-500/80" data-img="hidden">Ẩn ảnh</button>
+                    </div>
+                </div>
+
+                <!-- Cỡ chữ & Màu chữ -->
+                <div class="space-y-4 pt-3 border-t border-[var(--panel-border)]">
+                    <div class="flex flex-col gap-3">
+                        <div class="flex justify-between items-center">
+                            <label class="text-[10px] font-bold uppercase tracking-widest opacity-50">Cỡ chữ</label>
+                            <span id="font-size-display" class="text-xs font-bold bg-[var(--color-primary-alpha)] px-2 py-1 rounded-md">100%</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-font text-[10px] opacity-50"></i>
+                            <input type="range" id="font-size-slider" min="80" max="180" step="5" value="100" class="flex-1 h-1">
+                            <i class="fa-solid fa-font text-base opacity-50"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <label class="text-[10px] font-bold uppercase tracking-widest opacity-50">Màu chữ tuỳ chỉnh</label>
+                        <div class="flex items-center gap-3">
+                            <button id="reset-color-btn" class="text-[10px] uppercase font-bold text-[var(--color-primary)] opacity-50 hover:opacity-100 transition-opacity">Khôi phục mặc định</button>
+                            <input type="color" id="text-color-picker" class="w-8 h-8 rounded-lg cursor-pointer bg-transparent outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel Mục Lục -->
+    <div id="toc-panel" class="fixed top-auto bottom-0 right-0 sm:right-6 sm:bottom-6 w-full sm:w-[340px] glass-modal rounded-t-3xl sm:rounded-3xl z-50 transition-all duration-400 slide-down h-[65vh] sm:max-h-[65vh] flex flex-col shadow-2xl">
+        <div class="p-6 flex flex-col h-full">
+            <div class="flex justify-between items-center mb-4 shrink-0">
+                <h3 class="font-bold text-xs uppercase tracking-[0.15em] text-[var(--color-primary)] opacity-80">Mục Lục</h3>
+                <button class="close-panel-btn w-8 h-8 rounded-full btn-icon bg-[var(--color-primary-alpha)]"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div class="flex-1 overflow-y-auto pr-1">
+                <ul id="toc-list" class="space-y-1">
+                    <li class="text-xs opacity-50 italic text-center mt-4">Chưa có dữ liệu sách</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 w-full h-[3px] bg-transparent z-50">
+        <div id="progress-bar" class="h-full bg-[var(--color-primary)] w-0 transition-all duration-500 opacity-80"></div>
+    </div>
+
+    <audio id="external-audio-player" class="hidden"></audio>
+
+    <script>
+        // --- QUẢN LÝ LƯU TRỮ OFFLINE (INDEXED DB V2) ---
+        // Cho phép lưu nhiều quyển truyện vào máy
+        const Database = {
+            db: null,
+            init: function() {
+                return new Promise((resolve, reject) => {
+                    const req = indexedDB.open('AuraReaderDB', 2);
+                    req.onupgradeneeded = (e) => { 
+                        const db = e.target.result;
+                        // Xoá store cũ (v1) nếu có để cấu trúc lại theo dạng List
+                        if(db.objectStoreNames.contains('library')) {
+                            db.deleteObjectStore('library'); 
+                        }
+                        db.createObjectStore('library', { keyPath: 'name' });
+                    };
+                    req.onsuccess = (e) => { this.db = e.target.result; resolve(); };
+                    req.onerror = reject;
+                });
+            },
+            saveBook: function(buffer, name) {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction('library', 'readwrite');
+                    tx.objectStore('library').put({ name: name, buffer: buffer, date: Date.now() });
+                    tx.oncomplete = resolve;
+                });
+            },
+            getBook: function(name) {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction('library', 'readonly');
+                    const req = tx.objectStore('library').get(name);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => resolve(null);
+                });
+            },
+            getAllBooks: function() {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction('library', 'readonly');
+                    const req = tx.objectStore('library').getAll();
+                    req.onsuccess = () => resolve(req.result);
+                });
+            },
+            deleteBook: function(name) {
+                return new Promise((resolve) => {
+                    const tx = this.db.transaction('library', 'readwrite');
+                    tx.objectStore('library').delete(name);
+                    tx.oncomplete = resolve;
+                });
+            }
+        };
+
+        // --- STATE & UI ---
+        const AppState = {
+            book: null,
+            rendition: null,
+            currentFileName: null,
+            settings: {
+                theme: 'light',
+                fontSize: 100,
+                fontFamily: 'be-vietnam',
+                imageMode: 'normal', 
+                customTextColor: null
+            },
+            tts: {
+                engine: 'google',
+                isPlaying: false,
+                isPaused: false,
+                currentNode: null,
+                currentText: '',
+                speed: 1.0,
+                pitch: 1.0, 
+                eidosApiKey: '',
+                elevenApiKey: '',
+                cartesiaApiKey: '',
+                audioChunks: [], 
+                currentChunkIndex: 0
+            }
+        };
+
+        const DOM = {
+            viewer: document.getElementById('viewer'),
+            fileInput: document.getElementById('epub-upload'),
+            bookTitle: document.getElementById('book-title'),
+            bookProgress: document.getElementById('book-progress'),
+            progressBar: document.getElementById('progress-bar'),
+            overlay: document.getElementById('overlay'),
+            panels: {
+                settings: document.getElementById('settings-panel'),
+                toc: document.getElementById('toc-panel'),
+                library: document.getElementById('library-panel')
+            },
+            settingsUI: {
+                colorPicker: document.getElementById('text-color-picker'),
+                colorReset: document.getElementById('reset-color-btn')
+            },
+            player: {
+                container: document.getElementById('mini-player'),
+                expandedPanel: document.getElementById('mini-player-expanded'),
+                settingsBtn: document.getElementById('tts-mini-settings-btn'),
+                pitchSlider: document.getElementById('tts-pitch-slider'),
+                pitchDisplay: document.getElementById('tts-pitch-display'),
+                eidosKeyInput: document.getElementById('tts-eidos-key'),
+                elevenKeyInput: document.getElementById('tts-eleven-key'),
+                cartesiaKeyInput: document.getElementById('tts-cartesia-key'),
+                playBtn: document.getElementById('tts-mini-play'),
+                playIcon: document.getElementById('tts-mini-play-icon'),
+                stopBtn: document.getElementById('tts-mini-stop'),
+                speedBtn: document.getElementById('tts-mini-speed'),
+                engineSelect: document.getElementById('tts-engine-select'),
+                statusText: document.getElementById('tts-status-text'),
+                activeDot: document.getElementById('tts-active-dot'),
+                audio: document.getElementById('external-audio-player')
+            }
+        };
+
+        async function init() {
+            loadSettings();
+            setupEvents();
+            applySettings();
+            updateTTSConfigUI();
+            
+            // Khởi tạo TTS System Offline
+            if ('speechSynthesis' in window) {
+                speechSynthesis.getVoices();
+                window.speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+            }
+
+            // Tự động khôi phục sách cuối cùng từ Thư viện
+            try {
+                await Database.init();
+                const lastBookName = localStorage.getItem('aura_premium_lastbook');
+                if (lastBookName) {
+                    loadBookFromLibrary(lastBookName);
+                }
+                renderLibraryUI(); // Render list truyện
+            } catch(e) { console.error("Lỗi khởi tạo DB", e); }
+        }
+
+        // Render List Truyện
+        async function renderLibraryUI() {
+            const container = document.getElementById('library-list');
+            const books = await Database.getAllBooks();
+            container.innerHTML = '';
+            
+            if (!books || books.length === 0) {
+                container.innerHTML = '<li class="text-xs opacity-50 italic text-center mt-4">Thư viện trống. Hãy bấm biểu tượng thư mục để thêm truyện mới.</li>';
+                return;
+            }
+            
+            books.sort((a,b) => b.date - a.date).forEach(book => {
+                const isCurrent = book.name === AppState.currentFileName;
+                const li = document.createElement('div');
+                li.className = `flex justify-between items-center p-3 hover:bg-[var(--color-primary-alpha)] rounded-xl transition-colors mb-2 border ${isCurrent ? 'border-[var(--color-primary)]' : 'border-transparent'}`;
+                li.innerHTML = `
+                    <div class="flex-1 overflow-hidden pr-2 cursor-pointer" onclick="loadBookFromLibrary('${book.name}')">
+                        <p class="text-sm font-semibold truncate ${isCurrent ? 'text-[var(--color-primary)]' : ''}">${book.name.replace('.epub','')}</p>
+                        <p class="text-[10px] uppercase tracking-widest opacity-50 mt-1">${new Date(book.date).toLocaleDateString('vi-VN')}</p>
+                    </div>
+                    <button class="w-8 h-8 rounded-full text-red-500 hover:bg-red-500/10 flex items-center justify-center transition-colors" onclick="deleteBookFromLibrary('${book.name}', event)" title="Xoá sách">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                `;
+                container.appendChild(li);
+            });
+        }
+
+        window.loadBookFromLibrary = async (name) => {
+            const book = await Database.getBook(name);
+            if(book && book.buffer) {
+                stopTTS();
+                AppState.currentFileName = book.name;
+                localStorage.setItem('aura_premium_lastbook', book.name);
+                document.getElementById('loading-state').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-[var(--color-primary)]"></i><p class="text-xs uppercase tracking-widest font-bold">Đang nạp sách...</p>';
+                document.getElementById('loading-state').classList.remove('hidden-important');
+                DOM.bookTitle.textContent = book.name.replace('.epub', '');
+                closeAllPanels();
+                loadEpub(book.buffer);
+            }
+        };
+
+        window.deleteBookFromLibrary = async (name, event) => {
+            event.stopPropagation();
+            if(confirm('Bạn có chắc muốn xoá sách này khỏi máy?')) {
+                await Database.deleteBook(name);
+                if (name === AppState.currentFileName) {
+                    DOM.viewer.innerHTML = '<div class="flex flex-col items-center justify-center h-full opacity-40"><i class="fa-solid fa-book-open text-4xl mb-4 font-light"></i><p class="text-xs font-medium tracking-widest uppercase">Mở thư viện để đọc</p></div>';
+                    DOM.bookTitle.textContent = "AuraReader";
+                    localStorage.removeItem('aura_premium_lastbook');
+                    AppState.book = null;
+                }
+                renderLibraryUI();
+            }
+        };
+
+        function setupEvents() {
+            DOM.fileInput.addEventListener('change', handleFileUpload);
+            
+            document.getElementById('btn-toggle-settings').onclick = () => togglePanel('settings');
+            document.getElementById('btn-toggle-toc').onclick = () => togglePanel('toc');
+            document.getElementById('btn-toggle-library').onclick = () => togglePanel('library');
+            document.getElementById('btn-toggle-tts').onclick = toggleMiniPlayer; 
+            
+            DOM.overlay.onclick = closeAllPanels;
+            document.querySelectorAll('.close-panel-btn').forEach(b => b.onclick = closeAllPanels);
+
+            // Giao diện
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    AppState.settings.customTextColor = null; 
+                    updateSetting('theme', e.target.dataset.theme);
+                }
+            });
+            document.querySelectorAll('.font-btn').forEach(btn => {
+                btn.onclick = (e) => updateSetting('fontFamily', e.target.dataset.font);
+            });
+            document.querySelectorAll('.image-btn').forEach(btn => {
+                btn.onclick = (e) => updateSetting('imageMode', e.target.dataset.img);
+            });
+            document.getElementById('font-size-slider').oninput = (e) => {
+                updateSetting('fontSize', parseInt(e.target.value));
+                document.getElementById('font-size-display').innerText = e.target.value + '%';
+            };
+            DOM.settingsUI.colorPicker.addEventListener('input', (e) => updateSetting('customTextColor', e.target.value));
+            DOM.settingsUI.colorReset.onclick = () => updateSetting('customTextColor', null);
+
+            // Audio Player Options
+            DOM.player.settingsBtn.onclick = () => {
+                DOM.player.expandedPanel.classList.toggle('hidden');
+                DOM.player.expandedPanel.classList.toggle('flex');
+            };
+            DOM.player.pitchSlider.oninput = (e) => {
+                AppState.tts.pitch = parseFloat(e.target.value);
+                DOM.player.pitchDisplay.innerText = AppState.tts.pitch.toFixed(1);
+                saveSettings();
+                if(AppState.tts.isPlaying && AppState.tts.engine === 'webspeech') {
+                    stopTTS(); playTTS(AppState.tts.currentText, true); 
+                }
+            };
+            
+            // Lắng nghe API Keys Input
+            DOM.player.eidosKeyInput.oninput = (e) => { AppState.tts.eidosApiKey = e.target.value; saveSettings(); };
+            DOM.player.elevenKeyInput.oninput = (e) => { AppState.tts.elevenApiKey = e.target.value; saveSettings(); };
+            DOM.player.cartesiaKeyInput.oninput = (e) => { AppState.tts.cartesiaApiKey = e.target.value; saveSettings(); };
+            
+            DOM.player.playBtn.onclick = togglePlayPause;
+            DOM.player.stopBtn.onclick = stopTTS;
+            
+            DOM.player.engineSelect.onchange = (e) => {
+                stopTTS(); 
+                AppState.tts.engine = e.target.value; 
+                saveSettings();
+                updateTTSConfigUI();
+            };
+            
+            DOM.player.speedBtn.onclick = () => {
+                const speeds = [0.8, 1.0, 1.2, 1.5, 2.0];
+                let idx = speeds.indexOf(AppState.tts.speed);
+                AppState.tts.speed = speeds[(idx + 1) % speeds.length];
+                DOM.player.speedBtn.innerText = AppState.tts.speed + 'x';
+                DOM.player.audio.playbackRate = AppState.tts.speed;
+                saveSettings();
+                if(AppState.tts.isPlaying && AppState.tts.engine === 'webspeech') {
+                    const text = AppState.tts.currentText; stopTTS(); playTTS(text, true); 
+                }
+            };
+            DOM.player.audio.onended = handleAudioEnded;
+            DOM.player.audio.onerror = () => { handleAudioEnded(); };
+        }
+
+        // --- CẤU HÌNH GIAO DIỆN API ---
+        function updateTTSConfigUI() {
+            const eng = AppState.tts.engine;
+            document.getElementById('tts-eidos-config').style.display = eng === 'eidosspeech' ? 'flex' : 'none';
+            document.getElementById('tts-eleven-config').style.display = eng === 'elevenlabs' ? 'flex' : 'none';
+            document.getElementById('tts-cartesia-config').style.display = eng === 'cartesia' ? 'flex' : 'none';
+        }
+
+        // --- GIAO DIỆN PANELS ---
+        function togglePanel(panelName) {
+            const panel = DOM.panels[panelName];
+            const isOpen = panel.classList.contains('slide-up');
+            closeAllPanels();
+            if (!isOpen) {
+                panel.classList.remove('slide-down');
+                panel.classList.add('slide-up');
+                DOM.overlay.classList.remove('opacity-0', 'pointer-events-none');
+            }
+        }
+        function closeAllPanels() {
+            Object.values(DOM.panels).forEach(p => { p.classList.remove('slide-up'); p.classList.add('slide-down'); });
+            DOM.overlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+        function toggleMiniPlayer() {
+            const container = DOM.player.container;
+            if (container.classList.contains('player-hidden')) {
+                container.classList.remove('player-hidden'); container.classList.add('player-visible');
+            } else {
+                container.classList.remove('player-visible'); container.classList.add('player-hidden');
+                DOM.player.expandedPanel.classList.add('hidden'); DOM.player.expandedPanel.classList.remove('flex');
+            }
+        }
+        function showMiniPlayer() {
+            DOM.player.container.classList.remove('player-hidden'); DOM.player.container.classList.add('player-visible');
+        }
+
+        // --- XỬ LÝ SÁCH EPUB ---
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            AppState.currentFileName = file.name;
+            localStorage.setItem('aura_premium_lastbook', file.name);
+            document.getElementById('loading-state').innerHTML = '<i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-[var(--color-primary)]"></i><p class="text-xs uppercase tracking-widest font-bold">Đang lưu và nạp sách...</p>';
+            document.getElementById('loading-state').classList.remove('hidden-important');
+            DOM.bookTitle.textContent = file.name.replace('.epub', '');
+            
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const buffer = e.target.result;
+                await Database.saveBook(buffer, file.name);
+                renderLibraryUI(); // Update UI
+                loadEpub(buffer);
+            };
+            reader.readAsArrayBuffer(file);
+            stopTTS();
+        }
+
+        function loadEpub(bookData) {
+            if (AppState.book) { AppState.book.destroy(); DOM.viewer.innerHTML = ''; }
+            
+            AppState.book = ePub(bookData);
+            AppState.rendition = AppState.book.renderTo(DOM.viewer, {
+                width: "100%", height: "100%", manager: "continuous", flow: "scrolled-doc"
+            });
+
+            AppState.rendition.hooks.content.register(function(contents) {
+                const style = contents.document.createElement('style');
+                style.innerHTML = `
+                    html, body { overflow-x: hidden !important; padding-bottom: 80px !important; }
+                    ::selection { background: var(--highlight-color, rgba(255,213,79,0.3)) !important; }
+                    .aura-highlight { 
+                        background: var(--highlight-color, rgba(255,213,79,0.3)) !important; 
+                        border-radius: 4px; transition: background-color 0.3s; 
+                    }
+                    img, svg { max-width: 100% !important; height: auto !important; border-radius: 8px; transition: filter 0.3s, opacity 0.3s; }
+                `;
+                contents.document.head.appendChild(style);
+
+                let lastTap = 0;
+                contents.document.addEventListener('pointerup', function(e) {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTap;
+                    if (tapLength < 350 && tapLength > 0) {
+                        let target = e.target;
+                        const blockTags = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE'];
+                        while(target && !blockTags.includes(target.tagName) && target.tagName !== 'BODY') {
+                            target = target.parentElement;
+                        }
+                        if (target && target.innerText.trim().length > 0) {
+                            e.preventDefault(); showMiniPlayer(); startReadingFromNode(target);
+                        }
+                    }
+                    lastTap = currentTime;
+                });
+            });
+
+            applyThemeToRendition();
+
+            AppState.rendition.display().then(() => {
+                document.getElementById('loading-state').classList.add('hidden-important');
+                
+                const savedCfi = localStorage.getItem(`aura_${AppState.currentFileName}_cfi`);
+                if (savedCfi) AppState.rendition.display(savedCfi);
+
+                AppState.book.loaded.navigation.then(nav => {
+                    const tocList = document.getElementById('toc-list');
+                    tocList.innerHTML = '';
+                    const renderToc = (items, container) => {
+                        items.forEach(item => {
+                            const li = document.createElement('li');
+                            li.innerHTML = `<button class="text-left w-full py-3 px-3 text-sm font-medium hover:bg-[var(--color-primary-alpha)] rounded-xl transition-colors truncate" data-href="${item.href}">${item.label.trim()}</button>`;
+                            container.appendChild(li);
+                            if (item.subitems?.length) {
+                                const subUl = document.createElement('ul');
+                                subUl.className = "pl-4";
+                                renderToc(item.subitems, subUl);
+                                container.appendChild(subUl);
+                            }
+                        });
+                    };
+                    renderToc(nav, tocList);
+                    tocList.querySelectorAll('button').forEach(btn => {
+                        btn.onclick = (e) => { AppState.rendition.display(e.currentTarget.dataset.href); closeAllPanels(); };
+                    });
+                });
+
+                AppState.book.ready.then(() => AppState.book.locations.generate(1600)).then(locations => {
+                    AppState.rendition.on("relocated", function(location) {
+                        localStorage.setItem(`aura_${AppState.currentFileName}_cfi`, location.start.cfi);
+                        let percent = AppState.book.locations.percentageFromCfi(location.start.cfi);
+                        const percentNum = Math.round(percent * 100);
+                        DOM.progressBar.style.width = `${percentNum}%`;
+                        DOM.bookProgress.textContent = `Đã đọc ${percentNum}%`;
+                    });
+                });
+            });
+        }
+
+        // --- CÀI ĐẶT LƯU TRỮ ---
+        function updateSetting(key, value) {
+            AppState.settings[key] = value;
+            saveSettings();
+            applySettings();
+        }
+        
+        function saveSettings() {
+            localStorage.setItem('aura_premium_settings', JSON.stringify(AppState.settings));
+            localStorage.setItem('aura_premium_tts', JSON.stringify({
+                engine: AppState.tts.engine, speed: AppState.tts.speed, pitch: AppState.tts.pitch, 
+                eidosApiKey: AppState.tts.eidosApiKey,
+                elevenApiKey: AppState.tts.elevenApiKey,
+                cartesiaApiKey: AppState.tts.cartesiaApiKey
+            }));
+        }
+
+        function loadSettings() {
+            const savedSetting = localStorage.getItem('aura_premium_settings');
+            const savedTts = localStorage.getItem('aura_premium_tts');
+            if (savedSetting) AppState.settings = { ...AppState.settings, ...JSON.parse(savedSetting) };
+            if (savedTts) AppState.tts = { ...AppState.tts, ...JSON.parse(savedTts) };
+            
+            document.getElementById('font-size-slider').value = AppState.settings.fontSize;
+            document.getElementById('font-size-display').innerText = AppState.settings.fontSize + '%';
+            DOM.player.engineSelect.value = AppState.tts.engine;
+            DOM.player.speedBtn.innerText = AppState.tts.speed + 'x';
+            DOM.player.pitchSlider.value = AppState.tts.pitch;
+            DOM.player.pitchDisplay.innerText = parseFloat(AppState.tts.pitch).toFixed(1);
+            
+            DOM.player.eidosKeyInput.value = AppState.tts.eidosApiKey || '';
+            DOM.player.elevenKeyInput.value = AppState.tts.elevenApiKey || '';
+            DOM.player.cartesiaKeyInput.value = AppState.tts.cartesiaApiKey || '';
+        }
+
+        function getActualHexTextColor() {
+            if (AppState.settings.customTextColor) return AppState.settings.customTextColor;
+            if (AppState.settings.theme === 'dark') return '#e0e0e0';
+            if (AppState.settings.theme === 'sepia') return '#433422';
+            return '#1c1c1e'; 
+        }
+
+        function applySettings() {
+            document.body.className = `theme-${AppState.settings.theme} font-${AppState.settings.fontFamily} h-[100dvh] flex flex-col overflow-hidden antialiased selection:bg-[var(--highlight-color)]`;
+            
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.style.boxShadow = btn.dataset.theme === AppState.settings.theme ? '0 0 0 2px var(--color-primary)' : 'none';
+            });
+            document.querySelectorAll('.font-btn').forEach(btn => {
+                if(btn.dataset.font === AppState.settings.fontFamily) {
+                    btn.classList.add('bg-[var(--color-primary)]', 'text-[rgb(var(--bg-base))]');
+                    btn.classList.remove('bg-[var(--color-primary-alpha)]');
+                } else {
+                    btn.classList.remove('bg-[var(--color-primary)]', 'text-[rgb(var(--bg-base))]');
+                    btn.classList.add('bg-[var(--color-primary-alpha)]');
+                }
+            });
+            document.querySelectorAll('.image-btn').forEach(btn => {
+                if(btn.dataset.img === AppState.settings.imageMode) {
+                    btn.classList.add('border-[var(--color-primary)]', 'font-bold');
+                    btn.classList.remove('border-transparent', 'font-medium');
+                } else {
+                    btn.classList.remove('border-[var(--color-primary)]', 'font-bold');
+                    btn.classList.add('border-transparent', 'font-medium');
+                }
+            });
+
+            if(AppState.settings.customTextColor) {
+                DOM.settingsUI.colorPicker.value = AppState.settings.customTextColor;
+                DOM.settingsUI.colorReset.style.display = 'block';
+            } else {
+                DOM.settingsUI.colorPicker.value = getActualHexTextColor();
+                DOM.settingsUI.colorReset.style.display = 'none';
+            }
+            applyThemeToRendition();
+        }
+
+        function applyThemeToRendition() {
+            if (!AppState.rendition) return;
+            
+            let fontStr = '"Be Vietnam Pro", sans-serif';
+            switch(AppState.settings.fontFamily) {
+                case 'inter': fontStr = 'Inter, -apple-system, sans-serif'; break;
+                case 'lora': fontStr = 'Lora, Georgia, serif'; break;
+                case 'merriweather': fontStr = 'Merriweather, serif'; break;
+                case 'nunito': fontStr = 'Nunito, sans-serif'; break;
+            }
+            
+            const textColor = getActualHexTextColor();
+            let imgStyles = {};
+            if (AppState.settings.imageMode === 'hidden') {
+                imgStyles = { 'display': 'none !important' };
+            } else if (AppState.settings.imageMode === 'dim') {
+                imgStyles = { 'filter': 'brightness(0.65) grayscale(25%) sepia(20%) !important', 'opacity': '0.9' };
+            }
+            
+            AppState.rendition.themes.register('custom', {
+                'body': {
+                    'background': 'transparent !important', 'color': `${textColor} !important`,
+                    'font-family': `${fontStr} !important`, 'font-size': `${AppState.settings.fontSize}% !important`,
+                    'line-height': '1.85 !important', 'padding': '0 20px !important'
+                },
+                'p': { 'margin-bottom': '1.5em !important', 'text-align': 'justify' },
+                'h1, h2, h3, h4, h5, h6': { 'font-family': 'inherit !important', 'font-weight': '600 !important', 'color': `${textColor} !important` },
+                'a': { 'color': `var(--color-primary) !important`, 'text-decoration': 'underline' },
+                'img': imgStyles, 'svg': imgStyles
+            });
+            AppState.rendition.themes.select('custom');
+        }
+
+        // --- TTS CORE & CƠ CHẾ DỰ PHÒNG (FALLBACK) ---
+        let highlightCache = null;
+
+        function highlightNode(node) {
+            if (highlightCache) highlightCache.classList.remove('aura-highlight');
+            if (node) {
+                highlightCache = node;
+                node.classList.add('aura-highlight');
+                node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function getNextNode(node) {
+            if(!node) return null;
+            let next = node.nextElementSibling;
+            while(next) {
+                const text = next.innerText || next.textContent;
+                if(text && text.trim().length > 0 && next.tagName !== 'SCRIPT' && next.tagName !== 'STYLE') return next;
+                next = next.nextElementSibling;
+            }
+            let parent = node.parentElement;
+            if(parent && parent.tagName !== 'BODY') return getNextNode(parent);
+            return null;
+        }
+
+        function startReadingFromNode(node) {
+            if(!node) { stopTTS(); return; }
+            stopTTS();
+            AppState.tts.currentNode = node;
+            const rawText = node.innerText || node.textContent;
+            
+            if(!rawText || rawText.trim() === '') {
+                startReadingFromNode(getNextNode(node)); return;
+            }
+            highlightNode(node);
+            playTTS(rawText.trim(), false);
+        }
+
+        function togglePlayPause() {
+            if (!AppState.tts.currentText && AppState.tts.currentNode) {
+                startReadingFromNode(AppState.tts.currentNode); return;
+            }
+            if (!AppState.tts.currentText) return;
+
+            if (AppState.tts.isPlaying) {
+                if (AppState.tts.isPaused) {
+                    if(AppState.tts.engine === 'webspeech') speechSynthesis.resume();
+                    else DOM.player.audio.play();
+                    AppState.tts.isPaused = false;
+                } else {
+                    if(AppState.tts.engine === 'webspeech') speechSynthesis.pause();
+                    else DOM.player.audio.pause();
+                    AppState.tts.isPaused = true;
+                }
+                updatePlayerUI();
+            } else {
+                startReadingFromNode(AppState.tts.currentNode);
+            }
+        }
+
+        function chunkTextForAPI(text, maxLength = 200) {
+            const chunks = [];
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text]; 
+            let currentChunk = "";
+            sentences.forEach(sentence => {
+                if (currentChunk.length + sentence.length > maxLength) {
+                    if (currentChunk) chunks.push(currentChunk.trim());
+                    currentChunk = sentence;
+                } else { currentChunk += " " + sentence; }
+            });
+            if (currentChunk.trim()) chunks.push(currentChunk.trim());
+            return chunks;
+        }
+
+        // Lấy danh sách các Key
+        function getWorkingKeys(keyString) {
+            if (!keyString) return [];
+            return keyString.split(',').map(k => k.trim()).filter(k => k.length > 0);
+        }
+
+        // Gọi API có cơ chế thử Key tiếp theo nếu bị 401/429
+        async function fetchWithFallback(url, optionsFn, keys) {
+            for (let i = 0; i < keys.length; i++) {
+                const key = keys[i];
+                const options = optionsFn(key);
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) return response; // Trả về nếu thành công
+                    // Nếu lỗi giới hạn, nhảy vòng lặp sang key tiếp theo
+                    if (response.status === 401 || response.status === 429 || response.status === 402) {
+                        console.warn(`Key API thứ ${i+1} bị từ chối/hết quota. Đang thử Key tiếp theo...`);
+                        continue; 
+                    }
+                    throw new Error(`Lỗi API: ${response.status}`);
+                } catch(e) {
+                    console.error(e);
+                    // Lỗi mạng hoặc block CORS
+                    if(i === keys.length - 1) throw e;
+                }
+            }
+            throw new Error('Tất cả các API Key đều không khả dụng (Hết giới hạn hoặc sai Key).');
+        }
+
+        function playTTS(text, isResume = false) {
+            AppState.tts.currentText = text;
+            AppState.tts.isPlaying = true;
+            AppState.tts.isPaused = false;
+            updatePlayerUI();
+
+            if (AppState.tts.engine === 'webspeech') {
+                if (speechSynthesis.speaking) speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'vi-VN';
+                utterance.rate = AppState.tts.speed;
+                utterance.pitch = AppState.tts.pitch; 
+                
+                const voices = speechSynthesis.getVoices();
+                const viVoice = voices.find(v => v.lang.includes('vi') && v.name.includes('Google'));
+                if(viVoice) utterance.voice = viVoice;
+
+                utterance.onend = () => { if (AppState.tts.isPlaying && !AppState.tts.isPaused) startReadingFromNode(getNextNode(AppState.tts.currentNode)); };
+                utterance.onerror = (e) => { if(e.error !== 'interrupted') stopTTS(); };
+                speechSynthesis.speak(utterance);
+            } 
+            else {
+                if(!isResume) {
+                    const maxLen = AppState.tts.engine === 'eidosspeech' ? 500 : (AppState.tts.engine === 'elevenlabs' ? 300 : 200);
+                    AppState.tts.audioChunks = chunkTextForAPI(text, maxLen);
+                    AppState.tts.currentChunkIndex = 0;
+                }
+                playNextAPIChunk();
+            }
+        }
+
+        async function playNextAPIChunk() {
+            if(AppState.tts.currentChunkIndex >= AppState.tts.audioChunks.length) {
+                if (AppState.tts.isPlaying && !AppState.tts.isPaused) startReadingFromNode(getNextNode(AppState.tts.currentNode));
+                return;
+            }
+
+            const chunkText = AppState.tts.audioChunks[AppState.tts.currentChunkIndex];
+            const eng = AppState.tts.engine;
+            
+            try {
+                if(eng === 'google') {
+                    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=vi&client=tw-ob&q=${encodeURIComponent(chunkText)}`;
+                    DOM.player.audio.src = url;
+                } 
+                else {
+                    let keys = [];
+                    let apiFunc = null;
+                    let url = '';
+                    
+                    if (eng === 'eidosspeech') {
+                        keys = getWorkingKeys(AppState.tts.eidosApiKey);
+                        url = 'https://api.eidosspeech.xyz/v1/tts';
+                        apiFunc = (key) => ({
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+                            body: JSON.stringify({ text: chunkText, voice: 'default', speed: AppState.tts.speed, pitch: AppState.tts.pitch })
+                        });
+                    } else if (eng === 'elevenlabs') {
+                        keys = getWorkingKeys(AppState.tts.elevenApiKey);
+                        url = 'https://api.elevenlabs.io/v1/text-to-speech/deC6NEXcbavaVWbzjgzb'; // Adam Voice Default
+                        apiFunc = (key) => ({
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'xi-api-key': key },
+                            body: JSON.stringify({ text: chunkText, model_id: 'eleven_multilingual_v2' })
+                        });
+                    } else if (eng === 'cartesia') {
+                        keys = getWorkingKeys(AppState.tts.cartesiaApiKey);
+                        url = 'https://api.cartesia.ai/tts/bytes';
+                        apiFunc = (key) => ({
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-API-Key': key, 'Cartesia-Version': '2024-06-10' },
+                            body: JSON.stringify({
+                                model_id: "sonic-multilingual",
+                                transcript: chunkText,
+                                voice: { mode: "id", id: "694f9389-aac1-45b6-b683-9d622605ed71" } // Standard multilingual Voice ID fallback
+                            })
+                        });
+                    }
+
+                    if(keys.length === 0) { alert(`Vui lòng nhập API Key của ${eng} trong Cài đặt Mini-Player`); stopTTS(); return; }
+                    DOM.player.statusText.textContent = "Đang kết nối Server...";
+                    
+                    const response = await fetchWithFallback(url, apiFunc, keys);
+                    const blob = await response.blob();
+                    DOM.player.audio.src = URL.createObjectURL(blob);
+                }
+
+                DOM.player.audio.playbackRate = AppState.tts.speed;
+                DOM.player.audio.play().then(() => updatePlayerUI()).catch(e => handleAudioEnded());
+            } catch (error) {
+                console.error(error);
+                DOM.player.statusText.textContent = "Lỗi / Hết Key!";
+                setTimeout(handleAudioEnded, 2000); // Bỏ qua đoạn này, nhảy tới câu tiếp
+            }
+        }
+
+        function handleAudioEnded() {
+            if(AppState.tts.engine !== 'webspeech' && AppState.tts.isPlaying && !AppState.tts.isPaused) {
+                AppState.tts.currentChunkIndex++;
+                playNextAPIChunk();
+            }
+        }
+
+        function stopTTS() {
+            speechSynthesis.cancel();
+            DOM.player.audio.pause(); DOM.player.audio.currentTime = 0;
+            AppState.tts.isPlaying = false; AppState.tts.isPaused = false; AppState.tts.currentText = '';
+            highlightNode(null); updatePlayerUI();
+        }
+
+        function updatePlayerUI() {
+            if (AppState.tts.isPlaying && !AppState.tts.isPaused) {
+                DOM.player.playIcon.className = 'fa-solid fa-pause text-lg';
+                DOM.player.playBtn.classList.replace('bg-[var(--color-primary)]', 'bg-red-500');
+                DOM.player.statusText.textContent = "Đang đọc...";
+                DOM.player.activeDot.classList.remove('hidden');
+            } else {
+                DOM.player.playIcon.className = 'fa-solid fa-play ml-0.5 text-lg';
+                DOM.player.playBtn.classList.replace('bg-red-500', 'bg-[var(--color-primary)]');
+                DOM.player.statusText.textContent = AppState.tts.isPaused ? "Tạm dừng" : "Đang nghỉ";
+                DOM.player.activeDot.classList.add('hidden');
+            }
+            DOM.player.stopBtn.style.opacity = AppState.tts.isPlaying ? '1' : '0.4';
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

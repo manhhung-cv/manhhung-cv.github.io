@@ -333,7 +333,23 @@ export const TOOLS = [
         icon: 'fa-solid fa-calculator',
         desc: 'Công cụ quản lý tài chính cá nhân và doanh nghiệp.',
         tags: ['finance', 'tài chính', 'quản lý', 'kế toán']
-    }
+    },
+    {
+        id: 'kitu',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Kí tự đặc biệt',
+        icon: 'fa-solid fa-section',
+        desc: 'Công cụ tạo và sao chép kí tự đặc biệt, biểu tượng, emoji và ký hiệu độc đáo.',
+        tags: ['kí tự', 'biểu tượng', 'emoji', 'ký hiệu']
+    },
+    {
+        id: 'salary-calculator',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Máy tính lương Net/Gross',
+        icon: 'fa-solid fa-calculator',
+        desc: 'Công cụ tính toán lương Net và Gross, bao gồm các khoản phụ cấp, thuế và bảo hiểm xã hội.',
+        tags: ['lương', 'tính lương', 'phụ cấp']
+    },
     
 
 ];

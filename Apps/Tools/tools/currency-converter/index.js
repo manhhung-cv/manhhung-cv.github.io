@@ -137,10 +137,8 @@ export function init() {
 
     const fetchSmilesApi = async () => {
         const proxies = [
-            `https://api.allorigins.win/get?url=${encodeURIComponent(SMILES_API_URL)}`,
-            `https://corsproxy.io/?${encodeURIComponent(SMILES_API_URL)}`,
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SMILES_API_URL)}`
-        ];
+            `https://cors-proxy.year-tucking-0v.workers.dev/?url=${encodeURIComponent(SMILES_API_URL)}`
+           ];
         try {
             const result = await Promise.any(proxies.map(url => fetch(url).then(r => r.json())));
             const content = result.contents ? JSON.parse(result.contents) : result;
