@@ -1,4 +1,4 @@
-// app.js - FamiBank Ultimate Version (Liquidity + Quick Withdraw + Lucky Money)
+// app.js - FamiBank Ultimate Version (Liquidity + Quick Withdraw + Lucky Money + Custom Dialog & Cloudinary)
 
 // --- 1. IMPORTS & CONFIGURATION ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -72,13 +72,90 @@ const showToast = (msg, isError = false) => {
     setTimeout(() => t.classList.add('opacity-0'), 3000);
 };
 
-// THÊM DÒNG NÀY ĐỂ SỬA LỖI:
 window.showToast = showToast;
+
+// --- YÊU CẦU QUYỀN THÔNG BÁO TRÌNH DUYỆT ---
+function requestBrowserNotificationPermission() {
+    if (!("Notification" in window)) {
+        console.warn("Trình duyệt này không hỗ trợ Desktop Notification");
+        return;
+    }
+    // Nếu chưa được cấp quyền và chưa bị từ chối, tiến hành xin quyền
+    if (Notification.permission !== "denied" && Notification.permission !== "granted") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                console.log("Đã được cấp quyền thông báo trình duyệt!");
+            }
+        });
+    }
+}
+
+// --- CUSTOM DIALOG UTILITY ---
+window.customDialog = (options) => {
+    return new Promise((resolve) => {
+        const modal = $('#custom-dialog-modal');
+        const titleEl = $('#custom-dialog-title');
+        const msgEl = $('#custom-dialog-message');
+        const inputEl = $('#custom-dialog-input');
+        const cancelBtn = $('#custom-dialog-cancel');
+        const confirmBtn = $('#custom-dialog-confirm');
+        const buttonsContainer = $('#custom-dialog-buttons');
+        const iconEl = $('#custom-dialog-icon');
+
+        titleEl.textContent = options.title || 'Thông báo';
+        msgEl.textContent = options.message || '';
+
+        // Reset icon
+        iconEl.className = 'w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl mb-4 ' + (options.iconClass || 'bg-blue-100 text-blue-600');
+        iconEl.innerHTML = `<i class="${options.icon || 'fas fa-info-circle'}"></i>`;
+
+        // Prompt mode
+        if (options.type === 'prompt') {
+            inputEl.classList.remove('hidden');
+            inputEl.value = options.defaultValue || '';
+            inputEl.placeholder = options.placeholder || 'Nhập...';
+        } else {
+            inputEl.classList.add('hidden');
+        }
+
+        // Alert mode (hide cancel)
+        if (options.type === 'alert') {
+            cancelBtn.classList.add('hidden');
+            buttonsContainer.classList.remove('grid-cols-2');
+            buttonsContainer.classList.add('grid-cols-1');
+        } else {
+            cancelBtn.classList.remove('hidden');
+            buttonsContainer.classList.remove('grid-cols-1');
+            buttonsContainer.classList.add('grid-cols-2');
+        }
+
+        modal.classList.remove('hidden');
+
+        const cleanup = () => {
+            modal.classList.add('hidden');
+            cancelBtn.onclick = null;
+            confirmBtn.onclick = null;
+        };
+
+        cancelBtn.onclick = () => {
+            cleanup();
+            resolve(false);
+        };
+
+        confirmBtn.onclick = () => {
+            cleanup();
+            if (options.type === 'prompt') {
+                resolve(inputEl.value);
+            } else {
+                resolve(true);
+            }
+        };
+    });
+};
 
 // --- 4. FORMATTING CURRENCY ---
 function setupCurrencyInputs() {
     $$('.currency-input').forEach(input => {
-        // Xóa event listener cũ để tránh trùng lặp nếu gọi nhiều lần
         const newInput = input.cloneNode(true);
         input.parentNode.replaceChild(newInput, input);
 
@@ -115,8 +192,6 @@ function initApp() {
     }));
 
     setupCurrencyInputs();
-
-    // KHỞI TẠO CÁC TÍNH NĂNG MỚI
     initBankLogic();
     initLuckySystem();
     setupQuickWithdrawButtons();
@@ -148,9 +223,11 @@ onAuthStateChanged(auth, (user) => {
         onSnapshot(doc(db, `artifacts/${appId}/users`, user.uid), (snap) => {
             if (snap.exists()) {
                 currentUserData = { id: snap.id, ...snap.data() };
-                updateUI();
+               updateUI();
                 loadUserData(user.uid);
                 loadFamilyMembers(user.uid);
+                loadNotifications(user.uid);
+         
                 if (currentUserData.email === ADMIN_EMAIL) {
                     $('#admin-nav-btn').classList.remove('hidden');
                     initAdminListeners();
@@ -234,11 +311,9 @@ $('#back-to-login-btn').addEventListener('click', () => showView('login-view'));
 function updateUI() {
     if (!currentUserData) return;
 
-    // --- 1. XỬ LÝ DỮ LIỆU ---
     const displayAvatar = currentUserData.avatarEmoji || currentUserData.displayName.charAt(0).toUpperCase();
     const displayColor = currentUserData.avatarColor || '#6B7280';
 
-    // --- 2. CẬP NHẬT AVATAR NHỎ (TRANG CHỦ) ---
     const userAvatarEl = document.querySelector('#user-avatar');
     if (userAvatarEl) {
         userAvatarEl.textContent = displayAvatar;
@@ -246,7 +321,6 @@ function updateUI() {
         userAvatarEl.style.backgroundColor = displayColor;
     }
 
-    // --- 3. CẬP NHẬT PREVIEW (TRANG CÀI ĐẶT) ---
     const settingsPreview = document.querySelector('#settings-avatar-preview');
     if (settingsPreview) {
         settingsPreview.textContent = displayAvatar;
@@ -254,23 +328,16 @@ function updateUI() {
         settingsPreview.style.color = '#ffffff';
     }
 
-    // --- 4. CÁC THÔNG TIN KHÁC ---
     if ($('#user-display-name')) $('#user-display-name').textContent = currentUserData.displayName;
     if ($('#user-account-number')) $('#user-account-number').textContent = currentUserData.accountNumber;
     if ($('#user-balance')) $('#user-balance').textContent = isBalanceVisible ? formatCurrency(currentUserData.balance) : '••••••';
+    if ($('#user-spin-count')) $('#user-spin-count').textContent = currentUserData.luckySpins || 0;
 
-    // --- [MỚI] CẬP NHẬT SỐ LƯỢT QUAY ---
-    if ($('#user-spin-count')) {
-        $('#user-spin-count').textContent = currentUserData.luckySpins || 0;
-    }
-
-    // Điền lại input trong cài đặt
     if ($('#update-name-input')) $('#update-name-input').value = currentUserData.displayName;
     if ($('#custom-emoji-input') && currentUserData.avatarEmoji) $('#custom-emoji-input').value = currentUserData.avatarEmoji;
     if ($('#update-username-input')) $('#update-username-input').value = currentUserData.username;
     if ($('#update-account-number-input')) $('#update-account-number-input').value = currentUserData.accountNumber;
 }
-
 
 $('#balance-visibility-btn').addEventListener('click', () => { isBalanceVisible = !isBalanceVisible; updateUI(); });
 
@@ -368,11 +435,53 @@ $('#confirm-transfer-btn').addEventListener('click', async () => {
                 amount: amount, content: content, timestamp: serverTimestamp()
             };
             t.set(doc(collection(db, `artifacts/${appId}/transactions`)), txData);
+           // --- THÔNG BÁO CHO NGƯỜI NHẬN ---
+            const notifReceiverRef = doc(collection(db, `artifacts/${appId}/notifications`));
+            t.set(notifReceiverRef, {
+                userId: recipientId,
+                title: "Nhận tiền thành công 💰",
+                message: `${senderData.displayName} vừa chuyển cho bạn ${formatCurrency(amount)}. Lời nhắn: "${content}"`,
+                type: 'transfer_receive',
+                isRead: false,
+                timestamp: serverTimestamp()
+            });
+
+            // --- THÔNG BÁO CHO NGƯỜI GỬI ---
+            const notifSenderRef = doc(collection(db, `artifacts/${appId}/notifications`));
+            t.set(notifSenderRef, {
+                userId: currentUser.uid,
+                title: "Chuyển tiền thành công 💸",
+                message: `Đã chuyển ${formatCurrency(amount)} cho ${receiverData.displayName}.`,
+                type: 'transfer_send',
+                isRead: false,
+                timestamp: serverTimestamp()
+            });
             showBill(txData);
         });
         showToast("Chuyển tiền thành công!");
         recipientInput.value = ''; $('#transfer-amount').value = ''; $$('.recipient-item').forEach(i => i.classList.remove('selected'));
     } catch (e) { showToast(typeof e === 'string' ? e : "Lỗi giao dịch", true); } finally { hideLoading(); }
+});
+
+$('#enable-notif-btn')?.addEventListener('click', () => {
+    if (!("Notification" in window)) {
+        showToast("Trình duyệt không hỗ trợ thông báo", true);
+        return;
+    }
+    
+    if (Notification.permission === "granted") {
+        showToast("Bạn đã cấp quyền thông báo rồi!");
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                showToast("Đã bật thông báo thành công!");
+            } else {
+                showToast("Đã từ chối cấp quyền", true);
+            }
+        });
+    } else {
+        showToast("Bạn đã chặn thông báo trong cài đặt trình duyệt", true);
+    }
 });
 
 function showBill(data) {
@@ -396,7 +505,7 @@ $('#save-bill-btn').addEventListener('click', () => {
     });
 });
 
-// --- NẠP TIỀN (LOGIC MỚI - HỖ TRỢ LƯỢT QUAY) ---
+// --- NẠP TIỀN ---
 $('#confirm-deposit-btn').addEventListener('click', async () => {
     const code = $('#deposit-code').value.trim().toUpperCase();
     if (!code) return;
@@ -414,9 +523,7 @@ $('#confirm-deposit-btn').addEventListener('click', async () => {
             const userData = uDoc.data();
             const codeData = cDoc.data();
 
-            // XỬ LÝ THEO LOẠI MÃ
             if (codeData.type === 'spins') {
-                // Nếu là mã lượt quay
                 const currentSpins = userData.luckySpins || 0;
                 t.update(userRef, { luckySpins: currentSpins + parseInt(codeData.value) });
 
@@ -425,7 +532,6 @@ $('#confirm-deposit-btn').addEventListener('click', async () => {
                     content: `Nạp mã: +${codeData.value} lượt quay`, timestamp: serverTimestamp()
                 });
             } else {
-                // Mặc định là mã tiền (cũ)
                 const amount = parseInt(codeData.value || codeData.amount);
                 t.update(userRef, { balance: userData.balance + amount });
 
@@ -435,7 +541,6 @@ $('#confirm-deposit-btn').addEventListener('click', async () => {
                 });
             }
 
-            // Đánh dấu mã đã dùng
             t.update(codeRef, { status: 'used', redeemedBy: userData.displayName, redeemedAt: serverTimestamp() });
         });
         showToast("Nạp thành công!");
@@ -443,7 +548,7 @@ $('#confirm-deposit-btn').addEventListener('click', async () => {
     } catch (e) { showToast(e.message || e, true); } finally { hideLoading(); }
 });
 
-// --- RÚT TIỀN (LOGIC MỚI - HẠN MỨC NGÂN HÀNG) ---
+// --- RÚT TIỀN ---
 $('#confirm-withdraw-btn').addEventListener('click', async () => {
     const amount = getMoneyValue('#withdraw-amount');
     const reason = $('#withdraw-reason').value;
@@ -452,7 +557,6 @@ $('#confirm-withdraw-btn').addEventListener('click', async () => {
 
     if (amount > currentUserData.balance) return showToast("Số dư tài khoản không đủ", true);
 
-    // Kiểm tra xem rút thêm khoản này có lố hạn mức ngân hàng không
     if (amount > bankAvailable) {
         return showToast(`Ngân hàng chỉ còn có thể rút tối đa ${formatCurrency(Math.max(0, bankAvailable))}`, true);
     }
@@ -520,9 +624,110 @@ function loadUserData(uid) {
     loadHistoryData(uid);
 }
 
+// --- NOTIFICATION SYSTEM ---
+function loadNotifications(uid) {
+    const q = query(
+        collection(db, `artifacts/${appId}/notifications`),
+        where("userId", "==", uid),
+        orderBy("timestamp", "desc")
+    );
+
+    onSnapshot(q, snap => {
+        let unreadCount = 0;
+        const list = $('#notifications-list');
+        
+        // 1. RENDER GIAO DIỆN IN-APP (Như cũ)
+        const html = snap.docs.map(docSnap => {
+            const d = docSnap.data();
+            if (!d.isRead) unreadCount++;
+            
+            const time = formatDate(d.timestamp);
+            const bgClass = d.isRead ? 'bg-transparent opacity-60' : 'glass-panel border border-blue-200 dark:border-blue-900/50 shadow-sm';
+            
+            let icon = 'fa-bell text-blue-500 bg-blue-100';
+            if (d.type === 'transfer_receive') icon = 'fa-arrow-down text-green-500 bg-green-100';
+            if (d.type === 'transfer_send') icon = 'fa-arrow-up text-orange-500 bg-orange-100';
+            if (d.type === 'admin_broadcast') icon = 'fa-bullhorn text-purple-500 bg-purple-100';
+
+            return `
+            <div class="p-4 rounded-[20px] flex gap-4 transition-all cursor-pointer ${bgClass}" onclick="markNotificationRead('${docSnap.id}', ${d.isRead})">
+                <div class="w-12 h-12 rounded-full ${icon.split(' ')[2]} flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <i class="fas ${icon.split(' ')[0]} ${icon.split(' ')[1]} text-lg"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm text-p tracking-tight">${d.title}</h4>
+                    <p class="text-xs text-s mt-1.5 leading-relaxed">${d.message}</p>
+                    <p class="text-[10px] text-gray-400 mt-2 font-medium">${time}</p>
+                </div>
+                ${!d.isRead ? '<div class="w-2 h-2 rounded-full bg-blue-500 self-center ml-auto"></div>' : ''}
+            </div>`;
+        }).join('');
+        
+        if (list) list.innerHTML = html || '<div class="text-center text-s py-12 flex flex-col items-center"><i class="fas fa-bell-slash text-5xl mb-4 opacity-20"></i><p class="font-medium">Không có thông báo nào</p></div>';
+        
+        const dot = $('#unread-dot');
+        if (dot) {
+            if (unreadCount > 0) dot.classList.remove('hidden');
+            else dot.classList.add('hidden');
+        }
+
+        // 2. BẮN POPUP TRÌNH DUYỆT CHO CÁC THÔNG BÁO MỚI TINH
+        snap.docChanges().forEach(change => {
+            if (change.type === 'added') {
+                const d = change.doc.data();
+                // Chỉ bắn popup nếu chưa đọc VÀ trình duyệt đã cấp quyền
+                if (!d.isRead && Notification.permission === "granted") {
+                    // Kiểm tra xem thông báo này có phải vừa mới xảy ra trong 1 phút đổ lại không
+                    // Điều này chống spam popup khi bạn F5 tải lại trang
+                    const now = new Date();
+                    const notifTime = d.timestamp ? d.timestamp.toDate() : new Date();
+                    
+                    if (now - notifTime < 60000) { 
+                        new Notification("FamiBank: " + d.title, {
+                            body: d.message,
+                            icon: "https://cdn-icons-png.flaticon.com/512/3135/3135673.png" // Icon túi tiền
+                        });
+                    }
+                }
+            }
+        });
+    });
+}
+
+window.markNotificationRead = async (id, isRead) => {
+    if (isRead) return;
+    try {
+        await updateDoc(doc(db, `artifacts/${appId}/notifications`, id), { isRead: true });
+    } catch(e) { console.error(e); }
+};
+
+$('#mark-all-read-btn')?.addEventListener('click', async () => {
+    const q = query(
+        collection(db, `artifacts/${appId}/notifications`), 
+        where("userId", "==", currentUser.uid), 
+        where("isRead", "==", false)
+    );
+    const snaps = await getDocs(q);
+    if (snaps.empty) return;
+
+    showLoading();
+    try {
+        const promises = snaps.docs.map(d => updateDoc(doc(db, `artifacts/${appId}/notifications`, d.id), {isRead: true}));
+        await Promise.all(promises);
+    } finally {
+        hideLoading();
+    }
+});
+
+// Mở Modal Thông báo
+$('#notification-btn')?.addEventListener('click', () => {
+    $('#notifications-modal').classList.remove('hidden');
+});
+
+
 function renderTransactions(txs) {
     const htmlArray = txs.map(tx => {
-        const isDeposit = tx.type === 'deposit' || tx.type === 'deposit_spin'; // Include spin deposit
+        const isDeposit = tx.type === 'deposit' || tx.type === 'deposit_spin'; 
         const isWithdraw = tx.type === 'withdraw';
         const isIncome = isDeposit || (tx.type === 'transfer' && tx.toUserId === currentUser.uid) || tx.type === 'lucky_money';
 
@@ -555,7 +760,6 @@ function renderTransactions(txs) {
             subTitle = tx.content || 'Chuyển tiền';
         }
 
-        // Fix display amount for spin deposit (0 amount)
         let displayAmount = formatCurrency(tx.amount);
         if (tx.type === 'deposit_spin') { displayAmount = '0 ₫'; sign = ''; }
 
@@ -639,17 +843,58 @@ window.submitMission = async (id) => {
 };
 
 // --- 12. ADMIN LOGIC ---
+// Sự kiện Admin gửi thông báo
+$('#admin-send-notif-btn')?.addEventListener('click', async () => {
+    const receiverId = $('#admin-notif-receiver').value;
+    const title = $('#admin-notif-title').value.trim();
+    const message = $('#admin-notif-content').value.trim();
+
+    if (!title || !message) return showToast("Vui lòng nhập tiêu đề và nội dung", true);
+    
+    showLoading();
+    try {
+        if (receiverId === 'all') {
+            // Gửi cho tất cả mọi người (Broadcast)
+            const usersSnap = await getDocs(collection(db, `artifacts/${appId}/users`));
+            const promises = usersSnap.docs.map(u => 
+                addDoc(collection(db, `artifacts/${appId}/notifications`), {
+                    userId: u.id,
+                    title: title,
+                    message: message,
+                    type: 'admin_broadcast',
+                    isRead: false,
+                    timestamp: serverTimestamp()
+                })
+            );
+            await Promise.all(promises);
+            showToast(`Đã gửi thông báo đến ${usersSnap.size} người dùng!`);
+        } else {
+            // Gửi cá nhân (Direct)
+            await addDoc(collection(db, `artifacts/${appId}/notifications`), {
+                userId: receiverId,
+                title: title,
+                message: message,
+                type: 'admin_direct',
+                isRead: false,
+                timestamp: serverTimestamp()
+            });
+            showToast("Đã gửi thông báo cá nhân thành công!");
+        }
+        $('#admin-notif-title').value = '';
+        $('#admin-notif-content').value = '';
+    } catch (e) { 
+        showToast("Lỗi: " + e.message, true); 
+    } finally { 
+        hideLoading(); 
+    }
+});
 function initAdminListeners() {
-    // 1. Withdrawals
     onSnapshot(query(collection(db, `artifacts/${appId}/withdrawalRequests`), orderBy('createdAt', 'desc')), s => {
         const pending = s.docs.filter(d => d.data().status === 'pending');
-
-        // Update Dashboard Badge
         $('#dash-pending-withdraw').textContent = pending.length;
         if (pending.length > 0) $('#dash-pending-withdraw').classList.add('animate-pulse');
         else $('#dash-pending-withdraw').classList.remove('animate-pulse');
 
-        // Render List
         $('#withdrawal-requests').innerHTML = pending.map(d => {
             const r = d.data();
             return `<div class="bg-surface p-4 rounded-xl border border-theme shadow-sm">
@@ -668,14 +913,15 @@ function initAdminListeners() {
         }).join('') || '<div class="text-center p-8 text-s opacity-50 flex flex-col items-center"><i class="fas fa-check-circle text-4xl mb-2 text-green-100"></i><p>Đã xử lý hết</p></div>';
     });
 
-    // 2. Gift Requests
     onSnapshot(query(collection(db, `artifacts/${appId}/giftRequests`), orderBy('createdAt', 'desc')), s => {
         const pending = s.docs.filter(d => d.data().status === 'pending');
-
-        // Update Dashboard Badge
         $('#dash-pending-gifts').textContent = pending.length;
-
-        // Render List
+// Cập nhật thẻ Select trong form gửi thông báo
+        const selectNotif = $('#admin-notif-receiver');
+        if (selectNotif) {
+            selectNotif.innerHTML = '<option value="all">Tất cả người dùng</option>' + 
+                s.docs.map(d => `<option value="${d.id}">${d.data().displayName}</option>`).join('');
+        }
         $('#gift-requests-list').innerHTML = pending.map(d => {
             const r = d.data();
             return `<div class="bg-surface p-3 rounded-xl border border-theme shadow-sm flex items-center justify-between">
@@ -689,7 +935,6 @@ function initAdminListeners() {
         }).join('') || '<p class="text-center text-s text-xs py-4">Không có yêu cầu nào</p>';
     });
 
-    // 3. Missions (Giữ nguyên logic cũ, chỉ render lại badge)
     onSnapshot(query(collection(db, `artifacts/${appId}/missions`)), s => {
         let count = 0; let html = '';
         s.docs.forEach(d => {
@@ -714,29 +959,20 @@ function initAdminListeners() {
         const dashBadge = $('#dash-pending-missions');
         if (dashBadge) {
             dashBadge.textContent = count;
-            // Thêm hiệu ứng nhấp nháy nếu có bài nộp
             if (count > 0) dashBadge.classList.add('animate-pulse');
             else dashBadge.classList.remove('animate-pulse');
         }
-
-        // Nếu bạn vẫn dùng ID cũ ở trong trang con thì giữ nguyên dòng này:
         if ($('#admin-pending-missions')) $('#admin-pending-missions').textContent = count;
     });
 
-    // 4. USERS (NEW: Advanced List & Dashboard Stats)
     onSnapshot(query(collection(db, `artifacts/${appId}/users`), orderBy('createdAt', 'desc')), s => {
-        // Update Dashboard Stats
         $('#dash-total-users').textContent = s.size;
-
         let totalSystemBal = 0;
         const userListHtml = s.docs.map(d => {
             const u = d.data();
             totalSystemBal += (u.balance || 0);
-
             const avatar = u.avatarEmoji || u.displayName.charAt(0).toUpperCase();
             const color = u.avatarColor || '#9CA3AF';
-
-            // Thêm class 'admin-user-card' và data attributes để search
             return `
             <div class="admin-user-card bg-surface p-3 rounded-xl border border-theme flex items-center justify-between shadow-sm mb-2" 
                  data-name="${u.displayName}" data-username="${u.username}">
@@ -759,12 +995,10 @@ function initAdminListeners() {
         $('#admin-user-list').innerHTML = userListHtml;
         $('#dash-total-balance').textContent = formatCurrency(totalSystemBal);
 
-        // Re-apply search if exists
         const searchTerm = $('#admin-user-search')?.value;
         if (searchTerm) $('#admin-user-search').dispatchEvent(new Event('input'));
     });
 
-    // 5. Gifts & Codes (Load thông thường)
     onSnapshot(query(collection(db, `artifacts/${appId}/depositCodes`), orderBy('createdAt', 'desc')), s => {
         $('#deposit-codes-list').innerHTML = s.docs.filter(d => d.data().status === 'available').map(d =>
             `<div class="flex justify-between items-center bg-surface p-3 rounded-xl border border-theme shadow-sm">
@@ -804,16 +1038,13 @@ function initAdminListeners() {
         ).join('');
     });
 
-    // 3. Missions (Logic Gộp: Vừa Duyệt bài + Vừa Quản lý)
     onSnapshot(query(collection(db, `artifacts/${appId}/missions`), orderBy('createdAt', 'desc')), s => {
         let pendingCount = 0;
-        let approvalHtml = '';   // HTML cho phần duyệt
-        let managementHtml = ''; // HTML cho phần danh sách sửa/xóa
+        let approvalHtml = '';
+        let managementHtml = '';
 
         s.docs.forEach(d => {
             const m = d.data();
-
-            // --- PHẦN 1: TÌM BÀI CẦN DUYỆT ---
             const subs = (m.participants || []).filter(p => p.status === 'completed');
             pendingCount += subs.length;
 
@@ -836,7 +1067,6 @@ function initAdminListeners() {
                 </div>`;
             }
 
-            // --- PHẦN 2: DANH SÁCH QUẢN LÝ ---
             managementHtml += `
             <div class="bg-surface p-3 rounded-xl border border-theme shadow-sm mb-2 flex justify-between items-center">
                 <div class="min-w-0">
@@ -854,23 +1084,19 @@ function initAdminListeners() {
             </div>`;
         });
 
-        // 1. Cập nhật giao diện Duyệt bài
         const approvalContainer = $('#admin-mission-approvals');
         const approvalSection = $('#mission-approval-section');
         if (approvalContainer && approvalSection) {
             approvalContainer.innerHTML = approvalHtml;
-            // Tự động ẩn/hiện khu vực duyệt nếu có/không có bài
             if (pendingCount > 0) approvalSection.classList.remove('hidden');
             else approvalSection.classList.add('hidden');
         }
 
-        // 2. Cập nhật giao diện Danh sách quản lý
         const listContainer = $('#admin-missions-list');
         if (listContainer) {
             listContainer.innerHTML = managementHtml || '<div class="text-center text-s text-xs py-8 border border-dashed border-theme rounded-xl">Chưa có nhiệm vụ nào</div>';
         }
 
-        // 3. Cập nhật số lượng trên Badge (Dashboard)
         const dashBadge = $('#dash-pending-missions');
         if (dashBadge) {
             dashBadge.textContent = pendingCount;
@@ -878,12 +1104,10 @@ function initAdminListeners() {
             else dashBadge.classList.remove('animate-pulse');
         }
 
-        // (Fallback cho view cũ nếu còn)
         if ($('#admin-pending-missions')) $('#admin-pending-missions').textContent = pendingCount;
     });
 }
 
-// ADMIN ACTIONS
 window.adminMissionAction = async (mid, uid, action, reward) => {
     showLoading();
     try {
@@ -944,7 +1168,9 @@ window.adminReviewWithdrawal = (id, uid, amount) => {
 };
 
 window.adminApproveGift = async (reqId, uid, giftId, price) => {
-    if (!confirm("Duyệt đổi quà?")) return;
+    const confirmed = await window.customDialog({ title: 'Xác nhận', message: 'Duyệt đổi quà cho user này?', type: 'confirm' });
+    if (!confirmed) return;
+    
     if (!reqId || !uid || !giftId) return showToast("Dữ liệu lỗi (ID)", true);
     showLoading();
     try {
@@ -966,12 +1192,21 @@ window.adminApproveGift = async (reqId, uid, giftId, price) => {
 };
 
 window.deleteDocItem = async (col, id) => {
-    if (confirm(translations[currentLang].confirmDelete)) await deleteDoc(doc(db, `artifacts/${appId}/${col}`, id));
+    const confirmed = await window.customDialog({ 
+        title: 'Xóa dữ liệu', 
+        message: translations[currentLang].confirmDelete, 
+        type: 'confirm',
+        iconClass: 'bg-red-100 text-red-600',
+        icon: 'fas fa-trash-alt'
+    });
+    if (confirmed) await deleteDoc(doc(db, `artifacts/${appId}/${col}`, id));
 };
 
 window.adminEditUser = async (uid, name, balance) => {
-    const newName = prompt("Tên mới:", name);
-    const newBal = prompt("Số dư mới:", balance);
+    const newName = await window.customDialog({title: 'Sửa User', message: 'Tên mới:', type: 'prompt', defaultValue: name});
+    if (!newName) return;
+    const newBal = await window.customDialog({title: 'Sửa User', message: 'Số dư mới:', type: 'prompt', defaultValue: balance});
+    
     if (newName && newBal) {
         await updateDoc(doc(db, `artifacts/${appId}/users`, uid), { displayName: newName, balance: parseInt(newBal) });
         showToast("Đã cập nhật");
@@ -1026,8 +1261,6 @@ if (saveBtn) {
     });
 }
 
-// Admin Creates
-// XỬ LÝ NÚT TẠO CODE (CẬP NHẬT CHO SPIN)
 const btnMoney = $('#btn-type-money');
 const btnSpin = $('#btn-type-spin');
 const inputType = $('#admin-code-type');
@@ -1058,9 +1291,9 @@ $('#create-deposit-code-btn')?.addEventListener('click', async () => {
         showLoading();
         try {
             await setDoc(doc(db, `artifacts/${appId}/depositCodes`, code), {
-                type: type, // 'money' hoặc 'spins'
+                type: type,
                 value: value,
-                amount: type === 'money' ? value : 0, // Backward compatibility
+                amount: type === 'money' ? value : 0, 
                 status: 'available',
                 createdAt: serverTimestamp()
             });
@@ -1086,7 +1319,6 @@ $('#create-mission-btn')?.addEventListener('click', async () => {
     }
 });
 
-// Admin Tab Switching
 $$('.admin-tab-btn').forEach(btn => btn.addEventListener('click', () => {
     $$('.admin-tab-btn').forEach(b => b.classList.remove('active', 'bg-surface-secondary', 'text-p'));
     btn.classList.add('active', 'bg-surface-secondary', 'text-p');
@@ -1094,7 +1326,6 @@ $$('.admin-tab-btn').forEach(btn => btn.addEventListener('click', () => {
     $(`#admin-tab-${btn.dataset.adminTab}`).classList.remove('hidden');
 }));
 
-// History Tab Switching
 $$('.history-sub-tab-btn').forEach(btn => btn.addEventListener('click', () => {
     $$('.history-sub-tab-btn').forEach(b => b.classList.remove('active', 'bg-surface', 'shadow-sm', 'text-p'));
     btn.classList.add('active', 'bg-surface', 'shadow-sm', 'text-p');
@@ -1102,7 +1333,6 @@ $$('.history-sub-tab-btn').forEach(btn => btn.addEventListener('click', () => {
     $(`#history-content-${btn.dataset.historyType}`).classList.remove('hidden');
 }));
 
-// Generic Modal Handling
 $$('.action-btn').forEach(b => b.addEventListener('click', () => $(`#${b.dataset.action}-modal`).classList.remove('hidden')));
 $$('.modal-close-btn').forEach(b => b.addEventListener('click', () => b.closest('.modal-overlay').classList.add('hidden')));
 $$('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) o.classList.add('hidden'); }));
@@ -1111,7 +1341,6 @@ $('#show-create-gift-modal-btn')?.addEventListener('click', () => $('#create-gif
 $('#show-create-mission-modal-btn')?.addEventListener('click', () => $('#create-mission-modal').classList.remove('hidden'));
 $('#show-change-pin-modal-btn')?.addEventListener('click', () => $('#change-pin-modal').classList.remove('hidden'));
 
-// --- LOGIC HẠN MỨC NGÂN HÀNG ---
 function initBankLogic() {
     onSnapshot(doc(db, `artifacts/${appId}/config`, 'bankInfo'), (snap) => {
         currentBankLimit = snap.exists() ? (snap.data().limit || 0) : 0;
@@ -1156,7 +1385,6 @@ if (saveLimitBtn) {
     });
 }
 
-// --- LOGIC LÌ XÌ & LUCKY MONEY ---
 function initLuckySystem() {
     const grid = $('#lucky-grid');
     if (grid) {
@@ -1179,51 +1407,34 @@ function initLuckySystem() {
     }
 }
 
-// --- LOGIC MỞ LÌ XÌ VỚI MODAL ---
-
-// Biến tạm để lưu bao lì xì đang được chọn
 let pendingEnvelopeEl = null;
 let pendingEnvelopeIndex = -1;
 
-// 1. Hàm click vào bao lì xì (Chỉ hiện Modal)
 window.openEnvelope = (el, index) => {
-    // Nếu bao đã mở rồi thì thôi
     if (el.classList.contains('opened')) return;
 
-    // Check nhanh số lượt (Client side)
     const currentSpins = parseInt($('#user-spin-count').textContent || '0');
     if (currentSpins <= 0) return showToast("Bạn hết lượt mở lì xì rồi!", true);
 
-    // Lưu lại cái bao đang chọn vào biến tạm
     pendingEnvelopeEl = el;
     pendingEnvelopeIndex = index;
 
-    // Hiện Modal xác nhận
     $('#confirm-spin-modal').classList.remove('hidden');
 };
 
-// 2. Sự kiện nút "Mở ngay" trong Modal
-// --- SỰ KIỆN MỞ LÌ XÌ (ĐÃ NÂNG CẤP VISUAL & LOGIC KHO) ---
 $('#do-spin-btn').addEventListener('click', async () => {
-    // 1. Ẩn modal xác nhận
     $('#confirm-spin-modal').classList.add('hidden');
     if (!pendingEnvelopeEl) return;
 
     const el = pendingEnvelopeEl;
+    el.classList.add('envelope-shaking'); 
 
-    // 2. HIỆU ỨNG RUNG LẮC (Visual Feedback)
-    el.classList.add('envelope-shaking'); // Thêm class rung
-
-    // Chờ 1 chút cho cảm giác "đang quay"
-    // Dùng Promise để giả lập độ trễ mạng nếu mạng quá nhanh, tạo cảm giác hồi hộp
     await new Promise(r => setTimeout(r, 800));
 
     try {
         let wonAmount = 0;
 
-        // 3. THỰC HIỆN TRANSACTION (Logic lõi)
         await runTransaction(db, async (t) => {
-            // Đọc đồng thời: User, Config (để check kho)
             const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
             const configRef = doc(db, `artifacts/${appId}/config`, 'luckyConfig');
 
@@ -1233,17 +1444,13 @@ $('#do-spin-btn').addEventListener('click', async () => {
             const configData = configDoc.data();
             let prizes = configData.prizes || [];
 
-            // Check lượt
             if ((userData.luckySpins || 0) <= 0) throw "Hết lượt quay!";
 
-            // --- THUẬT TOÁN RANDOM CÓ CHECK KHO (FALLBACK) ---
-            // Tính tổng tỷ lệ
             const totalRate = prizes.reduce((sum, p) => sum + (parseInt(p.rate) || 0), 0);
             let random = Math.floor(Math.random() * totalRate);
 
             let selectedIndex = -1;
 
-            // B1: Chọn giải theo tỷ lệ (như cũ)
             for (let i = 0; i < prizes.length; i++) {
                 if (random < parseInt(prizes[i].rate)) {
                     selectedIndex = i;
@@ -1252,16 +1459,11 @@ $('#do-spin-btn').addEventListener('click', async () => {
                 random -= parseInt(prizes[i].rate);
             }
 
-            // Nếu tính toán lỗi, lấy giải cuối (thường là giải nhỏ nhất)
             if (selectedIndex === -1) selectedIndex = prizes.length - 1;
 
-            // B2: KIỂM TRA KHO & FALLBACK (MỚI)
-            // Nếu giải đã chọn hết hàng (qty <= 0), tìm giải tiếp theo có hàng
-            // Do Admin đã sort giảm dần, nên ta sẽ duyệt từ selectedIndex về phía cuối mảng (giải nhỏ hơn)
             let finalPrize = null;
             let finalIndex = -1;
 
-            // Thử tìm từ vị trí trúng trở xuống
             for (let i = selectedIndex; i < prizes.length; i++) {
                 if (prizes[i].quantity > 0) {
                     finalPrize = prizes[i];
@@ -1270,7 +1472,6 @@ $('#do-spin-btn').addEventListener('click', async () => {
                 }
             }
 
-            // Nếu xui quá, từ đó trở xuống hết sạch -> Tìm từ đầu mảng trở xuống (Cố vớt vát giải to hơn còn lại - Hiếm)
             if (!finalPrize) {
                 for (let i = 0; i < prizes.length; i++) {
                     if (prizes[i].quantity > 0) {
@@ -1283,13 +1484,9 @@ $('#do-spin-btn').addEventListener('click', async () => {
 
             if (!finalPrize) throw "Kho quà tạm hết, vui lòng quay lại sau!";
 
-            // --- CẬP NHẬT DB ---
-
-            // 1. Trừ kho quà
             prizes[finalIndex].quantity -= 1;
-            t.update(configRef, { prizes: prizes }); // Lưu lại mảng prizes mới
+            t.update(configRef, { prizes: prizes }); 
 
-            // 2. Update User (Trừ lượt, Cộng tiền)
             wonAmount = parseInt(finalPrize.amount);
             const newBalance = userData.balance + wonAmount;
             t.update(userRef, {
@@ -1297,7 +1494,6 @@ $('#do-spin-btn').addEventListener('click', async () => {
                 luckySpins: (userData.luckySpins || 0) - 1
             });
 
-            // 3. Ghi log
             const txRef = doc(collection(db, `artifacts/${appId}/transactions`));
             t.set(txRef, {
                 type: 'lucky_money',
@@ -1308,37 +1504,33 @@ $('#do-spin-btn').addEventListener('click', async () => {
             });
         });
 
-        // 4. HIỂN THỊ KẾT QUẢ & PHÁO GIẤY
-        el.classList.remove('envelope-shaking'); // Dừng rung
+        el.classList.remove('envelope-shaking'); 
         el.classList.add('opened');
 
-        // Hiệu ứng tiền bật ra (CSS Animation)
         el.innerHTML = `<div class="money-pop text-sm font-bold text-red-600 bg-yellow-300 px-2 py-1 rounded shadow-sm border border-yellow-500 z-10">
             +${formatCurrency(wonAmount)}
         </div>`;
-        el.style.background = '#fbbf24'; // Đổi màu nền bao
+        el.style.background = '#fbbf24'; 
 
-        // Hiện thông báo to
         $('#lucky-result-area').classList.remove('hidden');
         $('#lucky-result-amount').textContent = formatCurrency(wonAmount);
 
-        // BẮN PHÁO GIẤY (CONFETTI EFFECT)
         confetti({
             particleCount: 150,
             spread: 80,
             origin: { y: 0.6 },
-            colors: ['#ef4444', '#fbbf24', '#ffffff'], // Đỏ, Vàng, Trắng
+            colors: ['#ef4444', '#fbbf24', '#ffffff'],
             disableForReducedMotion: true
         });
 
         showToast(`Chúc mừng! Bạn nhận được ${formatCurrency(wonAmount)}`);
 
     } catch (e) {
-        el.classList.remove('envelope-shaking'); // Dừng rung nếu lỗi
+        el.classList.remove('envelope-shaking'); 
         console.error(e);
         showToast(e.message || "Lỗi mở lì xì", true);
     } finally {
-        hideLoading(); // Lưu ý: showLoading() ở đây là logic chặn click, ta dùng animation thay thế nên có thể không cần overlay spinner
+        hideLoading(); 
         pendingEnvelopeEl = null;
         pendingEnvelopeIndex = -1;
     }
@@ -1375,25 +1567,23 @@ function renderAdminLuckyConfig() {
         </div>
     `).join('');
 
-    setupCurrencyInputs(); // Gán lại format tiền tệ
+    setupCurrencyInputs(); 
 }
 
-// 2. Hàm thêm dòng mới
 $('#admin-add-prize-btn')?.addEventListener('click', () => {
     if (!luckyConfig) luckyConfig = { prizes: [] };
-    // Thêm một giải mặc định
     luckyConfig.prizes.push({ amount: 1000, rate: 10, quantity: 100 });
     renderAdminLuckyConfig();
 });
 
-// 3. Hàm xóa dòng (Gắn vào window để gọi từ HTML)
-window.removePrizeRow = (index) => {
-    if (!confirm("Xóa giải này?")) return;
+window.removePrizeRow = async (index) => {
+    const confirmed = await window.customDialog({ title: 'Xóa giải thưởng', message: 'Bạn có chắc chắn muốn xóa giải này?', type: 'confirm' });
+    if (!confirmed) return;
+    
     luckyConfig.prizes.splice(index, 1);
     renderAdminLuckyConfig();
 };
 
-// 4. Sự kiện Lưu Cấu Hình (Nâng cấp để lưu Quantity)
 $('#admin-save-lucky-config')?.addEventListener('click', async () => {
     const rows = document.querySelectorAll('.prize-row');
     const newPrizes = [];
@@ -1403,19 +1593,18 @@ $('#admin-save-lucky-config')?.addEventListener('click', async () => {
         const inputs = row.querySelectorAll('input');
         const amount = parseInt(inputs[0].value.replace(/\D/g, '')) || 0;
         const rate = parseInt(inputs[1].value) || 0;
-        const quantity = parseInt(inputs[2].value); // Có thể là 0
+        const quantity = parseInt(inputs[2].value); 
 
         if (amount > 0) {
             newPrizes.push({
                 amount,
                 rate,
-                quantity: isNaN(quantity) ? 9999 : quantity // Mặc định nhiều nếu lỗi
+                quantity: isNaN(quantity) ? 9999 : quantity
             });
             totalRate += rate;
         }
     });
 
-    // Sắp xếp giảm dần theo giá trị tiền (Để logic fallback hoạt động đúng: Giải to hết -> Trôi xuống giải nhỏ)
     newPrizes.sort((a, b) => b.amount - a.amount);
 
     showLoading();
@@ -1424,8 +1613,8 @@ $('#admin-save-lucky-config')?.addEventListener('click', async () => {
             prizes: newPrizes,
             lastUpdated: serverTimestamp()
         });
-        luckyConfig.prizes = newPrizes; // Cập nhật local state
-        renderAdminLuckyConfig(); // Render lại để thấy thứ tự mới
+        luckyConfig.prizes = newPrizes; 
+        renderAdminLuckyConfig(); 
         showToast(`Đã lưu! Tổng tỷ lệ: ${totalRate}%`);
     } catch (e) {
         showToast("Lỗi: " + e.message, true);
@@ -1434,7 +1623,6 @@ $('#admin-save-lucky-config')?.addEventListener('click', async () => {
     }
 });
 
-// --- LOGIC CHỌN NHANH RÚT TIỀN ---
 function setupQuickWithdrawButtons() {
     $$('.quick-amount-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -1456,7 +1644,6 @@ function setupQuickWithdrawButtons() {
     });
 }
 
-// --- ADMIN EDIT USER FUNCTIONS ---
 window.adjustSpin = (delta) => {
     const el = $('#edit-user-spins');
     let val = parseInt(el.value) || 0;
@@ -1477,7 +1664,6 @@ window.openAdminEditUser = async (uid) => {
         $('#edit-user-balance').value = formatCurrency(data.balance || 0);
         $('#edit-user-spins').value = data.luckySpins || 0;
 
-        // Reset PIN Button State
         const btn = $('#admin-reset-pin-btn');
         btn.innerHTML = '<i class="fas fa-key"></i> Reset PIN về "123456"';
         btn.disabled = false;
@@ -1505,7 +1691,9 @@ $('#admin-save-user-btn')?.addEventListener('click', async () => {
 });
 
 $('#admin-reset-pin-btn')?.addEventListener('click', async () => {
-    if (!confirm("Xác nhận reset PIN?")) return;
+    const confirmed = await window.customDialog({ title: 'Cảnh báo', message: 'Xác nhận reset PIN về 123456?', type: 'confirm', iconClass: 'bg-orange-100 text-orange-600', icon: 'fas fa-exclamation-triangle' });
+    if (!confirmed) return;
+    
     const uid = $('#edit-user-uid').value;
     const btn = $('#admin-reset-pin-btn');
 
@@ -1521,24 +1709,19 @@ $('#admin-reset-pin-btn')?.addEventListener('click', async () => {
     } catch (e) { showToast(e.message, true); } finally { hideLoading(); }
 });
 
-// --- ADMIN NAVIGATION LOGIC ---
 window.switchAdminView = (viewName) => {
-    // Ẩn Dashboard, hiện Sub-views container
     $('#admin-dashboard-view').classList.add('hidden');
     $('#admin-sub-views').classList.remove('hidden');
 
-    // Ẩn tất cả sub-view con, chỉ hiện view được chọn
     $$('.admin-sub-view').forEach(el => el.classList.add('hidden'));
     $(`#admin-view-${viewName}`).classList.remove('hidden');
 };
 
 window.closeAdminSubView = () => {
-    // Ẩn Sub-views, hiện lại Dashboard
     $('#admin-sub-views').classList.add('hidden');
     $('#admin-dashboard-view').classList.remove('hidden');
 };
 
-// --- LOGIC TÌM KIẾM USER ---
 $('#admin-user-search')?.addEventListener('input', (e) => {
     const term = e.target.value.toLowerCase();
     const userCards = document.querySelectorAll('.admin-user-card');
@@ -1554,7 +1737,6 @@ $('#admin-user-search')?.addEventListener('input', (e) => {
     });
 });
 
-// --- LOGIC CHỈNH SỬA QUÀ TẶNG ---
 window.openAdminEditGift = async (id) => {
     showLoading();
     try {
@@ -1591,8 +1773,6 @@ $('#admin-save-gift-btn')?.addEventListener('click', async () => {
     } catch (e) { showToast(e.message, true); } finally { hideLoading(); }
 });
 
-
-// --- LOGIC CHỈNH SỬA NHIỆM VỤ ---
 window.openAdminEditMission = async (id) => {
     showLoading();
     try {
@@ -1631,6 +1811,38 @@ $('#admin-save-mission-btn')?.addEventListener('click', async () => {
         showToast("Đã cập nhật nhiệm vụ!");
         $('#admin-edit-mission-modal').classList.add('hidden');
     } catch (e) { showToast(e.message, true); } finally { hideLoading(); }
+});
+
+// --- CLOUDINARY UPLOAD WIDGET CONFIGURATION ---
+const setupCloudinaryWidget = (buttonId, inputId) => {
+    const btn = document.querySelector(buttonId);
+    if (!btn) return;
+    
+    // Yêu cầu: Bạn cần thay đổi 'cloudName' và 'uploadPreset' bằng thông tin thật từ Cloudinary của bạn.
+    const uploadWidget = cloudinary.createUploadWidget({
+        cloudName: 'demo', // <<-- THAY ĐỔI TÊN CLOUD TẠI ĐÂY
+        uploadPreset: 'unsigned_preset', // <<-- THAY ĐỔI PRESET TẠI ĐÂY (Nên tạo dạng Unsigned)
+        sources: ['local', 'url', 'camera'],
+        multiple: false,
+        clientAllowedFormats: ['image'],
+        maxImageFileSize: 2000000 // 2MB
+    }, (error, result) => {
+        if (!error && result && result.event === "success") {
+            const inputField = document.querySelector(inputId);
+            inputField.value = result.info.secure_url;
+            showToast("Tải ảnh lên thành công!");
+        }
+    });
+
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        uploadWidget.open();
+    });
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+    setupCloudinaryWidget('#upload-gift-image-btn', '#admin-gift-image');
+    setupCloudinaryWidget('#edit-upload-gift-image-btn', '#edit-gift-image');
 });
 
 initApp();

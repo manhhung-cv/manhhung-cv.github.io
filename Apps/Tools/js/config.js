@@ -350,6 +350,30 @@ export const TOOLS = [
         desc: 'Công cụ tính toán lương Net và Gross, bao gồm các khoản phụ cấp, thuế và bảo hiểm xã hội.',
         tags: ['lương', 'tính lương', 'phụ cấp']
     },
+    {
+        id: 'vn-map',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Chuyển đổi địa chỉ',
+        icon: 'fa-solid fa-calculator',
+        desc: 'Công cụ chuyển đổi địa chỉ cũ sang địa chỉ mới đơn vị hành chính Việt Nam.',
+        tags: ['địa chỉ', 'chuyển đổi', 'hành chính']
+    },
+    {
+        id: 'html-entity',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'HTML Entity Encoder/Decoder',
+        icon: 'fa-solid fa-code',
+        desc: 'Công cụ mã hóa và giải mã HTML Entity, giúp bảo vệ nội dung web và xử lý ký tự đặc biệt.',
+        tags: ['html', 'entity', 'encode', 'decode', 'web']
+    },
+    {
+        id: 'tree-viewer',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Tree Viewer',
+        icon: 'fa-solid fa-tree',
+        desc: 'Công cụ hiển thị dữ liệu dạng cây (tree structure) từ JSON, XML hoặc các định dạng dữ liệu khác.',
+        tags: ['tree', 'viewer', 'json', 'xml', 'data']
+    }
     
 
 ];

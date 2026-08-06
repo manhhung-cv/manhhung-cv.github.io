@@ -53,6 +53,8 @@ export function template() {
                 <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-countday">Sự kiện</button>
                 <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-datecalc">Tính ngày</button>
                 <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-timecalc">Tính giờ</button>
+                <!-- TAB MỚI: Khoảng thời gian -->
+                <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-duration">Khoảng thời gian</button>
                 <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-week">Số tuần</button>
                 <button class="tt-tab btn-premium px-4 py-2.5 rounded-full bg-transparent text-zinc-500 text-[12px] font-bold whitespace-nowrap shrink-0 hover:text-zinc-900 dark:hover:text-white transition-colors" data-target="pane-age">Tuổi</button>
             </div>
@@ -271,6 +273,46 @@ export function template() {
                         <div class="text-[10px] font-bold opacity-60 uppercase tracking-widest mb-1">Kết quả</div>
                         <div class="text-[2.5rem] font-black font-mono tracking-tighter leading-none" id="tc-res">--</div>
                         <div class="text-[10px] font-bold opacity-80 mt-1 hidden" id="tc-res-dec"></div>
+                    </div>
+                </div>
+
+                <!-- TAB PANE: KHOẢNG THỜI GIAN (ĐÃ CẬP NHẬT NGÀY ĐÊM) -->
+                <div id="pane-duration" class="tt-pane hidden animate-in fade-in">
+                    <div class="p-6 space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl">
+                                <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">Bắt đầu</label>
+                                <input type="datetime-local" id="dur-start" class="dur-trigger w-full bg-transparent border-none outline-none font-bold text-sm text-zinc-900 dark:text-white p-0 cursor-pointer">
+                            </div>
+                            <div class="bg-zinc-50 dark:bg-zinc-800/30 p-4 rounded-2xl">
+                                <label class="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block mb-2">Kết thúc</label>
+                                <input type="datetime-local" id="dur-end" class="dur-trigger w-full bg-transparent border-none outline-none font-bold text-sm text-zinc-900 dark:text-white p-0 cursor-pointer">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 p-6 flex flex-col items-center justify-center min-h-[160px] relative">
+                        <div class="text-[10px] font-bold opacity-60 uppercase tracking-widest mb-2">Đo lường thời gian</div>
+                        
+                        <!-- DỮ LIỆU SỐ NGÀY SỐ ĐÊM -->
+                        <div class="mb-3" id="dur-res-dn">--</div>
+                        
+                        <div class="text-[2.5rem] font-black font-mono tracking-tighter leading-none mb-6 text-center" id="dur-res-main">--</div>
+                        
+                        <div class="grid grid-cols-3 gap-6 w-full max-w-[300px] text-center border-t border-white/10 dark:border-zinc-900/10 pt-4">
+                            <div>
+                                <div class="text-lg font-bold font-mono" id="dur-res-h">--</div>
+                                <div class="text-[9px] font-bold opacity-60 uppercase tracking-widest mt-1">Tổng Giờ</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold font-mono" id="dur-res-m">--</div>
+                                <div class="text-[9px] font-bold opacity-60 uppercase tracking-widest mt-1">Tổng Phút</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold font-mono" id="dur-res-s">--</div>
+                                <div class="text-[9px] font-bold opacity-60 uppercase tracking-widest mt-1">Tổng Giây</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -606,4 +648,82 @@ export function init() {
             dob.oninput = calc; tg.oninput = calc;
         }
     }; Ac.init();
+
+    // --- 8. DURATION CALC ---
+    const DurCalc = {
+        init() {
+            const startInp = document.getElementById('dur-start');
+            const endInp = document.getElementById('dur-end');
+            
+            const resDn = document.getElementById('dur-res-dn');
+            const resMain = document.getElementById('dur-res-main');
+            
+            const resH = document.getElementById('dur-res-h');
+            const resM = document.getElementById('dur-res-m');
+            const resS = document.getElementById('dur-res-s');
+            
+            let now = new Date();
+            let tzOffset = now.getTimezoneOffset() * 60000;
+            startInp.value = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+            
+            let future = new Date(now);
+            future.setDate(future.getDate() + 3);
+            endInp.value = new Date(future.getTime() - tzOffset).toISOString().slice(0, 16);
+
+            const calc = () => {
+                if (!startInp.value || !endInp.value) return;
+                
+                const d1_obj = new Date(startInp.value);
+                const d2_obj = new Date(endInp.value);
+                
+                const d1 = d1_obj.getTime();
+                const d2 = d2_obj.getTime();
+                
+                if (isNaN(d1) || isNaN(d2)) return;
+                
+                const diff = d2 - d1;
+                
+                if (diff < 0) {
+                    resMain.textContent = 'Bắt đầu > Kết thúc';
+                    resMain.classList.add('text-red-500');
+                    resDn.innerHTML = '';
+                    resH.textContent = '--'; resM.textContent = '--'; resS.textContent = '--';
+                    return;
+                }
+                resMain.classList.remove('text-red-500');
+
+                // 1. Tính toán Số Ngày Số Đêm (dựa theo việc đếm số lịch trôi qua)
+                const d1_cal = new Date(d1_obj.getFullYear(), d1_obj.getMonth(), d1_obj.getDate()).getTime();
+                const d2_cal = new Date(d2_obj.getFullYear(), d2_obj.getMonth(), d2_obj.getDate()).getTime();
+                const nights = Math.floor((d2_cal - d1_cal) / 86400000);
+                
+                if (nights > 0) {
+                    resDn.innerHTML = `<span class="px-4 py-1.5 bg-white/10 dark:bg-zinc-900/10 rounded-full text-[12px] font-bold uppercase tracking-wider shadow-sm">${nights + 1} Ngày ${nights} Đêm</span>`;
+                } else {
+                    resDn.innerHTML = `<span class="px-4 py-1.5 bg-white/10 dark:bg-zinc-900/10 rounded-full text-[12px] font-bold uppercase tracking-wider shadow-sm">Đi về trong ngày</span>`;
+                }
+
+                // 2. Tính Tách Rời (Khoảng cách giờ giấc chính xác)
+                const d = Math.floor(diff / 86400000);
+                const h = Math.floor((diff % 86400000) / 3600000);
+                const m = Math.floor((diff % 3600000) / 60000);
+                
+                let mainStr = '';
+                if (d > 0) mainStr += `${d}<span class="text-xl font-sans font-bold text-zinc-500 dark:text-zinc-400 mr-2">ngày</span> `;
+                if (h > 0 || d > 0) mainStr += `${h}<span class="text-xl font-sans font-bold text-zinc-500 dark:text-zinc-400 mr-2">giờ</span> `;
+                mainStr += `${m}<span class="text-xl font-sans font-bold text-zinc-500 dark:text-zinc-400">phút</span>`;
+                
+                resMain.innerHTML = mainStr;
+
+                // 3. Tính Tổng Quy Đổi
+                resH.textContent = Math.floor(diff / 3600000).toLocaleString('vi-VN');
+                resM.textContent = Math.floor(diff / 60000).toLocaleString('vi-VN');
+                resS.textContent = Math.floor(diff / 1000).toLocaleString('vi-VN');
+            };
+            
+            startInp.addEventListener('input', calc);
+            endInp.addEventListener('input', calc);
+            calc();
+        }
+    }; DurCalc.init();
 }

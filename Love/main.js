@@ -4131,7 +4131,7 @@ function switchSecretTab(tab) {
 
 /* --- LOGIC TAB 3: TƯ THẾ (POSITIONS) --- */
 const TOTAL_POSITIONS = 100;
-const POS_BASE_URL = "https://naughtygrin.com/imgs/ksutra/"; // Thay bằng link thật của bạn
+const POS_BASE_URL = "https://"; // Thay bằng link thật của bạn
 
 // --- 1. CÁC HÀM ĐIỀU HƯỚNG CƠ BẢN (Cập nhật để tương thích data mới) ---
 function ensurePosData() {

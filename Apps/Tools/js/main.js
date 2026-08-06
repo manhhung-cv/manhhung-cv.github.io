@@ -372,7 +372,7 @@ function renderHomeView(tabId) {
     const favToolsData = sortedTools.filter(t => favs.includes(t.id));
 
     pane.innerHTML = `
-        <div class="mb-10 mt-0 px-2">
+        <div class="mb-6 mt-0 px-2">
             <h1 class="text-[32px] font-extrabold tracking-tight mb-2 text-zinc-900 dark:text-white">Workspace</h1>
             <p class="text-zinc-500 text-[15px] font-medium">Trung tâm công cụ cá nhân hóa của bạn.</p>
         </div>
