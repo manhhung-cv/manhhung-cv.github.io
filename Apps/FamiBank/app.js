@@ -677,16 +677,18 @@ function loadNotifications(uid) {
             else dot.classList.add('hidden');
         }
 
-        // 2. BẮN POPUP TRÌNH DUYỆT (Kiểm tra xem User có đang TẮT thông báo không)
+       // 2. BẮN POPUP TRÌNH DUYỆT (Đã nới lỏng điều kiện)
         snap.docChanges().forEach(change => {
             if (change.type === 'added') {
                 const d = change.doc.data();
-                const isMuted = localStorage.getItem('mutePopups') === 'true'; // Đọc cài đặt tắt/mở
+                const isMuted = localStorage.getItem('mutePopups') === 'true'; 
                 
-                if (!isMuted && ("Notification" in window) && Notification.permission === "granted" && !d.isRead) {
+                // Đã XÓA điều kiện && !d.isRead ở dòng dưới
+                if (!isMuted && ("Notification" in window) && Notification.permission === "granted") {
                     const now = new Date();
                     const notifTime = d.timestamp ? d.timestamp.toDate() : now;
                     
+                    // Miễn là sự kiện vừa xảy ra trong 2 phút, máy nào nhận được cập nhật đều bắn Popup
                     if (now - notifTime < 120000) { 
                         const APP_ICON = "./logo.png"; 
                         const APP_URL = "/apps/Fami"; 
