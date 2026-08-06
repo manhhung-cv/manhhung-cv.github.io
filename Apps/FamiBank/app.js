@@ -636,30 +636,36 @@ function loadNotifications(uid) {
         let unreadCount = 0;
         const list = $('#notifications-list');
         
-        // 1. RENDER GIAO DIỆN IN-APP (Như cũ)
+        // 1. RENDER GIAO DIỆN IN-APP (Có nút Xóa từng mục)
         const html = snap.docs.map(docSnap => {
             const d = docSnap.data();
             if (!d.isRead) unreadCount++;
             
-            const time = formatDate(d.timestamp);
-            const bgClass = d.isRead ? 'bg-transparent opacity-60' : 'glass-panel border border-blue-200 dark:border-blue-900/50 shadow-sm';
+            let timeStr = 'Vừa xong';
+            if (d.timestamp) timeStr = formatDate(d.timestamp);
+            
+            const bgClass = d.isRead ? 'bg-transparent opacity-60' : 'glass-panel border border-blue-200 shadow-sm';
             
             let icon = 'fa-bell text-blue-500 bg-blue-100';
             if (d.type === 'transfer_receive') icon = 'fa-arrow-down text-green-500 bg-green-100';
             if (d.type === 'transfer_send') icon = 'fa-arrow-up text-orange-500 bg-orange-100';
-            if (d.type === 'admin_broadcast') icon = 'fa-bullhorn text-purple-500 bg-purple-100';
+            if (d.type === 'admin_broadcast' || d.type === 'admin_direct') icon = 'fa-bullhorn text-purple-500 bg-purple-100';
 
             return `
-            <div class="p-4 rounded-[20px] flex gap-4 transition-all cursor-pointer ${bgClass}" onclick="markNotificationRead('${docSnap.id}', ${d.isRead})">
-                <div class="w-12 h-12 rounded-full ${icon.split(' ')[2]} flex items-center justify-center flex-shrink-0 shadow-sm">
+            <div class="p-4 rounded-[20px] flex gap-3 transition-all relative ${bgClass}">
+                <div class="w-12 h-12 rounded-full ${icon.split(' ')[2]} flex items-center justify-center flex-shrink-0 shadow-sm cursor-pointer" onclick="markNotificationRead('${docSnap.id}', ${d.isRead})">
                     <i class="fas ${icon.split(' ')[0]} ${icon.split(' ')[1]} text-lg"></i>
                 </div>
-                <div>
-                    <h4 class="font-bold text-sm text-p tracking-tight">${d.title}</h4>
-                    <p class="text-xs text-s mt-1.5 leading-relaxed">${d.message}</p>
-                    <p class="text-[10px] text-gray-400 mt-2 font-medium">${time}</p>
+                <div class="flex-grow cursor-pointer pr-8" onclick="markNotificationRead('${docSnap.id}', ${d.isRead})">
+                    <h4 class="font-bold text-sm text-p tracking-tight line-clamp-1">${d.title}</h4>
+                    <p class="text-xs text-s mt-1 leading-relaxed line-clamp-2">${d.message}</p>
+                    <p class="text-[10px] text-gray-400 mt-2 font-medium">${timeStr}</p>
                 </div>
-                ${!d.isRead ? '<div class="w-2 h-2 rounded-full bg-blue-500 self-center ml-auto"></div>' : ''}
+                <!-- Nút Xóa và Chấm đỏ -->
+                <div class="absolute right-4 top-4 bottom-4 flex flex-col justify-between items-end pointer-events-none">
+                    ${!d.isRead ? '<div class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></div>' : '<div></div>'}
+                    <button onclick="deleteNotification('${docSnap.id}')" class="text-gray-400 hover:text-red-500 transition p-2 -mr-2 pointer-events-auto active:scale-90"><i class="fas fa-trash-alt"></i></button>
+                </div>
             </div>`;
         }).join('');
         
@@ -671,26 +677,91 @@ function loadNotifications(uid) {
             else dot.classList.add('hidden');
         }
 
-        // 2. BẮN POPUP TRÌNH DUYỆT CHO CÁC THÔNG BÁO MỚI TINH
+        // 2. BẮN POPUP TRÌNH DUYỆT (Kiểm tra xem User có đang TẮT thông báo không)
         snap.docChanges().forEach(change => {
             if (change.type === 'added') {
                 const d = change.doc.data();
-                // Chỉ bắn popup nếu chưa đọc VÀ trình duyệt đã cấp quyền
-                if (!d.isRead && Notification.permission === "granted") {
-                    // Kiểm tra xem thông báo này có phải vừa mới xảy ra trong 1 phút đổ lại không
-                    // Điều này chống spam popup khi bạn F5 tải lại trang
+                const isMuted = localStorage.getItem('mutePopups') === 'true'; // Đọc cài đặt tắt/mở
+                
+                if (!isMuted && ("Notification" in window) && Notification.permission === "granted" && !d.isRead) {
                     const now = new Date();
-                    const notifTime = d.timestamp ? d.timestamp.toDate() : new Date();
+                    const notifTime = d.timestamp ? d.timestamp.toDate() : now;
                     
-                    if (now - notifTime < 60000) { 
-                        new Notification("FamiBank: " + d.title, {
+                    if (now - notifTime < 120000) { 
+                        const APP_ICON = "./logo.png"; 
+                        const APP_URL = "/apps/Fami"; 
+
+                        const notification = new Notification("FamiBank: " + d.title, {
                             body: d.message,
-                            icon: "https://cdn-icons-png.flaticon.com/512/3135/3135673.png" // Icon túi tiền
+                            icon: APP_ICON
                         });
+                        notification.onclick = function(event) {
+                            event.preventDefault(); 
+                            window.focus(); 
+                            window.location.href = APP_URL; 
+                            notification.close(); 
+                        };
                     }
                 }
             }
         });
+    });
+}
+
+// --- XÓA MỘT THÔNG BÁO ---
+window.deleteNotification = async (id) => {
+    const confirmed = await window.customDialog({ title: 'Xóa thông báo', message: 'Bạn có chắc chắn muốn xóa thông báo này?', type: 'confirm', iconClass: 'bg-red-100 text-red-600', icon: 'fas fa-trash' });
+    if (!confirmed) return;
+    
+    try {
+        await deleteDoc(doc(db, `artifacts/${appId}/notifications`, id));
+    } catch (e) {
+        showToast("Lỗi khi xóa: " + e.message, true);
+    }
+};
+
+// --- XÓA TẤT CẢ THÔNG BÁO ---
+$('#delete-all-notif-btn')?.addEventListener('click', async () => {
+    const confirmed = await window.customDialog({ title: 'Xóa tất cả', message: 'Xóa toàn bộ lịch sử thông báo của bạn?', type: 'confirm', iconClass: 'bg-red-100 text-red-600', icon: 'fas fa-exclamation-triangle' });
+    if (!confirmed) return;
+    
+    showLoading();
+    try {
+        const q = query(collection(db, `artifacts/${appId}/notifications`), where("userId", "==", currentUser.uid));
+        const snaps = await getDocs(q);
+        
+        // Chạy vòng lặp xóa toàn bộ dữ liệu
+        const promises = snaps.docs.map(d => deleteDoc(doc(db, `artifacts/${appId}/notifications`, d.id)));
+        await Promise.all(promises);
+        
+        showToast("Đã dọn dẹp tất cả thông báo!");
+    } catch(e) {
+        showToast("Lỗi khi xóa", true);
+    } finally {
+        hideLoading();
+    }
+});
+
+// --- CÔNG TẮC BẬT/TẮT THÔNG BÁO POPUP ---
+const popupToggle = $('#toggle-popup-notif');
+if (popupToggle) {
+    // Tải trạng thái đã lưu khi mở app
+    const isMuted = localStorage.getItem('mutePopups') === 'true';
+    popupToggle.checked = !isMuted; // Nếu muted = true thì switch = tắt (false)
+    
+    popupToggle.addEventListener('change', (e) => {
+        const muted = !e.target.checked;
+        localStorage.setItem('mutePopups', muted);
+        
+        if (muted) {
+            showToast("Đã tắt thông báo ngoài màn hình");
+        } else {
+            showToast("Đã bật thông báo màn hình");
+            // Nếu bật lại mà trình duyệt chưa cấp quyền, xin quyền lại
+            if (("Notification" in window) && Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
     });
 }
 
@@ -966,13 +1037,19 @@ function initAdminListeners() {
     });
 
     onSnapshot(query(collection(db, `artifacts/${appId}/users`), orderBy('createdAt', 'desc')), s => {
+        // 1. Cập nhật số lượng tổng User trên Dashboard
         $('#dash-total-users').textContent = s.size;
+        
         let totalSystemBal = 0;
+        
+        // 2. Render danh sách thẻ User (User Cards)
         const userListHtml = s.docs.map(d => {
             const u = d.data();
             totalSystemBal += (u.balance || 0);
+            
             const avatar = u.avatarEmoji || u.displayName.charAt(0).toUpperCase();
             const color = u.avatarColor || '#9CA3AF';
+            
             return `
             <div class="admin-user-card bg-surface p-3 rounded-xl border border-theme flex items-center justify-between shadow-sm mb-2" 
                  data-name="${u.displayName}" data-username="${u.username}">
@@ -995,6 +1072,14 @@ function initAdminListeners() {
         $('#admin-user-list').innerHTML = userListHtml;
         $('#dash-total-balance').textContent = formatCurrency(totalSystemBal);
 
+        // 3. Cập nhật thẻ Select (Dropdown) cho phần Gửi thông báo
+        const selectNotif = $('#admin-notif-receiver');
+        if (selectNotif) {
+            selectNotif.innerHTML = '<option value="all">Tất cả người dùng</option>' + 
+                s.docs.map(d => `<option value="${d.id}">${d.data().displayName} (${d.data().username})</option>`).join('');
+        }
+
+        // 4. Kích hoạt lại bộ lọc tìm kiếm nếu đang gõ dở
         const searchTerm = $('#admin-user-search')?.value;
         if (searchTerm) $('#admin-user-search').dispatchEvent(new Event('input'));
     });
