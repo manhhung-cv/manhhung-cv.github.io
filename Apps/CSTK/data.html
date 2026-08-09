@@ -1,259 +1,336 @@
 <!DOCTYPE html>
-<html lang="vi" class="h-full scroll-smooth">
+<html lang="vi" class="scroll-smooth antialiased">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSTK — Luxury GenZ Atelier</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CSTK — Kho Dữ Liệu</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        // Cấu hình Tailwind hỗ trợ class-based dark mode
-        tailwind.config = {
+        tailwind.config = { 
             darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(5px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
         }
     </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
-        
         body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            transition: background-color 0.4s ease, color 0.4s ease;
+            background-color: #f5f5f7; /* Tone xám nhạt Apple */
+            color: #1d1d1f;
         }
-        .font-serif-luxury {
-            font-family: 'Cormorant Garamond', serif;
+        .dark body { 
+            background-color: #000000; 
+            color: #f5f5f7;
         }
-        /* Custom scrollbar siêu mỏng nghệ thuật */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        .dark ::-webkit-scrollbar-thumb { background: #374151; border-radius: 99px; }
-        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 99px; }
+        ::-webkit-scrollbar { display: none; }
+        input:focus, select:focus { outline: none; }
+        
+        /* Modal transition */
+        .modal-active { opacity: 1 !important; pointer-events: auto !important; }
+        .modal-img-active { transform: scale(1) !important; }
     </style>
 </head>
-<body class="h-full bg-[#fbfbfa] text-stone-800 dark:bg-[#0c0c0e] dark:text-stone-200 min-h-screen selection:bg-stone-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
+<body class="min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
 
-    <div class="max-w-6xl mx-auto px-6 pt-6 flex justify-end">
-        <button onclick="toggleDarkMode()" class="p-2.5 rounded-full border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900/50 hover:scale-105 active:scale-95 transition-all shadow-sm flex items-center justify-center group" aria-label="Toggle theme">
-            <svg class="w-4 h-4 text-amber-400 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
-            <svg class="w-4 h-4 text-stone-500 block dark:hidden group-hover:text-stone-900" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
-        </button>
-    </div>
-
-    <div class="max-w-6xl mx-auto px-6 pb-16 pt-4 flex flex-col min-h-screen">
-        
-        <header class="text-center mb-12 md:mb-16">
-            <span class="text-[9px] uppercase tracking-[0.4em] text-stone-400 dark:text-stone-500 font-bold block mb-3 animate-pulse">● System Live</span>
-            <h1 class="text-5xl md:text-6xl font-serif-luxury font-light tracking-tight text-stone-900 dark:text-white mb-3">CSTK Studio</h1>
-            <p class="text-xs font-light text-stone-400 dark:text-stone-500 tracking-widest max-w-xs mx-auto">Vault lưu trữ thông tin tự động thế hệ mới</p>
-            <div class="h-[1px] w-8 bg-stone-300 dark:bg-stone-800 mx-auto my-6"></div>
+    <!-- TOP NAVIGATION -->
+    <nav class="sticky top-0 z-40 bg-[#f5f5f7]/80 dark:bg-black/80 backdrop-blur-xl border-b border-black/5 dark:border-white/10 w-full px-4 md:px-6 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             
-            <div class="inline-flex items-center gap-2 px-3 py-1 bg-stone-100 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800 rounded-full">
-                <span class="w-1.5 h-1.5 rounded-full bg-stone-400 dark:bg-stone-600 transition-colors duration-500" id="status-dot"></span>
-                <span id="status-text" class="text-[10px] uppercase tracking-[0.2em] text-stone-500 dark:text-stone-400 font-semibold font-mono">STANDBY</span>
+            <div class="flex items-center justify-between w-full md:w-auto gap-4">
+                <h1 class="text-lg font-semibold tracking-tight">CSTK Vault</h1>
+                <div class="flex items-center gap-1.5 px-2 py-0.5 bg-black/5 dark:bg-white/10 rounded-full">
+                    <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                    <span id="status-text" class="text-[9px] uppercase tracking-wider font-mono text-gray-500 dark:text-gray-400">SẴN SÀNG</span>
+                </div>
             </div>
-        </header>
 
-        <div class="bg-white/80 dark:bg-stone-900/40 backdrop-blur-md border border-stone-200/80 dark:border-stone-800/80 p-4 rounded-2xl mb-12 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-            <div class="text-[11px] uppercase tracking-[0.15em] text-stone-400 font-mono font-medium pl-2">
-                INDEXED // <span class="text-stone-900 dark:text-white font-bold" id="total-count">00 ITEMS</span>
-            </div>
-            
-            <div class="flex flex-wrap items-center justify-center gap-2 w-full md:w-auto">
-                <button onclick="loadData()" class="flex-1 md:flex-none px-4 py-2 text-xs font-semibold rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition-all active:scale-95">
-                    Tải lại
-                </button>
-                <button onclick="triggerAction('scrape_now')" class="flex-1 md:flex-none px-5 py-2 text-xs font-bold rounded-xl bg-stone-900 dark:bg-white text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-100 transition-all active:scale-95 shadow-md shadow-stone-950/10 dark:shadow-white/5">
-                    Cào dữ liệu
-                </button>
-                <button onclick="triggerAction('start_auto')" class="flex-1 md:flex-none px-4 py-2 text-xs font-semibold rounded-xl border border-stone-200 dark:border-stone-800 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-all active:scale-95">
-                    Auto On
-                </button>
-                <button onclick="triggerAction('stop_auto')" class="flex-1 md:flex-none px-4 py-2 text-xs font-semibold rounded-xl border border-stone-200 dark:border-stone-800 text-stone-400 dark:text-stone-600 hover:text-stone-600 dark:hover:text-stone-400 transition-all active:scale-95">
-                    Auto Off
+            <div class="flex items-center gap-1 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 scroll-smooth whitespace-nowrap">
+                <button onclick="triggerAction('start_auto')" class="text-[11px] font-medium px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors text-gray-600 dark:text-gray-400">Tự động: Bật</button>
+                <button onclick="triggerAction('stop_auto')" class="text-[11px] font-medium px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors text-gray-600 dark:text-gray-400">Tự động: Tắt</button>
+                <button onclick="loadData()" class="text-[11px] font-medium px-3 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors text-gray-600 dark:text-gray-400">Tải lại</button>
+                <button onclick="triggerAction('scrape_now')" class="ml-1 text-[11px] font-semibold px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm">Cào dữ liệu</button>
+                <button onclick="toggleDarkMode()" class="ml-1 p-1.5 text-gray-600 dark:text-gray-400 hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors">
+                    <svg class="w-4 h-4 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"></path></svg>
+                    <svg class="w-4 h-4 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>
                 </button>
             </div>
         </div>
+    </nav>
 
-        <div id="loader" class="hidden flex-1 flex flex-col justify-center items-center py-24">
-            <div class="w-8 h-8 border-2 border-stone-200 dark:border-stone-800 border-t-stone-900 dark:border-t-white rounded-full animate-spin mb-4"></div>
-            <span class="text-[10px] font-mono uppercase tracking-[0.2em] text-stone-400 dark:text-stone-600">Đang đồng bộ Matrix...</span>
+    <!-- HEADER & TOOLBAR -->
+    <header class="w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-4">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <p class="text-[11px] font-mono text-gray-500 uppercase tracking-widest"><span id="total-count" class="font-semibold text-black dark:text-white">00</span> Dữ liệu</p>
+
+            <div class="flex flex-row items-center gap-3 w-full md:w-auto">
+                <div class="relative w-full md:w-56 bg-white dark:bg-[#1c1c1e] rounded-lg border border-black/10 dark:border-white/10 overflow-hidden shadow-sm">
+                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" id="searchInput" placeholder="Tìm kiếm tư liệu..." class="w-full bg-transparent text-[13px] pl-8 pr-3 py-1.5 text-black dark:text-white placeholder-gray-400">
+                </div>
+                <div class="relative w-auto bg-white dark:bg-[#1c1c1e] rounded-lg border border-black/10 dark:border-white/10 shadow-sm">
+                    <select id="sortSelect" class="w-full bg-transparent text-[13px] pl-3 pr-8 py-1.5 cursor-pointer appearance-none text-black dark:text-white">
+                        <option value="time_new">Mới nhất</option>
+                        <option value="time_old">Cũ nhất</option>
+                        <option value="az">Tên (A-Z)</option>
+                        <option value="za">Tên (Z-A)</option>
+                    </select>
+                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 md:px-6 pb-20">
+        <!-- Loader -->
+        <div id="loader" class="hidden py-20 flex-col items-center justify-center">
+            <div class="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mb-3"></div>
+            <span class="text-[10px] font-mono uppercase tracking-widest text-gray-400">Đang đồng bộ...</span>
         </div>
 
-        <div id="data-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 opacity-100 transition-opacity duration-500 flex-1">
-            </div>
+        <!-- Grid -->
+        <div id="data-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            <!-- Cards go here -->
+        </div>
+    </main>
 
+    <!-- IMAGE MODAL (Lightbox) -->
+    <div id="imgModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300 flex items-center justify-center p-4" onclick="closeModal()">
+        <div class="relative max-w-4xl w-full flex justify-center">
+            <img id="modalImage" src="" class="max-h-[85vh] rounded-xl shadow-2xl scale-95 transition-transform duration-300 object-contain" onclick="event.stopPropagation()">
+            <button onclick="closeModal()" class="absolute -top-4 -right-4 md:-right-10 bg-white/20 hover:bg-white/40 backdrop-blur text-white p-2 rounded-full transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
     </div>
 
     <script>
+        /* ================= CONFIG ================= */
         const API_URL = "https://script.google.com/macros/s/AKfycbx6ZHdA8Uf0UeGV15ipndEesZy8TeTH5uU3irxdiawWDVWeCvO8vn7GyQBHQQal0e3x/exec";
         const TOKEN = "AdminPro2026";
+        let appData = []; 
 
-        // Khởi tạo Darkmode dựa trên tùy chọn hệ thống hoặc LocalStorage
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        /* ================= INIT ================= */
+        document.addEventListener("DOMContentLoaded", () => {
+            initTheme();
+            loadData();
+            document.getElementById('searchInput').addEventListener('input', applyFilterAndSort);
+            document.getElementById('sortSelect').addEventListener('change', applyFilterAndSort);
+        });
 
-        function toggleDarkMode() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-            } else {
+        /* ================= THEME ================= */
+        function initTheme() {
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                 document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
+            } else {
+                document.documentElement.classList.remove('dark');
             }
         }
-
-        function formatDate(dateString) {
-            if (!dateString) return "N/A";
-            const date = new Date(dateString);
-            return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
         }
 
-        function copyToClipboard(text, btnElement) {
-            navigator.clipboard.writeText(text).then(() => {
-                let originalText = btnElement.innerText;
-                btnElement.innerText = "COPIED";
-                btnElement.classList.add('text-stone-900', 'dark:text-white', 'font-bold', 'scale-110');
-                btnElement.disabled = true;
-                setTimeout(() => {
-                    btnElement.innerText = originalText;
-                    btnElement.classList.remove('text-stone-900', 'dark:text-white', 'font-bold', 'scale-110');
-                    btnElement.disabled = false;
-                }, 1200);
-            });
+        /* ================= MODAL LOGIC ================= */
+        function openModal(src) {
+            const modal = document.getElementById('imgModal');
+            const img = document.getElementById('modalImage');
+            img.src = src;
+            modal.classList.add('modal-active');
+            setTimeout(() => { img.classList.add('modal-img-active'); }, 10);
         }
 
-        function createCard(item) {
-            let imgUrl = item.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600';
-            let id = item.account_id || "—";
-            let pass = item.password || "—";
-
-            return `
-                <div class="group flex flex-col justify-between bg-white dark:bg-stone-900/30 border border-stone-200/70 dark:border-stone-800/80 p-5 rounded-2xl hover:border-stone-400 dark:hover:border-stone-600 hover:shadow-[0_20px_40px_rgba(0,0,0,0.03)] dark:hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-500 relative overflow-hidden">
-                    <div>
-                        <div class="relative aspect-[16/10] w-full overflow-hidden bg-stone-100 dark:bg-stone-900 rounded-xl mb-4">
-                            <img src="${imgUrl}" alt="Visual" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600'" class="w-full h-full object-cover scale-100 group-hover:scale-[1.04] transition-transform duration-700 ease-out dark:opacity-80 dark:group-hover:opacity-100">
-                            
-                            <div class="absolute top-3 left-3 bg-stone-900/90 dark:bg-white/90 text-white dark:text-stone-900 text-[9px] font-mono font-bold tracking-widest px-2.5 py-0.5 rounded-md shadow-sm">
-                                #${String(item.no).padStart(3, '0')}
-                            </div>
-                        </div>
-                        
-                        <h3 class="text-base font-serif-luxury font-normal text-stone-900 dark:text-stone-100 leading-snug line-clamp-2 mb-6 group-hover:text-stone-600 dark:group-hover:text-stone-300 transition-colors" title="${item.title}">
-                            ${item.title}
-                        </h3>
-                        
-                        <div class="space-y-3 mb-4">
-                            <div class="flex justify-between items-baseline border-b border-stone-100 dark:border-stone-800/60 pb-2.5">
-                                <span class="text-[9px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-semibold font-mono">ACCOUNT_ID</span>
-                                <div class="flex items-center gap-3 overflow-hidden">
-                                    <span class="text-xs text-stone-800 dark:text-stone-300 font-mono font-medium truncate max-w-[150px]">${id}</span>
-                                    <button class="text-[10px] uppercase tracking-widest text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-white transition-all font-bold active:scale-90" onclick="copyToClipboard('${id}', this)">Copy</button>
-                                </div>
-                            </div>
-                            <div class="flex justify-between items-baseline border-b border-stone-100 dark:border-stone-800/60 pb-2.5">
-                                <span class="text-[9px] uppercase tracking-wider text-stone-400 dark:text-stone-500 font-semibold font-mono">PASSWORD</span>
-                                <div class="flex items-center gap-3 overflow-hidden">
-                                    <span class="text-xs text-stone-800 dark:text-stone-300 font-mono font-medium truncate max-w-[150px]">${pass}</span>
-                                    <button class="text-[10px] uppercase tracking-widest text-stone-400 dark:text-stone-500 hover:text-stone-900 dark:hover:text-white transition-all font-bold active:scale-90" onclick="copyToClipboard('${pass}', this)">Copy</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between pt-2 mt-2">
-                        <span class="text-[10px] font-medium text-stone-400 dark:text-stone-500 font-mono">
-                            ${formatDate(item.timestamp)}
-                        </span>
-                        <a href="${item.url}" target="_blank" class="text-[10px] uppercase tracking-widest font-bold text-stone-900 dark:text-white hover:text-stone-500 dark:hover:text-stone-400 transition-colors flex items-center gap-1 border-b border-stone-900 dark:border-white pb-0.5 hover:border-transparent">
-                            Visit
-                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                        </a>
-                    </div>
-                </div>
-            `;
+        function closeModal() {
+            const modal = document.getElementById('imgModal');
+            const img = document.getElementById('modalImage');
+            img.classList.remove('modal-img-active');
+            modal.classList.remove('modal-active');
+            setTimeout(() => { img.src = ''; }, 300); 
         }
 
+        /* ================= DATA ================= */
         async function loadData() {
-            const grid = document.getElementById('data-grid');
             const loader = document.getElementById('loader');
+            const grid = document.getElementById('data-grid');
             
             grid.innerHTML = "";
-            grid.classList.add('opacity-0');
             loader.classList.remove('hidden');
+            loader.classList.add('flex');
 
             try {
                 let response = await fetch(`${API_URL}?action=get_data&token=${TOKEN}`);
                 let result = await response.json();
-
                 if (result.success) {
-                    if (result.data.length === 0) {
-                        grid.innerHTML = "<div class='col-span-full text-center py-20 text-stone-400 dark:text-stone-600 text-xs font-mono uppercase tracking-widest border border-dashed border-stone-200 dark:border-stone-800 rounded-2xl'>[Database Empty // No Records Found]</div>";
-                    } else {
-                        document.getElementById('total-count').innerText = `${String(result.data.length).padStart(2, '0')} ITEMS`;
-                        let sortedData = result.data.sort((a, b) => b.no - a.no);
-                        sortedData.forEach(item => { grid.innerHTML += createCard(item); });
-                    }
-                    grid.classList.remove('opacity-0');
-                } else {
-                    alert("Lỗi tải dữ liệu: " + result.error);
+                    appData = result.data || [];
+                    applyFilterAndSort(); 
                 }
             } catch (error) {
-                alert("Không thể kết nối đến máy chủ API.");
+                alert("Mất kết nối với máy chủ.");
             } finally {
                 loader.classList.add('hidden');
+                loader.classList.remove('flex');
+                checkStatus();
             }
-            checkStatus();
+        }
+
+        function applyFilterAndSort() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const sortType = document.getElementById('sortSelect').value;
+
+            let filteredData = appData.filter(item => {
+                const title = (item.title || "").toLowerCase();
+                const accountId = (item.account_id || "").toLowerCase();
+                return title.includes(searchTerm) || accountId.includes(searchTerm);
+            });
+
+            filteredData.sort((a, b) => {
+                let timeA = new Date(a.timestamp || 0).getTime();
+                let timeB = new Date(b.timestamp || 0).getTime();
+                if (sortType === 'time_new') return timeB - timeA;
+                if (sortType === 'time_old') return timeA - timeB;
+                if (sortType === 'az') return (a.title || "").localeCompare(b.title || "");
+                if (sortType === 'za') return (b.title || "").localeCompare(a.title || "");
+                return 0;
+            });
+
+            renderGrid(filteredData);
+        }
+
+        /* ================= RENDER ================= */
+        function renderGrid(data) {
+            const grid = document.getElementById('data-grid');
+            document.getElementById('total-count').innerText = String(data.length).padStart(2, '0');
+            grid.innerHTML = "";
+
+            if (data.length === 0) {
+                grid.innerHTML = `<div class='col-span-full py-16 text-center text-xs font-mono text-gray-500 uppercase'>Không có dữ liệu</div>`;
+                return;
+            }
+
+            let delay = 0;
+            data.forEach((item) => { 
+                grid.innerHTML += createCard(item, delay); 
+                delay += 30; 
+            });
+        }
+
+        function createCard(item, delayMs) {
+            let imgUrl = item.image || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600';
+            let id = item.account_id || "N/A";
+            let pass = item.password || "N/A"; 
+            let timeStr = formatTime(item.timestamp);
+
+            return `
+                <article class="flex items-center gap-3 p-3 bg-white dark:bg-[#1c1c1e] rounded-[14px] shadow-sm border border-black/5 dark:border-white/5 opacity-0 animate-fade-in transition-shadow hover:shadow-md" style="animation-delay: ${delayMs}ms">
+                    
+                    <!-- Thumbnail (Ấn để xem to) -->
+                    <div class="relative w-[60px] h-[60px] shrink-0 rounded-[10px] overflow-hidden cursor-zoom-in ring-1 ring-black/5 dark:ring-white/10 group" onclick="openModal('${imgUrl}')">
+                        <img loading="lazy" src="${imgUrl}" alt="Thumb" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" onerror="this.src='https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600'">
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"></div>
+                    </div>
+                    
+                    <!-- Thông tin -->
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-[13px] font-semibold leading-tight truncate mb-1 text-black dark:text-white" title="${item.title}">
+                            ${item.title}
+                        </h3>
+                        
+                        <!-- Cấu trúc hiển thị 2 dòng riêng biệt -->
+                        <div class="flex flex-col gap-1 text-[11.5px] font-mono text-gray-500 dark:text-gray-400 mt-1.5">
+                            <div class="flex items-center gap-1.5 w-full">
+                                <span class="w-[18px] text-gray-400 shrink-0">ID:</span>
+                                <span class="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline truncate" onclick="copyText('${id}', this)">${id}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 w-full">
+                                <span class="w-[18px] text-gray-400 shrink-0">PW:</span>
+                                <span class="text-blue-600 dark:text-blue-400 font-medium cursor-pointer hover:underline truncate" onclick="copyText('${pass}', this)">${pass}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Thời gian & Nút Visit Link -->
+                    <div class="shrink-0 flex flex-col items-end gap-2 pr-1 h-full justify-between py-0.5">
+                        <span class="text-[9px] font-mono text-gray-400 dark:text-gray-500 whitespace-nowrap">${timeStr}</span>
+                        <a href="${item.url}" target="_blank" class="w-[26px] h-[26px] flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-300 hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400 transition-colors" title="Truy cập liên kết">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                        </a>
+                    </div>
+                </article>
+            `;
+        }
+
+        /* ================= UTILS & ACTIONS ================= */
+        function formatTime(dateString) {
+            if (!dateString) return "--:--";
+            const d = new Date(dateString);
+            return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}`;
+        }
+
+        function copyText(text, element) {
+            navigator.clipboard.writeText(text).then(() => {
+                let originalText = element.innerText;
+                element.innerText = "Đã chép!";
+                element.classList.add("text-green-600", "dark:text-green-400");
+                setTimeout(() => {
+                    element.innerText = originalText;
+                    element.classList.remove("text-green-600", "dark:text-green-400");
+                }, 800);
+            });
         }
 
         function updateStatusUI(status) {
             const statusText = document.getElementById('status-text');
             const dot = document.getElementById('status-dot');
-            
             statusText.innerText = status;
-            dot.className = "w-1.5 h-1.5 rounded-full transition-colors duration-500";
-
-            if(status === "IDLE") {
-                statusText.className = "text-[10px] uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400 font-bold font-mono";
-                dot.classList.add("bg-emerald-500");
-            } else if(status.includes("LỖI") || status === "Lỗi kết nối" || status === "Mất kết nối API") {
-                statusText.className = "text-[10px] uppercase tracking-[0.2em] text-rose-500 font-bold font-mono";
-                dot.classList.add("bg-rose-500");
+            
+            if(status === "SẴN SÀNG" || status === "IDLE") {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-green-500";
+            } else if(status.includes("LỖI") || status.includes("mất kết nối")) {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-red-500";
             } else if(status.includes("ĐÃ DỪNG")) {
-                statusText.className = "text-[10px] uppercase tracking-[0.2em] text-stone-400 dark:text-stone-600 font-bold font-mono";
-                dot.classList.add("bg-stone-300", "dark:bg-stone-700");
+                dot.className = "w-1.5 h-1.5 rounded-full bg-gray-400";
             } else {
-                statusText.className = "text-[10px] uppercase tracking-[0.2em] text-amber-500 font-bold font-mono animate-pulse";
-                dot.classList.add("bg-amber-400", "animate-ping");
+                dot.className = "w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping";
             }
         }
 
         async function checkStatus() {
             try {
-                let response = await fetch(`${API_URL}?action=get_progress&token=${TOKEN}`);
-                let result = await response.json();
-                if (result.success) {
-                    updateStatusUI(result.current_status);
-                }
+                let res = await fetch(`${API_URL}?action=get_progress&token=${TOKEN}`);
+                let result = await res.json();
+                if (result.success) updateStatusUI(result.current_status);
             } catch (e) {
-                updateStatusUI("Mất kết nối API");
+                updateStatusUI("MẤT KẾT NỐI");
             }
         }
 
         async function triggerAction(action) {
-            updateStatusUI("PROCESSING...");
-            
+            updateStatusUI("ĐANG XỬ LÝ...");
             try {
                 let response = await fetch(`${API_URL}?action=${action}&token=${TOKEN}`);
                 let result = await response.json();
                 
                 checkStatus();
-                
                 if(action === "scrape_now") {
                     let interval = setInterval(async () => {
                         await checkStatus();
                         let currentText = document.getElementById('status-text').innerText;
-                        if(currentText === "DONE" || currentText === "IDLE" || currentText.includes("LỖI")) {
+                        if(currentText === "DONE" || currentText === "IDLE" || currentText === "SẴN SÀNG" || currentText.includes("LỖI")) {
                             clearInterval(interval);
                             loadData(); 
                         }
@@ -262,12 +339,9 @@
                     alert(result.message || result.error);
                 }
             } catch (e) {
-                alert("Lỗi kết nối khi gửi lệnh.");
-                updateStatusUI("Lỗi kết nối");
+                updateStatusUI("MẤT KẾT NỐI");
             }
         }
-
-        window.onload = loadData;
     </script>
 </body>
 </html>

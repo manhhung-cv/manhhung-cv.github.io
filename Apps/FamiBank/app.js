@@ -1907,8 +1907,8 @@ const setupCloudinaryWidget = (buttonId, inputId) => {
     
     // Yêu cầu: Bạn cần thay đổi 'cloudName' và 'uploadPreset' bằng thông tin thật từ Cloudinary của bạn.
     const uploadWidget = cloudinary.createUploadWidget({
-        cloudName: 'demo', // <<-- THAY ĐỔI TÊN CLOUD TẠI ĐÂY
-        uploadPreset: 'unsigned_preset', // <<-- THAY ĐỔI PRESET TẠI ĐÂY (Nên tạo dạng Unsigned)
+        cloudName: 'dt8zhfng8', // <<-- THAY ĐỔI TÊN CLOUD TẠI ĐÂY
+        uploadPreset: 'IMGGames', // <<-- THAY ĐỔI PRESET TẠI ĐÂY (Nên tạo dạng Unsigned)
         sources: ['local', 'url', 'camera'],
         multiple: false,
         clientAllowedFormats: ['image'],

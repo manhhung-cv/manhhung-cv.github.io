@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra Cứu Điểm LILAMA 2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Custom scrollbar cho bảng điểm */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* Styling cho bảng điểm được render tự động */
+        .rendered-table table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .rendered-table th, .rendered-table td {
+            border: 1px solid #e2e8f0;
+            padding: 0.75rem 0.5rem;
+            text-align: center;
+            vertical-align: middle;
+            font-size: 0.875rem;
+        }
+        .rendered-table .Learning_Header {
+            background-color: #eff6ff; /* blue-50 */
+            font-weight: 600;
+            color: #1e3a8a; /* blue-900 */
+        }
+        .rendered-table .Learning_GroupRow {
+            background-color: #f8fafc; /* slate-50 */
+            font-weight: 600;
+            text-align: left !important;
+            padding-left: 1rem;
+            color: #334155; /* slate-700 */
+        }
+        
+        /* Chế độ thu gọn (Compact View) */
+        .table-compact .rendered-table th, 
+        .table-compact .rendered-table td {
+            padding: 0.25rem 0.4rem;
+            font-size: 0.75rem;
+        }
+        .table-compact .student-info-table th,
+        .table-compact .student-info-table td {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        /* Thông tin sinh viên */
+        .student-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+        }
+        .student-info-table td {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 text-gray-800">
+
+    <div class="max-w-6xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="text-center space-y-2">
+            <h1 class="text-3xl font-bold text-blue-700 uppercase drop-shadow-sm"><i class="fa-solid fa-graduation-cap mr-2"></i>Cổng Tra Cứu LILAMA 2</h1>
+            <p class="text-gray-500 text-sm">Công cụ hỗ trợ lấy dữ liệu bảng điểm vượt tường lửa (CORS)</p>
+        </div>
+
+        <!-- Form tìm kiếm -->
+        <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-grow relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fa-solid fa-user-magnifying-glass text-gray-400"></i>
+                    </div>
+                    <input type="text" id="studentId" 
+                        class="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-shadow text-lg" 
+                        placeholder="Nhập Mã sinh viên hoặc Họ tên (VD: Đoàn Lê Tiến)">
+                </div>
+                <button id="btnSearch" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors shadow-sm flex items-center justify-center min-w-[140px]">
+                    <i class="fa-solid fa-magnifying-glass mr-2"></i> Tra cứu
+                </button>
+            </div>
+
+            <!-- Nút mở Cài đặt nâng cao -->
+            <div class="mt-4 text-right">
+                <button id="btnToggleSettings" class="text-sm text-gray-500 hover:text-blue-600 transition-colors">
+                    <i class="fa-solid fa-gear mr-1"></i> Cài đặt nâng cao
+                </button>
+            </div>
+
+            <!-- Khung Cài đặt nâng cao (Mặc định ẩn) -->
+            <div id="advancedSettings" class="hidden mt-4 bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-medium text-gray-700 mb-1">CORS Proxy URL</label>
+                        <input type="text" id="proxyUrl" value="https://cors-proxy.year-tucking-0v.workers.dev/" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-gray-700 mb-1">Tham số bổ sung</label>
+                        <input type="text" id="extraParams" value="pt=2" class="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                
+                <hr class="border-gray-200">
+                
+                <!-- Khu vực dành cho Developer -->
+                <div>
+                    <h3 class="font-semibold text-gray-700 mb-2"><i class="fa-solid fa-code mr-1"></i> Công cụ cho Developer</h3>
+                    <div class="flex gap-2 mb-2">
+                        <button id="btnDevJson" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-3 py-1.5 rounded transition-colors border border-indigo-200 text-xs font-semibold">
+                            <i class="fa-solid fa-brackets-curly mr-1"></i> Xem JSON
+                        </button>
+                        <button id="btnDevHtml" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded transition-colors border border-gray-300 text-xs font-semibold">
+                            <i class="fa-brands fa-html5 mr-1"></i> Xem Raw HTML
+                        </button>
+                    </div>
+                    <div id="devDataView" class="hidden mt-2">
+                        <div class="relative bg-gray-900 rounded-lg overflow-hidden shadow-inner">
+                            <div class="absolute top-2 right-2 space-x-2">
+                                <button id="btnCopyDev" class="text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 p-1.5 rounded transition-colors text-xs" title="Copy">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                                <button id="btnCloseDev" class="text-gray-400 hover:text-red-400 bg-gray-800 hover:bg-gray-700 p-1.5 rounded transition-colors text-xs" title="Đóng">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                            <pre id="devCodeBlock" class="p-4 overflow-x-auto text-xs font-mono text-green-400 max-h-64"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Khung trạng thái (Loading, Lỗi, Thành công) -->
+        <div id="statusContainer" class="hidden rounded-lg p-4 flex items-start shadow-sm border">
+            <div id="statusIcon" class="mr-3 mt-0.5"></div>
+            <div id="statusMessage" class="flex-grow text-sm font-medium"></div>
+        </div>
+
+        <!-- Khung Lựa chọn Sinh viên (Khi có nhiều người cùng tên) -->
+        <div id="studentSelectionContainer" class="hidden bg-yellow-50 border border-yellow-200 rounded-xl p-6 shadow-md">
+            <h3 class="text-lg font-bold text-yellow-800 mb-2"><i class="fa-solid fa-users mr-2"></i>Tìm thấy nhiều sinh viên</h3>
+            <p class="text-sm text-yellow-700 mb-4">Vui lòng chọn đúng sinh viên dựa vào ngày sinh và lớp bên dưới:</p>
+            
+            <div class="flex flex-col sm:flex-row gap-3 items-center">
+                <select id="studentSelectDropdown" class="w-full sm:w-2/3 p-3 border border-yellow-300 rounded-lg focus:ring-yellow-500 focus:border-yellow-500 bg-white font-medium text-gray-700 shadow-sm"></select>
+                <button id="btnConfirmStudent" class="w-full sm:w-1/3 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-sm">
+                    Xem bảng điểm <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Khung Hiển thị Dữ liệu -->
+        <div id="resultContainer" class="hidden space-y-6">
+            
+            <!-- Toolbar -->
+            <div class="bg-white p-3 rounded-lg shadow-sm border border-gray-200 flex flex-wrap justify-between items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-700">Chế độ xem:</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggleCompact" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <span class="ml-2 text-sm font-medium text-gray-600">Thu gọn</span>
+                    </label>
+                </div>
+                
+                <button id="btnDownloadExcel" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded transition-colors shadow-sm flex items-center">
+                    <i class="fa-solid fa-file-excel mr-2"></i> Tải bảng điểm (.xls)
+                </button>
+            </div>
+
+            <!-- Bảng Thông tin cá nhân -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                <div class="bg-blue-600 text-white px-4 py-2 font-semibold">
+                    <i class="fa-regular fa-address-card mr-2"></i>Thông tin sinh viên
+                </div>
+                <div class="overflow-x-auto p-4" id="studentInfoContainer">
+                    <!-- Sẽ chèn bằng JS -->
+                </div>
+            </div>
+
+            <!-- Khung chứa Bảng điểm chính -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden border border-gray-200">
+                <div class="bg-slate-700 text-white px-4 py-2 font-semibold flex justify-between items-center">
+                    <span><i class="fa-solid fa-table mr-2"></i>Kết quả học tập</span>
+                </div>
+                <div class="overflow-x-auto p-4 table-container rendered-table" id="gradesTableContainer">
+                    <!-- Sẽ chèn bằng JS -->
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+   <script src="./script.js"></script>
+</body>
+</html>
