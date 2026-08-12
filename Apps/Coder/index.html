@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UwU Code Previewer & DevTools</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- JSZip CDN giải nén .uwu / .zip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Tối ưu scrollbar cho mượt mà */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Ẩn Header & Tabs khi ở chế độ Fullscreen giả lập */
+        body.in-fullscreen header,
+        body.in-fullscreen #project-tabs-bar {
+            display: none !important;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased overflow-hidden select-none">
+
+    <!-- Header / Thanh điều hướng chính -->
+    <header class="h-14 border-b border-slate-800 bg-slate-900/90 backdrop-blur px-3 sm:px-4 flex items-center justify-between shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-black text-white shadow-lg shadow-indigo-500/30">
+                    UwU
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm leading-none text-slate-100">UwU Coder</h1>
+                    <span id="project-count-display" class="text-[10px] text-indigo-400 font-mono">0 dự án</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Các nút thao tác chính -->
+        <div class="flex items-center gap-1.5 sm:gap-2">
+            <!-- Nút Bật/Tắt DevTools Panel -->
+            <button id="btn-toggle-devtools" onclick="toggleDevTools()" class="hidden text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-1.5">
+                <i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i>
+                <span class="hidden md:inline">DevTools</span>
+                <span id="console-badge" class="bg-red-500/20 text-red-400 text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden">0</span>
+            </button>
+
+            <!-- Nút Tải lại Frame -->
+            <button id="btn-reload" onclick="reloadPreview()" class="hidden text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-1.5" title="Tải lại trang web">
+                <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Nút Chạy Toàn Màn Hình -->
+            <button id="btn-fullscreen" onclick="toggleFullscreenMode()" class="hidden text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+                <i data-lucide="maximize" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">Toàn màn hình</span>
+            </button>
+
+            <!-- Nút Mở thêm dự án mới -->
+            <button onclick="showUploadZone()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all flex items-center gap-1.5" title="Thêm dự án mới">
+                <i data-lucide="plus" class="w-4 h-4 text-indigo-400"></i>
+                <span class="hidden sm:inline">Mở dự án</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Thanh chuyển đổi Tabs Dự Án (Project Tabs Bar) -->
+    <nav id="project-tabs-bar" class="h-10 bg-slate-950 border-b border-slate-800/80 px-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0 z-10">
+        <!-- Các Tab dự án sẽ được Render tự động bằng JS ở đây -->
+    </nav>
+
+    <!-- Khu vực làm việc chính (Workspace) -->
+    <main class="flex-1 relative overflow-hidden flex flex-col bg-slate-950">
+        
+        <!-- Màn hình Tải Up File / Mở dự án ban đầu -->
+        <div id="upload-zone" class="absolute inset-0 flex flex-col items-center justify-center p-4 z-30 bg-slate-950/95 backdrop-blur-sm overflow-y-auto">
+            <div id="drop-area" class="w-full max-w-xl border-2 border-dashed border-slate-800 hover:border-indigo-500/60 rounded-2xl p-6 sm:p-10 text-center bg-slate-900/50 transition-all duration-300 flex flex-col items-center justify-center gap-4 my-auto">
+                <div class="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20 shadow-inner">
+                    <i data-lucide="file-up" class="w-8 h-8"></i>
+                </div>
+                
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-200">Kéo thả File hoặc Thư mục vào đây</h2>
+                    <p class="text-xs sm:text-sm text-slate-400 mt-1 max-w-md">
+                        Hỗ trợ file <code class="text-indigo-400 bg-slate-800 px-1.5 py-0.5 rounded font-mono">.html</code> đơn lẻ hoặc trọn bộ Thư mục web.
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap justify-center gap-3 mt-2">
+                    <!-- Nút Chọn File -->
+                    <label class="cursor-pointer bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition-all shadow-md flex items-center gap-2">
+                        <i data-lucide="file" class="w-4 h-4"></i>
+                        Chọn File (.html)
+                        <input type="file" id="file-input" accept=".html,.css,.js,.uwu,.zip" class="hidden" onchange="handleFiles(this.files)">
+                    </label>
+
+                    <!-- Nút Chọn Thư Mục -->
+                    <label class="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-xl transition-all border border-slate-700 flex items-center gap-2">
+                        <i data-lucide="folder" class="w-4 h-4 text-amber-400"></i>
+                        Chọn Thư mục Web
+                        <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden" onchange="handleFiles(this.files)">
+                    </label>
+                </div>
+
+                <!-- Danh sách các dự án đã có trong bộ nhớ -->
+                <div id="existing-projects-list" class="hidden w-full mt-4 pt-4 border-t border-slate-800/80 text-left">
+                    <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">Các dự án trong bộ nhớ:</span>
+                    <div id="project-cards-container" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+            
+            <p id="status-msg" class="mt-4 text-xs text-slate-400 h-4 font-mono text-center"></p>
+        </div>
+
+        <!-- Khung xem trước trang web (IFrame Preview Area) -->
+        <div id="preview-container" class="w-full h-full bg-white relative hidden flex-1">
+            <iframe id="preview-iframe" class="w-full h-full border-none" sandbox="allow-scripts allow-modals allow-forms allow-same-origin allow-popups"></iframe>
+            
+            <!-- Thanh Điền khiển Nổi Dạng Capsule (Floating Dock Bar) -->
+            <div id="floating-dock" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] hidden transition-opacity duration-300 opacity-100 hover:!opacity-100">
+                <div class="flex items-center gap-1.5 p-1.5 px-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-full shadow-2xl text-slate-200 text-xs">
+                    <!-- Tay cầm kéo thả -->
+                    <div id="dock-drag-handle" class="cursor-grab active:cursor-grabbing p-1 text-slate-500 hover:text-slate-300 flex items-center touch-none">
+                        <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <div class="w-px h-4 bg-slate-700/80"></div>
+                    
+                    <!-- Nút Mở DevTools -->
+                    <button onclick="toggleDevTools()" class="p-1.5 rounded-full hover:bg-slate-800 text-slate-300 hover:text-emerald-400 transition-colors flex items-center gap-1" title="DevTools">
+                        <i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i>
+                        <span class="text-[11px] hidden sm:inline pr-1">DevTools</span>
+                    </button>
+                    
+                    <!-- Nút Reload Trang -->
+                    <button onclick="reloadPreview()" class="p-1.5 rounded-full hover:bg-slate-800 text-slate-300 hover:text-indigo-400 transition-colors flex items-center gap-1" title="Tải lại trang">
+                        <i data-lucide="rotate-cw" class="w-4 h-4 text-indigo-400"></i>
+                        <span class="text-[11px] hidden sm:inline pr-1">Tải lại</span>
+                    </button>
+                    
+                    <div class="w-px h-4 bg-slate-700/80"></div>
+                    
+                    <!-- Nút Thoát Toàn Màn Hình -->
+                    <button onclick="exitFullscreenMode()" class="p-1.5 rounded-full hover:bg-red-950/60 text-slate-400 hover:text-red-400 transition-colors flex items-center gap-1" title="Thoát toàn màn hình">
+                        <i data-lucide="minimize-2" class="w-4 h-4 text-red-400"></i>
+                        <span class="text-[11px] font-semibold text-red-400 hidden sm:inline pr-1">Thoát</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bảng điều khiển DevTools (DevTools Panel - Bottom Drawer) -->
+        <div id="devtools-panel" class="h-64 border-t border-slate-800 bg-slate-900 flex flex-col hidden z-20 shrink-0">
+            <!-- Thanh Tab Header DevTools -->
+            <div class="h-9 border-b border-slate-800 bg-slate-950 px-3 flex items-center justify-between shrink-0 select-none">
+                <div class="flex items-center gap-1 overflow-x-auto">
+                    <button onclick="switchDevTab('console')" id="tab-btn-console" class="px-3 py-1 text-xs font-medium rounded-md text-indigo-400 bg-slate-800 flex items-center gap-1.5">
+                        <i data-lucide="terminal" class="w-3.5 h-3.5"></i> Console
+                    </button>
+                    <button onclick="switchDevTab('storage')" id="tab-btn-storage" class="px-3 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 flex items-center gap-1.5">
+                        <i data-lucide="database" class="w-3.5 h-3.5"></i> LocalStorage
+                    </button>
+                    <button onclick="switchDevTab('adblock')" id="tab-btn-adblock" class="px-3 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 flex items-center gap-1.5">
+                        <i data-lucide="shield" class="w-3.5 h-3.5 text-emerald-400"></i> Chặn Quảng Cáo
+                    </button>
+                    <button onclick="switchDevTab('js-inject')" id="tab-btn-js-inject" class="px-3 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 flex items-center gap-1.5">
+                        <i data-lucide="code" class="w-3.5 h-3.5 text-amber-400"></i> Chèn / Sửa JS
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleDevTools()" class="text-slate-400 hover:text-slate-200 p-1">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Nội dung từng Tab trong DevTools -->
+            <div class="flex-1 overflow-hidden relative font-mono text-xs">
+                
+                <!-- Tab 1: Console LOG -->
+                <div id="tab-content-console" class="h-full flex flex-col p-2 bg-slate-950">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800 text-[11px]">
+                        <span class="text-slate-400">Nhật ký hệ thống (Console Logs):</span>
+                        <button onclick="clearConsole()" class="text-slate-400 hover:text-slate-200 flex items-center gap-1">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Xóa log
+                        </button>
+                    </div>
+                    <!-- Khu vực in Log -->
+                    <div id="console-logs" class="flex-1 overflow-y-auto space-y-1 font-mono text-[11px] select-text"></div>
+                    <!-- Khung chạy câu lệnh JS nhanh -->
+                    <div class="pt-2 border-t border-slate-800 flex items-center gap-2">
+                        <span class="text-indigo-400 font-bold">&gt;</span>
+                        <input type="text" id="console-input" placeholder="Nhập câu lệnh JS và nhấn Enter để thực thi..." class="flex-1 bg-slate-900 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono text-xs" onkeypress="handleConsoleCommand(event)">
+                    </div>
+                </div>
+
+                <!-- Tab 2: LocalStorage Inspection -->
+                <div id="tab-content-storage" class="h-full flex flex-col p-3 bg-slate-950 hidden overflow-y-auto">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                        <span class="text-slate-400 font-semibold">Dữ liệu LocalStorage của trang Web:</span>
+                        <div class="flex items-center gap-2">
+                            <button onclick="refreshLocalStorage()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-1 rounded text-[11px] flex items-center gap-1">
+                                <i data-lucide="refresh-cw" class="w-3 h-3"></i> Tải lại
+                            </button>
+                            <button onclick="clearLocalStorageInFrame()" class="bg-red-950/50 hover:bg-red-900/60 text-red-300 px-2 py-1 rounded text-[11px] flex items-center gap-1">
+                                <i data-lucide="trash" class="w-3 h-3"></i> Xóa tất cả
+                            </button>
+                        </div>
+                    </div>
+                    <div id="storage-list" class="space-y-2">
+                        <!-- Danh sách Key-Value sẽ render tại đây -->
+                    </div>
+                </div>
+
+                <!-- Tab 3: Chặn Quảng Cáo & Mã Độc -->
+                <div id="tab-content-adblock" class="h-full p-4 bg-slate-950 hidden overflow-y-auto">
+                    <div class="max-w-xl space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-slate-900 rounded-xl border border-slate-800">
+                            <div>
+                                <h3 class="font-bold text-slate-200 text-xs">Bật trình chặn Quảng cáo & Tracker</h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">Tự động chặn các domain quảng cáo phổ biến (Google Ads, Popads, Analytics...)</p>
+                            </div>
+                            <input type="checkbox" id="toggle-adblock" checked onchange="toggleAdBlockSetting()" class="w-4 h-4 accent-indigo-600 rounded cursor-pointer">
+                        </div>
+                        <div class="p-3 bg-slate-900/50 rounded-xl border border-slate-800 text-[11px] text-slate-400">
+                            <p class="font-semibold text-slate-300 mb-1">Các từ khóa domain bị chặn mặc định:</p>
+                            <code class="text-emerald-400 font-mono block break-all">googlesyndication, doubleclick, adservice, popads, outbrain, taboola, analytics, facebook.net/sdk</code>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 4: Thay đổi / Chèn Javascript bổ sung -->
+                <div id="tab-content-js-inject" class="h-full flex flex-col p-3 bg-slate-950 hidden">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                        <span class="text-slate-400 font-semibold">Mã JavaScript chèn bổ sung vào dự án:</span>
+                        <button onclick="applyCustomJS()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 shadow">
+                            <i data-lucide="play" class="w-3.5 h-3.5"></i> Áp dụng & Thực thi
+                        </button>
+                    </div>
+                    <textarea id="custom-js-input" placeholder="// Nhập code JS tự chọn (ví dụ: console.log('Hello World!'); hoặc override hàm)..." class="flex-1 bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-slate-200 font-mono text-xs focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Script Xử lý Logic SPA & Quản lý Đa Dự Án -->
+    <script>
+        // Cấu hình & Biến toàn cục
+        let projectsList = [];      // Danh sách mảng chứa các đối tượng dự án
+        let activeProjectId = null; // ID của dự án đang mở
+        let isAdBlockEnabled = true;
+        let customInjectedJS = "";
+        let idleTimer = null;
+
+        // DOM Elements
+        const uploadZone = document.getElementById('upload-zone');
+        const dropArea = document.getElementById('drop-area');
+        const previewContainer = document.getElementById('preview-container');
+        const previewIframe = document.getElementById('preview-iframe');
+        const devtoolsPanel = document.getElementById('devtools-panel');
+        const statusMsg = document.getElementById('status-msg');
+        const consoleLogs = document.getElementById('console-logs');
+        const projectTabsBar = document.getElementById('project-tabs-bar');
+        const existingProjectsList = document.getElementById('existing-projects-list');
+        const projectCardsContainer = document.getElementById('project-cards-container');
+
+        // Floating Dock Elements
+        const floatingDock = document.getElementById('floating-dock');
+        const dockDragHandle = document.getElementById('dock-drag-handle');
+
+        // Buttons
+        const btnToggleDevtools = document.getElementById('btn-toggle-devtools');
+        const btnReload = document.getElementById('btn-reload');
+        const btnFullscreen = document.getElementById('btn-fullscreen');
+
+        // Khởi chạy ứng dụng
+        window.addEventListener('DOMContentLoaded', async () => {
+            lucide.createIcons();
+            initDragAndDrop();
+            setupConsoleListener();
+            initDockDragging();
+            initFullscreenListeners();
+            await loadAllProjectsFromStorage();
+        });
+
+        // -------------------------------------------------------------
+        // 1. QUẢN LÝ LƯU TRỮ ĐA DỰ ÁN VỚI INDEXEDDB
+        // -------------------------------------------------------------
+        const DB_NAME = 'UwUStudioMultiDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'projects';
+
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Lưu hoặc Cập nhật dự án vào IndexedDB
+        async function saveProjectToDB(projectObj) {
+            try {
+                // Đóng gói mảng File/Blob đồng bộ
+                const serializedFiles = projectObj.files.map(f => ({
+                    name: f.name,
+                    relativePath: f.webkitRelativePath || f.name,
+                    type: f.type || getMimeType(f.name),
+                    blob: f
+                }));
+
+                const record = {
+                    id: projectObj.id,
+                    name: projectObj.name,
+                    timestamp: projectObj.timestamp,
+                    files: serializedFiles
+                };
+
+                const db = await openDB();
+                const transaction = db.transaction(STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+
+                await new Promise((resolve, reject) => {
+                    const req = store.put(record);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (err) {
+                console.error("Lỗi khi lưu dự án vào IndexedDB:", err);
+            }
+        }
+
+        // Đọc toàn bộ các dự án đã lưu
+        async function loadAllProjectsFromStorage() {
+            try {
+                const db = await openDB();
+                const transaction = db.transaction(STORE_NAME, 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                
+                const records = await new Promise((resolve, reject) => {
+                    const req = store.getAll();
+                    req.onsuccess = () => resolve(req.result || []);
+                    req.onerror = () => reject(req.error);
+                });
+
+                projectsList = records.map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    timestamp: r.timestamp,
+                    files: r.files.map(f => {
+                        const blob = f.blob ? f.blob : new Blob([f.data], { type: f.type });
+                        const file = new File([blob], f.name, { type: f.type });
+                        Object.defineProperty(file, 'webkitRelativePath', { 
+                            value: f.relativePath,
+                            writable: true,
+                            configurable: true 
+                        });
+                        return file;
+                    })
+                }));
+
+                updateHeaderProjectCount();
+                renderProjectTabs();
+
+                // Khôi phục dự án gần nhất nếu có
+                if (projectsList.length > 0) {
+                    const lastActiveId = localStorage.getItem('uwu_last_active_project');
+                    const targetProject = projectsList.find(p => p.id === lastActiveId) || projectsList[0];
+                    switchProjectTab(targetProject.id);
+
+                    // Khôi phục trạng thái toàn màn hình nếu trước đó đã bật
+                    if (localStorage.getItem('uwu_is_fullscreen') === 'true') {
+                        enterFullscreen();
+                    }
+                } else {
+                    showUploadZone();
+                }
+            } catch (err) {
+                console.error("Lỗi kiểm tra IndexedDB:", err);
+                showUploadZone();
+            }
+        }
+
+        // Xóa 1 dự án khỏi DB
+        async function deleteProjectFromDB(projectId) {
+            try {
+                const db = await openDB();
+                const transaction = db.transaction(STORE_NAME, 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                await new Promise((resolve, reject) => {
+                    const req = store.delete(projectId);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (e) {
+                console.error("Lỗi xóa dự án:", e);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 2. GIAO DIỆN TABS VÀ ĐIỀU HƯỚNG DỰ ÁN
+        // -------------------------------------------------------------
+        function updateHeaderProjectCount() {
+            document.getElementById('project-count-display').innerText = `${projectsList.length} dự án`;
+        }
+
+        function renderProjectTabs() {
+            projectTabsBar.innerHTML = '';
+
+            projectsList.forEach(proj => {
+                const isActive = proj.id === activeProjectId;
+                const tab = document.createElement('div');
+                tab.className = `group flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-t-lg border-t border-x cursor-pointer transition-all shrink-0 max-w-[180px] ${
+                    isActive 
+                        ? 'bg-slate-900 border-slate-700/80 text-indigo-400 font-semibold shadow-sm' 
+                        : 'bg-slate-950/60 border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                }`;
+
+                tab.onclick = () => switchProjectTab(proj.id);
+
+                tab.innerHTML = `
+                    <i data-lucide="globe" class="w-3.5 h-3.5 shrink-0 ${isActive ? 'text-indigo-400' : 'text-slate-500'}"></i>
+                    <span class="truncate flex-1">${escapeHtml(proj.name)}</span>
+                    <button onclick="closeProjectTab('${proj.id}', event)" class="p-0.5 rounded-md hover:bg-slate-800 text-slate-500 hover:text-red-400 transition-colors">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                `;
+                projectTabsBar.appendChild(tab);
+            });
+
+            const addTabBtn = document.createElement('button');
+            addTabBtn.onclick = showUploadZone;
+            addTabBtn.className = "flex items-center gap-1 px-2.5 py-1 text-xs text-slate-400 hover:text-slate-100 hover:bg-slate-900 rounded-md transition-all shrink-0 ml-1 border border-dashed border-slate-800 hover:border-slate-700";
+            addTabBtn.innerHTML = `<i data-lucide="plus" class="w-3.5 h-3.5 text-indigo-400"></i><span>Mới</span>`;
+            projectTabsBar.appendChild(addTabBtn);
+
+            lucide.createIcons();
+            renderExistingProjectsCards();
+        }
+
+        function renderExistingProjectsCards() {
+            if (projectsList.length === 0) {
+                existingProjectsList.classList.add('hidden');
+                return;
+            }
+
+            existingProjectsList.classList.remove('hidden');
+            projectCardsContainer.innerHTML = '';
+
+            projectsList.forEach(proj => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-800/80 hover:bg-slate-800 p-2.5 rounded-xl border border-slate-700/80 flex items-center justify-between group transition-all";
+                card.innerHTML = `
+                    <div class="flex items-center gap-2.5 overflow-hidden cursor-pointer flex-1" onclick="switchProjectTab('${proj.id}')">
+                        <i data-lucide="hard-drive" class="w-4 h-4 text-indigo-400 shrink-0"></i>
+                        <div class="truncate">
+                            <p class="text-xs font-bold text-slate-200 truncate">${escapeHtml(proj.name)}</p>
+                            <p class="text-[10px] text-slate-400">${proj.timestamp}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="switchProjectTab('${proj.id}')" class="text-xs text-indigo-400 font-medium px-2 py-1 hover:bg-slate-700 rounded-lg transition-colors">Mở</button>
+                        <button onclick="closeProjectTab('${proj.id}', event)" class="p-1 text-slate-500 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                `;
+                projectCardsContainer.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function switchProjectTab(projectId) {
+            const project = projectsList.find(p => p.id === projectId);
+            if (!project) return;
+
+            activeProjectId = projectId;
+            localStorage.setItem('uwu_last_active_project', projectId);
+            
+            renderProjectTabs();
+            renderProjectFiles(project.files, project.name);
+        }
+
+        async function closeProjectTab(projectId, event) {
+            if (event) event.stopPropagation();
+
+            if (confirm("Bạn có chắc chắn muốn xóa dự án này khỏi bộ nhớ?")) {
+                await deleteProjectFromDB(projectId);
+                projectsList = projectsList.filter(p => p.id !== projectId);
+
+                updateHeaderProjectCount();
+
+                if (activeProjectId === projectId) {
+                    if (projectsList.length > 0) {
+                        switchProjectTab(projectsList[0].id);
+                    } else {
+                        activeProjectId = null;
+                        localStorage.removeItem('uwu_last_active_project');
+                        exitFullscreenMode();
+                        renderProjectTabs();
+                        showUploadZone();
+                    }
+                } else {
+                    renderProjectTabs();
+                }
+            }
+        }
+
+        function showUploadZone() {
+            uploadZone.classList.remove('hidden');
+            previewContainer.classList.add('hidden');
+            
+            btnToggleDevtools.classList.add('hidden');
+            btnReload.classList.add('hidden');
+            btnFullscreen.classList.add('hidden');
+
+            setStatus('');
+            renderExistingProjectsCards();
+        }
+
+        // -------------------------------------------------------------
+        // 3. XỬ LÝ TẢI FILE DỰ ÁN MỚI
+        // -------------------------------------------------------------
+        function initDragAndDrop() {
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+                dropArea.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+            });
+            ['dragenter', 'dragover'].forEach(evt => dropArea.classList.add('border-indigo-500', 'bg-indigo-500/10'));
+            ['dragleave', 'drop'].forEach(evt => dropArea.classList.remove('border-indigo-500', 'bg-indigo-500/10'));
+
+            dropArea.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+        }
+
+        async function handleFiles(files) {
+            if (!files || files.length === 0) return;
+            setStatus("Đang đọc dữ liệu file...");
+
+            const fileList = Array.from(files);
+            let projName = "Dự án mới";
+
+            if (fileList.length === 1 && (fileList[0].name.endsWith('.uwu') || fileList[0].name.endsWith('.zip'))) {
+                projName = fileList[0].name;
+                await processZipFile(fileList[0]);
+                return;
+            }
+
+            projName = fileList[0].webkitRelativePath ? fileList[0].webkitRelativePath.split('/')[0] : fileList[0].name;
+            await addNewProject(projName, fileList);
+        }
+
+        async function processZipFile(zipFile) {
+            try {
+                const zip = new JSZip();
+                const unzipped = await zip.loadAsync(zipFile);
+                const extractedFiles = [];
+
+                for (const relativePath of Object.keys(unzipped.files)) {
+                    const entry = unzipped.files[relativePath];
+                    if (!entry.dir) {
+                        const blob = await entry.async('blob');
+                        const file = new File([blob], relativePath.split('/').pop(), { type: getMimeType(relativePath) });
+                        Object.defineProperty(file, 'webkitRelativePath', { 
+                            value: relativePath,
+                            writable: true,
+                            configurable: true 
+                        });
+                        extractedFiles.push(file);
+                    }
+                }
+                await addNewProject(zipFile.name, extractedFiles);
+            } catch (err) {
+                setStatus("Lỗi đọc file .uwu / .zip: " + err.message, true);
+            }
+        }
+
+        async function addNewProject(name, files) {
+            const newProj = {
+                id: 'proj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                name: name,
+                timestamp: new Date().toLocaleString('vi-VN'),
+                files: files
+            };
+
+            projectsList.unshift(newProj);
+            activeProjectId = newProj.id;
+            localStorage.setItem('uwu_last_active_project', newProj.id);
+
+            await saveProjectToDB(newProj);
+            updateHeaderProjectCount();
+            renderProjectTabs();
+            renderProjectFiles(newProj.files, newProj.name);
+        }
+
+        // -------------------------------------------------------------
+        // 4. RENDER VÀ CHẠY DỰ ÁN TRONG IFRAME PREVIEW
+        // -------------------------------------------------------------
+        async function renderProjectFiles(files, projName) {
+            try {
+                const fileMap = new Map();
+                let mainHtmlFile = null;
+
+                files.forEach(file => {
+                    let path = file.webkitRelativePath || file.name;
+                    path = path.replace(/\\/g, '/');
+                    const blobUrl = URL.createObjectURL(file);
+                    
+                    fileMap.set(path, blobUrl);
+                    fileMap.set(file.name, blobUrl);
+
+                    if (file.name.toLowerCase() === 'index.html') {
+                        mainHtmlFile = file;
+                    } else if (!mainHtmlFile && file.name.toLowerCase().endsWith('.html')) {
+                        mainHtmlFile = file;
+                    }
+                });
+
+                if (!mainHtmlFile) {
+                    setStatus("Không tìm thấy file .html nào trong dự án!", true);
+                    showUploadZone();
+                    return;
+                }
+
+                let htmlContent = await mainHtmlFile.text();
+
+                if (isAdBlockEnabled) {
+                    htmlContent = blockAdScripts(htmlContent);
+                }
+
+                fileMap.forEach((blobUrl, path) => {
+                    const regex = new RegExp(`(src|href)=["'](.*?)` + escapeRegExp(path) + `["']`, 'g');
+                    htmlContent = htmlContent.replace(regex, `$1="${blobUrl}"`);
+                });
+
+                // Script hook bắt Console Log, sự kiện tương tác & phím Esc trong iframe
+                const devtoolsHookScript = `
+                <script>
+                (function() {
+                    // Bắt Console Logs
+                    const _log = console.log, _warn = console.warn, _err = console.error, _info = console.info;
+                    function sendLog(type, args) {
+                        try {
+                            const parsedArgs = Array.from(args).map(a => {
+                                if (typeof a === 'object') {
+                                    try { return JSON.stringify(a); } catch(e) { return String(a); }
+                                }
+                                return String(a);
+                            });
+                            window.parent.postMessage({ type: 'UWU_CONSOLE_LOG', logType: type, messages: parsedArgs }, '*');
+                        } catch(e) {}
+                    }
+                    console.log = function(...args) { _log.apply(console, args); sendLog('log', args); };
+                    console.warn = function(...args) { _warn.apply(console, args); sendLog('warn', args); };
+                    console.error = function(...args) { _err.apply(console, args); sendLog('error', args); };
+                    console.info = function(...args) { _info.apply(console, args); sendLog('info', args); };
+                    
+                    window.onerror = function(msg, url, line, col, error) {
+                        sendLog('error', [\`Lỗi: \${msg} (\${line}:\${col})\`]);
+                    };
+
+                    // Bắt sự kiện người dùng tương tác trong iframe để reset timer ẩn dock
+                    ['mousemove', 'touchstart', 'click'].forEach(evt => {
+                        window.addEventListener(evt, () => {
+                            window.parent.postMessage({ type: 'UWU_USER_ACTIVITY' }, '*');
+                        });
+                    });
+
+                    // Lắng nghe phím Esc bấm từ bên trong iframe
+                    window.addEventListener('keydown', (e) => {
+                        window.parent.postMessage({ type: 'UWU_USER_ACTIVITY' }, '*');
+                        if (e.key === 'Escape') {
+                            window.parent.postMessage({ type: 'UWU_EXIT_FULLSCREEN' }, '*');
+                        }
+                    });
+                })();
+                <\/script>
+                `;
+
+                const customJsTag = customInjectedJS ? `<script>${customInjectedJS}<\/script>` : '';
+                const finalHtml = devtoolsHookScript + customJsTag + htmlContent;
+
+                uploadZone.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                
+                btnToggleDevtools.classList.remove('hidden');
+                btnReload.classList.remove('hidden');
+                btnFullscreen.classList.remove('hidden');
+
+                clearConsole();
+
+                // Thu hồi Blob URL cũ nếu có để giải phóng bộ nhớ
+                if (previewIframe.dataset.currentBlobUrl) {
+                    URL.revokeObjectURL(previewIframe.dataset.currentBlobUrl);
+                }
+
+                // Tạo Blob URL mới cho trang HTML và gán vào src để làm sạch phạm vi Window JS hoàn toàn
+                const mainBlob = new Blob([finalHtml], { type: 'text/html' });
+                const mainBlobUrl = URL.createObjectURL(mainBlob);
+                previewIframe.dataset.currentBlobUrl = mainBlobUrl;
+                previewIframe.src = mainBlobUrl;
+
+                previewIframe.onload = () => {
+                    refreshLocalStorage();
+                };
+
+            } catch (err) {
+                setStatus("Lỗi render trang web: " + err.message, true);
+            }
+        }
+
+        function reloadPreview() {
+            if (activeProjectId) {
+                switchProjectTab(activeProjectId);
+            }
+        }
+
+        // -------------------------------------------------------------
+        // 5. TOÀN MÀN HÌNH & THANH CAPSULE NỔI (FLOATING DOCK)
+        // -------------------------------------------------------------
+        function toggleFullscreenMode() {
+            const isFS = document.body.classList.contains('in-fullscreen');
+            if (!isFS) {
+                enterFullscreen();
+            } else {
+                exitFullscreenMode();
+            }
+        }
+
+        function enterFullscreen() {
+            document.body.classList.add('in-fullscreen');
+            floatingDock.classList.remove('hidden');
+            localStorage.setItem('uwu_is_fullscreen', 'true');
+            resetIdleTimer();
+        }
+
+        function exitFullscreenMode() {
+            document.body.classList.remove('in-fullscreen');
+            floatingDock.classList.add('hidden');
+            localStorage.setItem('uwu_is_fullscreen', 'false');
+            clearTimeout(idleTimer);
+        }
+
+        function resetIdleTimer() {
+            if (!document.body.classList.contains('in-fullscreen')) return;
+
+            floatingDock.style.opacity = '1';
+            clearTimeout(idleTimer);
+
+            // Tự động mờ đi sau 3 giây không có tương tác
+            idleTimer = setTimeout(() => {
+                if (document.body.classList.contains('in-fullscreen')) {
+                    floatingDock.style.opacity = '0.25';
+                }
+            }, 3000);
+        }
+
+        function initFullscreenListeners() {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && document.body.classList.contains('in-fullscreen')) {
+                    exitFullscreenMode();
+                }
+            });
+
+            // Lắng nghe di chuyển chuột / thao tác để làm sáng lại Dock
+            ['mousemove', 'touchstart', 'click'].forEach(evt => {
+                window.addEventListener(evt, resetIdleTimer);
+            });
+        }
+
+        // Kéo thả thanh Dock Capsule
+        function initDockDragging() {
+            let isDragging = false;
+            let startX = 0, startY = 0;
+            let initialLeft = 0, initialTop = 0;
+
+            const onStart = (clientX, clientY) => {
+                isDragging = true;
+                const rect = floatingDock.getBoundingClientRect();
+                startX = clientX;
+                startY = clientY;
+                initialLeft = rect.left;
+                initialTop = rect.top;
+            };
+
+            const onMove = (clientX, clientY) => {
+                if (!isDragging) return;
+                resetIdleTimer();
+
+                const deltaX = clientX - startX;
+                const deltaY = clientY - startY;
+
+                let newLeft = initialLeft + deltaX;
+                let newTop = initialTop + deltaY;
+
+                const maxW = window.innerWidth - floatingDock.offsetWidth;
+                const maxH = window.innerHeight - floatingDock.offsetHeight;
+
+                newLeft = Math.max(8, Math.min(newLeft, maxW - 8));
+                newTop = Math.max(8, Math.min(newTop, maxH - 8));
+
+                floatingDock.style.left = `${newLeft}px`;
+                floatingDock.style.top = `${newTop}px`;
+                floatingDock.style.transform = 'none';
+            };
+
+            const onEnd = () => {
+                isDragging = false;
+            };
+
+            dockDragHandle.addEventListener('mousedown', (e) => {
+                onStart(e.clientX, e.clientY);
+                e.preventDefault();
+            });
+            window.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+            window.addEventListener('mouseup', onEnd);
+
+            dockDragHandle.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    onStart(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (isDragging && e.touches.length === 1) {
+                    onMove(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchend', onEnd);
+        }
+
+        // -------------------------------------------------------------
+        // 6. BỘ CÔNG CỤ DEVTOOLS PANEL LOGIC
+        // -------------------------------------------------------------
+        function toggleDevTools() {
+            devtoolsPanel.classList.toggle('hidden');
+            if (!devtoolsPanel.classList.contains('hidden')) {
+                refreshLocalStorage();
+            }
+        }
+
+        function switchDevTab(tabName) {
+            ['console', 'storage', 'adblock', 'js-inject'].forEach(t => {
+                document.getElementById(`tab-content-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-btn-${t}`);
+                btn.className = "px-3 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-slate-200 flex items-center gap-1.5";
+            });
+
+            document.getElementById(`tab-content-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tabName}`);
+            activeBtn.className = "px-3 py-1 text-xs font-medium rounded-md text-indigo-400 bg-slate-800 flex items-center gap-1.5";
+
+            if (tabName === 'storage') refreshLocalStorage();
+        }
+
+        // Console Tab
+        function setupConsoleListener() {
+            window.addEventListener('message', (event) => {
+                if (!event.data) return;
+
+                if (event.data.type === 'UWU_CONSOLE_LOG') {
+                    appendConsoleLog(event.data.logType, event.data.messages);
+                } else if (event.data.type === 'UWU_USER_ACTIVITY') {
+                    resetIdleTimer();
+                } else if (event.data.type === 'UWU_EXIT_FULLSCREEN') {
+                    exitFullscreenMode();
+                }
+            });
+        }
+
+        function appendConsoleLog(type, messages) {
+            const line = document.createElement('div');
+            line.className = "flex items-start gap-2 border-b border-slate-900/50 pb-0.5";
+
+            let colorClass = "text-slate-300";
+            if (type === 'error') colorClass = "text-red-400";
+            else if (type === 'warn') colorClass = "text-amber-400";
+
+            line.innerHTML = `<span class="${colorClass} shrink-0 mt-0.5">&gt;</span><span class="${colorClass} break-all">${escapeHtml(messages.join(' '))}</span>`;
+            consoleLogs.appendChild(line);
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+
+            if (type === 'error') {
+                const badge = document.getElementById('console-badge');
+                badge.classList.remove('hidden');
+                badge.innerText = parseInt(badge.innerText || '0') + 1;
+            }
+        }
+
+        function clearConsole() {
+            consoleLogs.innerHTML = '';
+            const badge = document.getElementById('console-badge');
+            badge.innerText = '0';
+            badge.classList.add('hidden');
+        }
+
+        function handleConsoleCommand(e) {
+            if (e.key === 'Enter') {
+                const input = e.target.value.trim();
+                if (!input) return;
+
+                appendConsoleLog('info', [`> ${input}`]);
+                try {
+                    const result = previewIframe.contentWindow.eval(input);
+                    appendConsoleLog('log', [result]);
+                } catch (err) {
+                    appendConsoleLog('error', [err.message]);
+                }
+                e.target.value = '';
+            }
+        }
+
+        // LocalStorage Tab
+        function refreshLocalStorage() {
+            const listContainer = document.getElementById('storage-list');
+            listContainer.innerHTML = '';
+
+            try {
+                const iframeStorage = previewIframe.contentWindow.localStorage;
+                if (!iframeStorage || iframeStorage.length === 0) {
+                    listContainer.innerHTML = `<p class="text-slate-500 italic text-[11px]">Không có dữ liệu trong LocalStorage.</p>`;
+                    return;
+                }
+
+                for (let i = 0; i < iframeStorage.length; i++) {
+                    const key = iframeStorage.key(i);
+                    const val = iframeStorage.getItem(key);
+
+                    const row = document.createElement('div');
+                    row.className = "flex items-center justify-between bg-slate-900 p-2 rounded border border-slate-800 text-[11px]";
+                    row.innerHTML = `
+                        <div class="flex-1 overflow-hidden pr-2">
+                            <span class="text-indigo-400 font-bold block">${escapeHtml(key)}</span>
+                            <span class="text-slate-300 font-mono break-all block">${escapeHtml(val)}</span>
+                        </div>
+                        <button onclick="removeLocalStorageItem('${escapeHtml(key)}')" class="text-red-400 hover:text-red-300 p-1">
+                            <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                        </button>
+                    `;
+                    listContainer.appendChild(row);
+                }
+                lucide.createIcons();
+            } catch (e) {
+                listContainer.innerHTML = `<p class="text-red-400 text-[11px]">Không thể truy cập LocalStorage (Chặn Security/Sandbox).</p>`;
+            }
+        }
+
+        function removeLocalStorageItem(key) {
+            try {
+                previewIframe.contentWindow.localStorage.removeItem(key);
+                refreshLocalStorage();
+            } catch (e) {}
+        }
+
+        function clearLocalStorageInFrame() {
+            try {
+                previewIframe.contentWindow.localStorage.clear();
+                refreshLocalStorage();
+            } catch (e) {}
+        }
+
+        // AdBlock Tab
+        function toggleAdBlockSetting() {
+            isAdBlockEnabled = document.getElementById('toggle-adblock').checked;
+            reloadPreview();
+        }
+
+        function blockAdScripts(html) {
+            const adPatterns = [
+                /https?:\/\/[^\s"']*googlesyndication[^\s"']*/gi,
+                /https?:\/\/[^\s"']*doubleclick[^\s"']*/gi,
+                /https?:\/\/[^\s"']*adservice[^\s"']*/gi,
+                /https?:\/\/[^\s"']*popads[^\s"']*/gi,
+                /https?:\/\/[^\s"']*outbrain[^\s"']*/gi,
+                /https?:\/\/[^\s"']*taboola[^\s"']*/gi
+            ];
+
+            let cleanedHtml = html;
+            adPatterns.forEach(pattern => {
+                cleanedHtml = cleanedHtml.replace(pattern, 'about:blank#blocked');
+            });
+            return cleanedHtml;
+        }
+
+        // JS Inject Tab
+        function applyCustomJS() {
+            customInjectedJS = document.getElementById('custom-js-input').value;
+            reloadPreview();
+        }
+
+        // -------------------------------------------------------------
+        // 7. TIỆN ÍCH TIỂU TIẾT
+        // -------------------------------------------------------------
+        function setStatus(msg, isError = false) {
+            statusMsg.innerText = msg;
+            statusMsg.className = `mt-4 text-xs h-4 font-mono text-center ${isError ? 'text-red-400 font-bold' : 'text-slate-400'}`;
+        }
+
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        function getMimeType(filename) {
+            if (filename.endsWith('.html')) return 'text/html';
+            if (filename.endsWith('.css')) return 'text/css';
+            if (filename.endsWith('.js')) return 'text/javascript';
+            if (filename.endsWith('.png')) return 'image/png';
+            if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) return 'image/jpeg';
+            if (filename.endsWith('.svg')) return 'image/svg+xml';
+            return 'application/octet-stream';
+        }
+    </script>
+</body>
+</html>
