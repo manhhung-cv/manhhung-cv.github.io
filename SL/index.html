@@ -1,810 +1,524 @@
 <!DOCTYPE html>
-<html lang="vi" data-theme="dark">
+<html lang="vi" class="dark">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hunq Link — Minimalist URL Platform & Threat Shield</title>
 
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
-    <link rel="icon" href="/Asset/logo/logo.png" />
-    <link rel="apple-touch-icon" href="/Asset/logo/iconApps.png" sizes="150x150" />
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fafafa',
+                            100: '#f5f5f5',
+                            200: '#e5e5e5',
+                            800: '#262626',
+                            900: '#171717',
+                            950: '#0a0a0a',
+                            accent: '#ffffff',
+                            dot: '#10b981'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
 
-    <meta property="og:image" content="/Asset/Banner/Banner.png" />
-    <meta property="og:title" content="Hunq" />
-    <meta property="og:description" content="Thiết kế và lập trình Đinh Mạnh Hùng" />
-    <title>Hunq Short Link</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- QR Code Generator & Confetti -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
         :root {
-            /* Minimal Palette */
             --bg-color: #050505;
-            --card-bg: #0a0a0a;
-            --border-color: #262626;
-            --text-main: #e5e5e5;
-            --text-dim: #737373;
-            --accent: #ffffff;
-            /* Trắng tinh khiết làm điểm nhấn */
-            --accent-inv: #000000;
-            --danger: #ef4444;
-            --input-bg: #0a0a0a;
-
-            --radius: 8px;
-            /* Bo góc nhẹ hơn */
-            --modal-z: 3000;
+            --panel-bg: #0a0a0a;
+            --border-color: #222222;
+            --text-main: #f5f5f5;
+            --text-muted: #888888;
         }
 
-        [data-theme="light"] {
-            --bg-color: #ffffff;
-            --card-bg: #fafafa;
+        .light {
+            --bg-color: #fafafa;
+            --panel-bg: #ffffff;
             --border-color: #e5e5e5;
-            --text-main: #171717;
-            --text-dim: #a3a3a3;
-            --accent: #000000;
-            --accent-inv: #ffffff;
-            --input-bg: #ffffff;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', sans-serif;
-            /* Font Inter gọn gàng hơn */
+            --text-main: #0a0a0a;
+            --text-muted: #666666;
         }
 
         body {
             background-color: var(--bg-color);
             color: var(--text-main);
+            font-family: 'Inter', sans-serif;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
-            transition: background 0.3s, color 0.3s;
+            letter-spacing: -0.01em;
         }
 
-        /* --- LAYOUTS --- */
-        .app-wrapper {
-            display: flex;
-            justify-content: center;
-            padding: 40px 20px;
-            flex: 1;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 520px;
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            position: relative;
-            z-index: 10;
-        }
-
-        /* Minimal Card: No Blur, Just Border */
-        .glass-card {
-            background: var(--card-bg);
+        .minimal-panel {
+            background-color: var(--panel-bg);
             border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            padding: 24px;
-            box-shadow: none;
-            transition: border-color 0.2s;
+            border-radius: 12px;
         }
 
-        .glass-card:focus-within {
-            border-color: var(--text-dim);
-        }
-
-        /* --- HEADER --- */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 10px;
-        }
-
-        .brand {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--text-main);
-            letter-spacing: -0.5px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .brand span {
-            background: var(--border-color);
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: var(--text-dim);
-        }
-
-        .header-controls {
-            display: flex;
-            gap: 12px;
-        }
-
-        .btn-icon {
-            background: transparent;
-            border: none;
-            color: var(--text-dim);
-            cursor: pointer;
-            font-size: 1rem;
-            transition: color 0.2s;
-        }
-
-        .btn-icon:hover {
-            color: var(--text-main);
-        }
-
-        /* --- FORMS --- */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            font-weight: 500;
-        }
-
-        input,
-        textarea,
-        select {
-            width: 100%;
-            padding: 12px;
-            border-radius: var(--radius);
+        .minimal-input {
+            background-color: var(--panel-bg);
             border: 1px solid var(--border-color);
-            background: var(--input-bg);
             color: var(--text-main);
-            font-size: 0.95rem;
+            transition: border-color 0.15s ease;
+        }
+
+        .minimal-input:focus {
             outline: none;
-            transition: border-color 0.2s;
+            border-color: #666666;
         }
 
-        input:focus,
-        textarea:focus {
-            border-color: var(--accent);
+        .dark .minimal-input:focus {
+            border-color: #999999;
         }
 
-        .input-group {
-            display: flex;
-            width: 100%;
+        /* Custom minimal scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
         }
-
-        .input-group input {
-            border-radius: var(--radius) 0 0 var(--radius);
-            border-right: none;
-        }
-
-        .input-group .btn-append {
-            padding: 0 20px;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-left: none;
-            border-radius: 0 var(--radius) var(--radius) 0;
-            cursor: pointer;
-            color: var(--text-dim);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
-        }
-
-        .input-group .btn-append:hover {
-            color: var(--text-main);
-            background: var(--border-color);
-        }
-
-        /* Minimal Button */
-        .btn-lime {
-            width: 100%;
-            padding: 12px;
-            border-radius: var(--radius);
-            border: 1px solid var(--accent);
-            background: var(--accent);
-            color: var(--accent-inv);
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: 0.2s;
-        }
-
-        .btn-lime:hover {
-            opacity: 0.9;
-        }
-
-        .btn-danger {
+        ::-webkit-scrollbar-track {
             background: transparent;
-            color: var(--danger);
-            border: 1px solid var(--border-color);
-            padding: 6px 12px;
-            border-radius: var(--radius);
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 0.85rem;
-            transition: 0.2s;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(150, 150, 150, 0.2);
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(150, 150, 150, 0.4);
         }
 
-        .btn-danger:hover {
-            border-color: var(--danger);
+        /* Nav active underline tab indicator */
+        .nav-tab-active {
+            color: var(--text-main) !important;
+            border-bottom: 2px solid var(--text-main);
+            font-weight: 600;
         }
 
-        /* --- SWITCHES (Minimal) --- */
-        .settings-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 0.9rem;
-            color: var(--text-main);
+        /* */
+        /* Custom Modern Toggle Switch Component */
+        .toggle-switch-input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
         }
 
-        .toggle-switch {
+        .toggle-track {
+            width: 2.25rem; /* 36px */
+            height: 1.25rem; /* 20px */
+            border-radius: 9999px;
             position: relative;
-            display: inline-block;
-            width: 36px;
-            height: 20px;
+            cursor: pointer;
+            transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: #e5e5e5;
+            border: 1px solid #d4d4d4;
+            flex-shrink: 0;
         }
 
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
+        .dark .toggle-track {
+            background-color: #262626;
+            border-color: #404040;
         }
 
-        .slider {
+        .toggle-knob {
+            width: 1rem; /* 16px */
+            height: 1rem; /* 16px */
+            border-radius: 9999px;
             position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: var(--border-color);
-            transition: .3s;
-            border-radius: 20px;
+            top: 1px;
+            left: 1px;
+            background-color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 2px;
-            bottom: 2px;
-            background-color: var(--text-dim);
-            transition: .3s;
-            border-radius: 50%;
+        .toggle-switch-input:checked + .toggle-track {
+            background-color: #10b981;
+            border-color: #059669;
         }
 
-        input:checked+.slider {
-            background-color: var(--accent);
+        .dark .toggle-switch-input:checked + .toggle-track {
+            background-color: #10b981;
+            border-color: #34d399;
         }
 
-        input:checked+.slider:before {
-            transform: translateX(16px);
-            background-color: var(--accent-inv);
+        .toggle-switch-input:checked + .toggle-track .toggle-knob {
+            transform: translateX(1rem); /* 16px translation */
         }
 
-        /* --- HISTORY LIST --- */
-        .history-container {
-            max-height: 280px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            /* Liền mạch */
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-        }
-
-        .history-card {
-            background: transparent;
-            border-bottom: 1px solid var(--border-color);
-            padding: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .history-card:last-child {
-            border-bottom: none;
-        }
-
-        .history-card:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .history-short {
-            font-weight: 600;
-            color: var(--text-main);
-            font-size: 0.95rem;
-            text-decoration: none;
-            display: block;
-            margin-bottom: 4px;
-
-            /* Thêm 3 dòng này để link dài tự động có dấu "..." */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .history-long {
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: block;
-            max-width: 250px;
-        }
-
-        .history-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-mini {
-            width: 28px;
-            height: 28px;
-            border-radius: 4px;
-            border: none;
-            background: transparent;
-            color: var(--text-dim);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
-        }
-
-        .btn-mini:hover {
-            color: var(--text-main);
-            background: var(--border-color);
-        }
-
-        /* --- MODAL (Minimal) --- */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: var(--modal-z);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(2px);
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .modal-overlay.open {
-            display: flex;
-            opacity: 1;
-        }
-
-        .modal-box {
-            background: var(--bg-color);
-            border: 1px solid var(--border-color);
-            padding: 24px;
-            border-radius: var(--radius);
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-title {
-            color: var(--text-main);
-            margin-bottom: 16px;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .modal-body {
-            margin-bottom: 24px;
-            font-size: 0.95rem;
-            line-height: 1.5;
-            color: var(--text-dim);
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-        }
-
-        .modal-btn {
-            padding: 10px 20px;
-            border-radius: var(--radius);
-            cursor: pointer;
-            border: none;
-            font-weight: 500;
-            font-size: 0.9rem;
-            transition: 0.2s;
-        }
-
-        .modal-btn.primary {
-            background: var(--accent);
-            color: var(--accent-inv);
-        }
-
-        .modal-btn.secondary {
-            background: transparent;
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-        }
-
-        .modal-btn.danger {
-            background: transparent;
-            border: 1px solid var(--danger);
-            color: var(--danger);
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* Admin checkbox styles updated for minimal */
-        /* --- ADMIN DASHBOARD STYLES --- */
-        .admin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        /* Segmented Control Tabs (Giao diện Tab kiểu mới) */
-        .segmented-control {
-            display: flex;
-            background: var(--input-bg);
-            padding: 4px;
-            border-radius: var(--radius);
-            border: 1px solid var(--border-color);
-            margin-bottom: 24px;
-        }
-
-        .tab-btn {
-            flex: 1;
-            padding: 8px;
-            text-align: center;
-            cursor: pointer;
-            border-radius: 6px;
-            /* Bo góc nhỏ hơn radius chính */
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--text-dim);
-            transition: all 0.2s;
-            background: transparent;
-            border: none;
-        }
-
-        .tab-btn:hover {
-            color: var(--text-main);
-        }
-
-        .tab-btn.active {
-            background: var(--card-bg);
-            color: var(--accent);
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            border: 1px solid var(--border-color);
-        }
-
-        /* Blacklist Editor Style */
-        .code-editor {
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 0.85rem;
-            line-height: 1.6;
-            background: #0d0d0d;
-            /* Màu tối hơn chút để giống editor */
-        }
-
-        .tools-bar {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .adm-link-row {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 12px;
-            border-bottom: 1px solid var(--border-color);
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-
-        .adm-link-row:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .adm-link-row.selected {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .custom-checkbox {
-            width: 20px;
-            height: 20px;
-            border: 1px solid var(--text-dim);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .adm-link-row.selected .custom-checkbox {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: var(--accent-inv);
-        }
-
-        .adm-short {
-            color: var(--text-main);
-            font-weight: 600;
-        }
-
-        .adm-orig {
-            color: var(--text-dim);
-        }
-
-        /* --- REDIRECT PAGE (Minimal) --- */
-        #redirect-overlay {
-            background: var(--bg-color);
-        }
-
-        .spinner {
-            border: 3px solid var(--border-color);
-            border-left-color: var(--accent);
-        }
-
-        /* Tab Nav */
-        .admin-tabs {
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .tab-btn {
-            color: var(--text-dim);
-        }
-
-        .tab-btn.active {
-            color: var(--accent);
-            background: transparent;
-            border-bottom: 2px solid var(--accent);
-            border-radius: 0;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        /* Khung chứa quảng cáo chung */
-        .ad-slot-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            margin: 10px auto;
-            background: rgba(0, 0, 0, 0.05);
-            /* Hiển thị vùng chờ khi ảnh chưa tải */
-        }
-
-        /* Ép ảnh không được vượt quá khung nhưng vẫn giữ tỷ lệ */
-        .ad-slot-container img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            /* Hoặc cover tùy sở thích */
-            display: block;
-        }
-
-        /* Riêng cho mobile, nếu banner 728px quá rộng thì nó sẽ co lại */
-        @media (max-width: 768px) {
-            .ad-slot-container {
-                width: 100% !important;
-                height: auto !important;
-                max-height: 150px;
-            }
+        .toggle-switch-input:focus-visible + .toggle-track {
+            outline: 2px solid #10b981;
+            outline-offset: 2px;
         }
     </style>
 </head>
 
-<body>
+<body class="transition-colors duration-200 selection:bg-neutral-700 selection:text-white">
 
-    <div id="redirect-overlay" class="hidden"
-        style="position:fixed; inset:0; z-index:1000; flex-direction:column; overflow-y:auto;">
-        <div id="ad-slot-interstitial" class="ad-pos-interstitial hidden"
-            style="position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:2000; display:flex; align-items:center; justify-content:center;">
-            <button class="ad-close-btn" onclick="this.parentElement.classList.add('hidden')"
-                style="position:absolute; top:20px; right:20px; background:white; color:black; border:none; padding:10px 20px;">Đóng
-                [X]</button>
-            <div id="interstitial-content" style="max-width:90%; max-height:90%;"></div>
-        </div>
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed top-5 right-5 z-[9000] flex flex-col gap-2 pointer-events-none"></div>
 
-        <div class="redirect-layout"
-            style="display:grid; grid-template-areas: 'top top top' 'left center right' 'footer footer footer'; min-height:100vh;">
-            <div id="ad-slot-top" class="ad-pos-top hidden" style="grid-area:top; padding:10px; text-align:center;">
+    <!-- GLOBAL MODAL OVERLAY -->
+    <div id="global-modal" class="hidden fixed inset-0 z-[8000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="minimal-panel p-6 rounded-2xl max-w-md w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+            <div class="flex justify-between items-center mb-4 pb-3 border-b border-neutral-200 dark:border-neutral-800">
+                <h3 class="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 flex items-center gap-2" id="modal-title">
+                    <span>Thông báo</span>
+                </h3>
+                <button onclick="closeModal()" class="text-neutral-400 hover:text-neutral-100 transition p-1">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
             </div>
-            <div id="ad-slot-left" class="ad-pos-left hidden" style="grid-area:left; padding:20px;"></div>
-            <div id="ad-slot-right" class="ad-pos-right hidden" style="grid-area:right; padding:20px;"></div>
-
-            <div class="redirect-center"
-                style="grid-area:center; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;">
-                <h2 style="margin-bottom: 10px; font-weight:400;">Đang chuyển hướng...</h2>
-                <div class="spinner"
-                    style="width:40px; height:40px; border-radius:50%; animation:spin 1s linear infinite; margin:20px auto;">
-                </div>
-                <p style="color:var(--text-dim);">Vui lòng chờ <span id="countdown"
-                        style="font-weight:bold; color:var(--text-main);">10</span> giây</p>
-                <div id="ad-slot-content" class="hidden" style="margin:20px 0; max-width:100%;"></div>
-                <p style="font-size:0.8rem; opacity:0.5; margin-top:20px;">Powered by Hunq</p>
-            </div>
-
-            <div id="ad-slot-footer" class="ad-pos-footer hidden"
-                style="grid-area:footer; padding:10px; text-align:center; position:sticky; bottom:0; background:var(--bg-color); border-top:1px solid var(--border-color);">
-            </div>
+            <div class="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed mb-6" id="modal-body">Nội dung...</div>
+            <div class="flex justify-end gap-2" id="modal-actions"></div>
         </div>
     </div>
 
-    <div id="global-modal" class="modal-overlay">
-        <div class="modal-box">
-            <h3 class="modal-title" id="modal-title">Tiêu đề</h3>
-            <div class="modal-body" id="modal-body">Nội dung...</div>
-            <div class="modal-actions" id="modal-actions"></div>
+    <!-- REDIRECT OVERLAY (Triggered via #alias) -->
+    <div id="redirect-overlay" class="hidden fixed inset-0 z-[7000] bg-neutral-950 text-white flex flex-col items-center justify-center p-4 overflow-y-auto">
+        <div id="ad-slot-interstitial" class="hidden fixed inset-0 bg-black/90 z-[7500] flex items-center justify-center p-4">
+            <div class="relative minimal-panel p-4 max-w-md w-full shadow-2xl border border-neutral-800">
+                <button onclick="document.getElementById('ad-slot-interstitial').classList.add('hidden')"
+                    class="absolute -top-3 -right-3 bg-neutral-800 hover:bg-neutral-700 text-white w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border border-neutral-700">
+                    ✕
+                </button>
+                <div id="interstitial-content" class="flex justify-center items-center"></div>
+            </div>
+        </div>
+
+        <div class="max-w-md w-full text-center space-y-6">
+            <div id="ad-slot-top" class="hidden w-full flex justify-center py-2"></div>
+
+            <div class="minimal-panel p-8 rounded-2xl border border-neutral-800 shadow-2xl space-y-6">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-400 font-mono">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Hunq Shield Active
+                </div>
+
+                <div>
+                    <h2 class="text-xl font-bold tracking-tight text-white mb-1">Đang chuyển hướng...</h2>
+                    <p class="text-xs text-neutral-400">Bạn sẽ được đưa tới trang đích sau vài giây</p>
+                </div>
+
+                <div class="text-4xl font-extrabold font-mono tracking-wider py-4 text-white" id="countdown">10</div>
+
+                <!-- Password Protected Section -->
+                <div id="password-protection-container" class="hidden text-left bg-neutral-900/90 p-4 rounded-xl border border-neutral-800 space-y-3">
+                    <label class="block text-xs font-medium text-neutral-300">
+                        <i class="fa-solid fa-lock text-amber-400 mr-1"></i> Yêu cầu mật khẩu truy cập
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="password" id="redirect-pass-input" placeholder="Mật khẩu..." onkeypress="if(event.key==='Enter') verifyRedirectPassword()" class="minimal-input flex-1 rounded-lg px-3 py-2 text-xs font-mono">
+                        <button onclick="verifyRedirectPassword()" class="bg-white hover:bg-neutral-200 text-black font-semibold px-4 py-2 rounded-lg text-xs transition">
+                            Xác nhận
+                        </button>
+                    </div>
+                    <p id="pass-error-msg" class="text-red-400 text-[11px] hidden">Mật khẩu không chính xác!</p>
+                </div>
+
+                <div id="ad-slot-content" class="hidden my-4 flex justify-center"></div>
+
+                <a id="direct-target-link" href="#" class="hidden inline-block text-xs text-neutral-500 hover:text-white transition underline">
+                    Bỏ qua đếm ngược & Truy cập ngay →
+                </a>
+            </div>
+
+            <div id="ad-slot-footer" class="hidden w-full flex justify-center py-2"></div>
         </div>
     </div>
 
-    <div class="app-wrapper" id="main-app">
-        <div class="container">
-            <header>
-                <div class="brand"><i class="fa-solid fa-link"></i> Hunq <span>Link</span></div>
-                <div class="header-controls">
-                    <button class="btn-icon" onclick="openTokenModal()"><i class="fa-solid fa-key"></i></button>
-                    <button class="btn-icon" onclick="toggleTheme()"><i
-                            class="fa-solid fa-circle-half-stroke"></i></button>
-                    <button class="btn-icon" onclick="toggleAdminPanel()"><i class="fa-solid fa-gear"></i></button>
-                </div>
-            </header>
+    <!-- MAIN APPLICATION -->
+    <div id="main-app" class="flex-1 flex flex-col max-w-3xl w-full mx-auto px-4 py-8">
 
-            <div class="glass-card">
-                <div class="form-group">
-                    <label>Link Gốc</label>
-                    <div class="input-group">
-                        <input type="text" id="long-url" placeholder="https://example.com/...">
-                        <button class="btn-append" onclick="pasteUrl()"><i class="fa-solid fa-paste"></i></button>
+        <!-- HEADER BRAND -->
+        <header class="flex justify-between items-center mb-8 pb-4 border-b border-neutral-200 dark:border-neutral-800/80">
+            <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-lg bg-neutral-900 dark:bg-neutral-100 flex items-center justify-center text-white dark:text-black font-bold text-xs">
+                    <i class="fa-solid fa-link"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold tracking-tight text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
+                        Hunq <span class="text-neutral-500 font-normal">Link</span>
+                    </h1>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="openTokenModal()" title="Device Token" class="px-2.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs font-mono transition">
+                    <i class="fa-solid fa-key mr-1"></i> Token
+                </button>
+                <button onclick="toggleTheme()" title="Theme Switcher" class="p-2 rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white text-xs transition">
+                    <i class="fa-solid fa-moon dark:hidden"></i>
+                    <i class="fa-solid fa-sun hidden dark:inline"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN NAVIGATION TABS -->
+        <nav class="flex border-b border-neutral-200 dark:border-neutral-800 mb-8 font-medium text-xs text-neutral-500">
+            <button id="nav-btn-shortener" onclick="switchMainTab('tab-shortener')" class="nav-tab-active px-4 py-2.5 transition flex items-center gap-2 focus:outline-none">
+                <i class="fa-solid fa-bolt text-xs"></i> <span>Rút Gọn Link</span>
+            </button>
+            <button id="nav-btn-library" onclick="switchMainTab('tab-library')" class="px-4 py-2.5 hover:text-neutral-900 dark:hover:text-neutral-200 transition flex items-center gap-2 focus:outline-none">
+                <i class="fa-solid fa-folder-open text-xs"></i> <span>Thư Viện Link</span>
+            </button>
+            <button id="nav-btn-admin" onclick="switchMainTab('tab-admin')" class="px-4 py-2.5 hover:text-neutral-900 dark:hover:text-neutral-200 transition flex items-center gap-2 focus:outline-none">
+                <i class="fa-solid fa-user-shield text-xs"></i> <span>Quản Trị Admin</span>
+            </button>
+        </nav>
+
+        <!-- TAB 1: SHORTENER CORE -->
+        <main id="tab-shortener" class="space-y-6">
+
+            <!-- Single vs Bulk Mode Toggle -->
+            <div class="minimal-panel p-1 inline-flex rounded-xl border border-neutral-200 dark:border-neutral-800 text-xs font-medium">
+                <button id="btn-mode-single" onclick="switchShortenMode('single')" class="px-3.5 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black font-semibold transition">
+                    Đơn Lẻ
+                </button>
+                <button id="btn-mode-bulk" onclick="switchShortenMode('bulk')" class="px-3.5 py-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200 transition">
+                    Hàng Loạt (Bulk)
+                </button>
+            </div>
+
+            <!-- Single Form Input -->
+            <div id="single-form-block" class="minimal-panel p-5 space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-neutral-500 mb-2">ĐƯỜNG DẪN GỐC (URL)</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="long-url" oninput="liveCheckUrlSecurity(this.value)" placeholder="Dán liên kết gốc tại đây... (vd: https://example.com/page)"
+                            class="minimal-input flex-1 rounded-xl px-3.5 py-2.5 text-xs font-mono">
+                        <button onclick="pasteUrl()" class="px-3.5 py-2.5 rounded-xl border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 text-xs font-medium transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-paste"></i> Dán
+                        </button>
+                    </div>
+
+                    <!-- Security Shield Real-time Status Badge -->
+                    <div id="security-radar-box" class="hidden mt-3 p-2.5 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2">
+                            <span id="radar-icon-badge" class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]"><i class="fa-solid fa-shield"></i></span>
+                            <span id="radar-status-text" class="font-medium text-neutral-400">Đang kiểm tra...</span>
+                        </div>
+                        <span id="radar-score-badge" class="font-mono text-[10px] px-2 py-0.5 rounded border border-neutral-300 dark:border-neutral-800">100/100</span>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Bí danh (Tuỳ chọn)</label>
-                    <input type="text" id="alias" placeholder="Tuỳ chọn">
-                </div>
+                <!-- Advanced Accordion Options -->
+                <div class="pt-2 border-t border-neutral-200 dark:border-neutral-800">
+                    <button onclick="toggleAdvancedOptions()" class="text-xs font-medium text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200 flex items-center gap-1.5 focus:outline-none">
+                        <i id="adv-option-icon" class="fa-solid fa-chevron-right text-[10px] transition-transform duration-150"></i>
+                        <span>Tùy chọn nâng cao (Bí danh, Mật khẩu, Thời hạn, UTM...)</span>
+                    </button>
 
-                <div class="settings-row">
-                    <span>Bật Ads (Ủng hộ Web)</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="ads-toggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
+                    <div id="advanced-options-panel" class="hidden mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div>
+                            <label class="block text-[11px] text-neutral-500 mb-1">Bí danh tùy chỉnh (Alias)</label>
+                            <input type="text" id="alias" placeholder="vd: my-custom-link" class="minimal-input w-full rounded-xl px-3 py-2 text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-neutral-500 mb-1">Mật khẩu bảo vệ</label>
+                            <input type="password" id="link-password" placeholder="Tùy chọn..." class="minimal-input w-full rounded-xl px-3 py-2 text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-neutral-500 mb-1">Ngày hết hạn</label>
+                            <input type="date" id="link-expiry" class="minimal-input w-full rounded-xl px-3 py-2 text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-neutral-500 mb-1">UTM Campaign Tags</label>
+                            <button onclick="openUtmBuilderModal()" class="w-full py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 text-xs text-neutral-600 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-600 font-medium transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-bullhorn text-[11px]"></i> <span id="utm-status-label">Cấu hình UTM</span>
+                            </button>
+                        </div>
+                        <div class="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-3 pt-2">
+                            <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition">
+                                <input type="checkbox" id="ads-toggle" class="toggle-switch-input">
+                                <div class="toggle-track"><div class="toggle-knob"></div></div>
+                                <span>Bật Quảng cáo</span>
+                            </label>
 
-                <div class="settings-row">
-                    <span>Tự động Copy</span>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="autocopy-toggle" checked
-                            onchange="localStorage.setItem('hq_autocopy', this.checked)">
-                        <span class="slider"></span>
-                    </label>
-                </div>
+                            <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition">
+                                <input type="checkbox" id="allow-skip-toggle" checked class="toggle-switch-input">
+                                <div class="toggle-track"><div class="toggle-knob"></div></div>
+                                <span>Cho phép bỏ qua đếm ngược</span>
+                            </label>
 
-                <button class="btn-lime" onclick="createShortLink()">Rút Gọn</button>
+                            <label class="inline-flex items-center gap-2.5 cursor-pointer select-none text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition">
+                                <input type="checkbox" id="autocopy-toggle" checked onchange="localStorage.setItem('hq_autocopy', this.checked)" class="toggle-switch-input">
+                                <div class="toggle-track"><div class="toggle-knob"></div></div>
+                                <span>Tự động sao chép</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="glass-card" style="padding-bottom:0; padding-top:15px;">
-                <h4
-                    style="margin-bottom: 15px; color: var(--text-dim); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">
-                    Lịch sử</h4>
-                <div id="history-list" class="history-container"
-                    style="border:none; border-top:1px solid var(--border-color); border-radius:0;"></div>
+            <!-- Bulk Form Input -->
+            <div id="bulk-form-block" class="hidden minimal-panel p-5 space-y-3">
+                <label class="block text-xs font-medium text-neutral-500">DANH SÁCH LINKS (Mỗi dòng 1 URL)</label>
+                <textarea id="bulk-urls-input" rows="6" placeholder="https://domain1.com/page1&#10;https://domain2.com/page2"
+                    class="minimal-input w-full rounded-xl p-3 text-xs font-mono"></textarea>
             </div>
 
-            <div id="admin-panel" class="glass-card hidden">
-                <div class="admin-header">
-                    <h4 style="color:var(--text-main); font-weight:600;">Admin Dashboard</h4>
-                    <button onclick="logout()"
-                        style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:0.9rem;">
-                        <i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng xuất
+            <!-- Main Shorten Button -->
+            <button onclick="executeShortenProcess()" class="w-full py-3.5 rounded-xl bg-neutral-900 dark:bg-neutral-100 hover:bg-black dark:hover:bg-white text-white dark:text-black font-semibold text-xs tracking-wide transition shadow-sm active:scale-[0.99] flex items-center justify-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> <span>RÚT GỌN LINK NGAY</span>
+            </button>
+        </main>
+
+        <!-- TAB 2: LIBRARY / HISTORY -->
+        <main id="tab-library" class="hidden space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-2">
+                <div>
+                    <h3 class="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Thư viện Liên kết</h3>
+                    <p class="text-xs text-neutral-500">Danh sách các link đã tạo trên thiết bị này</p>
+                </div>
+                <div class="w-full sm:w-64">
+                    <input type="text" id="history-search" oninput="filterHistoryList(this.value)" placeholder="Tìm kiếm link..."
+                        class="minimal-input w-full rounded-xl px-3 py-1.5 text-xs">
+                </div>
+            </div>
+
+            <div id="history-list" class="space-y-2 max-h-[500px] overflow-y-auto pr-1">
+                <div class="text-center py-8 text-xs text-neutral-500">Đang tải lịch sử...</div>
+            </div>
+        </main>
+
+        <!-- TAB 3: ADMIN MANAGEMENT -->
+        <main id="tab-admin" class="hidden space-y-6">
+
+            <!-- Admin Authentication Form -->
+            <div id="admin-login-form" class="minimal-panel p-6 max-w-sm mx-auto space-y-4">
+                <div class="text-center">
+                    <h4 class="text-sm font-bold text-neutral-900 dark:text-neutral-100">Xác thực Quản trị viên</h4>
+                    <p class="text-xs text-neutral-500">Đăng nhập tài khoản Admin để quản lý máy chủ</p>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-neutral-500 mb-1">Email Administrator</label>
+                    <input type="email" id="adm-email" placeholder="admin@domain.com" class="minimal-input w-full rounded-xl px-3 py-2 text-xs">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-neutral-500 mb-1">Mật khẩu</label>
+                    <input type="password" id="adm-pass" placeholder="••••••••" class="minimal-input w-full rounded-xl px-3 py-2 text-xs">
+                </div>
+                <button onclick="adminLogin()" class="w-full py-2.5 rounded-xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black font-semibold text-xs transition">
+                    Đăng Nhập Admin
+                </button>
+            </div>
+
+            <!-- Admin Dashboard Panel -->
+            <div id="admin-content" class="hidden space-y-6">
+                <!-- System Stat Metrics Cards -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="minimal-panel p-4 text-center">
+                        <span class="text-[10px] text-neutral-500 font-mono uppercase">Tổng số Link</span>
+                        <div id="stat-total-links" class="text-lg font-bold font-mono mt-1">0</div>
+                    </div>
+                    <div class="minimal-panel p-4 text-center">
+                        <span class="text-[10px] text-neutral-500 font-mono uppercase">Tổng lượt Click</span>
+                        <div id="stat-total-clicks" class="text-lg font-bold font-mono text-emerald-500 mt-1">0</div>
+                    </div>
+                    <div class="minimal-panel p-4 text-center">
+                        <span class="text-[10px] text-neutral-500 font-mono uppercase">Tên miền Chặn</span>
+                        <div id="stat-blocked-domains" class="text-lg font-bold font-mono text-amber-500 mt-1">0</div>
+                    </div>
+                </div>
+
+                <!-- Admin Internal Navigation Sub-tabs -->
+                <div class="flex border-b border-neutral-200 dark:border-neutral-800 text-xs font-medium text-neutral-500">
+                    <button class="adm-tab-btn px-4 py-2 text-neutral-900 dark:text-neutral-100 border-b-2 border-current" onclick="switchAdminSubTab('tab-adm-links')">Tất cả Links</button>
+                    <button class="adm-tab-btn px-4 py-2 hover:text-neutral-900 dark:hover:text-neutral-100" onclick="switchAdminSubTab('tab-adm-ads')">Cấu hình Ads</button>
+                    <button class="adm-tab-btn px-4 py-2 hover:text-neutral-900 dark:hover:text-neutral-100" onclick="switchAdminSubTab('tab-adm-blacklist')">Shield Blacklist</button>
+                </div>
+
+                <!-- Admin Sub-tab 1: Links Table -->
+                <div id="tab-adm-links" class="adm-sub-content space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <button onclick="toggleSelectAll()" id="btn-select-all" class="text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 flex items-center gap-1">
+                            <i class="fa-regular fa-square-check"></i> Chọn tất cả
+                        </button>
+                        <button onclick="bulkDeleteLinks()" class="text-red-500 hover:text-red-600 font-medium">
+                            <i class="fa-solid fa-trash-can mr-1"></i> Xoá đã chọn
+                        </button>
+                    </div>
+                    <div id="adm-items-container" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Admin Sub-tab 2: Ads Configuration -->
+                <div id="tab-adm-ads" class="adm-sub-content hidden space-y-3">
+                    <div id="ads-config-container" class="space-y-3 max-h-80 overflow-y-auto pr-1"></div>
+                    <button onclick="saveAdsConfig()" class="w-full py-2.5 rounded-xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black font-semibold text-xs transition">
+                        Lưu Cấu Hình Quảng Cáo
                     </button>
                 </div>
 
-                <div id="admin-login-form">
-                    <input type="email" id="adm-email" placeholder="Email Admin" style="margin-bottom:10px;">
-                    <input type="password" id="adm-pass" placeholder="Mật khẩu" style="margin-bottom:10px;">
-                    <button class="btn-lime" onclick="adminLogin()">Đăng nhập</button>
-                </div>
-
-                <div id="admin-content" class="hidden">
-                    <div class="segmented-control">
-                        <button class="tab-btn active" onclick="switchTab('tab-links')">Quản lý Links</button>
-                        <button class="tab-btn" onclick="switchTab('tab-ads')">Cấu hình Ads</button>
-                        <button class="tab-btn" onclick="switchTab('tab-black')">Blacklist</button>
+                <!-- Admin Sub-tab 3: Blacklist Management -->
+                <div id="tab-adm-blacklist" class="adm-sub-content hidden space-y-3">
+                    <div>
+                        <label class="block text-xs text-neutral-500 mb-1">Danh sách Tên miền/Từ khóa cấm (phân cách bằng dấu phẩy)</label>
+                        <textarea id="banned-domains" rows="6" class="minimal-input w-full rounded-xl p-3 text-xs font-mono"></textarea>
                     </div>
 
-                    <div id="tab-links" class="tab-content active">
-                        <div
-                            style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
-                            <button class="select-all-btn" onclick="toggleSelectAll()" id="btn-select-all"
-                                style="background:none; border:none; color:var(--text-main); cursor:pointer; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
-                                <i class="fa-regular fa-square-check"></i> Chọn tất cả
-                            </button>
-                            <button class="btn-danger" style="border:none; padding:6px 15px;"
-                                onclick="bulkDeleteLinks()">
-                                <i class="fa-solid fa-trash"></i> Xoá
-                            </button>
-                        </div>
-                        <div id="adm-items-container"
-                            style="max-height:300px; overflow-y:auto; border:1px solid var(--border-color); border-radius:var(--radius);">
-                        </div>
-                    </div>
-
-                    <div id="tab-ads" class="tab-content hidden">
-                        <div id="ads-config-container" style="max-height:300px; overflow-y:auto; padding-right:5px;">
-                        </div>
-                        <button class="btn-lime" onclick="saveAdsConfig()" style="margin-top:15px;">Lưu Cấu Hình
-                            Ads</button>
-                    </div>
-
-                    <div id="tab-black" class="tab-content hidden">
-                        <div class="form-group">
-                            <label>Danh sách tên miền cấm (phân cách bằng dấu phẩy)</label>
-                            <textarea id="banned-domains" rows="8" class="code-editor"
-                                placeholder="example.com, bad-site.net"></textarea>
-                        </div>
-
-                        <div class="tools-bar">
-                            <input type="file" id="import-file" accept=".txt,.json,.csv" style="display:none"
-                                onchange="processImport(this)">
-
-                            <button class="modal-btn secondary" style="flex:1"
-                                onclick="document.getElementById('import-file').click()">
-                                <i class="fa-solid fa-upload"></i> Nhập File
-                            </button>
-                            <button class="modal-btn secondary" style="flex:1" onclick="exportBlacklist()">
-                                <i class="fa-solid fa-download"></i> Xuất File
-                            </button>
-                        </div>
-                        <button class="btn-lime" onclick="saveBlacklist()" style="margin-top:10px;">
-                            <i class="fa-solid fa-save"></i> Lưu Blacklist
+                    <div class="flex gap-2">
+                        <input type="file" id="import-file" accept=".txt,.json,.csv" class="hidden" onchange="processImport(this)">
+                        <button onclick="document.getElementById('import-file').click()" class="flex-1 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 text-xs font-medium hover:border-neutral-400 dark:hover:border-neutral-600 transition">
+                            <i class="fa-solid fa-file-import mr-1"></i> Nhập File
+                        </button>
+                        <button onclick="exportBlacklist()" class="flex-1 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 text-xs font-medium hover:border-neutral-400 dark:hover:border-neutral-600 transition">
+                            <i class="fa-solid fa-file-export mr-1"></i> Xuất File
                         </button>
                     </div>
+
+                    <button onclick="saveBlacklist()" class="w-full py-2.5 rounded-xl bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black font-semibold text-xs transition">
+                        Cập Nhật Shield Blacklist
+                    </button>
+                </div>
+
+                <div class="pt-4 border-t border-neutral-200 dark:border-neutral-800 text-right">
+                    <button onclick="logout()" class="text-xs text-red-500 hover:underline">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i> Đăng xuất Admin
+                    </button>
                 </div>
             </div>
+        </main>
 
-        </div>
+        <!-- FOOTER -->
+        <footer class="mt-auto pt-10 pb-4 text-center text-xs text-neutral-500 space-y-1">
+            <p>Thiết kế & Lập trình bởi <a href="https://dinhmanhung.dev" target="_blank" class="text-neutral-800 dark:text-neutral-200 font-medium hover:underline">Đinh Mạnh Hùng</a></p>
+            <p class="font-mono text-[10px]">Hunq Link &copy; 2026 — Minimal URL Engine</p>
+        </footer>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, getDocs, getDoc, doc, query, where, updateDoc, deleteDoc, setDoc, increment, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyB_MUrLjqwC8uSXFsvnFKULbTtyqg7Wo_s",
             authDomain: "shortlink-4c40e.firebaseapp.com",
@@ -819,137 +533,267 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
+        // Ad Slot Layout Definitions
         const ADS_POS = [
-            { id: 'top', name: 'Top Banner', width: '728px', height: '90px', maxWidth: '100%' },
-            { id: 'content', name: 'Center', width: '300px', height: '250px', maxWidth: '100%' },
-            { id: 'sidebar_left', name: 'Left', width: '160px', height: '600px', maxWidth: '20vw' },
-            { id: 'sidebar_right', name: 'Right', width: '160px', height: '600px', maxWidth: '20vw' },
-            { id: 'footer', name: 'Sticky Footer', width: '100%', height: '50px', maxWidth: '100%' },
-            { id: 'interstitial', name: 'Popup', width: '80vw', height: '80vh', maxWidth: '500px' }
+            { id: 'top', name: 'Top Banner Header' },
+            { id: 'content', name: 'Center Rectangle' },
+            { id: 'interstitial', name: 'Popup Interstitial' },
+            { id: 'footer', name: 'Bottom Footer' }
         ];
 
-        /* --- LOGIC TOKEN THAY ĐỔI: HQ --- */
-        let USER_TOKEN = localStorage.getItem('hq_token'); // Đổi key storage
-
-        // Nếu chưa có, tạo mới bắt đầu bằng HQ
+        /* Device Token Control */
+        let USER_TOKEN = localStorage.getItem('hq_token');
         if (!USER_TOKEN) {
-            USER_TOKEN = 'HQ' + Math.random().toString(36).substr(2, 9).toUpperCase(); // HQ + Random
+            USER_TOKEN = 'HQ' + Math.random().toString(36).substring(2, 11).toUpperCase();
             localStorage.setItem('hq_token', USER_TOKEN);
         }
 
-        if (localStorage.getItem('hq_autocopy') === 'false') document.getElementById('autocopy-toggle').checked = false;
+        if (localStorage.getItem('hq_autocopy') === 'false') {
+            const toggle = document.getElementById('autocopy-toggle');
+            if (toggle) toggle.checked = false;
+        }
 
-        /* ================= HELPERS ================= */
-        window.closeModal = () => document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('open'));
-        window.onclick = (event) => { if (event.target.classList.contains('modal-overlay')) window.closeModal(); };
+        let historyCache = [];
+        let activeRedirectData = null;
+        let attachedUtmObj = null;
+
+        /* Hunq Threat Shield Security Rules */
+        const BAD_KEYWORDS = ['phishing', 'malware', 'hack', 'crack', 'virus', 'trojan', 'ransomware', 'porn', 'adult', 'gambling', 'casino', 'betting', 'scam'];
+        const DANGEROUS_EXTENSIONS = ['.exe', '.apk', '.bat', '.vbs', '.scr', '.iso', '.zip', '.rar'];
+
+        function analyzeUrlSafety(urlStr, bannedDomainsList = []) {
+            if (!urlStr || typeof urlStr !== 'string') return { safe: true, score: 100, reason: '' };
+            const lower = urlStr.toLowerCase();
+
+            if (/^https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/i.test(lower)) {
+                return { safe: false, score: 0, reason: 'Địa chỉ IP thô không an toàn' };
+            }
+
+            for (let ext of DANGEROUS_EXTENSIONS) {
+                if (lower.endsWith(ext) || lower.includes(ext + '?')) {
+                    return { safe: false, score: 15, reason: `Chứa tệp thực thi độc hại (${ext})` };
+                }
+            }
+
+            for (let kw of BAD_KEYWORDS) {
+                if (lower.includes(kw)) {
+                    return { safe: false, score: 25, reason: `Chứa từ khóa độc hại: "${kw}"` };
+                }
+            }
+
+            for (let domain of bannedDomainsList) {
+                const cleanD = domain.trim().toLowerCase();
+                if (cleanD && lower.includes(cleanD)) {
+                    return { safe: false, score: 0, reason: `Nằm trong Blacklist Hunq Shield: "${cleanD}"` };
+                }
+            }
+
+            return { safe: true, score: 100, reason: 'Liên kết an toàn' };
+        }
+
+        window.liveCheckUrlSecurity = async (urlVal) => {
+            const radarBox = document.getElementById('security-radar-box');
+            const iconBadge = document.getElementById('radar-icon-badge');
+            const statusText = document.getElementById('radar-status-text');
+            const scoreBadge = document.getElementById('radar-score-badge');
+
+            if (!urlVal || urlVal.length < 5) {
+                radarBox.classList.add('hidden');
+                return;
+            }
+
+            radarBox.classList.remove('hidden');
+
+            let bannedList = [];
+            try {
+                const cfg = await getDoc(doc(db, "settings", "config"));
+                if (cfg.exists()) bannedList = cfg.data().bannedDomains || [];
+            } catch (e) {}
+
+            const res = analyzeUrlSafety(urlVal, bannedList);
+            scoreBadge.innerText = `${res.score}/100`;
+
+            if (res.safe) {
+                iconBadge.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] bg-emerald-500/10 text-emerald-500';
+                iconBadge.innerHTML = '<i class="fa-solid fa-check"></i>';
+                statusText.innerText = res.reason;
+                statusText.className = 'font-medium text-emerald-500';
+            } else {
+                iconBadge.className = 'w-5 h-5 rounded-full flex items-center justify-center text-[10px] bg-red-500/10 text-red-500';
+                iconBadge.innerHTML = '<i class="fa-solid fa-exclamation"></i>';
+                statusText.innerText = res.reason;
+                statusText.className = 'font-medium text-red-500';
+            }
+        };
+
+        /* TAB SWITCHING SYSTEM */
+        window.switchMainTab = (tabId) => {
+            document.querySelectorAll('main').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('nav button').forEach(el => {
+                el.classList.remove('nav-tab-active');
+            });
+
+            document.getElementById(tabId).classList.remove('hidden');
+
+            if (tabId === 'tab-shortener') document.getElementById('nav-btn-shortener').classList.add('nav-tab-active');
+            if (tabId === 'tab-library') {
+                document.getElementById('nav-btn-library').classList.add('nav-tab-active');
+                loadHistory();
+            }
+            if (tabId === 'tab-admin') {
+                document.getElementById('nav-btn-admin').classList.add('nav-tab-active');
+            }
+        };
+
+        /* UI Toast & Modal System */
+        window.showToast = (msg, type = 'info') => {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let icon = 'fa-circle-info text-sky-400';
+            if (type === 'success') icon = 'fa-circle-check text-emerald-400';
+            if (type === 'error') icon = 'fa-circle-exclamation text-red-400';
+
+            toast.className = `pointer-events-auto flex items-center gap-2.5 bg-neutral-900 border border-neutral-800 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-xl animate-in slide-in-from-top-2 duration-150`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span>${msg}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'transition-opacity', 'duration-200');
+                setTimeout(() => toast.remove(), 200);
+            }, 2500);
+        };
+
+        window.closeModal = () => document.getElementById('global-modal').classList.add('hidden');
 
         window.showModal = (title, content, type = 'alert', callback = null) => {
-            document.getElementById('modal-title').innerHTML = `<div style="flex:1">${title}</div><button onclick="closeModal()" style="background:none; border:none; color:var(--text-dim); cursor:pointer;">&times;</button>`;
+            document.getElementById('modal-title').innerHTML = title;
             document.getElementById('modal-body').innerHTML = content;
             const actions = document.getElementById('modal-actions');
             actions.innerHTML = '';
 
             if (type === 'confirm') {
                 const btnCancel = document.createElement('button');
-                btnCancel.className = 'modal-btn secondary';
+                btnCancel.className = 'px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 text-neutral-600 dark:text-neutral-400 text-xs transition';
                 btnCancel.innerText = 'Huỷ';
                 btnCancel.onclick = () => { window.closeModal(); if (callback) callback(false); };
                 actions.appendChild(btnCancel);
             }
+
             const btnOk = document.createElement('button');
-            btnOk.className = 'modal-btn primary';
+            btnOk.className = 'px-4 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black font-semibold text-xs transition';
             btnOk.innerText = type === 'confirm' ? 'Xác nhận' : 'Đóng';
             btnOk.onclick = () => { window.closeModal(); if (callback) callback(true); };
             actions.appendChild(btnOk);
-            document.getElementById('global-modal').classList.add('open');
+
+            document.getElementById('global-modal').classList.remove('hidden');
         };
 
-        /* ================= MAIN ================= */
-        window.openTokenModal = () => {
+        /* SHORTEN LOGIC */
+        let shortenMode = 'single';
+        window.switchShortenMode = (mode) => {
+            shortenMode = mode;
+            const singleBtn = document.getElementById('btn-mode-single');
+            const bulkBtn = document.getElementById('btn-mode-bulk');
+            const singleBlock = document.getElementById('single-form-block');
+            const bulkBlock = document.getElementById('bulk-form-block');
+
+            if (mode === 'single') {
+                singleBtn.className = 'px-3.5 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black font-semibold transition';
+                bulkBtn.className = 'px-3.5 py-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200 transition';
+                singleBlock.classList.remove('hidden');
+                bulkBlock.classList.add('hidden');
+            } else {
+                bulkBtn.className = 'px-3.5 py-1.5 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black font-semibold transition';
+                singleBtn.className = 'px-3.5 py-1.5 rounded-lg text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200 transition';
+                bulkBlock.classList.remove('hidden');
+                singleBlock.classList.add('hidden');
+            }
+        };
+
+        window.toggleAdvancedOptions = () => {
+            const panel = document.getElementById('advanced-options-panel');
+            const icon = document.getElementById('adv-option-icon');
+            panel.classList.toggle('hidden');
+            icon.style.transform = panel.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(90deg)';
+        };
+
+        /* UTM Builder Modal */
+        window.openUtmBuilderModal = () => {
             const html = `
-                <div class="form-group">
-                    <label>Device Token</label>
-                    <div class="input-group">
-                        <input type="password" id="tk-input" value="${USER_TOKEN}" readonly style="font-family:monospace">
-                        <button class="btn-append" onclick="toggleTk()"><i class="fa-solid fa-eye"></i></button>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] text-neutral-500 mb-1">UTM Source</label>
+                        <input type="text" id="utm-source" placeholder="google, facebook, email" class="minimal-input w-full rounded-lg px-3 py-1.5 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-neutral-500 mb-1">UTM Medium</label>
+                        <input type="text" id="utm-medium" placeholder="cpc, banner, newsletter" class="minimal-input w-full rounded-lg px-3 py-1.5 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-neutral-500 mb-1">UTM Campaign</label>
+                        <input type="text" id="utm-campaign" placeholder="promo_2026" class="minimal-input w-full rounded-lg px-3 py-1.5 text-xs">
                     </div>
                 </div>
-                <div style="display:flex; gap:10px;">
-                    <button class="modal-btn secondary" style="flex:1" onclick="copyTk()">Copy</button>
-                    <button class="modal-btn danger" style="flex:1" onclick="rotateTk()">Reset</button>
-                    <button class="modal-btn secondary" style="flex:1" onclick="inputTk()">Import</button>
-                </div>
             `;
-            window.showModal('Token Quản Lý', html, 'alert');
-        };
+            window.showModal('Cấu hình UTM Parameters', html, 'confirm', (ok) => {
+                if (ok) {
+                    const src = document.getElementById('utm-source').value.trim();
+                    const med = document.getElementById('utm-medium').value.trim();
+                    const cam = document.getElementById('utm-campaign').value.trim();
 
-        window.toggleTk = () => { const i = document.getElementById('tk-input'); i.type = i.type === 'password' ? 'text' : 'password'; };
-        window.copyTk = () => { navigator.clipboard.writeText(USER_TOKEN); alert("Đã sao chép Token!"); };
-
-        // ROTATE TOKEN: CHUYỂN SANG HQ MỚI
-        window.rotateTk = () => {
-            window.closeModal();
-            setTimeout(() => {
-                window.showModal('Cảnh báo', 'Tạo token HQ mới? Dữ liệu cũ sẽ được chuyển sang.', 'confirm', async (yes) => {
-                    if (yes) {
-                        const newToken = 'HQ' + Math.random().toString(36).substr(2, 9).toUpperCase();
-                        const batch = writeBatch(db);
-                        const q = query(collection(db, "links"), where("ownerToken", "==", USER_TOKEN));
-                        const snap = await getDocs(q);
-                        snap.forEach(d => batch.update(d.ref, { ownerToken: newToken }));
-                        await batch.commit();
-                        USER_TOKEN = newToken;
-                        localStorage.setItem('hq_token', newToken);
-                        window.showModal('Thành công', 'Đã cấp Token mới: ' + newToken);
-                        loadHistory();
+                    if (src || med || cam) {
+                        attachedUtmObj = { utm_source: src, utm_medium: med, utm_campaign: cam };
+                        document.getElementById('utm-status-label').innerText = 'Đã đính kèm UTM ✔';
+                        window.showToast('Đã lưu tham số UTM!', 'success');
                     }
-                });
-            }, 200);
+                }
+            });
         };
 
-        window.inputTk = () => {
-            window.closeModal();
-            setTimeout(() => {
-                const html = `<input type="text" id="new-tk-val" placeholder="HQ..." style="width:100%; padding:10px; background:var(--input-bg); border:1px solid var(--border-color); color:var(--text-main);">`;
-                window.showModal('Nhập Token', html, 'confirm', (ok) => {
-                    if (ok) {
-                        const val = document.getElementById('new-tk-val').value.trim();
-                        if (val.length > 2) {
-                            USER_TOKEN = val;
-                            localStorage.setItem('hq_token', val);
-                            loadHistory();
-                        }
-                    }
-                });
-            }, 200);
+        window.executeShortenProcess = async () => {
+            if (shortenMode === 'single') {
+                await createSingleShortLink();
+            } else {
+                await createBulkShortLinks();
+            }
         };
 
-        window.createShortLink = async () => {
+        async function createSingleShortLink() {
             let url = document.getElementById('long-url').value.trim();
             let alias = document.getElementById('alias').value.trim().replace(/[^a-zA-Z0-9-_]/g, '');
+            const pass = document.getElementById('link-password').value.trim();
+            const expiry = document.getElementById('link-expiry').value;
             const hasAds = document.getElementById('ads-toggle').checked;
+            const allowSkip = document.getElementById('allow-skip-toggle') ? document.getElementById('allow-skip-toggle').checked : true;
 
-            if (!url) return window.showModal('Lỗi', 'Nhập Link gốc');
+            if (!url) return window.showToast('Vui lòng nhập URL gốc!', 'error');
             if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-            if (!url.includes('.')) return window.showModal('Lỗi', 'Link sai định dạng');
 
+            try {
+                let parsed = new URL(url);
+                if (attachedUtmObj) {
+                    if (attachedUtmObj.utm_source) parsed.searchParams.set('utm_source', attachedUtmObj.utm_source);
+                    if (attachedUtmObj.utm_medium) parsed.searchParams.set('utm_medium', attachedUtmObj.utm_medium);
+                    if (attachedUtmObj.utm_campaign) parsed.searchParams.set('utm_campaign', attachedUtmObj.utm_campaign);
+                    url = parsed.toString();
+                }
+            } catch (e) {
+                return window.showToast('Đường dẫn không hợp lệ!', 'error');
+            }
+
+            let banned = [];
             const cfg = await getDoc(doc(db, "settings", "config"));
+            if (cfg.exists()) banned = cfg.data().bannedDomains || [];
 
-            if (cfg.exists()) {
-                const banned = cfg.data().bannedDomains || [];
-                // Chuyển URL người dùng nhập về chữ thường
-                const lowerUrl = url.toLowerCase();
+            const secResult = analyzeUrlSafety(url, banned);
+            if (!secResult.safe) {
+                return window.showModal('Cảnh báo An toàn Hunq Shield', `Phát hiện mối đe dọa độc hại:<br><b class="text-red-500">${secResult.reason}</b>`, 'alert');
+            }
 
-                // Kiểm tra từng domain trong blacklist (cũng chuyển về chữ thường)
-                const isBanned = banned.some(d => {
-                    const domain = d.trim().toLowerCase();
-                    return domain && lowerUrl.includes(domain);
-                });
-
-                if (isBanned) return window.showModal('Cảnh báo', 'Tên miền này nằm trong danh sách cấm.', 'alert');
-            } if (alias) {
+            if (alias) {
                 const chk = await getDoc(doc(db, "links", alias));
-                if (chk.exists()) return window.showModal('Lỗi', 'Bí danh đã tồn tại');
+                if (chk.exists()) return window.showToast('Bí danh này đã tồn tại!', 'error');
             } else {
                 do {
                     alias = Math.random().toString(36).substring(2, 7);
@@ -963,234 +807,324 @@
                 ownerToken: USER_TOKEN,
                 views: 0,
                 hasAds: hasAds,
+                allowSkip: allowSkip,
+                password: pass || null,
+                expiresAt: expiry || null,
                 createdAt: new Date()
             });
 
-            // --- BLACKLIST UTILITIES ---
+            document.getElementById('long-url').value = '';
+            document.getElementById('alias').value = '';
+            document.getElementById('link-password').value = '';
 
-            // 1. Hàm Xuất File (Export)
-            window.exportBlacklist = () => {
-                const content = document.getElementById('banned-domains').value;
-                if (!content.trim()) return alert("Danh sách trống!");
-
-                const blob = new Blob([content], { type: "text/plain" });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `Hunq_Blacklist_${new Date().toISOString().slice(0, 10)}.txt`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            };
-
-            // 2. Hàm Xử lý file Nhập (Import)
-            window.processImport = (input) => {
-                const file = input.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const text = e.target.result;
-                    const current = document.getElementById('banned-domains').value;
-
-                    // Hỏi người dùng muốn Ghi đè hay Gộp
-                    window.showModal('Nhập dữ liệu', 'Bạn muốn Gộp thêm vào hay Thay thế toàn bộ?', 'confirm', (isReplace) => {
-                        // Lưu ý: callback của modal bạn là true/false. 
-                        // Ở đây tôi dùng confirm hơi trick một chút, ta có thể làm 2 nút riêng, 
-                        // nhưng để đơn giản: Nếu bấm "Xác nhận" (Primary) -> Gộp (Append), Nếu muốn Thay thế ta cần sửa Modal một chút.
-                        // Để an toàn, ta mặc định là GỘP (Append) cho dễ dùng.
-
-                        // Logic Gộp đơn giản:
-                        const separator = current.trim().length > 0 ? ', ' : '';
-                        document.getElementById('banned-domains').value = current + separator + text;
-
-                        // Reset input để chọn lại file cũ được
-                        input.value = '';
-                    });
-                };
-                reader.readAsText(file);
-            };
-
-            // Sửa lại logic lưu Blacklist để clean data tốt hơn
-            window.saveBlacklist = async () => {
-                const raw = document.getElementById('banned-domains').value;
-                // Tách chuỗi, bỏ khoảng trắng thừa, chuyển về chữ thường để lưu cho chuẩn
-                const v = raw.split(',')
-                    .map(x => x.trim().toLowerCase()) // Lưu dưới dạng lowercase luôn
-                    .filter(x => x);
-
-                // Xóa trùng lặp (nếu cần)
-                const uniqueV = [...new Set(v)];
-
-                await setDoc(doc(db, "settings", "config"), { bannedDomains: uniqueV }, { merge: true });
-
-                // Cập nhật lại giao diện cho đẹp
-                document.getElementById('banned-domains').value = uniqueV.join(', ');
-                window.showModal('Thành công', 'Đã lưu Blacklist (đã chuẩn hóa lowercase).');
-            };
-
-            // Nhớ export ra window
-            window.exportBlacklist = window.exportBlacklist;
-            window.processImport = window.processImport;
-            window.saveBlacklist = window.saveBlacklist;
-
-            // Reset form
-            document.getElementById('long-url').value = "";
-            document.getElementById('alias').value = "";
-            loadHistory();
-
-            // Tính toán Link hoàn chỉnh
             const baseUrl = location.href.split('?')[0].split('#')[0].replace(/\/index\.html$/, '');
             const finalLink = (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + '#' + alias;
 
-            // Tự động copy nếu bật
             if (document.getElementById('autocopy-toggle').checked) {
                 navigator.clipboard.writeText(finalLink);
+                window.showToast('Đã sao chép link rút gọn!', 'success');
             }
 
-            // --- HIỂN THỊ KẾT QUẢ + QR CODE ---
+            if (typeof confetti === 'function') confetti({ particleCount: 60, spread: 50, origin: { y: 0.7 } });
+
+            displaySuccessQRModal(finalLink);
+        }
+
+        async function createBulkShortLinks() {
+            const raw = document.getElementById('bulk-urls-input').value.trim();
+            if (!raw) return window.showToast('Vui lòng nhập danh sách link!', 'error');
+
+            const lines = raw.split('\n').map(l => l.trim()).filter(l => l);
+            if (lines.length === 0) return;
+
+            window.showToast(`Đang rút gọn ${lines.length} đường dẫn...`, 'info');
+
+            let count = 0;
+            for (let l of lines) {
+                let url = l;
+                if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+                let alias = Math.random().toString(36).substring(2, 7);
+                await setDoc(doc(db, "links", alias), {
+                    originalUrl: url,
+                    ownerToken: USER_TOKEN,
+                    views: 0,
+                    hasAds: false,
+                    createdAt: new Date()
+                });
+                count++;
+            }
+
+            document.getElementById('bulk-urls-input').value = '';
+            window.showToast(`Đã rút gọn ${count} links thành công!`, 'success');
+            switchMainTab('tab-library');
+        }
+
+        function displaySuccessQRModal(finalLink) {
             const html = `
-        <div style="display:flex; flex-direction:column; gap:15px; align-items:center;">
-            <div class="input-group">
-                <input type="text" value="${finalLink}" readonly style="text-align:center;">
-                <button class="btn-append" onclick="navigator.clipboard.writeText('${finalLink}'); alert('Đã copy!')"><i class="fa-solid fa-copy"></i></button>
-            </div>
-            
-            <div id="success-qr" style="background:white; padding:15px; border-radius:8px; border:1px solid var(--border-color);"></div>
-            
-            <button class="btn-lime" onclick="window.downloadSuccessQR()" style="width:auto; padding:8px 20px;">
-                <i class="fa-solid fa-download"></i> Tải QR
-            </button>
-        </div>
-    `;
+                <div class="space-y-4 text-center">
+                    <div class="flex items-center gap-2 border border-neutral-200 dark:border-neutral-800 rounded-xl p-2 bg-neutral-50 dark:bg-neutral-900">
+                        <input type="text" value="${finalLink}" readonly class="bg-transparent text-xs font-mono flex-1 focus:outline-none">
+                        <button onclick="navigator.clipboard.writeText('${finalLink}'); window.showToast('Đã copy!', 'success')" class="px-3 py-1 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-black font-semibold rounded-lg text-xs">
+                            Copy
+                        </button>
+                    </div>
 
-            window.showModal('Tạo thành công!', html, 'close');
+                    <div id="modal-qr-container" class="bg-white p-3 rounded-xl inline-block border border-neutral-200 shadow-sm"></div>
 
-            // Tạo QR Code (Delay nhẹ để DOM render xong)
+                    <button onclick="downloadQRModalImage()" class="w-full py-2 border border-neutral-200 dark:border-neutral-800 rounded-xl text-xs font-medium hover:border-neutral-400 transition">
+                        <i class="fa-solid fa-download mr-1"></i> Tải Mã QR PNG
+                    </button>
+                </div>
+            `;
+
+            window.showModal('Tạo Link Rút Gọn Thành Công', html, 'alert');
+
             setTimeout(() => {
-                const container = document.getElementById('success-qr');
-                if (container) {
-                    container.innerHTML = "";
-                    new QRCode(container, {
+                const target = document.getElementById('modal-qr-container');
+                if (target) {
+                    target.innerHTML = '';
+                    new QRCode(target, {
                         text: finalLink,
-                        width: 160,
-                        height: 160,
+                        width: 150,
+                        height: 150,
                         colorDark: "#000000",
                         colorLight: "#ffffff",
                         correctLevel: QRCode.CorrectLevel.H
                     });
                 }
             }, 100);
-        };
+        }
 
-        // Hàm hỗ trợ tải QR ở modal thành công
-        window.downloadSuccessQR = () => {
-            const img = document.querySelector('#success-qr img');
+        window.downloadQRModalImage = () => {
+            const img = document.querySelector('#modal-qr-container img');
             if (img) {
-                const link = document.createElement('a');
-                link.href = img.src;
-                link.download = 'HunqLink-NewQR.png';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                const a = document.createElement('a');
+                a.href = img.src;
+                a.download = 'HunqLink-QR.png';
+                a.click();
             }
-            window.createShortLink = window.createShortLink;
-            window.downloadSuccessQR = window.downloadSuccessQR;
         };
 
+        /* LIBRARY / HISTORY MANAGEMENT */
         async function loadHistory() {
-            const list = document.getElementById('history-list');
-            list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim)">Đang tải...</div>';
+            const container = document.getElementById('history-list');
+            container.innerHTML = '<div class="text-center py-6 text-xs text-neutral-500">Đang tải danh sách...</div>';
+
             const q = query(collection(db, "links"), where("ownerToken", "==", USER_TOKEN));
             const snap = await getDocs(q);
-            list.innerHTML = '';
-            if (snap.empty) { list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-dim)">Chưa có link nào</div>'; return; }
 
-            snap.forEach(d => {
-                const data = d.data();
-                const baseUrl = location.href.split('?')[0].split('#')[0].replace(/\/index\.html$/, '');
-                const link = (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + '#' + d.id;
+            historyCache = [];
+            snap.forEach(d => historyCache.push({ id: d.id, ...d.data() }));
+
+            renderHistoryUI(historyCache);
+        }
+
+        function renderHistoryUI(items) {
+            const container = document.getElementById('history-list');
+            container.innerHTML = '';
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-xs text-neutral-500">Chưa có liên kết nào được tạo trên thiết bị này</div>';
+                return;
+            }
+
+            const baseUrl = location.href.split('?')[0].split('#')[0].replace(/\/index\.html$/, '');
+
+            items.forEach(item => {
+                const link = (baseUrl.endsWith('/') ? baseUrl : baseUrl + '/') + '#' + item.id;
                 const div = document.createElement('div');
-                div.className = 'history-card';
+                div.className = 'minimal-panel p-3.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2';
+
                 div.innerHTML = `
-                    <div style="flex:1; overflow:hidden; padding-right:10px;">
-                        <a href="${link}" target="_blank" class="history-short">${link}</a>
-                        <span class="history-long">${data.originalUrl}</span>
+                    <div class="flex-1 min-w-0 space-y-0.5">
+                        <div class="flex items-center gap-2">
+                            <a href="${link}" target="_blank" class="text-xs font-semibold font-mono hover:underline truncate max-w-xs">${link}</a>
+                            <span class="text-[10px] px-1.5 py-0.2 rounded border border-neutral-200 dark:border-neutral-800 text-neutral-500 font-mono"><i class="fa-solid fa-eye text-[9px]"></i> ${item.views || 0}</span>
+                            ${item.password ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-500"><i class="fa-solid fa-lock"></i></span>' : ''}
+                            ${item.allowSkip === false ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-neutral-800 text-neutral-400" title="Không cho phép bỏ qua đếm ngược"><i class="fa-solid fa-hourglass-half"></i></span>' : ''}
+                        </div>
+                        <p class="text-[11px] text-neutral-500 truncate max-w-md">${item.originalUrl}</p>
                     </div>
-                    <div class="history-actions">
-                        <button class="btn-mini" onclick="copyTxt('${link}')" title="Sao chép"><i class="fa-solid fa-copy"></i></button>
-                        <button class="btn-mini" onclick="viewQR('${link}')" title="Mã QR"><i class="fa-solid fa-qrcode"></i></button> 
-                        <button class="btn-mini" onclick="editLnk('${d.id}', '${data.originalUrl}', ${data.hasAds})" title="Sửa"><i class="fa-solid fa-pen"></i></button>
-                        <button class="btn-mini" onclick="delLnk('${d.id}')" style="color:var(--danger)" title="Xoá"><i class="fa-solid fa-trash"></i></button>
+                    <div class="flex items-center gap-1 self-end sm:self-center">
+                        <button onclick="navigator.clipboard.writeText('${link}'); window.showToast('Đã copy!', 'success')" class="p-2 text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition" title="Copy">
+                            <i class="fa-solid fa-copy"></i>
+                        </button>
+                        <button onclick="viewQR('${link}')" class="p-2 text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition" title="QR">
+                            <i class="fa-solid fa-qrcode"></i>
+                        </button>
+                        <button onclick="editLnk('${item.id}', '${item.originalUrl}', ${item.hasAds}, ${item.allowSkip !== false})" class="p-2 text-xs text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition" title="Sửa">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="delLnk('${item.id}')" class="p-2 text-xs text-red-500 hover:text-red-600 transition" title="Xoá">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
                     </div>
                 `;
-                list.appendChild(div);
+                container.appendChild(div);
             });
         }
 
-        window.copyTxt = (t) => { navigator.clipboard.writeText(t); };
-        window.delLnk = (id) => {
-            window.showModal('Xác nhận', 'Xoá link này?', 'confirm', async (yes) => {
-                if (yes) { await deleteDoc(doc(db, "links", id)); loadHistory(); if (auth.currentUser) loadAdmLinks(); }
-            });
-        };
-        window.editLnk = (id, url, ads) => {
+        window.editLnk = (id, url, ads, allowSkip = true) => {
             const html = `
-                <div class="form-group"><label>Link Gốc</label><input type="text" id="edit-url" value="${url}"></div>
-                <div class="settings-row"><span>Bật Ads</span><label class="toggle-switch"><input type="checkbox" id="edit-ads" ${ads ? 'checked' : ''}><span class="slider"></span></label></div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-neutral-500 mb-1">URL gốc</label>
+                        <input type="text" id="edit-url" value="${url}" class="minimal-input w-full rounded-lg px-3 py-1.5 text-xs">
+                    </div>
+                    <label class="flex items-center gap-2.5 cursor-pointer select-none text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition">
+                        <input type="checkbox" id="edit-ads" ${ads ? 'checked' : ''} class="toggle-switch-input">
+                        <div class="toggle-track"><div class="toggle-knob"></div></div>
+                        <span>Bật Quảng cáo Interstitial</span>
+                    </label>
+                    <label class="flex items-center gap-2.5 cursor-pointer select-none text-xs text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 transition">
+                        <input type="checkbox" id="edit-allow-skip" ${allowSkip ? 'checked' : ''} class="toggle-switch-input">
+                        <div class="toggle-track"><div class="toggle-knob"></div></div>
+                        <span>Cho phép bỏ qua đếm ngược</span>
+                    </label>
+                </div>
             `;
-            window.showModal('Sửa Link', html, 'confirm', async (yes) => {
+            window.showModal('Chỉnh sửa Link', html, 'confirm', async (yes) => {
                 if (yes) {
                     const newUrl = document.getElementById('edit-url').value.trim();
                     const newAds = document.getElementById('edit-ads').checked;
-                    if (newUrl) { await updateDoc(doc(db, "links", id), { originalUrl: newUrl, hasAds: newAds }); loadHistory(); }
+                    const newAllowSkip = document.getElementById('edit-allow-skip').checked;
+                    if (newUrl) {
+                        await updateDoc(doc(db, "links", id), { originalUrl: newUrl, hasAds: newAds, allowSkip: newAllowSkip });
+                        window.showToast('Cập nhật thành công!', 'success');
+                        loadHistory();
+                    }
                 }
             });
         };
 
-        window.viewQR = (url) => {
-            // Tạo nội dung HTML cho modal
+        window.viewQR = (url) => displaySuccessQRModal(url);
+
+        /* Device Token Management */
+        window.openTokenModal = () => {
             const html = `
-        <div style="display:flex; flex-direction:column; align-items:center; gap:15px;">
-            <div id="qr-target" style="background:white; padding:15px; border-radius:8px;"></div>
-            <p style="color:var(--text-dim); font-size:0.85rem; word-break:break-all; text-align:center;">${url}</p>
-            <button class="btn-lime" style="width:auto; padding:8px 20px;" onclick="downloadQR()">
-                <i class="fa-solid fa-download"></i> Tải ảnh về
-            </button>
-        </div>
-    `;
-
-            // Hiển thị Modal
-            window.showModal('Mã QR', html, 'alert');
-
-            // Tạo QR Code (cần delay nhẹ để DOM render xong)
-            setTimeout(() => {
-                const container = document.getElementById('qr-target');
-                container.innerHTML = ""; // Xoá QR cũ nếu có
-                new QRCode(container, {
-                    text: url,
-                    width: 180,
-                    height: 180,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-            }, 100);
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-[11px] text-neutral-500 mb-1">Device Token hiện tại</label>
+                        <div class="flex gap-2">
+                            <input type="password" id="tk-input" value="${USER_TOKEN}" readonly class="minimal-input flex-1 rounded-lg px-3 py-1.5 text-xs font-mono">
+                            <button onclick="toggleTkVisibility()" title="Hiện/Ẩn Token" class="px-3 py-1.5 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs hover:border-neutral-400 dark:hover:border-neutral-600 transition">
+                                <i id="tk-eye-icon" class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button onclick="navigator.clipboard.writeText('${USER_TOKEN}'); window.showToast('Đã copy token!', 'success')" class="py-1.5 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+                            <i class="fa-solid fa-copy mr-1"></i> Copy
+                        </button>
+                        <button onclick="downloadTokenFile()" class="py-1.5 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+                            <i class="fa-solid fa-file-arrow-down mr-1"></i> Tải .utoken
+                        </button>
+                        <button onclick="inputTk()" class="py-1.5 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800 transition">
+                            <i class="fa-solid fa-file-import mr-1"></i> Import
+                        </button>
+                        <button onclick="rotateTk()" class="py-1.5 text-red-500 border border-neutral-200 dark:border-neutral-800 rounded-lg text-xs hover:bg-red-500/10 transition">
+                            <i class="fa-solid fa-rotate mr-1"></i> Reset
+                        </button>
+                    </div>
+                </div>
+            `;
+            window.showModal('Quản lý Device Token', html, 'alert');
         };
 
-        // Hàm hỗ trợ tải ảnh QR về máy
-        window.downloadQR = () => {
-            const img = document.querySelector('#qr-target img');
-            if (img) {
-                const link = document.createElement('a');
-                link.href = img.src;
-                link.download = 'HunqLink-QR.png';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+        window.toggleTkVisibility = () => {
+            const inp = document.getElementById('tk-input');
+            const icon = document.getElementById('tk-eye-icon');
+            if (inp) {
+                if (inp.type === 'password') {
+                    inp.type = 'text';
+                    if (icon) icon.className = 'fa-solid fa-eye-slash';
+                } else {
+                    inp.type = 'password';
+                    if (icon) icon.className = 'fa-solid fa-eye';
+                }
             }
         };
 
-        window.toggleAdminPanel = () => document.getElementById('admin-panel').classList.toggle('hidden');
+        window.downloadTokenFile = () => {
+            const blob = new Blob([USER_TOKEN], { type: 'text/plain;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Hunq_Token_${USER_TOKEN}.utoken`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            window.showToast('Đã tải xuống file .utoken thành công!', 'success');
+        };
+
+        window.rotateTk = () => {
+            window.closeModal();
+            setTimeout(() => {
+                window.showModal('Cấp mới Token', 'Tạo Token mới? Các link cũ sẽ được cập nhật sang Token mới.', 'confirm', async (yes) => {
+                    if (yes) {
+                        const newToken = 'HQ' + Math.random().toString(36).substring(2, 11).toUpperCase();
+                        const batch = writeBatch(db);
+                        const q = query(collection(db, "links"), where("ownerToken", "==", USER_TOKEN));
+                        const snap = await getDocs(q);
+                        snap.forEach(d => batch.update(d.ref, { ownerToken: newToken }));
+                        await batch.commit();
+
+                        USER_TOKEN = newToken;
+                        localStorage.setItem('hq_token', newToken);
+                        window.showToast('Đã cấp Token mới!', 'success');
+                        loadHistory();
+                    }
+                });
+            }, 200);
+        };
+
+        window.inputTk = () => {
+            window.closeModal();
+            setTimeout(() => {
+                const html = `
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-[11px] text-neutral-500 mb-1">Dán chuỗi Token mới</label>
+                            <input type="text" id="new-tk-val" placeholder="HQ..." class="minimal-input w-full rounded-lg px-3 py-2 text-xs font-mono">
+                        </div>
+                        <div class="text-center text-[11px] text-neutral-500 my-1">— Hoặc chọn tệp file —</div>
+                        <div>
+                            <input type="file" id="tk-file-input" accept=".utoken,.txt" class="hidden" onchange="processTkFileImport(this)">
+                            <button onclick="document.getElementById('tk-file-input').click()" class="w-full py-2 border border-dashed border-neutral-300 dark:border-neutral-700 rounded-lg text-xs text-neutral-600 dark:text-neutral-400 hover:border-neutral-500 transition">
+                                <i class="fa-solid fa-file-lines mr-1"></i> Nhập từ file .utoken / .txt
+                            </button>
+                        </div>
+                    </div>
+                `;
+                window.showModal('Nhập Token', html, 'confirm', (ok) => {
+                    if (ok) {
+                        const val = document.getElementById('new-tk-val').value.trim();
+                        if (val.length > 2) {
+                            USER_TOKEN = val;
+                            localStorage.setItem('hq_token', val);
+                            window.showToast('Đã lưu Token!', 'success');
+                            loadHistory();
+                        }
+                    }
+                });
+            }, 200);
+        };
+
+        window.processTkFileImport = (input) => {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result.trim();
+                if (text) {
+                    const inp = document.getElementById('new-tk-val');
+                    if (inp) inp.value = text;
+                    window.showToast('Đã tải token từ file!', 'success');
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        /* ADMIN SUITE CONTROLLER */
         onAuthStateChanged(auth, async (u) => {
             if (u) {
                 const adm = await getDoc(doc(db, "settings", "admins"));
@@ -1198,153 +1132,266 @@
                     document.getElementById('admin-login-form').classList.add('hidden');
                     document.getElementById('admin-content').classList.remove('hidden');
                     loadAdmData();
-                } else { window.showModal('Lỗi', 'Quyền hạn bị từ chối'); signOut(auth); }
+                } else {
+                    window.showToast('Tài khoản không đủ quyền Admin!', 'error');
+                    signOut(auth);
+                }
             } else {
                 document.getElementById('admin-login-form').classList.remove('hidden');
                 document.getElementById('admin-content').classList.add('hidden');
             }
         });
 
-        window.adminLogin = async () => { try { await signInWithEmailAndPassword(auth, document.getElementById('adm-email').value, document.getElementById('adm-pass').value); } catch (e) { window.showModal('Lỗi', 'Sai thông tin đăng nhập'); } };
+        window.adminLogin = async () => {
+            try {
+                await signInWithEmailAndPassword(auth, document.getElementById('adm-email').value, document.getElementById('adm-pass').value);
+                window.showToast('Đăng nhập Admin thành công!', 'success');
+            } catch (e) {
+                window.showToast('Thông tin đăng nhập không hợp lệ', 'error');
+            }
+        };
+
         window.logout = () => signOut(auth);
+
+        window.switchAdminSubTab = (subTabId) => {
+            document.querySelectorAll('.adm-sub-content').forEach(e => e.classList.add('hidden'));
+            document.querySelectorAll('.adm-tab-btn').forEach(e => e.className = 'adm-tab-btn px-4 py-2 hover:text-neutral-900 dark:hover:text-neutral-100');
+
+            document.getElementById(subTabId).classList.remove('hidden');
+            event.target.className = 'adm-tab-btn px-4 py-2 text-neutral-900 dark:text-neutral-100 border-b-2 border-current font-semibold';
+        };
 
         async function loadAdmData() {
             loadAdmLinks();
             const bl = await getDoc(doc(db, "settings", "config"));
-            if (bl.exists()) document.getElementById('banned-domains').value = (bl.data().bannedDomains || []).join(', ');
+            if (bl.exists()) {
+                const list = bl.data().bannedDomains || [];
+                document.getElementById('banned-domains').value = list.join(', ');
+                document.getElementById('stat-blocked-domains').innerText = list.length;
+            }
+
             const ad = await getDoc(doc(db, "settings", "ads"));
             const adData = ad.exists() ? ad.data() : {};
             const cont = document.getElementById('ads-config-container');
             cont.innerHTML = '';
+
             ADS_POS.forEach(p => {
-                const d = adData[p.id] || { img: '', url: '', text: '' };
-                cont.innerHTML += `<div style="margin-bottom:15px; border:1px solid var(--border-color); padding:10px; border-radius:8px;"><h5 style="margin-bottom:5px; color:var(--text-dim)">${p.name}</h5><input type="text" id="ad-img-${p.id}" placeholder="Ảnh URL" value="${d.img}" style="margin-bottom:5px"><input type="text" id="ad-url-${p.id}" placeholder="Đích URL" value="${d.url}"></div>`;
+                const d = adData[p.id] || { img: '', url: '' };
+                cont.innerHTML += `
+                    <div class="minimal-panel p-3 space-y-2">
+                        <span class="text-xs font-semibold text-neutral-400">${p.name}</span>
+                        <input type="text" id="ad-img-${p.id}" placeholder="Banner Image URL" value="${d.img}" class="minimal-input w-full rounded-lg px-2.5 py-1.5 text-xs font-mono">
+                        <input type="text" id="ad-url-${p.id}" placeholder="Target Redirect URL" value="${d.url}" class="minimal-input w-full rounded-lg px-2.5 py-1.5 text-xs font-mono">
+                    </div>
+                `;
             });
         }
 
         async function loadAdmLinks() {
             const list = document.getElementById('adm-items-container');
-            list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-dim)">Loading...</div>';
+            list.innerHTML = '<div class="text-center py-4 text-xs text-neutral-500">Đang tải danh sách...</div>';
             const s = await getDocs(query(collection(db, "links")));
             list.innerHTML = '';
-            if (s.empty) { list.innerHTML = '<div style="padding:20px; text-align:center">Empty</div>'; return; }
+
+            document.getElementById('stat-total-links').innerText = s.size;
+            let totalClicks = 0;
+
             s.forEach(d => {
                 const data = d.data();
+                totalClicks += (data.views || 0);
+
                 const row = document.createElement('div');
-                row.className = 'adm-link-row';
-                row.id = `row-${d.id}`;
-                row.onclick = () => toggleSelectRow(d.id);
-                row.innerHTML = `<input type="checkbox" class="adm-chk-input hidden" value="${d.id}" id="chk-${d.id}"><div class="custom-checkbox"><i class="fa-solid fa-check" style="font-size:0.7rem"></i></div><div style="flex:1; overflow:hidden"><div class="adm-short">${d.id}</div><span class="adm-orig" style="font-size:0.8rem">${data.originalUrl}</span></div><div style="font-size:0.8rem; opacity:0.5">${data.views} <i class="fa-solid fa-eye"></i></div>`;
+                row.className = 'minimal-panel p-2.5 flex items-center gap-3 text-xs';
+                row.innerHTML = `
+                    <label class="relative inline-flex items-center cursor-pointer select-none my-auto">
+                        <input type="checkbox" class="adm-chk-input toggle-switch-input" value="${d.id}">
+                        <div class="toggle-track"><div class="toggle-knob"></div></div>
+                    </label>
+                    <div class="flex-1 min-w-0">
+                        <span class="font-bold font-mono">${d.id}</span>
+                        <p class="text-neutral-500 text-[11px] truncate">${data.originalUrl}</p>
+                    </div>
+                    <span class="font-mono text-xs text-neutral-400"><i class="fa-solid fa-eye text-[9px]"></i> ${data.views || 0}</span>
+                `;
                 list.appendChild(row);
             });
+
+            document.getElementById('stat-total-clicks').innerText = totalClicks;
         }
 
-        window.toggleSelectRow = (id) => {
-            const chk = document.getElementById(`chk-${id}`);
-            const row = document.getElementById(`row-${id}`);
-            chk.checked = !chk.checked;
-            chk.checked ? row.classList.add('selected') : row.classList.remove('selected');
-        };
-
         window.toggleSelectAll = () => {
-            const btn = document.getElementById('btn-select-all');
             const chks = document.querySelectorAll('.adm-chk-input');
-            const rows = document.querySelectorAll('.adm-link-row');
-            const isSel = !btn.classList.contains('active');
-            chks.forEach(c => c.checked = isSel);
-            rows.forEach(r => isSel ? r.classList.add('selected') : r.classList.remove('selected'));
-            isSel ? btn.classList.add('active') : btn.classList.remove('active');
+            const first = chks[0]?.checked;
+            chks.forEach(c => c.checked = !first);
         };
 
         window.bulkDeleteLinks = async () => {
             const inps = document.querySelectorAll('.adm-chk-input:checked');
-            if (inps.length === 0) return;
-            window.showModal('Xác nhận', `Xoá ${inps.length} link?`, 'confirm', async (yes) => {
-                if (yes) { const batch = writeBatch(db); inps.forEach(i => batch.delete(doc(db, "links", i.value))); await batch.commit(); loadAdmLinks(); }
+            if (inps.length === 0) return window.showToast('Chưa chọn link nào!', 'error');
+
+            window.showModal('Xoá hàng loạt', `Xoá ${inps.length} link đã chọn?`, 'confirm', async (yes) => {
+                if (yes) {
+                    const batch = writeBatch(db);
+                    inps.forEach(i => batch.delete(doc(db, "links", i.value)));
+                    await batch.commit();
+                    window.showToast(`Đã xoá ${inps.length} link!`, 'success');
+                    loadAdmLinks();
+                }
             });
         };
 
         window.saveAdsConfig = async () => {
             const data = {};
-            ADS_POS.forEach(p => { data[p.id] = { img: document.getElementById(`ad-img-${p.id}`).value.trim(), url: document.getElementById(`ad-url-${p.id}`).value.trim(), text: '' }; });
+            ADS_POS.forEach(p => {
+                data[p.id] = {
+                    img: document.getElementById(`ad-img-${p.id}`).value.trim(),
+                    url: document.getElementById(`ad-url-${p.id}`).value.trim()
+                };
+            });
             await setDoc(doc(db, "settings", "ads"), data);
-            window.showModal('OK', 'Đã lưu cấu hình');
+            window.showToast('Đã lưu cấu hình quảng cáo!', 'success');
         };
 
         window.saveBlacklist = async () => {
-            const v = document.getElementById('banned-domains').value.split(',').map(x => x.trim()).filter(x => x);
+            const raw = document.getElementById('banned-domains').value;
+            const v = [...new Set(raw.split(',').map(x => x.trim().toLowerCase()).filter(x => x))];
             await setDoc(doc(db, "settings", "config"), { bannedDomains: v }, { merge: true });
-            window.showModal('OK', 'Đã lưu');
+            document.getElementById('banned-domains').value = v.join(', ');
+            window.showToast('Đã cập nhật Shield Blacklist!', 'success');
         };
 
-        window.pasteUrl = async () => { try { document.getElementById('long-url').value = await navigator.clipboard.readText(); } catch (e) { } };
-        window.toggleTheme = () => { const e = document.documentElement; e.setAttribute('data-theme', e.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); };
-        window.switchTab = (id) => {
-            document.querySelectorAll('.tab-content').forEach(e => e.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
-            document.getElementById(id).classList.remove('hidden');
-            document.querySelector(`button[onclick="switchTab('${id}')"]`).classList.add('active');
+        window.exportBlacklist = () => {
+            const content = document.getElementById('banned-domains').value;
+            if (!content.trim()) return window.showToast("Blacklist đang trống!", "error");
+            const blob = new Blob([content], { type: "text/plain" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `Hunq_Blacklist_${new Date().toISOString().slice(0, 10)}.txt`;
+            a.click();
         };
 
-        /* --- REDIRECT --- */
+        window.processImport = (input) => {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                const current = document.getElementById('banned-domains').value;
+                const separator = current.trim().length > 0 ? ', ' : '';
+                document.getElementById('banned-domains').value = current + separator + text;
+                window.showToast('Đã nhập dữ liệu Blacklist!', 'success');
+            };
+            reader.readAsText(file);
+        };
+
+        /* LINK REDIRECT ROUTER */
         if (location.hash.length > 1) {
             document.getElementById('main-app').style.display = 'none';
             document.getElementById('redirect-overlay').classList.remove('hidden');
-            document.getElementById('redirect-overlay').style.display = 'flex';
 
             const id = location.hash.substring(1);
             getDoc(doc(db, "links", id)).then(async s => {
                 if (s.exists()) {
                     updateDoc(s.ref, { views: increment(1) });
                     const dt = s.data();
-                    if (dt.hasAds) {
-                        const adDoc = await getDoc(doc(db, "settings", "ads"));
-                        if (adDoc.exists()) {
-                            const ads = adDoc.data();
-                            // Tìm cấu hình trong ADS_POS dựa trên ID
-                            ADS_POS.forEach(p => {
-                                const d = ads[p.id];
-                                if (d && d.img) {
-                                    const slot = document.getElementById(`ad-slot-${p.id}`);
-                                    slot.classList.remove('hidden');
+                    activeRedirectData = dt;
 
-                                    // Áp dụng style trực tiếp vào container
-                                    slot.style.width = p.width;
-                                    slot.style.height = p.height;
-                                    slot.style.maxWidth = p.maxWidth;
-                                    slot.classList.add('ad-slot-container'); // Thêm class CSS đã viết ở trên
+                    // Ensure skip link is hidden initially until authorized
+                    const skipBtn = document.getElementById('direct-target-link');
+                    skipBtn.classList.add('hidden');
+                    skipBtn.removeAttribute('href');
 
-                                    if (p.id === 'interstitial') {
-                                        document.getElementById('interstitial-content').innerHTML = `
-                <a href="${d.url || '#'}" target="_blank">
-                    <img src="${d.img}" style="max-height:${p.height}; max-width:${p.width}">
-                </a>`;
-                                    } else {
-                                        slot.innerHTML = `
-                <a href="${d.url || '#'}" target="_blank">
-                    <img src="${d.img}" alt="Ad">
-                </a>`;
-                                    }
-                                }
-                            });
-                        }
-                        let c = 10;
-                        const t = setInterval(() => { c--; document.getElementById('countdown').innerText = c; if (c <= 0) { clearInterval(t); location.href = dt.originalUrl; } }, 1000);
-                    } else location.href = dt.originalUrl;
+                    if (dt.password) {
+                        document.getElementById('password-protection-container').classList.remove('hidden');
+                        return;
+                    }
+
+                    executeRedirectWithAds(dt);
                 } else {
-                    alert('Link không tồn tại'); location.hash = ""; document.getElementById('redirect-overlay').style.display = 'none'; document.getElementById('main-app').style.display = 'flex';
+                    window.showModal('Lỗi Trỏ Link', 'Liên kết không tồn tại hoặc đã bị xoá.', 'alert', () => {
+                        location.hash = "";
+                        location.reload();
+                    });
                 }
             });
-        } else {
-            loadHistory();
         }
 
-        // Export globals
-        window.copyTk = window.copyTk; window.rotateTk = window.rotateTk; window.inputTk = window.inputTk;
-        window.copyTxt = window.copyTxt; window.delLnk = window.delLnk; window.editLnk = window.editLnk;
-        window.bulkDeleteLinks = window.bulkDeleteLinks;
-        // Thêm dòng này:
-        window.viewQR = window.viewQR; window.downloadQR = window.downloadQR;
+        window.verifyRedirectPassword = () => {
+            const input = document.getElementById('redirect-pass-input').value;
+            const err = document.getElementById('pass-error-msg');
+
+            if (activeRedirectData && activeRedirectData.password === input) {
+                err.classList.add('hidden');
+                document.getElementById('password-protection-container').classList.add('hidden');
+                executeRedirectWithAds(activeRedirectData);
+            } else {
+                err.classList.remove('hidden');
+            }
+        };
+
+        async function executeRedirectWithAds(dt) {
+            const skipBtn = document.getElementById('direct-target-link');
+            const canSkip = dt.allowSkip !== false;
+
+            if (canSkip) {
+                skipBtn.href = dt.originalUrl;
+                skipBtn.classList.remove('hidden');
+            } else {
+                skipBtn.classList.add('hidden');
+                skipBtn.removeAttribute('href');
+            }
+
+            if (dt.hasAds) {
+                const adDoc = await getDoc(doc(db, "settings", "ads"));
+                if (adDoc.exists()) {
+                    const ads = adDoc.data();
+                    ADS_POS.forEach(p => {
+                        const d = ads[p.id];
+                        if (d && d.img) {
+                            const slot = document.getElementById(`ad-slot-${p.id}`);
+                            if (slot) {
+                                slot.classList.remove('hidden');
+                                if (p.id === 'interstitial') {
+                                    document.getElementById('interstitial-content').innerHTML = `
+                                        <a href="${d.url || '#'}" target="_blank"><img src="${d.img}" class="rounded-lg max-h-[70vh] object-contain"></a>`;
+                                } else {
+                                    slot.innerHTML = `<a href="${d.url || '#'}" target="_blank"><img src="${d.img}" class="max-h-24 object-contain"></a>`;
+                                }
+                            }
+                        }
+                    });
+                }
+
+                let c = 10;
+                document.getElementById('countdown').innerText = c;
+                const timer = setInterval(() => {
+                    c--;
+                    document.getElementById('countdown').innerText = c;
+                    if (c <= 0) {
+                        clearInterval(timer);
+                        location.href = dt.originalUrl;
+                    }
+                }, 1000);
+            } else {
+                location.href = dt.originalUrl;
+            }
+        }
+
+        /* Utilities */
+        window.pasteUrl = async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('long-url').value = text;
+                liveCheckUrlSecurity(text);
+                window.showToast('Đã dán từ clipboard!', 'success');
+            } catch (e) {}
+        };
+
+        window.toggleTheme = () => {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            html.classList.toggle('light');
+        };
     </script>
 </body>
 
