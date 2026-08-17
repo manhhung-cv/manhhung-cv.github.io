@@ -373,7 +373,14 @@ export const TOOLS = [
         icon: 'fa-solid fa-tree',
         desc: 'Công cụ hiển thị dữ liệu dạng cây (tree structure) từ JSON, XML hoặc các định dạng dữ liệu khác.',
         tags: ['tree', 'viewer', 'json', 'xml', 'data']
+    },
+    {
+        id: 'excel-converter',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Excel Converter',
+        icon: 'fa-solid fa-file-excel',
+        desc: 'Công cụ chuyển đổi giữa các định dạng tệp Excel (XLS, XLSX) và các định dạng khác.',
+        tags: ['excel', 'converter', 'file']
     }
-    
 
 ];

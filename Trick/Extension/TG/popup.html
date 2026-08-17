@@ -1,65 +1,294 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>Chuyển đổi tiền tệ</title>
-    <style>
-        body { width: 320px; font-family: Arial, sans-serif; padding: 15px; margin: 0; background-color: #f9fafb; }
-        .container { display: flex; flex-direction: column; gap: 12px; }
-        .form-group { display: flex; flex-direction: column; gap: 4px; }
-        label { font-size: 12px; font-weight: bold; color: #4b5563; }
-        select, input { padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; }
-        .input-row { display: flex; gap: 8px; }
-        .input-row input { flex: 1; }
-        .input-row select { width: 90px; background-color: #f3f4f6; }
-        .info-box { background: #eff6ff; padding: 10px; border-radius: 6px; font-size: 13px; color: #1e3a8a; text-align: center; }
-        .text-muted { font-size: 11px; color: #6b7280; text-align: center; margin-top: 5px; }
-        .warning { color: #dc2626; font-size: 11px; display: none; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Quy Đổi Tỷ Giá</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #18181b;
+      --border: #27272a;
+      --accent: #38bdf8;
+      --text: #f4f4f5;
+      --muted: #71717a;
+      --warning: #f87171;
+      --switch-off: #3f3f46;
+      --switch-on: #10b981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+    body {
+      width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 14px;
+      user-select: none;
+    }
+
+    /* Switch Container */
+    .controls-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+
+    .control-label {
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sub-domain {
+      font-size: 10px;
+      color: var(--muted);
+      max-width: 170px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Toggle Switch Component */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 32px;
+      height: 18px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--switch-off);
+      transition: .2s;
+      border-radius: 18px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 2px;
+      bottom: 2px;
+      background-color: white;
+      transition: .2s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider { background-color: var(--switch-on); }
+    input:checked + .slider:before { transform: translateX(14px); }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .source-select {
+      background: var(--card);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .converter-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 10px;
+      transition: border-color 0.2s;
+    }
+
+    .input-row:focus-within { border-color: var(--accent); }
+
+    .input-row input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      outline: none;
+      width: 100%;
+    }
+
+    .input-row select {
+      background: transparent;
+      border: none;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      padding-left: 6px;
+    }
+
+    .input-row select option { background: var(--card); color: var(--text); }
+
+    .swap-divider {
+      display: flex;
+      justify-content: center;
+      margin: -4px 0;
+      z-index: 2;
+    }
+
+    .swap-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .swap-btn:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      transform: rotate(180deg);
+    }
+
+    .smiles-warning {
+      color: var(--warning);
+      font-size: 11px;
+      text-align: center;
+      display: none;
+      margin-top: 6px;
+    }
+
+    .rate-summary {
+      margin-top: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .rate-live {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .rate-time {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="form-group">
-            <label for="sourceSelect">Nguồn tỷ giá</label>
-            <select id="sourceSelect">
-                <option value="standard">ExchangeRate-API (Thế giới)</option>
-                <option value="smiles">Smiles (Chỉ JPY ↔ VND)</option>
-            </select>
-            <span id="smilesWarning" class="warning">Nguồn Smiles chỉ hỗ trợ Yên Nhật và VNĐ.</span>
-        </div>
+  <!-- Khu vực điều khiển Bật/Tắt -->
+  <div class="controls-panel">
+    <div class="control-row">
+      <span class="control-label">Bật quy đổi trực tiếp</span>
+      <label class="switch">
+        <input type="checkbox" id="globalEnableToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="control-row" id="siteControlRow">
+      <div class="control-label">
+        <span>Bật trên trang này</span>
+        <span class="sub-domain" id="currentSiteDomain">Đang lấy domain...</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="siteEnableToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
 
-        <div class="form-group">
-            <div class="input-row">
-                <input type="text" id="in1" value="1" autocomplete="off">
-                <select id="sel1">
-                    <option value="USD">USD</option>
-                    <option value="JPY" selected>JPY</option>
-                    <option value="KRW">KRW</option>
-                    <option value="CNY">CNY</option>
-                    <option value="VND">VND</option>
-                </select>
-            </div>
-        </div>
+  <div class="header">
+    <span class="title">Tính thủ công</span>
+    <select id="sourceSelect" class="source-select">
+      <option value="smiles" selected>Smiles (JPY)</option>
+      <option value="standard">Standard API</option>
+    </select>
+  </div>
 
-        <div class="form-group">
-            <div class="input-row">
-                <input type="text" id="in2" autocomplete="off">
-                <select id="sel2">
-                    <option value="VND" selected>VND</option>
-                    <option value="USD">USD</option>
-                    <option value="JPY">JPY</option>
-                    <option value="KRW">KRW</option>
-                    <option value="CNY">CNY</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="info-box" id="rateText">Đang tải dữ liệu...</div>
-        <div class="text-muted" id="updateTime">Cập nhật: --:--:--</div>
-        
-        <div id="popularRates" class="text-muted"></div>
+  <div class="converter-card">
+    <div class="input-row">
+      <input type="text" id="val1" value="1" autocomplete="off" placeholder="0">
+      <select id="cur1">
+        <option value="JPY" selected>JPY</option>
+        <option value="USD">USD</option>
+        <option value="KRW">KRW</option>
+        <option value="CNY">CNY</option>
+        <option value="EUR">EUR</option>
+        <option value="VND">VND</option>
+      </select>
     </div>
 
-    <script src="popup.js"></script>
+    <div class="swap-divider">
+      <button class="swap-btn" id="swapBtn" title="Đảo loại tiền">⇅</button>
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="val2" autocomplete="off" placeholder="0">
+      <select id="cur2">
+        <option value="VND" selected>VND</option>
+        <option value="JPY">JPY</option>
+        <option value="USD">USD</option>
+        <option value="KRW">KRW</option>
+        <option value="CNY">CNY</option>
+        <option value="EUR">EUR</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="smilesWarning" class="smiles-warning">Nguồn Smiles chỉ hỗ trợ cặp tiền JPY ⇋ VND</div>
+
+  <div class="rate-summary">
+    <div class="rate-live" id="rateSummary">Đang tải...</div>
+    <div class="rate-time" id="lastUpdated">--:--</div>
+  </div>
+
+  <script src="popup.js"></script>
 </body>
 </html>

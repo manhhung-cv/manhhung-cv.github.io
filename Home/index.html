@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Home Network Topology & 2FA Wi-Fi Vault</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- QRCode.js Library for Wi-Fi & 2FA TOTP QR Code generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        viettel: '#e11d48', // Rose 600
+                        xiaomi: '#f97316',  // Orange 500
+                        totolink: '#06b6d4', // Cyan 500
+                        camera: '#8b5cf6',   // Violet 500
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            background-color: #f8fafc; /* slate-50 */
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Tab Transition */
+        .tab-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tab-content.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Pulse animation for active network badge */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .status-pulse { animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen pb-28 flex flex-col">
+
+    <!-- App Header (KHỐI KHÔNG FIXED - Card Block nằm trong luồng trang) -->
+    <div class="max-w-3xl mx-auto w-full pt-4 px-4">
+        <header class="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5 w-full sm:w-auto">
+                <div class="bg-rose-50 text-viettel p-3 rounded-2xl border border-rose-100 flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="font-bold text-slate-900 text-base leading-tight flex items-center gap-2">
+                        Home NET <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 status-pulse"></span>2FA Shield Active</span>
+                    </h1>
+                    <p class="text-xs font-medium text-slate-500 mt-0.5">Sơ đồ mạng & Mật khẩu Mã hóa 2FA</p>
+                </div>
+            </div>
+            
+            <!-- Quick Status Badge -->
+            <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-2xl text-xs font-semibold text-slate-700 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center gap-1.5 text-emerald-600">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <span>AES-256 + 2FA</span>
+                </div>
+                <span class="text-slate-300">|</span>
+                <span id="header-auth-status" class="text-slate-500 font-normal">Chưa xác thực</span>
+            </div>
+        </header>
+    </div>
+
+    <!-- Bottom Floating Navigation Menu -->
+    <div class="fixed bottom-4 inset-x-3 sm:bottom-6 max-w-md mx-auto z-40">
+        <nav class="bg-white/90 backdrop-blur-xl border border-slate-200/80 shadow-[0_12px_32px_rgba(15,23,42,0.15)] rounded-full p-1.5 flex items-center justify-around gap-1 ring-1 ring-slate-900/5">
+            <button onclick="switchTab('topology')" data-tab="topology" class="tab-btn flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full text-xs font-semibold transition-all duration-300 bg-slate-900 text-white shadow-md scale-[1.02]">
+                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                <span class="truncate">Sơ đồ mạng</span>
+            </button>
+            
+            <button onclick="switchTab('passwords')" data-tab="passwords" class="tab-btn flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all duration-300 relative">
+                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span class="truncate">Wi-Fi & 2FA Vault</span>
+                <span id="nav-lock-dot" class="w-2 h-2 rounded-full bg-amber-500 absolute top-2 right-3"></span>
+            </button>
+
+            <button onclick="switchTab('guides')" data-tab="guides" class="tab-btn flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-full text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-all duration-300">
+                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <span class="truncate">Hướng dẫn</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Main Content Container -->
+    <main class="pt-5 px-4 max-w-3xl mx-auto w-full flex-grow">
+
+        <!-- TAB 1: SƠ ĐỒ MẠNG -->
+        <section id="tab-topology" class="tab-content active space-y-6">
+            
+            <!-- Internet Node -->
+            <div class="flex flex-col items-center relative z-10">
+                <div class="flex flex-col items-center group">
+                    <div class="w-12 h-12 bg-white rounded-2xl shadow-xs border border-slate-200 flex items-center justify-center text-slate-600 group-hover:scale-105 transition-transform duration-200">
+                        <svg class="w-6 h-6 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                        </svg>
+                    </div>
+                    <span class="mt-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest bg-slate-100 px-2.5 py-0.5 rounded-full">Internet (Cáp Quang Viettel)</span>
+                </div>
+
+                <div class="w-0.5 h-6 bg-slate-300"></div>
+
+                <!-- Main Router Viettel -->
+                <div class="w-full bg-white shadow-xs rounded-2xl border-t-4 border-t-viettel border-x border-b border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                    <div class="p-4 sm:p-5">
+                        <div class="flex justify-between items-start mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-rose-50 text-viettel rounded-xl flex items-center justify-center border border-rose-100">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-base font-bold text-slate-900 leading-tight">Viettel F6601P</h2>
+                                    <p class="text-[11px] font-medium text-viettel">Modem / Main Router</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="inline-block bg-slate-100 text-slate-700 text-[10px] font-mono px-2 py-0.5 rounded border border-slate-200">WAN: PPPoE</div>
+                                <div class="inline-block bg-rose-50 text-viettel text-[10px] font-mono px-2 py-0.5 rounded border border-rose-100 mt-1 font-semibold">LAN: 192.168.1.1/24</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                <strong class="text-slate-800">Nhiệm vụ:</strong> Cấp Internet toàn hệ thống, Port Forward UDP 51820 (WireGuard) về R3P, phát Wi-Fi chính cho gia đình.
+                            </p>
+                        </div>
+
+                        <!-- Wi-Fi Networks on Viettel -->
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+                                <div class="flex items-center gap-2.5">
+                                    <svg class="w-4 h-4 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <span>Rex Home</span>
+                                            <button onclick="copyText('Rex Home', 'Tên Wi-Fi Rex Home')" class="text-slate-400 hover:text-slate-600"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                        </div>
+                                        <div class="text-[10px] text-slate-500 font-mono">Ch: 11 • 20MHz • Tối đa <strong class="text-slate-700">32 thiết bị</strong></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="quickOpenQrModal('Rex Home')" class="bg-rose-50 hover:bg-rose-100 text-viettel text-[10px] font-bold px-2 py-1 rounded-lg border border-rose-200 transition-colors flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                                        QR
+                                    </button>
+                                    <span class="text-[9px] font-bold bg-slate-100 text-slate-600 px-2 py-1 rounded-md shrink-0">2.4 GHz</span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-xl hover:border-slate-300 transition-colors">
+                                <div class="flex items-center gap-2.5">
+                                    <svg class="w-4 h-4 text-viettel shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <span>Gaming Zone</span>
+                                            <button onclick="copyText('Gaming Zone', 'Tên Wi-Fi Gaming Zone')" class="text-slate-400 hover:text-slate-600"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                        </div>
+                                        <div class="text-[10px] text-slate-500 font-mono">Ch: 36 • 80MHz • Tối đa <strong class="text-slate-700">64 thiết bị</strong></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="quickOpenQrModal('Gaming Zone')" class="bg-rose-50 hover:bg-rose-100 text-viettel text-[10px] font-bold px-2 py-1 rounded-lg border border-rose-200 transition-colors flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                                        QR
+                                    </button>
+                                    <span class="text-[9px] font-bold bg-rose-50 text-viettel px-2 py-1 rounded-md border border-rose-100 shrink-0">5 GHz</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4 LAN Ports Status -->
+                        <div class="mt-5 pt-4 border-t border-slate-100">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2.5">Trạng thái 4 cổng LAN (RJ45)</span>
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col items-center justify-center relative overflow-hidden">
+                                    <div class="absolute top-0 inset-x-0 h-1 bg-xiaomi"></div>
+                                    <div class="w-2 h-2 rounded-full bg-xiaomi animate-pulse mb-1 mt-0.5"></div>
+                                    <span class="text-[10px] font-bold text-slate-700">LAN 1</span>
+                                    <span class="text-[9px] font-mono text-slate-500 truncate w-full text-center">Xiaomi R3P</span>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col items-center justify-center relative overflow-hidden">
+                                    <div class="absolute top-0 inset-x-0 h-1 bg-totolink"></div>
+                                    <div class="w-2 h-2 rounded-full bg-totolink animate-pulse mb-1 mt-0.5"></div>
+                                    <span class="text-[10px] font-bold text-slate-700">LAN 2</span>
+                                    <span class="text-[9px] font-mono text-slate-500 truncate w-full text-center">Totolink A720R</span>
+                                </div>
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex flex-col items-center justify-center relative overflow-hidden">
+                                    <div class="absolute top-0 inset-x-0 h-1 bg-camera"></div>
+                                    <div class="w-2 h-2 rounded-full bg-camera animate-pulse mb-1 mt-0.5"></div>
+                                    <span class="text-[10px] font-bold text-slate-700">LAN 3</span>
+                                    <span class="text-[9px] font-mono text-slate-500 truncate w-full text-center">Camera Hub</span>
+                                </div>
+                                <div class="bg-white border border-slate-200 border-dashed rounded-xl p-2.5 flex flex-col items-center justify-center opacity-60">
+                                    <div class="w-2 h-2 rounded-full bg-slate-300 mb-1 mt-0.5"></div>
+                                    <span class="text-[10px] font-bold text-slate-400">LAN 4</span>
+                                    <span class="text-[9px] font-mono text-slate-400 truncate w-full text-center">Trống</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subtree Tree Structure -->
+            <div class="relative w-full !mt-0">
+                <div class="absolute left-6 md:left-12 top-0 bottom-8 w-0.5 bg-slate-300"></div>
+
+                <!-- Sub-node 1: Xiaomi R3P -->
+                <div class="relative pt-6 pl-12 md:pl-20 pr-0">
+                    <div class="absolute left-6 md:left-12 top-[3.25rem] w-6 md:w-8 h-0.5 bg-slate-300"></div>
+                    <div class="absolute left-[1.25rem] md:left-[2.75rem] top-[2.95rem] w-3 h-3 bg-xiaomi rounded-full border-2 border-slate-100 z-10 shadow-xs"></div>
+
+                    <div class="w-full bg-white rounded-2xl shadow-xs border-l-4 border-l-xiaomi border-y border-r border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                        <div class="p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 bg-orange-50 text-xiaomi rounded-xl flex items-center justify-center border border-orange-100">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" /></svg>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <h3 class="text-sm font-bold text-slate-900">Xiaomi R3P</h3>
+                                            <span class="bg-slate-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">LAN 1</span>
+                                        </div>
+                                        <p class="text-[10px] font-medium text-slate-500">Sub-Router (X-WRT / OpenWrt)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                    <div class="text-[9px] text-slate-400 uppercase font-semibold">WAN (Static MAC)</div>
+                                    <div class="font-mono text-xs font-semibold text-slate-700 flex items-center justify-between">
+                                        <span>192.168.1.200</span>
+                                        <button onclick="copyText('192.168.1.200', 'IP WAN Xiaomi R3P')" class="text-slate-400 hover:text-slate-600"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                    <div class="text-[9px] text-slate-400 uppercase font-semibold">LAN Subnet (DHCP)</div>
+                                    <div class="font-mono text-xs font-semibold text-slate-700 flex items-center justify-between">
+                                        <span>192.168.15.1/24</span>
+                                        <button onclick="copyText('192.168.15.1', 'IP LAN Xiaomi R3P')" class="text-slate-400 hover:text-slate-600"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-slate-600 mb-3 bg-orange-50/60 p-2.5 rounded-xl border border-orange-100">
+                                <strong class="text-slate-800">Vai trò:</strong> Tải nặng, Gaming, WireGuard VPN Server (Port UDP: 51820).
+                            </p>
+
+                            <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                                <div class="flex items-center gap-2.5">
+                                    <svg class="w-4 h-4 text-xiaomi shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <span>Gaming Zone Pro</span>
+                                            <button onclick="copyText('Gaming Zone Pro', 'Tên Wi-Fi Gaming Zone Pro')" class="text-slate-400 hover:text-slate-600"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                        </div>
+                                        <div class="text-[10px] text-slate-500 font-mono">Ch: 149 • 80MHz • Tối đa <strong class="text-slate-700">128 thiết bị</strong></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="quickOpenQrModal('Gaming Zone Pro')" class="bg-orange-100 hover:bg-orange-200 text-xiaomi text-[10px] font-bold px-2 py-1 rounded-lg border border-orange-200 transition-colors flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                                        QR
+                                    </button>
+                                    <span class="text-[9px] font-bold bg-orange-100 text-xiaomi px-2 py-1 rounded-md shrink-0">5 GHz</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-node 2: Totolink A720R -->
+                <div class="relative pt-6 pl-12 md:pl-20 pr-0 mb-4">
+                    <div class="absolute left-6 md:left-12 top-[3.25rem] w-6 md:w-8 h-0.5 bg-slate-300"></div>
+                    <div class="absolute left-[1.25rem] md:left-[2.75rem] top-[2.95rem] w-3 h-3 bg-totolink rounded-full border-2 border-slate-100 z-10 shadow-xs"></div>
+
+                    <div class="w-full bg-white rounded-2xl shadow-xs border-l-4 border-l-totolink border-y border-r border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                        <div class="p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 bg-cyan-50 text-totolink rounded-xl flex items-center justify-center border border-cyan-100">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <h3 class="text-sm font-bold text-slate-900">Totolink A720R</h3>
+                                            <span class="bg-slate-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">LAN 2</span>
+                                        </div>
+                                        <p class="text-[10px] font-medium text-slate-500">Gateway Mode (Smart Home)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                    <div class="text-[9px] text-slate-400 uppercase font-semibold">WAN (Static MAC)</div>
+                                    <div class="font-mono text-xs font-semibold text-slate-700 flex items-center justify-between">
+                                        <span>192.168.1.199</span>
+                                        <button onclick="copyText('192.168.1.199', 'IP WAN Totolink')" class="text-slate-400 hover:text-slate-600"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                                    <div class="text-[9px] text-slate-400 uppercase font-semibold">LAN Subnet (IoT)</div>
+                                    <div class="font-mono text-xs font-semibold text-slate-700 flex items-center justify-between">
+                                        <span>192.168.20.1/24</span>
+                                        <button onclick="copyText('192.168.20.1', 'IP LAN Totolink')" class="text-slate-400 hover:text-slate-600"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-slate-600 mb-3 bg-cyan-50/60 p-2.5 rounded-xl border border-cyan-100">
+                                <strong class="text-slate-800">Vai trò:</strong> Smart Home Hub. Tách biệt thiết bị IoT (Công tắc, Đèn, Cảm biến) khỏi mạng chính.
+                            </p>
+
+                            <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                                <div class="flex items-center gap-2.5">
+                                    <svg class="w-4 h-4 text-totolink shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg>
+                                    <div>
+                                        <div class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <span>SyncHub</span>
+                                            <button onclick="copyText('SyncHub', 'Tên Wi-Fi SyncHub')" class="text-slate-400 hover:text-slate-600"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                        </div>
+                                        <div class="text-[10px] text-slate-500 font-mono">Ch: 1 • 20MHz • Tối đa <strong class="text-slate-700">32 thiết bị</strong></div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <button onclick="quickOpenQrModal('SyncHub')" class="bg-cyan-50 hover:bg-cyan-100 text-totolink text-[10px] font-bold px-2 py-1 rounded-lg border border-cyan-200 transition-colors flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                                        QR
+                                    </button>
+                                    <span class="text-[9px] font-bold bg-slate-200 text-slate-600 px-2 py-1 rounded-md shrink-0">2.4 GHz</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub-node 3: Camera Hub -->
+                <div class="relative pt-6 pl-12 md:pl-20 pr-0 mb-4">
+                    <div class="absolute left-6 md:left-12 top-[3.25rem] w-6 md:w-8 h-0.5 bg-slate-300"></div>
+                    <div class="absolute left-[1.25rem] md:left-[2.75rem] top-[2.95rem] w-3 h-3 bg-camera rounded-full border-2 border-slate-100 z-10 shadow-xs"></div>
+
+                    <div class="w-full bg-white rounded-2xl shadow-xs border-l-4 border-l-camera border-y border-r border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
+                        <div class="p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-9 h-9 bg-violet-50 text-camera rounded-xl flex items-center justify-center border border-violet-100">
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <h3 class="text-sm font-bold text-slate-900">Camera Hub (NVR)</h3>
+                                            <span class="bg-slate-800 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">LAN 3</span>
+                                        </div>
+                                        <p class="text-[10px] font-medium text-slate-500">Hệ thống An ninh Cam IP</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-3 flex justify-between items-center">
+                                <span class="text-[9px] text-slate-400 uppercase font-semibold">IP Address (Static Binding)</span>
+                                <div class="font-mono text-xs font-semibold text-slate-700 flex items-center gap-2">
+                                    <span>192.168.1.198</span>
+                                    <button onclick="copyText('192.168.1.198', 'IP Camera Hub')" class="text-slate-400 hover:text-slate-600"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                                </div>
+                            </div>
+
+                            <p class="text-[11px] text-slate-600 bg-violet-50/60 p-2.5 rounded-xl border border-violet-100">
+                                <strong class="text-slate-800">Vai trò:</strong> Ghi hình liên tục 24/7, truyền dữ liệu luồng camera qua mạng nội bộ.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 2: QUẢN LÝ MẬT KHẨU XÁC THỰC 2FA (TOTP) & TẠO MÃ QR WI-FI -->
+        <section id="tab-passwords" class="tab-content space-y-5">
+            
+            <!-- Vault Security Header Banner -->
+            <div class="bg-slate-900 text-white rounded-3xl p-5 shadow-lg relative overflow-hidden">
+                <div class="absolute -right-8 -top-8 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                                2FA TOTP Protection
+                            </span>
+                            <span id="vault-lock-badge" class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] px-2 py-0.5 rounded-md font-medium">Chưa thiết lập 2FA</span>
+                        </div>
+                        <h2 class="text-base font-bold">Két Mật Khẩu Wi-Fi Xác Thực 2FA</h2>
+                        <p class="text-xs text-slate-300 mt-1">Loại bỏ Master Key. Mã hóa E2E bảo mật bằng app Google Authenticator / Authy.</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+                        <button id="btn-2fa-action" onclick="handle2FAHeaderAction()" class="flex-1 sm:flex-none bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs px-3.5 py-2.5 rounded-xl transition-colors shadow-xs flex items-center justify-center gap-1.5">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457-.312-2.841-.873-4.088" /></svg>
+                            <span id="btn-2fa-text">Cấu Hình 2FA</span>
+                        </button>
+                        <button onclick="addNewNetworkModal()" class="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2.5 rounded-xl transition-colors border border-slate-700 flex items-center justify-center gap-1">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                            <span>Thêm Wi-Fi</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Toolbar Search, Export .HomeKey, Import .HomeKey -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+                <div class="relative w-full sm:w-64">
+                    <input type="text" id="pass-search" oninput="filterVault()" placeholder="Tìm kiếm SSID..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition-all">
+                    <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end flex-wrap">
+                    <button onclick="exportHomeKeyFile()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex items-center gap-1">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Xuất .HomeKey</span>
+                    </button>
+                    
+                    <label class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex items-center gap-1 cursor-pointer">
+                        <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        <span>Nhập .HomeKey</span>
+                        <input type="file" id="homekey-file-input" accept=".HomeKey,.json" onchange="importHomeKeyFile(event)" class="hidden">
+                    </label>
+
+                    <button onclick="toggleAllPasswordsVis()" id="toggle-all-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl transition-colors flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        <span>Hiện tất cả</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dynamic Password Items Container -->
+            <div id="vault-list" class="space-y-4">
+                <!-- Rendered dynamically via JavaScript -->
+            </div>
+
+        </section>
+
+        <!-- TAB 3: HƯỚNG DẪN & CẤU HÌNH -->
+        <section id="tab-guides" class="tab-content space-y-5">
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs">
+                <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1">
+                    <svg class="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                    Tài liệu hướng dẫn & Quy trình vận hành 2FA
+                </h2>
+                <p class="text-xs text-slate-500">Các bước chi tiết để thiết lập Authenticator app, mở Port WireGuard và cấu hình hệ thống.</p>
+            </div>
+
+            <!-- Accordion List -->
+            <div class="space-y-3">
+                
+                <!-- GUIDE 0: Authenticator 2FA -->
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+                    <button onclick="toggleAccordion('acc-0')" class="w-full p-4 text-left flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs border border-emerald-100">2FA</div>
+                            <div>
+                                <h3 class="text-xs font-bold text-slate-900">Cách cài đặt Google Authenticator / Authy để mở Két</h3>
+                                <p class="text-[10px] text-slate-500">Quét mã QR 2FA và bảo mật két dữ liệu cá nhân</p>
+                            </div>
+                        </div>
+                        <svg id="acc-icon-acc-0" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    
+                    <div id="acc-0" class="hidden p-4 pt-0 border-t border-slate-100 text-xs text-slate-600 space-y-3">
+                        <div class="mt-3 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <p class="font-semibold text-slate-800">1. Tải ứng dụng Authenticator</p>
+                            <p class="text-slate-600">Tải <span class="font-bold">Google Authenticator</span>, <span class="font-bold">Twilio Authy</span> hoặc <span class="font-bold">Microsoft Authenticator</span> trên App Store hoặc CH Play.</p>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <p class="font-semibold text-slate-800">2. Cấu hình 2FA lần đầu</p>
+                            <p class="text-slate-600">Tại tab "Wi-Fi & 2FA Vault", bấm nút <strong class="text-emerald-600">"Cấu Hình 2FA"</strong>. Màn hình sẽ tạo ra mã QR bí mật. Quét mã QR bằng app Authenticator trên điện thoại.</p>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <p class="font-semibold text-slate-800">3. Nhập mã 6 chữ số</p>
+                            <p class="text-slate-600">Nhập 6 chữ số đang hiển thị trên app Authenticator để xác nhận và mở khóa phiên làm việc.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GUIDE 1 -->
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+                    <button onclick="toggleAccordion('acc-1')" class="w-full p-4 text-left flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-rose-50 text-viettel flex items-center justify-center font-bold text-xs border border-rose-100">01</div>
+                            <div>
+                                <h3 class="text-xs font-bold text-slate-900">Hướng dẫn Port Forward WireGuard (UDP 51820)</h3>
+                                <p class="text-[10px] text-slate-500">Mở cổng trên Viettel F6601P trỏ về Xiaomi R3P (192.168.1.200)</p>
+                            </div>
+                        </div>
+                        <svg id="acc-icon-acc-1" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    
+                    <div id="acc-1" class="hidden p-4 pt-0 border-t border-slate-100 text-xs text-slate-600 space-y-3">
+                        <div class="mt-3 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <p class="font-semibold text-slate-800">Bước 1: Đăng nhập Modem Viettel</p>
+                            <p class="text-slate-600">Truy cập <code class="bg-white px-1.5 py-0.5 rounded border border-slate-200 font-mono text-[11px] text-rose-600">http://192.168.1.1</code> (User: <span class="font-mono font-bold">admin</span> / Pass trong vault Wi-Fi).</p>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <p class="font-semibold text-slate-800">Bước 2: Vào mục Virtual Server (Port Forwarding)</p>
+                            <p class="text-slate-600">Điều hướng menu: <span class="font-bold text-slate-700">Application</span> ➔ <span class="font-bold text-slate-700">Port Forwarding</span>.</p>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                            <p class="font-semibold text-slate-800">Bước 3: Nhập thông số Virtual Server</p>
+                            <ul class="list-disc list-inside space-y-1 font-mono text-[11px] text-slate-700 pl-1">
+                                <li>Enable: <span class="text-emerald-600 font-bold">Checked</span></li>
+                                <li>Name: <span class="text-slate-900 font-bold">WireGuard_R3P</span></li>
+                                <li>Protocol: <span class="text-slate-900 font-bold">UDP</span></li>
+                                <li>LAN IP Address: <span class="text-rose-600 font-bold">192.168.1.200</span></li>
+                                <li>Port: <span class="text-slate-900 font-bold">51820</span></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GUIDE 2 -->
+                <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-2xs">
+                    <button onclick="toggleAccordion('acc-2')" class="w-full p-4 text-left flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-xl bg-orange-50 text-xiaomi flex items-center justify-center font-bold text-xs border border-orange-100">02</div>
+                            <div>
+                                <h3 class="text-xs font-bold text-slate-900">Hướng dẫn kết nối WireGuard VPN từ xa</h3>
+                                <p class="text-[10px] text-slate-500">Kết nối Điện thoại / Laptop vào mạng nhà qua 4G</p>
+                            </div>
+                        </div>
+                        <svg id="acc-icon-acc-2" class="w-4 h-4 text-slate-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    
+                    <div id="acc-2" class="hidden p-4 pt-0 border-t border-slate-100 text-xs text-slate-600 space-y-3">
+                        <div class="mt-3 bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                            <p class="font-semibold text-slate-800">1. Tải app WireGuard</p>
+                            <p class="text-slate-600">Tải app <span class="font-bold">WireGuard</span> trên App Store hoặc Google Play.</p>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1">
+                            <p class="font-semibold text-slate-800">2. Nhập cấu hình hoặc quét QR</p>
+                            <p class="text-slate-600">Quét mã QR Tunnel từ admin Xiaomi R3P (192.168.15.1) cấp cho thiết bị di động.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Toast Notification Popup -->
+    <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-2.5 text-xs font-semibold translate-y-20 opacity-0 transition-all duration-300 z-50 pointer-events-none">
+        <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+        <span id="toast-message">Thông báo</span>
+    </div>
+
+    <!-- 2FA SETUP & VERIFICATION MODAL DIALOG -->
+    <div id="twofa-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center relative transform scale-95 transition-transform duration-200" id="twofa-modal-box">
+            <button onclick="close2FAModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-emerald-100">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457-.312-2.841-.873-4.088" /></svg>
+            </div>
+
+            <h3 class="text-base font-bold text-slate-900" id="twofa-title">Xác Thực 2FA Authenticator</h3>
+            <p class="text-xs text-slate-500 mb-4" id="twofa-desc">Quét mã QR bằng app Authenticator (Google / Authy) để liên kết két Wi-Fi.</p>
+
+            <!-- Setup Container (QR code + secret key) -->
+            <div id="twofa-setup-container" class="space-y-3 mb-4 hidden">
+                <div class="bg-white p-3 rounded-2xl border-2 border-slate-100 inline-block mx-auto shadow-xs">
+                    <div id="2fa-qrcode-display" class="flex items-center justify-center min-w-[160px] min-h-[160px]"></div>
+                </div>
+
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                    <span class="text-[10px] text-slate-400 font-semibold uppercase block">Mã bí mật Base32 (Thủ công):</span>
+                    <div class="flex items-center justify-between gap-1 mt-0.5">
+                        <span id="2fa-secret-text" class="font-mono text-xs font-bold text-slate-800 break-all text-center tracking-wider">SECRET_KEY</span>
+                        <button onclick="copy2FASecret()" class="text-slate-400 hover:text-slate-600 p-1 shrink-0"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Code Input Form -->
+            <div class="space-y-3 text-left mb-5">
+                <label class="text-[11px] font-bold text-slate-700 block text-center">Nhập Mã OTP 6 Chữ Số từ App Authenticator:</label>
+                <div class="flex justify-center">
+                    <input type="text" id="twofa-otp-input" maxlength="6" pattern="[0-9]*" inputmode="numeric" placeholder="000000" class="w-48 text-center bg-slate-50 border-2 border-slate-200 rounded-2xl py-2.5 text-xl font-mono tracking-[0.4em] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="close2FAModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl transition-colors">
+                    Hủy
+                </button>
+                <button onclick="verify2FAAction()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 rounded-xl transition-colors shadow-xs">
+                    Xác Nhận 2FA
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Code Generator Modal Dialog (Standard Wi-Fi Format - Security Masked Password) -->
+    <div id="qr-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center relative transform scale-95 transition-transform duration-200" id="qr-modal-box">
+            <button onclick="closeQrModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 p-1.5 rounded-full transition-colors">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+
+            <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-emerald-100">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+            </div>
+
+            <h3 class="text-base font-bold text-slate-900" id="qr-modal-title">Kết Nối Wi-Fi Chuẩn Mã QR</h3>
+            <p class="text-xs text-slate-500 mb-4">Màn hình hiển thị mã QR trực tiếp. Mật khẩu mặc định được ẩn để tránh lộ thông tin khi chia sẻ màn hình.</p>
+
+            <div class="bg-white p-3 rounded-2xl border-2 border-slate-100 inline-block mx-auto mb-4 shadow-xs relative">
+                <div id="qrcode-container" class="flex items-center justify-center min-w-[180px] min-h-[180px]"></div>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-left mb-4 space-y-2">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-slate-400 uppercase text-[10px] font-semibold">Tên Mạng (SSID):</span>
+                    <span class="font-bold text-slate-800 font-mono" id="qr-ssid-val">-</span>
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-slate-400 uppercase text-[10px] font-semibold">Bảo mật:</span>
+                    <span class="font-bold text-slate-700 font-mono" id="qr-auth-val">WPA/WPA2</span>
+                </div>
+                <div class="flex justify-between items-center text-xs pt-2 border-t border-slate-200">
+                    <span class="text-slate-400 uppercase text-[10px] font-semibold">Mật khẩu:</span>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-rose-600 font-mono" id="qr-pass-val">••••••••</span>
+                        <button onclick="toggleQrPassVisibility()" id="qr-pass-toggle-btn" class="text-[10px] font-bold bg-slate-200 hover:bg-slate-300 text-slate-700 px-2 py-0.5 rounded-md transition-colors flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                            <span>Hiện mật khẩu</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="copyQrString()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl transition-colors">
+                    Sao chép chuỗi QR
+                </button>
+                <button onclick="closeQrModal()" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 rounded-xl transition-colors">
+                    Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Network Modal -->
+    <div id="network-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 opacity-0 pointer-events-none transition-opacity duration-200">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl text-left relative transform scale-95 transition-transform duration-200" id="network-modal-box">
+            <h3 class="text-base font-bold text-slate-900 mb-1" id="network-modal-title">Thêm Mạng Wi-Fi Mới</h3>
+            <p class="text-xs text-slate-500 mb-4">Mật khẩu sẽ được mã hóa AES-256 E2E tự động trước khi lưu.</p>
+
+            <div class="space-y-3 mb-5">
+                <div>
+                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Tên Mạng Wi-Fi (SSID):</label>
+                    <input type="text" id="net-ssid-input" placeholder="VD: Rex Home 5G" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Router Phát:</label>
+                        <input type="text" id="net-router-input" placeholder="VD: Viettel F6601P" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[11px] font-bold text-slate-700 block mb-1">Chuẩn Mã Hóa:</label>
+                        <select id="net-type-input" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                            <option value="WPA">Wi-Fi (WPA/WPA2/WPA3)</option>
+                            <option value="WEP">Wi-Fi (WEP)</option>
+                            <option value="nopass">Wi-Fi Mở (No Pass)</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Mật khẩu (Password):</label>
+                    <div class="relative">
+                        <input type="password" id="net-pass-input" placeholder="Nhập mật khẩu..." class="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-10 py-2 text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                        <button onclick="toggleInputVisibility('net-pass-input')" class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[11px] font-bold text-slate-700 block mb-1">Ghi chú thêm (Tùy chọn):</label>
+                    <input type="text" id="net-note-input" placeholder="VD: Băng tần 5GHz, Ch 36..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-slate-900 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-end">
+                <button onclick="closeNetworkModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-4 py-2.5 rounded-xl transition-colors">Hủy</button>
+                <button onclick="saveNetworkItem()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-colors">Lưu Mật Khẩu Encrypted</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /*
+           =========================================================
+           1. PURE JS BASE32 & TOTP (RFC 6238) CRYPTOGRAPHIC IMPLEMENTATION
+           =========================================================
+        */
+        const BASE32_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+        function generateRandomBase32Secret(length = 16) {
+            let secret = "";
+            const array = new Uint8Array(length);
+            crypto.getRandomValues(array);
+            for (let i = 0; i < length; i++) {
+                secret += BASE32_CHARS[array[i] % 32];
+            }
+            return secret;
+        }
+
+        function base32ToUint8Array(base32) {
+            base32 = base32.replace(/=+$/, '').toUpperCase();
+            let bits = 0;
+            let value = 0;
+            let index = 0;
+            const output = new Uint8Array(Math.floor((base32.length * 5) / 8));
+
+            for (let i = 0; i < base32.length; i++) {
+                const val = BASE32_CHARS.indexOf(base32.charAt(i));
+                if (val === -1) continue;
+                value = (value << 5) | val;
+                bits += 5;
+                if (bits >= 8) {
+                    output[index++] = (value >>> (bits - 8)) & 0xff;
+                    bits -= 8;
+                }
+            }
+            return output;
+        }
+
+        async function computeTOTP(secretBase32, timeStepOffset = 0) {
+            try {
+                const keyBytes = base32ToUint8Array(secretBase32);
+                if (keyBytes.length === 0) return null;
+
+                const epoch = Math.floor(Date.now() / 1000);
+                const timeStep = Math.floor(epoch / 30) + timeStepOffset;
+
+                // 8-byte big-endian time step array
+                const timeBuffer = new ArrayBuffer(8);
+                const timeView = new DataView(timeBuffer);
+                timeView.setUint32(4, timeStep, false); // Low 32 bits
+
+                const cryptoKey = await crypto.subtle.importKey(
+                    "raw",
+                    keyBytes,
+                    { name: "HMAC", hash: "SHA-1" },
+                    false,
+                    ["sign"]
+                );
+
+                const hmacResult = await crypto.subtle.sign("HMAC", cryptoKey, timeBuffer);
+                const hmacBytes = new Uint8Array(hmacResult);
+
+                const offset = hmacBytes[19] & 0xf;
+                const code =
+                    ((hmacBytes[offset] & 0x7f) << 24) |
+                    ((hmacBytes[offset + 1] & 0xff) << 16) |
+                    ((hmacBytes[offset + 2] & 0xff) << 8) |
+                    (hmacBytes[offset + 3] & 0xff);
+
+                const otp = (code % 1000000).toString().padStart(6, '0');
+                return otp;
+            } catch (e) {
+                console.error("TOTP calculation error", e);
+                return null;
+            }
+        }
+
+        async function verifyTOTPCode(secretBase32, inputOtp) {
+            if (!secretBase32 || !inputOtp) return false;
+            const cleanOtp = inputOtp.trim();
+            if (cleanOtp.length !== 6) return false;
+
+            // Check current time step and ±1 window for clock tolerance
+            for (let offset of [0, -1, 1]) {
+                const expectedOtp = await computeTOTP(secretBase32, offset);
+                if (expectedOtp === cleanOtp) return true;
+            }
+            return false;
+        }
+
+        /* 
+           =========================================================
+           2. CLIENT-SIDE WEB CRYPTO AES-256-GCM E2E ENCRYPTION
+           =========================================================
+        */
+        let active2FASecret = localStorage.getItem('homenet_2fa_secret') || '';
+        let isSessionAuthenticated = false;
+        let activeCryptoKey = null;
+
+        const CRYPTO_SALT = new TextEncoder().encode('HomeNet_2FA_E2E_Salt_v2');
+
+        async function getDerivedKeyFromSecret(secretBase32) {
+            if (!secretBase32) return null;
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw",
+                enc.encode(secretBase32),
+                { name: "PBKDF2" },
+                false,
+                ["deriveKey"]
+            );
+            return await crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: CRYPTO_SALT,
+                    iterations: 100000,
+                    hash: "SHA-256"
+                },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                false,
+                ["encrypt", "decrypt"]
+            );
+        }
+
+        async function encryptText(plaintext) {
+            try {
+                if (!active2FASecret) return plaintext;
+                if (!activeCryptoKey) {
+                    activeCryptoKey = await getDerivedKeyFromSecret(active2FASecret);
+                }
+                const enc = new TextEncoder();
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const ciphertextBuffer = await crypto.subtle.encrypt(
+                    { name: "AES-GCM", iv: iv },
+                    activeCryptoKey,
+                    enc.encode(plaintext)
+                );
+                
+                const combined = new Uint8Array(iv.length + ciphertextBuffer.byteLength);
+                combined.set(iv, 0);
+                combined.set(new Uint8Array(ciphertextBuffer), iv.length);
+                return btoa(String.fromCharCode.apply(null, combined));
+            } catch (e) {
+                console.error("Encryption error", e);
+                return plaintext;
+            }
+        }
+
+        async function decryptText(ciphertextB64) {
+            try {
+                if (!ciphertextB64) return '';
+                if (!active2FASecret || !isSessionAuthenticated || !activeCryptoKey) {
+                    return '••••••••'; // Locked state indicator
+                }
+                const binaryStr = atob(ciphertextB64);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                const iv = bytes.slice(0, 12);
+                const data = bytes.slice(12);
+
+                const decryptedBuffer = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: iv },
+                    activeCryptoKey,
+                    data
+                );
+                return new TextDecoder().decode(decryptedBuffer);
+            } catch (e) {
+                return '[Mã Khóa Sai]';
+            }
+        }
+
+        /* 
+           =========================================================
+           3. VAULT STATE MANAGEMENT & LOCAL STORAGE
+           =========================================================
+        */
+        let vaultItems = [];
+
+        async function initVault() {
+            update2FABadgeUI();
+
+            if (active2FASecret && isSessionAuthenticated) {
+                activeCryptoKey = await getDerivedKeyFromSecret(active2FASecret);
+            }
+
+            const savedVault = localStorage.getItem('homenet_encrypted_vault_v3');
+
+            if (savedVault) {
+                try {
+                    const parsed = JSON.parse(savedVault);
+                    vaultItems = [];
+                    for (let item of parsed) {
+                        const decPass = item.encryptedPass ? await decryptText(item.encryptedPass) : '';
+                        vaultItems.push({
+                            ...item,
+                            passwordPlain: decPass
+                        });
+                    }
+                } catch (err) {
+                    console.error("Vault parse error", err);
+                    vaultItems = [];
+                }
+            } else {
+                vaultItems = []; // Mặc định RỖNG, KHÔNG DỮ LIỆU CỨNG
+            }
+            renderVaultList();
+        }
+
+        function update2FABadgeUI() {
+            const badge = document.getElementById('vault-lock-badge');
+            const btnText = document.getElementById('btn-2fa-text');
+            const statusText = document.getElementById('header-auth-status');
+            const navDot = document.getElementById('nav-lock-dot');
+
+            if (!active2FASecret) {
+                if (badge) {
+                    badge.innerText = 'Chưa cài đặt 2FA';
+                    badge.className = 'bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] px-2 py-0.5 rounded-md font-medium';
+                }
+                if (btnText) btnText.innerText = 'Cấu Hình 2FA';
+                if (statusText) statusText.innerText = 'Chưa bật 2FA';
+                if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-amber-500 absolute top-2 right-3';
+            } else if (isSessionAuthenticated) {
+                if (badge) {
+                    badge.innerText = 'Đã mở khóa 2FA';
+                    badge.className = 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] px-2 py-0.5 rounded-md font-medium';
+                }
+                if (btnText) btnText.innerText = 'Khóa Phiên';
+                if (statusText) statusText.innerText = '2FA Xác Thực Thành Công';
+                if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emerald-500 absolute top-2 right-3';
+            } else {
+                if (badge) {
+                    badge.innerText = 'Két đang Khóa (2FA)';
+                    badge.className = 'bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] px-2 py-0.5 rounded-md font-medium';
+                }
+                if (btnText) btnText.innerText = 'Mở Khóa 2FA';
+                if (statusText) statusText.innerText = 'Cần Nhập OTP 2FA';
+                if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-rose-500 absolute top-2 right-3';
+            }
+        }
+
+        async function saveVaultToLocalStorage() {
+            const encList = [];
+            for (let item of vaultItems) {
+                const encPass = await encryptText(item.passwordPlain || '');
+                encList.push({
+                    id: item.id,
+                    ssid: item.ssid,
+                    router: item.router,
+                    type: item.type,
+                    note: item.note,
+                    encryptedPass: encPass
+                });
+            }
+            localStorage.setItem('homenet_encrypted_vault_v3', JSON.stringify(encList));
+        }
+
+        /* 
+           =========================================================
+           4. EXPORT & IMPORT .HomeKey FILES (2FA PROTECTED)
+           =========================================================
+        */
+        function exportHomeKeyFile() {
+            if (!isSessionAuthenticated) {
+                prompt2FAVerification(() => exportHomeKeyFile());
+                showToast("Vui lòng xác thực 2FA trước khi xuất file!");
+                return;
+            }
+
+            if (!vaultItems || vaultItems.length === 0) {
+                showToast("Két rỗng, chưa có dữ liệu để xuất!");
+                return;
+            }
+
+            // Construct export object containing encrypted vault items and 2FA meta
+            const exportPayload = {
+                format: "HomeKey_Vault_v1",
+                createdAt: new Date().toISOString(),
+                secretBase32: active2FASecret,
+                items: vaultItems.map(item => ({
+                    id: item.id,
+                    ssid: item.ssid,
+                    router: item.router,
+                    type: item.type,
+                    note: item.note,
+                    encryptedPass: item.encryptedPass || ''
+                }))
+            };
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `HomeNet_Vault_${new Date().toISOString().slice(0,10)}.HomeKey`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+
+            showToast("Đã xuất file .HomeKey bảo mật 2FA thành công!");
+        }
+
+        function importHomeKeyFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const importedPayload = JSON.parse(e.target.result);
+                    
+                    let importedItems = [];
+                    let importedSecret = '';
+
+                    if (importedPayload.format === "HomeKey_Vault_v1" && Array.isArray(importedPayload.items)) {
+                        importedItems = importedPayload.items;
+                        importedSecret = importedPayload.secretBase32 || '';
+                    } else if (Array.isArray(importedPayload)) {
+                        importedItems = importedPayload;
+                    } else {
+                        showToast("Định dạng file .HomeKey không hợp lệ!");
+                        return;
+                    }
+
+                    // Store imported secret and items
+                    if (importedSecret) {
+                        active2FASecret = importedSecret;
+                        localStorage.setItem('homenet_2fa_secret', importedSecret);
+                    }
+
+                    localStorage.setItem('homenet_encrypted_vault_v3', JSON.stringify(importedItems));
+
+                    // Prompt 2FA verification to unlock newly imported file
+                    isSessionAuthenticated = false;
+                    prompt2FAVerification(async () => {
+                        await initVault();
+                        showToast("Đã nhập và giải mã file .HomeKey thành công!");
+                    });
+
+                } catch (err) {
+                    showToast("Lỗi đọc file .HomeKey!");
+                    console.error(err);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset
+        }
+
+        /* 
+           =========================================================
+           5. 2FA HANDLERS & MODAL ACTIONS
+           =========================================================
+        */
+        let pending2FACallback = null;
+        let tempGeneratedSecret = '';
+
+        function handle2FAHeaderAction() {
+            if (!active2FASecret) {
+                setupNew2FA();
+            } else if (isSessionAuthenticated) {
+                // Lock session
+                isSessionAuthenticated = false;
+                activeCryptoKey = null;
+                initVault();
+                showToast("Đã khóa phiên làm việc!");
+            } else {
+                prompt2FAVerification(() => {
+                    initVault();
+                    showToast("Mở khóa 2FA thành công!");
+                });
+            }
+        }
+
+        function setupNew2FA() {
+            tempGeneratedSecret = generateRandomBase32Secret(16);
+            
+            document.getElementById('twofa-title').innerText = "Cấu Hình 2FA Authenticator";
+            document.getElementById('twofa-desc').innerText = "Quét mã QR dưới đây bằng Google Authenticator hoặc Authy.";
+            document.getElementById('twofa-setup-container').classList.remove('hidden');
+            document.getElementById('2fa-secret-text').innerText = tempGeneratedSecret;
+            document.getElementById('twofa-otp-input').value = '';
+
+            // Generate otpauth:// URI for authenticator apps
+            const otpUri = `otpauth://totp/HomeNet%20Vault:Admin?secret=${tempGeneratedSecret}&issuer=HomeNet`;
+            const qrContainer = document.getElementById('2fa-qrcode-display');
+            qrContainer.innerHTML = '';
+            
+            try {
+                new QRCode(qrContainer, {
+                    text: otpUri,
+                    width: 160,
+                    height: 160,
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.M
+                });
+            } catch(e) { console.error(e); }
+
+            pending2FACallback = async () => {
+                active2FASecret = tempGeneratedSecret;
+                localStorage.setItem('homenet_2fa_secret', tempGeneratedSecret);
+                isSessionAuthenticated = true;
+                await initVault();
+                showToast("Đã bật xác thực 2FA thành công!");
+            };
+
+            openModal('twofa-modal', 'twofa-modal-box');
+        }
+
+        function prompt2FAVerification(onSuccessCallback) {
+            document.getElementById('twofa-title').innerText = "Nhập Mã 2FA Authenticator";
+            document.getElementById('twofa-desc').innerText = "Nhập mã OTP 6 chữ số từ ứng dụng Google Authenticator / Authy.";
+            document.getElementById('twofa-setup-container').classList.add('hidden');
+            document.getElementById('twofa-otp-input').value = '';
+
+            pending2FACallback = async () => {
+                isSessionAuthenticated = true;
+                if (onSuccessCallback) await onSuccessCallback();
+            };
+
+            openModal('twofa-modal', 'twofa-modal-box');
+        }
+
+        async function verify2FAAction() {
+            const inputOtp = document.getElementById('twofa-otp-input').value.trim();
+            const secretToVerify = active2FASecret || tempGeneratedSecret;
+
+            if (!secretToVerify) {
+                showToast("Chưa khởi tạo khóa 2FA!");
+                return;
+            }
+
+            const isValid = await verifyTOTPCode(secretToVerify, inputOtp);
+            if (isValid) {
+                closeModal('twofa-modal', 'twofa-modal-box');
+                if (pending2FACallback) {
+                    await pending2FACallback();
+                    pending2FACallback = null;
+                }
+            } else {
+                showToast("Mã 2FA OTP không đúng hoặc đã hết hạn!");
+            }
+        }
+
+        function close2FAModal() {
+            closeModal('twofa-modal', 'twofa-modal-box');
+        }
+
+        function copy2FASecret() {
+            copyText(tempGeneratedSecret, 'mã bí mật 2FA Base32');
+        }
+
+        /* 
+           =========================================================
+           6. VAULT RENDER & INTERACTIVE ITEM ACTIONS
+           =========================================================
+        */
+        function renderVaultList() {
+            const container = document.getElementById('vault-list');
+            if (!container) return;
+
+            container.innerHTML = '';
+
+            if (vaultItems.length === 0) {
+                container.innerHTML = `
+                    <div class="p-8 text-center text-slate-500 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+                        <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto border border-emerald-100">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 text-sm">Két mật khẩu đang trống</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Vui lòng kích hoạt 2FA, thêm mạng mới thủ công hoặc nhập từ file .HomeKey.</p>
+                        </div>
+                        <div class="flex items-center justify-center gap-2 pt-1">
+                            <button onclick="handle2FAHeaderAction()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-colors">
+                                Cấu hình / Mở Khóa 2FA
+                            </button>
+                            <button onclick="addNewNetworkModal()" class="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-colors">
+                                Thêm Mạng Mới
+                            </button>
+                        </div>
+                    </div>`;
+                return;
+            }
+
+            vaultItems.forEach((item) => {
+                const card = document.createElement('div');
+                card.className = "pass-card bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs hover:shadow-xs transition-shadow";
+                card.setAttribute('data-search', `${item.ssid} ${item.router} ${item.note}`.toLowerCase());
+
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-rose-50 text-viettel border border-rose-100 flex items-center justify-center shrink-0">
+                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900 leading-tight">${escapeHtml(item.ssid)}</h3>
+                                <p class="text-[11px] text-slate-500">${escapeHtml(item.router || 'Router')} • <span class="font-mono text-emerald-600 font-semibold">AES-256 (2FA)</span></p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1.5 self-end sm:self-center">
+                            <button onclick="generateWifiQR('${item.id}')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-200/80 transition-colors flex items-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+                                Mã QR Wi-Fi
+                            </button>
+                            <button onclick="editNetworkItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors" title="Chỉnh sửa">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                            </button>
+                            <button onclick="deleteNetworkItem('${item.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 bg-slate-50 hover:bg-rose-50 rounded-lg transition-colors" title="Xóa">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+                        <div class="sm:col-span-8 relative">
+                            <input type="password" id="input-${item.id}" value="${escapeHtml(item.passwordPlain)}" oninput="updatePasswordInline('${item.id}', this.value)" class="pass-input w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-20 py-2 text-xs font-mono text-slate-900 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none transition-all">
+                            
+                            <div class="absolute right-2 top-1.5 flex items-center gap-1">
+                                <button onclick="toggleSinglePassword('input-${item.id}', this)" class="p-1 text-slate-400 hover:text-slate-600">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                </button>
+                                <button onclick="copyTextFromInput('input-${item.id}', '${escapeHtml(item.ssid)}')" class="p-1 text-slate-400 hover:text-slate-600" title="Sao chép">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="sm:col-span-4 text-[10px] text-slate-500 italic bg-slate-50 p-2 rounded-xl border border-slate-100 truncate">
+                            ${escapeHtml(item.note || 'Không có ghi chú')}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function updatePasswordInline(id, newPass) {
+            if (!isSessionAuthenticated) {
+                showToast("Vui lòng xác thực 2FA để sửa đổi!");
+                return;
+            }
+            const item = vaultItems.find(x => x.id === id);
+            if (item) {
+                item.passwordPlain = newPass;
+                await saveVaultToLocalStorage();
+            }
+        }
+
+        /* 
+           =========================================================
+           7. PRIVACY-PROTECTED QR CODE DISPLAY
+           =========================================================
+        */
+        let currentQrString = '';
+        let qrCurrentPasswordPlain = '';
+        let isQrPassVisible = false;
+
+        function generateWifiQR(itemId) {
+            const item = vaultItems.find(x => x.id === itemId);
+            if (!item) return;
+
+            openQrModalUI(item.ssid, item.passwordPlain, item.type || 'WPA');
+        }
+
+        function quickOpenQrModal(ssid) {
+            const item = vaultItems.find(x => x.ssid.toLowerCase() === ssid.toLowerCase());
+            const password = item ? item.passwordPlain : '';
+            openQrModalUI(ssid, password, 'WPA');
+        }
+
+        function openQrModalUI(ssid, password, auth = 'WPA') {
+            qrCurrentPasswordPlain = password || '';
+            isQrPassVisible = false; // MASKED by default for privacy during screen share
+
+            document.getElementById('qr-modal-title').innerText = `Wi-Fi: ${ssid}`;
+            document.getElementById('qr-ssid-val').innerText = ssid;
+            document.getElementById('qr-auth-val').innerText = auth;
+            
+            updateQrPassDisplayUI();
+
+            currentQrString = `WIFI:S:${escapeQr(ssid)};T:${auth};P:${escapeQr(password)};;`;
+
+            const container = document.getElementById('qrcode-container');
+            container.innerHTML = '';
+
+            try {
+                new QRCode(container, {
+                    text: currentQrString,
+                    width: 180,
+                    height: 180,
+                    colorDark : "#0f172a",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.H
+                });
+            } catch(e) {
+                console.error("QR Library error", e);
+            }
+
+            openModal('qr-modal', 'qr-modal-box');
+        }
+
+        function toggleQrPassVisibility() {
+            isQrPassVisible = !isQrPassVisible;
+            updateQrPassDisplayUI();
+        }
+
+        function updateQrPassDisplayUI() {
+            const passValEl = document.getElementById('qr-pass-val');
+            const toggleBtn = document.getElementById('qr-pass-toggle-btn');
+
+            if (isQrPassVisible) {
+                passValEl.innerText = qrCurrentPasswordPlain || '(Trống)';
+                toggleBtn.innerHTML = `
+                    <svg class="w-3 h-3 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.018 10.018 0 013.682-.763c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m-1.332-1.332L3 3l18 18"/></svg>
+                    <span>Ẩn mật khẩu</span>`;
+            } else {
+                passValEl.innerText = '••••••••';
+                toggleBtn.innerHTML = `
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    <span>Hiện mật khẩu</span>`;
+            }
+        }
+
+        function escapeQr(str) {
+            if (!str) return '';
+            return str.replace(/\\/g, '\\\\')
+                      .replace(/;/g, '\\;')
+                      .replace(/,/g, '\\,')
+                      .replace(/:/g, '\\:')
+                      .replace(/"/g, '\\"');
+        }
+
+        function closeQrModal() {
+            closeModal('qr-modal', 'qr-modal-box');
+        }
+
+        function copyQrString() {
+            copyText(currentQrString, 'chuỗi mã QR Wi-Fi');
+        }
+
+        /* 
+           =========================================================
+           8. NETWORK ADD/EDIT/DELETE MODAL
+           =========================================================
+        */
+        let editingItemId = null;
+
+        function addNewNetworkModal() {
+            if (!isSessionAuthenticated) {
+                prompt2FAVerification(() => addNewNetworkModal());
+                showToast("Vui lòng xác thực 2FA trước khi thêm Wi-Fi!");
+                return;
+            }
+
+            editingItemId = null;
+            document.getElementById('network-modal-title').innerText = 'Thêm Mạng Wi-Fi Mới';
+            document.getElementById('net-ssid-input').value = '';
+            document.getElementById('net-router-input').value = 'Viettel / Xiaomi / Totolink';
+            document.getElementById('net-type-input').value = 'WPA';
+            document.getElementById('net-pass-input').value = '';
+            document.getElementById('net-note-input').value = '';
+
+            openModal('network-modal', 'network-modal-box');
+        }
+
+        function editNetworkItem(id) {
+            if (!isSessionAuthenticated) {
+                prompt2FAVerification(() => editNetworkItem(id));
+                showToast("Vui lòng xác thực 2FA trước khi chỉnh sửa!");
+                return;
+            }
+
+            const item = vaultItems.find(x => x.id === id);
+            if (!item) return;
+
+            editingItemId = id;
+            document.getElementById('network-modal-title').innerText = 'Chỉnh Sửa Mạng Wi-Fi';
+            document.getElementById('net-ssid-input').value = item.ssid;
+            document.getElementById('net-router-input').value = item.router || '';
+            document.getElementById('net-type-input').value = item.type;
+            document.getElementById('net-pass-input').value = item.passwordPlain || '';
+            document.getElementById('net-note-input').value = item.note || '';
+
+            openModal('network-modal', 'network-modal-box');
+        }
+
+        async function saveNetworkItem() {
+            const ssid = document.getElementById('net-ssid-input').value.trim();
+            const router = document.getElementById('net-router-input').value.trim();
+            const type = document.getElementById('net-type-input').value;
+            const pass = document.getElementById('net-pass-input').value;
+            const note = document.getElementById('net-note-input').value.trim();
+
+            if (!ssid) {
+                showToast('Vui lòng nhập tên mạng!');
+                return;
+            }
+
+            if (editingItemId) {
+                const item = vaultItems.find(x => x.id === editingItemId);
+                if (item) {
+                    item.ssid = ssid;
+                    item.router = router;
+                    item.type = type;
+                    item.passwordPlain = pass;
+                    item.note = note;
+                }
+            } else {
+                vaultItems.push({
+                    id: 'net-' + Date.now(),
+                    ssid: ssid,
+                    router: router,
+                    type: type,
+                    passwordPlain: pass,
+                    note: note
+                });
+            }
+
+            await saveVaultToLocalStorage();
+            renderVaultList();
+            closeModal('network-modal', 'network-modal-box');
+            showToast('Đã lưu mật khẩu mã hóa 2FA!');
+        }
+
+        async function deleteNetworkItem(id) {
+            if (!isSessionAuthenticated) {
+                prompt2FAVerification(() => deleteNetworkItem(id));
+                showToast("Vui lòng xác thực 2FA trước khi xóa!");
+                return;
+            }
+
+            const item = vaultItems.find(x => x.id === id);
+            if (!item) return;
+
+            vaultItems = vaultItems.filter(x => x.id !== id);
+            await saveVaultToLocalStorage();
+            renderVaultList();
+            showToast(`Đã xóa ${item.ssid}`);
+        }
+
+        /* 
+           =========================================================
+           9. GENERAL UTILITY FUNCTIONS
+           =========================================================
+        */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-900', 'text-white', 'shadow-md', 'scale-[1.02]');
+                btn.classList.add('text-slate-600', 'hover:text-slate-900', 'hover:bg-slate-100/80');
+            });
+
+            const target = document.getElementById('tab-' + tabId);
+            if (target) target.classList.add('active');
+
+            const activeBtns = document.querySelectorAll(`.tab-btn[data-tab="${tabId}"]`);
+            activeBtns.forEach(btn => {
+                btn.classList.remove('text-slate-600', 'hover:text-slate-900', 'hover:bg-slate-100/80');
+                btn.classList.add('bg-slate-900', 'text-white', 'shadow-md', 'scale-[1.02]');
+            });
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleSinglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerHTML = `<svg class="w-4 h-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a10.018 10.018 0 013.682-.763c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m-1.332-1.332L3 3l18 18"/></svg>`;
+            } else {
+                input.type = 'password';
+                btn.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`;
+            }
+        }
+
+        let allPassVisible = false;
+        function toggleAllPasswordsVis() {
+            allPassVisible = !allPassVisible;
+            document.querySelectorAll('.pass-input').forEach(inp => {
+                inp.type = allPassVisible ? 'text' : 'password';
+            });
+            const btn = document.getElementById('toggle-all-btn');
+            btn.querySelector('span').innerText = allPassVisible ? 'Ẩn tất cả' : 'Hiện tất cả';
+        }
+
+        function filterVault() {
+            const q = document.getElementById('pass-search').value.toLowerCase().trim();
+            document.querySelectorAll('.pass-card').forEach(card => {
+                const searchData = card.getAttribute('data-search') || '';
+                card.style.display = searchData.includes(q) ? 'block' : 'none';
+            });
+        }
+
+        function toggleInputVisibility(id) {
+            const inp = document.getElementById(id);
+            if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+        }
+
+        function copyTextFromInput(inputId, label) {
+            const inp = document.getElementById(inputId);
+            if (inp) copyText(inp.value, `Mật khẩu ${label}`);
+        }
+
+        function copyText(text, label) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(`Đã sao chép ${label || ''}`);
+                }).catch(() => fallbackCopy(text, label));
+            } else {
+                fallbackCopy(text, label);
+            }
+        }
+
+        function fallbackCopy(text, label) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast(`Đã sao chép ${label || ''}`);
+            } catch (err) {
+                showToast("Không thể tự động sao chép!");
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            toastMsg.innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        function toggleAccordion(accId) {
+            const content = document.getElementById(accId);
+            const icon = document.getElementById('acc-icon-' + accId);
+
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                if (icon) icon.style.transform = 'rotate(180deg)';
+            } else {
+                content.classList.add('hidden');
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        function openModal(modalId, boxId) {
+            const modal = document.getElementById(modalId);
+            const box = document.getElementById(boxId);
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            box.classList.remove('scale-95');
+            box.classList.add('scale-100');
+        }
+
+        function closeModal(modalId, boxId) {
+            const modal = document.getElementById(modalId);
+            const box = document.getElementById(boxId);
+            box.classList.remove('scale-100');
+            box.classList.add('scale-95');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function closeNetworkModal() {
+            closeModal('network-modal', 'network-modal-box');
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;")
+                      .replace(/'/g, "&#039;");
+        }
+
+        // Initialize App on DOM Load
+        window.addEventListener('DOMContentLoaded', () => {
+            initVault();
+        });
+    </script>
+</body>
+</html>

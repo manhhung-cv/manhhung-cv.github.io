@@ -1,152 +1,186 @@
-// Biến trạng thái
+const PROXY_BASE = "https://bold-night.year-tucking-0v.workers.dev/?url=";
+const SMILES_API_TARGET = "https://url-api-smiles-cua-ban.com/rate";
+const STANDARD_API_TARGET = "https://api.exchangerate-api.com/v4/latest/USD";
+
 let ratesStandard = {};
-let rateSmiles = 0;
-let lastFetchStandard = null;
-let lastFetchSmiles = null;
-let currentSource = 'standard';
-let lastEdited = 1; // 1 hoặc 2 để biết người dùng đang gõ vào ô nào
+let rateSmiles = 165;
+let currentSource = "smiles";
+let lastEdited = 1;
+let currentHostname = "";
 
-// URL API (Thay link thực tế của Smiles vào đây nếu có)
-const SMILES_API_URL = 'https://url-api-smiles-cua-ban.com/rate'; 
+// Elements
+const globalEnableToggle = document.getElementById("globalEnableToggle");
+const siteEnableToggle = document.getElementById("siteEnableToggle");
+const currentSiteDomain = document.getElementById("currentSiteDomain");
+const siteControlRow = document.getElementById("siteControlRow");
+const sourceSelect = document.getElementById("sourceSelect");
+const val1 = document.getElementById("val1");
+const val2 = document.getElementById("val2");
+const cur1 = document.getElementById("cur1");
+const cur2 = document.getElementById("cur2");
+const swapBtn = document.getElementById("swapBtn");
+const rateSummary = document.getElementById("rateSummary");
+const lastUpdated = document.getElementById("lastUpdated");
+const smilesWarning = document.getElementById("smilesWarning");
 
-// DOM Elements
-const sourceSelect = document.getElementById('sourceSelect');
-const in1 = document.getElementById('in1');
-const in2 = document.getElementById('in2');
-const sel1 = document.getElementById('sel1');
-const sel2 = document.getElementById('sel2');
-const rateText = document.getElementById('rateText');
-const updateTime = document.getElementById('updateTime');
-const smilesWarning = document.getElementById('smilesWarning');
-const popularRatesContainer = document.getElementById('popularRates');
+function parseNum(val) {
+  return parseFloat(String(val).replace(/,/g, "")) || 0;
+}
 
-// --- CÁC HÀM TIỆN ÍCH BỔ SUNG ---
-const parseInputStr = (str) => parseFloat(str.replace(/,/g, '')) || 0;
-const formatCurrency = (num) => num.toLocaleString('en-US', { maximumFractionDigits: 2 });
+function formatNum(val) {
+  return Number(val).toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
 
-const renderPopularRates = () => {
-    // Placeholder cho hàm của bạn
-    // popularRatesContainer.innerHTML = "Các tỷ giá phổ biến...";
-};
+// Xử lý bật/tắt Toggle
+async function initToggleStates() {
+  const store = await chrome.storage.local.get(["globalEnabled", "disabledDomains"]);
+  const globalEnabled = store.globalEnabled !== false; // Mặc định là true
+  const disabledDomains = store.disabledDomains || [];
 
-// --- CÁC HÀM FETCH API (Từ code của bạn) ---
-const fetchStandardApi = async () => {
-    try {
-        const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+  globalEnableToggle.checked = globalEnabled;
+
+  // Lấy domain của tab hiện tại
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab && tab.url && tab.url.startsWith("http")) {
+    const url = new URL(tab.url);
+    currentHostname = url.hostname;
+    currentSiteDomain.textContent = currentHostname;
+    siteEnableToggle.checked = !disabledDomains.includes(currentHostname);
+  } else {
+    siteControlRow.style.display = "none";
+  }
+
+  // Sự kiện Toggle toàn bộ
+  globalEnableToggle.addEventListener("change", async () => {
+    await chrome.storage.local.set({ globalEnabled: globalEnableToggle.checked });
+  });
+
+  // Sự kiện Toggle trên từng trang
+  siteEnableToggle.addEventListener("change", async () => {
+    if (!currentHostname) return;
+    const currentStore = await chrome.storage.local.get("disabledDomains");
+    let domains = currentStore.disabledDomains || [];
+
+    if (siteEnableToggle.checked) {
+      domains = domains.filter(d => d !== currentHostname);
+    } else {
+      if (!domains.includes(currentHostname)) domains.push(currentHostname);
+    }
+    await chrome.storage.local.set({ disabledDomains: domains });
+  });
+}
+
+async function fetchSmiles() {
+  try {
+    const res = await fetch(`${PROXY_BASE}${encodeURIComponent(SMILES_API_TARGET)}`);
+    if (res.ok) {
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
         const data = await res.json();
-        ratesStandard = data.rates; 
-        lastFetchStandard = new Date();
-        return true;
-    } catch (e) { 
-        console.error("Lỗi Standard API:", e);
-        return false; 
+        rateSmiles = parseFloat(data.Rate || data.rate || 165);
+      } else {
+        const text = await res.text();
+        const match = text.match(/(?:Rate|rate|tỷ giá|JPY\/VND)[^\d]*([\d,]+(?:\.\d+)?)/i);
+        if (match && match[1]) rateSmiles = parseFloat(match[1].replace(/,/g, ""));
+      }
     }
-};
+  } catch (e) {
+    rateSmiles = 165.5;
+  }
+  await chrome.storage.local.set({ rateSmiles, currentSource, lastUpdated: Date.now() });
+}
 
-const fetchSmilesApi = async () => {
-    const proxies = [
-        `https://api.allorigins.win/get?url=${encodeURIComponent(SMILES_API_URL)}`,
-        `https://corsproxy.io/?${encodeURIComponent(SMILES_API_URL)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(SMILES_API_URL)}`
-    ];
-    try {
-        const result = await Promise.any(proxies.map(url => fetch(url).then(r => r.json())));
-        const content = result.contents ? JSON.parse(result.contents) : result;
-        // Chỉnh sửa theo cấu trúc JSON trả về của Smiles
-        rateSmiles = parseFloat(content.Rate || 165); 
-        lastFetchSmiles = new Date();
-        return true;
-    } catch (e) { 
-        console.error("Lỗi Smiles API:", e);
-        // Fallback tạm thời nếu API lỗi để bạn test
-        rateSmiles = 165.5; 
-        lastFetchSmiles = new Date();
-        return true; 
+async function fetchStandard() {
+  try {
+    const res = await fetch(`${PROXY_BASE}${encodeURIComponent(STANDARD_API_TARGET)}`);
+    const data = await res.json();
+    if (data && data.rates) {
+      ratesStandard = data.rates;
+      await chrome.storage.local.set({ rates: data.rates, currentSource, lastUpdated: Date.now() });
     }
-};
+  } catch (e) {
+    console.warn("Lỗi Standard API:", e);
+  }
+}
 
-// --- HÀM TÍNH TOÁN CỐT LÕI ---
-const calculate = () => {
-    const c1 = sel1.value;
-    const c2 = sel2.value;
-    let rate = 0;
+function calculate() {
+  const c1 = cur1.value;
+  const c2 = cur2.value;
+  let unitRate = 0;
 
-    if (currentSource === 'standard') {
-        // ExchangeRate-API lấy USD làm gốc
-        rate = ratesStandard[c2] / ratesStandard[c1];
-    } else {
-        // Logic riêng cho Smiles (Chỉ JPY và VND)
-        if (c1 === 'JPY' && c2 === 'VND') rate = rateSmiles;
-        else if (c1 === 'VND' && c2 === 'JPY') rate = 1 / rateSmiles;
-        else rate = 1; // Trường hợp lỗi chọn sai tiền tệ
-    }
+  if (currentSource === "smiles") {
+    if (c1 === "JPY" && c2 === "VND") unitRate = rateSmiles;
+    else if (c1 === "VND" && c2 === "JPY") unitRate = 1 / rateSmiles;
+    else unitRate = 1;
+  } else {
+    const r1 = ratesStandard[c1] || 1;
+    const r2 = ratesStandard[c2] || 1;
+    unitRate = r2 / r1;
+  }
 
-    if (!rate || isNaN(rate)) { 
-        rateText.innerHTML = "Đang tải dữ liệu..."; 
-        return; 
-    }
+  rateSummary.innerHTML = `1 ${c1} ≈ <b>${formatNum(unitRate)}</b> ${c2}`;
 
-    // Cập nhật text hiển thị tỷ giá
-    rateText.innerHTML = `1 ${c1} ➔ <b>${formatCurrency(rate)}</b> ${c2}`;
-    
-    // Cập nhật thời gian
-    const updateDate = currentSource === 'standard' ? lastFetchStandard : lastFetchSmiles;
-    updateTime.textContent = `Cập nhật: ${updateDate ? updateDate.toLocaleTimeString() : '--:--'}`;
+  if (lastEdited === 1) {
+    val2.value = formatNum(parseNum(val1.value) * unitRate);
+  } else {
+    val1.value = formatNum(parseNum(val2.value) / unitRate);
+  }
+}
 
-    // Tính toán số tiền dựa vào ô vừa sửa cuối cùng
-    if (lastEdited === 1) {
-        in2.value = formatCurrency(parseInputStr(in1.value) * rate);
-    } else {
-        in1.value = formatCurrency(parseInputStr(in2.value) / rate);
-    }
-    
-    renderPopularRates();
-};
-
-// --- KHỞI TẠO VÀ LẮNG NGHE SỰ KIỆN ---
-
-// Đổi nguồn tỷ giá
-sourceSelect.addEventListener('change', async (e) => {
-    currentSource = e.target.value;
-    
-    if (currentSource === 'smiles') {
-        // Ép dropdown về JPY và VND nếu chọn Smiles
-        sel1.value = 'JPY';
-        sel2.value = 'VND';
-        smilesWarning.style.display = 'block';
-        if (!lastFetchSmiles) await fetchSmilesApi();
-    } else {
-        smilesWarning.style.display = 'none';
-        if (!lastFetchStandard) await fetchStandardApi();
-    }
-    calculate();
+sourceSelect.addEventListener("change", async (e) => {
+  currentSource = e.target.value;
+  if (currentSource === "smiles") {
+    cur1.value = "JPY";
+    cur2.value = "VND";
+    smilesWarning.style.display = "block";
+    await fetchSmiles();
+  } else {
+    smilesWarning.style.display = "none";
+    if (Object.keys(ratesStandard).length === 0) await fetchStandard();
+  }
+  await chrome.storage.local.set({ currentSource });
+  calculate();
 });
 
-// Lắng nghe sự kiện thay đổi loại tiền
-[sel1, sel2].forEach(sel => {
-    sel.addEventListener('change', () => {
-        // Ràng buộc nếu đang dùng Smiles
-        if (currentSource === 'smiles') {
-            if (sel1.value !== 'JPY' && sel1.value !== 'VND') sel1.value = 'JPY';
-            if (sel2.value !== 'JPY' && sel2.value !== 'VND') sel2.value = 'VND';
-        }
-        calculate();
-    });
+[cur1, cur2].forEach((sel) => {
+  sel.addEventListener("change", () => {
+    if (currentSource === "smiles") {
+      if (cur1.value !== "JPY" && cur1.value !== "VND") cur1.value = "JPY";
+      if (cur2.value !== "JPY" && cur2.value !== "VND") cur2.value = "VND";
+    }
+    calculate();
+  });
 });
 
-// Lắng nghe sự kiện gõ phím vào ô input
-in1.addEventListener('input', (e) => {
-    lastEdited = 1;
-    calculate();
+val1.addEventListener("input", () => { lastEdited = 1; calculate(); });
+val2.addEventListener("input", () => { lastEdited = 2; calculate(); });
+
+swapBtn.addEventListener("click", () => {
+  const tmp = cur1.value;
+  cur1.value = cur2.value;
+  cur2.value = tmp;
+  calculate();
 });
 
-in2.addEventListener('input', (e) => {
-    lastEdited = 2;
-    calculate();
-});
+document.addEventListener("DOMContentLoaded", async () => {
+  await initToggleStates();
 
-// Khởi chạy khi mở popup
-document.addEventListener('DOMContentLoaded', async () => {
-    await fetchStandardApi();
-    calculate();
+  const store = await chrome.storage.local.get(["rates", "rateSmiles", "currentSource", "lastUpdated"]);
+  if (store.currentSource) {
+    currentSource = store.currentSource;
+    sourceSelect.value = currentSource;
+  }
+  if (store.rateSmiles) rateSmiles = store.rateSmiles;
+  if (store.rates) ratesStandard = store.rates;
+
+  if (currentSource === "smiles") {
+    smilesWarning.style.display = "block";
+    await fetchSmiles();
+  } else {
+    smilesWarning.style.display = "none";
+    await fetchStandard();
+  }
+
+  lastUpdated.innerText = `Cập nhật: ${new Date().toLocaleTimeString()}`;
+  calculate();
 });
