@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JobLens Japan - Quản Lý Việc Làm & Bóc Tách Đa Job</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tesseract.js OCR CDN để đọc chữ trực tiếp từ ảnh -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0fdf4',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- TOP NAVIGATION -->
+  <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 lg:px-8 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- Logo & Title -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-bold text-xl">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
+              JobLens <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Japan AI + OCR</span>
+            </h1>
+            <span id="ocrStatusBadge" class="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>OCR Sẵn sàng</span>
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Chụp màn hình (Ctrl+V) &bull; Tự đọc chữ trong ảnh &bull; Tách nhiều job</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="btnOpenApiKey" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5" title="Cài đặt Gemini API Key nếu muốn">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          <span class="hidden sm:inline">Cài</span> API Key
+        </button>
+
+        <button id="btnOpenTextModal" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>Dán Văn Bản</span>
+        </button>
+
+        <button id="btnExportCSV" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span>Xuất Excel</span>
+        </button>
+
+        <div class="relative">
+          <button id="btnDataMenu" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+            <span>Dữ Liệu</span>
+          </button>
+          
+          <div id="dataMenuDropdown" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-slate-900 border border-slate-800 shadow-2xl p-1.5 z-50 text-xs">
+            <button id="btnExportJSON" class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 flex items-center gap-2">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
+              <span>Sao lưu JSON</span>
+            </button>
+            <label class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 flex items-center gap-2 cursor-pointer">
+              <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>Phục hồi JSON</span>
+              <input type="file" id="inputImportJSON" accept=".json" class="hidden">
+            </label>
+            <div class="my-1 border-t border-slate-800"></div>
+            <button id="btnClearAll" class="w-full text-left px-3 py-2 rounded-lg hover:bg-red-950/40 text-red-400 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              <span>Xóa sạch việc làm</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 flex flex-col gap-6">
+
+    <!-- HERO / DROP-PASTE ZONE -->
+    <section id="dropZone" class="relative group rounded-2xl border-2 border-dashed border-slate-800 hover:border-emerald-500/70 bg-gradient-to-b from-slate-900/60 to-slate-900/20 p-6 sm:p-8 transition-all duration-300 text-center cursor-pointer shadow-lg hover:shadow-emerald-950/20">
+      <input type="file" id="fileInput" accept="image/*" class="hidden">
+      
+      <div class="flex flex-col items-center justify-center gap-3">
+        <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+          <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+
+        <div>
+          <h2 class="text-base sm:text-lg font-semibold text-slate-100">
+            Dán ảnh chụp màn hình bài đăng tuyển dụng (Ctrl + V)
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            Hệ thống sẽ <strong class="text-emerald-400">tự đọc chữ trong ảnh</strong> và tự động bóc tách từng job riêng biệt
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-1 text-[11px] text-slate-300">
+          <span class="px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 flex items-center gap-1.5">
+            <span class="text-emerald-400">✓</span> Nhận diện 1 ảnh có nhiều Job
+          </span>
+          <span class="px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 flex items-center gap-1.5">
+            <span class="text-emerald-400">✓</span> Bắt ca kíp: Đổi ca, 4-2 (Làm 4 nghỉ 2), Ca ngày, Đêm
+          </span>
+          <span class="px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 flex items-center gap-1.5">
+            <span class="text-emerald-400">✓</span> Bắt Tỉnh (Kanagawa, Saitama...) & Lương (1400, 1s4)
+          </span>
+          <span class="px-2.5 py-1 rounded-full bg-slate-800/80 border border-slate-700/60 flex items-center gap-1.5">
+            <span class="text-emerald-400">✓</span> Phân loại: Chính thức / Hakken (phái cử)
+          </span>
+        </div>
+      </div>
+
+      <!-- Loading Overlay -->
+      <div id="processingOverlay" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-4 z-20">
+        <div class="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+        <p id="processingStatusText" class="mt-4 text-sm font-semibold text-emerald-400">Đang quét chữ từ ảnh chụp màn hình (OCR)...</p>
+        <p id="processingSubText" class="text-xs text-slate-400 mt-1">Tự động nhận diện chữ tiếng Việt & tiếng Nhật trên trình duyệt</p>
+      </div>
+    </section>
+
+    <!-- STATS & FILTER TOOLBAR -->
+    <section class="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 sm:p-5 flex flex-col gap-4 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+        <div class="flex items-center gap-4 text-xs sm:text-sm">
+          <div>
+            <span class="text-slate-400">Tổng việc:</span>
+            <span id="statTotalJobs" class="font-bold text-white ml-1">0</span>
+          </div>
+          <div class="text-slate-700">|</div>
+          <div>
+            <span class="text-slate-400">Đang hiển thị:</span>
+            <span id="statFilteredJobs" class="font-bold text-emerald-400 ml-1">0</span>
+          </div>
+          <div class="text-slate-700">|</div>
+          <div>
+            <span class="text-slate-400">Lương TB:</span>
+            <span id="statAvgWage" class="font-bold text-teal-400 ml-1">0 ¥/h</span>
+          </div>
+        </div>
+
+        <button id="btnResetFilters" type="button" class="text-xs text-slate-400 hover:text-emerald-400 transition flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Đặt lại bộ lọc
+        </button>
+      </div>
+
+      <!-- Filters Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="relative lg:col-span-2">
+          <input type="text" id="filterSearch" placeholder="Tìm theo công việc, công ty, HR..." 
+                 class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition">
+        </div>
+
+        <div>
+          <select id="filterEmploymentType" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition">
+            <option value="">Tất cả hình thức</option>
+            <option value="Chính thức">👔 Chính thức (正社員)</option>
+            <option value="Hakken">🏭 Hakken (派遣 - Phái cử)</option>
+            <option value="Baito">⏰ Baito (アルバイト)</option>
+            <option value="Tokutei">🔰 Tokutei (特定技能)</option>
+            <option value="Hợp đồng">📋 Hợp đồng (契約)</option>
+          </select>
+        </div>
+
+        <div>
+          <select id="filterPrefecture" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition">
+            <option value="">Tất cả Tỉnh (Japan)</option>
+            <option value="Kanagawa">Kanagawa (神奈川)</option>
+            <option value="Saitama">Saitama (埼玉)</option>
+            <option value="Tokyo">Tokyo (東京)</option>
+            <option value="Chiba">Chiba (千葉)</option>
+            <option value="Aichi">Aichi (愛知)</option>
+            <option value="Shizuoka">Shizuoka (静岡)</option>
+            <option value="Osaka">Osaka (大阪)</option>
+            <option value="Khác">Khu vực khác...</option>
+          </select>
+        </div>
+
+        <div>
+          <select id="filterShift" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition">
+            <option value="">Tất cả ca</option>
+            <option value="4-2">🔄 Ca 4-2 (Làm 4 nghỉ 2)</option>
+            <option value="Đổi ca">Đổi ca ngày / đêm</option>
+            <option value="Ca ngày">Ca ngày</option>
+            <option value="Ca đêm">Ca đêm</option>
+            <option value="Hành chính">Hành chính</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- JOB CARDS LIST -->
+    <section>
+      <div id="jobsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Injected dynamically -->
+      </div>
+
+      <div id="emptyState" class="hidden flex-col items-center justify-center py-16 px-4 text-center rounded-2xl bg-slate-900/30 border border-slate-800/60">
+        <div class="w-16 h-16 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-500 mb-3">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h3 class="text-base font-semibold text-slate-200">Chưa có công việc nào</h3>
+        <p class="text-xs text-slate-400 mt-1 max-w-sm">Chụp ảnh màn hình bài tuyển dụng và nhấn Ctrl + V để hệ thống tự đọc chữ và bóc tách dữ liệu.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- BATCH CONFIRMATION MODAL -->
+  <div id="batchModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span>✨ Đã bóc tách thành công <span id="batchCount" class="text-emerald-400">0</span> việc làm</span>
+          </h3>
+          <p class="text-xs text-slate-400">Kiểm tra lại nội dung OCR trích xuất được từ ảnh/bài viết trước khi lưu:</p>
+        </div>
+        <button id="btnCloseBatchModal" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="batchItemsContainer" class="p-4 sm:p-5 flex-1 overflow-y-auto space-y-4"></div>
+
+      <div class="p-4 border-t border-slate-800 bg-slate-900/90 flex flex-wrap items-center justify-between gap-3">
+        <span class="text-xs text-slate-400">Bạn có thể chỉnh sửa trực tiếp nội dung từng việc bên trên.</span>
+        <div class="flex items-center gap-2">
+          <button id="btnCancelBatch" type="button" class="px-4 py-2 text-xs sm:text-sm font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Hủy</button>
+          <button id="btnSaveAllBatch" type="button" class="px-5 py-2 text-xs sm:text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 transition flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            <span>Lưu tất cả công việc</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT JOB MODAL -->
+  <div id="editJobModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          <span>Chỉnh sửa thông tin việc làm</span>
+        </h3>
+        <button id="btnCloseEditModal" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <input type="hidden" id="editJobId">
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="text-slate-300 block mb-1">Vị trí / Tên công việc:</label>
+          <input type="text" id="editJobTitle" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-white">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-300 block mb-1">Tỉnh / Khu vực:</label>
+            <input type="text" id="editJobPrefecture" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-white">
+          </div>
+          <div>
+            <label class="text-slate-300 block mb-1">Hình thức nhân viên:</label>
+            <select id="editJobEmploymentType" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-white">
+              <option value="Chính thức">👔 Chính thức (正社員)</option>
+              <option value="Hakken">🏭 Hakken (派遣 - Phái cử)</option>
+              <option value="Baito">⏰ Baito (アルバイト)</option>
+              <option value="Tokutei">🔰 Tokutei (特定技能)</option>
+              <option value="Hợp đồng">📋 Hợp đồng (契約)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-300 block mb-1">Mức lương:</label>
+            <input type="text" id="editJobWage" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-white">
+          </div>
+          <div>
+            <label class="text-slate-300 block mb-1">Ca làm việc:</label>
+            <select id="editJobShift" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-white">
+              <option value="4-2">🔄 Ca 4-2 (Làm 4 nghỉ 2)</option>
+              <option value="Đổi ca">Đổi ca ngày / đêm</option>
+              <option value="Ca ngày">Ca ngày</option>
+              <option value="Ca đêm">Ca đêm</option>
+              <option value="Hành chính">Hành chính</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-300 block mb-1">Người đăng / HR:</label>
+            <input type="text" id="editJobAuthor" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-white">
+          </div>
+          <div>
+            <label class="text-slate-300 block mb-1">Trạng thái ứng tuyển:</label>
+            <select id="editJobStatus" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-white">
+              <option value="Đã lưu">⭐ Đã lưu</option>
+              <option value="Đang nhắn HR">💬 Đang nhắn HR</option>
+              <option value="Đã gửi CV">📄 Đã gửi CV</option>
+              <option value="Chờ phỏng vấn">📅 Hẹn phỏng vấn</option>
+              <option value="Trúng tuyển">🎉 Trúng tuyển</option>
+              <option value="Bỏ qua">❌ Bỏ qua</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-slate-300 block mb-1">Ghi chú / Liên hệ:</label>
+          <textarea id="editJobNotes" rows="2" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl px-3 py-2 text-white"></textarea>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <button id="btnCancelEditModal" type="button" class="px-4 py-2 text-xs font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">Hủy</button>
+        <button id="btnSaveEditModal" type="button" class="px-5 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white">Lưu thay đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TEXT INPUT MODAL -->
+  <div id="textModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-5 shadow-2xl flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>Nhập / Dán đoạn văn bản tuyển dụng</span>
+        </h3>
+        <button id="btnCloseTextModal" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div>
+        <textarea id="rawTextContent" rows="6" placeholder="Dán nội dung tuyển dụng vào đây..." 
+                  class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"></textarea>
+      </div>
+
+      <div class="flex items-center justify-between gap-3 pt-1">
+        <button id="btnFillSampleText" type="button" class="text-xs text-slate-400 hover:text-emerald-400 transition">
+          + Thử đoạn mẫu (Kanagawa ca 4-2 & Saitama)
+        </button>
+        <div class="flex items-center gap-2">
+          <button id="btnCancelTextModal" type="button" class="px-4 py-2 text-xs font-medium rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300">Hủy</button>
+          <button id="btnProcessText" type="button" class="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5">
+            <span>Tách Job</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API KEY MODAL -->
+  <div id="apiKeyModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl flex flex-col gap-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <span>Cấu hình Gemini API Key</span>
+        </h3>
+        <button id="btnCloseApiKeyModal" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-300">
+        Mặc định hệ thống sử dụng **Tesseract OCR nội bộ** (không cần API key). Nếu bạn muốn AI đọc ảnh sâu và chuẩn hơn, hãy nhập API Key từ Google AI Studio vào đây:
+      </p>
+
+      <input type="password" id="inputGeminiApiKey" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white">
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+        <button id="btnSaveApiKey" type="button" class="px-4 py-2 text-xs font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white">Lưu Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX MODAL -->
+  <div id="imageLightboxModal" class="hidden fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
+      <button id="btnCloseLightbox" class="absolute -top-10 right-0 text-slate-300 hover:text-white p-2 text-sm flex items-center gap-1">
+        <span>Đóng (ESC)</span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <img id="lightboxImg" src="" alt="Ảnh JD" class="max-w-full max-h-[85vh] rounded-xl object-contain border border-slate-800 shadow-2xl">
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATIONS -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    const STORAGE_KEY = 'joblens_japan_jobs_v2';
+    const APIKEY_KEY = 'joblens_gemini_api_key';
+
+    let state = {
+      jobs: [],
+      pendingBatch: [],
+      lastOriginalImage: null,
+      filters: {
+        search: '',
+        employmentType: '',
+        prefecture: '',
+        shift: ''
+      }
+    };
+
+    function loadSavedJobs() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) state.jobs = JSON.parse(raw);
+      } catch (e) {
+        state.jobs = [];
+      }
+    }
+
+    function saveJobsToStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.jobs));
+    }
+
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-xl text-xs font-medium flex items-center gap-2 border transition-all duration-300 ${
+        type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200' :
+        type === 'error' ? 'bg-red-950/90 border-red-500/40 text-red-200' :
+        'bg-slate-800/90 border-slate-700 text-slate-200'
+      }`;
+      toast.innerHTML = `<span>${type === 'success' ? '✓' : type === 'error' ? '⚠️' : 'ℹ️'}</span><span>${msg}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    function showProcessing(show, text = '', subText = '') {
+      const overlay = document.getElementById('processingOverlay');
+      if (show) {
+        document.getElementById('processingStatusText').textContent = text;
+        document.getElementById('processingSubText').textContent = subText;
+        overlay.classList.remove('hidden');
+      } else {
+        overlay.classList.add('hidden');
+      }
+    }
+
+    // Heuristic Parser for Japan Jobs (Matches 4-2, Nguyen Thanh, Kanagawa 1400, Saitama 1400...)
+    function parseJapanJobsText(rawText) {
+      const jobs = [];
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+      
+      const prefectures = [
+        'Kanagawa', 'Saitama', 'Tokyo', 'Chiba', 'Aichi', 'Shizuoka', 
+        'Osaka', 'Hyogo', 'Ibaraki', 'Tochigi', 'Gunma', 'Mie', 'Shiga', 
+        'Kyoto', 'Hiroshima', 'Fukuoka', 'Gifu', 'Nagano', 'Fukui', 'Yamanashi'
+      ];
+
+      // 1. Tìm người đăng từ các dòng đầu
+      let detectedAuthor = '';
+      for (let i = 0; i < Math.min(3, lines.length); i++) {
+        const l = lines[i];
+        if (!prefectures.some(p => new RegExp(`\\b${p}\\b`, 'i').test(l)) && !/\d{3,4}/.test(l)) {
+          detectedAuthor = l.replace(/^(tuyển dụng|hr|người đăng:?)/i, '').trim();
+          break;
+        }
+      }
+
+      let currentJob = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // Bỏ qua dòng kết luận liên hệ nếu không có thông tin lương/tỉnh
+        if (/^(ib|inbox|liên hệ|sđt|zalo|call|cmt)/i.test(line) && !line.includes('1400') && !line.includes('1s')) {
+          continue;
+        }
+
+        // Kiểm tra xem dòng này có chứa tên Tỉnh không
+        const matchedPref = prefectures.find(p => new RegExp(`\\b${p}\\b`, 'i').test(line));
+
+        if (matchedPref) {
+          if (currentJob) jobs.push(currentJob);
+
+          currentJob = {
+            id: 'job_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+            title: '',
+            prefecture: matchedPref,
+            employmentType: 'Hakken', // Mặc định việc xưởng đổi ca ở Nhật thường là Hakken
+            wageRaw: '',
+            wageNum: 0,
+            shift: 'Đổi ca',
+            author: detectedAuthor || 'Người đăng bài',
+            tags: [],
+            notes: line,
+            createdAt: new Date().toISOString(),
+            status: 'Đã lưu',
+            image: state.lastOriginalImage || null
+          };
+
+          // Nhận diện phân loại nhân viên
+          if (/chính thức|seishain|trực tiếp/i.test(line)) currentJob.employmentType = 'Chính thức';
+          else if (/hakken|phái cử/i.test(line)) currentJob.employmentType = 'Hakken';
+          else if (/baito|parttime|bán thời gian/i.test(line)) currentJob.employmentType = 'Baito';
+          else if (/tokutei|đặc định/i.test(line)) currentJob.employmentType = 'Tokutei';
+
+          // Nhận diện ca kíp (Đặc biệt ưu tiên nhận diện ca 4-2 / 4勤2休 / làm 4 nghỉ 2)
+          if (/4[-/\s]?2|4\s?làm\s?2|làm\s?4\s?nghỉ\s?2|4\s?đi\s?2|4勤2休|4直2休/i.test(line)) {
+            currentJob.shift = '4-2';
+          } else if (/đổi ca|2 ca|ngày đêm/i.test(line)) {
+            currentJob.shift = 'Đổi ca';
+          } else if (/ca đêm|đêm/i.test(line)) {
+            currentJob.shift = 'Ca đêm';
+          } else if (/ca ngày|ngày/i.test(line)) {
+            currentJob.shift = 'Ca ngày';
+          } else if (/hành chính/i.test(line)) {
+            currentJob.shift = 'Hành chính';
+          }
+
+          // Nhận diện lương
+          const wageMatch = line.match(/(\d{1,2}s\d|\d{4}|\d{1,2}\s?man|\d{1,2}\s?lá|\d{1,2}\s?vạn)/i);
+          if (wageMatch) {
+            currentJob.wageRaw = wageMatch[0];
+            if (wageMatch[0].toLowerCase().includes('s')) {
+              const parts = wageMatch[0].toLowerCase().split('s');
+              currentJob.wageNum = parseInt(parts[0]) * 1000 + (parseInt(parts[1]) || 0) * 100;
+            } else if (/man|lá|vạn/i.test(wageMatch[0])) {
+              currentJob.wageNum = Math.round((parseInt(wageMatch[0]) * 10000) / 160);
+            } else {
+              currentJob.wageNum = parseInt(wageMatch[0].replace(/\D/g, '')) || 0;
+            }
+          }
+
+          // Nội dung công việc còn lại trên cùng 1 dòng
+          let restOfLine = line
+            .replace(new RegExp(`\\b${matchedPref}\\b`, 'gi'), '')
+            .replace(wageMatch ? wageMatch[0] : '', '')
+            .replace(/4[-/\s]?2|4\s?làm\s?2|làm\s?4\s?nghỉ\s?2|4\s?đi\s?2|4勤2休|4直2休/gi, '')
+            .replace(/đổi ca|2 ca|ngày đêm|ca ngày|ca đêm|hành chính/gi, '')
+            .replace(/chính thức|seishain|hakken|phái cử|tokutei/gi, '')
+            .trim();
+
+          if (restOfLine.length > 2) {
+            currentJob.title = restOfLine;
+          }
+        } else if (currentJob) {
+          // Kiểm tra xem dòng bổ sung có nhắc đến ca 4-2 hay loại hình nhân viên không
+          if (/4[-/\s]?2|4\s?làm\s?2|làm\s?4\s?nghỉ\s?2|4\s?đi\s?2|4勤2休|4直2休/i.test(line)) {
+            currentJob.shift = '4-2';
+          }
+          if (/chính thức|seishain/i.test(line)) currentJob.employmentType = 'Chính thức';
+          if (/hakken|phái cử/i.test(line)) currentJob.employmentType = 'Hakken';
+
+          if (!currentJob.title) {
+            currentJob.title = line;
+          } else {
+            currentJob.title += ' - ' + line;
+          }
+          currentJob.notes += ' | ' + line;
+        }
+      }
+
+      if (currentJob) jobs.push(currentJob);
+
+      // Hoàn thiện thẻ tag & chuẩn hoá tiêu đề
+      return jobs.map(j => {
+        if (!j.title || j.title.length < 2) {
+          j.title = 'Công việc tại ' + j.prefecture;
+        }
+        const shiftTag = j.shift === '4-2' ? 'Ca 4-2' : j.shift;
+        const tags = [j.prefecture, shiftTag, j.employmentType];
+        if (j.wageRaw) tags.push(j.wageRaw);
+        if (/vành|bánh xe/i.test(j.title)) tags.push('SX Bánh Xe');
+        if (/kính|màn hình/i.test(j.title)) tags.push('Gia Công Kính');
+        j.tags = [...new Set(tags)];
+        return j;
+      });
+    }
+
+    // Gemini API caller (nếu người dùng có cài API Key)
+    async function callGeminiVision(base64Pure) {
+      const apiKey = localStorage.getItem(APIKEY_KEY);
+      if (!apiKey) return null;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: `Đọc và bóc tách tất cả các công việc có trong bức ảnh này thành một mảng JSON các object gồm: title, prefecture, employmentType (Chính thức hoặc Hakken hoặc Baito), wageRaw, wageNum (số nguyên), shift (4-2, Đổi ca, Ca ngày, Ca đêm, Hành chính), author, notes.` },
+            { inlineData: { mimeType: 'image/png', data: base64Pure } }
+          ]
+        }],
+        generationConfig: { responseMimeType: 'application/json' }
+      };
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Gemini API HTTP ' + res.status);
+      const data = await res.json();
+      return JSON.parse(data.candidates[0].content.parts[0].text);
+    }
+
+    // OCR Tesseract Engine trên trình duyệt
+    async function runTesseractOCR(file) {
+      if (typeof Tesseract === 'undefined') {
+        throw new Error('Thư viện Tesseract chưa sẵn sàng');
+      }
+      const worker = await Tesseract.createWorker(['vie', 'eng', 'jpn']);
+      const ret = await worker.recognize(file);
+      await worker.terminate();
+      return ret.data.text;
+    }
+
+    // Quá trình xử lý ảnh
+    async function processImage(file) {
+      showProcessing(true, 'Đang đọc chữ từ hình ảnh...', 'Đang nhận diện nội dung từ ảnh chụp màn hình');
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const fullBase64 = e.target.result;
+        state.lastOriginalImage = fullBase64;
+        const pureBase64 = fullBase64.split(',')[1];
+
+        let extractedJobs = null;
+
+        // Ưu tiên 1: Thử gọi Gemini Vision nếu có API Key
+        const apiKey = localStorage.getItem(APIKEY_KEY);
+        if (apiKey) {
+          try {
+            showProcessing(true, 'Đang phân tích bằng Gemini Vision AI...', 'Đang gửi ảnh đến mô hình AI');
+            extractedJobs = await callGeminiVision(pureBase64);
+          } catch (err) {
+            console.warn('Gemini API fail, falling back to OCR:', err);
+          }
+        }
+
+        // Ưu tiên 2 (Mặc định & Đáng tin cậy): Chạy OCR Tesseract trực tiếp trên máy
+        if (!extractedJobs || extractedJobs.length === 0) {
+          try {
+            showProcessing(true, 'Đang quét chữ bằng OCR nội bộ...', 'Đang đọc từng dòng chữ trong ảnh');
+            const ocrText = await runTesseractOCR(file);
+            extractedJobs = parseJapanJobsText(ocrText);
+          } catch (ocrErr) {
+            console.error('OCR Error:', ocrErr);
+            showToast('Lỗi khi đọc chữ trong ảnh', 'error');
+          }
+        }
+
+        showProcessing(false);
+
+        if (extractedJobs && extractedJobs.length > 0) {
+          openBatchModal(extractedJobs);
+        } else {
+          showToast('Không nhận diện được công việc nào trong ảnh. Bạn có thể dùng nút "Dán Văn Bản" để nhập nhanh!', 'error');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Quá trình xử lý văn bản
+    function processText(text) {
+      const jobs = parseJapanJobsText(text);
+      if (jobs.length > 0) {
+        openBatchModal(jobs);
+      } else {
+        showToast('Không nhận diện được công việc trong văn bản', 'error');
+      }
+    }
+
+    // Mở Modal Batch Review
+    function openBatchModal(jobs) {
+      state.pendingBatch = jobs.map(j => ({
+        ...j,
+        id: j.id || ('job_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)),
+        image: state.lastOriginalImage || null
+      }));
+
+      const modal = document.getElementById('batchModal');
+      document.getElementById('batchCount').textContent = state.pendingBatch.length;
+      const container = document.getElementById('batchItemsContainer');
+      container.innerHTML = '';
+
+      state.pendingBatch.forEach((job, idx) => {
+        const el = document.createElement('div');
+        el.className = 'bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3';
+        el.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Công việc #${idx + 1}
+            </span>
+            <button type="button" class="text-slate-500 hover:text-red-400 text-xs" onclick="removeBatchItem(${idx})">Xóa</button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+            <div class="sm:col-span-2">
+              <label class="text-slate-400 block mb-1">Nội dung công việc:</label>
+              <input type="text" class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white" value="${escapeHtml(job.title)}" onchange="state.pendingBatch[${idx}].title = this.value">
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Tỉnh:</label>
+              <input type="text" class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white" value="${escapeHtml(job.prefecture)}" onchange="state.pendingBatch[${idx}].prefecture = this.value">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
+            <div>
+              <label class="text-slate-400 block mb-1">Hình thức:</label>
+              <select class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white" onchange="state.pendingBatch[${idx}].employmentType = this.value">
+                <option value="Hakken" ${job.employmentType === 'Hakken' ? 'selected' : ''}>Hakken (Phái cử)</option>
+                <option value="Chính thức" ${job.employmentType === 'Chính thức' ? 'selected' : ''}>Chính thức (正社員)</option>
+                <option value="Baito" ${job.employmentType === 'Baito' ? 'selected' : ''}>Baito</option>
+                <option value="Tokutei" ${job.employmentType === 'Tokutei' ? 'selected' : ''}>Tokutei</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Mức lương:</label>
+              <input type="text" class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white" value="${escapeHtml(job.wageRaw)}" onchange="state.pendingBatch[${idx}].wageRaw = this.value">
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Ca làm:</label>
+              <select class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white" onchange="state.pendingBatch[${idx}].shift = this.value">
+                <option value="4-2" ${job.shift === '4-2' ? 'selected' : ''}>🔄 Ca 4-2 (4 làm 2 nghỉ)</option>
+                <option value="Đổi ca" ${job.shift === 'Đổi ca' ? 'selected' : ''}>Đổi ca ngày/đêm</option>
+                <option value="Ca ngày" ${job.shift === 'Ca ngày' ? 'selected' : ''}>Ca ngày</option>
+                <option value="Ca đêm" ${job.shift === 'Ca đêm' ? 'selected' : ''}>Ca đêm</option>
+                <option value="Hành chính" ${job.shift === 'Hành chính' ? 'selected' : ''}>Hành chính</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-slate-400 block mb-1">Người đăng/HR:</label>
+              <input type="text" class="w-full bg-slate-900 border border-slate-800 rounded px-2 py-1 text-white" value="${escapeHtml(job.author)}" onchange="state.pendingBatch[${idx}].author = this.value">
+            </div>
+          </div>
+        `;
+        container.appendChild(el);
+      });
+
+      modal.classList.remove('hidden');
+    }
+
+    window.removeBatchItem = function(idx) {
+      state.pendingBatch.splice(idx, 1);
+      if (state.pendingBatch.length === 0) {
+        document.getElementById('batchModal').classList.add('hidden');
+      } else {
+        openBatchModal(state.pendingBatch);
+      }
+    };
+
+    function saveAllBatchJobs() {
+      state.jobs.unshift(...state.pendingBatch);
+      saveJobsToStorage();
+      document.getElementById('batchModal').classList.add('hidden');
+      renderJobs();
+      showToast(`Đã lưu ${state.pendingBatch.length} việc làm vào kho!`);
+      state.pendingBatch = [];
+    }
+
+    // Hiển thị danh sách việc làm
+    function renderJobs() {
+      const container = document.getElementById('jobsList');
+      const emptyState = document.getElementById('emptyState');
+
+      const filtered = state.jobs.filter(job => {
+        const matchesSearch = !state.filters.search || 
+          job.title.toLowerCase().includes(state.filters.search.toLowerCase()) ||
+          job.prefecture.toLowerCase().includes(state.filters.search.toLowerCase()) ||
+          job.author.toLowerCase().includes(state.filters.search.toLowerCase()) ||
+          (job.notes && job.notes.toLowerCase().includes(state.filters.search.toLowerCase()));
+
+        const matchesType = !state.filters.employmentType || job.employmentType === state.filters.employmentType;
+        const matchesPref = !state.filters.prefecture || job.prefecture.toLowerCase().includes(state.filters.prefecture.toLowerCase());
+        const matchesShift = !state.filters.shift || job.shift === state.filters.shift;
+
+        return matchesSearch && matchesType && matchesPref && matchesShift;
+      });
+
+      document.getElementById('statTotalJobs').textContent = state.jobs.length;
+      document.getElementById('statFilteredJobs').textContent = filtered.length;
+
+      const wages = state.jobs.filter(j => j.wageNum > 0);
+      const avg = wages.length > 0 ? Math.round(wages.reduce((a, b) => a + b.wageNum, 0) / wages.length) : 0;
+      document.getElementById('statAvgWage').textContent = avg > 0 ? `${avg.toLocaleString()} ¥/h` : '0 ¥/h';
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      container.innerHTML = '';
+
+      filtered.forEach(job => {
+        const isHakken = job.employmentType === 'Hakken';
+        const isSeishain = job.employmentType === 'Chính thức';
+
+        const typeBadge = isSeishain
+          ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">👔 Chính thức (正社員)</span>'
+          : isHakken
+          ? '<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">🏭 Hakken (派遣)</span>'
+          : `<span class="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">${escapeHtml(job.employmentType || 'Khác')}</span>`;
+
+        // Shift Badge Styling (Highlighting 4-2 shift)
+        const shiftBadge = job.shift === '4-2'
+          ? '<span class="px-2 py-0.5 rounded-lg text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">🔄 Ca 4-2 (4 làm 2 nghỉ)</span>'
+          : `<span class="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-slate-800 text-slate-300 border border-slate-700">${escapeHtml(job.shift || 'Đổi ca')}</span>`;
+
+        const card = document.createElement('div');
+        card.className = 'group bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between transition-all duration-200';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between gap-2 mb-3">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  📍 ${escapeHtml(job.prefecture)}
+                </span>
+                ${typeBadge}
+                ${shiftBadge}
+              </div>
+              <span class="text-base font-extrabold text-teal-400 whitespace-nowrap">
+                ${escapeHtml(job.wageRaw || 'Thỏa thuận')}
+              </span>
+            </div>
+
+            <h3 class="text-sm sm:text-base font-bold text-white mb-2 line-clamp-2 group-hover:text-emerald-400 transition-colors">
+              ${escapeHtml(job.title)}
+            </h3>
+
+            <div class="text-xs text-slate-400 mb-2">
+              HR / Đăng bài: <strong class="text-slate-200">${escapeHtml(job.author || 'Chưa rõ')}</strong>
+            </div>
+
+            ${job.notes ? `
+              <p class="text-xs text-slate-400 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80 mb-3 line-clamp-2">
+                ${escapeHtml(job.notes)}
+              </p>
+            ` : ''}
+
+            <div class="flex flex-wrap gap-1 mb-4">
+              ${(job.tags || []).map(t => `<span class="text-[10px] px-2 py-0.5 rounded bg-slate-800/60 text-slate-400 border border-slate-700/50">#${escapeHtml(t)}</span>`).join('')}
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+            <select class="text-[11px] font-medium rounded-lg px-2 py-1 bg-slate-950 border border-slate-700 text-slate-300 focus:outline-none" onchange="updateJobStatus('${job.id}', this.value)">
+              <option value="Đã lưu" ${job.status === 'Đã lưu' ? 'selected' : ''}>⭐ Đã lưu</option>
+              <option value="Đang nhắn HR" ${job.status === 'Đang nhắn HR' ? 'selected' : ''}>💬 Đang nhắn HR</option>
+              <option value="Đã gửi CV" ${job.status === 'Đã gửi CV' ? 'selected' : ''}>📄 Đã gửi CV</option>
+              <option value="Chờ phỏng vấn" ${job.status === 'Chờ phỏng vấn' ? 'selected' : ''}>📅 Hẹn PV</option>
+              <option value="Trúng tuyển" ${job.status === 'Trúng tuyển' ? 'selected' : ''}>🎉 Trúng tuyển</option>
+              <option value="Bỏ qua" ${job.status === 'Bỏ qua' ? 'selected' : ''}>❌ Bỏ qua</option>
+            </select>
+
+            <div class="flex items-center gap-1.5">
+              ${job.image ? `
+                <button type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-slate-800" title="Xem ảnh gốc" onclick="viewJobImage('${job.id}')">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </button>
+              ` : ''}
+
+              <button type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-slate-800" title="Chỉnh sửa" onclick="openEditModal('${job.id}')">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+
+              <button type="button" class="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800" title="Xóa" onclick="deleteJob('${job.id}')">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Cập nhật trạng thái
+    window.updateJobStatus = function(id, val) {
+      const j = state.jobs.find(x => x.id === id);
+      if (j) {
+        j.status = val;
+        saveJobsToStorage();
+        showToast('Đã đổi trạng thái: ' + val);
+      }
+    };
+
+    // Xem ảnh gốc
+    window.viewJobImage = function(id) {
+      const j = state.jobs.find(x => x.id === id);
+      if (j && j.image) {
+        document.getElementById('lightboxImg').src = j.image;
+        document.getElementById('imageLightboxModal').classList.remove('hidden');
+      }
+    };
+
+    // Mở Modal Sửa
+    window.openEditModal = function(id) {
+      const j = state.jobs.find(x => x.id === id);
+      if (!j) return;
+      document.getElementById('editJobId').value = j.id;
+      document.getElementById('editJobTitle').value = j.title || '';
+      document.getElementById('editJobPrefecture').value = j.prefecture || '';
+      document.getElementById('editJobEmploymentType').value = j.employmentType || 'Hakken';
+      document.getElementById('editJobWage').value = j.wageRaw || '';
+      document.getElementById('editJobShift').value = j.shift || 'Đổi ca';
+      document.getElementById('editJobAuthor').value = j.author || '';
+      document.getElementById('editJobStatus').value = j.status || 'Đã lưu';
+      document.getElementById('editJobNotes').value = j.notes || '';
+      document.getElementById('editJobModal').classList.remove('hidden');
+    };
+
+    // Xóa việc làm
+    window.deleteJob = function(id) {
+      if (confirm('Bạn có chắc muốn xóa công việc này?')) {
+        state.jobs = state.jobs.filter(x => x.id !== id);
+        saveJobsToStorage();
+        renderJobs();
+        showToast('Đã xóa công việc', 'info');
+      }
+    };
+
+    // Xuất CSV Excel (UTF-8 BOM không lỗi tiếng Việt/Nhật)
+    function exportToCSV() {
+      if (state.jobs.length === 0) {
+        showToast('Chưa có dữ liệu để xuất', 'info');
+        return;
+      }
+      const headers = ['Vị trí', 'Tỉnh', 'Hình thức', 'Mức lương', 'Lương số', 'Ca làm', 'Người đăng', 'Trạng thái', 'Ghi chú'];
+      const rows = state.jobs.map(j => [
+        `"${(j.title || '').replace(/"/g, '""')}"`,
+        `"${(j.prefecture || '').replace(/"/g, '""')}"`,
+        `"${(j.employmentType || '').replace(/"/g, '""')}"`,
+        `"${(j.wageRaw || '').replace(/"/g, '""')}"`,
+        j.wageNum || 0,
+        `"${(j.shift || '').replace(/"/g, '""')}"`,
+        `"${(j.author || '').replace(/"/g, '""')}"`,
+        `"${(j.status || '').replace(/"/g, '""')}"`,
+        `"${(j.notes || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csv = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `JobLens_Japan_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      showToast('Đã xuất file Excel (CSV) thành công!');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // KHỞI TẠO VÀ SỰ KIỆN
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedJobs();
+
+      // Nếu chưa có việc làm nào thì thêm 2 việc làm mẫu
+      if (state.jobs.length === 0) {
+        state.jobs = [
+          {
+            id: 'sample_1',
+            title: 'SX vành bánh xe',
+            prefecture: 'Kanagawa',
+            employmentType: 'Hakken',
+            wageRaw: '1400',
+            wageNum: 1400,
+            shift: '4-2',
+            author: 'Nguyen Thanh',
+            tags: ['Kanagawa', '1400', 'Ca 4-2', 'Hakken'],
+            notes: 'Kanagawa 1400 ca 4-2 SX vành bánh xe',
+            status: 'Đã lưu',
+            image: null
+          },
+          {
+            id: 'sample_2',
+            title: 'Gia công màn hình kính',
+            prefecture: 'Saitama',
+            employmentType: 'Hakken',
+            wageRaw: '1400',
+            wageNum: 1400,
+            shift: 'Đổi ca',
+            author: 'Nguyen Thanh',
+            tags: ['Saitama', '1400', 'Đổi ca', 'Hakken'],
+            notes: 'Saitama 1400 đổi ca Gia công màn hình kính',
+            status: 'Đã lưu',
+            image: null
+          }
+        ];
+        saveJobsToStorage();
+      }
+
+      renderJobs();
+
+      // LẮNG NGHE PASTE TOÀN TRANG (Ctrl + V)
+      window.addEventListener('paste', (e) => {
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+        const items = (e.clipboardData || window.clipboardData).items;
+        let imageFound = false;
+
+        for (let item of items) {
+          if (item.type.indexOf('image') !== -1) {
+            const blob = item.getAsFile();
+            processImage(blob);
+            imageFound = true;
+            break;
+          }
+        }
+
+        if (!imageFound) {
+          const text = (e.clipboardData || window.clipboardData).getData('text');
+          if (text && text.trim().length > 5) {
+            processText(text.trim());
+          }
+        }
+      });
+
+      // Kéo thả & Input File
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('fileInput');
+      dropZone.addEventListener('click', (e) => {
+        if (!e.target.closest('#processingOverlay')) fileInput.click();
+      });
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) processImage(e.target.files[0]);
+      });
+      dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-emerald-500'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-emerald-500'));
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-emerald-500');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) processImage(e.dataTransfer.files[0]);
+      });
+
+      // Lưu Batch
+      document.getElementById('btnSaveAllBatch').addEventListener('click', saveAllBatchJobs);
+      document.getElementById('btnCloseBatchModal').addEventListener('click', () => document.getElementById('batchModal').classList.add('hidden'));
+      document.getElementById('btnCancelBatch').addEventListener('click', () => document.getElementById('batchModal').classList.add('hidden'));
+
+      // Lưu sửa công việc
+      document.getElementById('btnSaveEditModal').addEventListener('click', () => {
+        const id = document.getElementById('editJobId').value;
+        const j = state.jobs.find(x => x.id === id);
+        if (j) {
+          j.title = document.getElementById('editJobTitle').value;
+          j.prefecture = document.getElementById('editJobPrefecture').value;
+          j.employmentType = document.getElementById('editJobEmploymentType').value;
+          j.wageRaw = document.getElementById('editJobWage').value;
+          j.shift = document.getElementById('editJobShift').value;
+          j.author = document.getElementById('editJobAuthor').value;
+          j.status = document.getElementById('editJobStatus').value;
+          j.notes = document.getElementById('editJobNotes').value;
+          saveJobsToStorage();
+          renderJobs();
+          document.getElementById('editJobModal').classList.add('hidden');
+          showToast('Đã lưu các thay đổi!');
+        }
+      });
+      document.getElementById('btnCloseEditModal').addEventListener('click', () => document.getElementById('editJobModal').classList.add('hidden'));
+      document.getElementById('btnCancelEditModal').addEventListener('click', () => document.getElementById('editJobModal').classList.add('hidden'));
+
+      // Dán văn bản modal
+      const textModal = document.getElementById('textModal');
+      document.getElementById('btnOpenTextModal').addEventListener('click', () => {
+        textModal.classList.remove('hidden');
+        document.getElementById('rawTextContent').focus();
+      });
+      document.getElementById('btnCloseTextModal').addEventListener('click', () => textModal.classList.add('hidden'));
+      document.getElementById('btnCancelTextModal').addEventListener('click', () => textModal.classList.add('hidden'));
+      document.getElementById('btnFillSampleText').addEventListener('click', () => {
+        document.getElementById('rawTextContent').value = 
+`Nguyen Thanh
+Kanagawa 1400 ca 4-2 SX vành bánh xe
+Saitama 1400 đổi ca
+Gia công màn hình kính
+Ib mình tư vấn cụ thể nhé`;
+      });
+      document.getElementById('btnProcessText').addEventListener('click', () => {
+        const txt = document.getElementById('rawTextContent').value.trim();
+        if (txt) {
+          textModal.classList.add('hidden');
+          processText(txt);
+        }
+      });
+
+      // Cài đặt API Key modal
+      const apiKeyModal = document.getElementById('apiKeyModal');
+      document.getElementById('btnOpenApiKey').addEventListener('click', () => {
+        document.getElementById('inputGeminiApiKey').value = localStorage.getItem(APIKEY_KEY) || '';
+        apiKeyModal.classList.remove('hidden');
+      });
+      document.getElementById('btnCloseApiKeyModal').addEventListener('click', () => apiKeyModal.classList.add('hidden'));
+      document.getElementById('btnSaveApiKey').addEventListener('click', () => {
+        const k = document.getElementById('inputGeminiApiKey').value.trim();
+        if (k) localStorage.setItem(APIKEY_KEY, k);
+        else localStorage.removeItem(APIKEY_KEY);
+        apiKeyModal.classList.add('hidden');
+        showToast('Đã lưu cấu hình API Key!');
+      });
+
+      // Bộ lọc
+      document.getElementById('filterSearch').addEventListener('input', (e) => { state.filters.search = e.target.value; renderJobs(); });
+      document.getElementById('filterEmploymentType').addEventListener('change', (e) => { state.filters.employmentType = e.target.value; renderJobs(); });
+      document.getElementById('filterPrefecture').addEventListener('change', (e) => { state.filters.prefecture = e.target.value; renderJobs(); });
+      document.getElementById('filterShift').addEventListener('change', (e) => { state.filters.shift = e.target.value; renderJobs(); });
+      document.getElementById('btnResetFilters').addEventListener('click', () => {
+        state.filters = { search: '', employmentType: '', prefecture: '', shift: '' };
+        document.getElementById('filterSearch').value = '';
+        document.getElementById('filterEmploymentType').value = '';
+        document.getElementById('filterPrefecture').value = '';
+        document.getElementById('filterShift').value = '';
+        renderJobs();
+      });
+
+      // Xuất / Nhập
+      document.getElementById('btnExportCSV').addEventListener('click', exportToCSV);
+      document.getElementById('btnDataMenu').addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.getElementById('dataMenuDropdown').classList.toggle('hidden');
+      });
+      window.addEventListener('click', () => document.getElementById('dataMenuDropdown').classList.add('hidden'));
+
+      document.getElementById('btnExportJSON').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(state.jobs, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `JobLens_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+        showToast('Đã tải tệp sao lưu JSON!');
+      });
+
+      document.getElementById('inputImportJSON').addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const r = new FileReader();
+        r.onload = (evt) => {
+          try {
+            const data = JSON.parse(evt.target.result);
+            if (Array.isArray(data)) {
+              state.jobs = [...data, ...state.jobs];
+              saveJobsToStorage();
+              renderJobs();
+              showToast(`Đã nhập thêm ${data.length} công việc!`);
+            }
+          } catch (err) {
+            showToast('Tệp JSON không hợp lệ', 'error');
+          }
+        };
+        r.readAsText(file);
+      });
+
+      document.getElementById('btnClearAll').addEventListener('click', () => {
+        if (confirm('Bạn có chắc muốn xóa toàn bộ công việc?')) {
+          state.jobs = [];
+          saveJobsToStorage();
+          renderJobs();
+          showToast('Đã xóa sạch dữ liệu việc làm');
+        }
+      });
+
+      document.getElementById('btnCloseLightbox').addEventListener('click', () => {
+        document.getElementById('imageLightboxModal').classList.add('hidden');
+      });
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          document.getElementById('imageLightboxModal').classList.add('hidden');
+          document.getElementById('batchModal').classList.add('hidden');
+          document.getElementById('editJobModal').classList.add('hidden');
+          document.getElementById('textModal').classList.add('hidden');
+          document.getElementById('apiKeyModal').classList.add('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

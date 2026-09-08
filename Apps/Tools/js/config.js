@@ -381,6 +381,14 @@ export const TOOLS = [
         icon: 'fa-solid fa-file-excel',
         desc: 'Công cụ chuyển đổi giữa các định dạng tệp Excel (XLS, XLSX) và các định dạng khác.',
         tags: ['excel', 'converter', 'file']
+    },
+    {
+        id: 'itt',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Image to Text',
+        icon: 'fa-solid fa-file-image',
+        desc: 'Công cụ chuyển đổi hình ảnh thành văn bản bằng OCR.',
+        tags: ['image', 'text', 'ocr']
     }
 
 ];

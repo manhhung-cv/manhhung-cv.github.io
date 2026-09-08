@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark theme-dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vault2FA - Minimal E2E Password Vault</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- CryptoJS, OTPAuth & QRCode Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/otpauth/9.1.4/otpauth.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        :root, html.theme-dark {
+            --bg-app: #09090b;
+            --bg-card: #18181b;
+            --bg-card-sub: #27272a;
+            --bg-input: #18181b;
+            --border-color: #27272a;
+            --border-hover: #3f3f46;
+            --text-main: #fafafa;
+            --text-muted: #a1a1aa;
+            --text-sub: #71717a;
+            --accent: #10b981;
+            --accent-soft: rgba(16, 185, 129, 0.1);
+        }
+
+        html.theme-oled {
+            --bg-app: #000000;
+            --bg-card: #0a0a0a;
+            --bg-card-sub: #141414;
+            --bg-input: #0a0a0a;
+            --border-color: #1c1c1e;
+            --border-hover: #2c2c2e;
+            --text-main: #ffffff;
+            --text-muted: #8e8e93;
+            --text-sub: #636366;
+            --accent: #10b981;
+            --accent-soft: rgba(16, 185, 129, 0.12);
+        }
+
+        html.theme-light {
+            --bg-app: #f4f4f5;
+            --bg-card: #ffffff;
+            --bg-card-sub: #f4f4f5;
+            --bg-input: #ffffff;
+            --border-color: #e4e4e7;
+            --border-hover: #d4d4d8;
+            --text-main: #09090b;
+            --text-muted: #71717a;
+            --text-sub: #a1a1aa;
+            --accent: #059669;
+            --accent-soft: rgba(5, 150, 105, 0.08);
+        }
+
+        body {
+            background-color: var(--bg-app) !important;
+            color: var(--text-main) !important;
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Minimal Card Styling */
+        .min-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            transition: border-color 0.15s ease, transform 0.15s ease;
+        }
+
+        .min-card:hover {
+            border-color: var(--border-hover);
+        }
+
+        .min-input {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .min-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-soft);
+        }
+
+        .btn-accent {
+            background-color: var(--accent);
+            color: #ffffff;
+            transition: opacity 0.15s ease, transform 0.1s ease;
+        }
+
+        .btn-accent:hover {
+            opacity: 0.92;
+        }
+
+        .btn-accent:active {
+            transform: scale(0.98);
+        }
+
+        /* Custom minimal scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-emerald-500 selection:text-white">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+    <div class="max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col">
+        
+        <!-- Header -->
+        <header class="flex items-center justify-between py-5 border-b border-[var(--border-color)]">
+            <!-- Brand -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-vault text-sm"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="font-semibold text-sm sm:text-base tracking-tight">Vault2FA</h1>
+                        <span class="text-[10px] font-mono tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                            AES-256
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-[var(--text-muted)] hidden sm:block">Zero-Knowledge E2E Password Vault</p>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center gap-2">
+                <!-- Theme Switcher -->
+                <div class="relative">
+                    <button id="theme-btn" onclick="toggleThemeMenu()" class="px-2.5 py-1.5 text-xs font-medium min-card rounded-xl flex items-center gap-1.5 hover:bg-[var(--bg-card-sub)] transition">
+                        <i id="theme-icon" class="fa-solid fa-moon text-emerald-500"></i>
+                        <span id="theme-label" class="hidden sm:inline">Dark</span>
+                        <i class="fa-solid fa-chevron-down text-[9px] opacity-40"></i>
+                    </button>
+                    <div id="theme-dropdown" class="hidden absolute right-0 mt-2 w-40 min-card rounded-xl shadow-xl z-50 overflow-hidden py-1">
+                        <button onclick="setTheme('light')" class="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-[var(--bg-card-sub)] transition">
+                            <i class="fa-solid fa-sun text-amber-500 w-4"></i> Light
+                        </button>
+                        <button onclick="setTheme('dark')" class="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-[var(--bg-card-sub)] transition">
+                            <i class="fa-solid fa-moon text-indigo-400 w-4"></i> Dark
+                        </button>
+                        <button onclick="setTheme('oled')" class="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-[var(--bg-card-sub)] transition">
+                            <i class="fa-solid fa-circle text-emerald-400 w-4"></i> OLED
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Unlocked Header Actions -->
+                <div id="header-actions" class="hidden flex items-center gap-2">
+                    <div id="autolock-badge" class="hidden md:flex items-center gap-1.5 text-xs text-[var(--text-muted)] min-card px-2.5 py-1.5 rounded-xl font-mono">
+                        <i class="fa-regular fa-clock text-emerald-500 animate-pulse text-[11px]"></i>
+                        <span id="autolock-timer">03:00</span>
+                    </div>
+                    
+                    <button onclick="openBackupModal()" class="px-2.5 py-1.5 text-xs font-medium min-card rounded-xl transition hover:bg-[var(--bg-card-sub)] flex items-center gap-1.5" title="Sao lưu / Khôi phục">
+                        <i class="fa-solid fa-arrows-rotate text-emerald-500"></i>
+                        <span class="hidden md:inline">Sao lưu</span>
+                    </button>
+                    
+                    <button onclick="lockVault()" class="px-2.5 py-1.5 text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition border border-rose-500/20 flex items-center gap-1.5">
+                        <i class="fa-solid fa-lock text-[11px]"></i>
+                        <span class="hidden sm:inline">Khóa</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- VIEW: SETUP -->
+        <main id="view-setup" class="my-auto py-8 hidden">
+            <div class="max-w-md mx-auto min-card rounded-2xl p-6 sm:p-8 space-y-6">
+                <div class="text-center space-y-2">
+                    <div class="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center mx-auto border border-emerald-500/20">
+                        <i class="fa-solid fa-qrcode text-xl"></i>
+                    </div>
+                    <h2 class="text-lg font-semibold tracking-tight">Thiết Lập Khóa 2FA E2E</h2>
+                    <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+                        Quét mã QR bằng ứng dụng Authenticator (Google, Authy, Aegis). Mã này dùng để giải mã dữ liệu E2E trên thiết bị.
+                    </p>
+                </div>
+
+                <!-- QR Display -->
+                <div class="bg-white p-3 rounded-xl flex justify-center items-center mx-auto w-fit border border-neutral-200">
+                    <div id="qrcode"></div>
+                </div>
+
+                <!-- Secret Key Box -->
+                <div class="min-card p-3 rounded-xl space-y-1 bg-[var(--bg-card-sub)] border border-[var(--border-color)]">
+                    <div class="flex justify-between items-center text-[10px] text-[var(--text-muted)] font-semibold uppercase tracking-wider">
+                        <span>Secret Key</span>
+                        <button onclick="copySecretKey()" class="text-emerald-500 hover:opacity-80 flex items-center gap-1 transition">
+                            <i class="fa-regular fa-copy"></i> Sao chép
+                        </button>
+                    </div>
+                    <p id="secret-text" class="font-mono text-xs text-amber-500 font-semibold tracking-widest break-all select-all">GENERATING...</p>
+                </div>
+
+                <!-- Verify Form -->
+                <form onsubmit="confirmSetup(event)" class="space-y-4 pt-1">
+                    <div>
+                        <label class="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">Nhập mã 6 chữ số từ app 2FA:</label>
+                        <input type="text" id="setup-code-input" maxlength="6" placeholder="000000" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required
+                            class="min-input w-full text-center tracking-[0.5em] font-mono text-2xl py-3 px-4 rounded-xl font-bold">
+                    </div>
+                    <button type="submit" class="w-full py-3 btn-accent text-xs rounded-xl font-semibold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-xs"></i> Khởi Tạo Két Sắt
+                    </button>
+                </form>
+            </div>
+        </main>
+
+        <!-- VIEW: LOCK -->
+        <main id="view-lock" class="my-auto py-8 hidden">
+            <div class="max-w-sm mx-auto min-card rounded-2xl p-6 sm:p-8 text-center space-y-6">
+                <div class="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center mx-auto border border-emerald-500/20">
+                    <i class="fa-solid fa-key text-lg"></i>
+                </div>
+                
+                <div>
+                    <h2 class="text-lg font-semibold tracking-tight">Mở Khóa Két Sắt</h2>
+                    <p class="text-xs text-[var(--text-muted)] mt-1">Nhập mã 2FA 6 chữ số để giải mã AES-256</p>
+                </div>
+
+                <form onsubmit="verifyAndUnlock(event)" class="space-y-4">
+                    <div>
+                        <input type="text" id="unlock-code-input" maxlength="6" placeholder="••••••••" pattern="[0-9]{6}" inputmode="numeric" autofocus autocomplete="one-time-code" required
+                            class="min-input w-full text-center tracking-[0.5em] font-mono text-2xl py-3 px-4 rounded-xl font-bold">
+                    </div>
+                    <button type="submit" class="w-full py-3 btn-accent text-xs rounded-xl font-semibold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-lock-open text-xs"></i> Mở Vault
+                    </button>
+                </form>
+
+                <div class="pt-4 border-t border-[var(--border-color)] flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+                    <span class="flex items-center gap-1">
+                        <i class="fa-solid fa-shield text-emerald-500 text-[10px]"></i> E2E Encrypted
+                    </span>
+                    <button onclick="openResetConfirmModal()" class="hover:text-[var(--text-main)] underline transition">
+                        Đặt lại 2FA?
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- VIEW: DASHBOARD -->
+        <main id="view-dashboard" class="py-6 space-y-5 hidden flex-1">
+
+            <!-- Search Bar & Top Controls -->
+            <div class="flex flex-col sm:flex-row gap-2.5 justify-between items-stretch sm:items-center">
+                
+                <!-- Search Input -->
+                <div class="relative flex-1">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-sub)] text-xs"></i>
+                    <input type="text" id="search-input" oninput="filterAccounts()" placeholder="Tìm kiếm dịch vụ, username, ghi chú..."
+                        class="min-input w-full pl-9 pr-8 py-2.5 rounded-xl text-xs font-medium placeholder-[var(--text-sub)]">
+                    <button onclick="clearSearch()" id="btn-clear-search" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-sub)] hover:text-[var(--text-main)] text-xs">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Filters & Action Toolbar -->
+                <div class="flex items-center gap-2">
+                    <select id="category-filter" onchange="filterAccounts()" class="min-input text-xs rounded-xl px-3 py-2.5 font-medium cursor-pointer">
+                        <option value="ALL">Tất cả danh mục</option>
+                        <option value="Mạng xã hội">Mạng xã hội</option>
+                        <option value="Game">Game / Giải trí</option>
+                        <option value="Diễn đàn">Diễn đàn</option>
+                        <option value="Tài khoản ảo">Tài khoản ảo</option>
+                        <option value="Khác">Khác</option>
+                    </select>
+
+                    <!-- Layout Switcher -->
+                    <div class="flex min-card p-1 rounded-xl text-[var(--text-muted)]">
+                        <button onclick="setViewLayout('grid')" id="btn-layout-grid" class="p-2 rounded-lg text-xs transition" title="Grid View">
+                            <i class="fa-solid fa-border-all"></i>
+                        </button>
+                        <button onclick="setViewLayout('list')" id="btn-layout-list" class="p-2 rounded-lg text-xs transition" title="List View">
+                            <i class="fa-solid fa-list-ul"></i>
+                        </button>
+                    </div>
+
+                    <!-- Add Button -->
+                    <button onclick="openAddModal()" class="px-3.5 py-2.5 btn-accent text-xs rounded-xl font-semibold flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <i class="fa-solid fa-plus text-[11px]"></i>
+                        <span class="hidden sm:inline">Thêm mới</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Subheader -->
+            <div class="flex items-center justify-between text-xs text-[var(--text-muted)] px-1 border-b border-[var(--border-color)] pb-2">
+                <div class="flex items-center gap-2">
+                    <span>Tổng số: <strong id="account-count" class="font-mono text-emerald-500">0</strong></span>
+                    <span class="opacity-30">•</span>
+                    <span class="text-emerald-500 font-medium text-[11px]"><i class="fa-solid fa-check text-[10px] mr-1"></i>Đã giải mã</span>
+                </div>
+                <div>
+                    <button onclick="toggleGlobalVisibility()" id="btn-toggle-all" class="hover:text-[var(--text-main)] text-xs flex items-center gap-1 transition font-medium">
+                        <i class="fa-regular fa-eye text-emerald-500"></i>
+                        <span id="lbl-toggle-all">Hiện tất cả</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cards Container -->
+            <div id="account-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Injected via JavaScript -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-12 min-card rounded-2xl border border-dashed border-[var(--border-color)] p-6 space-y-2">
+                <div class="w-10 h-10 rounded-xl bg-[var(--bg-card-sub)] flex items-center justify-center text-[var(--text-sub)] mx-auto text-lg">
+                    <i class="fa-solid fa-folder-open"></i>
+                </div>
+                <p class="font-medium text-xs">Chưa có tài khoản nào</p>
+                <p class="text-[11px] text-[var(--text-muted)] max-w-xs mx-auto">Nhấn nút "Thêm mới" để mã hóa E2E và lưu mật khẩu hoặc mã 2FA của bạn.</p>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="py-4 border-t border-[var(--border-color)] text-center text-[11px] text-[var(--text-muted)] flex flex-col sm:flex-row justify-between items-center gap-2">
+            <div>
+                Vault2FA &bull; Zero-Knowledge Security
+            </div>
+            <div>
+                <button onclick="openSecurityInfoModal()" class="hover:text-[var(--text-main)] transition flex items-center gap-1">
+                    <i class="fa-solid fa-shield-halved text-emerald-500 text-[10px]"></i> Tìm hiểu E2E
+                </button>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- MODAL: ADD/EDIT ACCOUNT -->
+    <div id="modal-account" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="min-card rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center pb-3 border-b border-[var(--border-color)]">
+                <h3 id="modal-account-title" class="font-semibold text-sm">Thêm Tài Khoản Mới</h3>
+                <button onclick="closeAddModal()" class="text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 transition"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+
+            <form id="form-account" onsubmit="saveAccount(event)" class="space-y-3">
+                <input type="hidden" id="acc-id">
+                <input type="hidden" id="acc-icon-base64">
+
+                <!-- Auto Fetch metadata -->
+                <div class="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-1.5">
+                    <div class="flex items-center justify-between text-xs text-emerald-500 font-medium">
+                        <span><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Tự động lấy Tên & Icon</span>
+                        <span id="fetch-loading" class="hidden text-[10px] animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Đang lấy...</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="url" id="acc-url" onblur="autoFetchOnBlur()" placeholder="https://example.com"
+                            class="min-input w-full px-3 py-2 rounded-lg text-xs">
+                        <button type="button" onclick="fetchMetadataFromUrl()" class="px-3 py-2 btn-accent text-xs font-medium rounded-lg shrink-0 flex items-center gap-1">
+                            <i class="fa-solid fa-bolt text-[10px]"></i> Lấy tin
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div id="icon-preview-box" class="w-10 h-10 rounded-xl bg-[var(--bg-card-sub)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] text-xs shrink-0 overflow-hidden">
+                        <i class="fa-solid fa-globe"></i>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs font-medium text-[var(--text-muted)] mb-1">Tên dịch vụ <span class="text-emerald-500">*</span></label>
+                        <input type="text" id="acc-title" required placeholder="VD: Facebook, Github..."
+                            class="min-input w-full px-3 py-2 rounded-lg text-xs font-medium">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1">Danh mục</label>
+                    <select id="acc-category" class="min-input w-full px-3 py-2 rounded-lg text-xs font-medium">
+                        <option value="Mạng xã hội">Mạng xã hội</option>
+                        <option value="Game">Game / Giải trí</option>
+                        <option value="Diễn đàn">Diễn đàn</option>
+                        <option value="Tài khoản ảo">Tài khoản ảo</option>
+                        <option value="Khác">Khác</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1">Tên đăng nhập / Email</label>
+                    <input type="text" id="acc-username" placeholder="user@mail.com (Tùy chọn)"
+                        class="min-input w-full px-3 py-2 rounded-lg text-xs font-mono">
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-xs font-medium text-[var(--text-muted)]">Mật khẩu</label>
+                        <button type="button" onclick="generateRandomPassword()" class="text-[11px] text-emerald-500 hover:underline font-medium flex items-center gap-1">
+                            <i class="fa-solid fa-dice"></i> Tạo ngẫu nhiên
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="acc-password" placeholder="•••••••• (Tùy chọn)"
+                            class="min-input w-full pl-3 pr-8 py-2 rounded-lg text-xs font-mono">
+                        <button type="button" onclick="copyModalPassword()" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--text-sub)] hover:text-[var(--text-main)] p-1" title="Sao chép">
+                            <i class="fa-regular fa-copy text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1">Mã khóa 2FA (Secret Key / Seed TOTP)</label>
+                    <input type="text" id="acc-totp-secret" placeholder="VD: JBSWY3DPEHPK3PXP (Tùy chọn)"
+                        class="min-input w-full px-3 py-2 rounded-lg text-xs font-mono uppercase tracking-wider">
+                    <p class="text-[10px] text-[var(--text-sub)] mt-1">Nhập mã bí mật 2FA để tự động tạo mã OTP 6 chữ số nhảy theo thời gian.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-[var(--text-muted)] mb-1">Ghi chú (Tùy chọn)</label>
+                    <textarea id="acc-notes" rows="2" placeholder="Email khôi phục, câu hỏi..."
+                        class="min-input w-full px-3 py-2 rounded-lg text-xs"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="closeAddModal()" class="px-3.5 py-2 min-card hover:bg-[var(--bg-card-sub)] text-xs font-medium rounded-lg transition">
+                        Hủy
+                    </button>
+                    <button type="submit" class="px-4 py-2 btn-accent text-xs rounded-lg font-semibold">
+                        Lưu mật khẩu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: BACKUP / RESTORE -->
+    <div id="modal-backup" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="min-card rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-3 border-b border-[var(--border-color)]">
+                <h3 class="font-semibold text-sm">Sao Lưu & Phục Hồi E2E</h3>
+                <button onclick="closeBackupModal()" class="text-[var(--text-muted)] hover:text-[var(--text-main)] p-1"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+
+            <div class="space-y-4 text-xs">
+                <!-- Export -->
+                <form onsubmit="handleExportBackup(event)" class="p-3.5 min-card bg-[var(--bg-card-sub)] rounded-xl space-y-2.5">
+                    <div class="space-y-0.5">
+                        <p class="font-semibold text-xs text-emerald-500">1. Xuất File Sao Lưu (.json)</p>
+                        <p class="text-[var(--text-muted)] text-[11px]">Nhập <strong>Mã 2FA</strong> & <strong>Mật khẩu file</strong> để bảo vệ dữ liệu khi xuất.</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div>
+                            <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Mã 2FA 6 chữ số <span class="text-rose-500">*</span></label>
+                            <input type="text" id="export-2fa-code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" placeholder="000000" required
+                                class="min-input w-full px-3 py-1.5 text-center tracking-[0.3em] font-mono font-bold rounded-lg text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Mật khẩu bảo vệ File Backup <span class="text-rose-500">*</span></label>
+                            <input type="password" id="export-password" minlength="4" placeholder="••••••••" required
+                                class="min-input w-full px-3 py-1.5 font-mono rounded-lg text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-medium text-[var(--text-muted)] mb-1">Xác nhận mật khẩu File <span class="text-rose-500">*</span></label>
+                            <input type="password" id="export-password-confirm" minlength="4" placeholder="••••••••" required
+                                class="min-input w-full px-3 py-1.5 font-mono rounded-lg text-xs">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="px-3.5 py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 rounded-lg font-semibold w-full flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-download text-xs"></i> Tải File Backup
+                    </button>
+                </form>
+
+                <!-- Import -->
+                <div class="p-3.5 min-card bg-[var(--bg-card-sub)] rounded-xl space-y-2">
+                    <p class="font-semibold text-xs text-emerald-500">2. Phục Hồi Dữ Liệu</p>
+                    <p class="text-[var(--text-muted)] text-[11px]">Chọn file JSON đã xuất trước đó để nạp lại vào Vault.</p>
+                    <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="handleSelectImportFile(event)">
+                    <button onclick="document.getElementById('import-file-input').click()" class="px-3.5 py-2 min-card hover:bg-[var(--bg-card)] rounded-lg font-medium w-full flex items-center justify-center gap-2 transition">
+                        <i class="fa-solid fa-upload text-xs"></i> Nạp File JSON
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DECRYPT IMPORT FILE -->
+    <div id="modal-import-password" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="min-card rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3">
+            <div class="flex justify-between items-center pb-2 border-b border-[var(--border-color)]">
+                <h3 class="font-semibold text-xs">Giải Mã File Backup</h3>
+                <button onclick="closeImportPasswordModal()" class="text-[var(--text-muted)] hover:text-[var(--text-main)] p-1"><i class="fa-solid fa-xmark text-xs"></i></button>
+            </div>
+            <p class="text-xs text-[var(--text-muted)]">
+                File này được bảo vệ bằng mật khẩu. Nhập mật khẩu để giải mã:
+            </p>
+            <form onsubmit="confirmImportPassword(event)" class="space-y-3">
+                <input type="password" id="import-password-input" required placeholder="Mật khẩu file..."
+                    class="min-input w-full px-3 py-2 rounded-lg text-xs font-mono">
+                <div class="flex justify-end gap-2 pt-1">
+                    <button type="button" onclick="closeImportPasswordModal()" class="px-3 py-1.5 min-card text-xs font-medium rounded-lg">
+                        Hủy
+                    </button>
+                    <button type="submit" class="px-4 py-1.5 btn-accent text-xs rounded-lg font-semibold">
+                        Giải mã & Phục hồi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: RESET 2FA -->
+    <div id="modal-reset" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="min-card rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-3 text-center border border-rose-500/20">
+            <div class="w-10 h-10 bg-rose-500/10 text-rose-500 rounded-xl flex items-center justify-center mx-auto border border-rose-500/20">
+                <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+            </div>
+            <div class="space-y-1">
+                <h3 class="font-semibold text-xs">Đặt Lại 2FA?</h3>
+                <p class="text-xs text-[var(--text-muted)] leading-relaxed">
+                    Dữ liệu hiện tại được <strong>mã hóa bằng chìa khóa 2FA</strong>. Đặt lại 2FA sẽ <strong>xóa hoàn toàn</strong> toàn bộ mật khẩu chưa sao lưu!
+                </p>
+            </div>
+            <div class="pt-2 flex justify-center gap-2">
+                <button onclick="closeResetModal()" class="px-3 py-1.5 min-card text-xs font-medium rounded-lg">
+                    Hủy
+                </button>
+                <button onclick="confirmReset2FA()" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-lg transition">
+                    Xóa & Đặt lại
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SECURITY INFO -->
+    <div id="modal-security" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="min-card rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3">
+            <div class="flex justify-between items-center pb-2 border-b border-[var(--border-color)]">
+                <h3 class="font-semibold text-xs">Bảo Mật Zero-Knowledge E2E</h3>
+                <button onclick="closeSecurityInfoModal()" class="text-[var(--text-muted)] hover:text-[var(--text-main)] p-1"><i class="fa-solid fa-xmark text-xs"></i></button>
+            </div>
+            <div class="space-y-2 text-xs text-[var(--text-muted)] leading-relaxed">
+                <div class="p-2.5 min-card rounded-xl space-y-0.5">
+                    <p class="font-semibold text-emerald-500">1. Key Derivation PBKDF2</p>
+                    <p class="text-[11px]">Chìa khóa sinh ra từ Secret Key TOTP qua PBKDF2 (100,000 vòng HMAC-SHA256).</p>
+                </div>
+                <div class="p-2.5 min-card rounded-xl space-y-0.5">
+                    <p class="font-semibold text-emerald-500">2. Mã hóa Client-Side AES-256</p>
+                    <p class="text-[11px]">Mọi dữ liệu mã hóa trực tiếp trong trình duyệt trước khi lưu vào LocalStorage.</p>
+                </div>
+                <div class="p-2.5 min-card rounded-xl space-y-0.5">
+                    <p class="font-semibold text-emerald-500">3. Protected Backup & CORS Fetching</p>
+                    <p class="text-[11px]">Favicon & Metadata tải qua proxy được mã hóa Base64 lưu trực tiếp trong Vault.</p>
+                </div>
+            </div>
+            <button onclick="closeSecurityInfoModal()" class="w-full py-2 btn-accent rounded-lg text-xs font-semibold">
+                Đã hiểu
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /* STORAGE KEYS */
+        const STORAGE_KEY_SECRET = 'v2fa_totp_secret_key';
+        const STORAGE_KEY_DATA = 'v2fa_encrypted_accounts';
+        const STORAGE_KEY_LAYOUT = 'v2fa_layout_mode';
+        const STORAGE_KEY_THEME = 'v2fa_theme_mode';
+
+        /* CORS PROXY URL */
+        const CORS_PROXY_URL = 'https://cors-proxy.year-tucking-0v.workers.dev/';
+
+        let tempGeneratedSecret = null;
+        let activeSecret = null;
+        let derivedKey = null; // Key generated via PBKDF2
+        let accounts = [];
+        let globalPasswordVisible = false;
+        let currentLayout = localStorage.getItem(STORAGE_KEY_LAYOUT) || 'grid';
+        let currentTheme = localStorage.getItem(STORAGE_KEY_THEME) || 'dark';
+
+        /* State for file import */
+        let pendingImportPayload = null;
+
+        /* Auto-lock timer & TOTP refresh state */
+        let autoLockSeconds = 180; // 3 minutes
+        let autoLockInterval = null;
+        let totpTimerInterval = null;
+
+        /* APP INITIALIZATION */
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            setupInactivityListeners();
+            initApp();
+        });
+
+        /* THEME MANAGEMENT */
+        function initTheme() {
+            setTheme(currentTheme);
+        }
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            localStorage.setItem(STORAGE_KEY_THEME, theme);
+
+            const htmlEl = document.documentElement;
+            htmlEl.classList.remove('theme-light', 'theme-dark', 'theme-oled', 'dark');
+            htmlEl.classList.add(`theme-${theme}`);
+            if (theme !== 'light') {
+                htmlEl.classList.add('dark');
+            }
+
+            const iconEl = document.getElementById('theme-icon');
+            const labelEl = document.getElementById('theme-label');
+
+            if (iconEl && labelEl) {
+                if (theme === 'light') {
+                    iconEl.className = 'fa-solid fa-sun text-amber-500';
+                    labelEl.innerText = 'Light';
+                } else if (theme === 'oled') {
+                    iconEl.className = 'fa-solid fa-circle text-emerald-400';
+                    labelEl.innerText = 'OLED';
+                } else {
+                    iconEl.className = 'fa-solid fa-moon text-indigo-400';
+                    labelEl.innerText = 'Dark';
+                }
+            }
+
+            const dropdown = document.getElementById('theme-dropdown');
+            if (dropdown) dropdown.classList.add('hidden');
+        }
+
+        function toggleThemeMenu() {
+            const dropdown = document.getElementById('theme-dropdown');
+            if (dropdown) dropdown.classList.toggle('hidden');
+        }
+
+        window.addEventListener('click', (e) => {
+            const btn = document.getElementById('theme-btn');
+            const dropdown = document.getElementById('theme-dropdown');
+            if (btn && dropdown && !btn.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        function initApp() {
+            const savedSecret = localStorage.getItem(STORAGE_KEY_SECRET);
+            if (!savedSecret) {
+                showSetupView();
+            } else {
+                activeSecret = savedSecret;
+                showLockView();
+            }
+        }
+
+        /* INACTIVITY AND AUTO-LOCK LISTENERS */
+        function setupInactivityListeners() {
+            ['mousemove', 'keydown', 'touchstart', 'click'].forEach(evt => {
+                window.addEventListener(evt, () => {
+                    if (derivedKey) resetAutoLockTimer();
+                }, { passive: true });
+            });
+        }
+
+        function startAutoLockTimer() { 
+            resetAutoLockTimer(); 
+        }
+
+        function resetAutoLockTimer() {
+            autoLockSeconds = 180;
+            updateTimerDisplay();
+            
+            if (autoLockInterval) clearInterval(autoLockInterval);
+            
+            autoLockInterval = setInterval(() => {
+                autoLockSeconds--;
+                updateTimerDisplay();
+                if (autoLockSeconds <= 0) {
+                    lockVault();
+                }
+            }, 1000);
+        }
+
+        function stopAutoLockTimer() {
+            if (autoLockInterval) clearInterval(autoLockInterval);
+        }
+
+        function updateTimerDisplay() {
+            const display = document.getElementById('autolock-timer');
+            if (!display) return;
+            const m = Math.floor(autoLockSeconds / 60).toString().padStart(2, '0');
+            const s = (autoLockSeconds % 60).toString().padStart(2, '0');
+            display.innerText = `${m}:${s}`;
+        }
+
+        /* CRYPTOGRAPHIC KEY DERIVATION ENGINE */
+        function deriveCryptoKey(secret) {
+            const salt = CryptoJS.enc.Utf8.parse("Vault2FA_Salt_E2E_2026");
+            const derived = CryptoJS.PBKDF2(secret, salt, {
+                keySize: 256 / 32,
+                iterations: 100000,
+                hasher: CryptoJS.algo.SHA256
+            });
+            return derived.toString();
+        }
+
+        /* ROUTER */
+        function showSetupView() {
+            document.getElementById('view-setup').classList.remove('hidden');
+            document.getElementById('view-lock').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('header-actions').classList.add('hidden');
+            generateNew2FASecret();
+        }
+
+        function showLockView() {
+            document.getElementById('view-setup').classList.add('hidden');
+            document.getElementById('view-lock').classList.remove('hidden');
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('header-actions').classList.add('hidden');
+            document.getElementById('unlock-code-input').value = '';
+            document.getElementById('unlock-code-input').focus();
+            stopAutoLockTimer();
+        }
+
+        function showDashboardView() {
+            document.getElementById('view-setup').classList.add('hidden');
+            document.getElementById('view-lock').classList.add('hidden');
+            document.getElementById('view-dashboard').classList.remove('hidden');
+            document.getElementById('header-actions').classList.remove('hidden');
+            
+            derivedKey = deriveCryptoKey(activeSecret);
+            
+            loadAndDecryptData();
+            updateLayoutButtons();
+            renderAccounts();
+            startAutoLockTimer();
+            startTotpRefreshLoop();
+        }
+
+        function generateNew2FASecret() {
+            const secretObj = new OTPAuth.Secret({ size: 20 });
+            tempGeneratedSecret = secretObj.base32;
+
+            document.getElementById('secret-text').innerText = tempGeneratedSecret;
+
+            const totp = new OTPAuth.TOTP({
+                issuer: "Vault2FA",
+                label: "PassVault",
+                algorithm: "SHA1",
+                digits: 6,
+                period: 30,
+                secret: secretObj
+            });
+
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+
+            new QRCode(qrContainer, {
+                text: totp.toString(),
+                width: 140,
+                height: 140,
+                colorDark: "#09090b",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        function copySecretKey() {
+            if (!tempGeneratedSecret) return;
+            copyToClipboard(tempGeneratedSecret);
+            showToast("Đã sao chép secret key!");
+        }
+
+        function confirmSetup(e) {
+            e.preventDefault();
+            const inputCode = document.getElementById('setup-code-input').value.trim();
+
+            if (!tempGeneratedSecret || inputCode.length !== 6) {
+                showToast("Nhập đủ 6 chữ số mã 2FA!", "error");
+                return;
+            }
+
+            const totp = new OTPAuth.TOTP({
+                algorithm: "SHA1",
+                digits: 6,
+                period: 30,
+                secret: OTPAuth.Secret.fromBase32(tempGeneratedSecret)
+            });
+
+            const delta = totp.validate({ token: inputCode, window: 1 });
+
+            if (delta !== null) {
+                localStorage.setItem(STORAGE_KEY_SECRET, tempGeneratedSecret);
+                activeSecret = tempGeneratedSecret;
+                
+                derivedKey = deriveCryptoKey(activeSecret);
+                if (!localStorage.getItem(STORAGE_KEY_DATA)) {
+                    saveEncryptedData([]);
+                }
+                
+                showToast("Đã xác thực 2FA & kích hoạt Vault!");
+                showDashboardView();
+            } else {
+                showToast("Mã 2FA không hợp lệ!", "error");
+            }
+        }
+
+        /* UNLOCK & LOCK MECHANISM */
+        function verifyAndUnlock(e) {
+            e.preventDefault();
+            const codeInput = document.getElementById('unlock-code-input').value.trim();
+
+            if (!activeSecret) {
+                showToast("Lỗi hệ thống! Vui lòng tải lại trang.", "error");
+                return;
+            }
+
+            const totp = new OTPAuth.TOTP({
+                algorithm: "SHA1",
+                digits: 6,
+                period: 30,
+                secret: OTPAuth.Secret.fromBase32(activeSecret)
+            });
+
+            const delta = totp.validate({ token: codeInput, window: 1 });
+
+            if (delta !== null) {
+                showToast("Mở khóa thành công!");
+                showDashboardView();
+            } else {
+                showToast("Mã 2FA sai hoặc hết hạn!", "error");
+                document.getElementById('unlock-code-input').select();
+            }
+        }
+
+        function lockVault() {
+            accounts = [];
+            derivedKey = null;
+            stopTotpRefreshLoop();
+            showLockView();
+            showToast("Đã khóa Vault!");
+        }
+
+        function loadAndDecryptData() {
+            const encryptedRaw = localStorage.getItem(STORAGE_KEY_DATA);
+            if (!encryptedRaw) {
+                accounts = [];
+                return;
+            }
+
+            try {
+                const bytes = CryptoJS.AES.decrypt(encryptedRaw, derivedKey);
+                const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+                if (decryptedStr) {
+                    accounts = JSON.parse(decryptedStr);
+                } else {
+                    accounts = [];
+                }
+            } catch (err) {
+                console.error("Lỗi giải mã E2E:", err);
+                showToast("Lỗi giải mã dữ liệu E2E!", "error");
+                accounts = [];
+            }
+        }
+
+        function saveEncryptedData(dataArr) {
+            try {
+                const cipherText = CryptoJS.AES.encrypt(JSON.stringify(dataArr), derivedKey).toString();
+                localStorage.setItem(STORAGE_KEY_DATA, cipherText);
+            } catch (err) {
+                console.error("Lỗi mã hóa E2E:", err);
+                showToast("Lỗi khi lưu dữ liệu!", "error");
+            }
+        }
+
+        /* DASHBOARD RENDER & LAYOUT SYSTEM */
+        function setViewLayout(mode) {
+            currentLayout = mode;
+            localStorage.setItem(STORAGE_KEY_LAYOUT, mode);
+            updateLayoutButtons();
+            renderAccounts();
+        }
+
+        function updateLayoutButtons() {
+            const btnGrid = document.getElementById('btn-layout-grid');
+            const btnList = document.getElementById('btn-layout-list');
+            
+            if (currentLayout === 'grid') {
+                btnGrid.className = 'p-2 rounded-lg text-xs bg-emerald-500/20 text-emerald-500 font-semibold';
+                btnList.className = 'p-2 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition';
+            } else {
+                btnList.className = 'p-2 rounded-lg text-xs bg-emerald-500/20 text-emerald-500 font-semibold';
+                btnGrid.className = 'p-2 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--text-main)] transition';
+            }
+        }
+
+        function filterAccounts() { 
+            renderAccounts(); 
+        }
+
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            renderAccounts();
+        }
+
+        function renderAccounts() {
+            const container = document.getElementById('account-container');
+            const emptyState = document.getElementById('empty-state');
+            const searchVal = document.getElementById('search-input').value.toLowerCase().trim();
+            const catVal = document.getElementById('category-filter').value;
+
+            document.getElementById('btn-clear-search').classList.toggle('hidden', searchVal === '');
+
+            const filtered = accounts.filter(acc => {
+                const matchSearch = (acc.title && acc.title.toLowerCase().includes(searchVal)) ||
+                                    (acc.username && acc.username.toLowerCase().includes(searchVal)) ||
+                                    (acc.notes && acc.notes.toLowerCase().includes(searchVal));
+                const matchCat = (catVal === 'ALL') || (acc.category === catVal);
+                return matchSearch && matchCat;
+            });
+
+            document.getElementById('account-count').innerText = filtered.length;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            if (currentLayout === 'grid') {
+                container.className = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3";
+                container.innerHTML = filtered.map(acc => renderGridCard(acc)).join('');
+            } else {
+                container.className = "flex flex-col gap-2.5";
+                container.innerHTML = filtered.map(acc => renderListItem(acc)).join('');
+            }
+        }
+
+        function renderGridCard(acc) {
+            const isPassVisible = globalPasswordVisible || acc._visible;
+            const passDisplay = isPassVisible ? escapeHtml(acc.password) : '••••••••••••';
+
+            const avatarHtml = acc.icon 
+                ? `<img src="${acc.icon}" class="w-8 h-8 rounded-lg object-contain bg-[var(--bg-card-sub)] p-1 border border-[var(--border-color)] shrink-0" alt="icon">`
+                : `<div class="w-8 h-8 rounded-lg bg-[var(--bg-card-sub)] border border-[var(--border-color)] flex items-center justify-center text-emerald-500 font-semibold text-xs shrink-0">${escapeHtml(acc.title.charAt(0).toUpperCase())}</div>`;
+
+            const totpCode = acc.totpSecret ? getTotpCode(acc.totpSecret) : null;
+            const formattedTotp = totpCode ? (totpCode.slice(0, 3) + ' ' + totpCode.slice(3)) : '------';
+
+            return `
+            <div class="min-card rounded-2xl p-4 flex flex-col justify-between gap-3 shadow-sm">
+                <div>
+                    <!-- Header -->
+                    <div class="flex justify-between items-start mb-2.5">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            ${avatarHtml}
+                            <div class="min-w-0">
+                                <h4 class="font-semibold text-xs truncate" title="${escapeHtml(acc.title)}">${escapeHtml(acc.title)}</h4>
+                                <span class="text-[9px] text-[var(--text-muted)] bg-[var(--bg-card-sub)] border border-[var(--border-color)] px-2 py-0.5 rounded-full inline-block font-medium mt-0.5">
+                                    ${escapeHtml(acc.category || 'Khác')}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-1 shrink-0">
+                            ${acc.url ? `<a href="${escapeHtml(acc.url)}" target="_blank" rel="noopener" class="p-1 text-[var(--text-sub)] hover:text-emerald-500 text-xs transition" title="Open Link"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+                            <button onclick="openEditModal('${acc.id}')" class="p-1 text-[var(--text-sub)] hover:text-amber-500 text-xs transition" title="Sửa"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteAccount('${acc.id}')" class="p-1 text-[var(--text-sub)] hover:text-rose-500 text-xs transition" title="Xóa"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- User & Pass & 2FA Display Fields -->
+                    <div class="space-y-1.5 bg-[var(--bg-card-sub)] p-2.5 rounded-xl border border-[var(--border-color)] text-xs font-mono">
+                        ${acc.username ? `
+                        <div class="flex justify-between items-center">
+                            <span class="text-[var(--text-sub)] font-sans text-[10px]">User:</span>
+                            <div class="flex items-center gap-1.5 truncate max-w-[160px]">
+                                <span class="truncate font-medium" title="${escapeHtml(acc.username)}">${escapeHtml(acc.username)}</span>
+                                <button onclick="copyText('${escapeJs(acc.username)}', 'Đã chép Username!')" class="text-[var(--text-sub)] hover:text-emerald-500 transition p-0.5">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>` : ''}
+
+                        ${acc.password ? `
+                        <div class="flex justify-between items-center ${acc.username ? 'border-t border-[var(--border-color)] pt-1.5' : ''}">
+                            <span class="text-[var(--text-sub)] font-sans text-[10px]">Pass:</span>
+                            <div class="flex items-center gap-1.5">
+                                <span class="${isPassVisible ? 'text-amber-500 font-semibold' : 'text-[var(--text-sub)] tracking-widest'}">${passDisplay}</span>
+                                <button onclick="toggleSingleVisibility('${acc.id}')" class="text-[var(--text-sub)] hover:text-[var(--text-main)] transition p-0.5">
+                                    <i class="fa-regular ${isPassVisible ? 'fa-eye-slash text-emerald-500' : 'fa-eye'}"></i>
+                                </button>
+                                <button onclick="copyText('${escapeJs(acc.password)}', 'Đã chép Mật khẩu!')" class="text-[var(--text-sub)] hover:text-emerald-500 transition p-0.5">
+                                    <i class="fa-regular fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>` : ''}
+
+                        ${acc.totpSecret ? `
+                        <div class="totp-block ${acc.username || acc.password ? 'border-t border-[var(--border-color)] pt-1.5' : ''}" data-secret="${escapeHtml(acc.totpSecret)}">
+                            <div class="flex justify-between items-center">
+                                <span class="text-emerald-500 font-sans text-[10px] font-semibold flex items-center gap-1">
+                                    <i class="fa-solid fa-shield-halved"></i> 2FA:
+                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span class="totp-code-val font-bold text-emerald-400 tracking-wider text-xs">${formattedTotp}</span>
+                                    <span class="totp-timer-val text-[9px] text-[var(--text-sub)] font-sans">30s</span>
+                                    <button onclick="copyTotpCode('${escapeJs(acc.totpSecret)}')" class="text-[var(--text-sub)] hover:text-emerald-500 transition p-0.5" title="Chép mã 2FA">
+                                        <i class="fa-regular fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="w-full bg-zinc-800 h-1 rounded-full overflow-hidden mt-1">
+                                <div class="totp-bar-fill bg-emerald-500 h-full w-full transition-all duration-1000"></div>
+                            </div>
+                        </div>` : ''}
+                    </div>
+
+                    ${acc.notes ? `<p class="mt-2 text-[10px] text-[var(--text-muted)] line-clamp-2 bg-[var(--bg-card-sub)] p-2 rounded-lg border border-[var(--border-color)]"><i class="fa-regular fa-sticky-note mr-1 text-[var(--text-sub)]"></i>${escapeHtml(acc.notes)}</p>` : ''}
+                </div>
+            </div>
+            `;
+        }
+
+        function renderListItem(acc) {
+            const isPassVisible = globalPasswordVisible || acc._visible;
+            const passDisplay = isPassVisible ? escapeHtml(acc.password) : '••••••••••••';
+
+            const avatarHtml = acc.icon 
+                ? `<img src="${acc.icon}" class="w-7 h-7 rounded-lg object-contain bg-[var(--bg-card-sub)] p-1 border border-[var(--border-color)] shrink-0" alt="icon">`
+                : `<div class="w-7 h-7 rounded-lg bg-[var(--bg-card-sub)] border border-[var(--border-color)] flex items-center justify-center text-emerald-500 font-semibold text-xs shrink-0">${escapeHtml(acc.title.charAt(0).toUpperCase())}</div>`;
+
+            const totpCode = acc.totpSecret ? getTotpCode(acc.totpSecret) : null;
+            const formattedTotp = totpCode ? (totpCode.slice(0, 3) + ' ' + totpCode.slice(3)) : '------';
+
+            return `
+            <div class="min-card rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    ${avatarHtml}
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold truncate">${escapeHtml(acc.title)}</span>
+                            <span class="text-[9px] text-[var(--text-muted)] bg-[var(--bg-card-sub)] border border-[var(--border-color)] px-1.5 py-0.5 rounded-full">
+                                ${escapeHtml(acc.category || 'Khác')}
+                            </span>
+                        </div>
+                        <div class="text-[var(--text-sub)] font-mono text-[11px] truncate mt-0.5">${escapeHtml(acc.username || 'Mã khoá 2FA')}</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between sm:justify-end gap-2.5 font-mono pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--border-color)]">
+                    ${acc.password ? `
+                    <div class="flex items-center gap-1.5 bg-[var(--bg-card-sub)] px-2.5 py-1 rounded-lg border border-[var(--border-color)]">
+                        <span class="${isPassVisible ? 'text-amber-500 font-semibold' : 'text-[var(--text-sub)] tracking-widest'}">${passDisplay}</span>
+                        <button onclick="toggleSingleVisibility('${acc.id}')" class="text-[var(--text-sub)] hover:text-[var(--text-main)] p-0.5">
+                            <i class="fa-regular ${isPassVisible ? 'fa-eye-slash text-emerald-500' : 'fa-eye'}"></i>
+                        </button>
+                        <button onclick="copyText('${escapeJs(acc.password)}', 'Đã chép Mật khẩu!')" class="text-[var(--text-sub)] hover:text-emerald-500 p-0.5">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>` : ''}
+
+                    ${acc.totpSecret ? `
+                    <div class="totp-block flex items-center gap-1.5 bg-[var(--bg-card-sub)] px-2.5 py-1 rounded-lg border border-emerald-500/30" data-secret="${escapeHtml(acc.totpSecret)}">
+                        <span class="text-[10px] text-emerald-500 font-bold"><i class="fa-solid fa-shield-halved"></i></span>
+                        <span class="totp-code-val text-emerald-400 font-bold text-xs">${formattedTotp}</span>
+                        <button onclick="copyTotpCode('${escapeJs(acc.totpSecret)}')" class="text-[var(--text-sub)] hover:text-emerald-500 p-0.5" title="Chép 2FA">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                    </div>` : ''}
+
+                    <div class="flex items-center gap-1 text-[var(--text-sub)]">
+                        ${acc.username ? `<button onclick="copyText('${escapeJs(acc.username)}', 'Đã chép Username!')" class="p-1 hover:text-emerald-500 transition"><i class="fa-regular fa-user"></i></button>` : ''}
+                        <button onclick="openEditModal('${acc.id}')" class="p-1 hover:text-amber-500 transition"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="deleteAccount('${acc.id}')" class="p-1 hover:text-rose-500 transition"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        /* METADATA FETCHING & PREVIEW */
+        function autoFetchOnBlur() {
+            const url = document.getElementById('acc-url').value.trim();
+            const currentTitle = document.getElementById('acc-title').value.trim();
+            if (url && !currentTitle) {
+                fetchMetadataFromUrl();
+            }
+        }
+
+        async function fetchMetadataFromUrl() {
+            let rawUrl = document.getElementById('acc-url').value.trim();
+            if (!rawUrl) return;
+
+            if (!/^https?:\/\//i.test(rawUrl)) {
+                rawUrl = 'https://' + rawUrl;
+                document.getElementById('acc-url').value = rawUrl;
+            }
+
+            const loader = document.getElementById('fetch-loading');
+            if (loader) loader.classList.remove('hidden');
+
+            try {
+                const urlObj = new URL(rawUrl);
+                const domain = urlObj.hostname.replace(/^www\./, '');
+
+                const titleInput = document.getElementById('acc-title');
+                let autoTitle = domain.split('.')[0];
+                autoTitle = autoTitle.charAt(0).toUpperCase() + autoTitle.slice(1);
+
+                try {
+                    const proxyFetchUrl = `${CORS_PROXY_URL}?url=${encodeURIComponent(rawUrl)}`;
+                    const pageRes = await fetch(proxyFetchUrl);
+                    if (pageRes.ok) {
+                        const htmlText = await pageRes.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(htmlText, 'text/html');
+                        const pageTitle = doc.querySelector('title')?.innerText?.trim();
+                        if (pageTitle) {
+                            const cleanTitle = pageTitle.split(/[-–—|:]/)[0].trim();
+                            if (cleanTitle.length > 0 && cleanTitle.length < 35) {
+                                autoTitle = cleanTitle;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Proxy Title Fetch Fallback:", e);
+                }
+
+                if (!titleInput.value.trim()) {
+                    titleInput.value = autoTitle;
+                }
+
+                const faviconTargetUrl = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+                let proxyFaviconUrl = `${CORS_PROXY_URL}?url=${encodeURIComponent(faviconTargetUrl)}`;
+                
+                let response = await fetch(proxyFaviconUrl);
+                if (!response.ok) {
+                    proxyFaviconUrl = `${CORS_PROXY_URL}${faviconTargetUrl}`;
+                    response = await fetch(proxyFaviconUrl);
+                }
+
+                const blob = await response.blob();
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    const base64Icon = reader.result;
+                    document.getElementById('acc-icon-base64').value = base64Icon;
+                    updateIconPreview(base64Icon);
+                    showToast("Tải Tên & Favicon qua Proxy thành công!");
+                    if (loader) loader.classList.add('hidden');
+                };
+                reader.onerror = function() {
+                    if (loader) loader.classList.add('hidden');
+                };
+                reader.readAsDataURL(blob);
+
+            } catch (err) {
+                console.error("Lỗi lấy thông tin từ proxy:", err);
+                if (loader) loader.classList.add('hidden');
+                showToast("Không thể kết nối proxy!", "error");
+            }
+        }
+
+        function updateIconPreview(base64Data) {
+            const box = document.getElementById('icon-preview-box');
+            if (!box) return;
+            if (base64Data) {
+                box.innerHTML = `<img src="${base64Data}" class="w-full h-full object-contain p-1 rounded-xl" alt="Preview">`;
+            } else {
+                box.innerHTML = `<i class="fa-solid fa-globe text-xs"></i>`;
+            }
+        }
+
+        /* ACCOUNT EDITING & SAVING */
+        function openAddModal() {
+            document.getElementById('modal-account-title').innerText = "Thêm Tài Khoản Mới";
+            document.getElementById('acc-id').value = '';
+            document.getElementById('acc-icon-base64').value = '';
+            document.getElementById('acc-totp-secret').value = '';
+            document.getElementById('form-account').reset();
+            updateIconPreview(null);
+            document.getElementById('modal-account').classList.remove('hidden');
+        }
+
+        function closeAddModal() { 
+            document.getElementById('modal-account').classList.add('hidden'); 
+        }
+
+        function openEditModal(id) {
+            const item = accounts.find(a => a.id === id);
+            if (!item) return;
+
+            document.getElementById('modal-account-title').innerText = "Cập Nhật Tài Khoản";
+            document.getElementById('acc-id').value = item.id;
+            document.getElementById('acc-title').value = item.title;
+            document.getElementById('acc-category').value = item.category || 'Khác';
+            document.getElementById('acc-url').value = item.url || '';
+            document.getElementById('acc-username').value = item.username || '';
+            document.getElementById('acc-password').value = item.password || '';
+            document.getElementById('acc-totp-secret').value = item.totpSecret || '';
+            document.getElementById('acc-notes').value = item.notes || '';
+            document.getElementById('acc-icon-base64').value = item.icon || '';
+
+            updateIconPreview(item.icon);
+            document.getElementById('modal-account').classList.remove('hidden');
+        }
+
+        function saveAccount(e) {
+            e.preventDefault();
+            const id = document.getElementById('acc-id').value;
+            const title = document.getElementById('acc-title').value.trim();
+            const category = document.getElementById('acc-category').value;
+            const url = document.getElementById('acc-url').value.trim();
+            const username = document.getElementById('acc-username').value.trim();
+            const password = document.getElementById('acc-password').value.trim();
+            const totpSecret = document.getElementById('acc-totp-secret').value.trim().replace(/\s+/g, '').toUpperCase();
+            const notes = document.getElementById('acc-notes').value.trim();
+            const icon = document.getElementById('acc-icon-base64').value;
+
+            if (!username && !password && !totpSecret) {
+                showToast("Vui lòng nhập ít nhất Username, Password hoặc mã khóa 2FA!", "error");
+                return;
+            }
+
+            if (id) {
+                const index = accounts.findIndex(a => a.id === id);
+                if (index !== -1) {
+                    accounts[index] = { ...accounts[index], title, category, url, username, password, totpSecret, notes, icon, updatedAt: Date.now() };
+                }
+            } else {
+                const newItem = {
+                    id: 'acc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                    title,
+                    category,
+                    url,
+                    username,
+                    password,
+                    totpSecret,
+                    notes,
+                    icon,
+                    createdAt: Date.now()
+                };
+                accounts.unshift(newItem);
+            }
+
+            saveEncryptedData(accounts);
+            renderAccounts();
+            closeAddModal();
+            showToast(id ? "Đã cập nhật tài khoản!" : "Đã mã hóa & lưu tài khoản!");
+        }
+
+        function deleteAccount(id) {
+            accounts = accounts.filter(a => a.id !== id);
+            saveEncryptedData(accounts);
+            renderAccounts();
+            showToast("Đã xóa tài khoản!");
+        }
+
+        function generateRandomPassword() {
+            const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~";
+            let pass = "";
+            for (let i = 0; i < 16; i++) {
+                pass += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            document.getElementById('acc-password').value = pass;
+        }
+
+        function copyModalPassword() {
+            const val = document.getElementById('acc-password').value;
+            if (val) {
+                copyToClipboard(val);
+                showToast("Đã sao chép mật khẩu!");
+            }
+        }
+
+        function toggleSingleVisibility(id) {
+            const item = accounts.find(a => a.id === id);
+            if (item) {
+                item._visible = !item._visible;
+                renderAccounts();
+            }
+        }
+
+        function toggleGlobalVisibility() {
+            globalPasswordVisible = !globalPasswordVisible;
+            const lbl = document.getElementById('lbl-toggle-all');
+            const btn = document.getElementById('btn-toggle-all');
+            
+            if (globalPasswordVisible) {
+                if (lbl) lbl.innerText = 'Ẩn tất cả';
+                if (btn) btn.classList.add('text-amber-500');
+            } else {
+                if (lbl) lbl.innerText = 'Hiện tất cả';
+                if (btn) btn.classList.remove('text-amber-500');
+            }
+            renderAccounts();
+        }
+
+        function copyText(text, msg) {
+            copyToClipboard(text);
+            showToast(msg || "Đã sao chép!");
+        }
+
+        /* TOTP ENGINE HELPERS */
+        function getTotpCode(secretStr) {
+            try {
+                if (!secretStr) return null;
+                const cleanSecret = secretStr.replace(/[\s-]/g, '').toUpperCase();
+                const totp = new OTPAuth.TOTP({
+                    algorithm: "SHA1",
+                    digits: 6,
+                    period: 30,
+                    secret: OTPAuth.Secret.fromBase32(cleanSecret)
+                });
+                return totp.generate();
+            } catch (e) {
+                return "ERR2FA";
+            }
+        }
+
+        function copyTotpCode(secretStr) {
+            const code = getTotpCode(secretStr);
+            if (code && code !== "ERR2FA") {
+                copyToClipboard(code);
+                showToast("Đã chép mã 2FA 6 chữ số!");
+            } else {
+                showToast("Secret key 2FA không hợp lệ!", "error");
+            }
+        }
+
+        function startTotpRefreshLoop() {
+            stopTotpRefreshLoop();
+            updateTotpDisplays();
+            totpTimerInterval = setInterval(updateTotpDisplays, 1000);
+        }
+
+        function stopTotpRefreshLoop() {
+            if (totpTimerInterval) clearInterval(totpTimerInterval);
+        }
+
+        function updateTotpDisplays() {
+            if (!derivedKey) return;
+            const nowSec = Math.floor(Date.now() / 1000);
+            const remSec = 30 - (nowSec % 30);
+            const progressPct = (remSec / 30) * 100;
+
+            document.querySelectorAll('.totp-block').forEach(el => {
+                const secret = el.getAttribute('data-secret');
+                if (secret) {
+                    const code = getTotpCode(secret);
+                    const codeEl = el.querySelector('.totp-code-val');
+                    const timerEl = el.querySelector('.totp-timer-val');
+                    const barEl = el.querySelector('.totp-bar-fill');
+
+                    if (codeEl && code) {
+                        codeEl.innerText = code.slice(0, 3) + ' ' + code.slice(3);
+                    }
+                    if (timerEl) timerEl.innerText = `${remSec}s`;
+                    if (barEl) barEl.style.width = `${progressPct}%`;
+                }
+            });
+        }
+
+        /* BACKUP & RESTORE MODALS */
+        function openBackupModal() { document.getElementById('modal-backup').classList.remove('hidden'); }
+        function closeBackupModal() { document.getElementById('modal-backup').classList.add('hidden'); }
+
+        function openResetConfirmModal() { document.getElementById('modal-reset').classList.remove('hidden'); }
+        function closeResetModal() { document.getElementById('modal-reset').classList.add('hidden'); }
+
+        function openSecurityInfoModal() { document.getElementById('modal-security').classList.remove('hidden'); }
+        function closeSecurityInfoModal() { document.getElementById('modal-security').classList.add('hidden'); }
+
+        function confirmReset2FA() {
+            localStorage.removeItem(STORAGE_KEY_SECRET);
+            localStorage.removeItem(STORAGE_KEY_DATA);
+            location.reload();
+        }
+
+        function handleExportBackup(e) {
+            e.preventDefault();
+            const code2FA = document.getElementById('export-2fa-code').value.trim();
+            const pass = document.getElementById('export-password').value;
+            const passConfirm = document.getElementById('export-password-confirm').value;
+
+            if (!activeSecret) {
+                showToast("Lỗi hệ thống 2FA!", "error");
+                return;
+            }
+
+            const totp = new OTPAuth.TOTP({
+                algorithm: "SHA1",
+                digits: 6,
+                period: 30,
+                secret: OTPAuth.Secret.fromBase32(activeSecret)
+            });
+
+            const delta = totp.validate({ token: code2FA, window: 1 });
+            if (delta === null) {
+                showToast("Mã 2FA không chính xác!", "error");
+                return;
+            }
+
+            if (pass !== passConfirm) {
+                showToast("Mật khẩu xác nhận không khớp!", "error");
+                return;
+            }
+
+            if (pass.length < 4) {
+                showToast("Mật khẩu file phải từ 4 ký tự!", "error");
+                return;
+            }
+
+            try {
+                const saltHex = CryptoJS.lib.WordArray.random(128 / 8).toString();
+                const backupDerivedKey = CryptoJS.PBKDF2(pass, CryptoJS.enc.Hex.parse(saltHex), {
+                    keySize: 256 / 32,
+                    iterations: 50000,
+                    hasher: CryptoJS.algo.SHA256
+                }).toString();
+
+                const backupEncryptedData = CryptoJS.AES.encrypt(JSON.stringify(accounts), backupDerivedKey).toString();
+
+                const payload = {
+                    type: "Vault2FA_Protected_Backup",
+                    version: "4.0_E2E",
+                    salt: saltHex,
+                    encryptedData: backupEncryptedData,
+                    exportedAt: new Date().toISOString()
+                };
+
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `vault2fa_backup_${new Date().toISOString().slice(0,10)}.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+
+                document.getElementById('export-2fa-code').value = '';
+                document.getElementById('export-password').value = '';
+                document.getElementById('export-password-confirm').value = '';
+
+                closeBackupModal();
+                showToast("Đã tải file sao lưu thành công!");
+            } catch (err) {
+                console.error("Lỗi xuất file backup:", err);
+                showToast("Lỗi khi tạo file backup!", "error");
+            }
+        }
+
+        function handleSelectImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    pendingImportPayload = imported;
+
+                    if (imported.type === "Vault2FA_Protected_Backup" && imported.salt && imported.encryptedData) {
+                        document.getElementById('import-password-input').value = '';
+                        document.getElementById('modal-import-password').classList.remove('hidden');
+                        document.getElementById('import-password-input').focus();
+                    } else if (imported.encryptedData) {
+                        localStorage.setItem(STORAGE_KEY_DATA, imported.encryptedData);
+                        loadAndDecryptData();
+                        renderAccounts();
+                        closeBackupModal();
+                        showToast("Khôi phục dữ liệu thành công!");
+                    } else if (Array.isArray(imported)) {
+                        saveEncryptedData(imported);
+                        loadAndDecryptData();
+                        renderAccounts();
+                        closeBackupModal();
+                        showToast("Khôi phục dữ liệu thành công!");
+                    } else {
+                        showToast("Cấu trúc file không hợp lệ!", "error");
+                    }
+                } catch (err) {
+                    showToast("Lỗi đọc file sao lưu!", "error");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function closeImportPasswordModal() {
+            document.getElementById('modal-import-password').classList.add('hidden');
+            pendingImportPayload = null;
+        }
+
+        function confirmImportPassword(e) {
+            e.preventDefault();
+            const password = document.getElementById('import-password-input').value;
+
+            if (!pendingImportPayload || !pendingImportPayload.salt || !pendingImportPayload.encryptedData) {
+                showToast("Dữ liệu sao lưu không hợp lệ!", "error");
+                return;
+            }
+
+            try {
+                const backupDerivedKey = CryptoJS.PBKDF2(password, CryptoJS.enc.Hex.parse(pendingImportPayload.salt), {
+                    keySize: 256 / 32,
+                    iterations: 50000,
+                    hasher: CryptoJS.algo.SHA256
+                }).toString();
+
+                const bytes = CryptoJS.AES.decrypt(pendingImportPayload.encryptedData, backupDerivedKey);
+                const decryptedStr = bytes.toString(CryptoJS.enc.Utf8);
+
+                if (!decryptedStr) {
+                    showToast("Mật khẩu giải mã sai!", "error");
+                    return;
+                }
+
+                const importedAccounts = JSON.parse(decryptedStr);
+                if (Array.isArray(importedAccounts)) {
+                    accounts = importedAccounts;
+                    saveEncryptedData(accounts);
+                    renderAccounts();
+                    closeImportPasswordModal();
+                    closeBackupModal();
+                    showToast("Giải mã & phục hồi thành công!");
+                } else {
+                    showToast("Dữ liệu trong file bị hỏng!", "error");
+                }
+            } catch (err) {
+                console.error("Lỗi giải mã file import:", err);
+                showToast("Mật khẩu sai hoặc file bị lỗi!", "error");
+            }
+        }
+
+        /* CLIPBOARD & TOAST UTILS */
+        function copyToClipboard(text) {
+            try {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.top = "0";
+                textArea.style.left = "0";
+                textArea.style.opacity = "0";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                if (!successful && navigator.clipboard) {
+                    navigator.clipboard.writeText(text).catch(function(err) {
+                        console.warn("Clipboard API copy blocked:", err);
+                    });
+                }
+            } catch (err) {
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(text).catch(function(e) {
+                        console.warn("Clipboard write failed:", e);
+                    });
+                }
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            
+            const isErr = type === 'error';
+            const bgColor = isErr 
+                ? 'bg-rose-500/10 border-rose-500/20 text-rose-500' 
+                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500';
+            const icon = isErr ? 'fa-circle-exclamation text-rose-500' : 'fa-circle-check text-emerald-500';
+
+            toast.className = `pointer-events-auto flex items-center gap-2 text-xs px-3.5 py-2.5 rounded-xl min-card border shadow-lg transform transition-all duration-300 translate-y-2 opacity-0 backdrop-blur-md ${bgColor}`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-xs"></i> <span class="font-medium text-[11px]">${escapeHtml(message)}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        /* ESCAPING UTILS */
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;")
+                      .replace(/'/g, "&#039;");
+        }
+
+        function escapeJs(str) {
+            if (!str) return '';
+            return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+    </script>
+</body>
+</html>

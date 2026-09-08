@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="vi" class="scroll-smooth antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CSTK — Kho Dữ Liệu Tối Giản</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['SF Pro Text', '-apple-system', 'BlinkMacSystemFont', 'Inter', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['SF Mono', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                    boxShadow: {
+                        'subtle': '0 2px 10px -2px rgba(0, 0, 0, 0.04)',
+                        'float': '0 12px 34px -8px rgba(0, 0, 0, 0.08)',
+                        'modal': '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body {
+            background-color: #f7f7f9;
+            color: #121214;
+            transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .dark body {
+            background-color: #050507;
+            color: #f2f2f5;
+        }
+        ::-webkit-scrollbar { width: 0px; height: 0px; display: none; }
+        
+        .squircle {
+            border-radius: 22px;
+        }
+        .squircle-sm {
+            border-radius: 14px;
+        }
+        .squircle-pill {
+            border-radius: 9999px;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+        }
+        .dark .glass-panel {
+            background: rgba(18, 18, 22, 0.76);
+            backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
+        }
+        .card-surface {
+            background: #ffffff;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+        }
+        .dark .card-surface {
+            background: #111115;
+        }
+        .card-surface:hover {
+            transform: translateY(-2px);
+        }
+        .card-surface:active {
+            transform: scale(0.99);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-neutral-900 selection:text-white dark:selection:bg-white dark:selection:text-black">
+
+    <!-- FLOATING TOP NAVIGATION -->
+    <header class="sticky top-0 z-40 w-full px-3 sm:px-6 pt-3 pb-2 transition-all">
+        <div class="max-w-6xl mx-auto glass-panel squircle-pill border border-black/[0.06] dark:border-white/[0.08] shadow-subtle px-3.5 sm:px-5 py-2.5 flex items-center justify-between gap-3">
+            
+            <!-- Brand & Pulse Tag -->
+            <div class="flex items-center gap-3 shrink-0">
+                <div class="w-8 h-8 rounded-full bg-neutral-900 dark:bg-white flex items-center justify-center text-white dark:text-neutral-900 shadow-sm">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="4" />
+                        <path d="M7 10h10M7 14h6" />
+                    </svg>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[13px] font-semibold tracking-tight leading-none text-neutral-900 dark:text-neutral-100">CSTK Vault</span>
+                    <span class="text-[10px] text-neutral-400 font-mono tracking-wider mt-0.5" id="header-caption">KHO LƯU TRỮ</span>
+                </div>
+                <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-black/[0.03] dark:bg-white/[0.06] rounded-full">
+                    <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-neutral-400"></span>
+                    <span id="status-text" class="text-[10px] font-mono font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400">SẴN SÀNG</span>
+                </div>
+            </div>
+
+            <!-- Action Controls Group -->
+            <div class="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar">
+                <div class="hidden md:flex items-center bg-black/[0.04] dark:bg-white/[0.05] p-0.5 squircle-pill">
+                    <button onclick="triggerAction('start_auto')" class="text-[11px] font-medium px-3 py-1.5 rounded-full hover:bg-white dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition-all active:scale-95">Tự động: Bật</button>
+                    <button onclick="triggerAction('stop_auto')" class="text-[11px] font-medium px-3 py-1.5 rounded-full hover:bg-white dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 transition-all active:scale-95">Tắt</button>
+                </div>
+
+                <button onclick="loadData()" title="Làm mới" class="p-2 sm:px-3 sm:py-1.5 squircle-pill text-[12px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.07] transition-all flex items-center gap-1.5 active:scale-95">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                        <path d="M16 21h5v-5" />
+                    </svg>
+                    <span class="hidden sm:inline">Làm mới</span>
+                </button>
+
+                <button onclick="triggerAction('scrape_now')" class="px-3.5 py-1.5 squircle-pill bg-neutral-900 text-white dark:bg-white dark:text-neutral-950 text-[11px] sm:text-[12px] font-semibold hover:opacity-90 active:scale-95 transition-all shadow-sm flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                    </svg>
+                    <span>Cào dữ liệu</span>
+                </button>
+
+                <button onclick="toggleDarkMode()" aria-label="Đổi chế độ sáng tối" class="p-2 squircle-pill text-neutral-600 dark:text-neutral-300 hover:bg-black/[0.04] dark:hover:bg-white/[0.08] transition-all active:scale-90">
+                    <svg class="w-4 h-4 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                    <svg class="w-4 h-4 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- SUB-BAR: SEARCH & STATS -->
+    <section class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-4 pb-2">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            
+            <!-- Items count status -->
+            <div class="flex items-center gap-2.5">
+                <span class="inline-flex items-center justify-center px-2.5 py-0.5 squircle-pill bg-black/[0.05] dark:bg-white/[0.08] text-xs font-mono font-medium text-neutral-800 dark:text-neutral-200" id="total-count">00</span>
+                <span class="text-xs font-medium tracking-tight text-neutral-400">bản ghi được nạp</span>
+                
+                <!-- Mobile indicator -->
+                <span id="status-mobile-chip" class="sm:hidden ml-auto text-[10px] font-mono px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.06] text-neutral-500">SẴN SÀNG</span>
+            </div>
+
+            <!-- Search & Sort Filter Pill -->
+            <div class="flex items-center gap-2">
+                <!-- Search bar -->
+                <div class="relative flex-1 sm:w-64 bg-black/[0.04] dark:bg-white/[0.06] squircle-sm border border-black/[0.03] dark:border-white/[0.04] focus-within:border-black/20 dark:focus-within:border-white/20 focus-within:bg-white dark:focus-within:bg-neutral-900 transition-all">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8" />
+                        <path d="m21 21-4.3-4.3" />
+                    </svg>
+                    <input type="text" id="searchInput" placeholder="Tìm tiêu đề, ID..." class="w-full bg-transparent text-[13px] pl-8 pr-7 py-2 text-neutral-900 dark:text-white placeholder-neutral-400 font-normal outline-none">
+                    <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <!-- Sort dropdown pill -->
+                <div class="relative bg-black/[0.04] dark:bg-white/[0.06] squircle-sm border border-black/[0.03] dark:border-white/[0.04] text-[13px]">
+                    <select id="sortSelect" class="bg-transparent pl-3 pr-8 py-2 text-neutral-800 dark:text-neutral-200 cursor-pointer appearance-none outline-none font-medium text-xs">
+                        <option value="time_new" class="bg-white dark:bg-neutral-900">Mới nhất</option>
+                        <option value="time_old" class="bg-white dark:bg-neutral-900">Cũ nhất</option>
+                        <option value="az" class="bg-white dark:bg-neutral-900">Tên A → Z</option>
+                        <option value="za" class="bg-white dark:bg-neutral-900">Tên Z → A</option>
+                    </select>
+                    <svg class="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- MAIN GRID CONTAINER -->
+    <main class="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-4">
+        <!-- Minimal Flat Loader -->
+        <div id="loader" class="hidden py-24 flex-col items-center justify-center gap-3">
+            <div class="w-7 h-7 rounded-full border-[2.5px] border-neutral-300 dark:border-neutral-700 border-t-neutral-900 dark:border-t-white animate-spin"></div>
+            <p class="text-[11px] font-mono uppercase tracking-widest text-neutral-400">Đang đồng bộ dữ liệu...</p>
+        </div>
+
+        <!-- Data Cards Grid -->
+        <div id="data-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <!-- Dynamic Cards Injected Here -->
+        </div>
+    </main>
+
+    <!-- IMAGE LIGHTBOX DIALOG -->
+    <div id="imgModal" class="fixed inset-0 z-50 bg-black/40 dark:bg-black/70 backdrop-blur-2xl opacity-0 pointer-events-none transition-all duration-300 flex items-center justify-center p-4 sm:p-8" onclick="closeModal()">
+        <div class="relative max-w-3xl w-full flex flex-col items-center" onclick="event.stopPropagation()">
+            <div class="relative overflow-hidden squircle shadow-modal bg-neutral-900 border border-white/10 max-h-[80vh] flex items-center justify-center">
+                <img id="modalImage" src="" alt="Zoom preview" class="max-h-[75vh] w-auto max-w-full object-contain scale-95 transition-transform duration-300 ease-out">
+            </div>
+            
+            <button onclick="closeModal()" class="mt-4 px-4 py-1.5 squircle-pill glass-panel text-xs font-medium text-neutral-800 dark:text-neutral-200 hover:bg-white dark:hover:bg-neutral-800 transition-all border border-black/5 dark:border-white/10 shadow-subtle active:scale-95 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                <span>Đóng xem trước</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- FLOATING TOAST SYSTEM -->
+    <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 transform translate-y-8 opacity-0">
+        <div id="toast-pill" class="glass-panel squircle-pill border border-black/[0.08] dark:border-white/[0.12] shadow-float px-4 py-2.5 flex items-center gap-2.5 min-w-[220px] justify-center">
+            <span id="toast-indicator" class="w-2 h-2 rounded-full bg-neutral-900 dark:bg-white"></span>
+            <span id="toast-message" class="text-xs font-medium tracking-tight text-neutral-800 dark:text-neutral-100">Thông báo</span>
+        </div>
+    </div>
+
+    <script>
+        /* ================= CONFIGURATION ================= */
+        const API_URL = "https://script.google.com/macros/s/AKfycbx6ZHdA8Uf0UeGV15ipndEesZy8TeTH5uU3irxdiawWDVWeCvO8vn7GyQBHQQal0e3x/exec";
+        const TOKEN = "AdminPro2026";
+        let appData = [];
+        let pollingTimer = null;
+        let toastTimeout = null;
+
+        /* ================= INITIALIZATION ================= */
+        document.addEventListener("DOMContentLoaded", () => {
+            initTheme();
+            loadData();
+            
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', () => {
+                const clearBtn = document.getElementById('clearSearchBtn');
+                clearBtn.classList.toggle('hidden', !searchInput.value);
+                applyFilterAndSort();
+            });
+
+            document.getElementById('sortSelect').addEventListener('change', applyFilterAndSort);
+            
+            // ESC key to close modal
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeModal();
+            });
+        });
+
+        function initTheme() {
+            const isDark = localStorage.theme === 'dark' || 
+                (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', isDark);
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
+            showToast(isDark ? "Giao diện: Tối" : "Giao diện: Sáng");
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('searchInput');
+            input.value = '';
+            document.getElementById('clearSearchBtn').classList.add('hidden');
+            applyFilterAndSort();
+            input.focus();
+        }
+
+        function showToast(message, isError = false) {
+            const container = document.getElementById('toast-container');
+            const msgEl = document.getElementById('toast-message');
+            const dot = document.getElementById('toast-indicator');
+
+            msgEl.textContent = message;
+            dot.className = isError 
+                ? "w-2 h-2 rounded-full bg-rose-500" 
+                : "w-2 h-2 rounded-full bg-emerald-500";
+
+            container.classList.remove('translate-y-8', 'opacity-0');
+            container.classList.add('translate-y-0', 'opacity-100');
+
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                container.classList.remove('translate-y-0', 'opacity-100');
+                container.classList.add('translate-y-8', 'opacity-0');
+            }, 2400);
+        }
+
+        function openModal(src) {
+            if (!src) return;
+            const modal = document.getElementById('imgModal');
+            const img = document.getElementById('modalImage');
+            img.src = src;
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.classList.add('opacity-100', 'pointer-events-auto');
+            setTimeout(() => {
+                img.classList.remove('scale-95');
+                img.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('imgModal');
+            const img = document.getElementById('modalImage');
+            img.classList.remove('scale-100');
+            img.classList.add('scale-95');
+            modal.classList.remove('opacity-100', 'pointer-events-auto');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => { img.src = ''; }, 280);
+        }
+
+        function copyText(text, btnElement) {
+            if (!text || text === 'N/A') return;
+
+            const performSuccess = () => {
+                showToast(`Đã sao chép: ${text}`);
+                if (btnElement) {
+                    const originalBg = btnElement.className;
+                    btnElement.classList.add('ring-2', 'ring-neutral-400');
+                    setTimeout(() => {
+                        btnElement.className = originalBg;
+                    }, 400);
+                }
+            };
+
+            // Standard async clipboard
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text)
+                    .then(performSuccess)
+                    .catch(() => fallbackCopy(text, performSuccess));
+            } else {
+                fallbackCopy(text, performSuccess);
+            }
+        }
+
+        function fallbackCopy(text, callback) {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+            textarea.style.top = "0";
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                if (callback) callback();
+            } catch (err) {
+                showToast("Không thể chép vào bộ nhớ đệm", true);
+            }
+            document.body.removeChild(textarea);
+        }
+
+        async function loadData() {
+            const loader = document.getElementById('loader');
+            const grid = document.getElementById('data-grid');
+            
+            grid.innerHTML = "";
+            loader.classList.remove('hidden');
+            loader.classList.add('flex');
+
+            try {
+                const response = await fetch(`${API_URL}?action=get_data&token=${TOKEN}`);
+                const result = await response.json();
+                if (result.success) {
+                    appData = Array.isArray(result.data) ? result.data : [];
+                    applyFilterAndSort();
+                    showToast("Đã làm mới dữ liệu");
+                } else {
+                    showToast(result.error || "Không thể tải dữ liệu", true);
+                }
+            } catch (error) {
+                showToast("Mất kết nối với máy chủ", true);
+                // Demo fallback if offline/cors
+                if (appData.length === 0) {
+                    populateFallbackData();
+                }
+            } finally {
+                loader.classList.add('hidden');
+                loader.classList.remove('flex');
+                checkStatus();
+            }
+        }
+
+        function populateFallbackData() {
+            appData = [
+                {
+                    title: "Tài khoản Google Workspace Pro",
+                    account_id: "admin@enterprise-cstk.vn",
+                    password: "••••••••••••",
+                    timestamp: new Date().toISOString(),
+                    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600",
+                    url: "https://google.com"
+                },
+                {
+                    title: "Máy chủ lưu trữ Media Content",
+                    account_id: "cstk_storage_sg01",
+                    password: "Storage#Key$2026",
+                    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
+                    image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=600",
+                    url: "https://cloudflare.com"
+                }
+            ];
+            applyFilterAndSort();
+        }
+
+        function applyFilterAndSort() {
+            const searchTerm = (document.getElementById('searchInput').value || "").toLowerCase().trim();
+            const sortType = document.getElementById('sortSelect').value;
+
+            let filtered = appData.filter(item => {
+                const title = (item.title || "").toLowerCase();
+                const accountId = (item.account_id || "").toLowerCase();
+                return title.includes(searchTerm) || accountId.includes(searchTerm);
+            });
+
+            filtered.sort((a, b) => {
+                const timeA = new Date(a.timestamp || 0).getTime();
+                const timeB = new Date(b.timestamp || 0).getTime();
+                if (sortType === 'time_new') return timeB - timeA;
+                if (sortType === 'time_old') return timeA - timeB;
+                if (sortType === 'az') return (a.title || "").localeCompare(b.title || "", 'vi');
+                if (sortType === 'za') return (b.title || "").localeCompare(a.title || "", 'vi');
+                return 0;
+            });
+
+            renderGrid(filtered);
+        }
+
+        function renderGrid(data) {
+            const grid = document.getElementById('data-grid');
+            document.getElementById('total-count').innerText = String(data.length).padStart(2, '0');
+            grid.innerHTML = "";
+
+            if (data.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-20 flex flex-col items-center justify-center text-center">
+                        <div class="w-12 h-12 squircle-sm bg-black/[0.04] dark:bg-white/[0.05] flex items-center justify-center text-neutral-400 mb-3">
+                            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                        </div>
+                        <p class="text-xs font-mono uppercase tracking-widest text-neutral-400">Không tìm thấy dữ liệu</p>
+                    </div>
+                `;
+                return;
+            }
+
+            data.forEach((item, index) => {
+                const card = createCardElement(item, index);
+                grid.appendChild(card);
+            });
+        }
+
+        function createCardElement(item, index) {
+            const fallbackImg = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=600';
+            const imgUrl = item.image || fallbackImg;
+            const id = item.account_id || "N/A";
+            const pass = item.password || "N/A";
+            const timeStr = formatTime(item.timestamp);
+            const linkUrl = item.url || '#';
+
+            const card = document.createElement('article');
+            card.className = "card-surface squircle p-3.5 border border-black/[0.05] dark:border-white/[0.06] shadow-subtle flex flex-col justify-between gap-3 group";
+
+            card.innerHTML = `
+                <div class="flex items-start gap-3">
+                    <!-- Squircle Thumbnail -->
+                    <div class="relative w-14 h-14 shrink-0 squircle-sm overflow-hidden bg-black/[0.04] dark:bg-white/[0.06] cursor-zoom-in ring-1 ring-black/[0.04] dark:ring-white/[0.08] transition-transform active:scale-95">
+                        <img loading="lazy" src="${imgUrl}" alt="Media" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.src='${fallbackImg}'">
+                        <div class="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors"></div>
+                    </div>
+
+                    <!-- Header & Title -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] font-mono font-medium text-neutral-400 dark:text-neutral-500 tracking-tight">${timeStr}</span>
+                            ${linkUrl !== '#' ? `
+                            <a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-6 h-6 squircle-pill bg-black/[0.04] dark:bg-white/[0.08] flex items-center justify-center text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors" title="Mở liên kết">
+                                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17 17 7M7 7h10v10"/></svg>
+                            </a>
+                            ` : ''}
+                        </div>
+                        <h3 class="text-[13px] font-medium leading-snug tracking-tight text-neutral-900 dark:text-neutral-100 truncate mt-0.5" title="${item.title || ''}">
+                            ${item.title || "Tư liệu không tên"}
+                        </h3>
+                    </div>
+                </div>
+
+                <!-- Credential Pill Blocks -->
+                <div class="grid grid-cols-1 gap-1.5 pt-1 border-t border-black/[0.03] dark:border-white/[0.04]">
+                    <!-- ID Pill -->
+                    <div class="flex items-center justify-between px-2.5 py-1.5 squircle-sm bg-black/[0.025] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-all cursor-pointer group/id" onclick="copyText('${id}', this)">
+                        <span class="text-[10px] font-mono text-neutral-400 select-none">ID</span>
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="text-[11.5px] font-mono font-medium text-neutral-800 dark:text-neutral-200 truncate group-hover/id:text-neutral-950 dark:group-hover/id:text-white">${id}</span>
+                            <svg class="w-3 h-3 text-neutral-400 opacity-60 group-hover/id:opacity-100 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- Password Pill -->
+                    <div class="flex items-center justify-between px-2.5 py-1.5 squircle-sm bg-black/[0.025] dark:bg-white/[0.04] hover:bg-black/[0.05] dark:hover:bg-white/[0.07] transition-all cursor-pointer group/pw" onclick="copyText('${pass}', this)">
+                        <span class="text-[10px] font-mono text-neutral-400 select-none">PW</span>
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="text-[11.5px] font-mono font-medium text-neutral-800 dark:text-neutral-200 truncate group-hover/pw:text-neutral-950 dark:group-hover/pw:text-white">${pass}</span>
+                            <svg class="w-3 h-3 text-neutral-400 opacity-60 group-hover/pw:opacity-100 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Click on image opens lightbox
+            const thumb = card.querySelector('.cursor-zoom-in');
+            thumb.addEventListener('click', () => openModal(imgUrl));
+
+            return card;
+        }
+
+        function formatTime(dateString) {
+            if (!dateString) return "--:--";
+            try {
+                const d = new Date(dateString);
+                if (isNaN(d.getTime())) return dateString;
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mm = String(d.getMinutes()).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const mon = String(d.getMonth() + 1).padStart(2, '0');
+                return `${hh}:${mm} · ${day}/${mon}`;
+            } catch (e) {
+                return "--:--";
+            }
+        }
+
+        function updateStatusUI(status) {
+            const statusText = document.getElementById('status-text');
+            const dot = document.getElementById('status-dot');
+            const mobileChip = document.getElementById('status-mobile-chip');
+
+            const norm = (status || "").toUpperCase();
+            statusText.innerText = norm || "SẴN SÀNG";
+            if (mobileChip) mobileChip.innerText = norm || "SẴN SÀNG";
+
+            if (norm === "SẴN SÀNG" || norm === "IDLE" || norm === "DONE") {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500";
+            } else if (norm.includes("LỖI") || norm.includes("MẤT KẾT NỐI")) {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-rose-500";
+            } else if (norm.includes("ĐÃ DỪNG")) {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-neutral-400";
+            } else {
+                dot.className = "w-1.5 h-1.5 rounded-full bg-neutral-900 dark:bg-white animate-ping";
+            }
+        }
+
+        async function checkStatus() {
+            try {
+                const res = await fetch(`${API_URL}?action=get_progress&token=${TOKEN}`);
+                const result = await res.json();
+                if (result.success) {
+                    updateStatusUI(result.current_status);
+                }
+            } catch (e) {
+                updateStatusUI("MẤT KẾT NỐI");
+            }
+        }
+
+        async function triggerAction(action) {
+            updateStatusUI("ĐANG XỬ LÝ...");
+            showToast("Đang gửi yêu cầu...");
+            
+            try {
+                const response = await fetch(`${API_URL}?action=${action}&token=${TOKEN}`);
+                const result = await response.json();
+                
+                checkStatus();
+                if (action === "scrape_now") {
+                    showToast("Đã kích hoạt cào dữ liệu");
+                    if (pollingTimer) clearInterval(pollingTimer);
+                    
+                    pollingTimer = setInterval(async () => {
+                        await checkStatus();
+                        const currentText = document.getElementById('status-text').innerText.toUpperCase();
+                        if (currentText === "DONE" || currentText === "IDLE" || currentText === "SẴN SÀNG" || currentText.includes("LỖI")) {
+                            clearInterval(pollingTimer);
+                            pollingTimer = null;
+                            loadData();
+                        }
+                    }, 3000);
+                } else {
+                    showToast(result.message || result.error || "Thao tác thành công");
+                }
+            } catch (e) {
+                updateStatusUI("MẤT KẾT NỐI");
+                showToast("Lỗi kết nối máy chủ", true);
+            }
+        }
+    </script>
+</body>
+</html>

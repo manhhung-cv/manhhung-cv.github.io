@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full antialiased">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CheckScam Lite - Tra cứu & Cảnh báo Lừa đảo Tối giản</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#151f32',
+                            950: '#0b0f19',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #334155;
+        }
+
+        .glass-header {
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200 antialiased selection:bg-rose-500 selection:text-white">
+
+    <header class="sticky top-0 z-30 w-full glass-header bg-white/90 dark:bg-slate-950/90 border-b border-slate-200/80 dark:border-slate-800/80 transition-colors">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <a href="#" onclick="resetSearch(); return false;" class="flex items-center gap-2.5 group">
+                <div class="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center font-bold text-sm shadow-sm group-hover:bg-rose-500 transition-colors">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="font-extrabold tracking-tight text-base text-slate-900 dark:text-white">CheckScam</span>
+                    <span class="text-[11px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400">Lite</span>
+                </div>
+            </a>
+
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="toggleDarkMode()" aria-label="Đổi giao diện sáng tối" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <i id="theme-icon" class="fa-regular fa-moon text-sm"></i>
+                </button>
+                <button type="button" onclick="openReportModal()" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition-all active:scale-95">
+                    <i class="fa-solid fa-plus text-[11px]"></i>
+                    <span>Tố giác đối tượng</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-9 space-y-6">
+
+        <section class="text-center space-y-4 pt-1 sm:pt-2">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40">
+                <i class="fa-solid fa-circle-exclamation text-[11px]"></i>
+                Hệ thống tra cứu số tài khoản, số điện thoại & link lừa đảo
+            </div>
+            
+            <h1 class="text-xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                Kiểm tra an toàn trước khi chuyển tiền
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+                Nhập số điện thoại, số tài khoản, tên cá nhân hoặc đường dẫn web và nhấn <kbd class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[11px] font-mono">Enter</kbd> hoặc bấm <strong>Kiểm tra</strong>.
+            </p>
+
+            <!-- Search input bar -->
+            <div class="max-w-2xl mx-auto">
+                <div class="relative flex items-center bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-300/80 dark:border-slate-800 p-1.5 focus-within:ring-2 focus-within:ring-rose-500/30 focus-within:border-rose-500 transition-all">
+                    <div class="pl-3.5 text-slate-400 text-sm">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="search-input" 
+                        oninput="onSearchInputChanged(event)"
+                        onkeydown="onSearchKeyDown(event)"
+                        placeholder="Nhập SĐT, STK, Tên cá nhân, Link web, Khu vực..." 
+                        class="w-full bg-transparent px-3 py-2 text-xs sm:text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none"
+                    />
+                    <div class="flex items-center gap-1 mr-1.5 shrink-0">
+                        <button 
+                            type="button" 
+                            id="clear-search-btn" 
+                            onclick="clearSearch()" 
+                            class="hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 text-xs rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            aria-label="Xóa từ khóa"
+                            title="Xóa từ khóa"
+                        >
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                        <button 
+                            type="button" 
+                            onclick="pasteToInput('search-input')" 
+                            class="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 px-2 py-1 text-xs font-semibold rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition-colors flex items-center gap-1"
+                            title="Dán nội dung từ Clipboard"
+                        >
+                            <i class="fa-regular fa-clipboard text-[11px]"></i>
+                            <span class="hidden sm:inline text-[11px]">Dán</span>
+                        </button>
+                    </div>
+                    <button 
+                        type="button" 
+                        onclick="triggerSearch()" 
+                        class="px-4 sm:px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shrink-0 transition-colors shadow-sm flex items-center gap-1.5"
+                    >
+                        <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                        <span>Kiểm tra</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter chips -->
+            <div class="flex flex-wrap items-center justify-center gap-1.5 pt-1 text-xs">
+                <button type="button" onclick="setFilter('all', this)" class="filter-chip px-3 py-1 rounded-lg font-semibold bg-rose-600 text-white transition-colors">Tất cả</button>
+                <button type="button" onclick="setFilter('bank', this)" class="filter-chip px-3 py-1 rounded-lg font-medium bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors">Số tài khoản</button>
+                <button type="button" onclick="setFilter('phone', this)" class="filter-chip px-3 py-1 rounded-lg font-medium bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors">Số điện thoại</button>
+                <button type="button" onclick="setFilter('web', this)" class="filter-chip px-3 py-1 rounded-lg font-medium bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors">Website / Mạng XH</button>
+            </div>
+        </section>
+
+        <div id="quick-alert-banner" class="hidden animate-fade-in"></div>
+
+        <!-- Metrics cards (Total cases, Confirmed scammers, Total loss) -->
+        <div class="grid grid-cols-3 gap-2 sm:gap-4 py-1">
+            <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800/80 shadow-sm text-center">
+                <span class="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider block">Tổng số vụ</span>
+                <span id="metric-total" class="text-base sm:text-xl font-extrabold text-slate-900 dark:text-white">0</span>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800/80 shadow-sm text-center">
+                <span class="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider block">Đối tượng lừa đảo</span>
+                <span id="metric-scammer" class="text-base sm:text-xl font-extrabold text-rose-600 dark:text-rose-400">0</span>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800/80 shadow-sm text-center">
+                <span class="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider block">Tổng thiệt hại</span>
+                <span id="metric-loss" class="text-base sm:text-xl font-extrabold text-amber-600 dark:text-amber-400">0 ₫</span>
+            </div>
+        </div>
+
+        <section class="space-y-3 pt-2">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Danh sách cảnh báo</h2>
+                    <span id="list-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">0 vụ</span>
+                </div>
+                <!-- Sắp xếp -->
+                <select id="sort-select" onchange="renderList()" class="bg-white dark:bg-slate-900 text-xs text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-800 rounded-lg px-2.5 py-1 focus:outline-none font-medium">
+                    <option value="newest">Mới nhất</option>
+                    <option value="loss">Thiệt hại lớn nhất</option>
+                    <option value="confirms">Nhiều nạn nhân nhất</option>
+                </select>
+            </div>
+
+            <!-- Container for scam cards -->
+            <div id="scam-cards-container" class="space-y-2.5"></div>
+
+            <!-- Empty state when not found -->
+            <div id="empty-state" class="hidden py-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 space-y-3">
+                <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-200">Không tìm thấy dữ liệu trong danh sách đen</h3>
+                <p class="text-xs text-slate-500 max-w-sm mx-auto">Nếu bạn nhận thấy dấu hiệu lừa đảo từ người này, hãy gửi tố giác để cộng đồng cùng phòng ngừa.</p>
+                <button type="button" onclick="openReportModal()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm transition-colors">
+                    <i class="fa-solid fa-plus text-[10px]"></i> Tố giác đối tượng này
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="mt-auto py-6 border-t border-slate-200/80 dark:border-slate-800/80 bg-white/50 dark:bg-slate-950/50 text-center text-xs text-slate-500 space-y-1">
+        <p>CheckScam Lite &copy; 2026 — Dữ liệu phòng ngừa lừa đảo công nghệ cao.</p>
+        <p class="text-[11px] text-slate-400">Đường dây nóng khẩn cấp Cục An ninh mạng: <a href="tel:113" class="text-rose-600 font-semibold hover:underline">113</a></p>
+    </footer>
+
+    <div id="report-modal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-xl rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden animate-fade-in my-auto">
+            
+            <!-- Modal Header with Tab selector -->
+            <div class="px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h3 class="font-bold text-sm text-slate-900 dark:text-white">Gửi tố giác đối tượng</h3>
+                </div>
+                <button type="button" onclick="closeReportModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Tab Navigation inside modal -->
+            <div class="flex border-b border-slate-200 dark:border-slate-800 text-xs font-semibold px-4 pt-2 gap-2 bg-slate-50/50 dark:bg-slate-950/30">
+                <button type="button" id="tab-btn-single" onclick="switchReportTab('single')" class="pb-2 border-b-2 border-rose-600 text-rose-600 transition-colors flex items-center gap-1.5">
+                    <i class="fa-solid fa-user-shield"></i> Tố giác chi tiết (Nhiều thông tin)
+                </button>
+                <button type="button" id="tab-btn-batch" onclick="switchReportTab('batch')" class="pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-import"></i> Nhập nhanh (CSV / JSON)
+                </button>
+            </div>
+
+            <!-- TAB 1: Detailed individual form with dynamic multi-fields -->
+            <form id="single-report-form" onsubmit="submitSingleReport(event)" class="p-4 space-y-3.5 text-xs max-h-[75vh] overflow-y-auto">
+                <div>
+                    <label class="block text-slate-600 dark:text-slate-300 font-semibold mb-1">Hình thức lừa đảo <span class="text-rose-500">*</span></label>
+                    <select id="form-category" required onchange="onCategoryChanged(this.value)" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-500">
+                        <option value="Tuyển dụng online / Làm CTV">Tuyển dụng online / CTV chốt đơn hoa hồng</option>
+                        <option value="Lừa tình cảm / Thao túng tâm lý (Romance Scam)">Lừa tình cảm / Thao túng tâm lý (Romance Scam / Pig butchering)</option>
+                        <option value="Giả danh Ngân hàng / Cơ quan">Giả danh Ngân hàng / Công an / CSGT / Thuế</option>
+                        <option value="Đầu tư sinh lời / Tiền ảo / Đổi ngoại tệ">Đầu tư tài chính / Crypto / Đổi ngoại tệ JPY, USD</option>
+                        <option value="Mua bán online / Pass vé">Lừa cọc mua bán / Pass vé concert / Hàng hiệu</option>
+                        <option value="Shipper giao hàng / Thu hộ COD giả">Mạo danh Shipper / Giao bưu phẩm lừa cước COD</option>
+                        <option value="Cọc phòng trọ / Bất động sản ảo">Lừa cọc phòng trọ / Cho thuê nhà ảo</option>
+                        <option value="Xuất khẩu lao động / Visa du học giả">Lừa đảo Xuất khẩu lao động / Bao đậu Visa du học</option>
+                        <option value="Cờ bạc online / App tài xỉu lừa đảo">Cờ bạc online / Kéo tài xỉu / App game ảo không rút tiền được</option>
+                        <option value="Bẫy trúng thưởng / Quà tri ân mạo danh">Bẫy trúng thưởng xe, quà tặng tri ân / Nộp thuế ảo</option>
+                        <option value="Vay tiền online / Tín dụng đen">Vay tiền online / Phí hồ sơ giải ngân</option>
+                        <option value="Khác">Hình thức khác (Tự nhập thủ công)</option>
+                    </select>
+                    <input type="text" id="form-category-other" placeholder="Ghi rõ tên hình thức lừa đảo cụ thể..." class="hidden w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2 mt-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-500">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                        <div class="flex items-center justify-between mb-1">
+                            <label class="text-slate-600 dark:text-slate-300 font-semibold">Tên đối tượng / Công ty</label>
+                            <button type="button" onclick="pasteToInput('form-name')" class="text-[10px] text-slate-400 hover:text-rose-600"><i class="fa-regular fa-clipboard"></i> Dán</button>
+                        </div>
+                        <input type="text" id="form-name" placeholder="Nguyễn Văn A / Shopee Mall..." class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-500">
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 dark:text-slate-300 font-semibold mb-1">Số tiền thiệt hại (VNĐ) <span class="text-rose-500">*</span></label>
+                        <input type="text" id="form-loss" required oninput="formatCurrency(this)" placeholder="Ví dụ: 10.000.000" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2 text-slate-800 dark:text-slate-100 font-mono font-bold focus:outline-none focus:border-rose-500">
+                    </div>
+                </div>
+
+                <!-- Location Field -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-slate-600 dark:text-slate-300 font-semibold flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-rose-500 text-[10px]"></i> Địa chỉ / Khu vực hoạt động (nếu có)
+                        </label>
+                        <button type="button" onclick="pasteToInput('form-location')" class="text-[10px] text-slate-400 hover:text-rose-600"><i class="fa-regular fa-clipboard"></i> Dán</button>
+                    </div>
+                    <input type="text" id="form-location" placeholder="Ví dụ: Quận Cầu Giấy, Hà Nội hoặc Shinjuku, Tokyo..." class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-500">
+                </div>
+
+                <!-- Multiple Phone Numbers -->
+                <div class="space-y-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <label class="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                            <i class="fa-solid fa-phone text-[10px] text-slate-400"></i> Các Số điện thoại / Zalo đối tượng sử dụng
+                        </label>
+                        <button type="button" onclick="addPhoneField()" class="text-rose-600 hover:text-rose-500 font-semibold text-[11px] flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Thêm SĐT
+                        </button>
+                    </div>
+                    <div id="phones-container" class="space-y-1.5">
+                        <div class="flex items-center gap-1.5 phone-row">
+                            <input type="text" placeholder="09xxxxxxx hoặc +84..." class="phone-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:border-rose-500">
+                            <button type="button" onclick="pasteToRowInput(this, '.phone-input')" title="Dán SĐT" class="text-slate-400 hover:text-rose-600 p-1.5"><i class="fa-regular fa-clipboard"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Multiple Bank Accounts -->
+                <div class="space-y-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <label class="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                            <i class="fa-regular fa-credit-card text-[10px] text-slate-400"></i> Các Số tài khoản ngân hàng đối tượng nhận tiền
+                        </label>
+                        <button type="button" onclick="addBankField()" class="text-rose-600 hover:text-rose-500 font-semibold text-[11px] flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Thêm STK
+                        </button>
+                    </div>
+                    <div id="banks-container" class="space-y-1.5">
+                        <div class="grid grid-cols-2 gap-1.5 bank-row">
+                            <input type="text" placeholder="Số TK (VD: 19038291...)" class="bank-acc-input bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 font-mono focus:outline-none focus:border-rose-500">
+                            <div class="flex items-center gap-1">
+                                <input type="text" placeholder="Ngân hàng (MB, TCB...)" class="bank-name-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 focus:outline-none focus:border-rose-500">
+                                <button type="button" onclick="pasteToRowInput(this, '.bank-acc-input')" title="Dán STK" class="text-slate-400 hover:text-rose-600 p-1"><i class="fa-regular fa-clipboard"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Multiple Websites / Facebook / Telegram links -->
+                <div class="space-y-1.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <label class="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                            <i class="fa-solid fa-globe text-[10px] text-slate-400"></i> Các Link Website, Facebook, Telegram lừa đảo
+                        </label>
+                        <button type="button" onclick="addLinkField()" class="text-rose-600 hover:text-rose-500 font-semibold text-[11px] flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Thêm Link
+                        </button>
+                    </div>
+                    <div id="links-container" class="space-y-1.5">
+                        <div class="flex items-center gap-1.5 link-row">
+                            <input type="text" placeholder="https://... hoặc facebook.com/..." class="link-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 focus:outline-none focus:border-rose-500">
+                            <button type="button" onclick="pasteToRowInput(this, '.link-input')" title="Dán liên kết" class="text-slate-400 hover:text-rose-600 p-1.5"><i class="fa-regular fa-clipboard"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description with quick paste -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-slate-600 dark:text-slate-300 font-semibold">Mô tả thủ đoạn & diễn biến <span class="text-rose-500">*</span></label>
+                        <button type="button" onclick="pasteToInput('form-desc')" class="text-[10px] text-slate-400 hover:text-rose-600"><i class="fa-regular fa-clipboard"></i> Dán nội dung</button>
+                    </div>
+                    <textarea id="form-desc" required rows="3" placeholder="Mô tả cụ thể kịch bản tiếp cận, các bước dụ dỗ chuyển tiền..." class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-500 resize-none"></textarea>
+                </div>
+
+                <div class="space-y-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800">
+                    <div class="flex items-center justify-between">
+                        <label class="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                            <i class="fa-solid fa-images text-rose-500 text-[10px]"></i> Tải lên ảnh bằng chứng (Ủy nhiệm chi, Đoạn chat)
+                        </label>
+                        <span class="text-[10px] text-slate-400">Lưu bộ nhớ tạm</span>
+                    </div>
+
+                    <label class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-rose-500 transition-colors bg-white dark:bg-slate-900">
+                        <i class="fa-solid fa-cloud-arrow-up text-rose-500 text-lg mb-1"></i>
+                        <span class="font-medium text-slate-700 dark:text-slate-300 text-[11px]">Bấm chọn hoặc kéo thả ảnh chụp bằng chứng vào đây</span>
+                        <span class="text-[10px] text-slate-400">Hỗ trợ PNG, JPG, JPEG (Có thể chọn nhiều ảnh)</span>
+                        <input type="file" id="form-evidence-input" multiple accept="image/*" onchange="handleEvidenceFiles(event)" class="hidden">
+                    </label>
+
+                    <!-- Preview thumbnails container -->
+                    <div id="evidence-preview-container" class="grid grid-cols-3 sm:grid-cols-4 gap-2 pt-1 hidden"></div>
+                </div>
+
+                <!-- Form actions with reset button -->
+                <div class="pt-2 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
+                    <button type="button" onclick="resetSingleForm()" class="text-rose-600 hover:text-rose-700 dark:hover:text-rose-400 font-semibold inline-flex items-center gap-1 text-[11px]">
+                        <i class="fa-solid fa-rotate-left"></i> Xóa trắng biểu mẫu
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="closeReportModal()" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors">Hủy</button>
+                        <button type="submit" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl shadow-sm transition-colors">Lưu & Tố giác</button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- TAB 2: Batch CSV / JSON Import with Clear & Paste -->
+            <div id="batch-report-container" class="hidden p-4 space-y-3.5 text-xs max-h-[75vh] overflow-y-auto">
+                <div class="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 text-[11px] leading-relaxed">
+                    <p class="font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-circle-info"></i> Tiêu chuẩn dữ liệu nhập nhanh (CSV / JSON)
+                    </p>
+                    <p class="mt-0.5">Dán nội dung bảng tính CSV hoặc chuỗi JSON danh sách đối tượng. Hỗ trợ trường <code class="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 rounded">location</code> (vị trí/địa chỉ). Các trường SĐT, STK, Link phân tách bằng dấu chấm phẩy <code class="font-mono bg-amber-100 dark:bg-amber-900/60 px-1 rounded">;</code>.</p>
+                </div>
+
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="fillSampleCSV()" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-[11px] font-semibold transition-colors">
+                            <i class="fa-solid fa-table mr-1"></i>Xem Mẫu CSV
+                        </button>
+                        <button type="button" onclick="fillSampleJSON()" class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-[11px] font-semibold transition-colors">
+                            <i class="fa-solid fa-code mr-1"></i>Xem Mẫu JSON
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" onclick="pasteToInput('batch-input-text')" class="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-[11px] font-semibold transition-colors">
+                            <i class="fa-regular fa-clipboard mr-1"></i>Dán từ Clipboard
+                        </button>
+                        <button type="button" onclick="document.getElementById('batch-input-text').value = ''; document.getElementById('batch-parse-status').innerText = 'Đã xóa nội dung';" class="px-2 py-1 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg text-[11px] font-semibold transition-colors">
+                            <i class="fa-solid fa-trash-can mr-1"></i>Xóa
+                        </button>
+                        <label class="cursor-pointer text-rose-600 hover:underline text-[11px] font-semibold inline-flex items-center gap-1">
+                            <i class="fa-solid fa-upload"></i> Tải tệp lên
+                            <input type="file" id="batch-file-input" accept=".csv,.json,.txt" onchange="handleBatchFileUpload(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <textarea id="batch-input-text" rows="8" placeholder="Dán nội dung CSV hoặc JSON..." class="w-full bg-slate-50 dark:bg-slate-950 font-mono text-[11px] border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:border-rose-500"></textarea>
+                </div>
+
+                <div class="pt-1 flex items-center justify-between border-t border-slate-200 dark:border-slate-800">
+                    <span id="batch-parse-status" class="text-[11px] text-slate-500">Chưa nạp tệp</span>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="closeReportModal()" class="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors">Hủy</button>
+                        <button type="button" onclick="processBatchImport()" class="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl shadow-sm transition-colors flex items-center gap-1">
+                            <i class="fa-solid fa-check"></i> Xác nhận nạp dữ liệu
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="detail-modal" class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-900 w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden animate-fade-in my-auto space-y-4 p-5 text-xs">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <span id="detail-verified-badge" class="px-2 py-0.5 rounded-full font-bold text-[10px]"></span>
+                    <span id="detail-category" class="font-semibold text-slate-500"></span>
+                </div>
+                <button type="button" onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <!-- Header tóm tắt tiêu đề vụ việc, số tiền và ngày đăng -->
+            <div class="space-y-1">
+                <h3 id="detail-title" class="font-bold text-slate-900 dark:text-white text-sm leading-snug"></h3>
+                <div class="flex items-center justify-between pt-1">
+                    <div>
+                        <span class="text-slate-400 text-[10px] block">Thiệt hại ghi nhận:</span>
+                        <span id="detail-loss" class="text-sm font-extrabold text-rose-600 dark:text-rose-400"></span>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-slate-400 text-[10px] block">Ngày báo cáo:</span>
+                        <span id="detail-date" class="text-slate-500 font-mono text-[11px]"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Box thông tin đối tượng chi tiết (danh sách SĐT, STK, Link, Vị trí) -->
+            <div class="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 space-y-2.5">
+                <div class="font-bold text-[11px] uppercase tracking-wider text-slate-500">Danh sách thông tin đối tượng</div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">Tên / Đơn vị mạo danh:</span>
+                        <span id="detail-name" class="font-bold text-slate-900 dark:text-white"></span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">Địa chỉ / Khu vực hoạt động:</span>
+                        <span id="detail-location" class="font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <span class="text-slate-400 block text-[10px]">Số điện thoại ghi nhận:</span>
+                    <div id="detail-phones-list" class="flex flex-wrap gap-1.5 mt-0.5"></div>
+                </div>
+
+                <div>
+                    <span class="text-slate-400 block text-[10px]">Tài khoản ngân hàng ghi nhận:</span>
+                    <div id="detail-banks-list" class="flex flex-wrap gap-1.5 mt-0.5"></div>
+                </div>
+
+                <div>
+                    <span class="text-slate-400 block text-[10px]">Liên kết website / Mạng xã hội:</span>
+                    <div id="detail-links-list" class="flex flex-col gap-1 mt-0.5"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="font-bold text-[11px] uppercase tracking-wider text-slate-500 mb-1">Mô tả vụ việc</div>
+                <p id="detail-desc" class="text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200/70 dark:border-slate-800"></p>
+            </div>
+
+            <div id="detail-evidence-box" class="hidden space-y-1.5">
+                <div class="font-bold text-[11px] uppercase tracking-wider text-slate-500">Ảnh bằng chứng ghi nhận</div>
+                <div id="detail-evidence-gallery" class="grid grid-cols-3 gap-2"></div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <button type="button" id="detail-confirm-btn" onclick="confirmCurrentScam()" class="px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 font-semibold inline-flex items-center gap-1.5 transition-colors">
+                    <i class="fa-solid fa-thumbs-up"></i>
+                    <span>Cùng là nạn nhân (<span id="detail-confirm-count">0</span>)</span>
+                </button>
+                <button type="button" onclick="copyDetailText()" class="text-slate-500 hover:text-slate-800 dark:hover:text-white font-medium inline-flex items-center gap-1">
+                    <i class="fa-regular fa-copy"></i> Sao chép liên kết
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 z-50 hidden bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold items-center gap-2 animate-fade-in">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toast-msg">Thông báo</span>
+    </div>
+
+    <script>
+        // Cơ sở dữ liệu chuẩn hóa (Location, Evidences, Multi-phone, Multi-bank, Multi-link)
+        let scamList = [
+            {
+                id: 'SC-101',
+                category: 'Tuyển dụng online / Làm CTV',
+                name: 'Nguyễn Văn Mạnh',
+                location: 'Cầu Giấy, Hà Nội',
+                phones: ['0984123891', '0349887712'],
+                banks: [
+                    { account: '9901823910', bankName: 'Techcombank' },
+                    { account: '001100982391', bankName: 'Vietcombank' }
+                ],
+                links: ['shopee-tuyendung-online.fake', 'facebook.com/tuyendung.shopee.vip2026'],
+                loss: 24500000,
+                date: '2026-08-16',
+                isScammer: true,
+                confirms: 42,
+                desc: 'Mạo danh sàn thương mại điện tử tuyển người làm nhiệm vụ đơn hàng. Đơn nhỏ hoàn tiền đầy đủ, khi số tiền lớn thì viện cớ lỗi cú pháp rồi chặn liên lạc.',
+                evidences: []
+            },
+            {
+                id: 'SC-102',
+                category: 'Giả danh Ngân hàng / Cơ quan',
+                name: 'Cán bộ CSGT giả mạo Nguyễn Tuấn Anh',
+                location: 'Quận 1, TP. Hồ Chí Minh',
+                phones: ['0899123456', '0248889991'],
+                banks: [
+                    { account: '19038291028', bankName: 'Techcombank' }
+                ],
+                links: ['dichvucong.bocongan-vneid.app', 'vneid-capnhap.top'],
+                loss: 320000000,
+                date: '2026-08-14',
+                isScammer: true,
+                confirms: 115,
+                desc: 'Gọi điện thông báo xe dính phạt nguội hoặc lỗi định danh mức 2, gửi đường dẫn cài đặt ứng dụng file .APK giả mạo để chiếm quyền điều khiển và rút sạch tiền.',
+                evidences: []
+            },
+            {
+                id: 'SC-103',
+                category: 'Đầu tư sinh lời / Tiền ảo / Đổi ngoại tệ',
+                name: 'Lê Hoàng (Chuyển tiền JPY - VNĐ)',
+                location: 'Shinjuku, Tokyo (Nhật Bản)',
+                phones: ['0901238812'],
+                banks: [
+                    { account: '007100129381', bankName: 'Vietcombank' },
+                    { account: '1098273645', bankName: 'MB Bank' }
+                ],
+                links: ['facebook.com/doitien.yen.japan', 't.me/doitienjpy_uytin'],
+                loss: 95000000,
+                date: '2026-08-12',
+                isScammer: false,
+                confirms: 18,
+                desc: 'Đăng bài đổi tiền Yên Nhật sang VNĐ giá rẻ trong các hội nhóm người Việt tại Nhật. Sau khi bên kia chuyển tiền Yucho thì lập tức chặn liên lạc.',
+                evidences: []
+            },
+            {
+                id: 'SC-104',
+                category: 'Lừa tình cảm / Thao túng tâm lý (Romance Scam)',
+                name: 'David Nguyễn (Bác sĩ Quân y Liên Hợp Quốc ảo)',
+                location: 'Hoạt động xuyên biên giới',
+                phones: ['0792198231'],
+                banks: [
+                    { account: '001100982391', bankName: 'Vietcombank' }
+                ],
+                links: ['facebook.com/david.nguyen.officer.un'],
+                loss: 185000000,
+                date: '2026-08-11',
+                isScammer: true,
+                confirms: 8,
+                desc: 'Kết bạn tán tỉnh qua mạng, xưng là bác sĩ quân y UN đang làm nhiệm vụ ở nước ngoài, gửi kiện hàng bưu phẩm có ngoại tệ lớn về Việt Nam và nhờ nạn nhân nộp phí hải quan.',
+                evidences: []
+            },
+            {
+                id: 'SC-105',
+                category: 'Mua bán online / Pass vé',
+                name: 'Lê Thu Thảo',
+                location: 'Hải Châu, Đà Nẵng',
+                phones: ['0905123987'],
+                banks: [
+                    { account: '001100982391', bankName: 'Vietcombank' }
+                ],
+                links: ['facebook.com/thuthao.veconcert'],
+                loss: 4500000,
+                date: '2026-08-10',
+                isScammer: true,
+                confirms: 12,
+                desc: 'Bán vé concert âm nhạc giá rẻ. Đòi chuyển cọc 50% trước rồi gửi file vé photoshop giả.',
+                evidences: []
+            }
+        ];
+
+        // Mảng lưu trữ ảnh bằng chứng tạm thời trong form
+        let tempEvidences = [];
+
+        // Lịch sử tra cứu để đếm số lượt người đã tra cứu thông tin này
+        let lookupHistory = {
+            '0984123891': 24,
+            '0899123456': 58,
+            '19038291028': 31,
+            '0901238812': 15
+        };
+
+        // Ghi nhận phản hồi nghi ngờ từ cộng đồng cho các từ khóa chưa có trong DB
+        let communitySuspects = {};
+
+        let activeFilter = 'all';
+        let currentDetailId = null;
+        let lastSearchedKeyword = '';
+
+        async function pasteToInput(inputId) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text && text.trim().length > 0) {
+                    input.value = text.trim();
+                    if (inputId === 'search-input') {
+                        document.getElementById('clear-search-btn')?.classList.remove('hidden');
+                    }
+                    showToast('Đã dán dữ liệu từ Clipboard!');
+                } else {
+                    showToast('Bộ nhớ tạm (Clipboard) đang trống!');
+                }
+            } catch (err) {
+                showToast('Vui lòng cấp quyền truy cập Clipboard hoặc dùng phím tắt Ctrl+V / Cmd+V');
+            }
+        }
+
+        async function pasteToRowInput(btn, selector) {
+            const row = btn.closest('.phone-row, .bank-row, .link-row');
+            if (!row) return;
+            const input = row.querySelector(selector);
+            if (!input) return;
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text && text.trim().length > 0) {
+                    input.value = text.trim();
+                    showToast('Đã dán dữ liệu vào ô!');
+                }
+            } catch (err) {
+                showToast('Vui lòng dùng phím tắt Ctrl+V / Cmd+V để dán');
+            }
+        }
+
+        function onCategoryChanged(val) {
+            const otherInput = document.getElementById('form-category-other');
+            if (!otherInput) return;
+            if (val === 'Khác') {
+                otherInput.classList.remove('hidden');
+                otherInput.required = true;
+                otherInput.focus();
+            } else {
+                otherInput.classList.add('hidden');
+                otherInput.required = false;
+            }
+        }
+
+        function handleEvidenceFiles(e) {
+            const files = Array.from(e.target.files || []);
+            if (files.length === 0) return;
+
+            files.forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    tempEvidences.push(evt.target.result);
+                    renderEvidencePreviews();
+                };
+                reader.readAsDataURL(file);
+            });
+
+            e.target.value = ''; // reset input
+        }
+
+        function renderEvidencePreviews() {
+            const container = document.getElementById('evidence-preview-container');
+            if (!container) return;
+
+            if (tempEvidences.length === 0) {
+                container.innerHTML = '';
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            container.innerHTML = tempEvidences.map((src, index) => `
+                <div class="relative group aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-900">
+                    <img src="${src}" class="w-full h-full object-cover" alt="Bằng chứng ${index + 1}">
+                    <button type="button" onclick="removeTempEvidence(${index})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] transition-colors">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removeTempEvidence(index) {
+            tempEvidences.splice(index, 1);
+            renderEvidencePreviews();
+        }
+
+        function resetSingleForm() {
+            const form = document.getElementById('single-report-form');
+            if (form) form.reset();
+            tempEvidences = [];
+            renderEvidencePreviews();
+            document.getElementById('form-category-other')?.classList.add('hidden');
+            showToast('Đã xóa trắng toàn bộ dữ liệu biểu mẫu!');
+        }
+
+        function onSearchInputChanged(e) {
+            const val = e.target.value.trim();
+            const clearBtn = document.getElementById('clear-search-btn');
+            if (clearBtn) {
+                clearBtn.classList.toggle('hidden', val.length === 0);
+            }
+            // Không tự động lọc khi đang gõ, chỉ hiển thị nút xóa
+        }
+
+        function onSearchKeyDown(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                triggerSearch();
+            }
+        }
+
+        function clearSearch() {
+            const input = document.getElementById('search-input');
+            if (input) {
+                input.value = '';
+                document.getElementById('clear-search-btn').classList.add('hidden');
+                document.getElementById('quick-alert-banner').classList.add('hidden');
+                lastSearchedKeyword = '';
+                renderList();
+            }
+        }
+
+        function resetSearch() {
+            clearSearch();
+            setFilter('all');
+        }
+
+        function setFilter(type, btn) {
+            activeFilter = type;
+            document.querySelectorAll('.filter-chip').forEach(c => {
+                c.className = 'filter-chip px-3 py-1 rounded-lg font-medium bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200/80 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 transition-colors';
+            });
+            if (btn) {
+                btn.className = 'filter-chip px-3 py-1 rounded-lg font-semibold bg-rose-600 text-white transition-colors';
+            }
+            renderList();
+        }
+
+        function analyzeSuspicion(keyword) {
+            const normalized = keyword.toLowerCase().trim();
+            const hints = [];
+            let score = 0; // 0: Bình thường, 1: Nhẹ, >=2: Nguy cơ cao
+
+            // Phân tích nếu là Số điện thoại
+            const cleanDigits = keyword.replace(/\D/g, '');
+            if (cleanDigits.length >= 9 && cleanDigits.length <= 11) {
+                // Kiểm tra đầu số cố định gọi tự động/spam thường gặp
+                if (cleanDigits.startsWith('024') || cleanDigits.startsWith('028')) {
+                    hints.push('Đầu số điện thoại cố định (thường dùng trong tổng đài tự động spam/phạt nguội mạo danh)');
+                    score += 1;
+                }
+                if (cleanDigits.startsWith('088') || cleanDigits.startsWith('089') || cleanDigits.startsWith('070')) {
+                    hints.push('Đầu số sim rác/sim data thường được đối tượng xấu luân chuyển sử dụng');
+                }
+            }
+
+            // Phân tích nếu là Link / Domain
+            if (normalized.includes('.') || normalized.startsWith('http')) {
+                if (normalized.endsWith('.apk') || normalized.includes('.apk')) {
+                    hints.push('Tệp cài đặt .APK ngoài kho ứng dụng Google Play - nguy cơ chiếm đoạt quyền điều khiển thiết bị!');
+                    score += 3;
+                }
+                const suspiciousTlds = ['.xyz', '.top', '.site', '.app', '.vip', '.club', '.tk', '.ml'];
+                for (const tld of suspiciousTlds) {
+                    if (normalized.includes(tld)) {
+                        hints.push(`Tên miền đuôi giá rẻ "${tld}" thường được dùng trong các chiến dịch lừa đảo ngắn hạn`);
+                        score += 2;
+                        break;
+                    }
+                }
+                if (normalized.includes('bit.ly') || normalized.includes('tinyurl') || normalized.includes('t.me')) {
+                    hints.push('Sử dụng liên kết rút gọn để che giấu địa chỉ đích thực tế');
+                    score += 1;
+                }
+                if (normalized.includes('vneid') || normalized.includes('bocongan') || normalized.includes('shopee') || normalized.includes('telegram')) {
+                    hints.push('Tên miền chứa từ khóa thương hiệu/cơ quan nhà nước nhưng không phải tên miền chính thống (.gov.vn)');
+                    score += 2;
+                }
+            }
+
+            // Phân tích nếu là Số tài khoản
+            if (/^\d{8,16}$/.test(cleanDigits)) {
+                hints.push('Định dạng dãy số tài khoản ngân hàng');
+            }
+
+            return { score, hints };
+        }
+
+        function getFilteredData() {
+            const q = lastSearchedKeyword.toLowerCase().trim();
+
+            return scamList.filter(item => {
+                // Lọc theo chip
+                if (activeFilter === 'bank' && (!item.banks || item.banks.length === 0)) return false;
+                if (activeFilter === 'phone' && (!item.phones || item.phones.length === 0)) return false;
+                if (activeFilter === 'web' && (!item.links || item.links.length === 0)) return false;
+
+                if (!q) return true;
+
+                // Tìm kiếm theo nhiều SĐT, STK, Link, Vị trí, Tên, Mô tả
+                const matchPhone = item.phones && item.phones.some(p => p.toLowerCase().includes(q));
+                const matchBank = item.banks && item.banks.some(b => b.account.toLowerCase().includes(q) || b.bankName.toLowerCase().includes(q));
+                const matchLink = item.links && item.links.some(l => l.toLowerCase().includes(q));
+                const matchName = item.name && item.name.toLowerCase().includes(q);
+                const matchLocation = item.location && item.location.toLowerCase().includes(q);
+                const matchDesc = item.desc && item.desc.toLowerCase().includes(q);
+                const matchCategory = item.category && item.category.toLowerCase().includes(q);
+
+                return matchPhone || matchBank || matchLink || matchName || matchLocation || matchDesc || matchCategory;
+            });
+        }
+
+        function renderList() {
+            const container = document.getElementById('scam-cards-container');
+            const emptyState = document.getElementById('empty-state');
+            const countBadge = document.getElementById('list-count-badge');
+            const sortVal = document.getElementById('sort-select')?.value || 'newest';
+
+            let data = getFilteredData();
+
+            // Sắp xếp
+            if (sortVal === 'newest') {
+                data.sort((a, b) => new Date(b.date) - new Date(a.date));
+            } else if (sortVal === 'loss') {
+                data.sort((a, b) => b.loss - a.loss);
+            } else if (sortVal === 'confirms') {
+                data.sort((a, b) => b.confirms - a.confirms);
+            }
+
+            if (countBadge) countBadge.innerText = `${data.length} vụ`;
+
+            if (data.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                updateMetrics();
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+
+            container.innerHTML = data.map(item => {
+                // Nhãn: "Đối tượng lừa đảo" hoặc "Đang xác minh"
+                const statusBadge = item.isScammer
+                    ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-400 border border-rose-200 dark:border-rose-900/50">
+                        <i class="fa-solid fa-triangle-exclamation text-[9px]"></i> Đối tượng lừa đảo
+                       </span>`
+                    : `<span class="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50">
+                        <i class="fa-regular fa-clock text-[9px]"></i> Đang xác minh
+                       </span>`;
+
+                const phonePreview = item.phones && item.phones.length > 0 
+                    ? `<span><i class="fa-solid fa-phone text-[10px] mr-1 text-slate-400"></i>${item.phones[0]}${item.phones.length > 1 ? ` (+${item.phones.length - 1})` : ''}</span>`
+                    : '';
+
+                const bankPreview = item.banks && item.banks.length > 0
+                    ? `<span><i class="fa-regular fa-credit-card text-[10px] mr-1 text-slate-400"></i>${item.banks[0].account} (${item.banks[0].bankName})${item.banks.length > 1 ? ` (+${item.banks.length - 1})` : ''}</span>`
+                    : '';
+
+                const namePreview = item.name && item.name !== 'N/A'
+                    ? `<span><i class="fa-regular fa-user text-[10px] mr-1 text-slate-400"></i>${item.name}</span>`
+                    : '';
+
+                const locationPreview = item.location && item.location !== 'N/A'
+                    ? `<span class="text-rose-600 dark:text-rose-400 font-medium"><i class="fa-solid fa-location-dot text-[10px] mr-1"></i>${item.location}</span>`
+                    : '';
+
+                const evidenceBadge = item.evidences && item.evidences.length > 0
+                    ? `<span class="text-emerald-600 dark:text-emerald-400 font-medium"><i class="fa-solid fa-paperclip text-[10px] mr-0.5"></i>${item.evidences.length} ảnh</span>`
+                    : '';
+
+                return `
+                <div onclick="openDetailModal('${item.id}')" class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-rose-500/50 dark:hover:border-rose-500/40 shadow-sm cursor-pointer transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group">
+                    <div class="space-y-1.5 flex-grow">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            ${statusBadge}
+                            <span class="text-slate-400 text-xs">•</span>
+                            <span class="text-xs text-slate-500 font-medium">${item.category}</span>
+                            ${evidenceBadge}
+                        </div>
+
+                        <h4 class="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">
+                            ${item.desc.length > 80 ? item.desc.substring(0, 80) + '...' : item.desc}
+                        </h4>
+
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                            ${phonePreview}
+                            ${bankPreview}
+                            ${namePreview}
+                            ${locationPreview}
+                        </div>
+                    </div>
+
+                    <div class="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-slate-800 shrink-0">
+                        <span class="text-xs font-extrabold text-rose-600 dark:text-rose-400">${formatVND(item.loss)}</span>
+                        <span class="text-[11px] text-slate-400">${item.confirms} nạn nhân xác nhận</span>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            updateMetrics();
+        }
+
+        function triggerSearch() {
+            const rawKeyword = (document.getElementById('search-input')?.value || '').trim();
+            lastSearchedKeyword = rawKeyword;
+            const alertBox = document.getElementById('quick-alert-banner');
+
+            if (!rawKeyword) {
+                alertBox.classList.add('hidden');
+                renderList();
+                return;
+            }
+
+            const q = rawKeyword.toLowerCase();
+
+            // Cập nhật số lượt người đã tra cứu thông tin này
+            const cleanKey = rawKeyword.replace(/\s+/g, '');
+            lookupHistory[cleanKey] = (lookupHistory[cleanKey] || 0) + 1;
+            const checkCount = lookupHistory[cleanKey];
+
+            const match = scamList.find(i => {
+                const hasPhone = i.phones && i.phones.some(p => p.toLowerCase().includes(q));
+                const hasBank = i.banks && i.banks.some(b => b.account.toLowerCase().includes(q) || b.bankName.toLowerCase().includes(q));
+                const hasLink = i.links && i.links.some(l => l.toLowerCase().includes(q));
+                const hasName = i.name && i.name.toLowerCase().includes(q);
+                const hasLocation = i.location && i.location.toLowerCase().includes(q);
+                return hasPhone || hasBank || hasLink || hasName || hasLocation;
+            });
+
+            if (match) {
+                // Phát hiện đối tượng lừa đảo trong hệ thống
+                alertBox.className = 'p-4 rounded-2xl bg-rose-600 text-white shadow-md animate-fade-in space-y-2';
+                alertBox.innerHTML = `
+                    <div class="flex items-start sm:items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-triangle-exclamation text-base"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-extrabold text-xs sm:text-sm uppercase tracking-wide">CẢNH BÁO NGUY HIỂM: ĐỐI TƯỢNG CÓ TRONG HỒ SƠ LỪA ĐẢO!</h4>
+                                <p class="text-[11px] text-rose-100">Từ khóa "<strong>${rawKeyword}</strong>" trùng khớp với hồ sơ cảnh báo đã ghi nhận. Tuyệt đối không chuyển tiền!</p>
+                            </div>
+                        </div>
+                        <button onclick="openDetailModal('${match.id}')" class="px-3 py-1.5 bg-white text-rose-700 rounded-xl font-bold hover:bg-slate-100 text-xs shrink-0 shadow">
+                            Xem chi tiết vụ việc
+                        </button>
+                    </div>
+                    <div class="pt-1 text-[10px] text-rose-100 flex items-center gap-2">
+                        <span><i class="fa-solid fa-users-viewfinder mr-1"></i>Đã có <strong>${checkCount}</strong> lượt người tra cứu thông tin này trên hệ thống.</span>
+                    </div>
+                `;
+                alertBox.classList.remove('hidden');
+            } else {
+                // Chưa có trong danh sách đen -> Thực hiện phân tích nghi ngờ & hiển thị số lượt tra cứu
+                const analysis = analyzeSuspicion(rawKeyword);
+                const suspectCount = communitySuspects[cleanKey] || 0;
+
+                let suspicionHtml = '';
+                if (analysis.hints.length > 0) {
+                    suspicionHtml = `
+                        <div class="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1">
+                            <div class="font-bold text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                <i class="fa-solid fa-shield-virus"></i> Phân tích dấu hiệu nhận biết sơ bộ:
+                            </div>
+                            <ul class="list-disc list-inside text-[11px] text-slate-600 dark:text-slate-300 space-y-0.5">
+                                ${analysis.hints.map(h => `<li>${h}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                alertBox.className = 'p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm animate-fade-in space-y-2';
+                alertBox.innerHTML = `
+                    <div class="flex items-start sm:items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center shrink-0">
+                                <i class="fa-solid fa-circle-check text-base"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">Chưa có dữ liệu tố giác đối với "${rawKeyword}"</h4>
+                                <p class="text-[11px] text-slate-500">Thông tin này hiện chưa nằm trong danh sách đen. Luôn cẩn trọng kiểm tra hợp đồng, cuộc gọi video trước khi giao dịch.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button onclick="flagSuspect('${cleanKey}')" class="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-[11px] flex items-center gap-1">
+                                <i class="fa-regular fa-flag text-amber-500"></i> Báo nghi ngờ (${suspectCount})
+                            </button>
+                            <button onclick="openReportModalWithKeyword('${rawKeyword}')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-semibold text-[11px]">
+                                Tố giác ngay
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4 text-[11px] text-slate-500 pt-1">
+                        <span><i class="fa-solid fa-eye mr-1 text-slate-400"></i>Số lượt đã tra cứu: <strong class="text-slate-800 dark:text-slate-200">${checkCount} lượt</strong></span>
+                        <span>•</span>
+                        <span><i class="fa-solid fa-triangle-exclamation mr-1 text-amber-500"></i>Số người gắn cờ nghi ngờ: <strong class="text-slate-800 dark:text-slate-200" id="suspect-count-text">${suspectCount} người</strong></span>
+                    </div>
+
+                    ${suspicionHtml}
+                `;
+                alertBox.classList.remove('hidden');
+            }
+
+            renderList();
+        }
+
+        function flagSuspect(key) {
+            communitySuspects[key] = (communitySuspects[key] || 0) + 1;
+            const el = document.getElementById('suspect-count-text');
+            if (el) el.innerText = `${communitySuspects[key]} người`;
+            showToast('Đã ghi nhận phản hồi nghi ngờ của bạn về thông tin này!');
+        }
+
+        function openDetailModal(id) {
+            const item = scamList.find(x => x.id === id);
+            if (!item) return;
+
+            currentDetailId = id;
+            document.getElementById('detail-category').innerText = item.category;
+            document.getElementById('detail-title').innerText = item.desc;
+            document.getElementById('detail-loss').innerText = formatVND(item.loss);
+            document.getElementById('detail-date').innerText = item.date;
+            document.getElementById('detail-name').innerText = item.name || 'Không có';
+            document.getElementById('detail-location').innerHTML = item.location ? `<i class="fa-solid fa-location-dot mr-1"></i>${item.location}` : 'Chưa rõ';
+            document.getElementById('detail-desc').innerText = item.desc;
+            document.getElementById('detail-confirm-count').innerText = item.confirms;
+
+            // Nhãn "Đối tượng lừa đảo" hoặc "Đang xác minh"
+            const badgeEl = document.getElementById('detail-verified-badge');
+            if (item.isScammer) {
+                badgeEl.className = 'px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-400 border border-rose-200 dark:border-rose-900/40';
+                badgeEl.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Đối tượng lừa đảo';
+            } else {
+                badgeEl.className = 'px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-950/80 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40';
+                badgeEl.innerHTML = '<i class="fa-regular fa-clock mr-1"></i> Đang xác minh';
+            }
+
+            // Hiển thị danh sách điện thoại
+            const phonesContainer = document.getElementById('detail-phones-list');
+            if (item.phones && item.phones.length > 0) {
+                phonesContainer.innerHTML = item.phones.map(p => `
+                    <span class="px-2 py-0.5 rounded-md font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 select-all">
+                        <i class="fa-solid fa-phone text-[9px] text-slate-400 mr-1"></i>${p}
+                    </span>
+                `).join('');
+            } else {
+                phonesContainer.innerHTML = '<span class="text-slate-400">Không có</span>';
+            }
+
+            // Hiển thị danh sách STK
+            const banksContainer = document.getElementById('detail-banks-list');
+            if (item.banks && item.banks.length > 0) {
+                banksContainer.innerHTML = item.banks.map(b => `
+                    <span class="px-2 py-0.5 rounded-md font-mono bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 select-all">
+                        <i class="fa-regular fa-credit-card text-[9px] text-slate-400 mr-1"></i>${b.account} (${b.bankName})
+                    </span>
+                `).join('');
+            } else {
+                banksContainer.innerHTML = '<span class="text-slate-400">Không có</span>';
+            }
+
+            // Hiển thị danh sách Links
+            const linksContainer = document.getElementById('detail-links-list');
+            if (item.links && item.links.length > 0) {
+                linksContainer.innerHTML = item.links.map(l => {
+                    const href = l.startsWith('http') ? l : `https://${l}`;
+                    return `
+                        <a href="${href}" target="_blank" class="text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 font-mono text-[11px] truncate">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> ${l}
+                        </a>
+                    `;
+                }).join('');
+            } else {
+                linksContainer.innerHTML = '<span class="text-slate-400">Không có</span>';
+            }
+
+            const evidenceBox = document.getElementById('detail-evidence-box');
+            const galleryContainer = document.getElementById('detail-evidence-gallery');
+            if (item.evidences && item.evidences.length > 0) {
+                evidenceBox.classList.remove('hidden');
+                galleryContainer.innerHTML = item.evidences.map((src, idx) => `
+                    <a href="${src}" target="_blank" title="Bấm để xem ảnh gốc" class="block aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-900 group">
+                        <img src="${src}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" alt="Bằng chứng ${idx + 1}">
+                    </a>
+                `).join('');
+            } else {
+                evidenceBox.classList.add('hidden');
+                galleryContainer.innerHTML = '';
+            }
+
+            document.getElementById('detail-modal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detail-modal').classList.add('hidden');
+            currentDetailId = null;
+        }
+
+        function confirmCurrentScam() {
+            if (!currentDetailId) return;
+            const item = scamList.find(x => x.id === currentDetailId);
+            if (item) {
+                item.confirms += 1;
+                document.getElementById('detail-confirm-count').innerText = item.confirms;
+                renderList();
+                showToast('Đã ghi nhận bạn là nạn nhân của đối tượng này!');
+            }
+        }
+
+        function addPhoneField() {
+            const container = document.getElementById('phones-container');
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-1.5 phone-row';
+            div.innerHTML = `
+                <input type="text" placeholder="Thêm SĐT khác..." class="phone-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:border-rose-500">
+                <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-500 p-1.5"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        function addBankField() {
+            const container = document.getElementById('banks-container');
+            const div = document.createElement('div');
+            div.className = 'grid grid-cols-2 gap-1.5 bank-row relative group';
+            div.innerHTML = `
+                <input type="text" placeholder="Số TK bổ sung..." class="bank-acc-input bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 font-mono focus:outline-none focus:border-rose-500">
+                <div class="flex items-center gap-1">
+                    <input type="text" placeholder="Tên Ngân hàng..." class="bank-name-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 focus:outline-none focus:border-rose-500">
+                    <button type="button" onclick="this.parentElement.parentElement.remove()" class="text-slate-400 hover:text-rose-500 p-1"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function addLinkField() {
+            const container = document.getElementById('links-container');
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-1.5 link-row';
+            div.innerHTML = `
+                <input type="text" placeholder="Thêm link web/mạng xã hội..." class="link-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 focus:outline-none focus:border-rose-500">
+                <button type="button" onclick="this.parentElement.remove()" class="text-slate-400 hover:text-rose-500 p-1.5"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        function openReportModal() {
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function openReportModalWithKeyword(keyword) {
+            openReportModal();
+            // Tự động điền từ khóa vào trường thích hợp
+            if (/^\d{8,11}$/.test(keyword.replace(/\D/g, ''))) {
+                const firstPhone = document.querySelector('.phone-input');
+                if (firstPhone) firstPhone.value = keyword;
+            } else if (keyword.includes('.') || keyword.startsWith('http')) {
+                const firstLink = document.querySelector('.link-input');
+                if (firstLink) firstLink.value = keyword;
+            } else {
+                const nameInput = document.getElementById('form-name');
+                if (nameInput) nameInput.value = keyword;
+            }
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+
+        function switchReportTab(tab) {
+            const singleForm = document.getElementById('single-report-form');
+            const batchContainer = document.getElementById('batch-report-container');
+            const tabBtnSingle = document.getElementById('tab-btn-single');
+            const tabBtnBatch = document.getElementById('tab-btn-batch');
+
+            if (tab === 'single') {
+                singleForm.classList.remove('hidden');
+                batchContainer.classList.add('hidden');
+                tabBtnSingle.className = 'pb-2 border-b-2 border-rose-600 text-rose-600 transition-colors flex items-center gap-1.5';
+                tabBtnBatch.className = 'pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5';
+            } else {
+                singleForm.classList.add('hidden');
+                batchContainer.classList.remove('hidden');
+                tabBtnBatch.className = 'pb-2 border-b-2 border-rose-600 text-rose-600 transition-colors flex items-center gap-1.5';
+                tabBtnSingle.className = 'pb-2 border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors flex items-center gap-1.5';
+            }
+        }
+
+        function submitSingleReport(e) {
+            e.preventDefault();
+            let category = document.getElementById('form-category').value;
+            if (category === 'Khác') {
+                const customCat = document.getElementById('form-category-other')?.value.trim();
+                category = customCat ? `Khác (${customCat})` : 'Khác';
+            }
+
+            const name = document.getElementById('form-name').value.trim() || 'N/A';
+            const location = document.getElementById('form-location').value.trim() || 'Chưa rõ';
+            const lossRaw = document.getElementById('form-loss').value.replace(/\D/g, '');
+            const loss = parseInt(lossRaw, 10) || 0;
+            const desc = document.getElementById('form-desc').value.trim();
+
+            // Thu thập danh sách điện thoại
+            const phoneInputs = document.querySelectorAll('.phone-input');
+            const phones = Array.from(phoneInputs)
+                .map(input => input.value.trim().replace(/\s+/g, ''))
+                .filter(val => val.length > 0);
+
+            // Thu thập danh sách ngân hàng
+            const bankRows = document.querySelectorAll('.bank-row');
+            const banks = [];
+            bankRows.forEach(row => {
+                const acc = row.querySelector('.bank-acc-input')?.value.trim() || '';
+                const bankName = row.querySelector('.bank-name-input')?.value.trim() || 'Ngân hàng';
+                if (acc) {
+                    banks.push({ account: acc, bankName });
+                }
+            });
+
+            // Thu thập danh sách Links
+            const linkInputs = document.querySelectorAll('.link-input');
+            const links = Array.from(linkInputs)
+                .map(input => input.value.trim())
+                .filter(val => val.length > 0);
+
+            if (phones.length === 0 && banks.length === 0 && links.length === 0 && name === 'N/A') {
+                showToast('Vui lòng cung cấp ít nhất 1 SĐT, STK, Link hoặc Tên đối tượng!');
+                return;
+            }
+
+            const newCase = {
+                id: 'SC-' + Math.floor(100 + Math.random() * 900),
+                category,
+                name,
+                location,
+                phones,
+                banks,
+                links,
+                loss,
+                date: new Date().toISOString().split('T')[0],
+                isScammer: true, // Mặc định chuyển sang danh sách đối tượng lừa đảo để cảnh báo ngay
+                confirms: 1,
+                desc,
+                evidences: [...tempEvidences]
+            };
+
+            scamList.unshift(newCase);
+            closeReportModal();
+            resetSingleForm();
+
+            // Đặt lại các container trường động về 1 trường ban đầu
+            document.getElementById('phones-container').innerHTML = `
+                <div class="flex items-center gap-1.5 phone-row">
+                    <input type="text" placeholder="09xxxxxxx hoặc +84..." class="phone-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 text-slate-800 dark:text-slate-100 font-mono focus:outline-none focus:border-rose-500">
+                    <button type="button" onclick="pasteToRowInput(this, '.phone-input')" title="Dán SĐT" class="text-slate-400 hover:text-rose-600 p-1.5"><i class="fa-regular fa-clipboard"></i></button>
+                </div>
+            `;
+            document.getElementById('banks-container').innerHTML = `
+                <div class="grid grid-cols-2 gap-1.5 bank-row">
+                    <input type="text" placeholder="Số TK (VD: 19038291...)" class="bank-acc-input bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 font-mono focus:outline-none focus:border-rose-500">
+                    <div class="flex items-center gap-1">
+                        <input type="text" placeholder="Ngân hàng (MB, TCB...)" class="bank-name-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 focus:outline-none focus:border-rose-500">
+                        <button type="button" onclick="pasteToRowInput(this, '.bank-acc-input')" title="Dán STK" class="text-slate-400 hover:text-rose-600 p-1"><i class="fa-regular fa-clipboard"></i></button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('links-container').innerHTML = `
+                <div class="flex items-center gap-1.5 link-row">
+                    <input type="text" placeholder="https://... hoặc facebook.com/..." class="link-input w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 focus:outline-none focus:border-rose-500">
+                    <button type="button" onclick="pasteToRowInput(this, '.link-input')" title="Dán liên kết" class="text-slate-400 hover:text-rose-600 p-1.5"><i class="fa-regular fa-clipboard"></i></button>
+                </div>
+            `;
+
+            renderList();
+            showToast('Đã thêm đối tượng và bằng chứng vào danh sách cảnh báo!');
+        }
+
+        const SAMPLE_CSV = `category,name,location,phones,banks,links,loss,desc
+Lừa tình cảm / Thao túng tâm lý (Romance Scam),David King,Hồ Chí Minh,0912345678,9901827361:Techcombank,facebook.com/david.king.officer,45000000,Làm quen qua Tinder giả chuyên gia dầu khí tặng quà rồi đòi đóng thuế thông quan
+Tuyển dụng online / Làm CTV,Lê Trọng Nghĩa,Cầu Giấy - Hà Nội,0987654321,1029384756:MB Bank,t.me/ctv_chotdon,18000000,Dụ nạp tiền làm nhiệm vụ giật đơn hưởng 20% hoa hồng`;
+
+        const SAMPLE_JSON = `[
+  {
+    "category": "Cọc phòng trọ / Bất động sản ảo",
+    "name": "Trần Thị Mai",
+    "location": "Bình Thạnh, TP. Hồ Chí Minh",
+    "phones": ["0934112233"],
+    "banks": [
+      { "account": "190300998877", "bankName": "Techcombank" }
+    ],
+    "links": ["facebook.com/mai.phongtro.binhthanh"],
+    "loss": 3000000,
+    "desc": "Đăng phòng trọ hình ảnh sang trọng giá rẻ, bắt chuyển cọc giữ phòng rồi cắt đứt liên lạc."
+  }
+]`;
+
+        function fillSampleCSV() {
+            document.getElementById('batch-input-text').value = SAMPLE_CSV;
+            document.getElementById('batch-parse-status').innerText = 'Đã nạp mẫu CSV (2 đối tượng)';
+        }
+
+        function fillSampleJSON() {
+            document.getElementById('batch-input-text').value = SAMPLE_JSON;
+            document.getElementById('batch-parse-status').innerText = 'Đã nạp mẫu JSON (1 đối tượng)';
+        }
+
+        function handleBatchFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                document.getElementById('batch-input-text').value = evt.target.result;
+                document.getElementById('batch-parse-status').innerText = `Đã đọc tệp: ${file.name}`;
+            };
+            reader.readAsText(file);
+        }
+
+        function processBatchImport() {
+            const text = document.getElementById('batch-input-text').value.trim();
+            if (!text) {
+                showToast('Vui lòng dán dữ liệu CSV hoặc JSON vào ô nội dung!');
+                return;
+            }
+
+            let importedItems = [];
+
+            if (text.startsWith('[') || text.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(text);
+                    const list = Array.isArray(parsed) ? parsed : [parsed];
+                    
+                    importedItems = list.map(item => ({
+                        id: 'SC-' + Math.floor(100 + Math.random() * 900),
+                        category: item.category || 'Khác',
+                        name: item.name || 'N/A',
+                        location: item.location || 'Chưa rõ',
+                        phones: Array.isArray(item.phones) ? item.phones : (item.phone ? [item.phone] : []),
+                        banks: Array.isArray(item.banks) ? item.banks : (item.bank ? [{ account: item.bank, bankName: 'Ngân hàng' }] : []),
+                        links: Array.isArray(item.links) ? item.links : (item.link ? [item.link] : []),
+                        loss: parseInt(item.loss, 10) || 0,
+                        date: item.date || new Date().toISOString().split('T')[0],
+                        isScammer: true,
+                        confirms: item.confirms || 1,
+                        desc: item.desc || 'Tố giác hàng loạt qua JSON',
+                        evidences: []
+                    }));
+                } catch (err) {
+                    showToast('Định dạng JSON không hợp lệ! Vui lòng kiểm tra lại.');
+                    return;
+                }
+            } else {
+                try {
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    if (lines.length < 2) {
+                        showToast('Dữ liệu CSV cần có dòng tiêu đề và ít nhất 1 dòng nội dung!');
+                        return;
+                    }
+
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',').map(c => c.trim());
+                        if (cols.length >= 7) {
+                            const category = cols[0] || 'Khác';
+                            const name = cols[1] || 'N/A';
+                            const location = cols[2] || 'Chưa rõ';
+                            const phones = cols[3] ? cols[3].split(';').map(p => p.trim()).filter(p => p) : [];
+                            
+                            const banks = cols[4] ? cols[4].split(';').map(b => {
+                                const parts = b.split(':');
+                                return {
+                                    account: parts[0] ? parts[0].trim() : '',
+                                    bankName: parts[1] ? parts[1].trim() : 'Ngân hàng'
+                                };
+                            }).filter(b => b.account) : [];
+
+                            const links = cols[5] ? cols[5].split(';').map(l => l.trim()).filter(l => l) : [];
+                            const loss = parseInt(cols[6].replace(/\D/g, ''), 10) || 0;
+                            const desc = cols[7] || 'Tố giác hàng loạt qua CSV';
+
+                            importedItems.push({
+                                id: 'SC-' + Math.floor(100 + Math.random() * 900),
+                                category,
+                                name,
+                                location,
+                                phones,
+                                banks,
+                                links,
+                                loss,
+                                date: new Date().toISOString().split('T')[0],
+                                isScammer: true,
+                                confirms: 1,
+                                desc,
+                                evidences: []
+                            });
+                        }
+                    }
+                } catch (err) {
+                    showToast('Lỗi xử lý file CSV! Vui lòng kiểm tra các cột.');
+                    return;
+                }
+            }
+
+            if (importedItems.length === 0) {
+                showToast('Không tìm thấy dòng dữ liệu đối tượng hợp lệ nào.');
+                return;
+            }
+
+            scamList = [...importedItems, ...scamList];
+            closeReportModal();
+            document.getElementById('batch-input-text').value = '';
+            renderList();
+            showToast(`Đã nạp thành công ${importedItems.length} đối tượng vào danh sách cảnh báo!`);
+        }
+
+        function formatCurrency(input) {
+            let val = input.value.replace(/\D/g, '');
+            if (!val) {
+                input.value = '';
+                return;
+            }
+            input.value = new Intl.NumberFormat('vi-VN').format(parseInt(val, 10));
+        }
+
+        function formatVND(n) {
+            return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
+        }
+
+        function updateMetrics() {
+            const total = scamList.length;
+            // Số lượng "Đối tượng lừa đảo"
+            const scammers = scamList.filter(x => x.isScammer).length;
+            const totalLoss = scamList.reduce((sum, item) => sum + item.loss, 0);
+
+            document.getElementById('metric-total').innerText = total;
+            document.getElementById('metric-scammer').innerText = scammers;
+            document.getElementById('metric-loss').innerText = formatVND(totalLoss);
+        }
+
+        function copyDetailText() {
+            const dummy = document.createElement('textarea');
+            dummy.value = window.location.href;
+            document.body.appendChild(dummy);
+            dummy.select();
+            document.execCommand('copy');
+            document.body.removeChild(dummy);
+            showToast('Đã sao chép liên kết vào bộ nhớ tạm!');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('hidden');
+            toast.classList.add('flex');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('flex');
+            }, 3000);
+        }
+
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            const icon = document.getElementById('theme-icon');
+            if (isDark) {
+                icon.className = 'fa-regular fa-sun text-sm text-amber-400';
+                localStorage.setItem('theme', 'dark');
+            } else {
+                icon.className = 'fa-regular fa-moon text-sm';
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // Phím tắt ESC đóng modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeReportModal();
+                closeDetailModal();
+            }
+        });
+
+        window.onload = () => {
+            if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                const icon = document.getElementById('theme-icon');
+                if (icon) icon.className = 'fa-regular fa-sun text-sm text-amber-400';
+            }
+            renderList();
+        };
+    </script>
+</body>
+</html>

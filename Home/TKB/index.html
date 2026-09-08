@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ Thống Tra Cứu Thời Khóa Biểu</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome 6 CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    @media print {
+      .print-hidden {
+        display: none !important;
+      }
+      body {
+        background-color: white !important;
+        color: black !important;
+      }
+      .print-card {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm print-hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+          <i class="fa-solid fa-graduation-cap text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            Tra Cứu Thời Khóa Biểu
+            <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+              Năm học 2025 - 2026
+            </span>
+          </h1>
+          <p class="text-xs text-slate-500">Tra cứu lịch học, phòng học và giáo viên phụ trách các lớp</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="flex items-center gap-3">
+        <button
+          onclick="window.print()"
+          class="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 active:bg-slate-100 transition shadow-sm"
+          title="In hoặc lưu PDF"
+        >
+          <i class="fa-solid fa-print text-slate-600"></i>
+          <span class="hidden sm:inline">In Thời Khóa Biểu</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+    
+    <!-- Bộ điều khiển và Lọc dữ liệu -->
+    <section class="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm mb-6 print-hidden">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-center">
+        
+        <!-- Chọn Khối -->
+        <div class="lg:col-span-3">
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-filter text-indigo-500"></i> Khối học
+          </label>
+          <div class="flex rounded-lg bg-slate-100 p-1" id="grade-buttons-container">
+            <button onclick="changeGrade('all')" data-grade="all" class="grade-btn flex-1 text-xs font-semibold py-1.5 rounded-md transition-all bg-white text-indigo-700 shadow-sm">
+              Tất cả
+            </button>
+            <button onclick="changeGrade('10')" data-grade="10" class="grade-btn flex-1 text-xs font-semibold py-1.5 rounded-md transition-all text-slate-600 hover:text-slate-900">
+              Khối 10
+            </button>
+            <button onclick="changeGrade('11')" data-grade="11" class="grade-btn flex-1 text-xs font-semibold py-1.5 rounded-md transition-all text-slate-600 hover:text-slate-900">
+              Khối 11
+            </button>
+            <button onclick="changeGrade('12')" data-grade="12" class="grade-btn flex-1 text-xs font-semibold py-1.5 rounded-md transition-all text-slate-600 hover:text-slate-900">
+              Khối 12
+            </button>
+          </div>
+        </div>
+
+        <!-- Chọn Lớp Học -->
+        <div class="lg:col-span-3">
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+            Chọn Lớp Học
+          </label>
+          <div class="relative">
+            <select
+              id="class-select"
+              onchange="changeClass(this.value)"
+              class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 font-medium transition cursor-pointer"
+            >
+              <!-- Danh sách lớp render qua JavaScript -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Tìm kiếm -->
+        <div class="lg:col-span-3">
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+            Tìm kiếm môn / giáo viên
+          </label>
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+            </div>
+            <input
+              type="text"
+              id="search-input"
+              placeholder="VD: Toán, Thầy An, Lab..."
+              oninput="handleSearch(this.value)"
+              class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block pl-8 pr-8 p-2.5 transition"
+            />
+            <button
+              id="clear-search-btn"
+              onclick="clearSearch()"
+              class="hidden absolute inset-y-0 right-0 pr-3 flex items-center text-xs text-slate-400 hover:text-slate-600"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chế độ hiển thị (Tuần / Ngày) -->
+        <div class="lg:col-span-3 flex flex-col justify-end">
+          <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+            Chế độ hiển thị
+          </label>
+          <div class="flex bg-slate-100 p-1 rounded-lg">
+            <button
+              id="btn-view-week"
+              onclick="setViewMode('week')"
+              class="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition-all bg-white text-indigo-700 shadow-sm"
+            >
+              <i class="fa-regular fa-calendar-days"></i> Lịch tuần
+            </button>
+            <button
+              id="btn-view-day"
+              onclick="setViewMode('day')"
+              class="flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition-all text-slate-600 hover:text-slate-900"
+            >
+              <i class="fa-solid fa-list-check"></i> Theo ngày
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Thẻ thông tin lớp học -->
+    <div class="bg-gradient-to-r from-indigo-700 via-indigo-800 to-blue-900 text-white rounded-2xl p-5 mb-6 shadow-md print-card">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/15 text-white/95 text-xs font-medium backdrop-blur-sm mb-2">
+            <i class="fa-solid fa-sparkles text-amber-300"></i> Thời khóa biểu chính thức
+          </div>
+          <h2 id="class-title" class="text-2xl font-bold tracking-tight">---</h2>
+          <div class="flex flex-wrap items-center gap-y-2 gap-x-6 mt-3 text-indigo-100 text-sm">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-user-tie text-indigo-300"></i>
+              GVCN: <strong id="class-teacher" class="text-white font-medium">---</strong>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-location-dot text-indigo-300"></i>
+              Phòng sinh hoạt: <strong id="class-room" class="text-white font-medium">---</strong>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-users text-indigo-300"></i>
+              Sĩ số: <strong id="class-students" class="text-white font-medium">--- học sinh</strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- Thông tin Ngày Hôm Nay -->
+        <div class="bg-white/10 backdrop-blur-md rounded-xl p-3 border border-white/20 text-center self-start md:self-auto min-w-[140px]">
+          <div class="text-xs text-indigo-200">Hôm nay</div>
+          <div id="today-day-label" class="text-lg font-bold text-amber-300">---</div>
+          <div id="today-date-string" class="text-xs text-indigo-100">--/--/----</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chế độ xem THEO NGÀY -->
+    <div id="view-day-container" class="hidden space-y-4">
+      <!-- Tabs chọn thứ -->
+      <div class="flex gap-2 overflow-x-auto pb-2 print-hidden" id="day-tabs-container">
+        <!-- Render bằng Javascript -->
+      </div>
+
+      <!-- Danh sách chi tiết các tiết trong ngày -->
+      <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+        <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <h3 class="font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-regular fa-calendar text-indigo-600"></i>
+            Chi tiết lịch học: <span id="current-day-label" class="text-indigo-600">Thứ Hai</span>
+          </h3>
+          <span id="daily-period-count" class="text-xs text-slate-500">0 tiết</span>
+        </div>
+        <div id="daily-periods-list" class="divide-y divide-slate-100">
+          <!-- Render danh sách tiết qua JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Chế độ xem LỊCH CẢ TUẦN -->
+    <div id="view-week-container" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full border-collapse text-left min-w-[850px]">
+          <thead>
+            <tr class="bg-slate-100/80 border-b border-slate-200 text-slate-700 text-sm" id="table-headers">
+              <th class="p-3.5 text-center font-bold text-slate-600 w-28 border-r border-slate-200">
+                Tiết / Giờ
+              </th>
+              <!-- Render các thứ trong tuần qua JS -->
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-200 text-xs" id="table-body">
+            <!-- Render các tiết qua JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Chú thích môn học -->
+    <div class="mt-6 bg-white border border-slate-200 rounded-xl p-4 shadow-sm print-hidden">
+      <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+        <i class="fa-solid fa-circle-info text-slate-400"></i> Bảng màu phân loại môn học
+      </div>
+      <div class="flex flex-wrap gap-2 text-xs" id="subject-legend-container">
+        <!-- Render chú thích qua JS -->
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Thông Tin Tiết Học -->
+  <div id="slot-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex justify-between items-start mb-4">
+        <span id="modal-subject-tag" class="px-3 py-1 rounded-lg text-sm font-semibold border">
+          Môn học
+        </span>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 rounded-lg p-1.5 transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <h3 class="text-xl font-bold text-slate-900 mb-4">Thông tin chi tiết tiết học</h3>
+
+      <div class="space-y-3 text-sm">
+        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+          <span class="text-slate-500 flex items-center gap-2">
+            <i class="fa-regular fa-calendar text-slate-400 w-4 text-center"></i> Thời gian
+          </span>
+          <span id="modal-time-detail" class="font-semibold text-slate-800">---</span>
+        </div>
+
+        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+          <span class="text-slate-500 flex items-center gap-2">
+            <i class="fa-regular fa-clock text-slate-400 w-4 text-center"></i> Khung giờ
+          </span>
+          <span id="modal-period-time" class="font-semibold text-slate-800">---</span>
+        </div>
+
+        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+          <span class="text-slate-500 flex items-center gap-2">
+            <i class="fa-solid fa-chalkboard-user text-slate-400 w-4 text-center"></i> Giáo viên phụ trách
+          </span>
+          <span id="modal-teacher" class="font-semibold text-slate-800">---</span>
+        </div>
+
+        <div class="flex items-center justify-between py-2 border-b border-slate-100">
+          <span class="text-slate-500 flex items-center gap-2">
+            <i class="fa-solid fa-map-location-dot text-slate-400 w-4 text-center"></i> Phòng học
+          </span>
+          <span id="modal-room" class="font-semibold text-indigo-600">---</span>
+        </div>
+
+        <div class="flex items-center justify-between py-2">
+          <span class="text-slate-500 flex items-center gap-2">
+            <i class="fa-solid fa-graduation-cap text-slate-400 w-4 text-center"></i> Lớp học
+          </span>
+          <span id="modal-class" class="font-semibold text-slate-800">---</span>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <button
+          onclick="closeModal()"
+          class="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold transition shadow-sm"
+        >
+          Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Logic -->
+  <script>
+    // Dữ liệu các lớp học
+    const CLASSES_DATA = [
+      {
+        id: "10A1",
+        name: "Lớp 10A1 - Chuyên Toán",
+        grade: "10",
+        homeroomTeacher: "Thầy Nguyễn Văn An",
+        room: "P.201 - Tòa A",
+        studentCount: 42
+      },
+      {
+        id: "10A2",
+        name: "Lớp 10A2 - Tự Nhiên",
+        grade: "10",
+        homeroomTeacher: "Cô Trần Thị Mai",
+        room: "P.202 - Tòa A",
+        studentCount: 40
+      },
+      {
+        id: "11B1",
+        name: "Lớp 11B1 - Chuyên Anh",
+        grade: "11",
+        homeroomTeacher: "Cô Lê Thu Hà",
+        room: "P.301 - Tòa B",
+        studentCount: 38
+      },
+      {
+        id: "12A1",
+        name: "Lớp 12A1 - Luyện Thi Đại Học",
+        grade: "12",
+        homeroomTeacher: "Thầy Phạm Đức Minh",
+        room: "P.401 - Tòa C",
+        studentCount: 45
+      }
+    ];
+
+    // Khung giờ tiết học
+    const PERIODS = [
+      // Sáng
+      { period: 1, session: "morning", time: "07:15 - 08:00", label: "Tiết 1" },
+      { period: 2, session: "morning", time: "08:05 - 08:50", label: "Tiết 2" },
+      { period: 3, session: "morning", time: "09:05 - 09:50", label: "Tiết 3" },
+      { period: 4, session: "morning", time: "09:55 - 10:40", label: "Tiết 4" },
+      { period: 5, session: "morning", time: "10:45 - 11:30", label: "Tiết 5" },
+      // Chiều
+      { period: 6, session: "afternoon", time: "13:15 - 14:00", label: "Tiết 6" },
+      { period: 7, session: "afternoon", time: "14:05 - 14:50", label: "Tiết 7" },
+      { period: 8, session: "afternoon", time: "15:05 - 15:50", label: "Tiết 8" },
+      { period: 9, session: "afternoon", time: "15:55 - 16:40", label: "Tiết 9" }
+    ];
+
+    const DAYS_OF_WEEK = [
+      { key: 2, label: "Thứ Hai", short: "T2" },
+      { key: 3, label: "Thứ Ba", short: "T3" },
+      { key: 4, label: "Thứ Tư", short: "T4" },
+      { key: 5, label: "Thứ Năm", short: "T5" },
+      { key: 6, label: "Thứ Sáu", short: "T6" },
+      { key: 7, label: "Thứ Bảy", short: "T7" }
+    ];
+
+    // Màu sắc đại diện cho từng môn
+    const SUBJECT_COLORS = {
+      "Toán": "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
+      "Toán Hình": "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
+      "Toán Đại": "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100",
+      "Ngữ Văn": "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100",
+      "Tiếng Anh": "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100",
+      "Vật Lý": "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100",
+      "Hóa Học": "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100",
+      "Sinh Học": "bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100",
+      "Lịch Sử": "bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100",
+      "Địa Lý": "bg-lime-50 text-lime-700 border-lime-200 hover:bg-lime-100",
+      "Tin Học": "bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-100",
+      "Thể Dục": "bg-green-50 text-green-700 border-green-200 hover:bg-green-100",
+      "GDCD": "bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100",
+      "Chào cờ / SH": "bg-indigo-100 text-indigo-800 border-indigo-300 font-semibold",
+      "Sinh Hoạt Lớp": "bg-indigo-50 text-indigo-700 border-indigo-200"
+    };
+
+    // Dữ liệu thời khóa biểu chi tiết từng lớp
+    const TIMETABLE_DATA = {
+      "10A1": [
+        // Thứ 2
+        { day: 2, period: 1, subject: "Chào cờ / SH", teacher: "GVCN", room: "Sân trường" },
+        { day: 2, period: 2, subject: "Toán Đại", teacher: "Thầy An", room: "P.201" },
+        { day: 2, period: 3, subject: "Toán Đại", teacher: "Thầy An", room: "P.201" },
+        { day: 2, period: 4, subject: "Vật Lý", teacher: "Thầy Hưng", room: "P.201" },
+        { day: 2, period: 5, subject: "Tiếng Anh", teacher: "Cô Loan", room: "P.201" },
+        // Thứ 3
+        { day: 3, period: 1, subject: "Ngữ Văn", teacher: "Cô Thảo", room: "P.201" },
+        { day: 3, period: 2, subject: "Ngữ Văn", teacher: "Cô Thảo", room: "P.201" },
+        { day: 3, period: 3, subject: "Hóa Học", teacher: "Cô Trang", room: "Lab Hóa" },
+        { day: 3, period: 4, subject: "Tin Học", teacher: "Thầy Dũng", room: "Phòng Máy 1" },
+        { day: 3, period: 5, subject: "Tin Học", teacher: "Thầy Dũng", room: "Phòng Máy 1" },
+        { day: 3, period: 6, subject: "Thể Dục", teacher: "Thầy Sơn", room: "Nhà Đa Năng" },
+        { day: 3, period: 7, subject: "Thể Dục", teacher: "Thầy Sơn", room: "Nhà Đa Năng" },
+        // Thứ 4
+        { day: 4, period: 1, subject: "Toán Hình", teacher: "Thầy An", room: "P.201" },
+        { day: 4, period: 2, subject: "Toán Hình", teacher: "Thầy An", room: "P.201" },
+        { day: 4, period: 3, subject: "Sinh Học", teacher: "Cô Bình", room: "P.201" },
+        { day: 4, period: 4, subject: "Lịch Sử", teacher: "Thầy Quang", room: "P.201" },
+        { day: 4, period: 5, subject: "Tiếng Anh", teacher: "Cô Loan", room: "P.201" },
+        // Thứ 5
+        { day: 5, period: 1, subject: "Vật Lý", teacher: "Thầy Hưng", room: "Lab Lý" },
+        { day: 5, period: 2, subject: "Hóa Học", teacher: "Cô Trang", room: "P.201" },
+        { day: 5, period: 3, subject: "Ngữ Văn", teacher: "Cô Thảo", room: "P.201" },
+        { day: 5, period: 4, subject: "Địa Lý", teacher: "Cô Ngọc", room: "P.201" },
+        { day: 5, period: 5, subject: "GDCD", teacher: "Cô Chi", room: "P.201" },
+        // Thứ 6
+        { day: 6, period: 1, subject: "Toán Đại", teacher: "Thầy An", room: "P.201" },
+        { day: 6, period: 2, subject: "Tiếng Anh", teacher: "Cô Loan", room: "P.201" },
+        { day: 6, period: 3, subject: "Tiếng Anh", teacher: "Cô Loan", room: "P.201" },
+        { day: 6, period: 4, subject: "Sinh Học", teacher: "Cô Bình", room: "P.201" },
+        { day: 6, period: 5, subject: "Vật Lý", teacher: "Thầy Hưng", room: "P.201" },
+        // Thứ 7
+        { day: 7, period: 1, subject: "Toán Hình", teacher: "Thầy An", room: "P.201" },
+        { day: 7, period: 2, subject: "Hóa Học", teacher: "Cô Trang", room: "P.201" },
+        { day: 7, period: 3, subject: "Lịch Sử", teacher: "Thầy Quang", room: "P.201" },
+        { day: 7, period: 4, subject: "Sinh Hoạt Lớp", teacher: "Thầy An", room: "P.201" }
+      ],
+      "10A2": [
+        { day: 2, period: 1, subject: "Chào cờ / SH", teacher: "GVCN", room: "Sân trường" },
+        { day: 2, period: 2, subject: "Ngữ Văn", teacher: "Cô Yến", room: "P.202" },
+        { day: 2, period: 3, subject: "Ngữ Văn", teacher: "Cô Yến", room: "P.202" },
+        { day: 2, period: 4, subject: "Toán", teacher: "Cô Mai", room: "P.202" },
+        { day: 2, period: 5, subject: "Toán", teacher: "Cô Mai", room: "P.202" },
+        { day: 3, period: 1, subject: "Hóa Học", teacher: "Thầy Hoàng", room: "P.202" },
+        { day: 3, period: 2, subject: "Vật Lý", teacher: "Cô Phương", room: "P.202" },
+        { day: 3, period: 3, subject: "Tiếng Anh", teacher: "Thầy Lâm", room: "P.202" },
+        { day: 3, period: 4, subject: "Sinh Học", teacher: "Cô Huệ", room: "P.202" },
+        { day: 3, period: 5, subject: "GDCD", teacher: "Thầy Vũ", room: "P.202" }
+      ],
+      "11B1": [
+        { day: 2, period: 1, subject: "Chào cờ / SH", teacher: "GVCN", room: "Sân trường" },
+        { day: 2, period: 2, subject: "Tiếng Anh", teacher: "Cô Hà", room: "P.301" },
+        { day: 2, period: 3, subject: "Tiếng Anh", teacher: "Cô Hà", room: "P.301" },
+        { day: 2, period: 4, subject: "Ngữ Văn", teacher: "Thầy Nam", room: "P.301" },
+        { day: 2, period: 5, subject: "Toán", teacher: "Thầy Quân", room: "P.301" },
+        { day: 3, period: 1, subject: "Lịch Sử", teacher: "Cô Minh", room: "P.301" },
+        { day: 3, period: 2, subject: "Địa Lý", teacher: "Thầy Bảo", room: "P.301" },
+        { day: 3, period: 3, subject: "Tiếng Anh", teacher: "Cô Hà", room: "P.301" },
+        { day: 3, period: 4, subject: "Tin Học", teacher: "Cô Nga", room: "Phòng Máy 2" }
+      ],
+      "12A1": [
+        { day: 2, period: 1, subject: "Chào cờ / SH", teacher: "GVCN", room: "Sân trường" },
+        { day: 2, period: 2, subject: "Toán Đại", teacher: "Thầy Minh", room: "P.401" },
+        { day: 2, period: 3, subject: "Toán Đại", teacher: "Thầy Minh", room: "P.401" },
+        { day: 2, period: 4, subject: "Vật Lý", teacher: "Thầy Thành", room: "P.401" },
+        { day: 2, period: 5, subject: "Vật Lý", teacher: "Thầy Thành", room: "P.401" },
+        { day: 3, period: 1, subject: "Hóa Học", teacher: "Cô Thư", room: "P.401" },
+        { day: 3, period: 2, subject: "Hóa Học", teacher: "Cô Thư", room: "P.401" },
+        { day: 3, period: 3, subject: "Tiếng Anh", teacher: "Thầy Hùng", room: "P.401" },
+        { day: 3, period: 4, subject: "Ngữ Văn", teacher: "Cô Oanh", room: "P.401" },
+        { day: 3, period: 5, subject: "Ngữ Văn", teacher: "Cô Oanh", room: "P.401" }
+      ]
+    };
+
+    // State ứng dụng
+    let currentGrade = "all";
+    let currentClassId = "10A1";
+    let currentSearchTerm = "";
+    let currentViewMode = "week"; // 'week' hoặc 'day'
+    let currentSelectedDay = 2;   // Mặc định Thứ 2
+
+    // Xác định hôm nay
+    function getTodayDayKey() {
+      const day = new Date().getDay();
+      if (day >= 1 && day <= 6) return day + 1; // 2 -> 7 (T2 đến T7)
+      return 2; // Chủ nhật mặc định xem Thứ 2
+    }
+    const realTodayKey = getTodayDayKey();
+
+    // Khởi tạo giao diện
+    window.addEventListener("DOMContentLoaded", () => {
+      initDateDisplay();
+      currentSelectedDay = realTodayKey;
+      renderClassOptions();
+      updateClassInfo();
+      renderLegend();
+      renderWeeklyHeaders();
+      renderTimetable();
+      renderDayTabs();
+    });
+
+    function initDateDisplay() {
+      const todayItem = DAYS_OF_WEEK.find(d => d.key === realTodayKey);
+      document.getElementById("today-day-label").innerText = todayItem ? todayItem.label : "Thứ Hai";
+      document.getElementById("today-date-string").innerText = new Date().toLocaleDateString("vi-VN");
+    }
+
+    // Đổi khối học
+    function changeGrade(grade) {
+      currentGrade = grade;
+      
+      // Update UI buttons
+      document.querySelectorAll(".grade-btn").forEach(btn => {
+        if (btn.getAttribute("data-grade") === grade) {
+          btn.className = "grade-btn flex-1 text-xs font-semibold py-1.5 rounded-md transition-all bg-white text-indigo-700 shadow-sm";
+        } else {
+          btn.className = "grade-btn flex-1 text-xs font-semibold py-1.5 rounded-md transition-all text-slate-600 hover:text-slate-900";
+        }
+      });
+
+      renderClassOptions();
+      // Chọn lớp hợp lệ đầu tiên
+      const available = getFilteredClasses();
+      if (available.length > 0) {
+        currentClassId = available[0].id;
+        document.getElementById("class-select").value = currentClassId;
+      }
+      updateClassInfo();
+      renderTimetable();
+    }
+
+    function getFilteredClasses() {
+      if (currentGrade === "all") return CLASSES_DATA;
+      return CLASSES_DATA.filter(c => c.grade === currentGrade);
+    }
+
+    // Render danh sách chọn lớp
+    function renderClassOptions() {
+      const select = document.getElementById("class-select");
+      const list = getFilteredClasses();
+      select.innerHTML = list.map(c => `
+        <option value="${c.id}" ${c.id === currentClassId ? "selected" : ""}>
+          ${c.name}
+        </option>
+      `).join("");
+    }
+
+    function changeClass(newClassId) {
+      currentClassId = newClassId;
+      updateClassInfo();
+      renderTimetable();
+    }
+
+    // Cập nhật thông tin chi tiết lớp hiện tại
+    function updateClassInfo() {
+      const c = CLASSES_DATA.find(item => item.id === currentClassId) || CLASSES_DATA[0];
+      document.getElementById("class-title").innerText = c.name;
+      document.getElementById("class-teacher").innerText = c.homeroomTeacher;
+      document.getElementById("class-room").innerText = c.room;
+      document.getElementById("class-students").innerText = `${c.studentCount} học sinh`;
+    }
+
+    // Chuyển đổi chế độ xem
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      const btnWeek = document.getElementById("btn-view-week");
+      const btnDay = document.getElementById("btn-view-day");
+      const weekContainer = document.getElementById("view-week-container");
+      const dayContainer = document.getElementById("view-day-container");
+
+      if (mode === "week") {
+        btnWeek.className = "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition-all bg-white text-indigo-700 shadow-sm";
+        btnDay.className = "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition-all text-slate-600 hover:text-slate-900";
+        weekContainer.classList.remove("hidden");
+        dayContainer.classList.add("hidden");
+      } else {
+        btnDay.className = "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition-all bg-white text-indigo-700 shadow-sm";
+        btnWeek.className = "flex-1 inline-flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold rounded-md transition-all text-slate-600 hover:text-slate-900";
+        dayContainer.classList.remove("hidden");
+        weekContainer.classList.add("hidden");
+      }
+      renderTimetable();
+    }
+
+    // Tìm kiếm
+    function handleSearch(val) {
+      currentSearchTerm = val.trim();
+      const clearBtn = document.getElementById("clear-search-btn");
+      if (currentSearchTerm) {
+        clearBtn.classList.remove("hidden");
+      } else {
+        clearBtn.classList.add("hidden");
+      }
+      renderTimetable();
+    }
+
+    function clearSearch() {
+      document.getElementById("search-input").value = "";
+      handleSearch("");
+    }
+
+    function checkSlotMatches(slot) {
+      if (!currentSearchTerm) return true;
+      const term = currentSearchTerm.toLowerCase();
+      return (
+        slot.subject.toLowerCase().includes(term) ||
+        slot.teacher.toLowerCase().includes(term) ||
+        slot.room.toLowerCase().includes(term)
+      );
+    }
+
+    // Render Headers của Bảng Lịch Tuần
+    function renderWeeklyHeaders() {
+      const headerContainer = document.getElementById("table-headers");
+      const dayHeaders = DAYS_OF_WEEK.map(d => {
+        const isToday = d.key === realTodayKey;
+        return `
+          <th class="p-3.5 text-center font-bold border-r border-slate-200 last:border-r-0 ${isToday ? 'bg-amber-50 text-amber-900' : ''}">
+            <div class="flex flex-col items-center">
+              <span>${d.label}</span>
+              ${isToday ? `<span class="text-[10px] font-semibold text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-full mt-0.5">Hôm nay</span>` : ''}
+            </div>
+          </th>
+        `;
+      }).join("");
+
+      headerContainer.innerHTML = `
+        <th class="p-3.5 text-center font-bold text-slate-600 w-28 border-r border-slate-200">Tiết / Giờ</th>
+        ${dayHeaders}
+      `;
+    }
+
+    // Điều hướng render theo chế độ
+    function renderTimetable() {
+      if (currentViewMode === "week") {
+        renderWeeklyGrid();
+      } else {
+        renderDailyView();
+      }
+    }
+
+    // Render Chế độ Lịch Tuần (Table)
+    function renderWeeklyGrid() {
+      const tbody = document.getElementById("table-body");
+      const schedule = TIMETABLE_DATA[currentClassId] || [];
+
+      let html = "";
+
+      // Khối Buổi Sáng
+      html += `
+        <tr class="bg-slate-50/90 font-semibold text-slate-600">
+          <td colspan="7" class="px-4 py-1.5 text-xs uppercase tracking-wider text-slate-500 bg-slate-100/60">
+            <i class="fa-solid fa-sun text-amber-500 mr-1.5"></i> Buổi Sáng (Tiết 1 - 5)
+          </td>
+        </tr>
+      `;
+
+      const morningPeriods = PERIODS.filter(p => p.session === "morning");
+      morningPeriods.forEach(p => {
+        html += renderTableRow(p, schedule);
+      });
+
+      // Khối Buổi Chiều
+      html += `
+        <tr class="bg-slate-50/90 font-semibold text-slate-600">
+          <td colspan="7" class="px-4 py-1.5 text-xs uppercase tracking-wider text-slate-500 bg-slate-100/60">
+            <i class="fa-solid fa-cloud-sun text-orange-500 mr-1.5"></i> Buổi Chiều (Tiết 6 - 9)
+          </td>
+        </tr>
+      `;
+
+      const afternoonPeriods = PERIODS.filter(p => p.session === "afternoon");
+      afternoonPeriods.forEach(p => {
+        html += renderTableRow(p, schedule);
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function renderTableRow(periodItem, schedule) {
+      let rowHtml = `
+        <tr class="hover:bg-slate-50/50 transition-colors">
+          <td class="p-2.5 text-center border-r border-slate-200 bg-slate-50/40">
+            <div class="font-bold text-slate-800 text-xs">${periodItem.label}</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">${periodItem.time}</div>
+          </td>
+      `;
+
+      DAYS_OF_WEEK.forEach(dayItem => {
+        const slot = schedule.find(s => s.day === dayItem.key && s.period === periodItem.period);
+        const isMatch = slot ? checkSlotMatches(slot) : true;
+        const isToday = dayItem.key === realTodayKey;
+
+        rowHtml += `
+          <td class="p-2 border-r border-slate-200 last:border-r-0 align-top ${isToday ? 'bg-amber-50/20' : ''}">
+        `;
+
+        if (slot) {
+          const colorClass = SUBJECT_COLORS[slot.subject] || "bg-slate-50 text-slate-700 border-slate-200";
+          const matchOpacityClass = currentSearchTerm && !isMatch ? "opacity-20 scale-95" : "hover:scale-[1.02] hover:shadow-sm";
+
+          rowHtml += `
+            <div
+              onclick="openModal(${slot.day}, ${slot.period}, '${escapeString(slot.subject)}', '${escapeString(slot.teacher)}', '${escapeString(slot.room)}')"
+              class="h-full min-h-[68px] p-2 rounded-xl border flex flex-col justify-between transition cursor-pointer shadow-xs ${colorClass} ${matchOpacityClass}"
+            >
+              <div>
+                <div class="font-bold text-xs leading-tight">${slot.subject}</div>
+                <div class="text-[11px] opacity-80 mt-1 flex items-center gap-1.5">
+                  <i class="fa-solid fa-user-tie text-[10px] shrink-0"></i>
+                  <span class="truncate">${slot.teacher}</span>
+                </div>
+              </div>
+              <div class="text-[10px] opacity-70 mt-1.5 flex items-center justify-between font-medium">
+                <span>${slot.room}</span>
+                <i class="fa-solid fa-angle-right text-[10px] opacity-60"></i>
+              </div>
+            </div>
+          `;
+        } else {
+          rowHtml += `
+            <div class="h-full min-h-[68px] flex items-center justify-center text-slate-300 font-mono text-sm">
+              -
+            </div>
+          `;
+        }
+
+        rowHtml += `</td>`;
+      });
+
+      rowHtml += `</tr>`;
+      return rowHtml;
+    }
+
+    // Render Tabs ngày
+    function renderDayTabs() {
+      const container = document.getElementById("day-tabs-container");
+      container.innerHTML = DAYS_OF_WEEK.map(d => {
+        const isSelected = d.key === currentSelectedDay;
+        const isToday = d.key === realTodayKey;
+
+        let styleClass = "bg-white text-slate-700 border-slate-200 hover:bg-slate-50";
+        if (isSelected) {
+          styleClass = "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100";
+        } else if (isToday) {
+          styleClass = "bg-amber-50 text-amber-900 border-amber-300";
+        }
+
+        return `
+          <button
+            onclick="selectDay(${d.key})"
+            class="flex-1 min-w-[90px] py-3 px-4 rounded-xl font-medium text-sm flex flex-col items-center gap-1 border transition ${styleClass}"
+          >
+            <span class="text-xs uppercase opacity-90">${d.short}</span>
+            <span class="font-bold">${d.label}</span>
+            ${isToday ? `<span class="text-[10px] ${isSelected ? 'bg-indigo-700 text-amber-300' : 'bg-amber-200/70 text-amber-800'} px-2 py-0.2 rounded-full font-normal">Hôm nay</span>` : ''}
+          </button>
+        `;
+      }).join("");
+    }
+
+    function selectDay(dayKey) {
+      currentSelectedDay = dayKey;
+      renderDayTabs();
+      renderDailyView();
+    }
+
+    // Render Chế độ Theo Ngày
+    function renderDailyView() {
+      const dayItem = DAYS_OF_WEEK.find(d => d.key === currentSelectedDay);
+      document.getElementById("current-day-label").innerText = dayItem ? dayItem.label : "";
+
+      const schedule = TIMETABLE_DATA[currentClassId] || [];
+      const daySlots = schedule.filter(s => s.day === currentSelectedDay);
+      document.getElementById("daily-period-count").innerText = `${daySlots.length} tiết trong ngày`;
+
+      const listContainer = document.getElementById("daily-periods-list");
+
+      listContainer.innerHTML = PERIODS.map(p => {
+        const slot = daySlots.find(s => s.period === p.period);
+        const isMatch = slot ? checkSlotMatches(slot) : true;
+
+        if (!slot) {
+          return `
+            <div class="flex items-center py-3.5 px-4 text-sm text-slate-400 bg-slate-50/40">
+              <div class="w-20 font-medium text-slate-500">${p.label}</div>
+              <div class="w-36 text-xs text-slate-400 flex items-center gap-1.5">
+                <i class="fa-regular fa-clock text-slate-400"></i> ${p.time}
+              </div>
+              <div class="italic text-slate-400 text-xs">Nghỉ / Không có tiết</div>
+            </div>
+          `;
+        }
+
+        const colorClass = SUBJECT_COLORS[slot.subject] || "bg-slate-50 text-slate-700 border-slate-200";
+        const opacityClass = currentSearchTerm && !isMatch ? "opacity-25" : "hover:bg-slate-50";
+
+        return `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-3 transition ${opacityClass}">
+            <div class="flex items-center gap-4">
+              <div class="text-center min-w-[50px]">
+                <span class="block text-sm font-bold text-indigo-700">${p.label}</span>
+                <span class="text-[11px] text-slate-400">${p.session === "morning" ? "Sáng" : "Chiều"}</span>
+              </div>
+              <div class="h-8 w-px bg-slate-200 hidden sm:block"></div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-lg text-sm font-semibold border ${colorClass}">
+                    ${slot.subject}
+                  </span>
+                  <span class="text-xs text-slate-500 flex items-center gap-1.5">
+                    <i class="fa-regular fa-clock text-slate-400"></i> ${p.time}
+                  </span>
+                </div>
+                <div class="flex items-center gap-4 mt-1.5 text-xs text-slate-600">
+                  <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-chalkboard-user text-slate-400"></i> ${slot.teacher}
+                  </span>
+                  <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-location-dot text-slate-400"></i> ${slot.room}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onclick="openModal(${slot.day}, ${slot.period}, '${escapeString(slot.subject)}', '${escapeString(slot.teacher)}', '${escapeString(slot.room)}')"
+              class="self-end sm:self-center px-3 py-1.5 text-xs text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition font-medium"
+            >
+              Chi tiết
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Modal chi tiết tiết học
+    function openModal(dayKey, periodNum, subject, teacher, room) {
+      const dayItem = DAYS_OF_WEEK.find(d => d.key === dayKey);
+      const periodItem = PERIODS.find(p => p.period === periodNum);
+      const classItem = CLASSES_DATA.find(c => c.id === currentClassId);
+
+      const tag = document.getElementById("modal-subject-tag");
+      tag.innerText = subject;
+      tag.className = `px-3 py-1 rounded-lg text-sm font-semibold border ${SUBJECT_COLORS[subject] || 'bg-indigo-50 text-indigo-700'}`;
+
+      document.getElementById("modal-time-detail").innerText = `${dayItem?.label || ''}, ${periodItem?.label || ''}`;
+      document.getElementById("modal-period-time").innerText = periodItem?.time || "";
+      document.getElementById("modal-teacher").innerText = teacher;
+      document.getElementById("modal-room").innerText = room;
+      document.getElementById("modal-class").innerText = classItem ? classItem.name : "";
+
+      const modal = document.getElementById("slot-modal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeModal() {
+      const modal = document.getElementById("slot-modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    // Đóng modal khi bấm phím Escape hoặc click nền tối
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeModal();
+    });
+    document.getElementById("slot-modal").addEventListener("click", (e) => {
+      if (e.target.id === "slot-modal") closeModal();
+    });
+
+    // Bảng chú thích màu sắc
+    function renderLegend() {
+      const container = document.getElementById("subject-legend-container");
+      container.innerHTML = Object.keys(SUBJECT_COLORS).map(subj => `
+        <span class="px-2.5 py-1 rounded-md border font-medium ${SUBJECT_COLORS[subj]}">
+          ${subj}
+        </span>
+      `).join("");
+    }
+
+    function escapeString(str) {
+      return str.replace(/'/g, "\\'");
+    }
+  </script>
+</body>
+</html>

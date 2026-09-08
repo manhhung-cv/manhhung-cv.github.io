@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full dark bg-black">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smiles Pro Exchange | iOS Minimal Flat</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Text', 'SF Pro Display', 'Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'SF Mono', 'Menlo', 'monospace'],
+          },
+          colors: {
+            ios: {
+              black: '#000000',
+              bg: '#000000',
+              card: '#0c0c0e',
+              cardHover: '#141416',
+              subcard: '#161618',
+              border: '#232326',
+              borderLight: '#2c2c2e',
+              green: '#30d158',
+              greenBg: 'rgba(48, 209, 88, 0.12)',
+              red: '#ff453a',
+              redBg: 'rgba(255, 69, 58, 0.12)',
+              text: '#f5f5f7',
+              subtext: '#86868b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Font Awesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Minimal iOS Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #000000; }
+    ::-webkit-scrollbar-thumb { background: #2c2c2e; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3a3a3c; }
+
+    /* Minimal iOS Flat Card */
+    .ios-card {
+      background-color: #0c0c0e;
+      border: 1px solid #1c1c1e;
+    }
+
+    .ios-subcard {
+      background-color: #141416;
+      border: 1px solid #232326;
+    }
+
+    /* Clean iOS Date Picker */
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(0.7);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body class="bg-black text-ios-text min-h-screen flex flex-col font-sans antialiased selection:bg-ios-green selection:text-black">
+
+  <!-- Header Bar -->
+  <header class="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-ios-border">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      
+      <!-- Brand Logo & Pair -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl bg-ios-subcard border border-ios-border flex items-center justify-center text-ios-green font-bold text-xs">
+          <i class="fa-solid fa-arrow-trend-up"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-sm sm:text-base tracking-tight text-white font-mono">JPY / VND</span>
+            <span class="text-[10px] bg-ios-subcard text-ios-subtext px-2 py-0.5 rounded-full font-mono border border-ios-border">Smiles Live</span>
+          </div>
+        </div>
+
+        <!-- Sync Status Pill -->
+        <div id="statusBadge" class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-ios-subcard text-ios-subtext border border-ios-border">
+          <span class="w-1.5 h-1.5 rounded-full bg-ios-green"></span> Sẵn sàng
+        </div>
+      </div>
+
+      <!-- Quick Ticker Metrics -->
+      <div class="hidden md:flex items-center gap-6 text-xs font-mono">
+        <div>
+          <span class="text-[10px] text-ios-subtext uppercase">Hiện tại</span>
+          <div class="font-semibold text-white" id="headerPrice">---.-- ₫</div>
+        </div>
+        <div>
+          <span class="text-[10px] text-ios-subtext uppercase">Biến động</span>
+          <div class="font-semibold text-ios-subtext" id="headerChange">0.00%</div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center gap-2">
+        <button onclick="triggerManualFetch()" id="btnFetchHeader" 
+                class="px-3.5 py-1.5 rounded-xl bg-white hover:bg-neutral-200 active:scale-95 text-black text-xs font-semibold transition-all flex items-center gap-1.5">
+          <i class="fa-solid fa-rotate text-[11px]" id="fetchIcon"></i>
+          <span>Làm mới</span>
+        </button>
+
+        <button onclick="openSettingsModal()" 
+                class="p-2 rounded-xl bg-ios-card hover:bg-ios-cardHover text-ios-subtext hover:text-white border border-ios-border transition-all"
+                title="Cấu hình GAS">
+          <i class="fa-solid fa-sliders text-xs"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-6xl w-full mx-auto p-4 sm:p-6 space-y-5">
+
+    <!-- Hero Rate & Interactive Calculator -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      
+      <!-- Primary Rate Panel -->
+      <div class="lg:col-span-2 ios-card rounded-2xl p-5 sm:p-7 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between text-xs text-ios-subtext mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-white font-medium text-base">Tỷ giá Smiles JPY/VND</span>
+              <span class="bg-ios-subcard text-ios-subtext text-[11px] px-2 py-0.5 rounded-md font-mono border border-ios-border">1 JPY</span>
+            </div>
+            <div class="font-mono text-[11px]">
+              Cập nhật: <span id="lastUpdatedText" class="text-white">--:--:--</span>
+            </div>
+          </div>
+
+          <!-- Price Display -->
+          <div class="flex flex-wrap items-baseline gap-3 my-3">
+            <div class="text-5xl sm:text-6xl font-extrabold text-white font-mono tracking-tight" id="heroPrice">
+              ---.-- <span class="text-xl text-ios-subtext font-normal">VND</span>
+            </div>
+            <div id="heroTrendBadge" class="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg font-mono bg-ios-subcard text-ios-subtext border border-ios-border">
+              0.00%
+            </div>
+          </div>
+
+          <p class="text-xs text-ios-subtext mt-1">
+            Quy đổi trực tiếp: 1 JPY = <span id="unitRateText" class="text-white font-mono font-medium">--</span> VND
+          </p>
+        </div>
+
+        <!-- Metric Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-6 mt-6 border-t border-ios-border text-xs font-mono">
+          <div class="ios-subcard p-3 rounded-xl">
+            <div class="text-[10px] text-ios-subtext uppercase">Phí gửi</div>
+            <div class="text-sm font-semibold text-white mt-0.5" id="heroFee">-- JPY</div>
+          </div>
+          <div class="ios-subcard p-3 rounded-xl">
+            <div class="text-[10px] text-ios-subtext uppercase">Tích điểm</div>
+            <div class="text-sm font-semibold text-ios-green mt-0.5" id="heroPoints">+-- pts</div>
+          </div>
+          <div class="ios-subcard p-3 rounded-xl">
+            <div class="text-[10px] text-ios-subtext uppercase">Đỉnh chu kỳ</div>
+            <div class="text-sm font-semibold text-white mt-0.5" id="heroHigh">--.-- ₫</div>
+          </div>
+          <div class="ios-subcard p-3 rounded-xl">
+            <div class="text-[10px] text-ios-subtext uppercase">Đáy chu kỳ</div>
+            <div class="text-sm font-semibold text-white mt-0.5" id="heroLow">--.-- ₫</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Calculator -->
+      <div class="ios-card rounded-2xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-3 mb-4 border-b border-ios-border">
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-white flex items-center gap-2">
+              <i class="fa-solid fa-calculator text-ios-subtext"></i> Máy Tính Quy Đổi
+            </h2>
+            <span class="text-[10px] font-mono text-ios-subtext">2-Chiều Tức Thì</span>
+          </div>
+
+          <!-- Fee Deduct Toggle -->
+          <div class="ios-subcard p-2.5 rounded-xl mb-3 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-medium text-white">Khấu trừ phí gửi</div>
+              <div class="text-[10px] text-ios-subtext" id="feeToggleSubtext">Trừ phí trực tiếp vào JPY nhận</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="toggleDeductFee" onchange="calculateExchange()" class="sr-only peer">
+              <div class="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-ios-green"></div>
+            </label>
+          </div>
+
+          <!-- Controls -->
+          <div class="space-y-2.5">
+            <!-- JPY Input -->
+            <div class="ios-subcard p-3 rounded-xl border border-ios-border focus-within:border-white/40 transition-all">
+              <div class="flex justify-between text-[10px] text-ios-subtext mb-1 font-mono">
+                <span>Số tiền gửi</span>
+                <span>JPY</span>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <input type="text" id="swapInputJpy" value="100.000" oninput="handleJpyInput(this)"
+                       placeholder="0"
+                       class="w-full bg-transparent text-lg font-semibold text-white font-mono focus:outline-none">
+                <span class="text-xs font-mono font-medium text-ios-subtext">JPY</span>
+              </div>
+            </div>
+
+            <!-- Quick JPY Presets -->
+            <div class="grid grid-cols-4 gap-1 font-mono text-[10px]">
+              <button onclick="setQuickJpy(10000)" class="py-1 bg-ios-subcard hover:bg-neutral-800 rounded-lg text-ios-subtext hover:text-white transition-all">10K</button>
+              <button onclick="setQuickJpy(50000)" class="py-1 bg-ios-subcard hover:bg-neutral-800 rounded-lg text-ios-subtext hover:text-white transition-all">50K</button>
+              <button onclick="setQuickJpy(100000)" class="py-1 bg-neutral-800 text-white font-semibold rounded-lg transition-all border border-ios-borderLight">100K</button>
+              <button onclick="setQuickJpy(500000)" class="py-1 bg-ios-subcard hover:bg-neutral-800 rounded-lg text-ios-subtext hover:text-white transition-all">500K</button>
+            </div>
+
+            <!-- Switch Direction -->
+            <div class="flex items-center justify-center -my-1">
+              <button onclick="toggleSwapFocus()" title="Chuyển ô nhập" 
+                      class="w-7 h-7 rounded-full bg-ios-subcard hover:bg-neutral-800 flex items-center justify-center text-ios-subtext hover:text-white text-xs transition-all border border-ios-border">
+                <i class="fa-solid fa-arrow-down-up text-[10px]"></i>
+              </button>
+            </div>
+
+            <!-- VND Input -->
+            <div class="ios-subcard p-3 rounded-xl border border-ios-border focus-within:border-white/40 transition-all">
+              <div class="flex justify-between text-[10px] text-ios-subtext mb-1 font-mono">
+                <span>Số tiền nhận</span>
+                <span>VND</span>
+              </div>
+              <div class="flex items-center justify-between gap-2">
+                <input type="text" id="swapOutputVnd" oninput="handleVndInput(this)" placeholder="0"
+                       class="w-full bg-transparent text-lg font-semibold text-ios-green font-mono focus:outline-none">
+                <span class="text-xs font-mono font-medium text-ios-subtext">VND</span>
+              </div>
+            </div>
+
+            <!-- Quick VND Presets -->
+            <div class="grid grid-cols-4 gap-1 font-mono text-[10px]">
+              <button onclick="setQuickVnd(5000000)" class="py-1 bg-ios-subcard hover:bg-neutral-800 rounded-lg text-ios-subtext hover:text-white transition-all">5Tr</button>
+              <button onclick="setQuickVnd(10000000)" class="py-1 bg-ios-subcard hover:bg-neutral-800 rounded-lg text-ios-subtext hover:text-white transition-all">10Tr</button>
+              <button onclick="setQuickVnd(20000000)" class="py-1 bg-ios-subcard hover:bg-neutral-800 rounded-lg text-ios-subtext hover:text-white transition-all">20Tr</button>
+              <button onclick="setQuickVnd(50000000)" class="py-1 bg-ios-subcard hover:bg-neutral-800 rounded-lg text-ios-subtext hover:text-white transition-all">50Tr</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Info -->
+        <div class="mt-4 pt-3 border-t border-ios-border font-mono text-[11px] text-ios-subtext space-y-1">
+          <div class="flex justify-between">
+            <span>JPY thực tính:</span>
+            <span id="effectiveJpyText" class="text-white">100.000 JPY</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Phí chuyển khoản:</span>
+            <span id="swapFeeText" class="text-white">-- JPY</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Tích điểm:</span>
+            <span id="swapPointsText" class="text-ios-green">+-- pts</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Smart Chart Section -->
+    <div class="ios-card rounded-2xl p-5 space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-ios-border pb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-white">Biến Động Tỷ Giá</h2>
+          <span class="text-[10px] font-mono text-ios-subtext bg-ios-subcard px-2 py-0.5 rounded border border-ios-border" id="chartPointCount">Lọc thông minh</span>
+        </div>
+
+        <!-- Segmented Control Tabs -->
+        <div class="flex items-center gap-2">
+          <div class="inline-flex bg-ios-subcard p-0.5 rounded-lg border border-ios-border text-[11px] font-mono">
+            <button onclick="setTimePreset('24h')" id="btnPreset24h" class="preset-btn px-2.5 py-1 rounded-md text-ios-subtext hover:text-white transition-all">24H</button>
+            <button onclick="setTimePreset('7d')" id="btnPreset7d" class="preset-btn px-2.5 py-1 rounded-md text-ios-subtext hover:text-white transition-all">7D</button>
+            <button onclick="setTimePreset('30d')" id="btnPreset30d" class="preset-btn px-2.5 py-1 rounded-md text-ios-subtext hover:text-white transition-all">30D</button>
+            <button onclick="setTimePreset('all')" id="btnPresetAll" class="preset-btn active px-2.5 py-1 rounded-md bg-neutral-800 text-white font-semibold transition-all">ALL</button>
+          </div>
+
+          <!-- Filter Reset -->
+          <div class="flex items-center gap-1.5 text-xs font-mono">
+            <input type="date" id="startDateInput" onchange="applyCustomDateFilter()" 
+                   class="bg-ios-subcard border border-ios-border rounded-lg px-2 py-1 text-white text-[11px] focus:outline-none">
+            <input type="date" id="endDateInput" onchange="applyCustomDateFilter()" 
+                   class="bg-ios-subcard border border-ios-border rounded-lg px-2 py-1 text-white text-[11px] focus:outline-none">
+            <button onclick="resetDateFilter()" title="Xóa lọc ngày" class="p-1.5 bg-ios-subcard hover:bg-neutral-800 rounded-lg text-ios-subtext hover:text-white border border-ios-border">
+              <i class="fa-solid fa-arrow-rotate-left text-[10px]"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <div class="relative w-full h-72 sm:h-80">
+        <canvas id="rateChartCanvas"></canvas>
+        <div id="chartLoader" class="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center gap-2 text-xs font-mono text-ios-subtext">
+          <i class="fa-solid fa-circle-notch fa-spin text-ios-green"></i>
+          <span>Đang đồng bộ biểu đồ...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complete Detailed History Table (Unfiltered Logs) -->
+    <div class="ios-card rounded-2xl overflow-hidden">
+      <div class="p-4 border-b border-ios-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0a0a0c]">
+        <div class="flex items-center gap-2">
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-white">Lịch Sử Chi Tiết</h2>
+          <span class="text-[10px] font-mono text-ios-subtext bg-ios-subcard px-2 py-0.5 rounded border border-ios-border" id="recordCountText">0 bản ghi đầy đủ</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1 sm:w-56">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-[10px] text-ios-subtext"></i>
+            <input type="text" id="tableSearchInput" onkeyup="filterTableBySearch()" placeholder="Tìm ngày/giờ..." 
+                   class="w-full bg-ios-subcard border border-ios-border rounded-xl pl-8 pr-3 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-white/40">
+          </div>
+
+          <button onclick="exportCSV()" class="px-3 py-1.5 rounded-xl bg-ios-subcard hover:bg-neutral-800 text-ios-subtext hover:text-white text-xs font-mono transition-all border border-ios-border flex items-center gap-1.5">
+            <i class="fa-solid fa-file-csv"></i>
+            <span class="hidden sm:inline">CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto max-h-96">
+        <table class="w-full text-left text-xs font-mono">
+          <thead class="uppercase bg-[#0a0a0c] text-ios-subtext border-b border-ios-border sticky top-0">
+            <tr>
+              <th class="px-5 py-3 font-medium text-[10px]">Thời Gian</th>
+              <th class="px-5 py-3 font-medium text-[10px]">Tỷ Giá (JPY/VND)</th>
+              <th class="px-5 py-3 font-medium text-[10px]">Phí Gửi</th>
+              <th class="px-5 py-3 font-medium text-[10px]">Điểm Thưởng</th>
+              <th class="px-5 py-3 font-medium text-[10px] text-right">Biến Động</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="divide-y divide-ios-border/60 text-slate-300">
+            <tr>
+              <td colspan="5" class="text-center py-10 text-ios-subtext">
+                <i class="fa-solid fa-circle-notch fa-spin text-sm mb-2 block text-ios-green"></i>
+                Đang nạp toàn bộ lịch sử...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-ios-border py-5 bg-black text-xs font-mono text-ios-subtext">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>© 2026 Smiles Tracker • Apple iOS Minimal Flat</p>
+      <div class="flex items-center gap-4">
+        <button onclick="openSettingsModal()" class="hover:text-white transition-colors">Thiết lập GAS API</button>
+        <a href="https://www.smileswallet.com" target="_blank" class="hover:text-white transition-colors">Smiles Wallet</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- GAS Config Modal -->
+  <div id="settingsModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-150">
+    <div class="ios-card max-w-md w-full rounded-2xl p-5 space-y-5 border border-ios-borderLight shadow-2xl">
+      <div class="flex items-center justify-between border-b border-ios-border pb-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-white flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-ios-subtext"></i> Cấu Hình Google Apps Script
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-ios-subtext hover:text-white text-sm">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="space-y-1 font-mono">
+        <label class="block text-[10px] text-ios-subtext uppercase">Endpoint URL</label>
+        <input type="text" id="modalEndpointInput" 
+               class="w-full bg-ios-subcard border border-ios-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/40">
+      </div>
+
+      <div class="ios-subcard p-3 rounded-xl flex items-center justify-between font-mono">
+        <div>
+          <div class="text-xs font-medium text-white">Proxy CORS Cloudflare</div>
+          <div class="text-[10px] text-ios-subtext truncate max-w-[200px]">bold-night.year-tucking-0v.workers.dev</div>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="modalUseProxyToggle" class="sr-only peer">
+          <div class="w-9 h-5 bg-neutral-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-ios-green"></div>
+        </label>
+      </div>
+
+      <!-- Admin Schedule Settings -->
+      <div class="space-y-2 pt-2 border-t border-ios-border font-mono">
+        <label class="block text-[10px] text-ios-subtext uppercase">Chu Kỳ Tự Động Cào (Yêu cầu Admin Token)</label>
+        <input type="password" id="modalAdminToken" placeholder="Nhập Token Admin..." 
+               class="w-full bg-ios-subcard border border-ios-border rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-white/40 mb-2">
+        
+        <div class="flex gap-2">
+          <select id="modalIntervalSelect" class="flex-1 bg-ios-subcard border border-ios-border rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none">
+            <option value="1">1 giờ / lần</option>
+            <option value="2">2 giờ / lần</option>
+            <option value="6">6 giờ / lần</option>
+            <option value="12">12 giờ / lần</option>
+            <option value="24">24 giờ / lần</option>
+            <option value="0">Tắt cào tự động</option>
+          </select>
+          <button onclick="saveTriggerConfig()" id="btnSaveTrigger" class="px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-medium border border-ios-border">
+            Lưu Chu Kỳ
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end gap-2 font-mono">
+        <button onclick="closeSettingsModal()" class="px-3 py-1.5 rounded-xl bg-ios-subcard text-ios-subtext hover:text-white text-xs border border-ios-border">
+          Đóng
+        </button>
+        <button onclick="saveEndpointConfig()" class="px-3.5 py-1.5 rounded-xl bg-white text-black font-semibold text-xs hover:bg-neutral-200">
+          Lưu & Đồng Bộ
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none font-mono"></div>
+
+  <script>
+    const DEFAULT_ENDPOINT = "https://script.google.com/macros/s/AKfycbyhZABuJqGb91r54QJgRdNFcVuHrMywMT1sUYRT2AC1zIvdvMMu8kPfETdb93DR89JOyw/exec";
+    const CORS_PROXY = "https://bold-night.year-tucking-0v.workers.dev/";
+    
+    let rawHistoryData = [];
+    let activeDataFiltered = [];
+    let activePreset = 'all';
+    let chartInstance = null;
+    let lastEditedField = 'jpy';
+
+    function isProxyEnabled() {
+      const val = localStorage.getItem('smiles_use_proxy');
+      return val === null ? true : val === 'true';
+    }
+
+    async function fetchWithProxy(targetUrl, options = {}) {
+      if (!isProxyEnabled()) return fetch(targetUrl, options);
+
+      const proxyUrl1 = `${CORS_PROXY}${targetUrl}`;
+      const proxyUrl2 = `${CORS_PROXY}?url=${encodeURIComponent(targetUrl)}`;
+
+      try {
+        const res = await fetch(proxyUrl1, options);
+        if (res.ok) return res;
+      } catch (e) {
+        console.warn("Proxy 1 error, trying Proxy 2", e);
+      }
+
+      try {
+        const res = await fetch(proxyUrl2, options);
+        if (res.ok) return res;
+      } catch (e) {
+        console.warn("Proxy 2 error, direct fetch fallback", e);
+      }
+
+      return fetch(targetUrl, options);
+    }
+
+    function getEndpoint() {
+      return localStorage.getItem('smiles_gas_url') || DEFAULT_ENDPOINT;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('modalEndpointInput').value = getEndpoint();
+      document.getElementById('modalUseProxyToggle').checked = isProxyEnabled();
+      loadHistoryData();
+    });
+
+    async function loadHistoryData() {
+      const endpoint = getEndpoint();
+      const chartLoader = document.getElementById('chartLoader');
+      if (chartLoader) chartLoader.classList.remove('hidden');
+
+      updateStatusBadge('Syncing', 'Đang nạp...');
+
+      try {
+        const response = await fetchWithProxy(`${endpoint}?action=get_history`);
+        const result = await response.json();
+
+        if (result.success && Array.isArray(result.history)) {
+          rawHistoryData = result.history;
+          applyCurrentFilter();
+          updateStatusBadge('Online', 'Sẵn sàng');
+          showToast('Đồng bộ dữ liệu hoàn tất', 'success');
+        } else {
+          showToast(result.message || 'Không thể lấy dữ liệu', 'error');
+          updateStatusBadge('Error', 'Lỗi dữ liệu');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Lỗi kết nối Google Apps Script', 'error');
+        updateStatusBadge('Offline', 'Mất kết nối');
+      } finally {
+        if (chartLoader) chartLoader.classList.add('hidden');
+      }
+    }
+
+    async function triggerManualFetch() {
+      const endpoint = getEndpoint();
+      const btn = document.getElementById('btnFetchHeader');
+      const icon = document.getElementById('fetchIcon');
+
+      btn.disabled = true;
+      icon.classList.add('fa-spin');
+      updateStatusBadge('Syncing', 'Đang cào...');
+
+      try {
+        const response = await fetchWithProxy(`${endpoint}?action=fetch_now`);
+        const result = await response.json();
+
+        if (result.success) {
+          if (result.skipped) {
+            showToast(result.message || 'Tỷ giá chưa biến động.', 'info');
+          } else {
+            showToast(`Cập nhật thành công: ${result.data.rate}`, 'success');
+          }
+          await loadHistoryData();
+        } else {
+          showToast('Lỗi cào: ' + result.message, 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi: ' + err.toString(), 'error');
+      } finally {
+        btn.disabled = false;
+        icon.classList.remove('fa-spin');
+      }
+    }
+
+    function setTimePreset(preset) {
+      activePreset = preset;
+      document.getElementById('startDateInput').value = '';
+      document.getElementById('endDateInput').value = '';
+
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-neutral-800', 'text-white', 'font-semibold');
+        btn.classList.add('text-ios-subtext');
+      });
+
+      const presetMap = {
+        '24h': 'btnPreset24h',
+        '7d': 'btnPreset7d',
+        '30d': 'btnPreset30d',
+        'all': 'btnPresetAll'
+      };
+
+      const activeBtn = document.getElementById(presetMap[preset]);
+      if (activeBtn) {
+        activeBtn.classList.add('active', 'bg-neutral-800', 'text-white', 'font-semibold');
+        activeBtn.classList.remove('text-ios-subtext');
+      }
+
+      applyCurrentFilter();
+    }
+
+    function applyCustomDateFilter() {
+      const startDateVal = document.getElementById('startDateInput').value;
+      const endDateVal = document.getElementById('endDateInput').value;
+
+      if (startDateVal || endDateVal) {
+        activePreset = 'custom';
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+          btn.classList.remove('active', 'bg-neutral-800', 'text-white', 'font-semibold');
+          btn.classList.add('text-ios-subtext');
+        });
+      }
+
+      applyCurrentFilter();
+    }
+
+    function resetDateFilter() {
+      document.getElementById('startDateInput').value = '';
+      document.getElementById('endDateInput').value = '';
+      setTimePreset('all');
+    }
+
+   function applyCurrentFilter() {
+      if (!rawHistoryData || rawHistoryData.length === 0) {
+        activeDataFiltered = [];
+        renderDashboard();
+        return;
+      }
+
+      let filtered = [...rawHistoryData];
+      const now = new Date();
+
+      if (activePreset === '24h') {
+        // Lấy từ 00:00:00 đến 23:59:59 của ngày hôm nay
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+        filtered = rawHistoryData.filter(d => {
+          const itemTime = new Date(d.timestamp);
+          return itemTime >= startOfToday && itemTime <= endOfToday;
+        });
+      } else if (activePreset === '7d') {
+        const ago7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filtered = rawHistoryData.filter(d => new Date(d.timestamp) >= ago7d);
+      } else if (activePreset === '30d') {
+        const ago30d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filtered = rawHistoryData.filter(d => new Date(d.timestamp) >= ago30d);
+      } else if (activePreset === 'custom') {
+        const startDateVal = document.getElementById('startDateInput').value;
+        const endDateVal = document.getElementById('endDateInput').value;
+
+        if (startDateVal) {
+          const start = new Date(startDateVal + 'T00:00:00');
+          filtered = filtered.filter(d => new Date(d.timestamp) >= start);
+        }
+        if (endDateVal) {
+          const end = new Date(endDateVal + 'T23:59:59');
+          filtered = filtered.filter(d => new Date(d.timestamp) <= end);
+        }
+      }
+
+      activeDataFiltered = filtered;
+      renderDashboard();
+    }
+    function renderDashboard() {
+      if (!rawHistoryData || rawHistoryData.length === 0) {
+        document.getElementById('historyTableBody').innerHTML = `
+          <tr><td colspan="5" class="text-center py-8 text-ios-subtext font-mono">Chưa có dữ liệu tỷ giá.</td></tr>
+        `;
+        return;
+      }
+
+      const latest = rawHistoryData[rawHistoryData.length - 1];
+
+      // Tìm bản ghi có tỷ giá KHÁC gần nhất (quét ngược từ cuối danh sách)
+      let previousDifferent = null;
+      for (let i = rawHistoryData.length - 2; i >= 0; i--) {
+        if (rawHistoryData[i].rate !== latest.rate) {
+          previousDifferent = rawHistoryData[i];
+          break;
+        }
+      }
+
+      document.getElementById('heroPrice').innerHTML = `${latest.rate.toFixed(2)} <span class="text-lg text-ios-subtext font-normal">VND</span>`;
+      document.getElementById('headerPrice').innerText = `${latest.rate.toFixed(2)} ₫`;
+      document.getElementById('unitRateText').innerText = latest.rate.toFixed(2);
+      document.getElementById('lastUpdatedText').innerText = latest.timestamp;
+      document.getElementById('heroFee').innerText = `${latest.fee} JPY`;
+      document.getElementById('heroPoints').innerText = `+${latest.points} pts`;
+
+      const allRates = rawHistoryData.map(d => d.rate);
+      const maxRate = Math.max(...allRates);
+      const minRate = Math.min(...allRates);
+
+      document.getElementById('heroHigh').innerText = `${maxRate.toFixed(2)} ₫`;
+      document.getElementById('heroLow').innerText = `${minRate.toFixed(2)} ₫`;
+
+      const heroTrendBadge = document.getElementById('heroTrendBadge');
+      const headerChange = document.getElementById('headerChange');
+
+      if (previousDifferent) {
+        const diff = Number((latest.rate - previousDifferent.rate).toFixed(2));
+        const percentChange = ((diff / previousDifferent.rate) * 100).toFixed(2);
+
+        if (diff > 0) {
+          heroTrendBadge.className = "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md font-mono bg-ios-greenBg text-ios-green border border-ios-green/30";
+          heroTrendBadge.innerHTML = `<i class="fa-solid fa-arrow-up text-[10px]"></i> +${diff.toFixed(2)} (+${percentChange}%)`;
+          headerChange.className = "font-semibold text-ios-green";
+          headerChange.innerText = `+${percentChange}%`;
+        } else {
+          heroTrendBadge.className = "inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md font-mono bg-ios-redBg text-ios-red border border-ios-red/30";
+          heroTrendBadge.innerHTML = `<i class="fa-solid fa-arrow-down text-[10px]"></i> ${diff.toFixed(2)} (${percentChange}%)`;
+          headerChange.className = "font-semibold text-ios-red";
+          headerChange.innerText = `${percentChange}%`;
+        }
+      } else {
+        // Trường hợp toàn bộ lịch sử chỉ có 1 mức giá hoặc chưa từng có biến động
+        heroTrendBadge.className = "inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md font-mono bg-ios-subcard text-ios-subtext border border-ios-border";
+        heroTrendBadge.innerHTML = `Chưa đổi`;
+        headerChange.className = "font-semibold text-ios-subtext";
+        headerChange.innerText = `0.00%`;
+      }
+
+      calculateExchange();
+      renderHistoryTable(activeDataFiltered);
+      renderSmartChart(activeDataFiltered);
+    }
+    function handleJpyInput(input) {
+      lastEditedField = 'jpy';
+      let rawVal = input.value.replace(/\D/g, "");
+      if (!rawVal) {
+        input.value = "";
+        calculateExchange();
+        return;
+      }
+      input.value = parseInt(rawVal, 10).toLocaleString('vi-VN');
+      calculateExchange();
+    }
+
+    function handleVndInput(input) {
+      lastEditedField = 'vnd';
+      let rawVal = input.value.replace(/\D/g, "");
+      if (!rawVal) {
+        input.value = "";
+        calculateExchange();
+        return;
+      }
+      input.value = parseInt(rawVal, 10).toLocaleString('vi-VN');
+      calculateExchange();
+    }
+
+    function setQuickJpy(amount) {
+      lastEditedField = 'jpy';
+      document.getElementById('swapInputJpy').value = amount.toLocaleString('vi-VN');
+      calculateExchange();
+    }
+
+    function setQuickVnd(amount) {
+      lastEditedField = 'vnd';
+      document.getElementById('swapOutputVnd').value = amount.toLocaleString('vi-VN');
+      calculateExchange();
+    }
+
+    function toggleSwapFocus() {
+      if (lastEditedField === 'jpy') {
+        lastEditedField = 'vnd';
+        document.getElementById('swapOutputVnd').focus();
+      } else {
+        lastEditedField = 'jpy';
+        document.getElementById('swapInputJpy').focus();
+      }
+    }
+
+    function calculateExchange() {
+      if (!rawHistoryData || rawHistoryData.length === 0) return;
+      const latest = rawHistoryData[rawHistoryData.length - 1];
+      const rate = latest.rate;
+      const fee = latest.fee || 0;
+      const isDeductFee = document.getElementById('toggleDeductFee').checked;
+      const feeSubtext = document.getElementById('feeToggleSubtext');
+
+      if (lastEditedField === 'jpy') {
+        const rawInput = document.getElementById('swapInputJpy').value.replace(/\D/g, "");
+        const inputJpy = parseInt(rawInput, 10) || 0;
+
+        let effectiveJpy = inputJpy;
+        if (isDeductFee) {
+          feeSubtext.innerText = "Trừ phí trực tiếp vào JPY nhận";
+          effectiveJpy = Math.max(0, inputJpy - fee);
+        } else {
+          feeSubtext.innerText = "Chuyển đủ JPY (chưa trừ phí)";
+          effectiveJpy = inputJpy;
+        }
+
+        const resultVnd = Math.round(effectiveJpy * rate);
+        document.getElementById('swapOutputVnd').value = resultVnd > 0 ? resultVnd.toLocaleString('vi-VN') : "";
+        document.getElementById('effectiveJpyText').innerText = `${effectiveJpy.toLocaleString('vi-VN')} JPY`;
+      } else {
+        const rawVndInput = document.getElementById('swapOutputVnd').value.replace(/\D/g, "");
+        const targetVnd = parseInt(rawVndInput, 10) || 0;
+
+        if (targetVnd <= 0 || rate <= 0) {
+          document.getElementById('swapInputJpy').value = "";
+          document.getElementById('effectiveJpyText').innerText = "0 JPY";
+          return;
+        }
+
+        const requiredNetJpy = Math.ceil(targetVnd / rate);
+        let totalJpyInput = requiredNetJpy;
+
+        if (isDeductFee) {
+          feeSubtext.innerText = "Cần cộng thêm phí gửi để nhận đủ VND";
+          totalJpyInput = requiredNetJpy + fee;
+        } else {
+          feeSubtext.innerText = "Chuyển đủ VND (chưa tính phí)";
+          totalJpyInput = requiredNetJpy;
+        }
+
+        document.getElementById('swapInputJpy').value = totalJpyInput.toLocaleString('vi-VN');
+        document.getElementById('effectiveJpyText').innerText = `${requiredNetJpy.toLocaleString('vi-VN')} JPY`;
+      }
+
+      document.getElementById('swapFeeText').innerText = `${fee} JPY`;
+      document.getElementById('swapPointsText').innerText = `+${latest.points} pts`;
+    }
+
+    /**
+     * Bảng Lịch Sử Chi Tiết: Giữ nguyên toàn bộ dữ liệu, kể cả các lần trùng tỷ giá
+     */
+    function renderHistoryTable(data) {
+      const tbody = document.getElementById('historyTableBody');
+      document.getElementById('recordCountText').innerText = `${data.length} bản ghi`;
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-ios-subtext">Không có bản ghi phù hợp.</td></tr>`;
+        return;
+      }
+
+      const reversed = data.slice().reverse();
+
+      tbody.innerHTML = reversed.map((row, index) => {
+        const olderRow = reversed[index + 1];
+        let trendHtml = '<span class="text-ios-subtext">—</span>';
+
+        if (olderRow) {
+          const diff = Number((row.rate - olderRow.rate).toFixed(2));
+          if (diff > 0) {
+            trendHtml = `<span class="text-ios-green font-medium">+${diff.toFixed(2)}</span>`;
+          } else if (diff < 0) {
+            trendHtml = `<span class="text-ios-red font-medium">${diff.toFixed(2)}</span>`;
+          }
+        }
+
+        return `
+          <tr class="hover:bg-ios-cardHover transition-colors">
+            <td class="px-5 py-3 text-slate-300">${row.timestamp}</td>
+            <td class="px-5 py-3 font-semibold text-white">${row.rate.toFixed(2)} ₫</td>
+            <td class="px-5 py-3 text-ios-subtext">${row.fee} JPY</td>
+            <td class="px-5 py-3 text-ios-green">+${row.points}</td>
+            <td class="px-5 py-3 text-right">${trendHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterTableBySearch() {
+      const query = document.getElementById('tableSearchInput').value.toLowerCase();
+      const filtered = activeDataFiltered.filter(item => 
+        item.timestamp.toLowerCase().includes(query) ||
+        item.rate.toString().includes(query)
+      );
+      renderHistoryTable(filtered);
+    }
+
+    /**
+     * Thuật toán lọc thông minh cho Biểu đồ:
+     * Khử các chuỗi bản ghi trùng lặp tỷ giá liên tiếp, giữ lại điểm thay đổi và điểm mới nhất.
+     */
+    function getSmartDeduplicatedChartData(data) {
+      if (!data || data.length <= 2) return data;
+
+      const smartPoints = [];
+      smartPoints.push(data[0]); // Giữ điểm mốc bắt đầu
+
+      for (let i = 1; i < data.length - 1; i++) {
+        const prev = data[i - 1];
+        const current = data[i];
+        const next = data[i + 1];
+
+        // Nếu tỷ giá thay đổi so với điểm trước hoặc sau -> giữ lại điểm then chốt
+        if (current.rate !== prev.rate || current.rate !== next.rate) {
+          smartPoints.push(current);
+        }
+      }
+
+      smartPoints.push(data[data.length - 1]); // Luôn giữ điểm cập nhật mới nhất
+      return smartPoints;
+    }
+
+    /**
+     * Render Biểu Đồ Thông Minh (Apple Minimal Flat Style)
+     */
+    function renderSmartChart(data) {
+      const ctx = document.getElementById('rateChartCanvas').getContext('2d');
+      const pointCountBadge = document.getElementById('chartPointCount');
+
+      if (!data || data.length === 0) {
+        if (chartInstance) chartInstance.destroy();
+        pointCountBadge.innerText = '0 mốc';
+        return;
+      }
+
+      // Áp dụng thuật toán khử trùng tỷ giá liên tục
+      const smartData = getSmartDeduplicatedChartData(data);
+      pointCountBadge.innerText = `${smartData.length}/${data.length} mốc biến động`;
+
+      const labels = smartData.map(d => {
+        const parts = d.timestamp.split(' ');
+        return parts.length > 1 ? parts[1].substring(0, 5) + ' ' + parts[0].substring(5) : d.timestamp;
+      });
+      const rates = smartData.map(d => d.rate);
+
+      if (chartInstance) chartInstance.destroy();
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Tỷ giá JPY/VND',
+            data: rates,
+            borderColor: '#30d158',
+            borderWidth: 1.75,
+            fill: false, // Flat tuyệt đối, không dùng gradient bóng loáng
+            tension: 0.1, // Góc gập dứt khoát tối giản
+            pointBackgroundColor: '#000000',
+            pointBorderColor: '#30d158',
+            pointBorderWidth: 1.5,
+            pointRadius: smartData.length > 30 ? 2 : 3.5,
+            pointHoverRadius: 5,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#161618',
+              titleColor: '#86868b',
+              bodyColor: '#30d158',
+              borderColor: '#232326',
+              borderWidth: 1,
+              padding: 10,
+              displayColors: false,
+              bodyFont: { family: 'JetBrains Mono', weight: 'bold' },
+              titleFont: { family: 'JetBrains Mono', size: 10 },
+              callbacks: {
+                label: (context) => ` ${context.parsed.y.toFixed(2)} VND`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: '#161618', drawBorder: false },
+              ticks: { color: '#86868b', font: { family: 'JetBrains Mono', size: 10 } }
+            },
+            y: {
+              grid: { color: '#1c1c1e', drawBorder: false },
+              ticks: { color: '#f5f5f7', font: { family: 'JetBrains Mono', size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    function exportCSV() {
+      if (!activeDataFiltered || activeDataFiltered.length === 0) {
+        return showToast('Không có dữ liệu xuất', 'info');
+      }
+
+      let csv = 'Thoi Gian,Ty Gia (VND),Phi Gui (JPY),Diem Thuong\n';
+      activeDataFiltered.forEach(row => {
+        csv += `"${row.timestamp}",${row.rate},${row.fee},${row.points}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `Smiles_Exchange_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('Đã xuất file CSV', 'success');
+    }
+
+    async function saveTriggerConfig() {
+      const endpoint = getEndpoint();
+      const token = document.getElementById('modalAdminToken').value.trim();
+      const interval = document.getElementById('modalIntervalSelect').value;
+
+      if (!token) return showToast('Vui lòng nhập Token Admin', 'error');
+
+      const btn = document.getElementById('btnSaveTrigger');
+      btn.disabled = true;
+      btn.innerText = 'Đang lưu...';
+
+      try {
+        const response = await fetchWithProxy(endpoint, {
+          method: 'POST',
+          body: JSON.stringify({
+            action: 'set_trigger',
+            admin_token: token,
+            interval_hours: interval
+          })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          showToast(result.message, 'success');
+        } else {
+          showToast('Lỗi: ' + result.message, 'error');
+        }
+      } catch (err) {
+        showToast('Lỗi: ' + err.toString(), 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = 'Lưu Chu Kỳ';
+      }
+    }
+
+    function openSettingsModal() {
+      document.getElementById('modalEndpointInput').value = getEndpoint();
+      document.getElementById('modalUseProxyToggle').checked = isProxyEnabled();
+      const modal = document.getElementById('settingsModal');
+      modal.classList.remove('hidden');
+      setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    }
+
+    function closeSettingsModal() {
+      const modal = document.getElementById('settingsModal');
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 150);
+    }
+
+    function saveEndpointConfig() {
+      const newUrl = document.getElementById('modalEndpointInput').value.trim();
+      if (!newUrl) return showToast('URL không được trống', 'error');
+      
+      const useProxy = document.getElementById('modalUseProxyToggle').checked;
+      localStorage.setItem('smiles_gas_url', newUrl);
+      localStorage.setItem('smiles_use_proxy', useProxy ? 'true' : 'false');
+
+      closeSettingsModal();
+      showToast('Đã lưu thiết lập kết nối', 'info');
+      loadHistoryData();
+    }
+
+    function updateStatusBadge(type, text) {
+      const badge = document.getElementById('statusBadge');
+      if (type === 'Online') {
+        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-ios-subcard text-ios-subtext border border-ios-border";
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-ios-green"></span> ${text}`;
+      } else if (type === 'Syncing') {
+        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-ios-subcard text-white border border-ios-border";
+        badge.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-[10px]"></i> ${text}`;
+      } else {
+        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-ios-subcard text-ios-red border border-ios-border";
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-ios-red"></span> ${text}`;
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const statusColors = {
+        success: 'text-ios-green border-ios-border',
+        error: 'text-ios-red border-ios-border',
+        info: 'text-white border-ios-border'
+      };
+
+      toast.className = `flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border bg-[#161618] text-xs font-mono transition-all duration-200 translate-y-2 opacity-0 pointer-events-auto ${statusColors[type] || statusColors.info}`;
+      toast.innerHTML = `<span>${message}</span>`;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 200);
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

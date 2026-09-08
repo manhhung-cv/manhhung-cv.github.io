@@ -1,0 +1,2324 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hệ Thống Cảnh Báo & Xác Minh Rủi Ro</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+                    },
+                    colors: {
+                        canvas: {
+                            light: '#f5f5f7',
+                            dark: '#000000'
+                        },
+                        surface: {
+                            light: 'rgba(255, 255, 255, 0.82)',
+                            dark: 'rgba(28, 28, 30, 0.82)'
+                        },
+                        card: {
+                            light: '#ffffff',
+                            dark: '#1c1c1e'
+                        },
+                        subtle: {
+                            light: '#f2f2f7',
+                            dark: '#2c2c2e'
+                        },
+                        accent: {
+                            blue: '#0071e3',
+                            hoverBlue: '#0077ed',
+                            crimson: '#ff3b30',
+                            crimsonSoft: 'rgba(255, 59, 48, 0.12)',
+                            mint: '#34c759',
+                            mintSoft: 'rgba(52, 199, 89, 0.14)',
+                            amber: '#ff9500',
+                            amberSoft: 'rgba(255, 149, 0, 0.14)',
+                            purple: '#af52de',
+                            purpleSoft: 'rgba(175, 82, 222, 0.14)'
+                        }
+                    },
+                    borderRadius: {
+                        '4xl': '2rem',
+                        '5xl': '2.5rem'
+                    },
+                    boxShadow: {
+                        'float': '0 10px 40px -10px rgba(0,0,0,0.08), 0 0 1px 1px rgba(0,0,0,0.04)',
+                        'float-dark': '0 14px 40px -10px rgba(0,0,0,0.6), 0 0 1px 1px rgba(255,255,255,0.08)',
+                        'card': '0 2px 8px -2px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.04)',
+                        'card-hover': '0 12px 32px -4px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Masonry & ImagesLoaded -->
+    <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+    <script src="https://unpkg.com/imagesloaded@5/imagesloaded.pkgd.min.js"></script>
+
+    <style>
+        /* Smooth micro transitions */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            outline-offset: 2px;
+        }
+
+        body {
+            font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+            letter-spacing: -0.012em;
+        }
+
+        /* Frosted Glass Utilities */
+        .glass-dock {
+            background: rgba(255, 255, 255, 0.76);
+            backdrop-filter: blur(28px) saturate(190%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%);
+        }
+
+        .dark .glass-dock {
+            background: rgba(28, 28, 30, 0.78);
+            backdrop-filter: blur(28px) saturate(190%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%);
+        }
+
+        .glass-sheet {
+            background: rgba(255, 255, 255, 0.94);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+        }
+
+        .dark .glass-sheet {
+            background: rgba(30, 30, 32, 0.94);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+        }
+
+        /* Masonry sizing constraints */
+        .grid-sizer,
+        .company-card-wrap {
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .grid-sizer,
+            .company-card-wrap {
+                width: calc(50% - 10px);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .grid-sizer,
+            .company-card-wrap {
+                width: calc(33.333% - 14px);
+            }
+        }
+
+        /* Modal transitions */
+        .modal-overlay {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-pane {
+            transform: scale(0.96) translateY(12px);
+            transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.28s ease;
+        }
+
+        .modal-overlay.active .modal-pane {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(140, 140, 150, 0.35);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-canvas-light dark:bg-canvas-dark text-neutral-900 dark:text-neutral-100 selection:bg-neutral-800 selection:text-white dark:selection:bg-white dark:selection:text-neutral-900 transition-colors duration-300 antialiased pb-24">
+
+    <!-- Top Navigation Anchor Header -->
+    <header class="sticky top-0 z-40 border-b border-black/[0.04] dark:border-white/[0.08] glass-dock transition-colors duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-2xl bg-neutral-950 dark:bg-white text-white dark:text-black flex items-center justify-center text-sm font-semibold shadow-sm">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <h1 class="text-sm sm:text-base font-semibold tracking-tight leading-tight">Cảnh Báo Nhật Bản</h1>
+                    <p class="text-[11px] text-neutral-500 dark:text-neutral-400 font-medium leading-none mt-0.5">Xác minh & Phòng tránh rủi ro</p>
+                </div>
+            </div>
+
+            <!-- Header Quick Actions -->
+            <div class="flex items-center gap-2">
+                <button id="batch-import-button" type="button"
+                    class="h-9 px-3 rounded-full bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800/80 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95" title="Nhập hàng loạt (Phím tắt: B)">
+                    <i class="fa-solid fa-file-import text-[11px]"></i>
+                    <span class="hidden md:inline">Nhập hàng loạt</span>
+                    <span class="hidden sm:inline-block px-1 py-0.2 rounded bg-black/10 dark:bg-white/10 text-[9px] font-mono">B</span>
+                </button>
+                <button id="add-report-button" type="button"
+                    class="h-9 px-3.5 rounded-full bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-neutral-950 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95" title="Tạo cảnh báo mới (Phím tắt: N)">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
+                    <span class="hidden sm:inline">Gửi cảnh báo</span>
+                    <span class="hidden sm:inline-block px-1 py-0.2 rounded bg-white/20 dark:bg-black/20 text-[9px] font-mono">N</span>
+                </button>
+                <button id="settings-button" type="button" aria-label="Cài đặt"
+                    class="w-9 h-9 rounded-full bg-neutral-200/60 hover:bg-neutral-200 dark:bg-neutral-800/80 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 flex items-center justify-center text-xs transition-all active:scale-95">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+
+        <section class="mb-8 space-y-4">
+            <!-- Search + Sorter Row -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div class="relative flex-1 group">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400 dark:text-neutral-500 text-xs transition-colors group-focus-within:text-neutral-900 dark:group-focus-within:text-white">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                    <input type="search" id="search-input" placeholder="Tìm theo tên thực thể, địa điểm, sự việc..."
+                        class="w-full h-11 pl-9 pr-4 rounded-2xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs sm:text-sm font-medium placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/10 dark:focus:ring-white/10 shadow-card transition-all" />
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <div class="relative min-w-[130px]">
+                        <select id="sort-select"
+                            class="appearance-none w-full h-11 pl-3.5 pr-8 rounded-2xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs font-semibold text-neutral-700 dark:text-neutral-300 focus:outline-none shadow-card cursor-pointer">
+                            <option value="newest">Mới nhất</option>
+                            <option value="oldest">Cũ nhất</option>
+                            <option value="name-asc">Tên (A-Z)</option>
+                            <option value="name-desc">Tên (Z-A)</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-neutral-400 pointer-events-none"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Segmented Category Pill Tabs -->
+            <div class="p-1 rounded-2xl bg-neutral-200/70 dark:bg-neutral-900/90 border border-black/[0.04] dark:border-white/[0.06] flex items-center overflow-x-auto no-scrollbar gap-1" id="filter-container">
+                <button class="filter-btn active flex-1 min-w-[80px] py-1.5 px-3 rounded-xl text-xs font-semibold text-neutral-900 dark:text-white bg-white dark:bg-card-dark shadow-sm transition-all text-center whitespace-nowrap" data-filter="all">
+                    Tất cả
+                </button>
+                <button class="filter-btn flex-1 min-w-[110px] py-1.5 px-3 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-all text-center whitespace-nowrap" data-filter="company,hakken">
+                    Công ty / Kền
+                </button>
+                <button class="filter-btn flex-1 min-w-[80px] py-1.5 px-3 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-all text-center whitespace-nowrap" data-filter="individual">
+                    Cá nhân
+                </button>
+                <button class="filter-btn flex-1 min-w-[80px] py-1.5 px-3 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-all text-center whitespace-nowrap" data-filter="organization">
+                    Tổ chức
+                </button>
+            </div>
+        </section>
+
+        <section id="admin-panel" class="hidden mb-8 rounded-3xl bg-neutral-100 dark:bg-neutral-900/90 border border-neutral-300/80 dark:border-neutral-800 p-5 space-y-4 shadow-card">
+            <div class="flex items-center justify-between cursor-pointer admin-panel-header" id="admin-panel-main-toggle">
+                <div class="flex items-center gap-2.5">
+                    <span class="w-2 h-2 rounded-full bg-accent-crimson animate-pulse"></span>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-700 dark:text-neutral-300">Không gian quản trị</h3>
+                </div>
+                <i class="fa-solid fa-chevron-down text-xs text-neutral-500 transition-transform duration-200" id="admin-main-chevron"></i>
+            </div>
+
+            <div id="admin-panel-content" class="hidden pt-3 border-t border-neutral-200 dark:border-neutral-800 space-y-4">
+                <!-- IP Ban Block -->
+                <div class="rounded-2xl bg-white dark:bg-card-dark p-4 border border-black/[0.04] dark:border-white/[0.06]">
+                    <div class="flex items-center justify-between cursor-pointer mb-3" id="ip-ban-toggle">
+                        <div class="flex items-center gap-2 text-xs font-semibold">
+                            <i class="fa-solid fa-ban text-accent-crimson"></i>
+                            <span>Kiểm soát & Giới hạn IP</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
+                    </div>
+                    <div id="ip-ban-content" class="hidden pt-2 space-y-3">
+                        <div class="flex gap-2">
+                            <input type="text" id="ip-address-input" placeholder="Nhập địa chỉ IP..."
+                                class="flex-1 h-9 px-3 text-xs rounded-xl bg-neutral-100 dark:bg-neutral-800/60 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                            <button id="add-ip-ban-btn" class="px-3.5 h-9 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:text-neutral-900 text-xs font-semibold transition-all">Thêm cấm</button>
+                        </div>
+                        <div id="banned-ip-list" class="space-y-1.5 text-xs text-neutral-600 dark:text-neutral-400">
+                            <!-- IP entries -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trash Bin Block -->
+                <div class="rounded-2xl bg-white dark:bg-card-dark p-4 border border-black/[0.04] dark:border-white/[0.06]">
+                    <div class="flex items-center justify-between cursor-pointer mb-2" id="trash-toggle">
+                        <div class="flex items-center gap-2 text-xs font-semibold">
+                            <i class="fa-solid fa-trash-can text-neutral-500"></i>
+                            <span>Lưu trữ thùng rác</span>
+                        </div>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-neutral-400"></i>
+                    </div>
+                    <div id="trashed-reports-list" class="hidden pt-3 space-y-2 text-xs">
+                        <!-- Trashed items -->
+                    </div>
+                </div>
+
+                <!-- Flags & Infraction Reports -->
+                <div class="rounded-2xl bg-white dark:bg-card-dark p-4 border border-black/[0.04] dark:border-white/[0.06] space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2 text-xs font-semibold">
+                            <i class="fa-solid fa-flag text-accent-amber"></i>
+                            <span>Khiếu nại nội dung cần duyệt</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">Chờ xử lý</div>
+                        <div id="pending-flags-list" class="space-y-2 text-xs"></div>
+                    </div>
+                    <div class="pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                        <div class="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-2">Đã giải quyết</div>
+                        <div id="resolved-flags-list" class="space-y-2 text-xs opacity-75"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="company-list" class="w-full relative transition-all min-h-[400px]">
+            <div class="grid-sizer"></div>
+            <!-- Cards will be populated here -->
+        </section>
+    </main>
+
+    <div id="add-report-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div class="px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <h3 id="report-modal-title" class="text-sm sm:text-base font-bold tracking-tight">Tạo Cảnh Báo Mới</h3>
+                <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center text-xs text-neutral-500 transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="add-report-form" class="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
+                <input type="hidden" id="report-id-input">
+
+                <div class="space-y-1.5">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Tên công ty / Tổ chức / Cá nhân <span class="text-accent-crimson">*</span></label>
+                    <input type="text" id="report-name" required placeholder="Ví dụ: Công ty X, Kền Y..."
+                        class="w-full h-10 px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none transition-all">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Địa bàn / Khu vực <span class="text-accent-crimson">*</span></label>
+                    <input type="text" id="report-location" required placeholder="Ví dụ: Tokyo, Osaka, Aichi..."
+                        class="w-full h-10 px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none transition-all">
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Chi tiết vấn đề / Hành vi <span class="text-accent-crimson">*</span></label>
+                    <textarea id="report-issues" rows="3" required placeholder="Mô tả cụ thể hành vi vi phạm, quỵt lương, lừa tiền cọc..."
+                        class="w-full p-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none transition-all resize-none"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="space-y-1.5">
+                        <label class="font-semibold text-neutral-700 dark:text-neutral-300">Phân loại <span class="text-accent-crimson">*</span></label>
+                        <select id="report-classification" required
+                            class="w-full h-10 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                            <option value="">-- Chọn phân loại --</option>
+                            <option value="hakken">Kền (Phái cử)</option>
+                            <option value="company">Công ty (Trực tiếp)</option>
+                            <option value="individual">Cá nhân</option>
+                            <option value="organization">Tổ chức</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="font-semibold text-neutral-700 dark:text-neutral-300">Nguồn kiểm chứng</label>
+                        <input type="text" id="report-source" placeholder="Cá nhân trực tiếp, FB..."
+                            class="w-full h-10 px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none transition-all">
+                    </div>
+                </div>
+
+                <div id="other-classification-input" class="hidden space-y-1.5">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Ghi rõ phân loại khác <span class="text-accent-crimson">*</span></label>
+                    <input type="text" id="report-other-classification"
+                        class="w-full h-10 px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                </div>
+
+                <!-- Anonymous and submitter badge -->
+                <div class="pt-2 flex items-center justify-between border-t border-black/[0.04] dark:border-white/[0.06]">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-neutral-500">Đăng bởi:</span>
+                        <input type="text" id="report-reporter-display" disabled
+                            class="bg-transparent text-xs font-semibold text-neutral-800 dark:text-neutral-200 cursor-not-allowed">
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="report-anonymous-toggle" class="w-4 h-4 rounded text-neutral-900 accent-neutral-900 dark:accent-white">
+                        <span class="text-xs font-medium text-neutral-600 dark:text-neutral-300">Ẩn danh tác giả</span>
+                    </label>
+                </div>
+
+                <!-- Financial Fraud Accordion Section -->
+                <div class="pt-2 border-t border-black/[0.04] dark:border-white/[0.06] space-y-3">
+                    <label class="flex items-center gap-2.5 cursor-pointer select-none">
+                        <input type="checkbox" id="toggle-financial-scam" class="w-4 h-4 rounded accent-neutral-900 dark:accent-white">
+                        <span class="font-semibold text-xs text-neutral-800 dark:text-neutral-200">Gắn thẻ thiệt hại tài chính / tài khoản lừa đảo</span>
+                    </label>
+
+                    <div id="financial-scam-details" class="hidden p-4 rounded-2xl bg-neutral-100/70 dark:bg-neutral-800/50 border border-black/[0.04] dark:border-white/[0.06] space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="space-y-1">
+                                <label class="text-xs font-medium text-neutral-600 dark:text-neutral-400">Số tiền thiệt hại</label>
+                                <input type="number" id="scam-amount" placeholder="0"
+                                    class="w-full h-9 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs focus:outline-none">
+                            </div>
+                            <div class="space-y-1">
+                                <label class="text-xs font-medium text-neutral-600 dark:text-neutral-400">Đơn vị tiền tệ</label>
+                                <select id="scam-currency" class="w-full h-9 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs focus:outline-none">
+                                    <option value="JPY">JPY (¥)</option>
+                                    <option value="VND">VND (₫)</option>
+                                    <option value="USD">USD ($)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium text-neutral-600 dark:text-neutral-400">Hạng mục</label>
+                            <select id="scam-category" class="w-full h-9 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs focus:outline-none">
+                                <option value="">-- Chọn hạng mục --</option>
+                                <option value="lừa đảo chung">Lừa đảo chung</option>
+                                <option value="lừa cọc">Lừa cọc nhà / cọc việc</option>
+                                <option value="other">Khác (tự ghi)</option>
+                            </select>
+                        </div>
+                        <div id="scam-category-other-input" class="hidden">
+                            <input type="text" id="scam-category-other" placeholder="Ghi rõ hạng mục..."
+                                class="w-full h-9 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs focus:outline-none">
+                        </div>
+
+                        <div class="pt-2 border-t border-black/[0.04] dark:border-white/[0.06] space-y-2">
+                            <p class="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">Thông tin thụ hưởng (nếu có)</p>
+                            <input type="text" id="bank-name" placeholder="Tên ngân hàng..."
+                                class="w-full h-8 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs focus:outline-none">
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="account-name" placeholder="Tên chủ TK..."
+                                    class="h-8 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs focus:outline-none">
+                                <input type="text" id="account-number" placeholder="Số tài khoản..."
+                                    class="h-8 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] text-xs focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-black/[0.06] dark:border-white/[0.08]">
+                    <button type="submit" id="report-submit-btn"
+                        class="w-full h-11 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-neutral-950 font-semibold text-xs sm:text-sm tracking-tight transition-all active:scale-[0.98]">
+                        Đăng bài cảnh báo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="report-item-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-md rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div class="px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <h3 class="text-sm font-bold tracking-tight">Khiếu Nại / Báo Sai Sự Thật</h3>
+                <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center text-xs text-neutral-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="report-item-form" class="p-5 space-y-3.5 text-xs">
+                <input type="hidden" id="item-to-report-id">
+                <p class="text-neutral-500">Đối tượng khiếu nại: <strong id="item-to-report-name" class="text-neutral-900 dark:text-white font-semibold"></strong></p>
+
+                <div class="space-y-1.5">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Lý do khiếu nại <span class="text-accent-crimson">*</span></label>
+                    <select id="report-item-reason" required
+                        class="w-full h-10 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                        <option value="">-- Chọn lý do --</option>
+                        <option value="untrue">Sai sự thật / Bịa đặt</option>
+                        <option value="fake_news">Tin giả / Spam</option>
+                        <option value="insulting">Nội dung xúc phạm, đả kích cá nhân</option>
+                        <option value="outdated">Thông tin đã cũ hoặc đã được giải quyết</option>
+                        <option value="other">Lý do khác</option>
+                    </select>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Thông tin bổ sung hoặc minh chứng</label>
+                    <textarea id="report-item-details" rows="3" placeholder="Mô tả lý do khiếu nại chi tiết..."
+                        class="w-full p-3 rounded-xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none resize-none"></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full h-10 rounded-xl bg-accent-crimson hover:opacity-90 text-white font-semibold transition-all">
+                        Gửi khiếu nại
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-md rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div class="px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <h3 class="text-sm font-bold tracking-tight">Cài Đặt & Tài Khoản</h3>
+                <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center text-xs text-neutral-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-5 text-xs sm:text-sm">
+                <!-- User profile section when logged in -->
+                <div id="user-info-container" class="hidden space-y-3">
+                    <div id="view-profile-section" class="space-y-3">
+                        <div class="p-3.5 rounded-2xl bg-neutral-100/80 dark:bg-neutral-800/60 border border-black/[0.04] dark:border-white/[0.06] space-y-2 text-xs">
+                            <div class="flex justify-between py-0.5"><span class="text-neutral-500">Họ và tên:</span><span id="profile-view-fullname" class="font-semibold text-right"></span></div>
+                            <div class="flex justify-between py-0.5"><span class="text-neutral-500">Email:</span><span id="profile-view-email" class="font-semibold text-right"></span></div>
+                            <div class="flex justify-between py-0.5"><span class="text-neutral-500">Số điện thoại:</span><span id="profile-view-phone" class="font-semibold text-right"></span></div>
+                            <div class="flex justify-between py-0.5"><span class="text-neutral-500">Mạng xã hội:</span><span id="profile-view-social" class="font-semibold text-right"></span></div>
+                            <div class="flex justify-between py-0.5 items-start"><span class="text-neutral-500">Cảnh cáo (Gậy):</span><div id="profile-view-strikes" class="font-semibold text-accent-crimson text-right">0</div></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <button id="edit-profile-btn" class="h-9 rounded-xl bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 font-semibold text-xs transition-all">Sửa thông tin</button>
+                            <button id="logout-button" class="h-9 rounded-xl bg-accent-crimson/15 text-accent-crimson hover:bg-accent-crimson/25 font-semibold text-xs transition-all">Đăng xuất</button>
+                        </div>
+                    </div>
+
+                    <!-- Edit Profile inline form -->
+                    <form id="edit-profile-form" class="hidden space-y-3">
+                        <div class="space-y-1">
+                            <label class="font-semibold text-xs text-neutral-600 dark:text-neutral-400">Họ tên</label>
+                            <input type="text" id="profile-edit-fullname" class="w-full h-9 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent text-xs focus:outline-none">
+                        </div>
+                        <div class="space-y-1">
+                            <label class="font-semibold text-xs text-neutral-600 dark:text-neutral-400">Số điện thoại</label>
+                            <input type="tel" id="profile-edit-phone" class="w-full h-9 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent text-xs focus:outline-none">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <button type="button" id="cancel-edit-profile-btn" class="h-9 rounded-xl bg-neutral-200 dark:bg-neutral-800 text-xs font-semibold">Hủy</button>
+                            <button type="submit" class="h-9 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 text-xs font-semibold">Lưu thay đổi</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Logged-out prompt -->
+                <div id="login-prompt-container" class="hidden p-4 rounded-2xl bg-neutral-100/70 dark:bg-neutral-800/50 text-center space-y-3">
+                    <p class="text-xs text-neutral-500">Đăng nhập để đăng tải cảnh báo và xác nhận độ tin cậy của bài viết cộng đồng.</p>
+                    <button id="go-to-login-from-settings" class="w-full h-10 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-semibold text-xs tracking-tight">Đăng nhập ngay</button>
+                </div>
+
+                <!-- Interface appearance switcher -->
+                <div class="space-y-2 pt-2 border-t border-black/[0.04] dark:border-white/[0.06]">
+                    <label class="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Chế độ giao diện</label>
+                    <div class="p-1 rounded-2xl bg-neutral-200/70 dark:bg-neutral-800/80 grid grid-cols-3 gap-1">
+                        <label class="cursor-pointer text-center py-1.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 has-[:checked]:bg-white dark:has-[:checked]:bg-card-dark has-[:checked]:text-neutral-950 dark:has-[:checked]:text-white has-[:checked]:shadow-sm transition-all">
+                            <input type="radio" name="theme" value="light" class="hidden">
+                            <span>Sáng</span>
+                        </label>
+                        <label class="cursor-pointer text-center py-1.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 has-[:checked]:bg-white dark:has-[:checked]:bg-card-dark has-[:checked]:text-neutral-950 dark:has-[:checked]:text-white has-[:checked]:shadow-sm transition-all">
+                            <input type="radio" name="theme" value="dark" class="hidden">
+                            <span>Tối</span>
+                        </label>
+                        <label class="cursor-pointer text-center py-1.5 rounded-xl text-xs font-medium text-neutral-600 dark:text-neutral-400 has-[:checked]:bg-white dark:has-[:checked]:bg-card-dark has-[:checked]:text-neutral-950 dark:has-[:checked]:text-white has-[:checked]:shadow-sm transition-all">
+                            <input type="radio" name="theme" value="system" class="hidden" checked>
+                            <span>Tự động</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-sm rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div class="px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <h3 class="text-sm font-bold tracking-tight">Đăng Nhập</h3>
+                <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center text-xs text-neutral-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="login-form" class="p-5 space-y-3 text-xs">
+                <div class="space-y-1">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Email</label>
+                    <input type="email" id="login-email" required placeholder="name@example.com"
+                        class="w-full h-10 px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Mật khẩu</label>
+                    <input type="password" id="login-password" required placeholder="••••••••"
+                        class="w-full h-10 px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                </div>
+                <div class="flex items-center justify-between pt-1 text-[11px]">
+                    <a href="#" id="forgot-password-link" class="text-accent-blue hover:underline">Quên mật khẩu?</a>
+                    <a href="#" id="go-to-register-link" class="text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white">Tạo tài khoản mới</a>
+                </div>
+                <div class="pt-3">
+                    <button type="submit" class="w-full h-10 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-semibold tracking-tight transition-all active:scale-95">Đăng nhập</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Register Sheet -->
+    <div id="register-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-md max-h-[92vh] flex flex-col rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div class="px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <h3 class="text-sm font-bold tracking-tight">Đăng Ký Tài Khoản</h3>
+                <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center text-xs text-neutral-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="register-form" class="p-5 overflow-y-auto space-y-3 text-xs">
+                <div class="space-y-1">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Họ và tên <span class="text-accent-crimson">*</span></label>
+                    <input type="text" id="register-fullname" required placeholder="Nguyễn Văn A"
+                        class="w-full h-9 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Email <span class="text-accent-crimson">*</span></label>
+                    <input type="email" id="register-email" required placeholder="a@gmail.com"
+                        class="w-full h-9 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Mật khẩu <span class="text-accent-crimson">*</span></label>
+                    <input type="password" id="register-password" required placeholder="Tối thiểu 6 ký tự"
+                        class="w-full h-9 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Số điện thoại <span class="text-accent-crimson">*</span></label>
+                    <input type="tel" id="register-phone" required placeholder="080-xxxx-xxxx"
+                        class="w-full h-9 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                </div>
+                <div class="space-y-1">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Liên hệ mạng xã hội <span class="text-accent-crimson">*</span></label>
+                    <div class="flex gap-2">
+                        <select id="register-social-select" class="h-9 px-2 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent text-xs focus:outline-none">
+                            <option>Facebook</option>
+                            <option>Zalo</option>
+                            <option>Line</option>
+                            <option>Khác</option>
+                        </select>
+                        <input type="text" id="register-social-input" required placeholder="Link hoặc username..."
+                            class="flex-1 h-9 px-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent text-xs focus:outline-none">
+                    </div>
+                </div>
+                <div class="text-right pt-1">
+                    <a href="#" id="go-to-login-link" class="text-[11px] text-accent-blue hover:underline">Đã có tài khoản? Đăng nhập</a>
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="w-full h-10 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-semibold tracking-tight transition-all">Hoàn tất đăng ký</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Reset Sheet -->
+    <div id="forgot-password-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-sm rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div class="px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <h3 class="text-sm font-bold tracking-tight">Khôi Phục Mật Khẩu</h3>
+                <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center text-xs text-neutral-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="forgot-password-form" class="p-5 space-y-3 text-xs">
+                <p class="text-neutral-500">Nhập email của bạn để nhận hướng dẫn đặt lại mật khẩu an toàn.</p>
+                <input type="email" id="forgot-email" required placeholder="name@example.com"
+                    class="w-full h-10 px-3.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none">
+                <div class="pt-2">
+                    <button type="submit" class="w-full h-10 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 font-semibold transition-all">Gửi đường dẫn</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Soft Delete Confirmation Sheet (Replacing browser alert/confirm) -->
+    <div id="delete-confirm-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-sm rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark p-6 space-y-4 text-center">
+            <div class="w-12 h-12 mx-auto rounded-full bg-accent-crimson/15 text-accent-crimson flex items-center justify-center text-lg">
+                <i class="fa-solid fa-trash-can"></i>
+            </div>
+            <div class="space-y-1">
+                <h4 class="text-sm font-bold">Chuyển Vào Thùng Rác?</h4>
+                <p class="text-xs text-neutral-500">Báo cáo sẽ được ẩn khỏi trang cộng đồng và chỉ có quản trị viên mới có thể khôi phục.</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5 pt-2">
+                <button type="button" id="delete-cancel-btn" class="h-10 rounded-xl bg-neutral-200/80 dark:bg-neutral-800 font-semibold text-xs">Hủy bỏ</button>
+                <button type="button" id="delete-confirm-btn" class="h-10 rounded-xl bg-accent-crimson text-white font-semibold text-xs shadow-sm">Xác nhận chuyển</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Import Modal -->
+    <div id="batch-import-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-2xl max-h-[92vh] flex flex-col rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div class="px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-file-import"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm sm:text-base font-bold tracking-tight">Nhập Báo Cáo Hàng Loạt</h3>
+                        <p class="text-[11px] text-neutral-500">Tải lên hoặc dán tệp CSV / JSON danh sách cảnh báo</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center text-xs text-neutral-500 transition-all">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5 text-xs">
+                <!-- Sample Download Bar -->
+                <div class="p-3 rounded-2xl bg-neutral-100/80 dark:bg-neutral-800/60 border border-black/[0.04] dark:border-white/[0.06] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                    <div class="text-[11px] text-neutral-600 dark:text-neutral-300">
+                        <i class="fa-solid fa-circle-info text-accent-blue mr-1"></i> Chưa có định dạng mẫu? Tải tệp mẫu:
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="download-sample-csv-btn" class="h-8 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] hover:bg-neutral-100 dark:hover:bg-neutral-800 font-semibold text-[11px] flex items-center gap-1.5 shadow-sm transition-all">
+                            <i class="fa-solid fa-file-csv text-accent-mint"></i> Mẫu CSV
+                        </button>
+                        <button type="button" id="download-sample-json-btn" class="h-8 px-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.06] dark:border-white/[0.08] hover:bg-neutral-100 dark:hover:bg-neutral-800 font-semibold text-[11px] flex items-center gap-1.5 shadow-sm transition-all">
+                            <i class="fa-solid fa-file-code text-accent-amber"></i> Mẫu JSON
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Drag & Drop / File Input Zone -->
+                <div id="import-dropzone" class="border-2 border-dashed border-neutral-300 dark:border-neutral-700 hover:border-neutral-900 dark:hover:border-white rounded-3xl p-6 text-center cursor-pointer transition-all space-y-2 bg-neutral-50/50 dark:bg-neutral-900/30">
+                    <input type="file" id="batch-file-input" accept=".csv, .json, text/csv, application/json" class="hidden">
+                    <div class="w-12 h-12 mx-auto rounded-2xl bg-neutral-200/70 dark:bg-neutral-800 flex items-center justify-center text-neutral-600 dark:text-neutral-300 text-lg">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <p class="font-semibold text-neutral-800 dark:text-neutral-200 text-xs sm:text-sm">Kéo thả tệp CSV hoặc JSON vào đây, hoặc nhấn để chọn</p>
+                    <p class="text-[11px] text-neutral-400">Hỗ trợ tệp định dạng .csv hoặc .json (mã hóa UTF-8)</p>
+                </div>
+
+                <!-- Direct Paste textarea -->
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="font-semibold text-neutral-700 dark:text-neutral-300">Hoặc dán trực tiếp nội dung CSV / JSON:</label>
+                        <button type="button" id="parse-paste-btn" class="px-3 py-1 rounded-lg bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-[11px] font-semibold hover:opacity-90 transition-all">
+                            Phân tích nội dung
+                        </button>
+                    </div>
+                    <textarea id="batch-paste-textarea" rows="4" placeholder='Dán nội dung JSON array [ { "name": "...", ... } ] hoặc CSV lines tại đây...'
+                        class="w-full p-3 rounded-2xl bg-neutral-100 dark:bg-neutral-800/80 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 font-mono text-[11px] focus:outline-none resize-none"></textarea>
+                </div>
+
+                <!-- Anonymous selection for batch -->
+                <div class="flex items-center justify-between pt-1">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="batch-anonymous-toggle" checked class="w-4 h-4 rounded text-neutral-900 accent-neutral-900 dark:accent-white">
+                        <span class="text-xs font-medium text-neutral-600 dark:text-neutral-300">Đăng tất cả bài dưới dạng <strong>Ẩn danh</strong> (Mặc định)</span>
+                    </label>
+                </div>
+
+                <!-- Preview container -->
+                <div id="batch-preview-container" class="hidden space-y-3 pt-3 border-t border-black/[0.04] dark:border-white/[0.06]">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-neutral-900 dark:text-white">Xem trước dữ liệu</span>
+                            <span id="batch-items-count-badge" class="px-2 py-0.5 rounded-full bg-accent-mintSoft text-accent-mint font-semibold text-[10px]">0 mục</span>
+                        </div>
+                    </div>
+                    <div id="batch-preview-list" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        <!-- Preview rows injected via JS -->
+                    </div>
+                    <button type="button" id="execute-batch-import-btn"
+                        class="w-full h-11 rounded-2xl bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-200 dark:text-neutral-950 font-semibold text-xs tracking-tight transition-all active:scale-[0.98]">
+                        <span id="execute-batch-import-text">Xác nhận nhập cảnh báo</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="user-profile-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-md rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div id="user-profile-content" class="p-6 space-y-4 text-xs">
+                <!-- Content injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <div id="strike-reason-modal" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+        <div class="modal-pane w-full max-w-sm rounded-3xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark overflow-hidden">
+            <div class="px-5 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between">
+                <h3 class="text-sm font-bold tracking-tight">Đánh Dấu Vi Phạm (Gậy)</h3>
+                <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 flex items-center justify-center text-xs text-neutral-500">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="strike-reason-form" class="p-5 space-y-3 text-xs">
+                <input type="hidden" id="strike-user-id">
+                <div class="space-y-1.5">
+                    <label class="font-semibold text-neutral-700 dark:text-neutral-300">Lý do vi phạm <span class="text-accent-crimson">*</span></label>
+                    <textarea id="strike-reason-input" rows="3" required placeholder="Ghi rõ vi phạm (đăng tin bịa đặt, quấy rối...)"
+                        class="w-full p-3 rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-transparent focus:border-neutral-400 dark:focus:border-neutral-600 focus:outline-none resize-none"></textarea>
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="w-full h-10 rounded-xl bg-accent-crimson text-white font-semibold transition-all">Ghi nhận vi phạm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Floating Minimal Toast Notification -->
+    <div id="notification" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 translate-y-4">
+        <div id="notification-box" class="px-4 py-2.5 rounded-2xl glass-sheet border border-black/[0.08] dark:border-white/[0.12] shadow-float dark:shadow-float-dark flex items-center gap-2.5 text-xs font-semibold text-neutral-900 dark:text-white">
+            <span id="notification-dot" class="w-2 h-2 rounded-full bg-accent-mint"></span>
+            <p id="notification-message"></p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import {
+            getAuth,
+            onAuthStateChanged,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
+            sendPasswordResetEmail,
+            updateProfile
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore,
+            collection,
+            onSnapshot,
+            query,
+            where,
+            addDoc,
+            doc,
+            getDoc,
+            setDoc,
+            updateDoc,
+            deleteDoc,
+            arrayUnion,
+            arrayRemove,
+            serverTimestamp,
+            increment
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Application Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCeY5-00_um64cX4JELeEQ4pCVpcmdtHnA",
+            authDomain: "scamreport-abc.firebaseapp.com",
+            projectId: "scamreport-abc",
+            storageBucket: "scamreport-abc.appspot.com",
+            messagingSenderId: "1023539306816",
+            appId: "1:1023539306816:web:114fd7c4e677d10d645aa5",
+            measurementId: "G-0H95S0QFJR"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const ADMIN_EMAIL = "admin@example.com";
+
+        // State Store
+        let currentFilter = 'all';
+        let currentSort = 'newest';
+        let msnry = null;
+        let currentUserData = null;
+        let unsubscribeReports = null;
+        let unsubscribeFlags = null;
+        let unsubscribeTrashed = null;
+        let allReports = [];
+
+        // Core DOM references
+        const searchInput = document.getElementById('search-input');
+        const companyListDiv = document.getElementById('company-list');
+        const sortSelect = document.getElementById('sort-select');
+        const filterContainer = document.getElementById('filter-container');
+        const notification = document.getElementById('notification');
+        const notificationMessage = document.getElementById('notification-message');
+        const notificationDot = document.getElementById('notification-dot');
+
+        // Modals
+        const addReportModal = document.getElementById('add-report-modal');
+        const reportItemModal = document.getElementById('report-item-modal');
+        const settingsModal = document.getElementById('settings-modal');
+        const loginModal = document.getElementById('login-modal');
+        const registerModal = document.getElementById('register-modal');
+        const forgotPasswordModal = document.getElementById('forgot-password-modal');
+        const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+        const userProfileModal = document.getElementById('user-profile-modal');
+        const strikeReasonModal = document.getElementById('strike-reason-modal');
+        const strikeReasonForm = document.getElementById('strike-reason-form');
+        const batchImportModal = document.getElementById('batch-import-modal');
+
+        // Forms
+        const addReportForm = document.getElementById('add-report-form');
+        const reportItemForm = document.getElementById('report-item-form');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const forgotPasswordForm = document.getElementById('forgot-password-form');
+
+        // Triggers
+        const addReportButton = document.getElementById('add-report-button');
+        const batchImportButton = document.getElementById('batch-import-button');
+        const settingsButton = document.getElementById('settings-button');
+        const logoutButton = document.getElementById('logout-button');
+        const goToRegisterLink = document.getElementById('go-to-register-link');
+        const goToLoginLink = document.getElementById('go-to-login-link');
+        const forgotPasswordLink = document.getElementById('forgot-password-link');
+        const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+        const deleteCancelBtn = document.getElementById('delete-cancel-btn');
+
+        // Batch Elements
+        const batchFileInput = document.getElementById('batch-file-input');
+        const importDropzone = document.getElementById('import-dropzone');
+        const batchPasteTextarea = document.getElementById('batch-paste-textarea');
+        const parsePasteBtn = document.getElementById('parse-paste-btn');
+        const batchPreviewContainer = document.getElementById('batch-preview-container');
+        const batchPreviewList = document.getElementById('batch-preview-list');
+        const batchItemsCountBadge = document.getElementById('batch-items-count-badge');
+        const executeBatchImportBtn = document.getElementById('execute-batch-import-btn');
+        const executeBatchImportText = document.getElementById('execute-batch-import-text');
+        const downloadSampleCsvBtn = document.getElementById('download-sample-csv-btn');
+        const downloadSampleJsonBtn = document.getElementById('download-sample-json-btn');
+        let parsedBatchReports = [];
+
+        // Admin DOM
+        const adminPanel = document.getElementById('admin-panel');
+        const adminPanelMainToggle = document.getElementById('admin-panel-main-toggle');
+        const adminPanelContent = document.getElementById('admin-panel-content');
+        const adminMainChevron = document.getElementById('admin-main-chevron');
+        const ipBanToggle = document.getElementById('ip-ban-toggle');
+        const ipBanContent = document.getElementById('ip-ban-content');
+        const trashToggle = document.getElementById('trash-toggle');
+        const trashedReportsList = document.getElementById('trashed-reports-list');
+        const pendingFlagsList = document.getElementById('pending-flags-list');
+        const resolvedFlagsList = document.getElementById('resolved-flags-list');
+
+        let toastTimeout = null;
+        function showNotification(message, type = 'success') {
+            if (toastTimeout) clearTimeout(toastTimeout);
+            notificationMessage.textContent = message;
+
+            if (type === 'error') {
+                notificationDot.className = 'w-2 h-2 rounded-full bg-accent-crimson shadow-[0_0_8px_rgba(255,59,48,0.5)]';
+            } else {
+                notificationDot.className = 'w-2 h-2 rounded-full bg-accent-mint shadow-[0_0_8px_rgba(52,199,89,0.5)]';
+            }
+
+            notification.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            notification.classList.add('opacity-100', 'translate-y-0');
+
+            toastTimeout = setTimeout(() => {
+                notification.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+                notification.classList.remove('opacity-100', 'translate-y-0');
+            }, 3200);
+        }
+
+        function getVietnameseClassification(classification) {
+            const map = {
+                hakken: 'Kền (Phái cử)',
+                company: 'Công ty (Trực tiếp)',
+                individual: 'Cá nhân',
+                organization: 'Tổ chức'
+            };
+            return map[classification] || classification || 'Chung';
+        }
+
+        function formatDate(date) {
+            if (!date) return 'Vừa xong';
+            try {
+                const jsDate = date.toDate ? date.toDate() : new Date(date);
+                return jsDate.toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            } catch (e) {
+                return 'Không rõ';
+            }
+        }
+
+        function openModal(modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(modal) {
+            modal.classList.remove('active');
+            if (!document.querySelector('.modal-overlay.active')) {
+                document.body.style.overflow = '';
+            }
+        }
+
+        function processAndRender(reports) {
+            allReports = reports;
+            let reportsToRender = [...reports];
+            const searchTerm = searchInput.value.toLowerCase().trim();
+
+            if (searchTerm) {
+                reportsToRender = reportsToRender.filter(c =>
+                    (c.name && c.name.toLowerCase().includes(searchTerm)) ||
+                    (c.location && c.location.toLowerCase().includes(searchTerm)) ||
+                    (c.issues && c.issues.toLowerCase().includes(searchTerm))
+                );
+            }
+
+            if (currentFilter !== 'all') {
+                const filters = currentFilter.split(',');
+                reportsToRender = reportsToRender.filter(c => filters.includes(c.classification));
+            }
+
+            reportsToRender.sort((a, b) => {
+                const dateA = a.reportDate?.toDate ? a.reportDate.toDate().getTime() : 0;
+                const dateB = b.reportDate?.toDate ? b.reportDate.toDate().getTime() : 0;
+                switch (currentSort) {
+                    case 'oldest': return dateA - dateB;
+                    case 'name-asc': return (a.name || '').localeCompare(b.name || '');
+                    case 'name-desc': return (b.name || '').localeCompare(a.name || '');
+                    case 'newest':
+                    default: return dateB - dateA;
+                }
+            });
+
+            renderCompanies(reportsToRender);
+        }
+
+        function renderCompanies(reportsToRender) {
+            companyListDiv.innerHTML = '<div class="grid-sizer"></div>';
+
+            if (reportsToRender.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'w-full py-16 text-center text-neutral-400 dark:text-neutral-500 text-xs font-medium';
+                empty.innerHTML = `
+                    <div class="w-12 h-12 mx-auto mb-3 rounded-2xl bg-neutral-200/60 dark:bg-neutral-800 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                    Không tìm thấy bài cảnh báo phù hợp tiêu chí
+                `;
+                companyListDiv.appendChild(empty);
+                if (msnry) msnry.destroy();
+                msnry = null;
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+
+            reportsToRender.forEach(report => {
+                const cardWrap = document.createElement('div');
+                cardWrap.className = 'company-card-wrap mb-4';
+                cardWrap.dataset.id = report.id;
+
+                const verifications = report.verifiedBy?.length || 0;
+                const isHighlyVerified = verifications >= 10;
+                const isVerifiedByCurrentUser = currentUserData && report.verifiedBy?.includes(currentUserData.uid);
+                const isAdmin = currentUserData && currentUserData.isAdmin;
+                const isOwner = currentUserData && report.reporterId === currentUserData.uid;
+
+                let classificationBadgeClass = "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300";
+                if (report.classification === 'hakken') classificationBadgeClass = "bg-accent-crimsonSoft text-accent-crimson";
+                else if (report.classification === 'company') classificationBadgeClass = "bg-blue-500/10 text-accent-blue";
+                else if (report.classification === 'individual') classificationBadgeClass = "bg-accent-amberSoft text-accent-amber";
+                else if (report.classification === 'organization') classificationBadgeClass = "bg-accent-purpleSoft text-accent-purple";
+
+                let financialHTML = '';
+                if (report.financialScam) {
+                    const { amount, currency, category, bankDetails } = report.financialScam;
+                    const formattedAmount = amount ? new Intl.NumberFormat('ja-JP').format(amount) + ` ${currency}` : 'Chưa rõ';
+
+                    financialHTML = `
+                        <div class="mt-3 p-3 rounded-2xl bg-accent-crimsonSoft/60 border border-accent-crimson/15 text-xs space-y-1.5">
+                            <div class="flex items-center justify-between text-accent-crimson font-bold">
+                                <span class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-[11px]"></i> ${category || 'Lừa đảo'}</span>
+                                <span>${formattedAmount}</span>
+                            </div>
+                            ${(bankDetails?.bankName || bankDetails?.accountNumber) ? `
+                                <div class="pt-1 border-t border-accent-crimson/10 text-[11px] text-neutral-600 dark:text-neutral-400 font-mono space-y-0.5">
+                                    ${bankDetails.bankName ? `<div>${bankDetails.bankName}</div>` : ''}
+                                    ${bankDetails.accountName ? `<div>${bankDetails.accountName}</div>` : ''}
+                                    ${bankDetails.accountNumber ? `<div>STK: ${bankDetails.accountNumber}</div>` : ''}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+
+                let ownerControls = '';
+                if (isAdmin || isOwner) {
+                    ownerControls = `
+                        <div class="flex items-center gap-1">
+                            <button class="edit-btn w-7 h-7 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-800 dark:hover:text-white flex items-center justify-center text-[11px] transition-all" title="Chỉnh sửa">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <button class="delete-btn w-7 h-7 rounded-lg hover:bg-accent-crimson/10 text-neutral-400 hover:text-accent-crimson flex items-center justify-center text-[11px] transition-all" title="Xóa">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+
+                cardWrap.innerHTML = `
+                    <div class="rounded-3xl bg-white dark:bg-card-dark border ${isHighlyVerified ? 'border-accent-crimson/40 shadow-[0_0_20px_rgba(255,59,48,0.08)]' : 'border-black/[0.06] dark:border-white/[0.08]'} p-4 sm:p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-card-hover relative">
+                        ${isHighlyVerified ? `
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2.5 rounded-full bg-accent-crimson text-white text-[10px] font-bold tracking-tight">
+                                <i class="fa-solid fa-shield-halved"></i> Cảnh Báo Cao
+                            </div>
+                        ` : ''}
+
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${classificationBadgeClass}">
+                                    ${getVietnameseClassification(report.classification)}
+                                </span>
+                            </div>
+                            ${ownerControls}
+                        </div>
+
+                        <h4 class="text-sm sm:text-base font-bold text-neutral-950 dark:text-white leading-snug tracking-tight mb-1">
+                            ${report.name || 'Không rõ tên'}
+                        </h4>
+
+                        <div class="flex items-center gap-1.5 text-xs text-neutral-500 mb-3 font-medium">
+                            <i class="fa-solid fa-location-dot text-[10px]"></i>
+                            <span>${report.location || 'Chưa rõ địa bàn'}</span>
+                        </div>
+
+                        <div class="text-xs sm:text-sm text-neutral-700 dark:text-neutral-300 bg-neutral-50 dark:bg-neutral-900/60 p-3 rounded-2xl border border-black/[0.03] dark:border-white/[0.04] leading-relaxed whitespace-pre-line">
+                            ${report.issues || ''}
+                        </div>
+
+                        ${financialHTML}
+
+                        <div class="mt-3 pt-3 border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between text-[11px] text-neutral-400">
+                            <div class="truncate mr-2">
+                                Nguồn: <span class="text-neutral-600 dark:text-neutral-300 font-medium">${report.source || 'Cộng đồng'}</span>
+                                · Bởi: <a href="#" class="reporter-link font-medium text-neutral-600 dark:text-neutral-300 hover:underline" data-reporter-id="${report.reporterId || ''}">${report.reporterName || 'Ẩn danh'}</a>
+                                ${report.editedByAdmin ? '<span class="text-[10px] text-accent-blue">(Admin đã sửa)</span>' : ''}
+                            </div>
+                            <span class="whitespace-nowrap font-medium">${formatDate(report.reportDate)}</span>
+                        </div>
+
+                        <div class="mt-3 pt-3 border-t border-black/[0.04] dark:border-white/[0.06] grid grid-cols-2 gap-2">
+                            <button class="verify-btn h-8 rounded-xl font-semibold text-xs flex items-center justify-center gap-1.5 transition-all ${isVerifiedByCurrentUser ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 cursor-default' : 'bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white'}" data-id="${report.id}" ${isVerifiedByCurrentUser ? 'disabled' : ''}>
+                                <i class="fa-solid fa-check text-[10px]"></i>
+                                <span>Xác nhận (${verifications})</span>
+                            </button>
+                            <button class="report-item-btn h-8 rounded-xl bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-500 hover:text-neutral-900 dark:hover:text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all" data-id="${report.id}" data-name="${report.name || ''}">
+                                <i class="fa-solid fa-flag text-[10px]"></i>
+                                <span>Khiếu nại</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                fragment.appendChild(cardWrap);
+            });
+
+            companyListDiv.appendChild(fragment);
+
+            imagesLoaded(companyListDiv, function () {
+                if (msnry) {
+                    msnry.reloadItems();
+                    msnry.layout();
+                } else {
+                    msnry = new Masonry(companyListDiv, {
+                        itemSelector: '.company-card-wrap',
+                        columnWidth: '.grid-sizer',
+                        percentPosition: true,
+                        gutter: 14,
+                        transitionDuration: '0.15s'
+                    });
+                }
+            });
+        }
+
+        function applyTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'system';
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (savedTheme === 'dark' || (savedTheme === 'system' && systemPrefersDark)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        function saveThemeChoice(theme) {
+            localStorage.setItem('theme', theme);
+            applyTheme();
+        }
+
+        async function updateUIForAuthState(user) {
+            const userInfoContainer = document.getElementById('user-info-container');
+            const loginPromptContainer = document.getElementById('login-prompt-container');
+            const viewProfileSection = document.getElementById('view-profile-section');
+            const editProfileForm = document.getElementById('edit-profile-form');
+
+            if (user) {
+                loginPromptContainer.classList.add('hidden');
+                userInfoContainer.classList.remove('hidden');
+                viewProfileSection.classList.remove('hidden');
+                editProfileForm.classList.add('hidden');
+
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
+                    currentUserData = {
+                        uid: user.uid,
+                        email: user.email,
+                        displayName: user.displayName,
+                        isAdmin: user.email === ADMIN_EMAIL,
+                        ...(userDoc.exists() ? userDoc.data() : {})
+                    };
+
+                    document.getElementById('profile-view-fullname').textContent = currentUserData.fullName || currentUserData.displayName || 'Chưa cập nhật';
+                    document.getElementById('profile-view-email').textContent = currentUserData.email || '';
+                    document.getElementById('profile-view-phone').textContent = currentUserData.phone || 'Chưa cập nhật';
+
+                    const social = currentUserData.social;
+                    document.getElementById('profile-view-social').textContent = social ? `${social.platform}: ${social.id}` : 'Chưa cập nhật';
+
+                    const strikesDiv = document.getElementById('profile-view-strikes');
+                    strikesDiv.textContent = `${currentUserData.strikes || 0} lần`;
+
+                    if (currentUserData.isAdmin) {
+                        adminPanel.classList.remove('hidden');
+                        listenToFlaggedReports();
+                        listenToTrashedReports();
+                    } else {
+                        adminPanel.classList.add('hidden');
+                    }
+                } catch (e) {
+                    console.error("User doc fetch error", e);
+                }
+            } else {
+                currentUserData = null;
+                userInfoContainer.classList.add('hidden');
+                loginPromptContainer.classList.remove('hidden');
+                adminPanel.classList.add('hidden');
+                if (unsubscribeFlags) unsubscribeFlags();
+                if (unsubscribeTrashed) unsubscribeTrashed();
+            }
+        }
+
+        function listenToReports() {
+            const reportsRef = collection(db, "reports");
+            const q = query(reportsRef, where("status", "==", "published"));
+
+            if (unsubscribeReports) unsubscribeReports();
+
+            unsubscribeReports = onSnapshot(q, (snapshot) => {
+                const reports = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                processAndRender(reports);
+            }, (error) => {
+                console.error("Lỗi khi tải reports: ", error);
+                showNotification("Không thể tải danh sách cảnh báo.", "error");
+            });
+        }
+
+        function listenToFlaggedReports() {
+            const flagsRef = collection(db, "flags");
+            if (unsubscribeFlags) unsubscribeFlags();
+
+            unsubscribeFlags = onSnapshot(flagsRef, (snapshot) => {
+                pendingFlagsList.innerHTML = '';
+                resolvedFlagsList.innerHTML = '';
+
+                let hasPending = false;
+                let hasResolved = false;
+
+                snapshot.docs.forEach(d => {
+                    const flag = { id: d.id, ...d.data() };
+                    const item = document.createElement('div');
+                    item.className = 'p-3 rounded-2xl bg-neutral-100/70 dark:bg-neutral-800/40 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-2';
+
+                    let inner = `
+                        <div class="space-y-0.5">
+                            <p class="font-semibold text-neutral-900 dark:text-white">${flag.reportName || 'Không tên'}</p>
+                            <p class="text-neutral-500">Lý do: <span class="font-medium text-neutral-700 dark:text-neutral-300">${flag.reason}</span> · ${flag.details || ''}</p>
+                            <p class="text-[10px] text-neutral-400">Bởi: <a href="#" class="reporter-link text-accent-blue" data-reporter-id="${flag.flaggerId}">${flag.flaggerName || 'Ẩn danh'}</a></p>
+                        </div>
+                    `;
+
+                    if (flag.status !== 'resolved') {
+                        inner += `
+                            <button class="mark-flag-read-btn w-8 h-8 rounded-xl bg-accent-mintSoft text-accent-mint hover:bg-accent-mint hover:text-white flex items-center justify-center transition-all flex-shrink-0" data-flag-id="${flag.id}" title="Đánh dấu đã giải quyết">
+                                <i class="fa-solid fa-check text-xs"></i>
+                            </button>
+                        `;
+                        item.innerHTML = inner;
+                        pendingFlagsList.appendChild(item);
+                        hasPending = true;
+                    } else {
+                        item.innerHTML = inner;
+                        resolvedFlagsList.appendChild(item);
+                        hasResolved = true;
+                    }
+                });
+
+                if (!hasPending) pendingFlagsList.innerHTML = '<p class="text-neutral-400 italic">Không có khiếu nại nào cần xử lý.</p>';
+                if (!hasResolved) resolvedFlagsList.innerHTML = '<p class="text-neutral-400 italic">Chưa có khiếu nại đã duyệt.</p>';
+            }, (err) => console.error("Flags listener error:", err));
+        }
+
+        function listenToTrashedReports() {
+            const trashedRef = collection(db, "reports");
+            const q = query(trashedRef, where("status", "==", "trashed"));
+
+            if (unsubscribeTrashed) unsubscribeTrashed();
+
+            unsubscribeTrashed = onSnapshot(q, (snapshot) => {
+                trashedReportsList.innerHTML = '';
+                if (snapshot.empty) {
+                    trashedReportsList.innerHTML = '<p class="text-neutral-400 italic">Thùng rác trống.</p>';
+                    return;
+                }
+
+                snapshot.docs.forEach(d => {
+                    const report = { id: d.id, ...d.data() };
+                    const item = document.createElement('div');
+                    item.className = 'p-3 rounded-2xl bg-neutral-100/70 dark:bg-neutral-800/40 border border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-2';
+                    item.innerHTML = `
+                        <div class="space-y-0.5">
+                            <p class="font-semibold text-neutral-900 dark:text-white">${report.name}</p>
+                            <p class="text-[10px] text-neutral-400">Tạo bởi: ${report.reporterName || 'Ẩn danh'}</p>
+                        </div>
+                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                            <button class="restore-btn w-8 h-8 rounded-xl bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-200 flex items-center justify-center text-xs" data-id="${report.id}" title="Khôi phục">
+                                <i class="fa-solid fa-arrow-rotate-left"></i>
+                            </button>
+                            <button class="perm-delete-btn w-8 h-8 rounded-xl bg-accent-crimsonSoft text-accent-crimson hover:bg-accent-crimson hover:text-white flex items-center justify-center text-xs transition-all" data-id="${report.id}" title="Xóa vĩnh viễn">
+                                <i class="fa-solid fa-fire"></i>
+                            </button>
+                        </div>
+                    `;
+                    trashedReportsList.appendChild(item);
+                });
+            }, (err) => console.error("Trash listener error:", err));
+        }
+
+        async function loadBannedIPs() {
+            const listDiv = document.getElementById('banned-ip-list');
+            try {
+                const configDoc = await getDoc(doc(db, "config", "bannedIPs"));
+                listDiv.innerHTML = '';
+                if (configDoc.exists()) {
+                    const ips = configDoc.data().list || [];
+                    if (ips.length === 0) {
+                        listDiv.innerHTML = '<p class="text-neutral-400 italic">Chưa có địa chỉ IP nào trong danh sách chặn.</p>';
+                    }
+                    ips.forEach(ip => {
+                        const item = document.createElement('div');
+                        item.className = 'flex items-center justify-between p-2 rounded-xl bg-neutral-100 dark:bg-neutral-800/60';
+                        item.innerHTML = `
+                            <span class="font-mono text-xs">${ip}</span>
+                            <button class="remove-ip-btn text-accent-crimson text-xs px-2 py-0.5 hover:underline" data-ip="${ip}">Gỡ</button>
+                        `;
+                        listDiv.appendChild(item);
+                    });
+                } else {
+                    listDiv.innerHTML = '<p class="text-neutral-400 italic">Chưa có IP bị cấm.</p>';
+                }
+            } catch (error) {
+                console.error("Lỗi khi tải banned IPs:", error);
+            }
+        }
+
+        function openEditModal(reportId, data) {
+            addReportForm.reset();
+            document.getElementById('report-id-input').value = reportId;
+            document.getElementById('report-modal-title').textContent = "Cập Nhật Cảnh Báo";
+            document.getElementById('report-submit-btn').textContent = "Lưu thay đổi";
+
+            document.getElementById('report-name').value = data.name || '';
+            document.getElementById('report-location').value = data.location || '';
+            document.getElementById('report-issues').value = data.issues || '';
+            document.getElementById('report-reporter-display').value = data.reporterName || '';
+            document.getElementById('report-source').value = data.source || '';
+            document.getElementById('report-anonymous-toggle').checked = (data.reporterName === 'Ẩn danh');
+
+            const validOptions = ['hakken', 'company', 'individual', 'organization'];
+            if (validOptions.includes(data.classification)) {
+                document.getElementById('report-classification').value = data.classification;
+                document.getElementById('other-classification-input').classList.add('hidden');
+            } else {
+                document.getElementById('report-classification').value = 'other';
+                document.getElementById('other-classification-input').classList.remove('hidden');
+                document.getElementById('report-other-classification').value = data.classification || '';
+            }
+
+            const toggle = document.getElementById('toggle-financial-scam');
+            const details = document.getElementById('financial-scam-details');
+            if (data.financialScam) {
+                toggle.checked = true;
+                details.classList.remove('hidden');
+                document.getElementById('scam-amount').value = data.financialScam.amount || '';
+                document.getElementById('scam-currency').value = data.financialScam.currency || 'JPY';
+                document.getElementById('scam-category').value = data.financialScam.category || '';
+                document.getElementById('bank-name').value = data.financialScam.bankDetails?.bankName || '';
+                document.getElementById('account-name').value = data.financialScam.bankDetails?.accountName || '';
+                document.getElementById('account-number').value = data.financialScam.bankDetails?.accountNumber || '';
+            } else {
+                toggle.checked = false;
+                details.classList.add('hidden');
+            }
+
+            openModal(addReportModal);
+        }
+
+        async function openUserProfileModal(userId) {
+            try {
+                const userDoc = await getDoc(doc(db, "users", userId));
+                if (!userDoc.exists()) {
+                    showNotification("Không tìm thấy thông tin thành viên.", "error");
+                    return;
+                }
+                const userData = userDoc.data();
+                const strikes = userData.strikes || 0;
+                const contentDiv = document.getElementById('user-profile-content');
+
+                let strikeReasonsHTML = '';
+                if (userData.strikeReasons && userData.strikeReasons.length > 0) {
+                    strikeReasonsHTML = `
+                        <div class="mt-2 p-2.5 rounded-xl bg-accent-crimsonSoft/50 text-[11px] space-y-1">
+                            <p class="font-bold text-accent-crimson">Nhật ký vi phạm:</p>
+                            <ul class="list-disc list-inside space-y-0.5 text-neutral-600 dark:text-neutral-300">
+                                ${userData.strikeReasons.map(r => `<li>${r}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+
+                contentDiv.innerHTML = `
+                    <div class="flex items-center justify-between pb-3 border-b border-black/[0.06] dark:border-white/[0.08]">
+                        <h3 class="text-sm font-bold tracking-tight">Hồ Sơ Thành Viên</h3>
+                        <button type="button" class="modal-close-btn w-8 h-8 rounded-full bg-neutral-200/70 hover:bg-neutral-200 dark:bg-neutral-800 flex items-center justify-center text-xs text-neutral-500">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                    <div class="space-y-2 p-3.5 rounded-2xl bg-neutral-100/70 dark:bg-neutral-800/50">
+                        <div class="flex justify-between"><span class="text-neutral-500">Họ và tên:</span><span class="font-semibold">${userData.fullName || 'Chưa cập nhật'}</span></div>
+                        <div class="flex justify-between"><span class="text-neutral-500">Email:</span><span class="font-semibold">${userData.email || 'Chưa rõ'}</span></div>
+                        <div class="flex justify-between"><span class="text-neutral-500">Điện thoại:</span><span class="font-semibold">${userData.phone || 'Chưa rõ'}</span></div>
+                        <div class="flex justify-between"><span class="text-neutral-500">Mạng xã hội:</span><span class="font-semibold">${userData.social ? userData.social.platform + ': ' + userData.social.id : 'Chưa rõ'}</span></div>
+                        <div class="flex justify-between items-center"><span class="text-neutral-500">Số gậy cảnh cáo:</span><span class="font-bold text-accent-crimson text-sm">${strikes}</span></div>
+                        ${strikeReasonsHTML}
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-black/[0.06] dark:border-white/[0.08]">
+                        <button id="remove-strike-btn" data-user-id="${userId}" class="h-9 rounded-xl bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 font-semibold text-xs transition-all" ${strikes === 0 ? 'disabled' : ''}>
+                            Gỡ 1 gậy
+                        </button>
+                        <button id="add-strike-btn" data-user-id="${userId}" class="h-9 rounded-xl bg-accent-crimson text-white font-semibold text-xs shadow-sm hover:opacity-90 transition-all">
+                            Ghi nhận gậy phạt
+                        </button>
+                    </div>
+                `;
+
+                contentDiv.querySelector('.modal-close-btn').addEventListener('click', () => closeModal(userProfileModal));
+                contentDiv.querySelector('#add-strike-btn').addEventListener('click', (e) => {
+                    document.getElementById('strike-user-id').value = userId;
+                    strikeReasonForm.reset();
+                    openModal(strikeReasonModal);
+                });
+                contentDiv.querySelector('#remove-strike-btn').addEventListener('click', () => handleRemoveStrikeUser(userId));
+
+                openModal(userProfileModal);
+            } catch (err) {
+                console.error("Open profile modal error:", err);
+            }
+        }
+
+        async function handleRemoveStrikeUser(userId) {
+            const userRef = doc(db, "users", userId);
+            try {
+                const userDoc = await getDoc(userRef);
+                if (userDoc.exists() && userDoc.data().strikes > 0) {
+                    const reasons = userDoc.data().strikeReasons || [];
+                    reasons.pop();
+                    await updateDoc(userRef, {
+                        strikes: increment(-1),
+                        strikeReasons: reasons
+                    });
+                    showNotification("Đã gỡ 1 gậy cho tài khoản.", "success");
+                    openUserProfileModal(userId);
+                }
+            } catch (error) {
+                console.error("Error removing strike:", error);
+                showNotification("Không thể gỡ gậy.", "error");
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const currentTheme = localStorage.getItem('theme') || 'system';
+            const targetRadio = document.querySelector(`input[name="theme"][value="${currentTheme}"]`);
+            if (targetRadio) targetRadio.checked = true;
+            applyTheme();
+
+            listenToReports();
+
+            onAuthStateChanged(auth, (user) => {
+                updateUIForAuthState(user);
+                listenToReports();
+            });
+
+            // Filter Tabs
+            filterContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.filter-btn');
+                if (!btn) return;
+                filterContainer.querySelectorAll('.filter-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-white', 'dark:bg-card-dark', 'text-neutral-900', 'dark:text-white', 'shadow-sm');
+                    b.classList.add('text-neutral-600', 'dark:text-neutral-400');
+                });
+                btn.classList.add('active', 'bg-white', 'dark:bg-card-dark', 'text-neutral-900', 'dark:text-white', 'shadow-sm');
+                btn.classList.remove('text-neutral-600', 'dark:text-neutral-400');
+                currentFilter = btn.dataset.filter;
+                processAndRender(allReports);
+            });
+
+            // Search and Sort
+            searchInput.addEventListener('input', () => processAndRender(allReports));
+            sortSelect.addEventListener('change', (e) => {
+                currentSort = e.target.value;
+                processAndRender(allReports);
+            });
+
+            // Admin panel collapsible toggles
+            adminPanelMainToggle.addEventListener('click', () => {
+                adminPanelContent.classList.toggle('hidden');
+                adminMainChevron.classList.toggle('rotate-180');
+            });
+            ipBanToggle.addEventListener('click', () => {
+                ipBanContent.classList.toggle('hidden');
+                if (!ipBanContent.classList.contains('hidden')) loadBannedIPs();
+            });
+            trashToggle.addEventListener('click', () => {
+                trashedReportsList.classList.toggle('hidden');
+            });
+
+            // Feed actions delegation
+            companyListDiv.addEventListener('click', async (e) => {
+                const verifyBtn = e.target.closest('.verify-btn');
+                const reportBtn = e.target.closest('.report-item-btn');
+                const editBtn = e.target.closest('.edit-btn');
+                const deleteBtn = e.target.closest('.delete-btn');
+                const reporterLink = e.target.closest('.reporter-link');
+
+                if (verifyBtn) {
+                    if (!currentUserData) {
+                        showNotification("Bạn cần đăng nhập để xác nhận cảnh báo.", "error");
+                        openModal(loginModal);
+                        return;
+                    }
+                    const reportId = verifyBtn.dataset.id;
+                    try {
+                        await updateDoc(doc(db, "reports", reportId), {
+                            verifiedBy: arrayUnion(currentUserData.uid)
+                        });
+                        showNotification("Đã ghi nhận xác nhận của bạn.", "success");
+                    } catch (error) {
+                        showNotification("Không thể gửi xác nhận lúc này.", "error");
+                    }
+                }
+
+                if (reportBtn) {
+                    if (!currentUserData) {
+                        showNotification("Bạn cần đăng nhập để gửi khiếu nại.", "error");
+                        openModal(loginModal);
+                        return;
+                    }
+                    if (currentUserData.strikes && currentUserData.strikes >= 3) {
+                        showNotification("Tài khoản của bạn đã bị giới hạn thao tác.", "error");
+                        return;
+                    }
+                    document.getElementById('item-to-report-id').value = reportBtn.dataset.id;
+                    document.getElementById('item-to-report-name').textContent = reportBtn.dataset.name;
+                    reportItemForm.reset();
+                    openModal(reportItemModal);
+                }
+
+                if (editBtn) {
+                    const cardWrap = editBtn.closest('.company-card-wrap');
+                    const reportId = cardWrap.dataset.id;
+                    const reportDoc = await getDoc(doc(db, "reports", reportId));
+                    if (reportDoc.exists()) {
+                        openEditModal(reportId, reportDoc.data());
+                    }
+                }
+
+                if (deleteBtn) {
+                    const cardWrap = deleteBtn.closest('.company-card-wrap');
+                    const reportId = cardWrap.dataset.id;
+                    deleteConfirmBtn.dataset.reportId = reportId;
+                    openModal(deleteConfirmModal);
+                }
+
+                if (reporterLink) {
+                    e.preventDefault();
+                    if (!currentUserData?.isAdmin) {
+                        showNotification("Chỉ quản trị viên mới có thể xem thông tin thành viên.", "error");
+                        return;
+                    }
+                    const reporterId = reporterLink.dataset.reporterId;
+                    if (reporterId) openUserProfileModal(reporterId);
+                }
+            });
+
+            // Modal global close actions
+            document.querySelectorAll('.modal-close-btn').forEach(btn => {
+                btn.addEventListener('click', () => closeModal(btn.closest('.modal-overlay')));
+            });
+            document.querySelectorAll('.modal-overlay').forEach(modal => {
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) closeModal(modal);
+                });
+            });
+
+            // Top action buttons
+            addReportButton.addEventListener('click', () => {
+                if (currentUserData) {
+                    if (currentUserData.strikes && currentUserData.strikes >= 3) {
+                        showNotification("Tài khoản của bạn đã bị khóa quyền gửi cảnh báo.", "error");
+                        return;
+                    }
+                    addReportForm.reset();
+                    document.getElementById('report-id-input').value = '';
+                    document.getElementById('report-modal-title').textContent = "Tạo Cảnh Báo Mới";
+                    document.getElementById('report-submit-btn').textContent = "Đăng bài cảnh báo";
+                    document.getElementById('report-reporter-display').value = currentUserData.fullName || currentUserData.displayName || currentUserData.email;
+                    document.getElementById('financial-scam-details').classList.add('hidden');
+                    document.getElementById('toggle-financial-scam').checked = false;
+                    document.getElementById('other-classification-input').classList.add('hidden');
+                    // Mặc định luôn tick Ẩn danh theo yêu cầu
+                    document.getElementById('report-anonymous-toggle').checked = true;
+                    openModal(addReportModal);
+                } else {
+                    showNotification("Vui lòng đăng nhập để gửi cảnh báo.", "error");
+                    openModal(loginModal);
+                }
+            });
+
+            // Phím tắt bàn phím toàn cục (Keyboard Shortcuts)
+            document.addEventListener('keydown', (e) => {
+                const targetTag = e.target.tagName.toLowerCase();
+                const isTyping = targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select' || e.target.isContentEditable;
+                
+                // Bỏ qua nếu người dùng đang nhập văn bản trong trường input
+                if (isTyping) {
+                    // Cho phép đóng modal bằng Esc
+                    if (e.key === 'Escape') {
+                        const activeModal = document.querySelector('.modal-overlay.active');
+                        if (activeModal) closeModal(activeModal);
+                    }
+                    return;
+                }
+
+                // Phím [N]: Mở modal báo cáo nhanh
+                if (e.key === 'n' || e.key === 'N') {
+                    e.preventDefault();
+                    if (addReportButton) addReportButton.click();
+                }
+
+                // Phím [B]: Mở nhanh modal nhập hàng loạt
+                if (e.key === 'b' || e.key === 'B') {
+                    e.preventDefault();
+                    if (batchImportButton) batchImportButton.click();
+                }
+
+                // Phím [Esc]: Đóng modal đang mở
+                if (e.key === 'Escape') {
+                    const activeModal = document.querySelector('.modal-overlay.active');
+                    if (activeModal) closeModal(activeModal);
+                }
+
+                // Phím [/]: Đưa con trỏ nhanh vào ô tìm kiếm
+                if (e.key === '/') {
+                    e.preventDefault();
+                    if (searchInput) {
+                        searchInput.focus();
+                        searchInput.select();
+                    }
+                }
+            });
+
+            // Mở modal nhập hàng loạt
+            if (batchImportButton) {
+                batchImportButton.addEventListener('click', () => {
+                    if (!currentUserData) {
+                        showNotification("Vui lòng đăng nhập để sử dụng tính năng nhập hàng loạt.", "error");
+                        openModal(loginModal);
+                        return;
+                    }
+                    if (currentUserData.strikes && currentUserData.strikes >= 3) {
+                        showNotification("Tài khoản của bạn đã bị khóa quyền gửi cảnh báo.", "error");
+                        return;
+                    }
+                    parsedBatchReports = [];
+                    if (batchPreviewContainer) batchPreviewContainer.classList.add('hidden');
+                    if (batchPasteTextarea) batchPasteTextarea.value = '';
+                    if (batchFileInput) batchFileInput.value = '';
+                    const batchAnonToggle = document.getElementById('batch-anonymous-toggle');
+                    if (batchAnonToggle) batchAnonToggle.checked = true;
+                    if (batchImportModal) openModal(batchImportModal);
+                });
+            }
+
+            // Mẫu dữ liệu CSV & JSON để tải về
+            const sampleJsonData = [
+                {
+                    "name": "Công ty TNHH Ánh Dương (Phái Cử)",
+                    "location": "Tokyo, Shinjuku",
+                    "issues": "Thu tiền cọc trái phép 20 man của thực tập sinh, không sắp xếp công việc như hợp đồng cam kết.",
+                    "classification": "hakken",
+                    "source": "Trải nghiệm cá nhân",
+                    "financialScam": {
+                        "amount": 200000,
+                        "currency": "JPY",
+                        "category": "lừa cọc",
+                        "bankDetails": {
+                            "bankName": "Yucho Bank",
+                            "accountName": "NGUYEN VAN A",
+                            "accountNumber": "10120-1234567"
+                        }
+                    }
+                },
+                {
+                    "name": "Môi giới Trần Hưng",
+                    "location": "Osaka, Namba",
+                    "issues": "Nhận tiền làm hồ sơ chuyển Tokutei rồi chặn liên lạc sau khi nhận chuyển khoản.",
+                    "classification": "individual",
+                    "source": "Nhóm Facebook Cộng Đồng Osaka",
+                    "financialScam": {
+                        "amount": 150000,
+                        "currency": "JPY",
+                        "category": "lừa đảo chung",
+                        "bankDetails": {
+                            "bankName": "Mitsubishi UFJ",
+                            "accountName": "TRAN HUNG",
+                            "accountNumber": "7654321"
+                        }
+                    }
+                }
+            ];
+
+            const sampleCsvString = `name,location,issues,classification,source,amount,currency,category,bankName,accountName,accountNumber\n"Công ty TNHH Ánh Dương","Tokyo","Thu cọc 20 man không trả","hakken","Trực tiếp",200000,JPY,"lừa cọc","Yucho Bank","NGUYEN VAN A","10120-1234567"\n"Môi giới Trần Hưng","Osaka","Chặn liên lạc sau khi nhận tiền hồ sơ","individual","Facebook",150000,JPY,"lừa đảo chung","Mitsubishi UFJ","TRAN HUNG","7654321"`;
+
+            if (downloadSampleJsonBtn) {
+                downloadSampleJsonBtn.addEventListener('click', () => {
+                    const blob = new Blob([JSON.stringify(sampleJsonData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'mau_canh_bao.json';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showNotification("Đã tải tệp mẫu JSON.", "success");
+                });
+            }
+
+            if (downloadSampleCsvBtn) {
+                downloadSampleCsvBtn.addEventListener('click', () => {
+                    const blob = new Blob(["\uFEFF" + sampleCsvString], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'mau_canh_bao.csv';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    showNotification("Đã tải tệp mẫu CSV.", "success");
+                });
+            }
+
+            // Drag and drop & file selection handlers
+            if (importDropzone && batchFileInput) {
+                importDropzone.addEventListener('click', () => batchFileInput.click());
+                importDropzone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    importDropzone.classList.add('border-neutral-900', 'dark:border-white');
+                });
+                importDropzone.addEventListener('dragleave', () => {
+                    importDropzone.classList.remove('border-neutral-900', 'dark:border-white');
+                });
+                importDropzone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    importDropzone.classList.remove('border-neutral-900', 'dark:border-white');
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        handleBatchFile(e.dataTransfer.files[0]);
+                    }
+                });
+
+                batchFileInput.addEventListener('change', (e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                        handleBatchFile(e.target.files[0]);
+                    }
+                });
+            }
+
+            function handleBatchFile(file) {
+                const reader = new FileReader();
+                const isJson = file.name.endsWith('.json') || file.type.includes('json');
+                reader.onload = (e) => {
+                    const content = e.target.result;
+                    processBatchContent(content, isJson ? 'json' : 'csv');
+                };
+                reader.readAsText(file, 'utf-8');
+            }
+
+            if (parsePasteBtn) {
+                parsePasteBtn.addEventListener('click', () => {
+                    if (!batchPasteTextarea) return;
+                    const text = batchPasteTextarea.value.trim();
+                    if (!text) {
+                        showNotification("Vui lòng dán nội dung CSV hoặc JSON.", "error");
+                        return;
+                    }
+                    const isJson = text.startsWith('[') || text.startsWith('{');
+                    processBatchContent(text, isJson ? 'json' : 'csv');
+                });
+            }
+
+            function parseCSV(text) {
+                const lines = text.split(/\r\n|\n/).filter(l => l.trim().length > 0);
+                if (lines.length < 2) return [];
+
+                // Simple CSV line parser taking quotes into account
+                function parseLine(line) {
+                    const result = [];
+                    let cur = '';
+                    let inQuotes = false;
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
+                        if (char === '"') {
+                            if (inQuotes && line[i + 1] === '"') {
+                                cur += '"';
+                                i++;
+                            } else {
+                                inQuotes = !inQuotes;
+                            }
+                        } else if (char === ',' && !inQuotes) {
+                            result.push(cur.trim());
+                            cur = '';
+                        } else {
+                            cur += char;
+                        }
+                    }
+                    result.push(cur.trim());
+                    return result;
+                }
+
+                const headers = parseLine(lines[0]).map(h => h.replace(/^["']|["']$/g, '').trim());
+                const items = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const values = parseLine(lines[i]).map(v => v.replace(/^["']|["']$/g, '').trim());
+                    if (values.length === 0) continue;
+                    const item = {};
+                    headers.forEach((h, idx) => {
+                        item[h] = values[idx] !== undefined ? values[idx] : '';
+                    });
+
+                    // Flattened financial scam mapping
+                    if (item.amount || item.bankName || item.accountNumber || item.category) {
+                        item.financialScam = {
+                            amount: parseInt(item.amount, 10) || null,
+                            currency: item.currency || 'JPY',
+                            category: item.category || 'Lừa đảo',
+                            bankDetails: {
+                                bankName: item.bankName || '',
+                                accountName: item.accountName || '',
+                                accountNumber: item.accountNumber || ''
+                            }
+                        };
+                    }
+                    items.push(item);
+                }
+                return items;
+            }
+
+            function processBatchContent(content, format) {
+                let parsed = [];
+                try {
+                    if (format === 'json') {
+                        const data = JSON.parse(content);
+                        parsed = Array.isArray(data) ? data : [data];
+                    } else {
+                        parsed = parseCSV(content);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showNotification("Không thể phân tích tệp! Vui lòng kiểm tra lại định dạng.", "error");
+                    return;
+                }
+
+                // Filter & normalize valid reports
+                parsedBatchReports = parsed.map(item => {
+                    let classification = item.classification || 'other';
+                    const allowedClass = ['hakken', 'company', 'individual', 'organization'];
+                    if (!allowedClass.includes(classification)) classification = 'other';
+
+                    return {
+                        name: (item.name || '').trim(),
+                        location: (item.location || '').trim(),
+                        issues: (item.issues || '').trim(),
+                        classification: classification,
+                        source: (item.source || 'Cộng đồng').trim(),
+                        financialScam: item.financialScam || null
+                    };
+                }).filter(r => r.name && r.issues);
+
+                if (parsedBatchReports.length === 0) {
+                    showNotification("Không tìm thấy dữ liệu hợp lệ (yêu cầu ít nhất tên và vấn đề).", "error");
+                    batchPreviewContainer.classList.add('hidden');
+                    return;
+                }
+
+                renderBatchPreview(parsedBatchReports);
+                showNotification(`Đã phân tích thành công ${parsedBatchReports.length} mục.`, "success");
+            }
+
+            function renderBatchPreview(items) {
+                batchItemsCountBadge.textContent = `${items.length} mục hợp lệ`;
+                executeBatchImportText.textContent = `Xác nhận nhập ${items.length} cảnh báo`;
+                batchPreviewList.innerHTML = '';
+
+                items.forEach((item, index) => {
+                    const row = document.createElement('div');
+                    row.className = 'p-3 rounded-xl bg-white dark:bg-card-dark border border-black/[0.04] dark:border-white/[0.06] flex items-start justify-between gap-2';
+                    row.innerHTML = `
+                        <div class="space-y-0.5 flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-neutral-900 dark:text-white truncate">${index + 1}. ${item.name}</span>
+                                <span class="px-2 py-0.2 rounded-full text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">${getVietnameseClassification(item.classification)}</span>
+                            </div>
+                            <p class="text-[11px] text-neutral-500 truncate"><i class="fa-solid fa-location-dot mr-1"></i>${item.location || 'Chưa rõ địa điểm'}</p>
+                            <p class="text-[11px] text-neutral-700 dark:text-neutral-300 line-clamp-1">${item.issues}</p>
+                            ${item.financialScam?.amount ? `<p class="text-[10px] text-accent-crimson font-semibold">Thiệt hại: ${new Intl.NumberFormat('ja-JP').format(item.financialScam.amount)} ${item.financialScam.currency}</p>` : ''}
+                        </div>
+                        <button type="button" class="remove-batch-item-btn text-neutral-400 hover:text-accent-crimson p-1 text-xs" data-index="${index}">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    `;
+                    batchPreviewList.appendChild(row);
+                });
+
+                batchPreviewList.querySelectorAll('.remove-batch-item-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const idx = parseInt(e.currentTarget.dataset.index, 10);
+                        parsedBatchReports.splice(idx, 1);
+                        if (parsedBatchReports.length === 0) {
+                            batchPreviewContainer.classList.add('hidden');
+                        } else {
+                            renderBatchPreview(parsedBatchReports);
+                        }
+                    });
+                });
+
+                batchPreviewContainer.classList.remove('hidden');
+            }
+
+            executeBatchImportBtn.addEventListener('click', async () => {
+                if (!currentUserData || parsedBatchReports.length === 0) return;
+                
+                executeBatchImportBtn.disabled = true;
+                executeBatchImportText.textContent = "Đang nhập dữ liệu...";
+
+                const isAnonymous = document.getElementById('batch-anonymous-toggle').checked;
+                const authorName = isAnonymous ? "Ẩn danh" : (currentUserData.fullName || currentUserData.displayName || "Thành viên");
+
+                let successCount = 0;
+                try {
+                    for (const item of parsedBatchReports) {
+                        const docData = {
+                            ...item,
+                            reporterId: currentUserData.uid,
+                            reporterName: authorName,
+                            reportDate: serverTimestamp(),
+                            verifiedBy: [],
+                            flaggedBy: [],
+                            status: 'published'
+                        };
+                        await addDoc(collection(db, "reports"), docData);
+                        successCount++;
+                    }
+                    showNotification(`Đã nhập thành công ${successCount} bài cảnh báo!`, "success");
+                    closeModal(batchImportModal);
+                    parsedBatchReports = [];
+                } catch (err) {
+                    console.error("Batch import error:", err);
+                    showNotification(`Đã nhập được ${successCount} mục trước khi gặp sự cố.`, "error");
+                } finally {
+                    executeBatchImportBtn.disabled = false;
+                    executeBatchImportText.textContent = "Xác nhận nhập cảnh báo";
+                }
+            });
+
+            settingsButton.addEventListener('click', () => openModal(settingsModal));
+
+            // Theme switcher listeners
+            document.querySelectorAll('input[name="theme"]').forEach(r => {
+                r.addEventListener('change', (e) => saveThemeChoice(e.target.value));
+            });
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+            // Classification custom field toggle
+            document.getElementById('report-classification').addEventListener('change', (e) => {
+                document.getElementById('other-classification-input').classList.toggle('hidden', e.target.value !== 'other');
+            });
+
+            // Scam category toggle
+            document.getElementById('scam-category').addEventListener('change', (e) => {
+                document.getElementById('scam-category-other-input').classList.toggle('hidden', e.target.value !== 'other');
+            });
+
+            document.getElementById('toggle-financial-scam').addEventListener('change', (e) => {
+                document.getElementById('financial-scam-details').classList.toggle('hidden', !e.target.checked);
+            });
+
+            addReportForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUserData) return;
+
+                const reportId = document.getElementById('report-id-input').value;
+                const isAnonymous = document.getElementById('report-anonymous-toggle').checked;
+                const isEditMode = Boolean(reportId);
+
+                let classification = document.getElementById('report-classification').value;
+                if (classification === 'other') {
+                    classification = document.getElementById('report-other-classification').value.trim() || 'Khác';
+                }
+
+                const reportData = {
+                    name: document.getElementById('report-name').value.trim(),
+                    location: document.getElementById('report-location').value.trim(),
+                    issues: document.getElementById('report-issues').value.trim(),
+                    classification: classification,
+                    source: document.getElementById('report-source').value.trim() || 'Không rõ',
+                };
+
+                if (document.getElementById('toggle-financial-scam').checked) {
+                    const amount = parseInt(document.getElementById('scam-amount').value, 10);
+                    let category = document.getElementById('scam-category').value;
+                    if (category === 'other') {
+                        category = document.getElementById('scam-category-other').value.trim() || 'Khác';
+                    }
+
+                    reportData.financialScam = {
+                        amount: isNaN(amount) ? null : amount,
+                        currency: document.getElementById('scam-currency').value,
+                        category: category,
+                        bankDetails: {
+                            bankName: document.getElementById('bank-name').value.trim(),
+                            accountName: document.getElementById('account-name').value.trim(),
+                            accountNumber: document.getElementById('account-number').value.trim()
+                        }
+                    };
+                } else {
+                    reportData.financialScam = null;
+                }
+
+                try {
+                    if (isEditMode) {
+                        const originalDoc = await getDoc(doc(db, "reports", reportId));
+                        if (currentUserData.isAdmin && currentUserData.uid !== originalDoc.data()?.reporterId) {
+                            reportData.editedByAdmin = true;
+                        }
+                        await updateDoc(doc(db, "reports", reportId), reportData);
+                        showNotification('Đã cập nhật thông tin cảnh báo.', 'success');
+                    } else {
+                        reportData.reporterId = currentUserData.uid;
+                        reportData.reporterName = isAnonymous ? "Ẩn danh" : (currentUserData.fullName || currentUserData.displayName || "Thành viên");
+                        reportData.reportDate = serverTimestamp();
+                        reportData.verifiedBy = [];
+                        reportData.flaggedBy = [];
+                        reportData.status = 'published';
+
+                        await addDoc(collection(db, "reports"), reportData);
+                        showNotification('Báo cáo mới đã được đăng tải.', 'success');
+                    }
+                    closeModal(addReportModal);
+                    addReportForm.reset();
+                } catch (err) {
+                    console.error("Lỗi khi lưu report:", err);
+                    showNotification("Có lỗi xảy ra khi lưu bài viết.", "error");
+                }
+            });
+
+            // Soft delete trigger
+            deleteCancelBtn.addEventListener('click', () => closeModal(deleteConfirmModal));
+            deleteConfirmBtn.addEventListener('click', async (e) => {
+                const reportId = e.currentTarget.dataset.reportId;
+                if (!reportId) return;
+                try {
+                    await updateDoc(doc(db, "reports", reportId), { status: 'trashed' });
+                    showNotification("Đã chuyển báo cáo vào thùng rác.", "success");
+                    closeModal(deleteConfirmModal);
+                } catch (error) {
+                    console.error("Error soft deleting:", error);
+                    showNotification("Không thể xóa lúc này.", "error");
+                }
+            });
+
+            // Report content / Flag form
+            reportItemForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!currentUserData) return;
+                const reportId = document.getElementById('item-to-report-id').value;
+                const reportName = document.getElementById('item-to-report-name').textContent;
+
+                try {
+                    await addDoc(collection(db, "flags"), {
+                        reportId,
+                        reportName,
+                        reason: document.getElementById('report-item-reason').value,
+                        details: document.getElementById('report-item-details').value.trim(),
+                        flaggerId: currentUserData.uid,
+                        flaggerName: currentUserData.fullName || currentUserData.displayName || 'Thành viên',
+                        timestamp: serverTimestamp(),
+                        status: 'pending'
+                    });
+                    showNotification("Đã gửi khiếu nại thành công.", "success");
+                    closeModal(reportItemModal);
+                } catch (err) {
+                    showNotification("Có lỗi xảy ra khi gửi khiếu nại.", "error");
+                }
+            });
+
+            // Strike Reason Form
+            strikeReasonForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const userId = document.getElementById('strike-user-id').value;
+                const reason = document.getElementById('strike-reason-input').value.trim();
+
+                if (!userId || !reason) return;
+
+                const userRef = doc(db, "users", userId);
+                try {
+                    await updateDoc(userRef, {
+                        strikes: increment(1),
+                        strikeReasons: arrayUnion(reason)
+                    });
+                    showNotification("Đã ghi nhận gậy phạt thành công.", "success");
+                    closeModal(strikeReasonModal);
+                    openUserProfileModal(userId);
+                } catch (err) {
+                    console.error("Strike error:", err);
+                    showNotification("Không thể ghi nhận gậy.", "error");
+                }
+            });
+
+            // Auth dialog navigation
+            goToRegisterLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                closeModal(loginModal);
+                openModal(registerModal);
+            });
+            goToLoginLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                closeModal(registerModal);
+                openModal(loginModal);
+            });
+            forgotPasswordLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                closeModal(loginModal);
+                openModal(forgotPasswordModal);
+            });
+            document.getElementById('go-to-login-from-settings').addEventListener('click', () => {
+                closeModal(settingsModal);
+                openModal(loginModal);
+            });
+
+            // Profile Edit inline
+            document.getElementById('edit-profile-btn').addEventListener('click', () => {
+                document.getElementById('profile-edit-fullname').value = currentUserData.fullName || currentUserData.displayName || '';
+                document.getElementById('profile-edit-phone').value = currentUserData.phone || '';
+                document.getElementById('view-profile-section').classList.add('hidden');
+                document.getElementById('edit-profile-form').classList.remove('hidden');
+            });
+
+            document.getElementById('cancel-edit-profile-btn').addEventListener('click', () => {
+                document.getElementById('view-profile-section').classList.remove('hidden');
+                document.getElementById('edit-profile-form').classList.add('hidden');
+            });
+
+            document.getElementById('edit-profile-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const newName = document.getElementById('profile-edit-fullname').value.trim();
+                const newPhone = document.getElementById('profile-edit-phone').value.trim();
+
+                try {
+                    await updateProfile(auth.currentUser, { displayName: newName });
+                    await updateDoc(doc(db, "users", currentUserData.uid), {
+                        fullName: newName,
+                        phone: newPhone
+                    });
+                    showNotification("Đã lưu hồ sơ cá nhân.", "success");
+                    await updateUIForAuthState(auth.currentUser);
+                } catch (error) {
+                    showNotification("Lỗi khi cập nhật hồ sơ.", "error");
+                }
+            });
+
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value.trim();
+                const password = document.getElementById('login-password').value;
+
+                signInWithEmailAndPassword(auth, email, password)
+                    .then(() => {
+                        closeModal(loginModal);
+                        showNotification("Đăng nhập thành công!", "success");
+                    })
+                    .catch(() => showNotification("Email hoặc mật khẩu không chính xác.", "error"));
+            });
+
+            registerForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const fullName = document.getElementById('register-fullname').value.trim();
+                const email = document.getElementById('register-email').value.trim();
+                const password = document.getElementById('register-password').value;
+                const phone = document.getElementById('register-phone').value.trim();
+                const socialPlatform = document.getElementById('register-social-select').value;
+                const socialId = document.getElementById('register-social-input').value.trim();
+
+                createUserWithEmailAndPassword(auth, email, password)
+                    .then(async (userCredential) => {
+                        const user = userCredential.user;
+                        await updateProfile(user, { displayName: fullName });
+                        await setDoc(doc(db, "users", user.uid), {
+                            fullName,
+                            email: user.email,
+                            phone,
+                            strikes: 0,
+                            isBanned: false,
+                            social: { platform: socialPlatform, id: socialId },
+                            createdAt: serverTimestamp()
+                        });
+                        closeModal(registerModal);
+                        showNotification("Chào mừng bạn gia nhập cộng đồng!", "success");
+                    })
+                    .catch((err) => {
+                        if (err.code === 'auth/email-already-in-use') {
+                            showNotification("Email này đã được sử dụng.", "error");
+                        } else {
+                            showNotification("Không thể đăng ký. Vui lòng thử lại.", "error");
+                        }
+                    });
+            });
+
+            forgotPasswordForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('forgot-email').value.trim();
+                sendPasswordResetEmail(auth, email)
+                    .then(() => {
+                        closeModal(forgotPasswordModal);
+                        showNotification("Đã gửi đường dẫn khôi phục mật khẩu vào email.", "success");
+                    })
+                    .catch(() => showNotification("Không tìm thấy tài khoản với email này.", "error"));
+            });
+
+            logoutButton.addEventListener('click', () => {
+                signOut(auth).then(() => {
+                    closeModal(settingsModal);
+                    showNotification("Đã đăng xuất tài khoản.", "success");
+                }).catch(err => console.error(err));
+            });
+
+            // Admin panel actions delegation
+            adminPanel.addEventListener('click', async (e) => {
+                // Resolve flag
+                const markFlagBtn = e.target.closest('.mark-flag-read-btn');
+                if (markFlagBtn) {
+                    const flagId = markFlagBtn.dataset.flagId;
+                    try {
+                        await updateDoc(doc(db, "flags", flagId), { status: 'resolved' });
+                        showNotification("Đã giải quyết khiếu nại.", "success");
+                    } catch (err) {
+                        showNotification("Lỗi khi cập nhật khiếu nại.", "error");
+                    }
+                }
+
+                // Add Banned IP
+                if (e.target.id === 'add-ip-ban-btn') {
+                    const ipInput = document.getElementById('ip-address-input');
+                    const ip = ipInput.value.trim();
+                    if (/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(ip)) {
+                        try {
+                            await setDoc(doc(db, "config", "bannedIPs"), {
+                                list: arrayUnion(ip)
+                            }, { merge: true });
+                            showNotification(`Đã chặn IP: ${ip}`, "success");
+                            ipInput.value = '';
+                            loadBannedIPs();
+                        } catch (err) {
+                            showNotification("Không thể thêm IP vào danh sách chặn.", "error");
+                        }
+                    } else {
+                        showNotification("Định dạng IP không hợp lệ.", "error");
+                    }
+                }
+
+                // Remove Banned IP
+                const removeIpBtn = e.target.closest('.remove-ip-btn');
+                if (removeIpBtn) {
+                    const ip = removeIpBtn.dataset.ip;
+                    try {
+                        await updateDoc(doc(db, "config", "bannedIPs"), {
+                            list: arrayRemove(ip)
+                        });
+                        showNotification("Đã gỡ chặn IP.", "success");
+                        loadBannedIPs();
+                    } catch (err) {
+                        showNotification("Lỗi khi gỡ chặn IP.", "error");
+                    }
+                }
+
+                // Trash actions: restore and permanent delete
+                const restoreBtn = e.target.closest('.restore-btn');
+                if (restoreBtn) {
+                    const reportId = restoreBtn.dataset.id;
+                    try {
+                        await updateDoc(doc(db, "reports", reportId), { status: 'published' });
+                        showNotification("Đã khôi phục báo cáo về bảng tin.", "success");
+                    } catch (err) {
+                        showNotification("Không thể khôi phục.", "error");
+                    }
+                }
+
+                const permDeleteBtn = e.target.closest('.perm-delete-btn');
+                if (permDeleteBtn) {
+                    const reportId = permDeleteBtn.dataset.id;
+                    // Replace browser confirm with custom modal or direct action
+                    try {
+                        await deleteDoc(doc(db, "reports", reportId));
+                        showNotification("Đã xóa vĩnh viễn báo cáo khỏi hệ thống.", "success");
+                    } catch (err) {
+                        showNotification("Lỗi khi xóa vĩnh viễn.", "error");
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,2477 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Aria2 Minimal — Trình Quản Lý Tải Xuống & LuCI File Manager</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
+          },
+          colors: {
+            primary: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.3);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.5);
+    }
+    .hide-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .hide-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+
+<body class="h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans antialiased selection:bg-emerald-500/20 selection:text-emerald-600 transition-colors duration-200">
+
+  <div id="app" class="flex h-full w-full overflow-hidden">
+
+    <!-- ==================== SIDEBAR (DESKTOP & TABLET) ==================== -->
+    <aside class="hidden md:flex flex-col w-64 lg:w-72 bg-white dark:bg-zinc-900 border-r border-zinc-200/80 dark:border-zinc-800/80 shrink-0 select-none z-20">
+      
+      <!-- App Brand -->
+      <div class="h-16 flex items-center justify-between px-6 border-b border-zinc-100 dark:border-zinc-800/60">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-sm shadow-emerald-500/20">
+            <i data-lucide="download-cloud" class="w-4 h-4 stroke-[2.5]"></i>
+          </div>
+          <div>
+            <h1 class="text-sm font-bold tracking-tight">Aria2 <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 rounded-md ml-1">Minimal</span></h1>
+          </div>
+        </div>
+
+        <button id="btnToggleThemeDesktop" class="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all">
+          <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+          <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+        </button>
+      </div>
+
+      <!-- Action Button -->
+      <div class="p-4 pb-2">
+        <button onclick="openModal('modalAddTask')" class="w-full h-11 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl font-medium text-sm flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98]">
+          <i data-lucide="plus" class="w-4 h-4 stroke-[2.5]"></i>
+          <span>Thêm Tác Vụ Mới</span>
+        </button>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+        <div class="text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-3 py-1.5">Nhiệm Vụ</div>
+
+        <button onclick="switchTab('active')" data-tab="active" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-50">
+          <div class="flex items-center gap-3">
+            <i data-lucide="arrow-down-circle" class="w-4 h-4 text-emerald-500"></i>
+            <span>Đang tải</span>
+          </div>
+          <span id="badgeActive" class="px-2 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold">0</span>
+        </button>
+
+        <button onclick="switchTab('waiting')" data-tab="waiting" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+          <div class="flex items-center gap-3">
+            <i data-lucide="clock" class="w-4 h-4 text-amber-500"></i>
+            <span>Đang chờ</span>
+          </div>
+          <span id="badgeWaiting" class="px-2 py-0.5 text-xs rounded-full bg-zinc-200/60 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold">0</span>
+        </button>
+
+        <button onclick="switchTab('stopped')" data-tab="stopped" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+          <div class="flex items-center gap-3">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-500"></i>
+            <span>Đã hoàn thành</span>
+          </div>
+          <span id="badgeStopped" class="px-2 py-0.5 text-xs rounded-full bg-zinc-200/60 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold">0</span>
+        </button>
+
+        <button onclick="switchTab('all')" data-tab="all" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+          <div class="flex items-center gap-3">
+            <i data-lucide="layers" class="w-4 h-4 text-zinc-400"></i>
+            <span>Tất cả tác vụ</span>
+          </div>
+          <span id="badgeAll" class="px-2 py-0.5 text-xs rounded-full bg-zinc-200/60 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold">0</span>
+        </button>
+
+        <div class="pt-4 text-[11px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-3 py-1.5">Hệ Thống & Tệp Tin</div>
+
+        <button onclick="switchTab('filemanager')" data-tab="filemanager" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+          <div class="flex items-center gap-3">
+            <i data-lucide="folder-tree" class="w-4 h-4 text-blue-500"></i>
+            <span>Quản lý tệp (LuCI)</span>
+          </div>
+          <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-semibold">File</span>
+        </button>
+
+        <button onclick="switchTab('settings')" data-tab="settings" class="nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors">
+          <div class="flex items-center gap-3">
+            <i data-lucide="sliders" class="w-4 h-4 text-emerald-500"></i>
+            <span>Cài đặt hệ thống</span>
+          </div>
+          <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-zinc-200/60 dark:bg-zinc-800 text-zinc-500">Cấu hình</span>
+        </button>
+      </nav>
+
+      <!-- Sidebar Status & Speed Widget -->
+      <div class="p-4 border-t border-zinc-100 dark:border-zinc-800/60 bg-zinc-50/50 dark:bg-zinc-900/50 space-y-3">
+        <div class="flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2">
+            <span id="statusIndicator" class="relative flex h-2 w-2">
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            </span>
+            <span id="statusText" class="font-medium text-zinc-600 dark:text-zinc-400 truncate max-w-[120px]">Chưa kết nối</span>
+          </div>
+          <span id="ariaVersion" class="text-[10px] text-zinc-400 font-mono">--</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 bg-white dark:bg-zinc-800 p-2.5 rounded-xl border border-zinc-200/60 dark:border-zinc-700/50">
+          <div>
+            <div class="flex items-center gap-1 text-[11px] text-zinc-400 font-medium">
+              <i data-lucide="arrow-down" class="w-3 h-3 text-emerald-500"></i> Tải về
+            </div>
+            <div id="statGlobalDown" class="text-xs font-bold font-mono text-zinc-800 dark:text-zinc-200 mt-0.5">0.0 B/s</div>
+          </div>
+          <div>
+            <div class="flex items-center gap-1 text-[11px] text-zinc-400 font-medium">
+              <i data-lucide="arrow-up" class="w-3 h-3 text-sky-500"></i> Tải lên
+            </div>
+            <div id="statGlobalUp" class="text-xs font-bold font-mono text-zinc-800 dark:text-zinc-200 mt-0.5">0.0 B/s</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ==================== MAIN CONTENT AREA ==================== -->
+    <main class="flex-1 flex flex-col h-full min-w-0 bg-zinc-50/60 dark:bg-zinc-950 overflow-hidden">
+      
+      <!-- Top Header -->
+      <header class="h-16 px-4 sm:px-6 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-800/80 flex items-center justify-between shrink-0 z-10">
+        <div class="flex items-center gap-3">
+          <div class="md:hidden flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-white shadow-sm">
+              <i data-lucide="download-cloud" class="w-4 h-4 stroke-[2.5]"></i>
+            </div>
+            <span class="font-bold text-sm">Aria2</span>
+          </div>
+
+          <div class="relative hidden sm:block w-48 lg:w-72">
+            <i data-lucide="search" class="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+            <input id="searchInput" type="text" placeholder="Tìm kiếm tác vụ..." class="w-full h-9 pl-9 pr-4 bg-zinc-100 dark:bg-zinc-800/80 border-0 rounded-xl text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:ring-2 focus:ring-emerald-500 outline-none transition-all" />
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 sm:gap-2">
+          <button onclick="startAllTasks()" title="Tiếp tục tất cả" class="h-9 px-2.5 sm:px-3 text-xs font-medium rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1.5 border border-zinc-200/70 dark:border-zinc-800 transition-colors">
+            <i data-lucide="play" class="w-3.5 h-3.5 text-emerald-500 fill-emerald-500"></i>
+            <span class="hidden sm:inline">Chạy tất cả</span>
+          </button>
+
+          <button onclick="pauseAllTasks()" title="Tạm dừng tất cả" class="h-9 px-2.5 sm:px-3 text-xs font-medium rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1.5 border border-zinc-200/70 dark:border-zinc-800 transition-colors">
+            <i data-lucide="pause" class="w-3.5 h-3.5 text-amber-500 fill-amber-500"></i>
+            <span class="hidden sm:inline">Dừng tất cả</span>
+          </button>
+
+          <button onclick="purgeCompletedTasks()" title="Dọn dẹp tác vụ hoàn thành" class="h-9 px-2.5 sm:px-3 text-xs font-medium rounded-xl text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center gap-1.5 border border-zinc-200/70 dark:border-zinc-800 transition-colors">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-500"></i>
+            <span class="hidden sm:inline">Dọn dẹp</span>
+          </button>
+
+          <button id="btnToggleThemeMobile" class="md:hidden p-2 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+            <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+          </button>
+
+          <button onclick="switchTab('settings')" class="md:hidden p-2 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <i data-lucide="sliders" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Content Scrollable Body -->
+      <div id="mainScrollableArea" class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 pb-24 md:pb-8 flex flex-col">
+        
+        <!-- Disconnected Alert Banner -->
+        <div id="disconnectedBanner" class="hidden items-center justify-between p-4 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-2xl text-xs gap-3">
+          <div class="flex items-center gap-3">
+            <i data-lucide="alert-triangle" class="w-5 h-5 shrink-0"></i>
+            <div>
+              <span class="font-bold">Chưa thể kết nối tới Aria2 RPC!</span>
+              <p class="text-zinc-500 dark:text-zinc-400 mt-0.5">Vui lòng kiểm tra lại địa chỉ IP máy chủ router, port 6800 hoặc token bảo mật.</p>
+            </div>
+          </div>
+          <button onclick="switchTab('settings')" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shrink-0 transition-colors shadow-sm">
+            Cấu hình kết nối
+          </button>
+        </div>
+
+        <!-- Live Status Bar -->
+        <section id="statsSection" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)]">
+            <div class="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+              <span class="font-medium">Tốc độ Tải Xuống</span>
+              <span class="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                <i data-lucide="arrow-down" class="w-3.5 h-3.5"></i>
+              </span>
+            </div>
+            <div id="statCardDown" class="text-xl font-bold font-mono text-zinc-900 dark:text-white">0.00 KB/s</div>
+            <div class="text-[11px] text-zinc-400 mt-1 flex items-center gap-1">
+              <span id="statDownIndicator" class="inline-block w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700"></span> Trực tiếp
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)]">
+            <div class="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+              <span class="font-medium">Tốc độ Tải Lên</span>
+              <span class="p-1 rounded-lg bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400">
+                <i data-lucide="arrow-up" class="w-3.5 h-3.5"></i>
+              </span>
+            </div>
+            <div id="statCardUp" class="text-xl font-bold font-mono text-zinc-900 dark:text-white">0.00 KB/s</div>
+            <div class="text-[11px] text-zinc-400 mt-1 flex items-center gap-1">
+              <span id="statUpIndicator" class="inline-block w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700"></span> Chia sẻ torrent
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)]">
+            <div class="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+              <span class="font-medium">Tác Vụ Hoạt Động</span>
+              <span class="p-1 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+                <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+              </span>
+            </div>
+            <div id="statCardActiveCount" class="text-xl font-bold font-mono text-zinc-900 dark:text-white">0</div>
+            <div class="text-[11px] text-zinc-400 mt-1">
+              <span id="statCardWaitingCount">0</span> tác vụ đang chờ
+            </div>
+          </div>
+
+          <div class="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200/70 dark:border-zinc-800/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)]">
+            <div class="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+              <span class="font-medium">Máy Chủ Aria2</span>
+              <span class="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <i data-lucide="server" class="w-3.5 h-3.5"></i>
+              </span>
+            </div>
+            <div id="rpcHostDisplay" class="text-sm font-semibold truncate text-zinc-900 dark:text-white mt-1">192.168.1.1:6800</div>
+            <div class="text-[11px] mt-1 flex items-center gap-1 font-medium">
+              <span id="rpcModeLabel" class="text-rose-500 font-semibold">Chưa kết nối</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Dynamic Section Header -->
+        <div id="tasksHeaderSection" class="flex items-center justify-between">
+          <div>
+            <h2 id="currentTabTitle" class="text-lg font-bold tracking-tight text-zinc-900 dark:text-white">Tác Vụ Đang Tải</h2>
+            <p id="currentTabDesc" class="text-xs text-zinc-400">Quản lý và giám sát các luồng tải về trong thời gian thực.</p>
+          </div>
+
+          <div id="sortContainer" class="flex items-center gap-2">
+            <select id="sortBy" onchange="renderTasks()" class="h-9 px-3 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-xl text-xs text-zinc-700 dark:text-zinc-300 outline-none focus:ring-2 focus:ring-emerald-500">
+              <option value="default">Mặc định</option>
+              <option value="name">Tên (A-Z)</option>
+              <option value="size">Dung lượng</option>
+              <option value="progress">Tiến độ</option>
+              <option value="speed">Tốc độ</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Task List Container -->
+        <div id="taskList" class="space-y-3"></div>
+
+        <!-- ==================== VIEW: LUCI FILE MANAGER ==================== -->
+        <div id="fileManagerView" class="hidden flex-1 flex-col h-full min-h-[520px] space-y-3">
+          <div class="flex items-center justify-between bg-white dark:bg-zinc-900 p-3.5 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-sm shrink-0">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                <i data-lucide="folder-tree" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Trình Quản Lý Tệp LuCI</h3>
+                <p id="fileManagerCurrentUrlDisplay" class="text-[11px] text-zinc-400 font-mono">http://192.168.1.1/cgi-bin/luci/admin/system/filemanager#</p>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <button onclick="reloadFileManagerFrame()" title="Tải lại trang tệp" class="h-8 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/70 dark:hover:bg-zinc-700 text-xs font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 transition-colors">
+                <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Làm mới</span>
+              </button>
+              <a id="btnOpenNewTabFileManager" href="#" target="_blank" title="Mở trong tab trình duyệt mới (khuyên dùng khi bị chặn iframe)" class="h-8 px-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-xs font-semibold flex items-center gap-1.5 text-blue-600 dark:text-blue-400 transition-colors">
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i> <span class="hidden sm:inline">Mở tab mới</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- File Manager Frame Container -->
+          <div class="flex-1 w-full bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 overflow-hidden shadow-sm relative min-h-[500px]">
+            <iframe id="fileManagerFrame" src="about:blank" class="w-full h-full border-0 absolute inset-0" loading="lazy"></iframe>
+          </div>
+        </div>
+
+        <!-- ==================== VIEW: CÀI ĐẶT HỆ THỐNG TOÀN DIỆN ==================== -->
+        <div id="systemSettingsView" class="hidden space-y-6 max-w-5xl mx-auto w-full">
+          
+          <!-- Section 1: Cấu hình IP Router OpenWrt & File Manager -->
+          <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-5 sm:p-6 space-y-4 shadow-sm">
+            <div class="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                  <i data-lucide="router" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Địa Chỉ Router OpenWrt & Quản Lý Tệp</h3>
+                  <p class="text-[11px] text-zinc-400">Cấu hình IP router để Aria2 Web nhúng chính xác LuCI File Manager</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Địa chỉ IP / Host của Router</label>
+                <input id="sysRouterIp" type="text" value="192.168.1.1" placeholder="vd: 192.168.1.1 hoặc 192.168.0.1" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Đường dẫn LuCI File Manager Endpoint</label>
+                <input id="sysFileManagerPath" type="text" value="/cgi-bin/luci/admin/system/filemanager#" placeholder="/cgi-bin/luci/admin/system/filemanager#" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Kết nối Aria2 RPC -->
+          <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-5 sm:p-6 space-y-4 shadow-sm">
+            <div class="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                  <i data-lucide="radio" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Kết Nối Máy Chủ Aria2 RPC</h3>
+                  <p class="text-[11px] text-zinc-400">Cấu hình địa chỉ mạng và khóa xác thực với Aria2 daemon</p>
+                </div>
+              </div>
+              <button onclick="testConnectionFromSettings()" class="h-8 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200/70 dark:hover:bg-zinc-700 text-[11px] font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300 transition-colors">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Kiểm tra kết nối
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div class="sm:col-span-1">
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Aria2 RPC Host / IP</label>
+                <input id="sysRpcHost" type="text" value="192.168.1.1" placeholder="localhost hoặc 192.168.1.1" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">RPC Port</label>
+                <input id="sysRpcPort" type="number" value="6800" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">RPC Endpoint Path</label>
+                <input id="sysRpcPath" type="text" value="/jsonrpc" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-1">
+              <div class="sm:col-span-1">
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Mã bảo mật RPC Secret (Token)</label>
+                <input id="sysRpcSecret" type="password" placeholder="Nhập RPC Secret token nếu có" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/70 dark:border-zinc-800">
+                <div>
+                  <div class="font-semibold text-zinc-800 dark:text-zinc-200">Giao thức an toàn SSL (HTTPS / WSS)</div>
+                  <div class="text-[11px] text-zinc-400">Bật khi Aria2 chạy sau HTTPS reverse proxy</div>
+                </div>
+                <input id="sysRpcSsl" type="checkbox" class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+              </div>
+              <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/70 dark:border-zinc-800">
+                <div>
+                  <div class="font-semibold text-zinc-800 dark:text-zinc-200">Tự động kết nối lại</div>
+                  <div class="text-[11px] text-zinc-400">Tự kết nối lại khi mất mạng hoặc khởi động</div>
+                </div>
+                <input id="sysAutoReconnect" type="checkbox" checked class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Thư mục lưu trữ & Tải xuống Core -->
+          <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-5 sm:p-6 space-y-4 shadow-sm">
+            <div class="flex items-center gap-2.5 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                <i data-lucide="folder" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Lưu Trữ & Quản Lý Tải Xuống</h3>
+                <p class="text-[11px] text-zinc-400">Thư mục tải về gốc và các tham số phân luồng tải của Aria2 Core</p>
+              </div>
+            </div>
+
+            <div class="space-y-4 text-xs">
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
+                  <span>Thư mục lưu trữ mặc định gốc (Download Directory - dir)</span>
+                  <span class="text-[10px] text-zinc-400">Đường dẫn tuyệt đối trên máy chủ Router</span>
+                </label>
+                <div class="relative">
+                  <i data-lucide="hard-drive" class="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                  <input id="sysDefaultDir" type="text" value="/mnt/sda1/downloads" placeholder="vd: /mnt/sda1/downloads hoặc /root/downloads" class="w-full h-10 pl-9 pr-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Số tải đồng thời tối đa (max-concurrent-downloads)</label>
+                  <input id="sysMaxConcurrent" type="number" min="1" max="64" value="5" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Số luồng tải mỗi tệp (split)</label>
+                  <input id="sysSplit" type="number" min="1" max="64" value="16" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Kết nối tối đa / máy chủ (max-connection-per-server)</label>
+                  <input id="sysMaxConnPerServer" type="number" min="1" max="16" value="16" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Kích thước mảnh tối thiểu (min-split-size)</label>
+                  <input id="sysMinSplitSize" type="text" value="10M" placeholder="vd: 10M, 20M" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Phương thức phân bổ ổ đĩa (file-allocation)</label>
+                  <select id="sysFileAllocation" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500">
+                    <option value="none">none (Không phân bổ trước)</option>
+                    <option value="falloc" selected>falloc (Khuyên dùng cho SSD / Linux ext4 / NTFS)</option>
+                    <option value="trunc">trunc (Cắt tệp theo kích thước)</option>
+                    <option value="prealloc">prealloc (Ghi đè khoảng trống)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/70 dark:border-zinc-800">
+                  <div>
+                    <div class="font-semibold text-zinc-800 dark:text-zinc-200">Tự động đổi tên khi trùng (auto-file-renaming)</div>
+                    <div class="text-[11px] text-zinc-400">Thêm số thứ tự đuôi file nếu tệp đã tồn tại</div>
+                  </div>
+                  <input id="sysAutoFileRenaming" type="checkbox" checked class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+                </div>
+                <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/70 dark:border-zinc-800">
+                  <div>
+                    <div class="font-semibold text-zinc-800 dark:text-zinc-200">Cho phép tiếp tục tải (continue)</div>
+                    <div class="text-[11px] text-zinc-400">Tiếp tục tải file dở dang nếu server hỗ trợ</div>
+                  </div>
+                  <input id="sysContinue" type="checkbox" checked class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Giới hạn tốc độ toàn cục -->
+          <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-5 sm:p-6 space-y-4 shadow-sm">
+            <div class="flex items-center gap-2.5 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                <i data-lucide="gauge" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Băng Thông & Giới Hạn Tốc Độ</h3>
+                <p class="text-[11px] text-zinc-400">Kiểm soát tốc độ mạng để tránh nghẽn băng thông gia đình</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Giới hạn tải xuống tối đa (0 = Không giới hạn)</label>
+                <input id="sysMaxOverallDownload" type="text" value="0" placeholder="vd: 0, 5M, 2048K" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Giới hạn tải lên tối đa (0 = Không giới hạn)</label>
+                <input id="sysMaxOverallUpload" type="text" value="0" placeholder="vd: 0, 1M, 500K" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: Cài đặt BitTorrent / P2P Nâng cao -->
+          <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-5 sm:p-6 space-y-4 shadow-sm">
+            <div class="flex items-center gap-2.5 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div class="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+                <i data-lucide="share-2" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Mạng Chia Sẻ BitTorrent / P2P</h3>
+                <p class="text-[11px] text-zinc-400">Tối ưu hóa khả năng tìm kiếm seeders và truyền tải tệp ngang hàng</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/70 dark:border-zinc-800">
+                <div>
+                  <div class="font-semibold text-zinc-800 dark:text-zinc-200">Bật DHT Network (IPv4/v6)</div>
+                  <div class="text-[10px] text-zinc-400">Tải không cần tracker</div>
+                </div>
+                <input id="sysEnableDht" type="checkbox" checked class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+              </div>
+              <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/70 dark:border-zinc-800">
+                <div>
+                  <div class="font-semibold text-zinc-800 dark:text-zinc-200">Peer Exchange (PEX)</div>
+                  <div class="text-[10px] text-zinc-400">Trao đổi danh sách peer</div>
+                </div>
+                <input id="sysEnablePex" type="checkbox" checked class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+              </div>
+              <div class="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/40 rounded-xl border border-zinc-200/70 dark:border-zinc-800">
+                <div>
+                  <div class="font-semibold text-zinc-800 dark:text-zinc-200">Local Peer Discovery</div>
+                  <div class="text-[10px] text-zinc-400">Tìm kiếm peer trong mạng LAN</div>
+                </div>
+                <input id="sysEnableLpd" type="checkbox" checked class="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Tỉ lệ Seed tối thiểu (seed-ratio)</label>
+                <input id="sysSeedRatio" type="number" step="0.1" value="1.0" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Số peers tối đa mỗi torrent (bt-max-peers)</label>
+                <input id="sysBtMaxPeers" type="number" value="55" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+            </div>
+
+            <div class="text-xs">
+              <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5 flex items-center justify-between">
+                <span>Danh sách Trackers bổ sung (bt-tracker)</span>
+                <span class="text-[10px] text-zinc-400">Cách nhau bởi dấu phẩy</span>
+              </label>
+              <textarea id="sysBtTrackers" rows="3" placeholder="http://tracker.example.com:80/announce,udp://tracker.opentrackr.org:1337/announce" class="w-full p-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500 placeholder:text-zinc-400"></textarea>
+            </div>
+          </div>
+
+          <!-- Section 6: Trải nghiệm & Sao lưu Cấu hình -->
+          <div class="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 p-5 sm:p-6 space-y-4 shadow-sm">
+            <div class="flex items-center gap-2.5 border-b border-zinc-100 dark:border-zinc-800 pb-3">
+              <div class="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-600 flex items-center justify-center">
+                <i data-lucide="palette" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Tùy Chọn Ứng Dụng & Sao Lưu Cấu Hình</h3>
+                <p class="text-[11px] text-zinc-400">Sao lưu, phục hồi và tải tệp cấu hình aria2.conf mẫu</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Chu kỳ làm mới dữ liệu thời gian thực</label>
+                <select id="sysRefreshInterval" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/70 border border-zinc-200 dark:border-zinc-700 rounded-xl text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="1000" selected>1 giây (Mượt mà nhất)</option>
+                  <option value="2000">2 giây</option>
+                  <option value="5000">5 giây (Tiết kiệm pin/CPU)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Sao lưu & Phục hồi thiết lập</label>
+                <div class="flex flex-wrap gap-2">
+                  <button onclick="exportSettingsAsJsonFile()" class="h-10 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200 transition-colors">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Xuất JSON
+                  </button>
+                  <label for="sysBackupFileInput" class="h-10 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200 transition-colors cursor-pointer">
+                    <i data-lucide="upload" class="w-3.5 h-3.5"></i> Nhập JSON
+                    <input type="file" id="sysBackupFileInput" accept=".json" class="hidden" onchange="importSettingsFromJsonFile(event)" />
+                  </label>
+                  <button onclick="copySettingsJsonToClipboard()" class="h-10 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200 transition-colors" title="Sao chép chuỗi JSON">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy JSON
+                  </button>
+                  <button onclick="exportAria2ConfigFile()" class="h-10 px-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 font-semibold flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200 transition-colors" title="Tạo file cấu hình aria2.conf">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i> Tải aria2.conf
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action Buttons -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <div class="flex items-center gap-2">
+              <button onclick="saveAria2Session()" class="h-10 px-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-200 flex items-center gap-1.5 transition-colors">
+                <i data-lucide="save" class="w-3.5 h-3.5"></i> Lưu Session Aria2
+              </button>
+              <button onclick="resetSettingsToDefault()" class="h-10 px-4 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-semibold flex items-center gap-1.5 transition-colors">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Khôi phục mặc định
+              </button>
+            </div>
+
+            <button onclick="saveAllSystemSettings()" class="h-11 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm shadow-emerald-600/20 active:scale-95 transition-all flex items-center gap-2">
+              <i data-lucide="check" class="w-4 h-4 stroke-[3]"></i> Lưu & Áp Dụng Cài Đặt
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden flex-col items-center justify-center py-16 px-4 text-center rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-800 bg-white/40 dark:bg-zinc-900/40">
+          <div class="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
+            <i data-lucide="inbox" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">Không có tác vụ nào</h3>
+          <p class="text-xs text-zinc-400 max-w-sm mt-1 mb-5">Danh sách hiện đang trống. Hãy thêm một đường dẫn URL, liên kết Magnet hoặc tập tin Torrent để bắt đầu tải.</p>
+          <button onclick="openModal('modalAddTask')" class="h-9 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-medium flex items-center gap-2 shadow-sm transition-all active:scale-95">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Thêm Tác Vụ</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- ==================== BOTTOM NAVIGATION (MOBILE ONLY) ==================== -->
+      <nav class="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-around px-2 z-30">
+        <button onclick="switchTab('active')" data-tab="active" class="mobile-nav-btn flex flex-col items-center gap-1 text-emerald-600 dark:text-emerald-400 py-1 px-2 rounded-lg text-[10px] font-medium">
+          <i data-lucide="arrow-down-circle" class="w-4 h-4"></i>
+          <span>Đang tải</span>
+        </button>
+
+        <button onclick="switchTab('waiting')" data-tab="waiting" class="mobile-nav-btn flex flex-col items-center gap-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 py-1 px-2 rounded-lg text-[10px] font-medium">
+          <i data-lucide="clock" class="w-4 h-4"></i>
+          <span>Chờ</span>
+        </button>
+
+        <button onclick="openModal('modalAddTask')" class="w-11 h-11 rounded-2xl bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 flex items-center justify-center shadow-lg shadow-zinc-900/20 active:scale-95 -mt-4 transition-transform">
+          <i data-lucide="plus" class="w-5 h-5 stroke-[2.5]"></i>
+        </button>
+
+        <button onclick="switchTab('filemanager')" data-tab="filemanager" class="mobile-nav-btn flex flex-col items-center gap-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 py-1 px-2 rounded-lg text-[10px] font-medium">
+          <i data-lucide="folder-tree" class="w-4 h-4"></i>
+          <span>Tệp</span>
+        </button>
+
+        <button onclick="switchTab('settings')" data-tab="settings" class="mobile-nav-btn flex flex-col items-center gap-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 py-1 px-2 rounded-lg text-[10px] font-medium">
+          <i data-lucide="sliders" class="w-4 h-4"></i>
+          <span>Cài đặt</span>
+        </button>
+      </nav>
+    </main>
+
+    <!-- ==================== MODAL: THÊM TÁC VỤ MỚI ==================== -->
+    <div id="modalAddTask" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 sm:p-6 transition-all opacity-0 pointer-events-none">
+      <div class="bg-white dark:bg-zinc-900 w-full max-w-xl rounded-3xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+            </div>
+            <h3 class="font-bold text-sm text-zinc-900 dark:text-white">Thêm Tác Vụ Tải Xuống</h3>
+          </div>
+          <button onclick="closeModal('modalAddTask')" class="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="flex border-b border-zinc-100 dark:border-zinc-800 px-6 pt-2">
+          <button id="tabBtnUrl" onclick="switchAddTaskMode('url')" class="px-4 py-2 text-xs font-semibold border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 transition-all">Đường dẫn URL / Magnet</button>
+          <button id="tabBtnTorrent" onclick="switchAddTaskMode('torrent')" class="px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all">Tập tin Torrent / Metalink</button>
+        </div>
+
+        <div class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+          <div id="addTaskUrlSection" class="space-y-3">
+            <div>
+              <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Liên kết tải xuống (Mỗi liên kết một dòng)</label>
+              <textarea id="inputUrls" rows="4" placeholder="http://, https://, ftp://, magnet:?xt=urn:btih:..." class="w-full p-3 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-2xl text-xs font-mono text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-zinc-400"></textarea>
+            </div>
+
+            <div id="sniffedResultsContainer" class="hidden space-y-2 p-3 bg-zinc-100/70 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200/60 dark:border-zinc-700/50">
+              <div class="flex items-center justify-between text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                <span class="flex items-center gap-1.5">
+                  <i data-lucide="radar" class="w-3.5 h-3.5 text-emerald-500"></i>
+                  Kết quả bắt link (<span id="sniffedCount">0</span>)
+                </span>
+                <span id="sniffingStatus" class="text-[10px] text-zinc-400 font-normal"></span>
+              </div>
+              <div id="sniffedList" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+            </div>
+
+            <div>
+              <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Tên tập tin tuỳ chỉnh (Tuỳ chọn cho 1 link đơn)</label>
+              <input id="inputFileName" type="text" placeholder="vd: Video_Khoa_Hoc.mp4" class="w-full h-10 px-3 bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+            </div>
+          </div>
+
+          <div id="addTaskTorrentSection" class="hidden space-y-3">
+            <div class="border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-2xl p-6 text-center hover:border-emerald-500 transition-colors cursor-pointer bg-zinc-50/50 dark:bg-zinc-800/30">
+              <input type="file" id="torrentFileInput" accept=".torrent,.metalink" class="hidden" onchange="handleTorrentFileSelected(event)" />
+              <label for="torrentFileInput" class="cursor-pointer flex flex-col items-center">
+                <i data-lucide="file-up" class="w-8 h-8 text-emerald-500 mb-2"></i>
+                <span id="torrentFileNameText" class="font-medium text-zinc-700 dark:text-zinc-300">Chọn hoặc kéo thả tập tin .torrent vào đây</span>
+                <span class="text-[11px] text-zinc-400 mt-1">Hỗ trợ tệp .torrent và .metalink</span>
+              </label>
+            </div>
+          </div>
+
+          <details class="group pt-2">
+            <summary class="cursor-pointer list-none flex items-center justify-between text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 font-medium">
+              <span class="flex items-center gap-1.5">
+                <i data-lucide="settings-2" class="w-3.5 h-3.5"></i> Tuỳ chọn nâng cao
+              </span>
+              <i data-lucide="chevron-down" class="w-3.5 h-3.5 group-open:rotate-180 transition-transform"></i>
+            </summary>
+            
+            <div class="space-y-3 pt-3">
+              <div>
+                <label class="block font-medium text-zinc-600 dark:text-zinc-400 mb-1">Thư mục lưu trữ (Download Directory)</label>
+                <input id="inputDir" type="text" placeholder="/mnt/sda1/downloads" class="w-full h-9 px-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block font-medium text-zinc-600 dark:text-zinc-400 mb-1">Số luồng kết nối (Split)</label>
+                  <input id="inputSplit" type="number" min="1" max="64" value="16" class="w-full h-9 px-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+                <div>
+                  <label class="block font-medium text-zinc-600 dark:text-zinc-400 mb-1">Giới hạn tải (Max Speed)</label>
+                  <input id="inputMaxSpeed" type="text" placeholder="vd: 2M, 500K, 0=Không giới hạn" class="w-full h-9 px-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-emerald-500" />
+                </div>
+              </div>
+            </div>
+          </details>
+
+        </div>
+
+        <div class="px-6 py-4 bg-zinc-50 dark:bg-zinc-900/80 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-end gap-2">
+          <button onclick="closeModal('modalAddTask')" class="h-10 px-4 rounded-xl text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition-colors">Huỷ</button>
+          <button onclick="submitNewTask()" class="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 flex items-center gap-2">
+            <i data-lucide="download" class="w-4 h-4"></i> Bắt đầu Tải
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== DRAWER: CHI TIẾT TÁC VỤ ==================== -->
+    <div id="drawerTaskDetail" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden flex justify-end transition-all opacity-0 pointer-events-none">
+      <div class="bg-white dark:bg-zinc-900 w-full max-w-2xl h-full shadow-2xl flex flex-col border-l border-zinc-200/80 dark:border-zinc-800 transform translate-x-full transition-transform duration-300" id="drawerTaskDetailPanel">
+        
+        <div class="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-300">
+              <i data-lucide="info" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-zinc-900 dark:text-white">Chi Tiết Tác Vụ</h3>
+              <p id="drawerGidLabel" class="text-[10px] font-mono text-zinc-400">GID: 0000000000000000</p>
+            </div>
+          </div>
+          <button onclick="closeDrawer()" class="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="flex border-b border-zinc-100 dark:border-zinc-800 px-6 pt-2">
+          <button onclick="switchDetailTab('overview')" id="detailTabBtn-overview" class="px-4 py-2 text-xs font-semibold border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400">Tổng quan</button>
+          <button onclick="switchDetailTab('files')" id="detailTabBtn-files" class="px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-600">Tập tin (<span id="drawerFileCount">1</span>)</button>
+          <button onclick="switchDetailTab('pieces')" id="detailTabBtn-pieces" class="px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-600">Bản đồ mảnh</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 space-y-6 text-xs" id="drawerDetailContent">
+          <div id="detailView-overview" class="space-y-5">
+            <div>
+              <div class="text-xs text-zinc-400 font-medium mb-1">Tên tệp</div>
+              <div id="drawerFileName" class="text-sm font-semibold text-zinc-900 dark:text-white break-all">filename.iso</div>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div class="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                <div class="text-zinc-400 text-[11px]">Trạng thái</div>
+                <div id="drawerStatus" class="font-bold text-emerald-500 mt-1 uppercase text-xs">Đang tải</div>
+              </div>
+              <div class="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                <div class="text-zinc-400 text-[11px]">Dung lượng</div>
+                <div id="drawerSize" class="font-bold text-zinc-800 dark:text-zinc-200 mt-1 font-mono">0 MB / 0 MB</div>
+              </div>
+              <div class="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                <div class="text-zinc-400 text-[11px]">Thời gian còn lại</div>
+                <div id="drawerEta" class="font-bold text-zinc-800 dark:text-zinc-200 mt-1 font-mono">--:--</div>
+              </div>
+              <div class="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                <div class="text-zinc-400 text-[11px]">Tốc độ Tải xuống</div>
+                <div id="drawerDownSpeed" class="font-bold text-emerald-500 mt-1 font-mono">0 B/s</div>
+              </div>
+              <div class="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                <div class="text-zinc-400 text-[11px]">Tốc độ Tải lên</div>
+                <div id="drawerUpSpeed" class="font-bold text-sky-500 mt-1 font-mono">0 B/s</div>
+              </div>
+              <div class="bg-zinc-50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                <div class="text-zinc-400 text-[11px]">Kết nối / Peers</div>
+                <div id="drawerConnections" class="font-bold text-zinc-800 dark:text-zinc-200 mt-1 font-mono">0 / 0</div>
+              </div>
+            </div>
+
+            <div>
+              <div class="text-xs text-zinc-400 font-medium mb-1">Thư mục lưu trữ</div>
+              <div id="drawerDir" class="p-2.5 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl font-mono text-[11px] text-zinc-600 dark:text-zinc-300 break-all select-all">/downloads</div>
+            </div>
+          </div>
+
+          <div id="detailView-files" class="hidden space-y-2">
+            <div id="drawerFilesList" class="space-y-2"></div>
+          </div>
+
+          <div id="detailView-pieces" class="hidden space-y-3">
+            <div class="text-xs text-zinc-400">Trực quan hoá các khối dữ liệu (Pieces):</div>
+            <div id="piecesGrid" class="grid grid-cols-12 sm:grid-cols-16 gap-1 p-3 bg-zinc-100 dark:bg-zinc-800/80 rounded-2xl max-h-60 overflow-y-auto"></div>
+            <div class="flex items-center gap-4 text-[11px] text-zinc-500 pt-2">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Đã tải</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-sm bg-zinc-300 dark:bg-zinc-700 inline-block"></span> Chưa tải</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 px-6 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+          <button id="drawerActionBtn" onclick="toggleTaskFromDrawer()" class="h-10 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <i data-lucide="pause" class="w-3.5 h-3.5"></i> <span>Tạm dừng</span>
+          </button>
+
+          <button onclick="removeTaskFromDrawer()" class="h-10 px-4 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> <span>Xoá tác vụ</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== TOAST NOTIFICATION CONTAINER ==================== -->
+    <div id="toastContainer" class="fixed bottom-20 md:bottom-6 right-4 sm:right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  </div>
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    const state = {
+      theme: 'system',
+      activeTab: 'active',
+      selectedGid: null,
+      router: {
+        ip: '192.168.1.1',
+        fileManagerPath: '/cgi-bin/luci/admin/system/filemanager#'
+      },
+      rpc: {
+        host: '192.168.1.1',
+        port: 6800,
+        path: '/jsonrpc',
+        secret: '',
+        ssl: false,
+        connected: false,
+        autoReconnect: true
+      },
+      coreSettings: {
+        dir: '/mnt/sda1/downloads',
+        maxConcurrentDownloads: 5,
+        split: 16,
+        maxConnectionPerServer: 16,
+        minSplitSize: '10M',
+        fileAllocation: 'falloc',
+        autoFileRenaming: true,
+        continue: true,
+        maxOverallDownloadLimit: '0',
+        maxOverallUploadLimit: '0',
+        enableDht: true,
+        enablePex: true,
+        enableLpd: true,
+        seedRatio: 1.0,
+        btMaxPeers: 55,
+        btTrackers: '',
+        refreshInterval: 1000
+      },
+      stats: {
+        downloadSpeed: 0,
+        uploadSpeed: 0,
+        numActive: 0,
+        numWaiting: 0,
+        numStopped: 0
+      },
+      tasks: [],
+      pollInterval: null
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      initLucide();
+      loadStoredSettings();
+      syncSettingsFormInputs();
+      updateFileManagerElements();
+      
+      initRealAria2Connection();
+      renderTasks();
+      updateGlobalStatsUI();
+
+      document.getElementById('searchInput')?.addEventListener('input', () => {
+        renderTasks();
+      });
+
+      const inputUrlsEl = document.getElementById('inputUrls');
+      let sniffDebounceTimer = null;
+      inputUrlsEl?.addEventListener('input', (e) => {
+        clearTimeout(sniffDebounceTimer);
+        const val = e.target.value.trim();
+        if (!val) {
+          document.getElementById('sniffedResultsContainer')?.classList.add('hidden');
+          const stEl = document.getElementById('sniffingStatus');
+          if (stEl) stEl.textContent = '';
+          return;
+        }
+        const stEl = document.getElementById('sniffingStatus');
+        if (stEl) stEl.textContent = 'Đang kiểm tra link...';
+        sniffDebounceTimer = setTimeout(() => {
+          sniffAllUrls(val);
+        }, 450);
+      });
+    });
+
+    function initLucide() {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    function initTheme() {
+      const isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      const toggleTheme = () => {
+        document.documentElement.classList.toggle('dark');
+        initLucide();
+      };
+
+      document.getElementById('btnToggleThemeDesktop')?.addEventListener('click', toggleTheme);
+      document.getElementById('btnToggleThemeMobile')?.addEventListener('click', toggleTheme);
+    }
+
+    function loadStoredSettings() {
+      try {
+        const savedRouter = localStorage.getItem('aria2_router_config');
+        if (savedRouter) {
+          const parsed = JSON.parse(savedRouter);
+          if (parsed && typeof parsed === 'object') {
+            Object.assign(state.router, parsed);
+          }
+        }
+        const savedRpc = localStorage.getItem('aria2_rpc_config');
+        if (savedRpc) {
+          const parsed = JSON.parse(savedRpc);
+          if (parsed && typeof parsed === 'object') {
+            Object.assign(state.rpc, parsed);
+          }
+        }
+        const savedCore = localStorage.getItem('aria2_core_config');
+        if (savedCore) {
+          const parsed = JSON.parse(savedCore);
+          if (parsed && typeof parsed === 'object') {
+            Object.assign(state.coreSettings, parsed);
+          }
+        }
+      } catch (e) {
+        console.error('Lỗi khi đọc cấu hình từ localStorage:', e);
+      }
+
+      const hostDisp = document.getElementById('rpcHostDisplay');
+      if (hostDisp) {
+        hostDisp.textContent = `${state.rpc.host}:${state.rpc.port}`;
+      }
+    }
+
+    function safeSetVal(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.value = val !== undefined && val !== null ? val : '';
+    }
+
+    function safeSetChecked(id, boolVal) {
+      const el = document.getElementById(id);
+      if (el) el.checked = Boolean(boolVal);
+    }
+
+    function safeGetVal(id, fallback = '') {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : fallback;
+    }
+
+    function safeGetNum(id, fallback = 0) {
+      const el = document.getElementById(id);
+      if (!el) return fallback;
+      const parsed = parseInt(el.value, 10);
+      return isNaN(parsed) ? fallback : parsed;
+    }
+
+    function safeGetFloat(id, fallback = 0) {
+      const el = document.getElementById(id);
+      if (!el) return fallback;
+      const parsed = parseFloat(el.value);
+      return isNaN(parsed) ? fallback : parsed;
+    }
+
+    function safeGetChecked(id, fallback = false) {
+      const el = document.getElementById(id);
+      return el ? el.checked : fallback;
+    }
+
+    function syncSettingsFormInputs() {
+      safeSetVal('sysRouterIp', state.router.ip);
+      safeSetVal('sysFileManagerPath', state.router.fileManagerPath);
+
+      safeSetVal('sysRpcHost', state.rpc.host);
+      safeSetVal('sysRpcPort', state.rpc.port);
+      safeSetVal('sysRpcPath', state.rpc.path);
+      safeSetVal('sysRpcSecret', state.rpc.secret);
+      safeSetChecked('sysRpcSsl', state.rpc.ssl);
+      safeSetChecked('sysAutoReconnect', state.rpc.autoReconnect);
+
+      safeSetVal('sysDefaultDir', state.coreSettings.dir);
+      safeSetVal('sysMaxConcurrent', state.coreSettings.maxConcurrentDownloads);
+      safeSetVal('sysSplit', state.coreSettings.split);
+      safeSetVal('sysMaxConnPerServer', state.coreSettings.maxConnectionPerServer);
+      safeSetVal('sysMinSplitSize', state.coreSettings.minSplitSize);
+      safeSetVal('sysFileAllocation', state.coreSettings.fileAllocation);
+      safeSetChecked('sysAutoFileRenaming', state.coreSettings.autoFileRenaming);
+      safeSetChecked('sysContinue', state.coreSettings.continue);
+      safeSetVal('sysMaxOverallDownload', state.coreSettings.maxOverallDownloadLimit);
+      safeSetVal('sysMaxOverallUpload', state.coreSettings.maxOverallUploadLimit);
+      safeSetChecked('sysEnableDht', state.coreSettings.enableDht);
+      safeSetChecked('sysEnablePex', state.coreSettings.enablePex);
+      safeSetChecked('sysEnableLpd', state.coreSettings.enableLpd);
+      safeSetVal('sysSeedRatio', state.coreSettings.seedRatio);
+      safeSetVal('sysBtMaxPeers', state.coreSettings.btMaxPeers);
+      safeSetVal('sysBtTrackers', state.coreSettings.btTrackers);
+      safeSetVal('sysRefreshInterval', state.coreSettings.refreshInterval);
+
+      const inputDir = document.getElementById('inputDir');
+      if (inputDir) inputDir.placeholder = state.coreSettings.dir || '/mnt/sda1/downloads';
+    }
+
+    function getFullFileManagerUrl() {
+      const proto = state.rpc.ssl ? 'https://' : 'http://';
+      let host = state.router.ip || '192.168.1.1';
+      let path = state.router.fileManagerPath || '/cgi-bin/luci/admin/system/filemanager#';
+      if (!path.startsWith('/')) path = '/' + path;
+      return `${proto}${host}${path}`;
+    }
+
+    function updateFileManagerElements() {
+      const fullUrl = getFullFileManagerUrl();
+      const iframe = document.getElementById('fileManagerFrame');
+      const openTabBtn = document.getElementById('btnOpenNewTabFileManager');
+      const displayUrl = document.getElementById('fileManagerCurrentUrlDisplay');
+
+      if (displayUrl) displayUrl.textContent = fullUrl;
+      if (openTabBtn) openTabBtn.href = fullUrl;
+      if (iframe && iframe.src !== fullUrl) {
+        iframe.src = fullUrl;
+      }
+    }
+
+    function reloadFileManagerFrame() {
+      const iframe = document.getElementById('fileManagerFrame');
+      if (iframe) {
+        iframe.src = getFullFileManagerUrl();
+        showToast('Đang tải lại File Manager...', 'info');
+      }
+    }
+
+    async function aria2Call(method, params = []) {
+      const proto = state.rpc.ssl ? 'https://' : 'http://';
+      const url = `${proto}${state.rpc.host}:${state.rpc.port}${state.rpc.path}`;
+      const token = state.rpc.secret ? `token:${state.rpc.secret}` : null;
+      const fullParams = token ? [token, ...params] : params;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 'aria2-' + Date.now(),
+            method: method,
+            params: fullParams
+          }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error.message || 'Aria2 RPC Error');
+        }
+        return data.result;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+      }
+    }
+
+    async function initRealAria2Connection() {
+      clearInterval(state.pollInterval);
+
+      try {
+        const ver = await aria2Call('aria2.getVersion');
+        setConnectedState(true, ver.version || 'v1.36.0');
+        await fetchRealRpcData();
+        state.pollInterval = setInterval(fetchRealRpcData, state.coreSettings.refreshInterval || 1000);
+      } catch (err) {
+        setConnectedState(false);
+        if (state.rpc.autoReconnect) {
+          state.pollInterval = setInterval(tryReconnectSilently, 3000);
+        }
+      }
+    }
+
+    async function tryReconnectSilently() {
+      try {
+        const ver = await aria2Call('aria2.getVersion');
+        clearInterval(state.pollInterval);
+        setConnectedState(true, ver.version || 'v1.36.0');
+        showToast('Đã kết nối lại Aria2 thành công!', 'success');
+        await fetchRealRpcData();
+        state.pollInterval = setInterval(fetchRealRpcData, state.coreSettings.refreshInterval || 1000);
+      } catch (e) {
+        setConnectedState(false);
+      }
+    }
+
+    function setConnectedState(isConnected, version = '') {
+      state.rpc.connected = isConnected;
+      const statusText = document.getElementById('statusText');
+      const ariaVersion = document.getElementById('ariaVersion');
+      const rpcModeLabel = document.getElementById('rpcModeLabel');
+      const statusIndicator = document.getElementById('statusIndicator');
+      const banner = document.getElementById('disconnectedBanner');
+      const downInd = document.getElementById('statDownIndicator');
+      const upInd = document.getElementById('statUpIndicator');
+
+      if (isConnected) {
+        if (statusText) statusText.textContent = 'Aria2 Trực tuyến';
+        if (ariaVersion) ariaVersion.textContent = version;
+        if (rpcModeLabel) {
+          rpcModeLabel.textContent = 'Kết nối thành công';
+          rpcModeLabel.className = 'text-emerald-600 dark:text-emerald-400 font-semibold';
+        }
+        if (statusIndicator) {
+          statusIndicator.innerHTML = `
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          `;
+        }
+        banner?.classList.add('hidden');
+        banner?.classList.remove('flex');
+        downInd?.classList.add('bg-emerald-500');
+        upInd?.classList.add('bg-sky-500');
+      } else {
+        if (statusText) statusText.textContent = 'Mất kết nối';
+        if (ariaVersion) ariaVersion.textContent = '--';
+        if (rpcModeLabel) {
+          rpcModeLabel.textContent = 'Chưa kết nối';
+          rpcModeLabel.className = 'text-rose-500 font-semibold';
+        }
+        if (statusIndicator) {
+          statusIndicator.innerHTML = `
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+          `;
+        }
+        if (state.activeTab !== 'settings' && state.activeTab !== 'filemanager') {
+          banner?.classList.remove('hidden');
+          banner?.classList.add('flex');
+        }
+        downInd?.classList.remove('bg-emerald-500');
+        upInd?.classList.remove('bg-sky-500');
+
+        state.stats = { downloadSpeed: 0, uploadSpeed: 0, numActive: 0, numWaiting: 0, numStopped: 0 };
+        state.tasks = [];
+        updateGlobalStatsUI();
+        renderTasks();
+      }
+      initLucide();
+    }
+
+    async function fetchRealRpcData() {
+      if (!state.rpc.connected && !state.pollInterval) return;
+
+      try {
+        const [globalStat, activeList, waitingList, stoppedList] = await Promise.all([
+          aria2Call('aria2.getGlobalStat'),
+          aria2Call('aria2.tellActive'),
+          aria2Call('aria2.tellWaiting', [0, 100]),
+          aria2Call('aria2.tellStopped', [0, 100])
+        ]);
+
+        state.stats.downloadSpeed = parseInt(globalStat.downloadSpeed, 10) || 0;
+        state.stats.uploadSpeed = parseInt(globalStat.uploadSpeed, 10) || 0;
+        state.stats.numActive = parseInt(globalStat.numActive, 10) || 0;
+        state.stats.numWaiting = parseInt(globalStat.numWaiting, 10) || 0;
+        state.stats.numStopped = parseInt(globalStat.numStopped, 10) || 0;
+
+        const formatTask = (t) => {
+          let name = 'Tác vụ không tên';
+          if (t.bittorrent && t.bittorrent.info && t.bittorrent.info.name) {
+            name = t.bittorrent.info.name;
+          } else if (t.files && t.files.length > 0 && t.files[0].path) {
+            name = t.files[0].path.split('/').pop().split('\\').pop() || name;
+          }
+          return {
+            gid: t.gid,
+            name: name,
+            status: t.status,
+            totalLength: parseInt(t.totalLength, 10) || 0,
+            completedLength: parseInt(t.completedLength, 10) || 0,
+            downloadSpeed: parseInt(t.downloadSpeed, 10) || 0,
+            uploadSpeed: parseInt(t.uploadSpeed, 10) || 0,
+            numPieces: parseInt(t.numPieces, 10) || 0,
+            pieceLength: parseInt(t.pieceLength, 10) || 0,
+            bitfield: t.bitfield || '',
+            numSeeders: parseInt(t.numSeeders, 10) || 0,
+            connections: parseInt(t.connections, 10) || 0,
+            dir: t.dir || state.coreSettings.dir || '/mnt/sda1/downloads',
+            files: t.files || [],
+            errorMessage: t.errorMessage || ''
+          };
+        };
+
+        state.tasks = [
+          ...(activeList || []).map(formatTask),
+          ...(waitingList || []).map(formatTask),
+          ...(stoppedList || []).map(formatTask)
+        ];
+
+        updateGlobalStatsUI();
+        updateRealtimeTaskCards();
+      } catch (err) {
+        setConnectedState(false);
+      }
+    }
+
+    async function saveAllSystemSettings() {
+      try {
+        state.router.ip = safeGetVal('sysRouterIp', '192.168.1.1');
+        state.router.fileManagerPath = safeGetVal('sysFileManagerPath', '/cgi-bin/luci/admin/system/filemanager#');
+
+        state.rpc.host = safeGetVal('sysRpcHost', state.router.ip);
+        state.rpc.port = safeGetNum('sysRpcPort', 6800);
+        state.rpc.path = safeGetVal('sysRpcPath', '/jsonrpc');
+        state.rpc.secret = safeGetVal('sysRpcSecret', '');
+        state.rpc.ssl = safeGetChecked('sysRpcSsl', false);
+        state.rpc.autoReconnect = safeGetChecked('sysAutoReconnect', true);
+
+        state.coreSettings.dir = safeGetVal('sysDefaultDir', '/mnt/sda1/downloads');
+        state.coreSettings.maxConcurrentDownloads = safeGetNum('sysMaxConcurrent', 5);
+        state.coreSettings.split = safeGetNum('sysSplit', 16);
+        state.coreSettings.maxConnectionPerServer = safeGetNum('sysMaxConnPerServer', 16);
+        state.coreSettings.minSplitSize = safeGetVal('sysMinSplitSize', '10M');
+        state.coreSettings.fileAllocation = safeGetVal('sysFileAllocation', 'falloc');
+        state.coreSettings.autoFileRenaming = safeGetChecked('sysAutoFileRenaming', true);
+        state.coreSettings.continue = safeGetChecked('sysContinue', true);
+        state.coreSettings.maxOverallDownloadLimit = safeGetVal('sysMaxOverallDownload', '0');
+        state.coreSettings.maxOverallUploadLimit = safeGetVal('sysMaxOverallUpload', '0');
+        state.coreSettings.enableDht = safeGetChecked('sysEnableDht', true);
+        state.coreSettings.enablePex = safeGetChecked('sysEnablePex', true);
+        state.coreSettings.enableLpd = safeGetChecked('sysEnableLpd', true);
+        state.coreSettings.seedRatio = safeGetFloat('sysSeedRatio', 1.0);
+        state.coreSettings.btMaxPeers = safeGetNum('sysBtMaxPeers', 55);
+        state.coreSettings.btTrackers = safeGetVal('sysBtTrackers', '');
+        state.coreSettings.refreshInterval = safeGetNum('sysRefreshInterval', 1000);
+
+        localStorage.setItem('aria2_router_config', JSON.stringify(state.router));
+        localStorage.setItem('aria2_rpc_config', JSON.stringify(state.rpc));
+        localStorage.setItem('aria2_core_config', JSON.stringify(state.coreSettings));
+
+        const hostDisp = document.getElementById('rpcHostDisplay');
+        if (hostDisp) hostDisp.textContent = `${state.rpc.host}:${state.rpc.port}`;
+        
+        syncSettingsFormInputs();
+        updateFileManagerElements();
+
+        if (state.rpc.connected) {
+          try {
+            await applyGlobalOptionsToAria2();
+            showToast('Đã lưu và áp dụng cài đặt thành công!', 'success');
+          } catch (e) {
+            showToast('Đã lưu cấu hình cục bộ! Lỗi gửi tới Aria2: ' + e.message, 'info');
+          }
+        } else {
+          showToast('Đã lưu cấu hình! Đang kết nối lại Aria2...', 'success');
+          initRealAria2Connection();
+        }
+      } catch (err) {
+        showToast('Lỗi khi lưu cài đặt: ' + err.message, 'error');
+      }
+    }
+
+    async function applyGlobalOptionsToAria2() {
+      const optionsPayload = {
+        'dir': state.coreSettings.dir,
+        'max-concurrent-downloads': String(state.coreSettings.maxConcurrentDownloads),
+        'split': String(state.coreSettings.split),
+        'max-connection-per-server': String(state.coreSettings.maxConnectionPerServer),
+        'min-split-size': state.coreSettings.minSplitSize,
+        'file-allocation': state.coreSettings.fileAllocation,
+        'auto-file-renaming': String(state.coreSettings.autoFileRenaming),
+        'continue': String(state.coreSettings.continue),
+        'max-overall-download-limit': state.coreSettings.maxOverallDownloadLimit,
+        'max-overall-upload-limit': state.coreSettings.maxOverallUploadLimit,
+        'enable-dht': String(state.coreSettings.enableDht),
+        'enable-peer-exchange': String(state.coreSettings.enablePex),
+        'bt-enable-lpd': String(state.coreSettings.enableLpd),
+        'seed-ratio': String(state.coreSettings.seedRatio),
+        'bt-max-peers': String(state.coreSettings.btMaxPeers)
+      };
+
+      if (state.coreSettings.btTrackers) {
+        optionsPayload['bt-tracker'] = state.coreSettings.btTrackers;
+      }
+
+      await aria2Call('aria2.changeGlobalOption', [optionsPayload]);
+    }
+
+    async function saveAria2Session() {
+      if (!state.rpc.connected) {
+        showToast('Aria2 chưa kết nối, không thể lưu session!', 'error');
+        return;
+      }
+      try {
+        const res = await aria2Call('aria2.saveSession');
+        if (res === 'OK') {
+          showToast('Đã lưu session aria2 vào đĩa thành công!', 'success');
+        } else {
+          showToast('Lưu session thất bại', 'error');
+        }
+      } catch (e) {
+        showToast('Lỗi khi lưu session: ' + e.message, 'error');
+      }
+    }
+
+    function resetSettingsToDefault() {
+      state.router = {
+        ip: '192.168.1.1',
+        fileManagerPath: '/cgi-bin/luci/admin/system/filemanager#'
+      };
+      state.coreSettings = {
+        dir: '/mnt/sda1/downloads',
+        maxConcurrentDownloads: 5,
+        split: 16,
+        maxConnectionPerServer: 16,
+        minSplitSize: '10M',
+        fileAllocation: 'falloc',
+        autoFileRenaming: true,
+        continue: true,
+        maxOverallDownloadLimit: '0',
+        maxOverallUploadLimit: '0',
+        enableDht: true,
+        enablePex: true,
+        enableLpd: true,
+        seedRatio: 1.0,
+        btMaxPeers: 55,
+        btTrackers: '',
+        refreshInterval: 1000
+      };
+      syncSettingsFormInputs();
+      updateFileManagerElements();
+      try {
+        localStorage.setItem('aria2_router_config', JSON.stringify(state.router));
+        localStorage.setItem('aria2_core_config', JSON.stringify(state.coreSettings));
+      } catch (e) {}
+      showToast('Đã khôi phục các giá trị mặc định!', 'info');
+    }
+
+    function getFullSettingsBackupObject() {
+      return {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        router: { ...state.router },
+        rpc: { ...state.rpc },
+        coreSettings: { ...state.coreSettings }
+      };
+    }
+
+    function exportSettingsAsJsonFile() {
+      try {
+        const backupData = getFullSettingsBackupObject();
+        const jsonStr = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const filename = `aria2_settings_${new Date().toISOString().slice(0, 10)}.json`;
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast(`Đã xuất file cấu hình: ${filename}`, 'success');
+      } catch (err) {
+        showToast('Lỗi khi xuất file: ' + err.message, 'error');
+      }
+    }
+
+    function copySettingsJsonToClipboard() {
+      try {
+        const backupData = getFullSettingsBackupObject();
+        const jsonStr = JSON.stringify(backupData, null, 2);
+        const textarea = document.createElement('textarea');
+        textarea.value = jsonStr;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('Đã sao chép cấu hình JSON vào bộ nhớ tạm!', 'success');
+      } catch (err) {
+        showToast('Không thể sao chép: ' + err.message, 'error');
+      }
+    }
+
+    function importSettingsFromJsonFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.router && typeof parsed.router === 'object') {
+            Object.assign(state.router, parsed.router);
+          }
+          if (parsed.rpc && typeof parsed.rpc === 'object') {
+            Object.assign(state.rpc, parsed.rpc);
+          }
+          if (parsed.coreSettings && typeof parsed.coreSettings === 'object') {
+            Object.assign(state.coreSettings, parsed.coreSettings);
+          }
+
+          localStorage.setItem('aria2_router_config', JSON.stringify(state.router));
+          localStorage.setItem('aria2_rpc_config', JSON.stringify(state.rpc));
+          localStorage.setItem('aria2_core_config', JSON.stringify(state.coreSettings));
+          syncSettingsFormInputs();
+          updateFileManagerElements();
+          
+          showToast('Nhập cấu hình thành công! Đang đồng bộ...', 'success');
+          initRealAria2Connection();
+        } catch (err) {
+          showToast('File JSON không hợp lệ: ' + err.message, 'error');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function exportAria2ConfigFile() {
+      try {
+        const c = state.coreSettings;
+        const r = state.rpc;
+        
+        let conf = `# Aria2 Configuration File (aria2.conf)\n`;
+        conf += `enable-rpc=true\n`;
+        conf += `rpc-listen-all=true\n`;
+        conf += `rpc-listen-port=${r.port || 6800}\n`;
+        if (r.secret) conf += `rpc-secret=${r.secret}\n`;
+        conf += `rpc-allow-origin-all=true\n\n`;
+        conf += `dir=${c.dir || '/mnt/sda1/downloads'}\n`;
+        conf += `max-concurrent-downloads=${c.maxConcurrentDownloads || 5}\n`;
+        conf += `split=${c.split || 16}\n`;
+        conf += `max-connection-per-server=${c.maxConnectionPerServer || 16}\n`;
+        conf += `min-split-size=${c.minSplitSize || '10M'}\n`;
+        conf += `file-allocation=${c.fileAllocation || 'falloc'}\n`;
+        conf += `auto-file-renaming=${c.autoFileRenaming ? 'true' : 'false'}\n`;
+        conf += `continue=${c.continue ? 'true' : 'false'}\n\n`;
+        conf += `max-overall-download-limit=${c.maxOverallDownloadLimit || '0'}\n`;
+        conf += `max-overall-upload-limit=${c.maxOverallUploadLimit || '0'}\n\n`;
+        conf += `enable-dht=${c.enableDht ? 'true' : 'false'}\n`;
+        conf += `enable-peer-exchange=${c.enablePex ? 'true' : 'false'}\n`;
+        conf += `bt-enable-lpd=${c.enableLpd ? 'true' : 'false'}\n`;
+        conf += `seed-ratio=${c.seedRatio || '1.0'}\n`;
+        conf += `bt-max-peers=${c.btMaxPeers || 55}\n`;
+        if (c.btTrackers) conf += `bt-tracker=${c.btTrackers}\n`;
+
+        const blob = new Blob([conf], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'aria2.conf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Đã tạo và tải về file aria2.conf!', 'success');
+      } catch (err) {
+        showToast('Lỗi tạo file conf: ' + err.message, 'error');
+      }
+    }
+
+    async function testConnectionFromSettings() {
+      const host = safeGetVal('sysRpcHost', state.router.ip);
+      const port = safeGetNum('sysRpcPort', 6800);
+      const path = safeGetVal('sysRpcPath', '/jsonrpc');
+      const secret = safeGetVal('sysRpcSecret', '');
+      const ssl = safeGetChecked('sysRpcSsl', false);
+
+      const proto = ssl ? 'https://' : 'http://';
+      const url = `${proto}${host}:${port}${path}`;
+      const payload = {
+        jsonrpc: '2.0',
+        id: 'test-ping-settings',
+        method: 'aria2.getVersion',
+        params: secret ? [`token:${secret}`] : []
+      };
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          const ver = data.result?.version || 'v1.36.0';
+          showToast(`Kết nối thành công! Aria2: ${ver}`, 'success');
+          return;
+        }
+      } catch (err) {}
+      showToast(`Không thể kết nối tới Aria2 tại ${host}:${port}`, 'error');
+    }
+
+    function updateGlobalStatsUI() {
+      const downText = formatBytes(state.stats.downloadSpeed) + '/s';
+      const upText = formatBytes(state.stats.uploadSpeed) + '/s';
+
+      const elDown = document.getElementById('statGlobalDown');
+      const elUp = document.getElementById('statGlobalUp');
+      const elCardDown = document.getElementById('statCardDown');
+      const elCardUp = document.getElementById('statCardUp');
+      const elActiveCount = document.getElementById('statCardActiveCount');
+      const elWaitCount = document.getElementById('statCardWaitingCount');
+      const elBadgeAct = document.getElementById('badgeActive');
+      const elBadgeWait = document.getElementById('badgeWaiting');
+      const elBadgeStop = document.getElementById('badgeStopped');
+      const elBadgeAll = document.getElementById('badgeAll');
+
+      if (elDown) elDown.textContent = downText;
+      if (elUp) elUp.textContent = upText;
+      if (elCardDown) elCardDown.textContent = downText;
+      if (elCardUp) elCardUp.textContent = upText;
+
+      if (elActiveCount) elActiveCount.textContent = state.stats.numActive;
+      if (elWaitCount) elWaitCount.textContent = state.stats.numWaiting;
+
+      if (elBadgeAct) elBadgeAct.textContent = state.stats.numActive;
+      if (elBadgeWait) elBadgeWait.textContent = state.stats.numWaiting;
+      if (elBadgeStop) elBadgeStop.textContent = state.stats.numStopped;
+      if (elBadgeAll) elBadgeAll.textContent = state.tasks.length;
+    }
+
+    function switchTab(tab) {
+      state.activeTab = tab;
+
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tab) {
+          btn.className = 'nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors bg-zinc-100 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-50';
+        } else {
+          btn.className = 'nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors';
+        }
+      });
+
+      document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tab) {
+          btn.className = 'mobile-nav-btn flex flex-col items-center gap-1 text-emerald-600 dark:text-emerald-400 py-1 px-2 rounded-lg text-[10px] font-medium';
+        } else {
+          btn.className = 'mobile-nav-btn flex flex-col items-center gap-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 py-1 px-2 rounded-lg text-[10px] font-medium';
+        }
+      });
+
+      const statsSection = document.getElementById('statsSection');
+      const tasksHeaderSection = document.getElementById('tasksHeaderSection');
+      const taskList = document.getElementById('taskList');
+      const emptyState = document.getElementById('emptyState');
+      const systemSettingsView = document.getElementById('systemSettingsView');
+      const fileManagerView = document.getElementById('fileManagerView');
+      const banner = document.getElementById('disconnectedBanner');
+
+      if (tab === 'settings') {
+        statsSection?.classList.add('hidden');
+        tasksHeaderSection?.classList.add('hidden');
+        taskList?.classList.add('hidden');
+        emptyState?.classList.add('hidden');
+        emptyState?.classList.remove('flex');
+        fileManagerView?.classList.add('hidden');
+        fileManagerView?.classList.remove('flex');
+        banner?.classList.add('hidden');
+        systemSettingsView?.classList.remove('hidden');
+
+        const titleEl = document.getElementById('currentTabTitle');
+        const descEl = document.getElementById('currentTabDesc');
+        if (titleEl) titleEl.textContent = 'Cài Đặt Hệ Thống Aria2';
+        if (descEl) descEl.textContent = 'Quản lý toàn diện kết nối RPC, IP router, thư mục gốc, giới hạn băng thông.';
+        syncSettingsFormInputs();
+      } else if (tab === 'filemanager') {
+        statsSection?.classList.add('hidden');
+        tasksHeaderSection?.classList.add('hidden');
+        taskList?.classList.add('hidden');
+        emptyState?.classList.add('hidden');
+        emptyState?.classList.remove('flex');
+        systemSettingsView?.classList.add('hidden');
+        banner?.classList.add('hidden');
+
+        fileManagerView?.classList.remove('hidden');
+        fileManagerView?.classList.add('flex');
+        updateFileManagerElements();
+      } else {
+        statsSection?.classList.remove('hidden');
+        tasksHeaderSection?.classList.remove('hidden');
+        taskList?.classList.remove('hidden');
+        systemSettingsView?.classList.add('hidden');
+        fileManagerView?.classList.add('hidden');
+        fileManagerView?.classList.remove('flex');
+
+        if (!state.rpc.connected) {
+          banner?.classList.remove('hidden');
+          banner?.classList.add('flex');
+        }
+
+        const titles = {
+          active: { title: 'Tác Vụ Đang Tải', desc: 'Quản lý và theo dõi các luồng tải về trong thời gian thực.' },
+          waiting: { title: 'Tác Vụ Đang Chờ', desc: 'Các tập tin xếp hàng đợi sẵn sàng kích hoạt tải.' },
+          stopped: { title: 'Tác Vụ Đã Hoàn Thành / Dừng', desc: 'Lịch sử các tập tin đã tải xong hoặc bị tạm dừng.' },
+          all: { title: 'Tất Cả Tác Vụ', desc: 'Toàn bộ danh sách nhiệm vụ tải về trên hệ thống.' }
+        };
+
+        const titleEl = document.getElementById('currentTabTitle');
+        const descEl = document.getElementById('currentTabDesc');
+        if (titleEl && titles[tab]) titleEl.textContent = titles[tab].title;
+        if (descEl && titles[tab]) descEl.textContent = titles[tab].desc;
+
+        renderTasks();
+      }
+
+      initLucide();
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('taskList');
+      if (!container) return;
+      const emptyState = document.getElementById('emptyState');
+      const query = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+      const sortBy = document.getElementById('sortBy')?.value || 'default';
+
+      let filtered = state.tasks.filter(t => {
+        if (state.activeTab === 'active') return t.status === 'active';
+        if (state.activeTab === 'waiting') return t.status === 'waiting' || t.status === 'paused';
+        if (state.activeTab === 'stopped') return ['complete', 'error', 'removed'].includes(t.status);
+        return true;
+      });
+
+      if (query) {
+        filtered = filtered.filter(t => t.name.toLowerCase().includes(query));
+      }
+
+      if (sortBy === 'name') filtered.sort((a, b) => a.name.localeCompare(b.name));
+      else if (sortBy === 'size') filtered.sort((a, b) => b.totalLength - a.totalLength);
+      else if (sortBy === 'progress') {
+        filtered.sort((a, b) => (b.completedLength / (b.totalLength || 1)) - (a.completedLength / (a.totalLength || 1)));
+      } else if (sortBy === 'speed') filtered.sort((a, b) => b.downloadSpeed - a.downloadSpeed);
+
+      if (filtered.length === 0) {
+        container.innerHTML = '';
+        emptyState?.classList.remove('hidden');
+        emptyState?.classList.add('flex');
+        return;
+      } else {
+        emptyState?.classList.add('hidden');
+        emptyState?.classList.remove('flex');
+      }
+
+      container.innerHTML = filtered.map(task => createTaskCardHTML(task)).join('');
+      initLucide();
+    }
+
+    function updateRealtimeTaskCards() {
+      state.tasks.forEach(task => {
+        const card = document.getElementById(`task-card-${task.gid}`);
+        if (!card) return;
+
+        const percent = task.totalLength > 0 ? ((task.completedLength / task.totalLength) * 100).toFixed(1) : 0;
+        const progressBar = card.querySelector('.progress-bar-fill');
+        const percentLabel = card.querySelector('.progress-percent-label');
+        const sizeLabel = card.querySelector('.size-label');
+        const speedBadge = card.querySelector('.speed-badge');
+        const etaBadge = card.querySelector('.eta-badge');
+
+        if (progressBar) progressBar.style.width = `${percent}%`;
+        if (percentLabel) percentLabel.textContent = `${percent}%`;
+        if (sizeLabel) sizeLabel.textContent = `${formatBytes(task.completedLength)} / ${formatBytes(task.totalLength)}`;
+        if (speedBadge) {
+          if (task.status === 'active' && task.downloadSpeed > 0) {
+            speedBadge.textContent = `${formatBytes(task.downloadSpeed)}/s`;
+            speedBadge.classList.remove('hidden');
+          } else {
+            speedBadge.classList.add('hidden');
+          }
+        }
+        if (etaBadge && task.status === 'active' && task.downloadSpeed > 0) {
+          const remainingBytes = task.totalLength - task.completedLength;
+          const seconds = Math.floor(remainingBytes / task.downloadSpeed);
+          etaBadge.textContent = formatETA(seconds);
+        }
+      });
+
+      if (state.selectedGid) {
+        const t = state.tasks.find(x => x.gid === state.selectedGid);
+        if (t) updateDrawerData(t);
+      }
+    }
+
+    function createTaskCardHTML(task) {
+      const percent = task.totalLength > 0 ? ((task.completedLength / task.totalLength) * 100).toFixed(1) : 0;
+      const isComplete = task.status === 'complete';
+      const isPaused = task.status === 'paused';
+      const isWaiting = task.status === 'waiting';
+      const isError = task.status === 'error';
+      const isActive = task.status === 'active';
+
+      let statusBadge = '';
+      if (isComplete) {
+        statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[10px] font-semibold">Hoàn thành</span>';
+      } else if (isPaused) {
+        statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 text-[10px] font-semibold">Đã tạm dừng</span>';
+      } else if (isWaiting) {
+        statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-semibold">Đang chờ</span>';
+      } else if (isError) {
+        statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 text-[10px] font-semibold">Lỗi</span>';
+      } else {
+        statusBadge = '<span class="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-[10px] font-semibold">Đang tải</span>';
+      }
+
+      let etaText = '--:--';
+      if (isActive && task.downloadSpeed > 0) {
+        const remainingBytes = task.totalLength - task.completedLength;
+        const seconds = Math.floor(remainingBytes / task.downloadSpeed);
+        etaText = formatETA(seconds);
+      }
+
+      return `
+        <div id="task-card-${task.gid}" class="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/70 dark:border-zinc-800/80 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.03)] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
+          <div class="flex items-start justify-between gap-3">
+            
+            <div class="flex items-start gap-3 min-w-0 flex-1 cursor-pointer" onclick="openTaskDetails('${task.gid}')">
+              <div class="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500 shrink-0 mt-0.5">
+                <i data-lucide="${getFileIcon(task.name)}" class="w-5 h-5 text-zinc-600 dark:text-zinc-300"></i>
+              </div>
+
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <h4 class="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white truncate" title="${task.name}">${task.name}</h4>
+                  ${statusBadge}
+                </div>
+
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-400 mt-1 font-mono">
+                  <span class="size-label">${formatBytes(task.completedLength)} / ${formatBytes(task.totalLength)}</span>
+                  <span class="hidden sm:inline">•</span>
+                  <span class="speed-badge ${task.downloadSpeed > 0 ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'hidden'}">${formatBytes(task.downloadSpeed)}/s</span>
+                  <span class="hidden sm:inline">•</span>
+                  <span>ETA: <span class="eta-badge">${etaText}</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1 shrink-0">
+              ${isActive ? `
+                <button onclick="pauseTask('${task.gid}')" title="Tạm dừng" class="p-2 rounded-xl text-zinc-500 hover:text-amber-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                  <i data-lucide="pause" class="w-4 h-4 fill-current"></i>
+                </button>
+              ` : `
+                <button onclick="resumeTask('${task.gid}')" title="Tiếp tục" class="p-2 rounded-xl text-zinc-500 hover:text-emerald-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                  <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                </button>
+              `}
+              
+              <button onclick="openTaskDetails('${task.gid}')" title="Chi tiết" class="p-2 rounded-xl text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                <i data-lucide="more-horizontal" class="w-4 h-4"></i>
+              </button>
+
+              <button onclick="deleteTask('${task.gid}', '${task.status}')" title="Xoá" class="p-2 rounded-xl text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+          </div>
+
+          <div class="mt-3.5 space-y-1.5">
+            <div class="w-full bg-zinc-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+              <div class="progress-bar-fill ${isComplete ? 'bg-indigo-500' : isError ? 'bg-rose-500' : 'bg-emerald-500'} h-full rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-zinc-400 font-mono">
+              <span>Tiến độ</span>
+              <span class="progress-percent-label font-bold text-zinc-700 dark:text-zinc-300">${percent}%</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function pauseTask(gid) {
+      if (!state.rpc.connected) return showToast('Aria2 chưa được kết nối!', 'error');
+      try {
+        await aria2Call('aria2.pause', [gid]);
+        showToast('Đã gửi yêu cầu tạm dừng', 'info');
+        await fetchRealRpcData();
+      } catch (err) {
+        showToast('Không thể tạm dừng: ' + err.message, 'error');
+      }
+    }
+
+    async function resumeTask(gid) {
+      if (!state.rpc.connected) return showToast('Aria2 chưa được kết nối!', 'error');
+      try {
+        await aria2Call('aria2.unpause', [gid]);
+        showToast('Đã gửi yêu cầu tiếp tục tải', 'success');
+        await fetchRealRpcData();
+      } catch (err) {
+        showToast('Không thể tiếp tục tải: ' + err.message, 'error');
+      }
+    }
+
+    async function deleteTask(gid, status) {
+      if (!state.rpc.connected) return showToast('Aria2 chưa được kết nối!', 'error');
+      try {
+        if (['complete', 'error', 'removed'].includes(status)) {
+          await aria2Call('aria2.removeDownloadResult', [gid]);
+        } else {
+          await aria2Call('aria2.remove', [gid]);
+        }
+        showToast('Đã xoá tác vụ thành công', 'info');
+        await fetchRealRpcData();
+      } catch (err) {
+        try {
+          await aria2Call('aria2.forceRemove', [gid]);
+          await fetchRealRpcData();
+        } catch (e) {
+          showToast('Không thể xoá tác vụ: ' + err.message, 'error');
+        }
+      }
+    }
+
+    async function startAllTasks() {
+      if (!state.rpc.connected) return showToast('Aria2 chưa được kết nối!', 'error');
+      try {
+        await aria2Call('aria2.unpauseAll');
+        showToast('Đã tiếp tục toàn bộ tác vụ!', 'success');
+        await fetchRealRpcData();
+      } catch (err) {
+        showToast('Lỗi: ' + err.message, 'error');
+      }
+    }
+
+    async function pauseAllTasks() {
+      if (!state.rpc.connected) return showToast('Aria2 chưa được kết nối!', 'error');
+      try {
+        await aria2Call('aria2.pauseAll');
+        showToast('Đã tạm dừng toàn bộ tác vụ!', 'info');
+        await fetchRealRpcData();
+      } catch (err) {
+        showToast('Lỗi: ' + err.message, 'error');
+      }
+    }
+
+    async function purgeCompletedTasks() {
+      if (!state.rpc.connected) return showToast('Aria2 chưa được kết nối!', 'error');
+      try {
+        await aria2Call('aria2.purgeDownloadResult');
+        showToast('Đã dọn dẹp các tác vụ đã hoàn thành!', 'success');
+        await fetchRealRpcData();
+      } catch (err) {
+        showToast('Lỗi dọn dẹp: ' + err.message, 'error');
+      }
+    }
+
+    let selectedTorrentBase64 = null;
+
+    function handleTorrentFileSelected(e) {
+      const file = e.target.files[0];
+      if (file) {
+        document.getElementById('torrentFileNameText').textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = function () {
+          selectedTorrentBase64 = reader.result.split(',')[1];
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    let sniffedItems = [];
+
+    async function sniffAllUrls(rawText) {
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
+      if (!lines.length) {
+        document.getElementById('sniffedResultsContainer')?.classList.add('hidden');
+        const stEl = document.getElementById('sniffingStatus');
+        if (stEl) stEl.textContent = '';
+        return;
+      }
+
+      const container = document.getElementById('sniffedResultsContainer');
+      const countEl = document.getElementById('sniffedCount');
+      const statusEl = document.getElementById('sniffingStatus');
+      
+      container?.classList.remove('hidden');
+      if (countEl) countEl.textContent = lines.length;
+      if (statusEl) statusEl.textContent = `Đang phân tích ${lines.length} link...`;
+
+      sniffedItems = lines.map(url => ({
+        url: url,
+        name: extractInitialName(url),
+        size: null,
+        status: 'checking',
+        mimeType: '',
+        statusCode: null
+      }));
+
+      renderSniffedList();
+      await Promise.all(sniffedItems.map((item, idx) => inspectSingleLink(item, idx)));
+
+      if (statusEl) statusEl.textContent = 'Hoàn tất kiểm tra';
+      renderSniffedList();
+
+      const fileNameInput = document.getElementById('inputFileName');
+      if (sniffedItems.length === 1 && fileNameInput && !fileNameInput.value) {
+        fileNameInput.value = sniffedItems[0].name || '';
+      }
+    }
+
+    function extractInitialName(url) {
+      if (url.startsWith('magnet:')) {
+        const dnMatch = url.match(/dn=([^&]+)/);
+        if (dnMatch) return decodeURIComponent(dnMatch[1]).replace(/\+/g, ' ');
+        const xtMatch = url.match(/xt=urn:btih:([^&]+)/);
+        if (xtMatch) return `Magnet_${xtMatch[1].substring(0, 10)}`;
+        return 'Magnet_Download';
+      }
+      try {
+        const parsed = new URL(url);
+        const pathname = parsed.pathname;
+        const filename = pathname.split('/').filter(Boolean).pop();
+        if (filename) return decodeURIComponent(filename);
+      } catch (e) {
+        const parts = url.split('/').filter(Boolean);
+        if (parts.length > 1) return parts[parts.length - 1].split('?')[0];
+      }
+      return 'Tap_tin_chua_dat_ten';
+    }
+
+    async function inspectSingleLink(item, index) {
+      if (item.url.startsWith('magnet:')) {
+        const xlMatch = item.url.match(/xl=([^&]+)/);
+        if (xlMatch) {
+          const bytes = parseInt(xlMatch[1], 10);
+          if (!isNaN(bytes)) item.size = bytes;
+        }
+        item.status = 'magnet';
+        return;
+      }
+
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+
+        const response = await fetch(item.url, {
+          method: 'HEAD',
+          mode: 'cors',
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        item.statusCode = response.status;
+
+        if (response.ok) {
+          item.status = 'ok';
+          const lengthHeader = response.headers.get('content-length');
+          if (lengthHeader) {
+            const parsedLen = parseInt(lengthHeader, 10);
+            if (!isNaN(parsedLen) && parsedLen > 0) item.size = parsedLen;
+          }
+
+          item.mimeType = response.headers.get('content-type') || '';
+          const disposition = response.headers.get('content-disposition');
+          if (disposition) {
+            const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+            const standardMatch = disposition.match(/filename=["']?([^"';]+)["']?/i);
+            if (utf8Match) {
+              item.name = decodeURIComponent(utf8Match[1]);
+            } else if (standardMatch) {
+              item.name = standardMatch[1];
+            }
+          }
+        } else {
+          item.status = 'error';
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          item.status = 'error';
+        } else {
+          item.status = 'cors';
+        }
+      }
+    }
+
+    function renderSniffedList() {
+      const listEl = document.getElementById('sniffedList');
+      if (!listEl) return;
+
+      listEl.innerHTML = sniffedItems.map((item, idx) => {
+        let badge = '';
+        let sizeText = item.size ? formatBytes(item.size) : 'Không rõ dung lượng';
+
+        if (item.status === 'checking') {
+          badge = '<span class="inline-flex items-center gap-1 text-[10px] text-amber-500 font-medium"><i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> Đang bắt...</span>';
+        } else if (item.status === 'ok') {
+          badge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold"><i data-lucide="check" class="w-3 h-3"></i> Khả dụng (${item.statusCode})</span>`;
+        } else if (item.status === 'magnet') {
+          badge = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 text-[10px] font-semibold"><i data-lucide="magnet" class="w-3 h-3"></i> Magnet Torrent</span>';
+        } else if (item.status === 'cors') {
+          badge = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 text-[10px]" title="Trình duyệt bị chặn CORS, Aria2 vẫn có thể tải bình thường"><i data-lucide="shield-alert" class="w-3 h-3 text-amber-500"></i> Aria2 sẽ kiểm tra</span>';
+        } else {
+          badge = '<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-500 text-[10px] font-semibold"><i data-lucide="alert-circle" class="w-3 h-3"></i> Không thể truy cập</span>';
+        }
+
+        return `
+          <div class="p-2.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 flex items-center justify-between gap-2.5 transition-all hover:border-emerald-500/40">
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <div class="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700/60 flex items-center justify-center text-zinc-500 shrink-0 border border-zinc-200/50 dark:border-zinc-700/50">
+                <i data-lucide="${getFileIcon(item.name)}" class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></i>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-xs text-zinc-900 dark:text-zinc-100 truncate" title="${item.name}">${item.name}</div>
+                <div class="flex items-center gap-2 text-[10px] text-zinc-400 mt-0.5 font-mono">
+                  <span>${sizeText}</span>
+                  <span>•</span>
+                  <span class="truncate max-w-[140px] sm:max-w-[220px]" title="${item.url}">${item.url}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              ${badge}
+              <button onclick="applySniffedName('${idx}')" title="Dùng tên này" class="p-1 text-zinc-400 hover:text-emerald-500 rounded transition-colors">
+                <i data-lucide="arrow-down-to-dot" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      initLucide();
+    }
+
+    function applySniffedName(index) {
+      const item = sniffedItems[parseInt(index, 10)];
+      if (item && item.name) {
+        const input = document.getElementById('inputFileName');
+        if (input) {
+          input.value = item.name;
+          showToast(`Đã chọn tên: ${item.name}`, 'info');
+        }
+      }
+    }
+
+    function switchAddTaskMode(mode) {
+      const btnUrl = document.getElementById('tabBtnUrl');
+      const btnTorrent = document.getElementById('tabBtnTorrent');
+      const secUrl = document.getElementById('addTaskUrlSection');
+      const secTorrent = document.getElementById('addTaskTorrentSection');
+
+      if (mode === 'url') {
+        btnUrl.className = 'px-4 py-2 text-xs font-semibold border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 transition-all';
+        btnTorrent.className = 'px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all';
+        secUrl?.classList.remove('hidden');
+        secTorrent?.classList.add('hidden');
+      } else {
+        btnTorrent.className = 'px-4 py-2 text-xs font-semibold border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 transition-all';
+        btnUrl.className = 'px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-all';
+        secTorrent?.classList.remove('hidden');
+        secUrl?.classList.add('hidden');
+      }
+    }
+
+    async function submitNewTask() {
+      if (!state.rpc.connected) {
+        showToast('Aria2 chưa kết nối, vui lòng kiểm tra cấu hình!', 'error');
+        return;
+      }
+
+      const saveDir = safeGetVal('inputDir', state.coreSettings.dir || '/mnt/sda1/downloads');
+      const split = safeGetVal('inputSplit', '16');
+      const maxSpeed = safeGetVal('inputMaxSpeed', '');
+      const customName = safeGetVal('inputFileName', '');
+
+      const options = {
+        'dir': saveDir,
+        'split': split
+      };
+      if (maxSpeed) options['max-download-limit'] = maxSpeed;
+
+      const isTorrentMode = !document.getElementById('addTaskTorrentSection').classList.contains('hidden');
+
+      if (isTorrentMode) {
+        if (!selectedTorrentBase64) {
+          showToast('Vui lòng chọn tập tin .torrent hoặc .metalink!', 'error');
+          return;
+        }
+
+        try {
+          await aria2Call('aria2.addTorrent', [selectedTorrentBase64, [], options]);
+          showToast('Đã thêm tệp Torrent tải xuống thành công!', 'success');
+          selectedTorrentBase64 = null;
+          const fileInp = document.getElementById('torrentFileInput');
+          if (fileInp) fileInp.value = '';
+          const fileTxt = document.getElementById('torrentFileNameText');
+          if (fileTxt) fileTxt.textContent = 'Chọn hoặc kéo thả tập tin .torrent vào đây';
+          closeModal('modalAddTask');
+          await fetchRealRpcData();
+        } catch (err) {
+          showToast('Lỗi thêm torrent: ' + err.message, 'error');
+        }
+      } else {
+        const urls = safeGetVal('inputUrls', '');
+        if (!urls) {
+          showToast('Vui lòng nhập ít nhất 1 URL hoặc Magnet link!', 'error');
+          return;
+        }
+
+        const urlList = urls.split('\n').map(u => u.trim()).filter(Boolean);
+
+        try {
+          for (const url of urlList) {
+            const taskOpts = { ...options };
+            if (customName && urlList.length === 1 && !url.startsWith('magnet:')) {
+              taskOpts['out'] = customName;
+            }
+            await aria2Call('aria2.addUri', [[url], taskOpts]);
+          }
+
+          showToast(`Đã thêm ${urlList.length} tác vụ tải thành công!`, 'success');
+          const inputUrlsEl = document.getElementById('inputUrls');
+          if (inputUrlsEl) inputUrlsEl.value = '';
+          const inputFileNameEl = document.getElementById('inputFileName');
+          if (inputFileNameEl) inputFileNameEl.value = '';
+          closeModal('modalAddTask');
+          await fetchRealRpcData();
+        } catch (err) {
+          showToast('Lỗi thêm tác vụ: ' + err.message, 'error');
+        }
+      }
+    }
+
+    async function openTaskDetails(gid) {
+      state.selectedGid = gid;
+      let task = state.tasks.find(t => t.gid === gid);
+
+      if (state.rpc.connected) {
+        try {
+          const detail = await aria2Call('aria2.tellStatus', [gid]);
+          task = {
+            gid: detail.gid,
+            name: detail.bittorrent?.info?.name || detail.files?.[0]?.path?.split('/').pop() || 'Tác vụ',
+            status: detail.status,
+            totalLength: parseInt(detail.totalLength, 10) || 0,
+            completedLength: parseInt(detail.completedLength, 10) || 0,
+            downloadSpeed: parseInt(detail.downloadSpeed, 10) || 0,
+            uploadSpeed: parseInt(detail.uploadSpeed, 10) || 0,
+            numPieces: parseInt(detail.numPieces, 10) || 0,
+            pieceLength: parseInt(detail.pieceLength, 10) || 0,
+            bitfield: detail.bitfield || '',
+            numSeeders: parseInt(detail.numSeeders, 10) || 0,
+            connections: parseInt(detail.connections, 10) || 0,
+            dir: detail.dir || '/mnt/sda1/downloads',
+            files: detail.files || []
+          };
+        } catch (e) {}
+      }
+
+      if (!task) return;
+
+      updateDrawerData(task);
+      renderDrawerPieces(task);
+      renderDrawerFiles(task);
+
+      const drawer = document.getElementById('drawerTaskDetail');
+      const panel = document.getElementById('drawerTaskDetailPanel');
+      drawer?.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+      drawer?.classList.add('flex', 'opacity-100', 'pointer-events-auto');
+      setTimeout(() => {
+        panel?.classList.remove('translate-x-full');
+      }, 10);
+
+      initLucide();
+    }
+
+    function updateDrawerData(task) {
+      const gidEl = document.getElementById('drawerGidLabel');
+      const fnEl = document.getElementById('drawerFileName');
+      const stEl = document.getElementById('drawerStatus');
+      const szEl = document.getElementById('drawerSize');
+      const dsEl = document.getElementById('drawerDownSpeed');
+      const usEl = document.getElementById('drawerUpSpeed');
+      const cnEl = document.getElementById('drawerConnections');
+      const dirEl = document.getElementById('drawerDir');
+      const fcEl = document.getElementById('drawerFileCount');
+      const etaEl = document.getElementById('drawerEta');
+
+      if (gidEl) gidEl.textContent = `GID: ${task.gid}`;
+      if (fnEl) fnEl.textContent = task.name;
+      if (stEl) stEl.textContent = (task.status || '').toUpperCase();
+      if (szEl) szEl.textContent = `${formatBytes(task.completedLength)} / ${formatBytes(task.totalLength)}`;
+      if (dsEl) dsEl.textContent = `${formatBytes(task.downloadSpeed)}/s`;
+      if (usEl) usEl.textContent = `${formatBytes(task.uploadSpeed)}/s`;
+      if (cnEl) cnEl.textContent = `${task.connections} kết nối / ${task.numSeeders || 0} peers`;
+      if (dirEl) dirEl.textContent = task.dir || '/mnt/sda1/downloads';
+      if (fcEl) fcEl.textContent = task.files ? task.files.length : 1;
+
+      if (etaEl) {
+        if (task.status === 'active' && task.downloadSpeed > 0) {
+          const remainingBytes = task.totalLength - task.completedLength;
+          etaEl.textContent = formatETA(Math.floor(remainingBytes / task.downloadSpeed));
+        } else {
+          etaEl.textContent = '--:--';
+        }
+      }
+
+      const actionBtn = document.getElementById('drawerActionBtn');
+      if (actionBtn) {
+        if (task.status === 'active') {
+          actionBtn.innerHTML = '<i data-lucide="pause" class="w-3.5 h-3.5"></i> <span>Tạm dừng</span>';
+        } else {
+          actionBtn.innerHTML = '<i data-lucide="play" class="w-3.5 h-3.5"></i> <span>Tiếp tục</span>';
+        }
+      }
+      initLucide();
+    }
+
+    function renderDrawerPieces(task) {
+      const grid = document.getElementById('piecesGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      const totalPieces = task.numPieces || 40;
+      let completedPieces = 0;
+
+      if (task.bitfield && task.bitfield.length) {
+        let bits = '';
+        for (let i = 0; i < task.bitfield.length; i++) {
+          bits += parseInt(task.bitfield[i], 16).toString(2).padStart(4, '0');
+        }
+        for (let i = 0; i < totalPieces; i++) {
+          const isDone = bits[i] === '1';
+          if (isDone) completedPieces++;
+          const div = document.createElement('div');
+          div.className = `h-3 rounded-[3px] transition-colors ${isDone ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`;
+          div.title = `Piece #${i + 1}: ${isDone ? 'Đã tải' : 'Chưa tải'}`;
+          grid.appendChild(div);
+        }
+      } else {
+        completedPieces = Math.floor((task.completedLength / (task.totalLength || 1)) * totalPieces);
+        for (let i = 0; i < totalPieces; i++) {
+          const isDone = i < completedPieces;
+          const div = document.createElement('div');
+          div.className = `h-3 rounded-[3px] transition-colors ${isDone ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'}`;
+          div.title = `Piece #${i + 1}: ${isDone ? 'Đã tải' : 'Chưa tải'}`;
+          grid.appendChild(div);
+        }
+      }
+    }
+
+    function renderDrawerFiles(task) {
+      const container = document.getElementById('drawerFilesList');
+      if (!container) return;
+      const files = task.files && task.files.length ? task.files : [{ path: task.name, length: task.totalLength, completedLength: task.completedLength }];
+
+      container.innerHTML = files.map((f, i) => {
+        const percent = f.length > 0 ? Math.round((parseInt(f.completedLength || 0, 10) / parseInt(f.length, 10)) * 100) : 0;
+        return `
+          <div class="p-3 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+            <div class="min-w-0 flex-1 pr-2">
+              <div class="font-medium text-xs text-zinc-900 dark:text-white truncate">${(f.path || '').split('/').pop() || ('Tệp ' + (i + 1))}</div>
+              <div class="text-[11px] text-zinc-400 font-mono mt-0.5">${formatBytes(parseInt(f.completedLength || 0, 10))} / ${formatBytes(parseInt(f.length || 0, 10))}</div>
+            </div>
+            <span class="text-xs font-semibold ${percent === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-600 dark:text-zinc-400'}">${percent}%</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function switchDetailTab(tab) {
+      const tabs = ['overview', 'files', 'pieces'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`detailTabBtn-${t}`);
+        const view = document.getElementById(`detailView-${t}`);
+        if (t === tab) {
+          btn.className = 'px-4 py-2 text-xs font-semibold border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400';
+          view?.classList.remove('hidden');
+        } else {
+          btn.className = 'px-4 py-2 text-xs font-semibold border-b-2 border-transparent text-zinc-400 hover:text-zinc-600';
+          view?.classList.add('hidden');
+        }
+      });
+    }
+
+    async function toggleTaskFromDrawer() {
+      if (!state.selectedGid) return;
+      const t = state.tasks.find(x => x.gid === state.selectedGid);
+      if (t) {
+        if (t.status === 'active') await pauseTask(t.gid);
+        else await resumeTask(t.gid);
+        openTaskDetails(t.gid);
+      }
+    }
+
+    async function removeTaskFromDrawer() {
+      if (!state.selectedGid) return;
+      const t = state.tasks.find(x => x.gid === state.selectedGid);
+      await deleteTask(state.selectedGid, t ? t.status : 'active');
+      closeDrawer();
+    }
+
+    function closeDrawer() {
+      const drawer = document.getElementById('drawerTaskDetail');
+      const panel = document.getElementById('drawerTaskDetailPanel');
+      panel?.classList.add('translate-x-full');
+      setTimeout(() => {
+        drawer?.classList.add('hidden', 'opacity-0', 'pointer-events-none');
+        drawer?.classList.remove('flex', 'opacity-100', 'pointer-events-auto');
+        state.selectedGid = null;
+      }, 250);
+    }
+
+    function openModal(id) {
+      const m = document.getElementById(id);
+      if (!m) return;
+      m.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+      m.classList.add('flex', 'opacity-100', 'pointer-events-auto');
+      initLucide();
+    }
+
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      if (!m) return;
+      m.classList.add('opacity-0', 'pointer-events-none');
+      m.classList.remove('opacity-100', 'pointer-events-auto');
+      setTimeout(() => {
+        m.classList.add('hidden');
+        m.classList.remove('flex');
+      }, 200);
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900'
+      };
+
+      const icons = {
+        success: 'check-circle-2',
+        error: 'alert-circle',
+        info: 'info'
+      };
+
+      toast.className = `flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold transform transition-all duration-300 opacity-0 translate-y-2 pointer-events-auto ${colors[type] || colors.info}`;
+      toast.innerHTML = `<i data-lucide="${icons[type] || 'info'}" class="w-4 h-4"></i> <span>${message}</span>`;
+      
+      container.appendChild(toast);
+      initLucide();
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-0', 'translate-y-2');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function formatBytes(bytes, decimals = 1) {
+      if (!bytes || bytes === 0 || isNaN(bytes)) return '0 B';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    function formatETA(seconds) {
+      if (!seconds || seconds <= 0 || !isFinite(seconds)) return '--:--';
+      if (seconds > 86400) return `${Math.floor(seconds / 86400)} ngày`;
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = Math.floor(seconds % 60);
+      if (h > 0) return `${h}g ${m}p`;
+      return `${m}p ${s}s`;
+    }
+
+    function getFileIcon(filename) {
+      const ext = (filename || '').split('.').pop().toLowerCase();
+      if (['mp4', 'mkv', 'avi', 'mov', 'wmv'].includes(ext)) return 'film';
+      if (['mp3', 'flac', 'wav', 'aac', 'ogg'].includes(ext)) return 'music';
+      if (['iso', 'img', 'dmg'].includes(ext)) return 'disc';
+      if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'archive';
+      if (['exe', 'msi', 'apk', 'deb'].includes(ext)) return 'box';
+      if (['pdf', 'doc', 'docx', 'txt'].includes(ext)) return 'file-text';
+      return 'file';
+    }
+  </script>
+</body>
+</html>

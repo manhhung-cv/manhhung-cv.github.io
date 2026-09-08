@@ -1,0 +1,3313 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Guess Who? — Minimal Premium Edition</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Google Fonts: Syne & Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            display: ['"Syne"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            noir: {
+              950: '#060709',
+              900: '#0B0D13',
+              850: '#10131B',
+              800: '#161A24',
+              700: '#232938',
+              600: '#353D52'
+            },
+            gold: {
+              50: '#FDFBF7',
+              100: '#F8F3E9',
+              200: '#EFE1C9',
+              300: '#E4CAA0',
+              400: '#D5AE74',
+              500: '#C5934E',
+              600: '#A77536'
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Premium Scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(213, 174, 116, 0.4);
+    }
+
+    /* Minimalist Glass Surfaces */
+    .surface-glass {
+      background: rgba(16, 19, 27, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+    }
+    .surface-subtle {
+      background: rgba(22, 26, 36, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .surface-elevated {
+      background: linear-gradient(180deg, rgba(28, 33, 46, 0.8) 0%, rgba(16, 19, 27, 0.95) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Subtle hairline border lights */
+    .hairline-b {
+      box-shadow: inset 0 -1px 0 0 rgba(255, 255, 255, 0.06);
+    }
+    .hairline-t {
+      box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+    }
+
+    /* 3D Card Interaction */
+    .perspective-1000 {
+      perspective: 1000px;
+    }
+    .card-shell {
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease, border-color 0.25s ease, opacity 0.3s ease;
+    }
+    .card-shell:hover {
+      transform: translateY(-2px);
+      border-color: rgba(213, 174, 116, 0.35);
+      box-shadow: 0 8px 25px -4px rgba(0, 0, 0, 0.5), 0 0 16px -2px rgba(213, 174, 116, 0.12);
+    }
+    .card-shell:active {
+      transform: scale(0.98);
+    }
+
+    /* Card flipped / eliminated state: Minimal Desaturation & Elegance */
+    .card-eliminated {
+      opacity: 0.28 !important;
+      filter: grayscale(100%) brightness(0.65) contrast(0.9);
+      transform: scale(0.96);
+      border-color: rgba(255, 255, 255, 0.03) !important;
+      pointer-events: auto;
+    }
+    .card-eliminated:hover {
+      opacity: 0.45 !important;
+      transform: scale(0.97);
+    }
+
+    /* Safe Area Insets for Mobile */
+    .safe-bottom {
+      padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    }
+  </style>
+</head>
+
+<body class="bg-noir-950 text-slate-200 font-sans min-h-screen flex flex-col antialiased selection:bg-gold-400 selection:text-noir-950 overflow-x-hidden relative">
+
+  <!-- Subtle Ambient Glow -->
+  <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-gradient-to-b from-gold-500/5 via-amber-500/2 to-transparent blur-3xl pointer-events-none -z-10"></div>
+
+  <!-- TOP HEADER (Visible in Lobby & Waiting views) -->
+  <header id="mainHeader" class="sticky top-0 z-30 surface-glass border-b border-white/[0.06] px-4 sm:px-8 py-3 transition-all duration-300">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      
+      <!-- Brand Logo -->
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-300 via-gold-400 to-gold-600 flex items-center justify-center text-noir-950 font-display font-extrabold text-sm shadow-[0_0_16px_rgba(213,174,116,0.3)]">
+          ?
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <h1 class="font-display font-bold text-sm sm:text-base tracking-wider text-white uppercase">Guess Who</h1>
+            <span class="text-[9px] font-mono font-bold tracking-widest text-gold-400 bg-gold-400/10 px-1.5 py-0.2 rounded border border-gold-400/20">PRO</span>
+          </div>
+          <span class="text-[10px] text-slate-400 font-medium tracking-tight">Trò Chơi Phán Đoán Trực Tuyến</span>
+        </div>
+      </div>
+
+      <!-- Action Nav & Profile -->
+      <div class="flex items-center gap-2">
+        <!-- Question Strategy Guide -->
+        <button id="helpModalBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-gold-300 border border-white/[0.07] text-xs font-medium transition active:scale-95">
+          <i data-lucide="compass" class="w-3.5 h-3.5 text-gold-400"></i>
+          <span class="hidden sm:inline">Chiến thuật</span>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="soundToggleBtn" class="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/[0.07] flex items-center justify-center transition active:scale-95" title="Âm thanh">
+          <i data-lucide="volume-2" id="soundIcon" class="w-3.5 h-3.5"></i>
+        </button>
+
+        <!-- User Profile Pill -->
+        <div id="headerProfileBtn" class="flex items-center gap-2 pl-2 pr-3 py-1 rounded-lg bg-noir-900 border border-white/[0.08] hover:border-gold-400/30 transition cursor-default">
+          <div id="lobbyAvatarPreview" class="w-5 h-5 rounded-md overflow-hidden flex items-center justify-center bg-noir-800"></div>
+          <span id="playerBadgeName" class="text-xs font-semibold text-slate-200 max-w-[90px] sm:max-w-[130px] truncate font-mono">Đang kết nối...</span>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN VIEW CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 md:p-8 flex flex-col justify-start">
+
+    <!-- ========================================================================= -->
+    <!-- 1. LOBBY VIEW -->
+    <!-- ========================================================================= -->
+    <section id="lobbyView" class="flex-1 flex flex-col space-y-6">
+      
+      <!-- Top Detective Card & Actions -->
+      <div class="surface-glass rounded-2xl p-4 sm:p-6 border border-white/[0.08] flex flex-col lg:flex-row items-center justify-between gap-5 shadow-xl">
+        
+        <div class="flex items-center gap-4 w-full lg:w-auto">
+          <div class="relative group shrink-0">
+            <div id="lobbyBigAvatar" class="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-noir-900 border border-gold-400/30 p-1 flex items-center justify-center shadow-md"></div>
+            <button id="rerollAvatarBtn" class="absolute -bottom-1.5 -right-1.5 w-6 h-6 bg-gold-400 hover:bg-gold-300 text-noir-950 rounded-md flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition" title="Đổi hình đại diện">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+            </button>
+          </div>
+
+          <div class="flex-1 min-w-0">
+            <div class="text-[10px] font-mono uppercase tracking-widest text-slate-400">Danh xưng thám tử</div>
+            <div class="flex items-center gap-2 mt-1.5">
+              <input type="text" id="nicknameInput" maxlength="18" class="bg-noir-900 border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:border-gold-400/70 w-36 sm:w-56 transition font-mono" placeholder="Biệt danh...">
+              <button id="saveNicknameBtn" class="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs font-semibold text-slate-200 border border-white/[0.08] transition active:scale-95">
+                Lưu
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Room Actions: Enter ID & Create -->
+        <div class="flex items-center gap-2.5 w-full lg:w-auto">
+          <button id="openJoinByIdModalBtn" class="flex-1 lg:flex-initial flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-200 hover:text-white border border-white/[0.09] text-xs font-bold transition active:scale-95">
+            <i data-lucide="hash" class="w-3.5 h-3.5 text-gold-400"></i>
+            <span>Nhập Mã Phòng</span>
+          </button>
+
+          <button id="openCreateRoomModalBtn" class="flex-1 lg:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-300 hover:to-gold-400 text-noir-950 text-xs font-extrabold shadow-[0_0_20px_rgba(213,174,116,0.25)] transition active:scale-95">
+            <i data-lucide="plus" class="w-3.5 h-3.5 stroke-[3]"></i>
+            <span>Tạo Phòng Mới</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Filters & Room Counter -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div class="flex items-center gap-1.5 p-1 rounded-xl bg-noir-900/90 border border-white/[0.06] text-xs">
+          <button id="filterAllRoomsBtn" class="px-3.5 py-1.5 rounded-lg font-bold bg-white/[0.08] text-white transition">
+            Tất cả phòng
+          </button>
+          <button id="filterMyRoomsBtn" class="px-3.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
+            <span>Phòng của tôi</span>
+            <span id="myRoomBadgeCount" class="px-1.5 py-0.2 text-[10px] font-mono rounded bg-noir-800 text-gold-400 border border-white/[0.06]">0/10</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2 text-xs font-mono text-slate-400">
+          <span id="roomCountTag">0 phòng</span>
+          <button id="refreshRoomsBtn" class="w-7 h-7 rounded-lg bg-noir-900 hover:bg-noir-800 text-slate-400 hover:text-white border border-white/[0.07] flex items-center justify-center transition active:scale-95" title="Làm mới">
+            <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Rooms Grid -->
+      <div id="roomsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 flex-1">
+        <!-- Rendered dynamically -->
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 2. WAITING ROOM VIEW -->
+    <!-- ========================================================================= -->
+    <section id="waitingView" class="hidden flex-1 flex flex-col justify-center max-w-xl mx-auto w-full py-4 sm:py-8">
+      
+      <div class="surface-glass rounded-2xl p-5 sm:p-7 border border-white/[0.08] shadow-2xl space-y-6">
+        
+        <!-- Header Info -->
+        <div class="flex items-center justify-between gap-3 pb-4 border-b border-white/[0.06]">
+          <div>
+            <div class="flex items-center gap-2">
+              <span id="waitingRoomCode" class="text-xs font-mono font-bold text-gold-400 bg-gold-400/10 border border-gold-400/20 px-2 py-0.5 rounded">#ROOM</span>
+              <span id="waitingLockBadge" class="hidden px-2 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-300 font-medium border border-rose-500/20 items-center gap-1">
+                <i data-lucide="lock" class="w-3 h-3"></i>Khóa
+              </span>
+            </div>
+            <h2 id="waitingRoomTitle" class="font-display font-bold text-lg sm:text-xl text-white mt-1">Phòng Đấu Trí</h2>
+          </div>
+
+          <div id="waitingHostActions" class="hidden items-center gap-1.5">
+            <button id="waitingEditRoomBtn" class="w-8 h-8 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-gold-400 border border-white/[0.07] flex items-center justify-center transition active:scale-95" title="Chỉnh sửa phòng">
+              <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+            </button>
+            <button id="waitingDeleteRoomBtn" class="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition active:scale-95" title="Xóa phòng">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Players Slot -->
+        <div class="grid grid-cols-2 gap-3 sm:gap-4">
+          <!-- P1 Host -->
+          <div class="surface-subtle rounded-xl p-4 flex flex-col items-center text-center">
+            <div class="w-5 h-5 rounded-full bg-gold-400/15 text-gold-400 flex items-center justify-center text-[10px] mb-2">
+              <i data-lucide="crown" class="w-3 h-3"></i>
+            </div>
+            <div id="p1Avatar" class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-noir-900 border border-white/[0.08] p-1 flex items-center justify-center mb-2 shadow-inner"></div>
+            <div id="p1Name" class="font-display font-bold text-xs sm:text-sm text-white max-w-[130px] truncate">Chủ phòng</div>
+            <span id="p1Status" class="mt-2 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Đã sẵn sàng</span>
+          </div>
+
+          <!-- P2 Guest -->
+          <div class="surface-subtle rounded-xl p-4 flex flex-col items-center text-center">
+            <div class="w-5 h-5 rounded-full bg-slate-500/20 text-slate-400 flex items-center justify-center text-[10px] mb-2">
+              <i data-lucide="user" class="w-3 h-3"></i>
+            </div>
+            <div id="p2Avatar" class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-noir-900 border border-white/[0.08] p-1 flex items-center justify-center mb-2 shadow-inner">
+              <span class="text-2xl text-slate-600 font-mono">?</span>
+            </div>
+            <div id="p2Name" class="font-display font-bold text-xs sm:text-sm text-slate-400 max-w-[130px] truncate">Đang chờ...</div>
+            <span id="p2Status" class="mt-2 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/[0.04] text-slate-500">Chưa sẵn sàng</span>
+          </div>
+        </div>
+
+        <!-- Waiting Actions -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-2.5 pt-2">
+          <button id="leaveRoomBtn" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-rose-400 font-semibold text-xs border border-white/[0.06] transition active:scale-95">
+            Rời Phòng
+          </button>
+
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <button id="copyInviteBtn" class="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 font-semibold text-xs border border-white/[0.08] transition active:scale-95">
+              <i data-lucide="copy" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Sao chép ID</span>
+            </button>
+            <button id="toggleReadyBtn" class="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl transition text-xs shadow-lg shadow-emerald-950/40 active:scale-95">
+              Sẵn Sàng
+            </button>
+            <button id="startGameBtn" class="hidden flex-1 sm:flex-initial flex items-center justify-center gap-1.5 bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-300 hover:to-gold-400 text-noir-950 font-extrabold px-6 py-2.5 rounded-xl transition shadow-[0_0_20px_rgba(213,174,116,0.25)] active:scale-95 text-xs disabled:opacity-40 disabled:cursor-not-allowed">
+              <i data-lucide="play" class="w-3.5 h-3.5 fill-noir-950"></i>
+              <span>Bắt Đầu</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- 3. IN-GAME BOARD VIEW -->
+    <!-- ========================================================================= -->
+    <section id="gameView" class="hidden flex-1 flex flex-col lg:flex-row gap-3 sm:gap-5 pb-16 lg:pb-0">
+      
+      <!-- MAIN: 24-CARD BOARD COLUMN -->
+      <div class="flex-1 flex flex-col space-y-2.5">
+        
+        <!-- STREAMLINED MINIMAL HUD DOCK -->
+        <div class="surface-glass rounded-2xl px-3 py-2 sm:px-4 sm:py-2.5 border border-white/[0.08] flex items-center justify-between gap-2 shadow-lg">
+          
+          <!-- Secret Mini Card Button -->
+          <div id="secretCardTrigger" class="cursor-pointer flex items-center gap-2 bg-noir-900/90 hover:bg-noir-850 border border-gold-400/30 px-2.5 py-1.5 rounded-xl transition shrink-0 group shadow-sm" title="Xem hồ sơ thẻ bí mật">
+            <div id="mySecretAvatar" class="w-6 h-6 sm:w-7 sm:h-7 rounded-md bg-noir-800 overflow-hidden flex items-center justify-center shrink-0"></div>
+            <div class="leading-tight">
+              <div class="text-[8px] font-mono font-bold tracking-widest text-gold-400 uppercase">Thẻ Bạn</div>
+              <div id="mySecretName" class="text-xs font-bold text-white max-w-[65px] sm:max-w-[110px] truncate font-mono">---</div>
+            </div>
+            <i data-lucide="info" class="w-3 h-3 text-gold-400 opacity-60 group-hover:opacity-100 transition hidden sm:block"></i>
+          </div>
+
+          <!-- Turn Status Center (Clean non-overlapping pill) -->
+          <div class="flex flex-col items-center text-center px-1 min-w-0 flex-1">
+            <span id="turnIndicator" class="px-3 py-1 rounded-full text-[10px] sm:text-xs font-mono font-bold tracking-wide uppercase bg-gold-400/15 text-gold-400 border border-gold-400/30 truncate max-w-full">
+              Đang kết nối...
+            </span>
+            <span id="turnDescription" class="text-[9px] text-slate-400 font-medium truncate max-w-full hidden sm:block mt-0.5">Quan sát kỹ lưỡng đối thủ</span>
+          </div>
+
+          <!-- HUD Right: Remaining Badge + Consolidated Quick Menu Button -->
+          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- Remaining Badge -->
+            <div class="px-2.5 py-1 rounded-xl bg-noir-900 border border-white/[0.08] text-center font-mono leading-none">
+              <span class="text-[7px] text-slate-400 uppercase tracking-wider block font-bold">CÒN</span>
+              <span id="remainingCountBadge" class="text-xs sm:text-sm font-bold text-gold-400">24/24</span>
+            </div>
+
+            <!-- Consolidated Quick Menu Toggle (Contains Sound, View Mode, Reset, Strategy, Quit) -->
+            <button id="hudMenuToggleBtn" class="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-gold-400 border border-gold-400/25 transition active:scale-95 text-xs font-medium shadow-sm" title="Tùy chọn & Tiện ích">
+              <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+              <span class="text-[10px] font-mono hidden sm:inline">Menu</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Opponent Question Alert Bar -->
+        <div id="opponentQuestionPrompt" class="hidden surface-glass border border-gold-400/40 rounded-2xl p-3 shadow-xl flex-col sm:flex-row items-center justify-between gap-3 animate-pulse">
+          <div class="flex items-center gap-3 text-left w-full sm:w-auto">
+            <div class="w-7 h-7 rounded-lg bg-gold-400/15 text-gold-400 flex items-center justify-center shrink-0">
+              <i data-lucide="help-circle" class="w-4 h-4"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="text-[9px] font-mono uppercase tracking-widest text-gold-400">Đối thủ đang hỏi bạn</div>
+              <div id="opponentQuestionText" class="text-xs sm:text-sm font-bold text-white truncate">"Nhân vật có đeo kính không?"</div>
+              <div id="opponentQuestionHint" class="text-[10px] text-emerald-400 font-medium mt-0.5">Thẻ của bạn: Có đeo kính</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            <button id="answerYesBtn" class="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow transition active:scale-95">
+              CÓ (ĐÚNG)
+            </button>
+            <button id="answerNoBtn" class="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow transition active:scale-95">
+              KHÔNG (SAI)
+            </button>
+          </div>
+        </div>
+
+        <!-- CHARACTER CARDS BOARD -->
+        <div id="characterBoard" class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-2.5 select-none">
+          <!-- 24 Character Cards rendered dynamically -->
+        </div>
+
+      </div>
+
+      <!-- DESKTOP LOGS & CHAT SIDEBAR -->
+      <div class="hidden lg:flex w-72 xl:w-80 flex-col space-y-3 surface-glass rounded-2xl p-4 border border-white/[0.08] h-[calc(100vh-2rem)] sticky top-4">
+        
+        <div class="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
+          <div class="flex items-center gap-2">
+            <i data-lucide="activity" class="w-3.5 h-3.5 text-gold-400"></i>
+            <span class="font-display font-bold text-xs uppercase tracking-wider text-white">Nhật Ký Trận Đấu</span>
+          </div>
+          <span class="text-[9px] font-mono text-emerald-400 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Live
+          </span>
+        </div>
+
+        <!-- Desktop Action Buttons -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button id="desktopOpenQuestionModalBtn" class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-300 hover:to-gold-400 text-noir-950 font-bold text-xs shadow-md active:scale-95 transition">
+            <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+            <span>HỎI CÂU</span>
+          </button>
+          <button id="desktopOpenGuessModalBtn" class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md active:scale-95 transition">
+            <i data-lucide="target" class="w-3.5 h-3.5"></i>
+            <span>ĐOÁN TÊN</span>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button id="desktopPassTurnBtn" disabled class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.09] disabled:opacity-30 disabled:cursor-not-allowed text-slate-200 font-semibold text-xs border border-white/[0.07] transition active:scale-95">
+            <i data-lucide="mic" class="w-3 h-3 text-gold-400"></i>
+            <span>QUA LƯỢT</span>
+          </button>
+          <button id="desktopQuitGameBtn" class="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-semibold text-xs transition active:scale-95">
+            <i data-lucide="log-out" class="w-3 h-3"></i>
+            <span>THOÁT</span>
+          </button>
+        </div>
+
+        <!-- Log entries -->
+        <div id="desktopGameLogList" class="flex-1 overflow-y-auto space-y-1.5 text-xs pr-1 font-mono">
+          <!-- Logs injected dynamically -->
+        </div>
+
+        <!-- Desktop Chat -->
+        <form id="desktopChatForm" class="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
+          <input type="text" id="desktopChatInput" maxlength="120" placeholder="Nhắn tin cho đối thủ..." class="flex-1 bg-noir-900 border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-400/50">
+          <button type="submit" class="p-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-gold-400 border border-white/[0.08] transition active:scale-95">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          </button>
+        </form>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 4. MOBILE STICKY BOTTOM ACTION BAR -->
+  <!-- ========================================================================= -->
+  <div id="mobileBottomBar" class="lg:hidden fixed bottom-0 left-0 right-0 z-30 surface-glass border-t border-white/[0.08] px-3 py-1.5 safe-bottom shadow-2xl">
+    <div class="max-w-md mx-auto grid grid-cols-4 gap-1.5">
+      
+      <button id="openQuestionModalBtn" class="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 active:scale-95 text-noir-950 font-bold shadow-md transition">
+        <i data-lucide="help-circle" class="w-4 h-4 mb-0.5"></i>
+        <span class="text-[9px] tracking-tight">HỎI CÂU</span>
+      </button>
+
+      <button id="mobilePassTurnBtn" disabled class="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white/[0.06] active:scale-95 disabled:opacity-30 text-slate-200 font-semibold border border-white/[0.08] transition">
+        <i data-lucide="mic" class="w-4 h-4 mb-0.5 text-gold-400"></i>
+        <span class="text-[9px] tracking-tight">QUA LƯỢT</span>
+      </button>
+
+      <button id="openGuessModalBtn" class="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-rose-600 active:scale-95 text-white font-bold transition shadow-md">
+        <i data-lucide="target" class="w-4 h-4 mb-0.5"></i>
+        <span class="text-[9px] tracking-tight">ĐOÁN TÊN</span>
+      </button>
+
+      <button id="openMobileDrawerBtn" class="relative flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-white/[0.04] active:scale-95 text-slate-300 border border-white/[0.07] transition">
+        <div class="relative">
+          <i data-lucide="message-square" class="w-4 h-4 mb-0.5"></i>
+          <span id="unreadLogBadge" class="hidden absolute -top-1 -right-2 w-2 h-2 rounded-full bg-gold-400"></span>
+        </div>
+        <span class="text-[9px] tracking-tight">NHẬT KÝ</span>
+      </button>
+
+    </div>
+  </div>
+
+  <!-- Mobile Drawer for Logs & Chat -->
+  <div id="mobileLogDrawer" class="lg:hidden fixed inset-0 z-40 bg-noir-950/80 backdrop-blur-md hidden flex-col justify-end">
+    <div class="surface-elevated rounded-t-3xl max-h-[75vh] flex flex-col p-4 space-y-3">
+      
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-2">
+        <div class="flex items-center gap-2">
+          <i data-lucide="activity" class="w-4 h-4 text-gold-400"></i>
+          <span class="font-display font-bold text-xs uppercase tracking-wider text-white">Nhật Ký & Trò Chuyện</span>
+        </div>
+        <button id="closeMobileDrawerBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div id="mobileGameLogList" class="flex-1 overflow-y-auto space-y-1.5 text-xs max-h-[50vh] pr-1 font-mono">
+        <!-- Log entries -->
+      </div>
+
+      <form id="mobileChatForm" class="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
+        <input type="text" id="mobileChatInput" maxlength="120" placeholder="Gửi tin nhắn..." class="flex-1 bg-noir-900 border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-400/50">
+        <button type="submit" class="p-2 rounded-xl bg-gold-400 text-noir-950">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 5. MODALS & POPUPS (Minimal Premium Design) -->
+  <!-- ========================================================================= -->
+
+  <!-- MODAL: JOIN ROOM BY ID -->
+  <div id="joinByIdModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="hash" class="w-4 h-4 text-gold-400"></i>
+          <h3 class="font-display font-bold text-sm text-white">Vào Phòng Bằng Mã ID</h3>
+        </div>
+        <button id="closeJoinByIdModalBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <p class="text-slate-400 leading-relaxed">
+          Nhập mã phòng 3 chữ số từ người tạo phòng (Ví dụ: <code class="text-gold-400 font-mono font-bold bg-noir-900 px-1.5 py-0.5 rounded border border-white/[0.08]">304</code>):
+        </p>
+        <div>
+          <label class="block text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">Mã phòng:</label>
+          <input type="text" id="joinByIdInput" maxlength="8" class="w-full bg-noir-900 border border-white/[0.1] rounded-xl px-3.5 py-2.5 text-center font-mono font-bold text-xl text-gold-400 tracking-widest focus:outline-none focus:border-gold-400/80" placeholder="VD: 304">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="cancelJoinByIdBtn" class="px-4 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 font-semibold text-xs transition">Hủy</button>
+        <button id="confirmJoinByIdBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 text-noir-950 font-bold text-xs shadow-md transition active:scale-95">
+          Tham Gia
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: STRATEGY GUIDE -->
+  <div id="questionGuideModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-white/[0.08] flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="compass" class="w-4 h-4 text-gold-400"></i>
+          <h3 class="font-display font-bold text-sm sm:text-base text-white">Chiến Thuật Phán Đoán Tối Ưu</h3>
+        </div>
+        <button id="closeGuideModalBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-3.5 text-xs text-slate-300">
+        <div class="p-3 rounded-xl bg-gold-400/10 border border-gold-400/20 text-slate-200">
+          <span class="font-mono text-gold-400 uppercase tracking-widest text-[10px] block mb-1">💡 Nguyên tắc nhị phân 50/50</span>
+          Không hỏi đặc điểm quá hiếm ở đầu ván. Ưu tiên câu hỏi chia đôi số người (12 nam / 12 nữ) để dù đối thủ đáp <b>CÓ</b> hay <b>KHÔNG</b>, bạn luôn loại chắc 50% số thẻ trên bàn.
+        </div>
+
+        <div class="space-y-2">
+          <h4 class="font-mono text-[10px] uppercase tracking-widest text-slate-400">3 Pha Điều Tra</h4>
+          <div class="p-3 rounded-xl bg-noir-900 border border-white/[0.06]">
+            <b class="text-white">1. Khai cuộc:</b> Chia nửa bàn đấu qua <i>Giới tính (Nam / Nữ)</i>.
+          </div>
+          <div class="p-3 rounded-xl bg-noir-900 border border-white/[0.06]">
+            <b class="text-white">2. Trung cuộc:</b> Thu hẹp phạm vi với <i>Kính mắt, Mũ hoặc Màu tóc</i>.
+          </div>
+          <div class="p-3 rounded-xl bg-noir-900 border border-white/[0.06]">
+            <b class="text-white">3. Tàn cuộc:</b> Quan sát kỹ tiểu tiết <i>Râu, Khuyên tai, Kiểu tóc</i> trước khi bấm <b>ĐOÁN TÊN</b>.
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300">
+          <b class="font-mono text-[10px] uppercase tracking-widest block mb-0.5 text-rose-400">⚠️ Cơ hội duy nhất</b>
+          Khi quyết định <b>"ĐOÁN TÊN"</b>, nếu bạn đoán sai nhân vật bí mật, hệ thống sẽ xử <b>THUA NGAY LẬP TỨC</b>!
+        </div>
+      </div>
+
+      <div class="p-3 border-t border-white/[0.08] bg-noir-900/60 flex justify-end">
+        <button id="closeGuideModalBtnBottom" class="px-5 py-2 rounded-xl bg-gold-400 hover:bg-gold-300 text-noir-950 font-bold text-xs">
+          Đã Hiểu
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ASK QUESTION BUILDER -->
+  <div id="askQuestionModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-white/[0.08] flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="help-circle" class="w-4 h-4 text-gold-400"></i>
+          <div>
+            <h3 class="font-display font-bold text-sm text-white">Soạn Câu Hỏi Điều Tra</h3>
+            <span class="text-[10px] text-slate-400">Chọn thuộc tính để truy vấn đối thủ</span>
+          </div>
+        </div>
+        <button id="closeQuestionModalBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-4 overflow-y-auto space-y-4 text-xs">
+        <div>
+          <div class="text-[10px] font-mono uppercase text-slate-400 mb-2 tracking-widest">Bước 1: Chọn nhóm đặc điểm</div>
+          <div id="categoryPillGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-1.5"></div>
+        </div>
+
+        <div>
+          <div class="text-[10px] font-mono uppercase text-slate-400 mb-2 tracking-widest">Bước 2: Chọn chi tiết cụ thể</div>
+          <div id="valuePillGrid" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-noir-900 border border-white/[0.08]">
+          <div class="text-[9px] font-mono uppercase text-gold-400 tracking-widest">Nội dung câu hỏi:</div>
+          <p id="questionPreviewText" class="text-sm font-bold text-white mt-1">"Nhân vật của bạn là Nam?"</p>
+        </div>
+
+        <div id="strategyLiveTip" class="p-3 rounded-xl bg-noir-900/60 border border-white/[0.06] flex items-start gap-2.5">
+          <i data-lucide="sparkles" class="w-3.5 h-3.5 text-gold-400 shrink-0 mt-0.5"></i>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-white">Xác suất phân loại:</span>
+              <span id="strategySplitBadge" class="text-[10px] font-mono font-bold text-gold-400 bg-gold-400/10 px-1.5 py-0.2 rounded border border-gold-400/20">12/24</span>
+            </div>
+            <p id="strategyAdviceText" class="text-[11px] text-slate-400 mt-0.5 leading-relaxed">
+              Tỷ lệ chia đôi tối ưu để loại trừ một nửa danh sách.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3.5 border-t border-white/[0.08] bg-noir-900/60 flex items-center justify-between gap-2">
+        <button id="cancelQuestionModalBtn" class="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 font-semibold text-xs">Hủy</button>
+        <button id="confirmSendQuestionBtn" class="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 text-noir-950 font-bold text-xs shadow-md active:scale-95 transition">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          <span>GỬI CÂU HỎI</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GUESS CHARACTER NAME -->
+  <div id="guessNameModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-rose-500/20 bg-rose-500/5 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="target" class="w-4 h-4 text-rose-400"></i>
+          <div>
+            <h3 class="font-display font-bold text-sm text-white">Phán Đoán Danh Tính Bí Mật</h3>
+            <span class="text-[10px] text-rose-400 font-mono">Đoán sai sẽ bị xử thua ngay lập tức!</span>
+          </div>
+        </div>
+        <button id="closeGuessModalBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-4 overflow-y-auto flex-1">
+        <div id="guessCharacterList" class="grid grid-cols-3 sm:grid-cols-4 gap-2"></div>
+      </div>
+
+      <div class="p-3.5 border-t border-white/[0.08] bg-noir-900/60 flex items-center justify-between gap-2">
+        <div class="text-xs">
+          <span class="text-slate-400">Đã chọn:</span>
+          <b id="selectedGuessNameDisplay" class="text-white ml-1 font-bold font-mono">Chưa chọn</b>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="cancelGuessModalBtn" class="px-3.5 py-2 rounded-xl bg-white/[0.04] text-slate-300 font-semibold text-xs">Hủy</button>
+          <button id="confirmMakeGuessBtn" disabled class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold text-xs shadow-lg transition active:scale-95">
+            XÁC NHẬN ĐOÁN
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CHARACTER DETAIL INSPECTOR -->
+  <div id="secretDetailModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
+        <h3 id="modalSecretTitle" class="font-display font-bold text-sm text-white">Hồ Sơ Nhân Vật</h3>
+        <button id="closeSecretDetailModalBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="flex flex-col items-center text-center">
+        <div id="modalSecretAvatar" class="w-20 h-20 rounded-xl bg-noir-900 border border-gold-400/30 p-1 mb-2 flex items-center justify-center shadow-inner"></div>
+        <h4 id="modalSecretName" class="font-display font-bold text-base text-white font-mono">Tên nhân vật</h4>
+      </div>
+
+      <div id="modalSecretTraits" class="grid grid-cols-2 gap-2 text-xs font-mono"></div>
+
+      <button id="closeSecretDetailModalActionBtn" class="w-full py-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] text-slate-200 font-semibold text-xs border border-white/[0.08] transition">
+        Đóng
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE ROOM -->
+  <div id="createRoomModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
+        <h3 class="font-display font-bold text-sm text-white">Tạo Phòng Mới</h3>
+        <button id="closeCreateRoomModalBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Tên phòng:</label>
+          <input type="text" id="createRoomNameInput" maxlength="28" class="w-full bg-noir-900 border border-white/[0.08] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-gold-400/70" placeholder="Nhập tên phòng...">
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <input type="checkbox" id="createRoomHasPassCheckbox" class="w-4 h-4 rounded text-gold-400 focus:ring-0 bg-noir-900 border-white/[0.2]">
+          <label for="createRoomHasPassCheckbox" class="text-slate-300 font-medium cursor-pointer">Bật mật khẩu phòng</label>
+        </div>
+
+        <div id="createRoomPassField" class="hidden">
+          <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Mật khẩu:</label>
+          <input type="password" id="createRoomPasswordInput" maxlength="12" class="w-full bg-noir-900 border border-white/[0.08] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-gold-400/70" placeholder="Mã PIN / Mật khẩu...">
+        </div>
+
+        <div class="p-2.5 rounded-xl bg-noir-900 border border-white/[0.06] text-[11px] text-slate-400 flex items-center justify-between">
+          <span>Giới hạn phòng:</span>
+          <b id="createRoomQuotaText" class="text-gold-400 font-mono">0/10 phòng</b>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="cancelCreateRoomBtn" class="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 font-semibold text-xs">Hủy</button>
+        <button id="confirmCreateRoomBtn" class="px-5 py-2 rounded-xl bg-gold-400 hover:bg-gold-300 text-noir-950 font-bold text-xs shadow-md transition active:scale-95">Tạo Phòng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT ROOM -->
+  <div id="editRoomModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
+        <h3 class="font-display font-bold text-sm text-white">Chỉnh Sửa Phòng</h3>
+        <button id="closeEditRoomModalBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Tên phòng:</label>
+          <input type="text" id="editRoomNameInput" maxlength="28" class="w-full bg-noir-900 border border-white/[0.08] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-gold-400/70">
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <input type="checkbox" id="editRoomHasPassCheckbox" class="w-4 h-4 rounded text-gold-400 focus:ring-0 bg-noir-900 border-white/[0.2]">
+          <label for="editRoomHasPassCheckbox" class="text-slate-300 font-medium cursor-pointer">Yêu cầu mật khẩu</label>
+        </div>
+
+        <div id="editRoomPassField" class="hidden">
+          <label class="block text-[10px] font-mono uppercase text-slate-400 mb-1">Mật khẩu mới:</label>
+          <input type="password" id="editRoomPasswordInput" maxlength="12" class="w-full bg-noir-900 border border-white/[0.08] rounded-xl px-3 py-2 text-white focus:outline-none focus:border-gold-400/70" placeholder="Để trống nếu giữ nguyên...">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="cancelEditRoomBtn" class="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 font-semibold text-xs">Hủy</button>
+        <button id="confirmEditRoomBtn" class="px-5 py-2 rounded-xl bg-gold-400 hover:bg-gold-300 text-noir-950 font-bold text-xs shadow-md transition active:scale-95">Lưu Thay Đổi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DELETE ROOM CONFIRM -->
+  <div id="deleteConfirmModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center gap-2.5 text-rose-400">
+        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+        <h3 class="font-display font-bold text-sm text-white">Xóa Phòng</h3>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Bạn có chắc muốn xóa vĩnh viễn phòng <b id="deleteConfirmRoomName" class="text-white"></b>?
+      </p>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="cancelDeleteBtn" class="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 font-semibold text-xs">Hủy</button>
+        <button id="confirmDeleteBtn" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition active:scale-95">Xóa Ngay</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: QUIT GAME CONFIRM -->
+  <div id="quitGameConfirmModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center gap-2.5 text-rose-400">
+        <i data-lucide="log-out" class="w-5 h-5"></i>
+        <h3 class="font-display font-bold text-sm text-white">Thoát Trận Đấu?</h3>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Thoát giữa chừng sẽ tính là đầu hàng và đối thủ sẽ giành chiến thắng ngay lập tức.
+      </p>
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="cancelQuitGameBtn" class="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 font-semibold text-xs">Ở Lại</button>
+        <button id="confirmQuitGameBtn" class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition active:scale-95">Thoát Ngay</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: IN-GAME QUICK ACTIONS MENU -->
+  <div id="hudQuickMenuModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-xs w-full p-4 space-y-3 shadow-2xl border border-white/[0.1]">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-2">
+        <div class="flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4 text-gold-400"></i>
+          <h3 class="font-display font-bold text-sm text-white">Tùy Chọn Trận Đấu</h3>
+        </div>
+        <button id="closeHudQuickMenuBtn" class="p-1 rounded-lg bg-white/[0.04] text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-1.5 text-xs">
+        <!-- Toggle Traits Mode -->
+        <button id="toggleCardDetailsBtn" class="w-full flex items-center justify-between p-2.5 rounded-xl bg-noir-900 hover:bg-white/[0.06] border border-white/[0.06] transition text-left text-slate-200">
+          <div class="flex items-center gap-2">
+            <i data-lucide="layout-grid" class="w-4 h-4 text-gold-400"></i>
+            <span>Chế độ xem</span>
+          </div>
+          <span id="toggleDetailsBtnLabel" class="text-[10px] font-mono text-gold-400 bg-gold-400/10 px-2 py-0.5 rounded border border-gold-400/20">Gọn</span>
+        </button>
+
+        <!-- Reset Flips -->
+        <button id="resetFlipsBtn" class="w-full flex items-center justify-between p-2.5 rounded-xl bg-noir-900 hover:bg-white/[0.06] border border-white/[0.06] transition text-left text-slate-200">
+          <div class="flex items-center gap-2">
+            <i data-lucide="rotate-ccw" class="w-4 h-4 text-sky-400"></i>
+            <span>Mở lại toàn bộ thẻ</span>
+          </div>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500"></i>
+        </button>
+
+        <!-- Strategy Guide -->
+        <button id="hudHelpBtn" class="w-full flex items-center justify-between p-2.5 rounded-xl bg-noir-900 hover:bg-white/[0.06] border border-white/[0.06] transition text-left text-slate-200">
+          <div class="flex items-center gap-2">
+            <i data-lucide="compass" class="w-4 h-4 text-emerald-400"></i>
+            <span>Chiến thuật đặt câu hỏi</span>
+          </div>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-500"></i>
+        </button>
+
+        <!-- Sound Toggle -->
+        <button id="hudSoundBtn" class="w-full flex items-center justify-between p-2.5 rounded-xl bg-noir-900 hover:bg-white/[0.06] border border-white/[0.06] transition text-left text-slate-200">
+          <div class="flex items-center gap-2">
+            <i data-lucide="volume-2" id="hudSoundIcon" class="w-4 h-4 text-purple-400"></i>
+            <span>Âm thanh trò chơi</span>
+          </div>
+          <span id="hudSoundLabel" class="text-[10px] font-mono text-emerald-400">BẬT</span>
+        </button>
+
+        <!-- Forfeit / Quit -->
+        <button id="hudQuitGameBtn" class="w-full flex items-center justify-between p-2.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition text-left text-rose-300">
+          <div class="flex items-center gap-2">
+            <i data-lucide="log-out" class="w-4 h-4 text-rose-400"></i>
+            <span>Đầu hàng / Thoát ván</span>
+          </div>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-rose-400"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ENTER ROOM PASSWORD -->
+  <div id="passwordModal" class="fixed inset-0 z-50 bg-noir-950/80 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-sm w-full p-5 space-y-4">
+      <div class="flex items-center gap-2">
+        <i data-lucide="lock" class="w-4 h-4 text-gold-400"></i>
+        <h3 class="font-display font-bold text-sm text-white">Mật Khẩu Phòng</h3>
+      </div>
+      <p class="text-xs text-slate-400">Phòng này đã được khóa. Vui lòng nhập mã truy cập:</p>
+      <input type="password" id="joinRoomPasswordInput" class="w-full bg-noir-900 border border-white/[0.08] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-gold-400/70" placeholder="Mật khẩu...">
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="cancelPasswordModalBtn" class="px-4 py-2 rounded-xl bg-white/[0.04] text-slate-300 font-semibold text-xs">Hủy</button>
+        <button id="confirmJoinWithPasswordBtn" class="px-5 py-2 rounded-xl bg-gold-400 hover:bg-gold-300 text-noir-950 font-bold text-xs shadow-md transition active:scale-95">Tham Gia</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GAME OVER / RESULT -->
+  <div id="gameOverModal" class="fixed inset-0 z-50 bg-noir-950/85 backdrop-blur-lg hidden items-center justify-center p-4">
+    <div class="surface-elevated rounded-2xl max-w-md w-full p-6 text-center space-y-4 shadow-2xl">
+      <div id="gameOverIcon" class="w-14 h-14 rounded-2xl bg-gold-400/15 border border-gold-400/30 text-gold-400 flex items-center justify-center mx-auto text-2xl shadow-lg">
+        🏆
+      </div>
+      
+      <div>
+        <h3 id="gameOverTitle" class="font-display font-extrabold text-xl text-white">CHIẾN THẮNG!</h3>
+        <p id="gameOverSubtitle" class="text-xs text-slate-400 mt-1">Bạn đã xuất sắc tìm ra nhân vật bí mật!</p>
+      </div>
+
+      <!-- Cards Reveal -->
+      <div class="grid grid-cols-2 gap-3 p-3 rounded-xl bg-noir-900 border border-white/[0.06]">
+        <div class="flex flex-col items-center">
+          <span class="text-[9px] font-mono text-slate-400 uppercase mb-1">Thẻ của bạn</span>
+          <div id="endMyCardAvatar" class="w-12 h-12 rounded-xl bg-noir-800 p-1 flex items-center justify-center"></div>
+          <span id="endMyCardName" class="font-bold text-xs text-white mt-1 font-mono">---</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="text-[9px] font-mono text-gold-400 uppercase mb-1">Thẻ đối thủ</span>
+          <div id="endOpponentCardAvatar" class="w-12 h-12 rounded-xl bg-noir-800 p-1 flex items-center justify-center border border-gold-400/30"></div>
+          <span id="endOpponentCardName" class="font-bold text-xs text-gold-300 mt-1 font-mono">---</span>
+        </div>
+      </div>
+
+      <!-- Action Rematch -->
+      <div class="space-y-2 pt-1">
+        <button id="rematchBtn" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-gold-400 to-gold-500 hover:from-gold-300 hover:to-gold-400 text-noir-950 font-bold text-xs uppercase tracking-wider shadow-md active:scale-95 transition">
+          Ván Mới Ngay
+        </button>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="rematchWaitingBtn" class="py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.08] text-slate-200 font-semibold text-xs transition border border-white/[0.06]">
+            Về Sảnh Chờ
+          </button>
+          <button id="returnToLobbyBtn" class="py-2 rounded-xl bg-noir-900 hover:bg-noir-850 text-slate-400 hover:text-white font-semibold text-xs transition border border-white/[0.06]">
+            Rời Phòng
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MINIMAL TOAST -->
+  <div id="toast" class="fixed top-5 right-5 z-50 pointer-events-none transform -translate-y-12 opacity-0 transition-all duration-300 surface-elevated border border-gold-400/30 rounded-xl px-3.5 py-2 shadow-2xl flex items-center gap-2">
+    <span id="toastIcon" class="text-sm">🔔</span>
+    <span id="toastMessage" class="text-xs font-semibold text-slate-100 font-mono">Thông báo</span>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 6. LOGIC JAVASCRIPT & REFINED VECTOR AVATAR SYSTEM -->
+  <!-- ========================================================================= -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, getDoc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    /* FIREBASE CONFIGURATION */
+    const firebaseConfig = {
+      apiKey: "AIzaSyAPNfagT0sb7JxbgIEiJxCG9dABOahvWjA",
+      authDomain: "masoi-hunq.firebaseapp.com",
+      projectId: "masoi-hunq",
+      storageBucket: "masoi-hunq.firebasestorage.app",
+      messagingSenderId: "925639662907",
+      appId: "1:925639662907:web:2a645dd711c0fc6616ab1e"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const roomsCollectionRef = collection(db, 'artifacts', 'whois-game', 'public', 'data', 'rooms');
+
+    /* COMPLETE 24-CHARACTER DATASET */
+    const CHARACTERS_DATA = [
+      { id: 1, name: "Bảo Boi", gender: "male", hair_color: "black", hair_style: "short", eye_color: "brown", glasses: false, hat: false, facial_hair: "beard", earrings: false },
+      { id: 2, name: "Bé Su", gender: "female", hair_color: "blonde", hair_style: "long", eye_color: "blue", glasses: true, hat: false, facial_hair: "none", earrings: true },
+      { id: 3, name: "Cường Coder", gender: "male", hair_color: "brown", hair_style: "curly", eye_color: "brown", glasses: true, hat: false, facial_hair: "none", earrings: false },
+      { id: 4, name: "Dương Matcha", gender: "female", hair_color: "red", hair_style: "short", eye_color: "green", glasses: false, hat: true, facial_hair: "none", earrings: false },
+      { id: 5, name: "Đạt Villa", gender: "male", hair_color: "blonde", hair_style: "short", eye_color: "blue", glasses: false, hat: false, facial_hair: "mustache", earrings: false },
+      { id: 6, name: "Phương Simp", gender: "female", hair_color: "black", hair_style: "bun", eye_color: "brown", glasses: true, hat: false, facial_hair: "none", earrings: true },
+      { id: 7, name: "Bác Gấu", gender: "male", hair_color: "gray", hair_style: "bald", eye_color: "brown", glasses: true, hat: false, facial_hair: "beard", earrings: false },
+      { id: 8, name: "Hà Xoăn", gender: "female", hair_color: "brown", hair_style: "curly", eye_color: "green", glasses: false, hat: false, facial_hair: "none", earrings: true },
+      { id: 9, name: "Huy Redflag", gender: "male", hair_color: "red", hair_style: "short", eye_color: "blue", glasses: false, hat: true, facial_hair: "none", earrings: false },
+      { id: 10, name: "Châu Củ Tỏi", gender: "female", hair_color: "blonde", hair_style: "bun", eye_color: "green", glasses: false, hat: false, facial_hair: "none", earrings: false },
+      { id: 11, name: "Khánh Hướng Nội", gender: "male", hair_color: "black", hair_style: "curly", eye_color: "brown", glasses: false, hat: true, facial_hair: "none", earrings: false },
+      { id: 12, name: "Cô Lan Kính Cận", gender: "female", hair_color: "gray", hair_style: "short", eye_color: "blue", glasses: true, hat: false, facial_hair: "none", earrings: false },
+      { id: 13, name: "Minh Suy", gender: "male", hair_color: "brown", hair_style: "short", eye_color: "blue", glasses: false, hat: false, facial_hair: "beard", earrings: false },
+      { id: 14, name: "Nga Slang", gender: "female", hair_color: "red", hair_style: "long", eye_color: "green", glasses: true, hat: true, facial_hair: "none", earrings: false },
+      { id: 15, name: "Ông Bảy", gender: "male", hair_color: "gray", hair_style: "bald", eye_color: "brown", glasses: false, hat: true, facial_hair: "mustache", earrings: false },
+      { id: 16, name: "Phượng Trà Sữa", gender: "female", hair_color: "black", hair_style: "long", eye_color: "brown", glasses: false, hat: false, facial_hair: "none", earrings: true },
+      { id: 17, name: "Quân IT", gender: "male", hair_color: "blonde", hair_style: "short", eye_color: "green", glasses: true, hat: false, facial_hair: "none", earrings: false },
+      { id: 18, name: "Quỳnh Búi", gender: "female", hair_color: "brown", hair_style: "bun", eye_color: "brown", glasses: true, hat: false, facial_hair: "none", earrings: false },
+      { id: 19, name: "Sơn Trapboi", gender: "male", hair_color: "black", hair_style: "short", eye_color: "blue", glasses: false, hat: false, facial_hair: "mustache", earrings: false },
+      { id: 20, name: "Thảo Vibe", gender: "female", hair_color: "blonde", hair_style: "long", eye_color: "blue", glasses: false, hat: true, facial_hair: "none", earrings: true },
+      { id: 21, name: "Việt Râu Con", gender: "male", hair_color: "red", hair_style: "curly", eye_color: "brown", glasses: true, hat: false, facial_hair: "beard", earrings: false },
+      { id: 22, name: "Bà Vy", gender: "female", hair_color: "gray", hair_style: "bun", eye_color: "green", glasses: false, hat: false, facial_hair: "none", earrings: true },
+      { id: 23, name: "Xuân Flex", gender: "male", hair_color: "brown", hair_style: "short", eye_color: "green", glasses: false, hat: true, facial_hair: "none", earrings: false },
+      { id: 24, name: "Yến Overthinking", gender: "female", hair_color: "black", hair_style: "curly", eye_color: "brown", glasses: false, hat: false, facial_hair: "none", earrings: false }
+    ];
+
+    const CHARACTERS = CHARACTERS_DATA;
+
+    /* REFINED COLOR PALETTES */
+    const COLOR_MAP = {
+      hair: {
+        black: '#181B20',
+        blonde: '#E4BF78',
+        brown: '#6B4226',
+        red: '#C24D36',
+        gray: '#8E9AA8'
+      },
+      hairShade: {
+        black: '#0D0F13',
+        blonde: '#C49F56',
+        brown: '#4A2A14',
+        red: '#963420',
+        gray: '#606C7B'
+      },
+      eyes: {
+        brown: '#593B27',
+        blue: '#2B6CB0',
+        green: '#2F855A'
+      },
+      skin: {
+        male: '#E8BF9E',
+        maleShadow: '#CE9E79',
+        female: '#F7D0B7',
+        femaleShadow: '#DEAE8F'
+      },
+      bgGradients: [
+        ['#141926', '#0F131D'],
+        ['#1A1724', '#110F19'],
+        ['#131F1C', '#0C1513'],
+        ['#1F161A', '#160E12'],
+        ['#1C1A14', '#13110B']
+      ]
+    };
+
+    /* REFINED PROCEDURAL SVG GENERATOR */
+    function generateAvatarSVG(char, options = {}) {
+      if (!char) return '';
+      const size = options.size || 200;
+      const hairColor = COLOR_MAP.hair[char.hair_color] || COLOR_MAP.hair.black;
+      const hairShade = COLOR_MAP.hairShade[char.hair_color] || COLOR_MAP.hairShade.black;
+      const eyeColor = COLOR_MAP.eyes[char.eye_color] || COLOR_MAP.eyes.brown;
+      const isFemale = char.gender === 'female';
+      const skinColor = isFemale ? COLOR_MAP.skin.female : COLOR_MAP.skin.male;
+      const skinShadow = isFemale ? COLOR_MAP.skin.femaleShadow : COLOR_MAP.skin.maleShadow;
+
+      const bgPair = COLOR_MAP.bgGradients[(char.id || 0) % COLOR_MAP.bgGradients.length];
+      const svgUid = 'p_' + (char.id || 'c') + '_' + Math.floor(Math.random() * 10000);
+
+      let backHairSVG = '';
+      if (char.hair_style === 'long') {
+        backHairSVG = `
+          <path d="M 50 85 C 40 120, 36 155, 42 195 C 60 200, 75 190, 75 160 C 75 125, 75 90, 75 90 Z" fill="${hairColor}" />
+          <path d="M 150 85 C 160 120, 164 155, 158 195 C 140 200, 125 190, 125 160 C 125 125, 125 90, 125 90 Z" fill="${hairColor}" />
+        `;
+      } else if (char.hair_style === 'curly') {
+        backHairSVG = `
+          <circle cx="50" cy="90" r="22" fill="${hairColor}"/>
+          <circle cx="42" cy="115" r="20" fill="${hairColor}"/>
+          <circle cx="50" cy="138" r="18" fill="${hairColor}"/>
+          <circle cx="150" cy="90" r="22" fill="${hairColor}"/>
+          <circle cx="158" cy="115" r="20" fill="${hairColor}"/>
+          <circle cx="150" cy="138" r="18" fill="${hairColor}"/>
+        `;
+      }
+
+      const earsAndEarringsSVG = `
+        <circle cx="52" cy="102" r="10" fill="${skinColor}" stroke="${skinShadow}" stroke-width="1.2"/>
+        <circle cx="148" cy="102" r="10" fill="${skinColor}" stroke="${skinShadow}" stroke-width="1.2"/>
+        ${char.earrings ? `
+          <circle cx="50" cy="112" r="4.5" fill="#D5AE74" stroke="#A77536" stroke-width="1.2" />
+          <circle cx="150" cy="112" r="4.5" fill="#D5AE74" stroke="#A77536" stroke-width="1.2" />
+          <circle cx="50" cy="112" r="1.2" fill="#ffffff" />
+          <circle cx="150" cy="112" r="1.2" fill="#ffffff" />
+        ` : ''}
+      `;
+
+      const bodyAndHeadSVG = `
+        <path d="M 35 200 C 40 158, 70 148, 100 148 C 130 148, 160 158, 165 200 Z" fill="${isFemale ? '#3D2836' : '#232D3B'}"/>
+        <path d="M 78 149 Q 100 166 122 149 Z" fill="#D5AE74" opacity="0.4"/>
+        <path d="M 87 122 L 87 148 C 93 151, 107 151, 113 148 L 113 122 Z" fill="${skinShadow}"/>
+        <path d="M 60 85 C 58 124, 75 142, 100 142 C 125 142, 142 124, 140 85 C 140 52, 60 52, 60 85 Z" fill="${skinColor}" stroke="${skinShadow}" stroke-width="1"/>
+      `;
+
+      const eyesSVG = `
+        <path d="M 72 82 Q 82 79 89 82" stroke="${hairShade}" stroke-width="${isFemale ? 2 : 2.8}" stroke-linecap="round" fill="none"/>
+        <path d="M 111 82 Q 118 79 128 82" stroke="${hairShade}" stroke-width="${isFemale ? 2 : 2.8}" stroke-linecap="round" fill="none"/>
+        <g>
+          <ellipse cx="80" cy="94" rx="6.5" ry="5" fill="#ffffff" />
+          <circle cx="80" cy="94" r="3.8" fill="${eyeColor}" />
+          <circle cx="80" cy="94" r="1.8" fill="#0A0D14" />
+          <circle cx="78.8" cy="92.8" r="1" fill="#ffffff" />
+
+          <ellipse cx="120" cy="94" rx="6.5" ry="5" fill="#ffffff" />
+          <circle cx="120" cy="94" r="3.8" fill="${eyeColor}" />
+          <circle cx="120" cy="94" r="1.8" fill="#0A0D14" />
+          <circle cx="118.8" cy="92.8" r="1" fill="#ffffff" />
+        </g>
+        <path d="M 100 95 Q 101 107 97 109 Q 101 111 103 109" stroke="${skinShadow}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+        <ellipse cx="68" cy="107" rx="4" ry="2.5" fill="#fb7185" opacity="${isFemale ? '0.35' : '0.15'}"/>
+        <ellipse cx="132" cy="107" rx="4" ry="2.5" fill="#fb7185" opacity="${isFemale ? '0.35' : '0.15'}"/>
+        <path d="M 93 122 Q 100 128 107 122" stroke="${isFemale ? '#be185d' : '#881337'}" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+      `;
+
+      let facialHairSVG = '';
+      if (char.facial_hair === 'mustache') {
+        facialHairSVG = `
+          <path d="M 100 117 C 94 114, 84 117, 82 121 C 89 123, 96 119, 100 119 C 104 119, 111 123, 118 121 C 116 117, 106 114, 100 117 Z" fill="${hairColor}" stroke="${hairShade}" stroke-width="0.8"/>
+        `;
+      } else if (char.facial_hair === 'beard') {
+        facialHairSVG = `
+          <path d="M 68 106 C 68 135, 78 146, 100 146 C 122 146, 132 135, 132 106 C 127 127, 118 137, 100 137 C 82 137, 73 127, 68 106 Z" fill="${hairColor}" />
+        `;
+      }
+
+      let frontHairSVG = '';
+      if (char.hair_style === 'short') {
+        frontHairSVG = `
+          <path d="M 58 84 C 54 50, 85 42, 100 42 C 118 42, 146 50, 142 84 C 135 68, 120 62, 100 62 C 80 62, 65 68, 58 84 Z" fill="${hairColor}"/>
+        `;
+      } else if (char.hair_style === 'bun') {
+        frontHairSVG = `
+          <circle cx="100" cy="38" r="20" fill="${hairColor}" />
+          <path d="M 58 80 C 58 50, 75 46, 100 46 C 125 46, 142 50, 142 80 C 135 65, 118 58, 100 58 C 82 58, 65 65, 58 80 Z" fill="${hairColor}"/>
+        `;
+      } else if (char.hair_style === 'curly') {
+        frontHairSVG = `
+          <circle cx="72" cy="54" r="16" fill="${hairColor}"/>
+          <circle cx="96" cy="48" r="18" fill="${hairColor}"/>
+          <circle cx="120" cy="52" r="16" fill="${hairColor}"/>
+          <circle cx="82" cy="64" r="13" fill="${hairColor}"/>
+          <circle cx="110" cy="64" r="13" fill="${hairColor}"/>
+          <circle cx="64" cy="72" r="12" fill="${hairColor}"/>
+          <circle cx="136" cy="72" r="12" fill="${hairColor}"/>
+        `;
+      } else if (char.hair_style === 'bald') {
+        frontHairSVG = `
+          <path d="M 57 84 C 56 95, 58 105, 62 108 C 62 96, 60 90, 57 84 Z" fill="${hairColor}"/>
+          <path d="M 143 84 C 144 95, 142 105, 138 108 C 138 96, 140 90, 143 84 Z" fill="${hairColor}"/>
+        `;
+      } else if (char.hair_style === 'long') {
+        frontHairSVG = `
+          <path d="M 58 82 C 58 50, 80 45, 100 45 C 120 45, 142 50, 142 82 C 135 65, 120 60, 100 60 C 78 60, 65 66, 58 82 Z" fill="${hairColor}"/>
+          <path d="M 58 82 Q 62 110 67 126 C 64 110, 63 92, 58 82 Z" fill="${hairColor}"/>
+          <path d="M 142 82 Q 138 110 133 126 C 136 110, 137 92, 142 82 Z" fill="${hairColor}"/>
+        `;
+      }
+
+      let glassesSVG = '';
+      if (char.glasses) {
+        glassesSVG = `
+          <g>
+            <circle cx="79" cy="94" r="11.5" fill="none" stroke="#D5AE74" stroke-width="1.8"/>
+            <circle cx="79" cy="94" r="9.5" fill="#38BDF8" opacity="0.12"/>
+            <circle cx="121" cy="94" r="11.5" fill="none" stroke="#D5AE74" stroke-width="1.8"/>
+            <circle cx="121" cy="94" r="9.5" fill="#38BDF8" opacity="0.12"/>
+            <path d="M 90.5 94 Q 100 91.5 109.5 94" fill="none" stroke="#D5AE74" stroke-width="1.8"/>
+            <line x1="53" y1="94" x2="67.5" y2="94" stroke="#D5AE74" stroke-width="1.5"/>
+            <line x1="132.5" y1="94" x2="147" y2="94" stroke="#D5AE74" stroke-width="1.5"/>
+          </g>
+        `;
+      }
+
+      let hatSVG = '';
+      if (char.hat) {
+        hatSVG = `
+          <g>
+            <path d="M 48 70 C 46 32, 154 32, 152 70 Z" fill="#1E2330" stroke="#2F384C" stroke-width="1.2"/>
+            <rect x="42" y="64" width="116" height="12" rx="4" fill="#283042" stroke="#2F384C" stroke-width="1.2"/>
+            <line x1="42" y1="70" x2="158" y2="70" stroke="#D5AE74" stroke-width="1.5" opacity="0.7"/>
+          </g>
+        `;
+      }
+
+      return `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="${size}" height="${size}" class="overflow-hidden rounded-xl block">
+          <defs>
+            <linearGradient id="bgGrad_${svgUid}" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="${bgPair[0]}" />
+              <stop offset="100%" stop-color="${bgPair[1]}" />
+            </linearGradient>
+            <clipPath id="clip_${svgUid}">
+              <rect width="200" height="200" rx="14" />
+            </clipPath>
+          </defs>
+          <rect width="200" height="200" fill="url(#bgGrad_${svgUid})" />
+          <g clip-path="url(#clip_${svgUid})">
+            ${backHairSVG}
+            ${bodyAndHeadSVG}
+            ${earsAndEarringsSVG}
+            ${eyesSVG}
+            ${facialHairSVG}
+            ${frontHairSVG}
+            ${glassesSVG}
+            ${hatSVG}
+          </g>
+        </svg>
+      `;
+    }
+
+    function generateCharacterSVG(char, size = 80, options = {}) {
+      return generateAvatarSVG(char, { size, ...options });
+    }
+
+    /* SYNTHESIZER SOUND ENGINE */
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playTone(freq, type = 'sine', duration = 0.12, gainVal = 0.08) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      cardFlip() {
+        this.playTone(360, 'triangle', 0.08, 0.1);
+      }
+      click() {
+        this.playTone(600, 'sine', 0.04, 0.05);
+      }
+      turnAlert() {
+        this.playTone(520, 'sine', 0.12, 0.1);
+        setTimeout(() => this.playTone(720, 'sine', 0.2, 0.1), 100);
+      }
+      win() {
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+          setTimeout(() => this.playTone(freq, 'triangle', 0.3, 0.15), i * 140);
+        });
+      }
+      lose() {
+        [380, 320, 260, 200].forEach((freq, i) => {
+          setTimeout(() => this.playTone(freq, 'sawtooth', 0.25, 0.12), i * 130);
+        });
+      }
+    }
+    const sfx = new SoundFX();
+
+    /* STATE STORE */
+    const STATE = {
+      user: null,
+      nickname: 'Detective #' + Math.floor(100 + Math.random() * 900),
+      avatarIndex: 0,
+      currentRoomId: null,
+      roomData: null,
+      roomUnsubscribe: null,
+      flippedCardIds: new Set(),
+      showDetailedCards: false,
+      mySecretChar: null,
+      selectedGuessCharId: null,
+      pendingPasswordRoomId: null,
+      currentCategory: 'gender',
+      currentValue: 'male',
+      allRooms: [],
+      lobbyFilter: 'all',
+      pendingEditRoom: null,
+      pendingDeleteRoomId: null
+    };
+
+    function getUserProfileRef(uid) {
+      return doc(db, 'artifacts', 'whois-game', 'users', uid, 'profile', 'settings');
+    }
+
+    async function syncUserProfile(fields = {}) {
+      if (!STATE.user) return;
+      try {
+        const pRef = getUserProfileRef(STATE.user.uid);
+        await setDoc(pRef, {
+          nickname: STATE.nickname,
+          avatarIndex: STATE.avatarIndex,
+          activeRoomId: STATE.currentRoomId || null,
+          flippedCardIds: Array.from(STATE.flippedCardIds),
+          updatedAt: Date.now(),
+          ...fields
+        }, { merge: true });
+      } catch (e) {
+        console.error("Error saving user profile:", e);
+      }
+    }
+
+    /* DOM MAP */
+    const elements = {
+      mainHeader: document.getElementById('mainHeader'),
+      lobbyView: document.getElementById('lobbyView'),
+      waitingView: document.getElementById('waitingView'),
+      gameView: document.getElementById('gameView'),
+      playerBadgeName: document.getElementById('playerBadgeName'),
+      headerProfileBtn: document.getElementById('headerProfileBtn'),
+      nicknameInput: document.getElementById('nicknameInput'),
+      saveNicknameBtn: document.getElementById('saveNicknameBtn'),
+      lobbyAvatarPreview: document.getElementById('lobbyAvatarPreview'),
+      lobbyBigAvatar: document.getElementById('lobbyBigAvatar'),
+      rerollAvatarBtn: document.getElementById('rerollAvatarBtn'),
+      roomsGrid: document.getElementById('roomsGrid'),
+      roomCountTag: document.getElementById('roomCountTag'),
+      filterAllRoomsBtn: document.getElementById('filterAllRoomsBtn'),
+      filterMyRoomsBtn: document.getElementById('filterMyRoomsBtn'),
+      myRoomBadgeCount: document.getElementById('myRoomBadgeCount'),
+      refreshRoomsBtn: document.getElementById('refreshRoomsBtn'),
+      soundToggleBtn: document.getElementById('soundToggleBtn'),
+      soundIcon: document.getElementById('soundIcon'),
+      hudSoundBtn: document.getElementById('hudSoundBtn'),
+      hudSoundIcon: document.getElementById('hudSoundIcon'),
+      helpModalBtn: document.getElementById('helpModalBtn'),
+      hudHelpBtn: document.getElementById('hudHelpBtn'),
+      // Waiting
+      waitingRoomCode: document.getElementById('waitingRoomCode'),
+      waitingRoomTitle: document.getElementById('waitingRoomTitle'),
+      waitingLockBadge: document.getElementById('waitingLockBadge'),
+      waitingHostActions: document.getElementById('waitingHostActions'),
+      waitingEditRoomBtn: document.getElementById('waitingEditRoomBtn'),
+      waitingDeleteRoomBtn: document.getElementById('waitingDeleteRoomBtn'),
+      p1Name: document.getElementById('p1Name'),
+      p1Avatar: document.getElementById('p1Avatar'),
+      p1Status: document.getElementById('p1Status'),
+      p2Name: document.getElementById('p2Name'),
+      p2Avatar: document.getElementById('p2Avatar'),
+      p2Status: document.getElementById('p2Status'),
+      toggleReadyBtn: document.getElementById('toggleReadyBtn'),
+      startGameBtn: document.getElementById('startGameBtn'),
+      leaveRoomBtn: document.getElementById('leaveRoomBtn'),
+      copyInviteBtn: document.getElementById('copyInviteBtn'),
+      // HUD & Dedicated Secret Card Panel
+      mySecretCardPanel: document.getElementById('mySecretCardPanel'),
+      mySecretAvatar: document.getElementById('mySecretAvatar'),
+      mySecretName: document.getElementById('mySecretName'),
+      mySecretQuickTraits: document.getElementById('mySecretQuickTraits'),
+      myGuessChancesBadge: document.getElementById('myGuessChancesBadge'),
+      inspectSecretCardBtn: document.getElementById('inspectSecretCardBtn'),
+      turnIndicator: document.getElementById('turnIndicator'),
+      turnDescription: document.getElementById('turnDescription'),
+      remainingCountBadge: document.getElementById('remainingCountBadge'),
+      hudMenuToggleBtn: document.getElementById('hudMenuToggleBtn'),
+      hudQuickMenuModal: document.getElementById('hudQuickMenuModal'),
+      closeHudQuickMenuBtn: document.getElementById('closeHudQuickMenuBtn'),
+      resetFlipsBtn: document.getElementById('resetFlipsBtn'),
+      toggleCardDetailsBtn: document.getElementById('toggleCardDetailsBtn'),
+      toggleDetailsBtnLabel: document.getElementById('toggleDetailsBtnLabel'),
+      hudSoundBtn: document.getElementById('hudSoundBtn'),
+      hudSoundIcon: document.getElementById('hudSoundIcon'),
+      hudSoundLabel: document.getElementById('hudSoundLabel'),
+      hudHelpBtn: document.getElementById('hudHelpBtn'),
+      hudQuitGameBtn: document.getElementById('hudQuitGameBtn'),
+      desktopPassTurnBtn: document.getElementById('desktopPassTurnBtn'),
+      desktopQuitGameBtn: document.getElementById('desktopQuitGameBtn'),
+      mobilePassTurnBtn: document.getElementById('mobilePassTurnBtn'),
+      characterBoard: document.getElementById('characterBoard'),
+      opponentQuestionPrompt: document.getElementById('opponentQuestionPrompt'),
+      opponentQuestionText: document.getElementById('opponentQuestionText'),
+      opponentQuestionHint: document.getElementById('opponentQuestionHint'),
+      answerYesBtn: document.getElementById('answerYesBtn'),
+      answerNoBtn: document.getElementById('answerNoBtn'),
+      // Confirm quit modal
+      quitGameConfirmModal: document.getElementById('quitGameConfirmModal'),
+      cancelQuitGameBtn: document.getElementById('cancelQuitGameBtn'),
+      confirmQuitGameBtn: document.getElementById('confirmQuitGameBtn'),
+      // Drawer & Logs
+      mobileBottomBar: document.getElementById('mobileBottomBar'),
+      openMobileDrawerBtn: document.getElementById('openMobileDrawerBtn'),
+      mobileLogDrawer: document.getElementById('mobileLogDrawer'),
+      closeMobileDrawerBtn: document.getElementById('closeMobileDrawerBtn'),
+      unreadLogBadge: document.getElementById('unreadLogBadge'),
+      desktopGameLogList: document.getElementById('desktopGameLogList'),
+      mobileGameLogList: document.getElementById('mobileGameLogList'),
+      desktopChatForm: document.getElementById('desktopChatForm'),
+      desktopChatInput: document.getElementById('desktopChatInput'),
+      mobileChatForm: document.getElementById('mobileChatForm'),
+      mobileChatInput: document.getElementById('mobileChatInput'),
+      // Action triggers
+      openQuestionModalBtn: document.getElementById('openQuestionModalBtn'),
+      openGuessModalBtn: document.getElementById('openGuessModalBtn'),
+      desktopOpenQuestionModalBtn: document.getElementById('desktopOpenQuestionModalBtn'),
+      desktopOpenGuessModalBtn: document.getElementById('desktopOpenGuessModalBtn'),
+      // Ask Modal
+      askQuestionModal: document.getElementById('askQuestionModal'),
+      categoryPillGrid: document.getElementById('categoryPillGrid'),
+      valuePillGrid: document.getElementById('valuePillGrid'),
+      questionPreviewText: document.getElementById('questionPreviewText'),
+      strategyLiveTip: document.getElementById('strategyLiveTip'),
+      strategySplitBadge: document.getElementById('strategySplitBadge'),
+      strategyAdviceText: document.getElementById('strategyAdviceText'),
+      closeQuestionModalBtn: document.getElementById('closeQuestionModalBtn'),
+      cancelQuestionModalBtn: document.getElementById('cancelQuestionModalBtn'),
+      confirmSendQuestionBtn: document.getElementById('confirmSendQuestionBtn'),
+      // Guide
+      questionGuideModal: document.getElementById('questionGuideModal'),
+      closeGuideModalBtn: document.getElementById('closeGuideModalBtn'),
+      closeGuideModalBtnBottom: document.getElementById('closeGuideModalBtnBottom'),
+      // Guess
+      guessNameModal: document.getElementById('guessNameModal'),
+      guessCharacterList: document.getElementById('guessCharacterList'),
+      selectedGuessNameDisplay: document.getElementById('selectedGuessNameDisplay'),
+      guessChancesModalNotice: document.getElementById('guessChancesModalNotice'),
+      closeGuessModalBtn: document.getElementById('closeGuessModalBtn'),
+      cancelGuessModalBtn: document.getElementById('cancelGuessModalBtn'),
+      confirmMakeGuessBtn: document.getElementById('confirmMakeGuessBtn'),
+      // Secret Inspector
+      secretDetailModal: document.getElementById('secretDetailModal'),
+      modalSecretTitle: document.getElementById('modalSecretTitle'),
+      modalSecretAvatar: document.getElementById('modalSecretAvatar'),
+      modalSecretName: document.getElementById('modalSecretName'),
+      modalSecretTraits: document.getElementById('modalSecretTraits'),
+      closeSecretDetailModalBtn: document.getElementById('closeSecretDetailModalBtn'),
+      closeSecretDetailModalActionBtn: document.getElementById('closeSecretDetailModalActionBtn'),
+      // Create Room
+      createRoomModal: document.getElementById('createRoomModal'),
+      openCreateRoomModalBtn: document.getElementById('openCreateRoomModalBtn'),
+      closeCreateRoomModalBtn: document.getElementById('closeCreateRoomModalBtn'),
+      cancelCreateRoomBtn: document.getElementById('cancelCreateRoomBtn'),
+      confirmCreateRoomBtn: document.getElementById('confirmCreateRoomBtn'),
+      createRoomNameInput: document.getElementById('createRoomNameInput'),
+      createRoomHasPassCheckbox: document.getElementById('createRoomHasPassCheckbox'),
+      createRoomPassField: document.getElementById('createRoomPassField'),
+      createRoomPasswordInput: document.getElementById('createRoomPasswordInput'),
+      createRoomMaxGuessesInput: document.getElementById('createRoomMaxGuessesInput'),
+      createRoomQuotaText: document.getElementById('createRoomQuotaText'),
+      // Edit Room
+      editRoomModal: document.getElementById('editRoomModal'),
+      editRoomNameInput: document.getElementById('editRoomNameInput'),
+      editRoomHasPassCheckbox: document.getElementById('editRoomHasPassCheckbox'),
+      editRoomPassField: document.getElementById('editRoomPassField'),
+      editRoomPasswordInput: document.getElementById('editRoomPasswordInput'),
+      editRoomMaxGuessesInput: document.getElementById('editRoomMaxGuessesInput'),
+      closeEditRoomModalBtn: document.getElementById('closeEditRoomModalBtn'),
+      cancelEditRoomBtn: document.getElementById('cancelEditRoomBtn'),
+      confirmEditRoomBtn: document.getElementById('confirmEditRoomBtn'),
+      // Delete Room
+      deleteConfirmModal: document.getElementById('deleteConfirmModal'),
+      deleteConfirmRoomName: document.getElementById('deleteConfirmRoomName'),
+      cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
+      confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+      // Join By ID
+      openJoinByIdModalBtn: document.getElementById('openJoinByIdModalBtn'),
+      joinByIdModal: document.getElementById('joinByIdModal'),
+      joinByIdInput: document.getElementById('joinByIdInput'),
+      closeJoinByIdModalBtn: document.getElementById('closeJoinByIdModalBtn'),
+      cancelJoinByIdBtn: document.getElementById('cancelJoinByIdBtn'),
+      confirmJoinByIdBtn: document.getElementById('confirmJoinByIdBtn'),
+      // Password Modal
+      passwordModal: document.getElementById('passwordModal'),
+      joinRoomPasswordInput: document.getElementById('joinRoomPasswordInput'),
+      cancelPasswordModalBtn: document.getElementById('cancelPasswordModalBtn'),
+      confirmJoinWithPasswordBtn: document.getElementById('confirmJoinWithPasswordBtn'),
+      // Game Over
+      gameOverModal: document.getElementById('gameOverModal'),
+      gameOverIcon: document.getElementById('gameOverIcon'),
+      gameOverTitle: document.getElementById('gameOverTitle'),
+      gameOverSubtitle: document.getElementById('gameOverSubtitle'),
+      endMyCardAvatar: document.getElementById('endMyCardAvatar'),
+      endMyCardName: document.getElementById('endMyCardName'),
+      endOpponentCardAvatar: document.getElementById('endOpponentCardAvatar'),
+      endOpponentCardName: document.getElementById('endOpponentCardName'),
+      returnToLobbyBtn: document.getElementById('returnToLobbyBtn'),
+      rematchWaitingBtn: document.getElementById('rematchWaitingBtn'),
+      rematchBtn: document.getElementById('rematchBtn'),
+      // Toast
+      toast: document.getElementById('toast'),
+      toastIcon: document.getElementById('toastIcon'),
+      toastMessage: document.getElementById('toastMessage')
+    };
+
+    function showToast(msg, icon = '🔔', duration = 3000) {
+      elements.toastMessage.textContent = msg;
+      elements.toastIcon.textContent = icon;
+      elements.toast.classList.remove('-translate-y-12', 'opacity-0');
+      elements.toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        elements.toast.classList.add('-translate-y-12', 'opacity-0');
+        elements.toast.classList.remove('translate-y-0', 'opacity-100');
+      }, duration);
+    }
+
+    function switchView(viewName) {
+      elements.lobbyView.classList.add('hidden');
+      elements.waitingView.classList.add('hidden');
+      elements.gameView.classList.add('hidden');
+
+      if (viewName === 'lobby') {
+        elements.lobbyView.classList.remove('hidden');
+        elements.mobileBottomBar.classList.add('hidden');
+        if (elements.mainHeader) elements.mainHeader.classList.remove('hidden');
+      } else if (viewName === 'waiting') {
+        elements.waitingView.classList.remove('hidden');
+        elements.mobileBottomBar.classList.add('hidden');
+        if (elements.mainHeader) elements.mainHeader.classList.remove('hidden');
+      } else if (viewName === 'game') {
+        elements.gameView.classList.remove('hidden');
+        elements.mobileBottomBar.classList.remove('hidden');
+        // Clean immersive experience: hide header during match
+        if (elements.mainHeader) elements.mainHeader.classList.add('hidden');
+      }
+      lucide.createIcons();
+    }
+
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /* QUESTION BUILDER OPTIONS */
+    const QUESTION_OPTIONS = {
+      gender: {
+        title: 'Giới tính',
+        values: [
+          { val: 'male', label: 'Nam' },
+          { val: 'female', label: 'Nữ' }
+        ]
+      },
+      hair_color: {
+        title: 'Màu tóc',
+        values: [
+          { val: 'black', label: 'Đen' },
+          { val: 'brown', label: 'Nâu' },
+          { val: 'blonde', label: 'Vàng' },
+          { val: 'red', label: 'Đỏ' },
+          { val: 'gray', label: 'Bạc / Xám' }
+        ]
+      },
+      hair_style: {
+        title: 'Kiểu tóc',
+        values: [
+          { val: 'short', label: 'Ngắn' },
+          { val: 'long', label: 'Dài' },
+          { val: 'curly', label: 'Xoăn' },
+          { val: 'bun', label: 'Búi' },
+          { val: 'bald', label: 'Hói' }
+        ]
+      },
+      eye_color: {
+        title: 'Màu mắt',
+        values: [
+          { val: 'brown', label: 'Nâu' },
+          { val: 'blue', label: 'Xanh dương' },
+          { val: 'green', label: 'Xanh lá' }
+        ]
+      },
+      glasses: {
+        title: 'Kính mắt',
+        values: [
+          { val: 'true', label: 'Có kính' },
+          { val: 'false', label: 'Không kính' }
+        ]
+      },
+      hat: {
+        title: 'Đội mũ',
+        values: [
+          { val: 'true', label: 'Có mũ' },
+          { val: 'false', label: 'Không mũ' }
+        ]
+      },
+      facial_hair: {
+        title: 'Râu ria',
+        values: [
+          { val: 'beard', label: 'Râu quai nón' },
+          { val: 'mustache', label: 'Ria mép' },
+          { val: 'none', label: 'Không râu' }
+        ]
+      },
+      earrings: {
+        title: 'Khuyên tai',
+        values: [
+          { val: 'true', label: 'Có khuyên' },
+          { val: 'false', label: 'Không khuyên' }
+        ]
+      }
+    };
+
+    function buildQuestionString(cat, val) {
+      const opt = QUESTION_OPTIONS[cat];
+      const vObj = opt.values.find(v => v.val === val);
+      const valLabel = vObj ? vObj.label : val;
+
+      switch (cat) {
+        case 'gender': return `Nhân vật bí mật của bạn là ${valLabel}?`;
+        case 'hair_color': return `Nhân vật có mái tóc màu ${valLabel}?`;
+        case 'hair_style': return `Nhân vật có kiểu tóc ${valLabel}?`;
+        case 'eye_color': return `Nhân vật có đôi mắt màu ${valLabel}?`;
+        case 'glasses': return val === 'true' ? `Nhân vật có đeo kính không?` : `Nhân vật không đeo kính đúng không?`;
+        case 'hat': return val === 'true' ? `Nhân vật có đội mũ không?` : `Nhân vật không đội mũ đúng không?`;
+        case 'facial_hair':
+          if (val === 'none') return `Nhân vật không có râu đúng không?`;
+          if (val === 'mustache') return `Nhân vật có ria mép không?`;
+          return `Nhân vật có râu quai nón không?`;
+        case 'earrings': return val === 'true' ? `Nhân vật có đeo khuyên tai không?` : `Nhân vật không đeo khuyên tai đúng không?`;
+        default: return `Nhân vật có đặc điểm ${valLabel}?`;
+      }
+    }
+
+    function updateQuestionBuilderUI() {
+      elements.categoryPillGrid.innerHTML = '';
+      Object.keys(QUESTION_OPTIONS).forEach(catKey => {
+        const cat = QUESTION_OPTIONS[catKey];
+        const isSelected = STATE.currentCategory === catKey;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `px-2.5 py-2 rounded-xl text-xs font-semibold transition border text-left flex items-center justify-between ${
+          isSelected 
+            ? 'bg-gold-400 text-noir-950 border-gold-400 font-bold shadow-md' 
+            : 'bg-noir-900 text-slate-300 border-white/[0.08] hover:bg-white/[0.06]'
+        }`;
+        btn.innerHTML = `<span>${cat.title}</span> ${isSelected ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}`;
+        btn.addEventListener('click', () => {
+          STATE.currentCategory = catKey;
+          STATE.currentValue = cat.values[0].val;
+          updateQuestionBuilderUI();
+        });
+        elements.categoryPillGrid.appendChild(btn);
+      });
+
+      elements.valuePillGrid.innerHTML = '';
+      const currentCatObj = QUESTION_OPTIONS[STATE.currentCategory];
+      currentCatObj.values.forEach(v => {
+        const isSelected = STATE.currentValue === v.val;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+          isSelected 
+            ? 'bg-gold-400 text-noir-950 border-gold-400 font-bold shadow-md' 
+            : 'bg-noir-900 text-slate-300 border-white/[0.08] hover:bg-white/[0.06]'
+        }`;
+        btn.textContent = v.label;
+        btn.addEventListener('click', () => {
+          STATE.currentValue = v.val;
+          updateQuestionBuilderUI();
+        });
+        elements.valuePillGrid.appendChild(btn);
+      });
+
+      elements.questionPreviewText.textContent = `"${buildQuestionString(STATE.currentCategory, STATE.currentValue)}"`;
+      analyzeTacticalSplit();
+      lucide.createIcons();
+    }
+
+    function analyzeTacticalSplit() {
+      const cat = STATE.currentCategory;
+      const val = STATE.currentValue;
+
+      const activeCards = CHARACTERS.filter(c => !STATE.flippedCardIds.has(c.id));
+      const totalActive = activeCards.length;
+
+      let matchCount = 0;
+      activeCards.forEach(c => {
+        let isMatch = String(c[cat]) === val;
+        if (isMatch) matchCount++;
+      });
+
+      elements.strategySplitBadge.textContent = `${matchCount}/${totalActive} thẻ`;
+
+      let advice = "";
+      const ratio = totalActive > 0 ? matchCount / totalActive : 0;
+
+      if (totalActive <= 2) {
+        advice = "🎯 Chỉ còn 1-2 người! Thời điểm vàng để bấm ĐOÁN TÊN và kết liễu trận đấu!";
+      } else if (ratio >= 0.4 && ratio <= 0.6) {
+        advice = "🔥 Tỷ lệ 50/50 hoàn hảo! Giúp loại bỏ chắc chắn nửa số thẻ trên bàn.";
+      } else if (matchCount === 1) {
+        advice = "⚠️ Độ lệch cao: Chỉ có 1 thẻ duy nhất. Nếu đối thủ bảo 'Không', bạn chỉ loại được 1 thẻ.";
+      } else if (matchCount === 0 || matchCount === totalActive) {
+        advice = "❌ Không nên hỏi: Câu hỏi này không giúp loại thêm được bất kỳ thẻ nào trên bàn của bạn!";
+      } else {
+        advice = `Phân chia bàn đấu thành ${matchCount} thẻ có và ${totalActive - matchCount} thẻ không.`;
+      }
+
+      elements.strategyAdviceText.textContent = advice;
+    }
+
+    /* ROOMS LISTENER */
+    let roomsUnsub = null;
+    function listenToRooms() {
+      if (!STATE.user) return;
+      if (roomsUnsub) roomsUnsub();
+
+      roomsUnsub = onSnapshot(roomsCollectionRef, (snap) => {
+        const list = [];
+        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+        STATE.allRooms = list;
+        renderRoomsList();
+      }, (err) => console.error("Rooms sync error:", err));
+    }
+
+    function renderRoomsList() {
+      const allRooms = STATE.allRooms || [];
+      const myRooms = allRooms.filter(r => r.hostId === STATE.user?.uid);
+      
+      elements.myRoomBadgeCount.textContent = `${myRooms.length}/10`;
+      
+      let displayRooms = allRooms;
+      if (STATE.lobbyFilter === 'my') {
+        displayRooms = myRooms;
+      }
+
+      elements.roomCountTag.textContent = `${displayRooms.length} phòng`;
+
+      if (!displayRooms.length) {
+        elements.roomsGrid.innerHTML = `
+          <div class="col-span-full py-12 text-center surface-glass rounded-2xl border border-dashed border-white/[0.08] p-8">
+            <div class="w-10 h-10 rounded-xl bg-white/[0.04] flex items-center justify-center mx-auto text-slate-500 mb-2 border border-white/[0.06]">
+              <i data-lucide="inbox" class="w-5 h-5"></i>
+            </div>
+            <div class="font-display font-bold text-white text-sm">${STATE.lobbyFilter === 'my' ? 'Bạn chưa tạo phòng nào' : 'Chưa có phòng nào đang chờ'}</div>
+            <p class="text-xs text-slate-500 mt-1">Bấm "Tạo Phòng Mới" để bắt đầu thử thách!</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      elements.roomsGrid.innerHTML = '';
+      displayRooms.forEach(room => {
+        const count = room.players ? Object.keys(room.players).length : 0;
+        const isOwner = STATE.user && room.hostId === STATE.user.uid;
+        // Chủ phòng luôn có thể vào lại phòng của mình kể cả khi số người báo 2/2
+        const isFull = count >= 2 && !isOwner;
+        const isPlaying = room.status === 'playing' && !isOwner;
+        const hasPass = !!room.password;
+        const maxWrong = room.maxWrongGuesses || 3;
+
+        const card = document.createElement('div');
+        card.className = "surface-glass rounded-2xl p-4 border border-white/[0.08] hover:border-gold-400/40 transition-all flex flex-col justify-between shadow-lg";
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2 mb-2.5">
+              <span class="text-xs font-mono font-bold text-gold-400 bg-gold-400/10 border border-gold-400/20 px-2 py-0.5 rounded">#${room.id}</span>
+              <div class="flex items-center gap-1.5">
+                ${isOwner ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-gold-400/15 text-gold-300 font-bold border border-gold-400/20 flex items-center gap-1"><i data-lucide="crown" class="w-2.5 h-2.5"></i>Host</span>` : ''}
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-rose-500/10 text-rose-300 border border-rose-500/20">${maxWrong} lượt sai</span>
+                ${hasPass ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-rose-500/10 text-rose-300 font-medium border border-rose-500/20 flex items-center gap-0.5"><i data-lucide="lock" class="w-2.5 h-2.5"></i>Khóa</span>` : ''}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${room.status === 'playing' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}">
+                  ${room.status === 'playing' ? 'Đang đấu' : 'Đang chờ'}
+                </span>
+              </div>
+            </div>
+            <h4 class="font-display font-bold text-white text-sm truncate mb-1">${escapeHTML(room.name || 'Phòng Đấu')}</h4>
+            <div class="text-[11px] text-slate-400 font-mono">Chủ phòng: <span class="text-slate-200 font-semibold">${escapeHTML(room.hostName || 'Unknown')}</span></div>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-white/[0.06] flex items-center justify-between gap-2">
+            <span class="text-xs font-mono font-bold text-slate-400 flex items-center gap-1">
+              <i data-lucide="users" class="w-3.5 h-3.5 text-gold-400"></i> ${count}/2
+            </span>
+
+            <div class="flex items-center gap-1.5">
+              ${isOwner ? `
+                <button class="edit-room-btn w-7 h-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-gold-400 border border-white/[0.07] flex items-center justify-center transition active:scale-95" title="Sửa phòng" data-id="${room.id}">
+                  <i data-lucide="sliders" class="w-3 h-3"></i>
+                </button>
+                <button class="delete-room-btn w-7 h-7 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center transition active:scale-95" title="Xóa phòng" data-id="${room.id}">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                </button>
+              ` : ''}
+              
+              <button class="join-room-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition active:scale-95 ${
+                !isOwner && (isFull || isPlaying) ? 'bg-white/[0.04] text-slate-600 border border-white/[0.04] cursor-not-allowed' : 'bg-gold-400 hover:bg-gold-300 text-noir-950 shadow-md'
+              }" data-id="${room.id}" data-locked="${hasPass}" ${!isOwner && (isFull || isPlaying) ? 'disabled' : ''}>
+                ${isOwner ? 'Vào Lại Phòng' : (isPlaying ? 'Đang chơi' : (isFull ? 'Đầy' : 'Vào Chơi'))}
+              </button>
+            </div>
+          </div>
+        `;
+        elements.roomsGrid.appendChild(card);
+      });
+
+      // Bind actions
+      elements.roomsGrid.querySelectorAll('.join-room-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const roomId = btn.dataset.id;
+          const isLocked = btn.dataset.locked === 'true';
+          if (isLocked) {
+            STATE.pendingPasswordRoomId = roomId;
+            elements.joinRoomPasswordInput.value = '';
+            elements.passwordModal.classList.remove('hidden');
+            elements.passwordModal.classList.add('flex');
+          } else {
+            joinRoom(roomId);
+          }
+        });
+      });
+
+      elements.roomsGrid.querySelectorAll('.edit-room-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const r = allRooms.find(x => x.id === btn.dataset.id);
+          if (r) openEditRoomModal(r);
+        });
+      });
+
+      elements.roomsGrid.querySelectorAll('.delete-room-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const r = allRooms.find(x => x.id === btn.dataset.id);
+          if (r) promptDeleteRoom(r);
+        });
+      });
+
+      lucide.createIcons();
+    }
+
+    /* ROOM ACTIONS */
+    async function createRoom() {
+      const myRooms = (STATE.allRooms || []).filter(r => r.hostId === STATE.user?.uid);
+      if (myRooms.length >= 10) {
+        showToast("Đã đạt giới hạn 10 phòng (10/10). Vui lòng xóa bớt phòng cũ!", "⚠️", 4000);
+        return;
+      }
+
+      const name = elements.createRoomNameInput.value.trim() || `Phòng của ${STATE.nickname}`;
+      const hasPass = elements.createRoomHasPassCheckbox.checked;
+      const pass = hasPass ? elements.createRoomPasswordInput.value.trim() : null;
+      const maxWrong = parseInt(elements.createRoomMaxGuessesInput.value) || 3;
+
+      if (hasPass && !pass) {
+        showToast("Vui lòng nhập mật khẩu hoặc bỏ chọn khóa!", "⚠️");
+        return;
+      }
+
+      try {
+        const existingIds = new Set((STATE.allRooms || []).map(r => r.id));
+        let roomId;
+        let attempts = 0;
+        do {
+          roomId = String(Math.floor(100 + Math.random() * 900));
+          attempts++;
+        } while (existingIds.has(roomId) && attempts < 50);
+
+        const roomDocRef = doc(roomsCollectionRef, roomId);
+        const newRoom = {
+          id: roomId,
+          name: name,
+          password: pass,
+          maxWrongGuesses: maxWrong,
+          createdAt: Date.now(),
+          hostId: STATE.user.uid,
+          hostName: STATE.nickname,
+          status: 'waiting',
+          currentTurn: STATE.user.uid,
+          pendingQuestion: null,
+          players: {
+            [STATE.user.uid]: {
+              id: STATE.user.uid,
+              name: STATE.nickname,
+              ready: true, // Mặc định sẵn sàng
+              role: 'host',
+              secretCharId: null,
+              wrongGuesses: 0
+            }
+          },
+          logs: [
+            { id: 'l_init', time: Date.now(), text: `Phòng #${roomId} được tạo bởi ${STATE.nickname} (Tối đa ${maxWrong} lần đoán sai).`, type: 'system' }
+          ]
+        };
+
+        await setDoc(roomDocRef, newRoom);
+        elements.createRoomModal.classList.add('hidden');
+        elements.createRoomModal.classList.remove('flex');
+        joinRoom(roomId);
+        showToast(`Đã tạo phòng #${roomId}!`, "✨");
+      } catch (err) {
+        console.error(err);
+        showToast("Lỗi khi tạo phòng!", "❌");
+      }
+    }
+
+    function openEditRoomModal(room) {
+      STATE.pendingEditRoom = room;
+      elements.editRoomNameInput.value = room.name || '';
+      elements.editRoomHasPassCheckbox.checked = !!room.password;
+      elements.editRoomPassField.classList.toggle('hidden', !room.password);
+      elements.editRoomPasswordInput.value = room.password || '';
+      if (elements.editRoomMaxGuessesInput) {
+        elements.editRoomMaxGuessesInput.value = String(room.maxWrongGuesses || 3);
+      }
+
+      elements.editRoomModal.classList.remove('hidden');
+      elements.editRoomModal.classList.add('flex');
+    }
+
+    async function saveEditedRoom() {
+      if (!STATE.pendingEditRoom) return;
+      const roomId = STATE.pendingEditRoom.id;
+      const newName = elements.editRoomNameInput.value.trim() || STATE.pendingEditRoom.name;
+      const hasPass = elements.editRoomHasPassCheckbox.checked;
+      const newPass = hasPass ? elements.editRoomPasswordInput.value.trim() : null;
+      const maxWrong = parseInt(elements.editRoomMaxGuessesInput?.value) || 3;
+
+      if (hasPass && !newPass) {
+        showToast("Vui lòng nhập mật khẩu mới!", "⚠️");
+        return;
+      }
+
+      try {
+        const roomDocRef = doc(roomsCollectionRef, roomId);
+        await updateDoc(roomDocRef, {
+          name: newName,
+          password: newPass,
+          maxWrongGuesses: maxWrong
+        });
+
+        elements.editRoomModal.classList.add('hidden');
+        elements.editRoomModal.classList.remove('flex');
+        STATE.pendingEditRoom = null;
+        showToast("Cập nhật phòng thành công!", "✅");
+      } catch (err) {
+        console.error(err);
+        showToast("Không thể chỉnh sửa phòng!", "❌");
+      }
+    }
+
+    function promptDeleteRoom(room) {
+      STATE.pendingDeleteRoomId = room.id;
+      elements.deleteConfirmRoomName.textContent = `"${room.name}"`;
+      elements.deleteConfirmModal.classList.remove('hidden');
+      elements.deleteConfirmModal.classList.add('flex');
+    }
+
+    async function executeDeleteRoom() {
+      if (!STATE.pendingDeleteRoomId) return;
+      const roomId = STATE.pendingDeleteRoomId;
+      try {
+        const roomDocRef = doc(roomsCollectionRef, roomId);
+        await deleteDoc(roomDocRef);
+
+        elements.deleteConfirmModal.classList.add('hidden');
+        elements.deleteConfirmModal.classList.remove('flex');
+        STATE.pendingDeleteRoomId = null;
+
+        if (STATE.currentRoomId === roomId) {
+          leaveRoomLocally();
+        }
+        showToast("Đã xóa phòng!", "🗑️");
+      } catch (err) {
+        console.error(err);
+        showToast("Lỗi khi xóa phòng!", "❌");
+      }
+    }
+
+    /* ROOM JOIN & SYNC */
+    async function joinRoom(roomId, passwordAttempt = null) {
+      try {
+        const roomDocRef = doc(roomsCollectionRef, roomId);
+        const snap = await getDoc(roomDocRef);
+
+        if (!snap.exists()) {
+          showToast(`Không tìm thấy phòng #${roomId}!`, "❌");
+          return;
+        }
+
+        const room = snap.data();
+        const isOwner = STATE.user && (room.hostId === STATE.user.uid);
+
+        if (room.password && !isOwner) {
+          if (passwordAttempt !== room.password) {
+            showToast("Sai mật khẩu phòng!", "❌");
+            return;
+          }
+        }
+
+        const currentPlayers = room.players || {};
+        const pCount = Object.keys(currentPlayers).length;
+
+        // Nếu bản thân là chủ phòng thì luôn được phép vào kể cả hiển thị 2/2
+        if (!currentPlayers[STATE.user.uid] && pCount >= 2 && !isOwner) {
+          showToast("Phòng đã đầy đủ 2 người chơi!", "⚠️");
+          return;
+        }
+
+        if (!currentPlayers[STATE.user.uid]) {
+          // Mặc định khi vào phòng sẽ ở trạng thái sẵn sàng
+          currentPlayers[STATE.user.uid] = {
+            id: STATE.user.uid,
+            name: STATE.nickname,
+            ready: true,
+            role: isOwner ? 'host' : 'guest',
+            secretCharId: null,
+            wrongGuesses: 0
+          };
+
+          const logs = room.logs || [];
+          logs.push({
+            id: 'l_' + Date.now(),
+            time: Date.now(),
+            text: `${STATE.nickname} đã vào phòng và sẵn sàng.`,
+            type: 'system'
+          });
+
+          await updateDoc(roomDocRef, {
+            players: currentPlayers,
+            logs: logs
+          });
+        }
+
+        STATE.currentRoomId = roomId;
+        subscribeRoom(roomId);
+      } catch (err) {
+        console.error(err);
+        showToast("Không thể kết nối phòng!", "❌");
+      }
+    }
+
+    function subscribeRoom(roomId) {
+      if (STATE.roomUnsubscribe) STATE.roomUnsubscribe();
+      const roomDocRef = doc(roomsCollectionRef, roomId);
+
+      STATE.roomUnsubscribe = onSnapshot(roomDocRef, (snap) => {
+        if (!snap.exists()) {
+          showToast("Phòng đã bị giải tán.", "⚠️");
+          leaveRoomLocally();
+          return;
+        }
+        const room = snap.data();
+        STATE.roomData = room;
+
+        if (room.status === 'waiting') {
+          elements.gameOverModal.classList.add('hidden');
+          elements.gameOverModal.classList.remove('flex');
+          switchView('waiting');
+          updateWaitingUI(room);
+        } else if (room.status === 'playing') {
+          elements.gameOverModal.classList.add('hidden');
+          elements.gameOverModal.classList.remove('flex');
+          switchView('game');
+          updateGameUI(room);
+        } else if (room.status === 'ended') {
+          updateGameUI(room);
+          handleGameOverUI(room);
+        }
+      }, (err) => console.error("Room sync error:", err));
+    }
+
+    /* WAITING VIEW UI */
+    function updateWaitingUI(room) {
+      elements.waitingRoomCode.textContent = `#${room.id}`;
+      elements.waitingRoomTitle.textContent = room.name;
+      elements.waitingLockBadge.classList.toggle('hidden', !room.password);
+
+      const pList = Object.values(room.players || {});
+      const host = pList.find(p => p.role === 'host') || pList[0];
+      const guest = pList.find(p => p.id !== host?.id);
+
+      if (host) {
+        elements.p1Name.textContent = host.name;
+        elements.p1Status.textContent = host.ready ? 'Đã Sẵn Sàng' : 'Chưa Sẵn Sàng';
+        elements.p1Status.className = `mt-2 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full ${host.ready ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-white/[0.04] text-slate-400'}`;
+        elements.p1Avatar.innerHTML = generateCharacterSVG(CHARACTERS[0], 68);
+      }
+
+      if (guest) {
+        elements.p2Name.textContent = guest.name;
+        elements.p2Status.textContent = guest.ready ? 'Đã Sẵn Sàng' : 'Chưa Sẵn Sàng';
+        elements.p2Status.className = `mt-2 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full ${guest.ready ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-white/[0.04] text-slate-400'}`;
+        elements.p2Avatar.innerHTML = generateCharacterSVG(CHARACTERS[1], 68);
+      } else {
+        elements.p2Name.textContent = "Chờ đối thủ...";
+        elements.p2Status.textContent = "Trống";
+        elements.p2Status.className = "mt-2 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/[0.03] text-slate-500";
+        elements.p2Avatar.innerHTML = `<span class="text-2xl text-slate-600 font-mono">?</span>`;
+      }
+
+      const isHost = STATE.user && STATE.user.uid === room.hostId;
+      const myInfo = room.players ? room.players[STATE.user.uid] : null;
+
+      if (elements.waitingHostActions) {
+        elements.waitingHostActions.classList.toggle('hidden', !isHost);
+        elements.waitingHostActions.classList.toggle('flex', isHost);
+      }
+
+      if (myInfo) {
+        elements.toggleReadyBtn.textContent = myInfo.ready ? 'Hủy Sẵn Sàng' : 'Sẵn Sàng';
+        elements.toggleReadyBtn.className = myInfo.ready 
+          ? "flex items-center justify-center gap-1.5 bg-white/[0.06] hover:bg-white/[0.1] text-slate-300 font-semibold px-5 py-2.5 rounded-xl transition text-xs border border-white/[0.08]"
+          : "flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-2.5 rounded-xl transition text-xs shadow-lg shadow-emerald-950/40 active:scale-95";
+      }
+
+      if (isHost) {
+        elements.startGameBtn.classList.remove('hidden');
+        elements.startGameBtn.classList.add('flex');
+        const canStart = pList.length === 2 && pList.every(p => p.ready);
+        elements.startGameBtn.disabled = !canStart;
+      } else {
+        elements.startGameBtn.classList.add('hidden');
+        elements.startGameBtn.classList.remove('flex');
+      }
+    }
+
+    async function toggleReady() {
+      if (!STATE.roomData || !STATE.user) return;
+      const myInfo = STATE.roomData.players[STATE.user.uid];
+      if (!myInfo) return;
+
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      await updateDoc(roomDocRef, {
+        [`players.${STATE.user.uid}.ready`]: !myInfo.ready
+      });
+      sfx.click();
+    }
+
+    async function launchGame() {
+      if (!STATE.roomData) return;
+      const pIds = Object.keys(STATE.roomData.players || {});
+      if (pIds.length < 2) return;
+
+      const shuffled = [...CHARACTERS].sort(() => Math.random() - 0.5);
+      const secretP1 = shuffled[0].id;
+      const secretP2 = shuffled[1].id;
+
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      const logs = STATE.roomData.logs || [];
+      const maxWrong = STATE.roomData.maxWrongGuesses || 3;
+      logs.push({
+        id: 'l_' + Date.now(),
+        time: Date.now(),
+        text: `🎲 Trận đấu bắt đầu! Giới hạn sai: ${maxWrong} lần. ${STATE.roomData.players[pIds[0]].name} hỏi trước.`,
+        type: 'round'
+      });
+
+      await updateDoc(roomDocRef, {
+        status: 'playing',
+        currentTurn: pIds[0],
+        pendingQuestion: null,
+        winnerId: null,
+        [`players.${pIds[0]}.secretCharId`]: secretP1,
+        [`players.${pIds[0]}.wrongGuesses`]: 0,
+        [`players.${pIds[1]}.secretCharId`]: secretP2,
+        [`players.${pIds[1]}.wrongGuesses`]: 0,
+        startedAt: Date.now(),
+        logs: logs
+      });
+
+      sfx.turnAlert();
+    }
+
+    /* IN-GAME RENDERING */
+    function updateGameUI(room) {
+      const myId = STATE.user.uid;
+      const pIds = Object.keys(room.players || {});
+      const opponentId = pIds.find(id => id !== myId);
+      const opponent = room.players[opponentId];
+      const me = room.players[myId];
+
+      if (!me) return;
+
+      const maxWrong = room.maxWrongGuesses || 3;
+      const myWrong = me.wrongGuesses || 0;
+      const remainingChances = Math.max(0, maxWrong - myWrong);
+
+      // Render thẻ bài bí mật chính nằm dưới HUD
+      const mySecretId = me.secretCharId;
+      STATE.mySecretChar = CHARACTERS.find(c => c.id === mySecretId);
+      if (STATE.mySecretChar) {
+        elements.mySecretAvatar.innerHTML = generateCharacterSVG(STATE.mySecretChar, 60);
+        elements.mySecretName.textContent = STATE.mySecretChar.name;
+        
+        const hairColorNames = { black: 'Đen', brown: 'Nâu', blonde: 'Vàng', red: 'Đỏ', gray: 'Bạc' };
+        elements.mySecretQuickTraits.innerHTML = `
+          <span class="px-1.5 py-0.2 rounded ${STATE.mySecretChar.gender === 'male' ? 'bg-blue-500/20 text-blue-300' : 'bg-pink-500/20 text-pink-300'} font-bold">
+            ${STATE.mySecretChar.gender === 'male' ? '♂ Nam' : '♀ Nữ'}
+          </span>
+          <span class="px-1.5 py-0.2 rounded bg-noir-800 text-slate-300">Tóc ${hairColorNames[STATE.mySecretChar.hair_color] || STATE.mySecretChar.hair_color}</span>
+          ${STATE.mySecretChar.glasses ? '<span class="px-1.5 py-0.2 rounded bg-sky-500/20 text-sky-300">Có kính</span>' : '<span class="px-1.5 py-0.2 rounded bg-noir-800 text-slate-400">Không kính</span>'}
+          ${STATE.mySecretChar.hat ? '<span class="px-1.5 py-0.2 rounded bg-gold-400/20 text-gold-300">Có mũ</span>' : ''}
+          ${STATE.mySecretChar.facial_hair === 'beard' ? '<span class="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300">Râu</span>' : ''}
+          ${STATE.mySecretChar.facial_hair === 'mustache' ? '<span class="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300">Ria</span>' : ''}
+          ${STATE.mySecretChar.earrings ? '<span class="px-1.5 py-0.2 rounded bg-yellow-400/20 text-yellow-300">Khuyên tai</span>' : ''}
+        `;
+      }
+
+      // Cập nhật số cơ hội đoán sai còn lại
+      if (elements.myGuessChancesBadge) {
+        elements.myGuessChancesBadge.textContent = `Cơ hội đoán: ${remainingChances}/${maxWrong}`;
+        elements.myGuessChancesBadge.className = `text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${remainingChances === 1 ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-pulse' : 'bg-rose-500/10 text-rose-300 border-rose-500/20'}`;
+      }
+      if (elements.guessChancesModalNotice) {
+        elements.guessChancesModalNotice.textContent = `Bạn còn ${remainingChances}/${maxWrong} lần đoán trước khi bị xử thua!`;
+      }
+
+      const isMyTurn = room.currentTurn === myId;
+      const pendingQ = room.pendingQuestion;
+
+      if (elements.desktopPassTurnBtn) {
+        elements.desktopPassTurnBtn.disabled = !isMyTurn || !!pendingQ;
+      }
+      if (elements.mobilePassTurnBtn) {
+        elements.mobilePassTurnBtn.disabled = !isMyTurn || !!pendingQ;
+      }
+
+      if (pendingQ) {
+        if (pendingQ.askedBy === myId) {
+          elements.turnIndicator.textContent = "Chờ phản hồi...";
+          elements.turnIndicator.className = "px-3 py-1 rounded-full text-[10px] sm:text-xs font-mono font-bold bg-blue-500/15 text-blue-300 border border-blue-500/20";
+          elements.turnDescription.textContent = "Chuẩn bị loại thẻ theo câu trả lời";
+          elements.opponentQuestionPrompt.classList.add('hidden');
+          elements.opponentQuestionPrompt.classList.remove('flex');
+        } else {
+          elements.turnIndicator.textContent = "TRẢ LỜI CÂU HỎI!";
+          elements.turnIndicator.className = "px-3 py-1 rounded-full text-[10px] sm:text-xs font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse";
+          elements.turnDescription.textContent = "Đối thủ đang kiểm tra đặc điểm thẻ của bạn";
+          
+          elements.opponentQuestionPrompt.classList.remove('hidden');
+          elements.opponentQuestionPrompt.classList.add('flex');
+          elements.opponentQuestionText.textContent = `"${pendingQ.questionText}"`;
+
+          if (STATE.mySecretChar) {
+            const hasTrait = checkCharacterTrait(STATE.mySecretChar, pendingQ.category, pendingQ.value);
+            elements.opponentQuestionHint.textContent = hasTrait ? `Thẻ của bạn: CÓ (${STATE.mySecretChar.name})` : `Thẻ của bạn: KHÔNG (${STATE.mySecretChar.name})`;
+          }
+        }
+      } else {
+        elements.opponentQuestionPrompt.classList.add('hidden');
+        elements.opponentQuestionPrompt.classList.remove('flex');
+
+        if (isMyTurn) {
+          elements.turnIndicator.textContent = "LƯỢT CỦA BẠN";
+          elements.turnIndicator.className = "px-3 py-1 rounded-full text-[10px] sm:text-xs font-mono font-bold bg-gold-400/15 text-gold-400 border border-gold-400/20";
+          elements.turnDescription.textContent = "Đặt câu hỏi hoặc chọn đoán tên";
+        } else {
+          // Yêu cầu: Chỉ hiển thị "LƯỢT ĐỐI THỦ" thay vì tên đối thủ
+          elements.turnIndicator.textContent = "LƯỢT ĐỐI THỦ";
+          elements.turnIndicator.className = "px-3 py-1 rounded-full text-[10px] sm:text-xs font-mono font-medium bg-white/[0.04] text-slate-400 border border-white/[0.06]";
+          elements.turnDescription.textContent = "Đối thủ đang suy tính nước đi";
+        }
+      }
+
+      renderCharacterBoard();
+      renderLogs(room.logs || []);
+    }
+
+    function renderCharacterBoard() {
+      elements.characterBoard.innerHTML = '';
+      let remainingCount = 0;
+
+      const hairStyleNames = { short: 'Ngắn', long: 'Dài', curly: 'Xoăn', bun: 'Búi', bald: 'Hói' };
+      const hairColorNames = { black: 'Đen', brown: 'Nâu', blonde: 'Vàng', red: 'Đỏ', gray: 'Bạc' };
+      const facialNames = { beard: 'Quai nón', mustache: 'Ria mép', none: 'Không' };
+
+      CHARACTERS.forEach(char => {
+        const isFlipped = STATE.flippedCardIds.has(char.id);
+        if (!isFlipped) remainingCount++;
+
+        const eyeColors = {
+          blue: { label: 'Lam', dot: 'bg-blue-400' },
+          green: { label: 'Lục', dot: 'bg-emerald-400' },
+          brown: { label: 'Nâu', dot: 'bg-amber-600' }
+        };
+        const eyeInfo = eyeColors[char.eye_color] || { label: char.eye_color, dot: 'bg-slate-400' };
+
+        const card = document.createElement('div');
+        card.className = `card-shell surface-glass rounded-2xl p-2 sm:p-2.5 cursor-pointer flex flex-col justify-between relative border transition-all ${
+          isFlipped 
+            ? 'card-eliminated' 
+            : 'border-white/[0.08] hover:border-gold-400/40'
+        }`;
+        
+        if (STATE.showDetailedCards) {
+          // DETAILED TRAITS CARD VIEW
+          card.innerHTML = `
+            <div class="w-full flex flex-col h-full justify-between">
+              <div>
+                <div class="flex items-center gap-1.5 pb-1.5 mb-1.5 border-b border-white/[0.06]">
+                  <div class="w-7 h-7 rounded-lg bg-noir-900 p-0.5 overflow-hidden flex items-center justify-center shrink-0 border border-white/[0.08]">
+                    ${generateCharacterSVG(char, 26)}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <div class="font-mono font-bold text-[11px] text-white truncate">${char.name}</div>
+                    <span class="text-[8px] font-mono font-semibold ${char.gender === 'male' ? 'text-blue-300' : 'text-pink-300'}">
+                      ${char.gender === 'male' ? '♂ Nam' : '♀ Nữ'}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-1 text-[8px] font-mono">
+                  <div class="bg-noir-900/90 rounded px-1.5 py-0.5 border border-white/[0.04]">
+                    <span class="text-slate-400 block text-[7px]">TÓC:</span>
+                    <span class="text-white font-medium">${hairColorNames[char.hair_color] || char.hair_color}</span>
+                  </div>
+                  <div class="bg-noir-900/90 rounded px-1.5 py-0.5 border border-white/[0.04] flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 rounded-full ${eyeInfo.dot}"></span>
+                    <span class="text-white font-medium">${eyeInfo.label}</span>
+                  </div>
+                  <div class="bg-noir-900/90 rounded px-1.5 py-0.5 border border-white/[0.04]">
+                    <span class="text-slate-400 block text-[7px]">KÍNH:</span>
+                    <span class="${char.glasses ? 'text-gold-400 font-bold' : 'text-slate-400'}">${char.glasses ? 'Có' : 'Không'}</span>
+                  </div>
+                  <div class="bg-noir-900/90 rounded px-1.5 py-0.5 border border-white/[0.04]">
+                    <span class="text-slate-400 block text-[7px]">MŨ:</span>
+                    <span class="${char.hat ? 'text-gold-400 font-bold' : 'text-slate-400'}">${char.hat ? 'Có' : 'Không'}</span>
+                  </div>
+                  <div class="bg-noir-900/90 rounded px-1.5 py-0.5 border border-white/[0.04]">
+                    <span class="text-slate-400 block text-[7px]">RÂU:</span>
+                    <span class="${char.facial_hair !== 'none' ? 'text-rose-400 font-bold' : 'text-slate-400'}">${facialNames[char.facial_hair] || 'Không'}</span>
+                  </div>
+                  <div class="bg-noir-900/90 rounded px-1.5 py-0.5 border border-white/[0.04]">
+                    <span class="text-slate-400 block text-[7px]">KHUYÊN:</span>
+                    <span class="${char.earrings ? 'text-gold-400 font-bold' : 'text-slate-400'}">${char.earrings ? 'Có' : 'Không'}</span>
+                  </div>
+                </div>
+              </div>
+
+              ${isFlipped ? `
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span class="text-[9px] font-mono uppercase tracking-widest text-rose-400 bg-noir-950/90 px-2 py-0.5 rounded border border-rose-500/30 font-bold">Đã loại</span>
+                </div>
+              ` : ''}
+            </div>
+          `;
+        } else {
+          // HIGH-CONTRAST CLEAR CARD AESTHETIC
+          card.innerHTML = `
+            <div class="w-full flex flex-col items-center text-center">
+              
+              <!-- Card Header Pill -->
+              <div class="w-full flex items-center justify-between px-0.5 mb-1">
+                <span class="text-[8px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${char.gender === 'male' ? 'bg-blue-500/15 text-blue-300 border border-blue-500/20' : 'bg-pink-500/15 text-pink-300 border border-pink-500/20'}">
+                  ${char.gender === 'male' ? 'Nam' : 'Nữ'}
+                </span>
+
+                <button class="inspect-btn w-4 h-4 rounded bg-white/[0.06] hover:bg-gold-400 hover:text-noir-950 text-slate-300 flex items-center justify-center text-[9px] font-mono font-bold transition z-10" title="Chi tiết thuộc tính">
+                  i
+                </button>
+              </div>
+
+              <!-- Character Portrait -->
+              <div class="w-full aspect-square rounded-xl bg-noir-900/90 border border-white/[0.08] p-0.5 flex items-center justify-center overflow-hidden my-0.5 shadow-inner">
+                ${generateCharacterSVG(char, 96)}
+              </div>
+
+              <!-- Name -->
+              <div class="font-mono font-bold text-[11px] sm:text-xs text-white truncate w-full mt-1">
+                ${char.name}
+              </div>
+
+              <!-- High Contrast Trait Badges -->
+              <div class="flex flex-wrap items-center justify-center gap-1 mt-1 w-full text-[8px] font-mono">
+                <!-- Hair Color -->
+                <span class="px-1.5 py-0.5 rounded bg-noir-900 border border-white/[0.06] text-slate-200">
+                  ${hairColorNames[char.hair_color] || char.hair_color}
+                </span>
+
+                <!-- Eye Color -->
+                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-noir-900 border border-white/[0.06] text-slate-200">
+                  <span class="w-1.5 h-1.5 rounded-full ${eyeInfo.dot}"></span>
+                  ${eyeInfo.label}
+                </span>
+
+                <!-- Key Accessories Tags -->
+                ${char.glasses ? '<span class="px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/20 font-semibold">Kính</span>' : ''}
+                ${char.hat ? '<span class="px-1.5 py-0.5 rounded bg-gold-400/15 text-gold-300 border border-gold-400/20 font-semibold">Mũ</span>' : ''}
+                ${char.facial_hair === 'beard' ? '<span class="px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/20 font-semibold">Râu</span>' : ''}
+                ${char.facial_hair === 'mustache' ? '<span class="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/20 font-semibold">Ria</span>' : ''}
+                ${char.earrings ? '<span class="px-1.5 py-0.5 rounded bg-yellow-400/15 text-yellow-300 border border-yellow-400/20 font-semibold">Khuyên</span>' : ''}
+              </div>
+
+              ${isFlipped ? `
+                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span class="text-[9px] font-mono uppercase tracking-widest text-rose-400 bg-noir-950/90 px-2.5 py-0.5 rounded border border-rose-500/30 font-bold">Đã loại</span>
+                </div>
+              ` : ''}
+
+            </div>
+          `;
+        }
+
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.inspect-btn')) return;
+          toggleCardFlip(char.id);
+        });
+
+        const inspectBtn = card.querySelector('.inspect-btn');
+        if (inspectBtn) {
+          inspectBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openCharacterProfileModal(char);
+          });
+        }
+
+        elements.characterBoard.appendChild(card);
+      });
+
+      elements.remainingCountBadge.textContent = `${remainingCount}/24`;
+    }
+
+    async function passTurnVoice() {
+      if (!STATE.roomData || !STATE.user) return;
+      const myId = STATE.user.uid;
+      if (STATE.roomData.currentTurn !== myId) {
+        showToast("Chưa đến lượt của bạn!", "⚠️");
+        return;
+      }
+      if (STATE.roomData.pendingQuestion) {
+        showToast("Đang có câu hỏi chờ đối thủ trả lời!", "⚠️");
+        return;
+      }
+
+      const pIds = Object.keys(STATE.roomData.players || {});
+      const opponentId = pIds.find(id => id !== myId);
+      if (!opponentId) return;
+
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      const logs = STATE.roomData.logs || [];
+      logs.push({
+        id: 'l_' + Date.now(),
+        time: Date.now(),
+        text: `🎙️ ${STATE.nickname} đã hỏi và chuyển lượt.`,
+        type: 'round'
+      });
+
+      await updateDoc(roomDocRef, {
+        currentTurn: opponentId,
+        pendingQuestion: null,
+        logs: logs
+      });
+
+      sfx.turnAlert();
+      showToast("Đã chuyển lượt!", "🎙️");
+    }
+
+    function toggleAllCardDetails() {
+      STATE.showDetailedCards = !STATE.showDetailedCards;
+      if (elements.toggleDetailsBtnLabel) {
+        elements.toggleDetailsBtnLabel.textContent = STATE.showDetailedCards ? "Đầy đủ" : "Gọn";
+      }
+      if (elements.hudQuickMenuModal) {
+        elements.hudQuickMenuModal.classList.add('hidden');
+        elements.hudQuickMenuModal.classList.remove('flex');
+      }
+      renderCharacterBoard();
+      sfx.click();
+      showToast(STATE.showDetailedCards ? "Đã hiện chi tiết thông số" : "Đã trở về giao diện tối giản", "📋");
+    }
+
+    function promptQuitGame() {
+      if (elements.hudQuickMenuModal) {
+        elements.hudQuickMenuModal.classList.add('hidden');
+        elements.hudQuickMenuModal.classList.remove('flex');
+      }
+      elements.quitGameConfirmModal.classList.remove('hidden');
+      elements.quitGameConfirmModal.classList.add('flex');
+    }
+
+    async function executeQuitGame() {
+      if (!STATE.roomData || !STATE.user) {
+        leaveRoomLocally();
+        return;
+      }
+      const myId = STATE.user.uid;
+      const pIds = Object.keys(STATE.roomData.players || {});
+      const opponentId = pIds.find(id => id !== myId);
+
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      const logs = STATE.roomData.logs || [];
+      logs.push({
+        id: 'l_' + Date.now(),
+        time: Date.now(),
+        text: `🚪 ${STATE.nickname} đã thoát ván đấu.`,
+        type: 'system'
+      });
+
+      await updateDoc(roomDocRef, {
+        status: 'ended',
+        winnerId: opponentId || null,
+        logs: logs
+      });
+
+      elements.quitGameConfirmModal.classList.add('hidden');
+      elements.quitGameConfirmModal.classList.remove('flex');
+      await leaveRoom();
+      showToast("Đã rời phòng!", "🚪");
+    }
+
+    function toggleCardFlip(charId) {
+      if (STATE.flippedCardIds.has(charId)) {
+        STATE.flippedCardIds.delete(charId);
+      } else {
+        STATE.flippedCardIds.add(charId);
+      }
+      sfx.cardFlip();
+      renderCharacterBoard();
+      syncUserProfile({ flippedCardIds: Array.from(STATE.flippedCardIds) });
+    }
+
+    function checkCharacterTrait(char, cat, val) {
+      if (!char) return false;
+      return String(char[cat]) === val;
+    }
+
+    async function sendQuestion() {
+      if (!STATE.roomData || !STATE.user) return;
+      const myId = STATE.user.uid;
+      if (STATE.roomData.currentTurn !== myId) {
+        showToast("Chưa đến lượt của bạn!", "⚠️");
+        return;
+      }
+      if (STATE.roomData.pendingQuestion) {
+        showToast("Đang có câu hỏi chờ phản hồi!", "⚠️");
+        return;
+      }
+
+      const qText = buildQuestionString(STATE.currentCategory, STATE.currentValue);
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+
+      const logs = STATE.roomData.logs || [];
+      logs.push({
+        id: 'l_' + Date.now(),
+        time: Date.now(),
+        text: `❓ ${STATE.nickname} hỏi: "${qText}"`,
+        type: 'question'
+      });
+
+      await updateDoc(roomDocRef, {
+        pendingQuestion: {
+          askedBy: myId,
+          category: STATE.currentCategory,
+          value: STATE.currentValue,
+          questionText: qText
+        },
+        logs: logs
+      });
+
+      elements.askQuestionModal.classList.add('hidden');
+      elements.askQuestionModal.classList.remove('flex');
+      sfx.click();
+      showToast("Đã gửi câu hỏi!", "📤");
+    }
+
+    async function respondToQuestion(answerYes) {
+      if (!STATE.roomData || !STATE.roomData.pendingQuestion) return;
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      const answerText = answerYes ? 'CÓ (ĐÚNG)' : 'KHÔNG (SAI)';
+
+      const logs = STATE.roomData.logs || [];
+      logs.push({
+        id: 'l_' + Date.now(),
+        time: Date.now(),
+        text: `💬 ${STATE.nickname} đáp: "${answerText}".`,
+        type: 'answer'
+      });
+
+      await updateDoc(roomDocRef, {
+        pendingQuestion: null,
+        currentTurn: STATE.user.uid,
+        logs: logs
+      });
+
+      sfx.turnAlert();
+      showToast(`Đã trả lời: ${answerText}`, "✅");
+    }
+
+    function openGuessModal() {
+      STATE.selectedGuessCharId = null;
+      elements.selectedGuessNameDisplay.textContent = 'Chưa chọn';
+      elements.confirmMakeGuessBtn.disabled = true;
+      elements.guessCharacterList.innerHTML = '';
+
+      CHARACTERS.forEach(char => {
+        const isFlipped = STATE.flippedCardIds.has(char.id);
+        const item = document.createElement('div');
+        item.className = `p-2 rounded-xl border border-white/[0.08] bg-noir-900 hover:border-gold-400/60 cursor-pointer flex flex-col items-center text-center transition ${isFlipped ? 'opacity-30' : ''}`;
+        item.innerHTML = `
+          <div class="w-10 h-10 rounded-lg bg-noir-850 p-0.5 mb-1 overflow-hidden flex items-center justify-center">
+            ${generateCharacterSVG(char, 38)}
+          </div>
+          <span class="text-[10px] font-mono font-bold text-white truncate w-full">${char.name}</span>
+        `;
+
+        item.addEventListener('click', () => {
+          elements.guessCharacterList.querySelectorAll('div').forEach(el => el.classList.remove('border-gold-400', 'bg-gold-400/10'));
+          item.classList.add('border-gold-400', 'bg-gold-400/10');
+          STATE.selectedGuessCharId = char.id;
+          elements.selectedGuessNameDisplay.textContent = char.name;
+          elements.confirmMakeGuessBtn.disabled = false;
+          sfx.click();
+        });
+
+        elements.guessCharacterList.appendChild(item);
+      });
+
+      elements.guessNameModal.classList.remove('hidden');
+      elements.guessNameModal.classList.add('flex');
+    }
+
+    async function executeFinalGuess() {
+      if (!STATE.selectedGuessCharId || !STATE.roomData || !STATE.user) return;
+      const myId = STATE.user.uid;
+      const pIds = Object.keys(STATE.roomData.players || {});
+      const opponentId = pIds.find(id => id !== myId);
+      const opponent = STATE.roomData.players[opponentId];
+      const me = STATE.roomData.players[myId];
+      const targetChar = CHARACTERS.find(c => c.id === STATE.selectedGuessCharId);
+
+      const maxWrong = STATE.roomData.maxWrongGuesses || 3;
+      const currentWrong = (me?.wrongGuesses || 0);
+      const isCorrect = opponent && opponent.secretCharId === STATE.selectedGuessCharId;
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      const logs = STATE.roomData.logs || [];
+
+      if (isCorrect) {
+        logs.push({
+          id: 'l_' + Date.now(),
+          time: Date.now(),
+          text: `🎯 ${STATE.nickname} đã đoán chính xác nhân vật "${targetChar.name}"! CHIẾN THẮNG!`,
+          type: 'round'
+        });
+
+        await updateDoc(roomDocRef, {
+          status: 'ended',
+          winnerId: myId,
+          logs: logs
+        });
+      } else {
+        const newWrong = currentWrong + 1;
+        const isDefeated = newWrong >= maxWrong;
+
+        if (isDefeated) {
+          logs.push({
+            id: 'l_' + Date.now(),
+            time: Date.now(),
+            text: `💀 ${STATE.nickname} đoán sai "${targetChar.name}" (${newWrong}/${maxWrong} lần) và đã hết lượt! ${opponent ? opponent.name : 'Đối thủ'} THẮNG TRẬN!`,
+            type: 'round'
+          });
+
+          await updateDoc(roomDocRef, {
+            status: 'ended',
+            winnerId: opponentId,
+            [`players.${myId}.wrongGuesses`]: newWrong,
+            logs: logs
+          });
+        } else {
+          // Còn lượt đoán: chuyển lượt cho đối thủ và thông báo số lượt còn lại
+          const remainingChances = maxWrong - newWrong;
+          logs.push({
+            id: 'l_' + Date.now(),
+            time: Date.now(),
+            text: `⚠️ ${STATE.nickname} đoán sai "${targetChar.name}" (${newWrong}/${maxWrong} lần)! Còn ${remainingChances} lượt đoán. Lượt chuyển sang đối thủ.`,
+            type: 'question'
+          });
+
+          await updateDoc(roomDocRef, {
+            currentTurn: opponentId,
+            pendingQuestion: null,
+            [`players.${myId}.wrongGuesses`]: newWrong,
+            logs: logs
+          });
+
+          sfx.lose();
+          showToast(`Đoán sai! Bạn còn ${remainingChances}/${maxWrong} lượt thử.`, "⚠️", 4000);
+        }
+      }
+
+      elements.guessNameModal.classList.add('hidden');
+      elements.guessNameModal.classList.remove('flex');
+    }
+
+    function handleGameOverUI(room) {
+      const myId = STATE.user.uid;
+      const isWinner = room.winnerId === myId;
+      const pIds = Object.keys(room.players || {});
+      const opponentId = pIds.find(id => id !== myId);
+      const opponent = room.players[opponentId];
+      const me = room.players[myId];
+
+      if (isWinner) {
+        sfx.win();
+        elements.gameOverIcon.textContent = '🏆';
+        elements.gameOverTitle.textContent = 'CHIẾN THẮNG!';
+        elements.gameOverTitle.className = 'font-display font-extrabold text-xl text-gold-400';
+        elements.gameOverSubtitle.textContent = 'Bạn đã phán đoán chính xác danh tính đối thủ!';
+      } else {
+        sfx.lose();
+        elements.gameOverIcon.textContent = '💀';
+        elements.gameOverTitle.textContent = 'THẤT BẠI';
+        elements.gameOverTitle.className = 'font-display font-extrabold text-xl text-rose-500';
+        elements.gameOverSubtitle.textContent = `${opponent ? opponent.name : 'Đối thủ'} đã giành chiến thắng ván này!`;
+      }
+
+      if (me && me.secretCharId) {
+        const myChar = CHARACTERS.find(c => c.id === me.secretCharId);
+        if (myChar) {
+          elements.endMyCardAvatar.innerHTML = generateCharacterSVG(myChar, 46);
+          elements.endMyCardName.textContent = myChar.name;
+        }
+      }
+
+      if (opponent && opponent.secretCharId) {
+        const oppChar = CHARACTERS.find(c => c.id === opponent.secretCharId);
+        if (oppChar) {
+          elements.endOpponentCardAvatar.innerHTML = generateCharacterSVG(oppChar, 46);
+          elements.endOpponentCardName.textContent = oppChar.name;
+        }
+      }
+
+      elements.gameOverModal.classList.remove('hidden');
+      elements.gameOverModal.classList.add('flex');
+    }
+
+    elements.rematchBtn.addEventListener('click', async () => {
+      if (!STATE.roomData || !STATE.currentRoomId) return;
+      const pIds = Object.keys(STATE.roomData.players || {});
+      if (pIds.length < 2) return;
+
+      const shuffled = [...CHARACTERS].sort(() => Math.random() - 0.5);
+      const secretP1 = shuffled[0].id;
+      const secretP2 = shuffled[1].id;
+
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      const maxWrong = STATE.roomData.maxWrongGuesses || 3;
+      const logs = [
+        {
+          id: 'l_' + Date.now(),
+          time: Date.now(),
+          text: `⚡ Ván đấu mới bắt đầu! Giới hạn sai: ${maxWrong} lần. Lượt: ${STATE.roomData.players[pIds[0]].name}.`,
+          type: 'round'
+        }
+      ];
+
+      await updateDoc(roomDocRef, {
+        status: 'playing',
+        currentTurn: pIds[0],
+        pendingQuestion: null,
+        winnerId: null,
+        [`players.${pIds[0]}.secretCharId`]: secretP1,
+        [`players.${pIds[0]}.wrongGuesses`]: 0,
+        [`players.${pIds[1]}.secretCharId`]: secretP2,
+        [`players.${pIds[1]}.wrongGuesses`]: 0,
+        startedAt: Date.now(),
+        logs: logs
+      });
+
+      STATE.flippedCardIds.clear();
+      await syncUserProfile({ flippedCardIds: [] });
+      sfx.turnAlert();
+      showToast("Ván đấu mới đã bắt đầu!", "🎯");
+    });
+
+    elements.rematchWaitingBtn.addEventListener('click', async () => {
+      if (!STATE.roomData) return;
+      elements.gameOverModal.classList.add('hidden');
+      elements.gameOverModal.classList.remove('flex');
+
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      const p = { ...STATE.roomData.players };
+      Object.keys(p).forEach(k => {
+        p[k].ready = true; // Mặc định sẵn sàng khi trở về sảnh chờ
+        p[k].secretCharId = null;
+        p[k].wrongGuesses = 0;
+      });
+
+      const logs = STATE.roomData.logs || [];
+      logs.push({
+        id: 'l_' + Date.now(),
+        time: Date.now(),
+        text: `🔄 ${STATE.nickname} yêu cầu trở lại sảnh chờ.`,
+        type: 'system'
+      });
+
+      await updateDoc(roomDocRef, {
+        status: 'waiting',
+        winnerId: null,
+        pendingQuestion: null,
+        players: p,
+        logs: logs
+      });
+
+      STATE.flippedCardIds.clear();
+      showToast("Đã chuyển về sảnh chờ!", "🔁");
+    });
+
+    /* LOGS & CHAT */
+    function renderLogs(logs) {
+      const renderTo = (container) => {
+        container.innerHTML = '';
+        logs.forEach(log => {
+          const item = document.createElement('div');
+          item.className = "p-2 rounded-lg bg-noir-900/80 border border-white/[0.04] text-[11px] leading-relaxed";
+          if (log.type === 'question') {
+            item.className += " border-gold-400/30 text-gold-300 font-medium";
+          } else if (log.type === 'answer') {
+            item.className += " border-emerald-500/30 text-emerald-300 font-medium";
+          } else if (log.type === 'round') {
+            item.className += " border-purple-500/30 text-purple-300 font-semibold";
+          } else {
+            item.className += " text-slate-300";
+          }
+          item.textContent = log.text;
+          container.appendChild(item);
+        });
+        container.scrollTop = container.scrollHeight;
+      };
+
+      renderTo(elements.desktopGameLogList);
+      renderTo(elements.mobileGameLogList);
+    }
+
+    async function sendChatMsg(msg) {
+      if (!msg || !STATE.roomData) return;
+      const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+      const logs = STATE.roomData.logs || [];
+      logs.push({
+        id: 'l_' + Date.now(),
+        time: Date.now(),
+        text: `💬 ${STATE.nickname}: ${msg}`,
+        type: 'chat'
+      });
+      await updateDoc(roomDocRef, { logs: logs });
+    }
+
+    elements.desktopChatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = elements.desktopChatInput.value.trim();
+      if (val) {
+        sendChatMsg(val);
+        elements.desktopChatInput.value = '';
+      }
+    });
+
+    elements.mobileChatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = elements.mobileChatInput.value.trim();
+      if (val) {
+        sendChatMsg(val);
+        elements.mobileChatInput.value = '';
+      }
+    });
+
+    /* INSPECTOR MODAL */
+    function openCharacterProfileModal(char) {
+      elements.modalSecretTitle.textContent = "Hồ Sơ: " + char.name;
+      elements.modalSecretAvatar.innerHTML = generateCharacterSVG(char, 84);
+      elements.modalSecretName.textContent = char.name;
+
+      const hairStyleNames = { short: 'Ngắn', long: 'Dài', curly: 'Xoăn', bun: 'Búi', bald: 'Hói' };
+      const hairColorNames = { black: 'Đen', brown: 'Nâu', blonde: 'Vàng', red: 'Đỏ', gray: 'Bạc / Xám' };
+      const eyeColorNames = { brown: 'Nâu', blue: 'Xanh dương', green: 'Xanh lá' };
+      const facialNames = { beard: 'Râu quai nón', mustache: 'Ria mép', none: 'Không râu' };
+
+      elements.modalSecretTraits.innerHTML = `
+        <div class="p-2 rounded-lg bg-noir-900 border border-white/[0.06]">
+          <span class="text-slate-500 block text-[9px]">GIỚI TÍNH</span>
+          <b class="text-white">${char.gender === 'male' ? 'Nam' : 'Nữ'}</b>
+        </div>
+        <div class="p-2 rounded-lg bg-noir-900 border border-white/[0.06]">
+          <span class="text-slate-500 block text-[9px]">MÀU TÓC</span>
+          <b class="text-white">${hairColorNames[char.hair_color] || char.hair_color}</b>
+        </div>
+        <div class="p-2 rounded-lg bg-noir-900 border border-white/[0.06]">
+          <span class="text-slate-500 block text-[9px]">KIỂU TÓC</span>
+          <b class="text-white">${hairStyleNames[char.hair_style] || char.hair_style}</b>
+        </div>
+        <div class="p-2 rounded-lg bg-noir-900 border border-white/[0.06]">
+          <span class="text-slate-500 block text-[9px]">MÀU MẮT</span>
+          <b class="text-white">${eyeColorNames[char.eye_color] || char.eye_color}</b>
+        </div>
+        <div class="p-2 rounded-lg bg-noir-900 border border-white/[0.06]">
+          <span class="text-slate-500 block text-[9px]">KÍNH MẮT</span>
+          <b class="text-white">${char.glasses ? 'Có' : 'Không'}</b>
+        </div>
+        <div class="p-2 rounded-lg bg-noir-900 border border-white/[0.06]">
+          <span class="text-slate-500 block text-[9px]">ĐỘI MŨ</span>
+          <b class="text-white">${char.hat ? 'Có' : 'Không'}</b>
+        </div>
+        <div class="p-2 rounded-lg bg-noir-900 border border-white/[0.06]">
+          <span class="text-slate-500 block text-[9px]">RÂU RIA</span>
+          <b class="text-white">${facialNames[char.facial_hair] || 'Không'}</b>
+        </div>
+        <div class="p-2 rounded-lg bg-noir-900 border border-white/[0.06]">
+          <span class="text-slate-500 block text-[9px]">KHUYÊN TAI</span>
+          <b class="text-white">${char.earrings ? 'Có' : 'Không'}</b>
+        </div>
+      `;
+
+      elements.secretDetailModal.classList.remove('hidden');
+      elements.secretDetailModal.classList.add('flex');
+    }
+
+    if (elements.mySecretAvatar) {
+      elements.mySecretAvatar.addEventListener('click', () => {
+        if (STATE.mySecretChar) openCharacterProfileModal(STATE.mySecretChar);
+      });
+    }
+    if (elements.inspectSecretCardBtn) {
+      elements.inspectSecretCardBtn.addEventListener('click', () => {
+        if (STATE.mySecretChar) openCharacterProfileModal(STATE.mySecretChar);
+      });
+    }
+    elements.closeSecretDetailModalBtn.addEventListener('click', () => {
+      elements.secretDetailModal.classList.add('hidden');
+      elements.secretDetailModal.classList.remove('flex');
+    });
+    elements.closeSecretDetailModalActionBtn.addEventListener('click', () => {
+      elements.secretDetailModal.classList.add('hidden');
+      elements.secretDetailModal.classList.remove('flex');
+    });
+
+    /* LEAVING ROOM */
+    async function leaveRoom() {
+      if (STATE.roomData && STATE.currentRoomId) {
+        const roomDocRef = doc(roomsCollectionRef, STATE.currentRoomId);
+        const p = { ...STATE.roomData.players };
+        delete p[STATE.user.uid];
+
+        const remainingIds = Object.keys(p);
+        if (remainingIds.length === 0) {
+          await deleteDoc(roomDocRef);
+        } else {
+          await updateDoc(roomDocRef, {
+            players: p,
+            hostId: remainingIds[0]
+          });
+        }
+      }
+      await syncUserProfile({ activeRoomId: null, flippedCardIds: [] });
+      leaveRoomLocally();
+    }
+
+    function leaveRoomLocally() {
+      if (STATE.roomUnsubscribe) {
+        STATE.roomUnsubscribe();
+        STATE.roomUnsubscribe = null;
+      }
+      STATE.currentRoomId = null;
+      STATE.roomData = null;
+      STATE.flippedCardIds.clear();
+      syncUserProfile({ activeRoomId: null, flippedCardIds: [] });
+      elements.gameOverModal.classList.add('hidden');
+      elements.gameOverModal.classList.remove('flex');
+      switchView('lobby');
+    }
+
+    /* BINDINGS */
+    elements.returnToLobbyBtn.addEventListener('click', leaveRoomLocally);
+    elements.leaveRoomBtn.addEventListener('click', leaveRoom);
+    elements.toggleReadyBtn.addEventListener('click', toggleReady);
+    elements.startGameBtn.addEventListener('click', launchGame);
+
+    if (elements.waitingEditRoomBtn) {
+      elements.waitingEditRoomBtn.addEventListener('click', () => {
+        if (STATE.roomData) openEditRoomModal(STATE.roomData);
+      });
+    }
+    if (elements.waitingDeleteRoomBtn) {
+      elements.waitingDeleteRoomBtn.addEventListener('click', () => {
+        if (STATE.roomData) promptDeleteRoom(STATE.roomData);
+      });
+    }
+
+    elements.filterAllRoomsBtn.addEventListener('click', () => {
+      STATE.lobbyFilter = 'all';
+      elements.filterAllRoomsBtn.className = "px-3.5 py-1.5 rounded-lg font-bold bg-white/[0.08] text-white transition";
+      elements.filterMyRoomsBtn.className = "px-3.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5";
+      renderRoomsList();
+    });
+    elements.filterMyRoomsBtn.addEventListener('click', () => {
+      STATE.lobbyFilter = 'my';
+      elements.filterMyRoomsBtn.className = "px-3.5 py-1.5 rounded-lg font-bold bg-white/[0.08] text-white transition flex items-center gap-1.5";
+      elements.filterAllRoomsBtn.className = "px-3.5 py-1.5 rounded-lg font-medium text-slate-400 hover:text-slate-200 transition";
+      renderRoomsList();
+    });
+
+    elements.openCreateRoomModalBtn.addEventListener('click', () => {
+      const myRooms = (STATE.allRooms || []).filter(r => r.hostId === STATE.user?.uid);
+      elements.createRoomQuotaText.textContent = `${myRooms.length}/10 phòng`;
+      elements.createRoomNameInput.value = `Phòng của ${STATE.nickname}`;
+      elements.createRoomHasPassCheckbox.checked = false;
+      elements.createRoomPassField.classList.add('hidden');
+      elements.createRoomPasswordInput.value = '';
+      elements.createRoomModal.classList.remove('hidden');
+      elements.createRoomModal.classList.add('flex');
+    });
+
+    if (elements.openJoinByIdModalBtn) {
+      elements.openJoinByIdModalBtn.addEventListener('click', () => {
+        elements.joinByIdInput.value = '';
+        elements.joinByIdModal.classList.remove('hidden');
+        elements.joinByIdModal.classList.add('flex');
+        setTimeout(() => elements.joinByIdInput.focus(), 150);
+      });
+    }
+    if (elements.closeJoinByIdModalBtn) {
+      elements.closeJoinByIdModalBtn.addEventListener('click', () => {
+        elements.joinByIdModal.classList.add('hidden');
+        elements.joinByIdModal.classList.remove('flex');
+      });
+    }
+    if (elements.cancelJoinByIdBtn) {
+      elements.cancelJoinByIdBtn.addEventListener('click', () => {
+        elements.joinByIdModal.classList.add('hidden');
+        elements.joinByIdModal.classList.remove('flex');
+      });
+    }
+
+    async function handleJoinByIdSubmit() {
+      const rawId = elements.joinByIdInput.value.trim().replace('#', '');
+      if (!rawId) {
+        showToast("Vui lòng nhập mã ID!", "⚠️");
+        return;
+      }
+
+      elements.joinByIdModal.classList.add('hidden');
+      elements.joinByIdModal.classList.remove('flex');
+
+      const cachedRoom = (STATE.allRooms || []).find(r => r.id === rawId);
+      if (cachedRoom) {
+        if (cachedRoom.password) {
+          STATE.pendingPasswordRoomId = cachedRoom.id;
+          elements.joinRoomPasswordInput.value = '';
+          elements.passwordModal.classList.remove('hidden');
+          elements.passwordModal.classList.add('flex');
+        } else {
+          joinRoom(cachedRoom.id);
+        }
+      } else {
+        try {
+          const roomDocRef = doc(roomsCollectionRef, rawId);
+          const snap = await getDoc(roomDocRef);
+          if (snap.exists()) {
+            const rData = snap.data();
+            if (rData.password) {
+              STATE.pendingPasswordRoomId = rawId;
+              elements.joinRoomPasswordInput.value = '';
+              elements.passwordModal.classList.remove('hidden');
+              elements.passwordModal.classList.add('flex');
+            } else {
+              joinRoom(rawId);
+            }
+          } else {
+            showToast(`Không tìm thấy phòng #${rawId}!`, "❌");
+          }
+        } catch (e) {
+          console.error(e);
+          showToast("Lỗi khi kết nối phòng!", "❌");
+        }
+      }
+    }
+
+    if (elements.confirmJoinByIdBtn) {
+      elements.confirmJoinByIdBtn.addEventListener('click', handleJoinByIdSubmit);
+    }
+    if (elements.joinByIdInput) {
+      elements.joinByIdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleJoinByIdSubmit();
+        }
+      });
+    }
+
+    elements.createRoomHasPassCheckbox.addEventListener('change', () => {
+      elements.createRoomPassField.classList.toggle('hidden', !elements.createRoomHasPassCheckbox.checked);
+    });
+    elements.closeCreateRoomModalBtn.addEventListener('click', () => {
+      elements.createRoomModal.classList.add('hidden');
+      elements.createRoomModal.classList.remove('flex');
+    });
+    elements.cancelCreateRoomBtn.addEventListener('click', () => {
+      elements.createRoomModal.classList.add('hidden');
+      elements.createRoomModal.classList.remove('flex');
+    });
+    elements.confirmCreateRoomBtn.addEventListener('click', createRoom);
+
+    elements.editRoomHasPassCheckbox.addEventListener('change', () => {
+      elements.editRoomPassField.classList.toggle('hidden', !elements.editRoomHasPassCheckbox.checked);
+    });
+    elements.closeEditRoomModalBtn.addEventListener('click', () => {
+      elements.editRoomModal.classList.add('hidden');
+      elements.editRoomModal.classList.remove('flex');
+      STATE.pendingEditRoom = null;
+    });
+    elements.cancelEditRoomBtn.addEventListener('click', () => {
+      elements.editRoomModal.classList.add('hidden');
+      elements.editRoomModal.classList.remove('flex');
+      STATE.pendingEditRoom = null;
+    });
+    elements.confirmEditRoomBtn.addEventListener('click', saveEditedRoom);
+
+    elements.cancelDeleteBtn.addEventListener('click', () => {
+      elements.deleteConfirmModal.classList.add('hidden');
+      elements.deleteConfirmModal.classList.remove('flex');
+      STATE.pendingDeleteRoomId = null;
+    });
+    elements.confirmDeleteBtn.addEventListener('click', executeDeleteRoom);
+
+    elements.cancelPasswordModalBtn.addEventListener('click', () => {
+      elements.passwordModal.classList.add('hidden');
+      elements.passwordModal.classList.remove('flex');
+      STATE.pendingPasswordRoomId = null;
+    });
+    elements.confirmJoinWithPasswordBtn.addEventListener('click', () => {
+      const pass = elements.joinRoomPasswordInput.value.trim();
+      if (STATE.pendingPasswordRoomId) {
+        joinRoom(STATE.pendingPasswordRoomId, pass);
+        elements.passwordModal.classList.add('hidden');
+        elements.passwordModal.classList.remove('flex');
+      }
+    });
+
+    elements.openQuestionModalBtn.addEventListener('click', () => {
+      updateQuestionBuilderUI();
+      elements.askQuestionModal.classList.remove('hidden');
+      elements.askQuestionModal.classList.add('flex');
+    });
+    elements.desktopOpenQuestionModalBtn.addEventListener('click', () => {
+      updateQuestionBuilderUI();
+      elements.askQuestionModal.classList.remove('hidden');
+      elements.askQuestionModal.classList.add('flex');
+    });
+    elements.closeQuestionModalBtn.addEventListener('click', () => {
+      elements.askQuestionModal.classList.add('hidden');
+      elements.askQuestionModal.classList.remove('flex');
+    });
+    elements.cancelQuestionModalBtn.addEventListener('click', () => {
+      elements.askQuestionModal.classList.add('hidden');
+      elements.askQuestionModal.classList.remove('flex');
+    });
+    elements.confirmSendQuestionBtn.addEventListener('click', sendQuestion);
+
+    // Quick Actions HUD Menu
+    if (elements.hudMenuToggleBtn) {
+      elements.hudMenuToggleBtn.addEventListener('click', () => {
+        elements.hudQuickMenuModal.classList.remove('hidden');
+        elements.hudQuickMenuModal.classList.add('flex');
+        sfx.click();
+      });
+    }
+    if (elements.closeHudQuickMenuBtn) {
+      elements.closeHudQuickMenuBtn.addEventListener('click', () => {
+        elements.hudQuickMenuModal.classList.add('hidden');
+        elements.hudQuickMenuModal.classList.remove('flex');
+      });
+    }
+
+    if (elements.toggleCardDetailsBtn) elements.toggleCardDetailsBtn.addEventListener('click', toggleAllCardDetails);
+
+    if (elements.hudQuitGameBtn) elements.hudQuitGameBtn.addEventListener('click', promptQuitGame);
+    if (elements.desktopQuitGameBtn) elements.desktopQuitGameBtn.addEventListener('click', promptQuitGame);
+    if (elements.cancelQuitGameBtn) {
+      elements.cancelQuitGameBtn.addEventListener('click', () => {
+        elements.quitGameConfirmModal.classList.add('hidden');
+        elements.quitGameConfirmModal.classList.remove('flex');
+      });
+    }
+    if (elements.confirmQuitGameBtn) elements.confirmQuitGameBtn.addEventListener('click', executeQuitGame);
+
+    elements.resetFlipsBtn.addEventListener('click', () => {
+      STATE.flippedCardIds.clear();
+      sfx.click();
+      renderCharacterBoard();
+      syncUserProfile({ flippedCardIds: [] });
+      if (elements.hudQuickMenuModal) {
+        elements.hudQuickMenuModal.classList.add('hidden');
+        elements.hudQuickMenuModal.classList.remove('flex');
+      }
+      showToast("Đã mở lại toàn bộ thẻ!", "🔄");
+    });
+
+    elements.openMobileDrawerBtn.addEventListener('click', () => {
+      elements.mobileLogDrawer.classList.remove('hidden');
+      elements.mobileLogDrawer.classList.add('flex');
+    });
+    elements.closeMobileDrawerBtn.addEventListener('click', () => {
+      elements.mobileLogDrawer.classList.add('hidden');
+      elements.mobileLogDrawer.classList.remove('flex');
+    });
+
+    const showGuide = () => {
+      if (elements.hudQuickMenuModal) {
+        elements.hudQuickMenuModal.classList.add('hidden');
+        elements.hudQuickMenuModal.classList.remove('flex');
+      }
+      elements.questionGuideModal.classList.remove('hidden');
+      elements.questionGuideModal.classList.add('flex');
+    };
+    elements.helpModalBtn.addEventListener('click', showGuide);
+    if (elements.hudHelpBtn) elements.hudHelpBtn.addEventListener('click', showGuide);
+    elements.closeGuideModalBtn.addEventListener('click', () => {
+      elements.questionGuideModal.classList.add('hidden');
+      elements.questionGuideModal.classList.remove('flex');
+    });
+    elements.closeGuideModalBtnBottom.addEventListener('click', () => {
+      elements.questionGuideModal.classList.add('hidden');
+      elements.questionGuideModal.classList.remove('flex');
+    });
+
+    function toggleSound() {
+      sfx.enabled = !sfx.enabled;
+      const iconName = sfx.enabled ? 'volume-2' : 'volume-x';
+      if (elements.soundIcon) elements.soundIcon.setAttribute('data-lucide', iconName);
+      if (elements.hudSoundIcon) elements.hudSoundIcon.setAttribute('data-lucide', iconName);
+      if (elements.hudSoundLabel) {
+        elements.hudSoundLabel.textContent = sfx.enabled ? "BẬT" : "TẮT";
+        elements.hudSoundLabel.className = sfx.enabled ? "text-[10px] font-mono text-emerald-400" : "text-[10px] font-mono text-slate-500";
+      }
+      showToast(sfx.enabled ? "Âm thanh: Bật" : "Âm thanh: Tắt", sfx.enabled ? "🔊" : "🔇");
+      lucide.createIcons();
+    }
+    elements.soundToggleBtn.addEventListener('click', toggleSound);
+    if (elements.hudSoundBtn) elements.hudSoundBtn.addEventListener('click', toggleSound);
+
+    elements.saveNicknameBtn.addEventListener('click', async () => {
+      const name = elements.nicknameInput.value.trim();
+      if (name) {
+        STATE.nickname = name;
+        elements.playerBadgeName.textContent = name;
+        await syncUserProfile({ nickname: name });
+        showToast("Đã lưu tên!", "✨");
+      }
+    });
+
+    elements.rerollAvatarBtn.addEventListener('click', async () => {
+      STATE.avatarIndex = (STATE.avatarIndex + 1) % CHARACTERS.length;
+      updateAvatarDisplay(CHARACTERS[STATE.avatarIndex]);
+      await syncUserProfile({ avatarIndex: STATE.avatarIndex });
+      sfx.click();
+    });
+
+    function updateAvatarDisplay(char) {
+      elements.lobbyAvatarPreview.innerHTML = generateCharacterSVG(char, 20);
+      elements.lobbyBigAvatar.innerHTML = generateCharacterSVG(char, 56);
+    }
+
+    elements.copyInviteBtn.addEventListener('click', () => {
+      if (!STATE.currentRoomId) return;
+      navigator.clipboard.writeText(STATE.currentRoomId).then(() => {
+        showToast(`Đã sao chép mã #${STATE.currentRoomId}`, "📋");
+      });
+    });
+
+    /* INITIALIZATION */
+    async function initAuth() {
+      try {
+        const cred = await signInAnonymously(auth);
+        STATE.user = cred.user;
+      } catch (err) {
+        console.error("Auth sign-in notice:", err);
+        STATE.user = { uid: 'guest_' + Math.random().toString(36).substr(2, 9) };
+      }
+
+      if (STATE.user && !STATE.user.uid.startsWith('guest_')) {
+        try {
+          const profileDoc = await getDoc(getUserProfileRef(STATE.user.uid));
+          if (profileDoc.exists()) {
+            const pData = profileDoc.data();
+            if (pData.nickname) STATE.nickname = pData.nickname;
+            if (typeof pData.avatarIndex === 'number') STATE.avatarIndex = pData.avatarIndex % CHARACTERS.length;
+            if (Array.isArray(pData.flippedCardIds)) {
+              STATE.flippedCardIds = new Set(pData.flippedCardIds);
+            }
+
+            if (pData.activeRoomId) {
+              const activeRoomRef = doc(roomsCollectionRef, pData.activeRoomId);
+              const roomSnap = await getDoc(activeRoomRef);
+              if (roomSnap.exists()) {
+                const roomInfo = roomSnap.data();
+                if (roomInfo.players && roomInfo.players[STATE.user.uid]) {
+                  STATE.currentRoomId = pData.activeRoomId;
+                  subscribeRoom(pData.activeRoomId);
+                  showToast("Đã kết nối lại ván đấu!", "⚡", 3000);
+                }
+              }
+            }
+          } else {
+            await syncUserProfile();
+          }
+        } catch (e) {
+          console.error("Error retrieving profile:", e);
+        }
+      }
+
+      elements.playerBadgeName.textContent = STATE.nickname;
+      elements.nicknameInput.value = STATE.nickname;
+      updateAvatarDisplay(CHARACTERS[STATE.avatarIndex]);
+
+      listenToRooms();
+      if (!STATE.currentRoomId) {
+        switchView('lobby');
+      }
+      lucide.createIcons();
+    }
+
+    if (document.readyState === 'loading') {
+      window.addEventListener('DOMContentLoaded', initAuth);
+    } else {
+      initAuth();
+    }
+  </script>
+
+</body>
+</html>

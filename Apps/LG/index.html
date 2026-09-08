@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Game Finder & Search</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            100: '#e0edff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        },
+                        darkbg: '#0b0f17',
+                        darkcard: '#161f2e',
+                        darkborder: '#233147'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #233147;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b82f6;
+        }
+        .glass-panel {
+            background: rgba(22, 31, 46, 0.85);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-hover:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px -10px rgba(59, 130, 246, 0.25);
+        }
+        
+        /* Shimmer Loading Animation for Skeleton */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton-shimmer {
+            background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.8s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-darkbg text-slate-100 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+    <header class="sticky top-0 z-40 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-brand-500/30 flex-shrink-0">
+                    <i class="fa-solid fa-gamepad text-lg sm:text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-base sm:text-lg md:text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                        MultiPlayer Hub
+                    </h1>
+                    <p class="text-[10px] sm:text-xs text-slate-400">150 Game Chơi Cùng Bạn Bè • CORS Proxy Active</p>
+                </div>
+            </div>
+
+            <!-- Header Controls -->
+            <div class="flex items-center gap-2">
+                <!-- Mobile Filter Toggle Button -->
+                <button id="btn-toggle-mobile-filter" class="md:hidden px-3 py-2 rounded-xl bg-slate-800 text-slate-200 border border-slate-700 text-xs font-medium flex items-center gap-1.5 active:scale-95 transition">
+                    <i class="fa-solid fa-sliders text-brand-400"></i>
+                    <span>Bộ Lọc</span>
+                </button>
+
+                <!-- Proxy Status Badge -->
+                <div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>CORS Proxy Active</span>
+                </div>
+
+                <!-- Add Game Button -->
+                <button id="btn-add-game" class="px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold flex items-center gap-1.5 transition shadow-lg shadow-brand-600/20">
+                    <i class="fa-solid fa-plus text-xs"></i>
+                    <span class="hidden sm:inline">Thêm Game</span>
+                </button>
+
+                <!-- JSON Data Manager Button -->
+                <button id="btn-json-modal" class="px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-code text-xs"></i>
+                    <span class="hidden sm:inline">JSON Manager</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 flex flex-col md:flex-row gap-5">
+
+        <!-- Sidebar / Filters -->
+        <aside id="sidebar-filters" class="hidden md:block w-full md:w-64 lg:w-72 flex-shrink-0 space-y-6">
+            <div class="glass-panel p-4 sm:p-5 rounded-2xl border border-slate-800 space-y-4 sticky top-20">
+                
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <h2 class="font-bold text-sm sm:text-base text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-filter text-brand-500"></i> Bộ Lọc Tìm Kiếm
+                    </h2>
+                    <button id="btn-reset-filters" class="text-xs text-brand-400 hover:text-brand-300 font-medium transition">
+                        Đặt lại
+                    </button>
+                </div>
+
+                <!-- Quick Search Input -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-slate-400">Từ khóa tìm kiếm</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <input type="text" id="filter-search" placeholder="Tên game, từ khóa..." 
+                            class="w-full pl-9 pr-3 py-2 bg-darkbg/90 border border-slate-700 focus:border-brand-500 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none transition">
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-slate-400">Thể loại (Category)</label>
+                    <select id="filter-category" class="w-full px-3 py-2 bg-darkbg/90 border border-slate-700 focus:border-brand-500 rounded-xl text-xs text-slate-200 focus:outline-none transition cursor-pointer">
+                        <option value="">Tất cả thể loại</option>
+                    </select>
+                </div>
+
+                <!-- Multiplayer Type Filter -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-slate-400">Kiểu Đấu (Multiplayer Type)</label>
+                    <select id="filter-type" class="w-full px-3 py-2 bg-darkbg/90 border border-slate-700 focus:border-brand-500 rounded-xl text-xs text-slate-200 focus:outline-none transition cursor-pointer">
+                        <option value="">Tất cả kiểu đấu</option>
+                    </select>
+                </div>
+
+                <!-- Player Count Filter Slider -->
+                <div class="space-y-2">
+                    <div class="flex justify-between items-center text-xs">
+                        <label class="font-medium text-slate-400">Sức chứa tối đa</label>
+                        <span id="player-count-val" class="font-bold text-brand-400">1 - 100 người</span>
+                    </div>
+                    <input type="range" id="filter-players-range" min="1" max="100" value="100" class="w-full accent-brand-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg">
+                </div>
+
+                <!-- Platform Checkboxes -->
+                <div class="space-y-2 pt-1">
+                    <label class="text-xs font-medium text-slate-400 block">Nền tảng hỗ trợ</label>
+                    <div class="grid grid-cols-2 md:grid-cols-1 gap-2">
+                        <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-appstore" class="rounded bg-darkbg border-slate-700 text-brand-600 focus:ring-0 w-4 h-4">
+                            <i class="fa-brands fa-apple text-sm text-slate-300"></i> App Store
+                        </label>
+                        <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+                            <input type="checkbox" id="chk-playstore" class="rounded bg-darkbg border-slate-700 text-brand-600 focus:ring-0 w-4 h-4">
+                            <i class="fa-brands fa-google-play text-xs text-emerald-400"></i> Google Play
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Mobile Close Filter Button -->
+                <button id="btn-close-mobile-filter" class="w-full py-2.5 rounded-xl bg-brand-600 text-white font-semibold text-xs md:hidden mt-3">
+                    Áp Dụng Bộ Lọc
+                </button>
+            </div>
+        </aside>
+
+        <section class="flex-grow space-y-4">
+
+            <!-- Quick Player Count Selector Bar -->
+            <div class="glass-panel p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3 shadow-lg">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white text-xs shadow-md shadow-brand-500/20">
+                            <i class="fa-solid fa-users text-sm"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-xs sm:text-sm font-bold text-slate-100 flex items-center gap-1.5">
+                                Số Lượng Người Chơi
+                                <span class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">Chọn nhanh</span>
+                            </h3>
+                            <p class="text-[10px] text-slate-400">Lựa chọn chế độ chơi phù hợp nhất với hội bạn thân</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="quick-player-display" class="px-3 py-1 rounded-xl bg-brand-600/20 text-brand-300 font-bold text-xs border border-brand-500/30 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-dot text-[8px] text-brand-400 animate-pulse"></i>
+                            Tất cả (1 - 100 người)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Interactive Preset Player Chips -->
+                <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                    <button type="button" data-player-preset="all" class="btn-player-chip px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 bg-brand-600 text-white shadow-lg shadow-brand-600/30 border border-brand-500 active:scale-95">
+                        <i class="fa-solid fa-globe text-[11px]"></i> Tất cả
+                    </button>
+                    <button type="button" data-player-preset="1" class="btn-player-chip px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 bg-darkbg/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80 active:scale-95">
+                        <i class="fa-solid fa-user text-[11px] text-brand-400"></i> Solo (1 người)
+                    </button>
+                    <button type="button" data-player-preset="2" class="btn-player-chip px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 bg-darkbg/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80 active:scale-95">
+                        <i class="fa-solid fa-user-friends text-[11px] text-cyan-400"></i> 2 Người (1v1 / Co-op)
+                    </button>
+                    <button type="button" data-player-preset="3-4" class="btn-player-chip px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 bg-darkbg/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80 active:scale-95">
+                        <i class="fa-solid fa-users text-[11px] text-emerald-400"></i> 3 - 4 Người (Squad)
+                    </button>
+                    <button type="button" data-player-preset="5-10" class="btn-player-chip px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 bg-darkbg/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80 active:scale-95">
+                        <i class="fa-solid fa-people-group text-[11px] text-amber-400"></i> 5 - 10 Người (Đội)
+                    </button>
+                    <button type="button" data-player-preset="10+" class="btn-player-chip px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 bg-darkbg/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80 active:scale-95">
+                        <i class="fa-solid fa-fire text-[11px] text-rose-400"></i> 10+ - 100 Người
+                    </button>
+                </div>
+            </div>
+
+            <!-- Controls Toolbar: Sorting & Layout View Toggle -->
+            <div class="glass-panel p-3.5 sm:p-4 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <span id="game-count-badge" class="px-2.5 py-1 rounded-lg bg-brand-500/20 text-brand-400 text-xs font-bold border border-brand-500/30">
+                        0 Game
+                    </span>
+                    <span class="text-xs text-slate-400">tìm thấy</span>
+                </div>
+
+                <div class="flex items-center gap-2 sm:gap-3 ml-auto">
+                    <div class="flex items-center gap-1.5 text-xs">
+                        <select id="sort-select" class="px-2.5 py-1.5 bg-darkbg border border-slate-700 focus:border-brand-500 rounded-xl text-xs text-slate-200 focus:outline-none cursor-pointer">
+                            <option value="id-asc">Sắp xếp: Mặc định</option>
+                            <option value="name-asc">Tên (A - Z)</option>
+                            <option value="name-desc">Tên (Z - A)</option>
+                            <option value="max-players-desc">Số người tối đa (Nhiều nhất)</option>
+                            <option value="max-players-asc">Số người tối đa (Ít nhất)</option>
+                        </select>
+                    </div>
+
+                    <div class="flex bg-darkbg p-1 rounded-xl border border-slate-800">
+                        <button id="btn-view-grid" class="px-2.5 py-1 rounded-lg text-xs text-white bg-brand-600 transition" title="Lưới">
+                            <i class="fa-solid fa-border-all"></i>
+                        </button>
+                        <button id="btn-view-list" class="px-2.5 py-1 rounded-lg text-xs text-slate-400 hover:text-white transition" title="Danh sách">
+                            <i class="fa-solid fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Games Grid Container -->
+            <div id="games-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                <!-- Dynamic Game Cards Inserted Here via JS -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden glass-panel p-8 sm:p-12 text-center rounded-2xl border border-slate-800 space-y-3">
+                <div class="w-14 h-14 bg-slate-800 text-slate-500 rounded-full flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-ghost"></i>
+                </div>
+                <h3 class="text-sm sm:text-base font-bold text-slate-300">Không tìm thấy game nào!</h3>
+                <p class="text-xs text-slate-500 max-w-xs mx-auto">Thử thay đổi từ khóa hoặc bộ lọc của bạn.</p>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Modal: Detail View -->
+    <div id="modal-detail" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-darkcard border border-slate-800 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl relative max-h-[90vh] flex flex-col">
+            <button id="modal-detail-close" class="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 hover:bg-black text-slate-300 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <div id="modal-detail-body" class="overflow-y-auto p-6 space-y-6">
+                <!-- Dynamic Content Here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Add Game -->
+    <div id="modal-add-game" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-darkcard border border-slate-800 w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                <h3 class="font-bold text-base text-slate-200"><i class="fa-solid fa-circle-plus text-brand-500"></i> Thêm Game Mới</h3>
+                <button id="modal-add-close" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-add-game" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Tên Game *</label>
+                    <input type="text" id="input-game-name" required placeholder="VD: League of Legends: Wild Rift" class="w-full px-3 py-2 bg-darkbg border border-slate-700 rounded-xl text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Thể loại (Category) *</label>
+                        <input type="text" id="input-game-category" required placeholder="VD: action, moba, rpg" class="w-full px-3 py-2 bg-darkbg border border-slate-700 rounded-xl text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Kiểu Đấu (Type) *</label>
+                        <input type="text" id="input-game-type" required placeholder="VD: team_pvp, co_op" class="w-full px-3 py-2 bg-darkbg border border-slate-700 rounded-xl text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Số người chơi tối thiểu *</label>
+                        <input type="number" id="input-game-min" min="1" required value="2" class="w-full px-3 py-2 bg-darkbg border border-slate-700 rounded-xl text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Số người chơi tối đa *</label>
+                        <input type="number" id="input-game-max" min="1" required value="10" class="w-full px-3 py-2 bg-darkbg border border-slate-700 rounded-xl text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Link App Store</label>
+                    <input type="url" id="input-game-appstore" placeholder="https://apps.apple.com/us/app/..." class="w-full px-3 py-2 bg-darkbg border border-slate-700 rounded-xl text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Link Google Play</label>
+                    <input type="url" id="input-game-playstore" placeholder="https://play.google.com/store/apps/details?id=..." class="w-full px-3 py-2 bg-darkbg border border-slate-700 rounded-xl text-xs text-slate-200 focus:border-brand-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Mô tả *</label>
+                    <textarea id="input-game-desc" rows="3" required placeholder="Mô tả tóm tắt game..." class="w-full px-3 py-2 bg-darkbg border border-slate-700 rounded-xl text-xs text-slate-200 focus:border-brand-500 focus:outline-none"></textarea>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" id="btn-cancel-add" class="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold hover:bg-slate-700">Hủy</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold hover:bg-brand-500 shadow-md">Lưu Game</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: JSON Schema Manager -->
+    <div id="modal-json" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 hidden">
+        <div class="bg-darkcard border border-slate-800 w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl p-6 space-y-4 flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800 flex-shrink-0">
+                <h3 class="font-bold text-base text-slate-200"><i class="fa-solid fa-code text-brand-500"></i> Cấu trúc dữ liệu JSON (150 Games)</h3>
+                <button id="modal-json-close" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-xs text-slate-400">Bạn có thể sao chép hoặc dán bộ dữ liệu JSON mới để cập nhật danh sách game.</p>
+            <textarea id="json-editor-textarea" class="w-full flex-grow p-3 bg-darkbg border border-slate-700 font-mono text-xs text-slate-200 rounded-xl focus:border-brand-500 focus:outline-none resize-none min-h-[250px]"></textarea>
+            <div class="flex justify-between items-center pt-2 flex-shrink-0">
+                <button id="btn-copy-json" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5">
+                    <i class="fa-regular fa-copy"></i> Sao chép JSON
+                </button>
+                <div class="flex gap-2">
+                    <button id="btn-reset-default-json" class="px-3.5 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-semibold">Khôi phục 150 Game Mặc Định</button>
+                    <button id="btn-apply-json" class="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold">Cập nhật dữ liệu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl bg-brand-600 text-white text-xs font-semibold shadow-xl flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300">
+        <i class="fa-solid fa-circle-check"></i>
+        <span id="toast-msg">Thông báo</span>
+    </div>
+
+    <script>
+        // Full 150 Multiplayer Games Dataset
+        const INITIAL_JSON = {
+            "schema_version": "1.2.0",
+            "games": [
+                { "id": 1, "game": "Brawl Stars", "link_appstore": "https://apps.apple.com/us/app/brawl-stars/id1229016807", "link_google_play": "https://play.google.com/store/apps/details?id=com.supercell.brawlstars", "description": "Game hành động multiplayer với nhiều chế độ PvP 3v3 và sinh tồn nhịp độ nhanh.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 2, "game": "Among Us", "link_appstore": "https://apps.apple.com/us/app/among-us/id1351168404", "link_google_play": "https://play.google.com/store/apps/details?id=com.innersloth.spacemafia", "description": "Trò chơi sinh tồn và suy luận đồng đội trên tàu vũ trụ với kẻ mạo danh Impostor.", "category": "casual", "multiplayer_type": "social_deduction", "min_players": 4, "max_players": 15 },
+                { "id": 3, "game": "PUBG Mobile", "link_appstore": "https://apps.apple.com/us/app/pubg-mobile/id1330123889", "link_google_play": "https://play.google.com/store/apps/details?id=com.tencent.ig", "description": "Siêu phẩm bắn súng sinh tồn Battle Royale 100 người chơi đỉnh cao trên di động.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 100 },
+                { "id": 4, "game": "Genshin Impact", "link_appstore": "https://apps.apple.com/us/app/genshin-impact/id1517783697", "link_google_play": "https://play.google.com/store/apps/details?id=com.miHoYo.GenshinImpact", "description": "Game nhập vai thế giới mở hành động với chế độ Co-op lập đội 4 người khám phá Teyvat.", "category": "rpg", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 5, "game": "League of Legends: Wild Rift", "link_appstore": "https://apps.apple.com/us/app/league-of-legends-wild-rift/id1480616990", "link_google_play": "https://play.google.com/store/apps/details?id=com.riotgames.league.wildrift", "description": "Game MOBA chiến thuật 5v5 chuẩn Esports chính chủ Riot Games.", "category": "moba", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 6, "game": "Roblox", "link_appstore": "https://apps.apple.com/us/app/roblox/id431946152", "link_google_play": "https://play.google.com/store/apps/details?id=com.roblox.client", "description": "Vũ trụ ảo sáng tạo và trải nghiệm hàng triệu trò chơi mini multiplayer cùng bạn bè.", "category": "sandbox", "multiplayer_type": "party", "min_players": 1, "max_players": 100 },
+                { "id": 7, "game": "Call of Duty: Mobile", "link_appstore": "https://apps.apple.com/us/app/call-of-duty-mobile/id1287282214", "link_google_play": "https://play.google.com/store/apps/details?id=com.activision.callofduty.shooter", "description": "Game bắn súng FPS kịch tính với chế độ PvP 5v5 và Battle Royale hoành tráng.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 100 },
+                { "id": 8, "game": "Minecraft", "link_appstore": "https://apps.apple.com/us/app/minecraft/id479516143", "link_google_play": "https://play.google.com/store/apps/details?id=com.mojang.minecraftpe", "description": "Xây dựng, sinh tồn và phiêu lưu thế giới khối vuông vô tận cùng bạn bè.", "category": "sandbox", "multiplayer_type": "co_op", "min_players": 1, "max_players": 30 },
+                { "id": 9, "game": "Free Fire", "link_appstore": "https://apps.apple.com/us/app/free-fire/id1300808820", "link_google_play": "https://play.google.com/store/apps/details?id=com.dts.freefireth", "description": "Game bắn súng sinh tồn nhịp độ nhanh 50 người chơi kéo dài 10 phút.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 50 },
+                { "id": 10, "game": "Mobile Legends: Bang Bang", "link_appstore": "https://apps.apple.com/us/app/mobile-legends-bang-bang/id1160056295", "link_google_play": "https://play.google.com/store/apps/details?id=com.mobile.legends", "description": "Trận chiến MOBA 5v5 cổ điển đối đầu trực tiếp trên điện thoại.", "category": "moba", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 11, "game": "Arena of Valor (Liên Quân Mobile)", "link_appstore": "https://apps.apple.com/us/app/arena-of-valor/id1150083200", "link_google_play": "https://play.google.com/store/apps/details?id=com.garena.game.kgvn", "description": "Game MOBA quốc dân với hàng trăm tướng thần thoại đấu đội 5v5.", "category": "moba", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 12, "game": "Stumble Guys", "link_appstore": "https://apps.apple.com/us/app/stumble-guys/id1541153308", "link_google_play": "https://play.google.com/store/apps/details?id=com.kitkagames.fallguys", "description": "Game Knockout Party vui nhộn 32 người đua chướng ngại vật cực kỳ lầy lội.", "category": "party", "multiplayer_type": "party", "min_players": 2, "max_players": 32 },
+                { "id": 13, "game": "Play Together", "link_appstore": "https://apps.apple.com/us/app/play-together/id1503887016", "link_google_play": "https://play.google.com/store/apps/details?id=com.haegin.playtogether", "description": "Vũ trụ ảo tiệc tùng, câu cá, chơi minigame vui nhộn cùng bạn bè khắp nơi.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 50 },
+                { "id": 14, "game": "Eggy Party", "link_appstore": "https://apps.apple.com/us/app/eggy-party/id1614402842", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.frxna", "description": "Thế giới những chú trứng tròn xoe vượt chướng ngại vật vui nhộn từ NetEase.", "category": "party", "multiplayer_type": "party", "min_players": 2, "max_players": 32 },
+                { "id": 15, "game": "Teamfight Tactics (Đấu Trường Chân Lý)", "link_appstore": "https://apps.apple.com/us/app/teamfight-tactics/id1480616990", "link_google_play": "https://play.google.com/store/apps/details?id=com.riotgames.league.teamfighttactics", "description": "Game cờ nhân phẩm chiến thuật 8 người đấu trí cờ tự động đỉnh cao.", "category": "strategy", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 8 },
+                { "id": 16, "game": "Clash Royale", "link_appstore": "https://apps.apple.com/us/app/clash-royale/id1053012308", "link_google_play": "https://play.google.com/store/apps/details?id=com.supercell.clashroyale", "description": "Đấu thẻ bài chiến thuật thời gian thực 1v1 và 2v2 bảo vệ tháp vương quốc.", "category": "strategy", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 4 },
+                { "id": 17, "game": "Clash of Clans", "link_appstore": "https://apps.apple.com/us/app/clash-of-clans/id529479190", "link_google_play": "https://play.google.com/store/apps/details?id=com.supercell.clashofclans", "description": "Xây dựng làng, huấn luyện quân đội và tham gia Bang Chiến hoành tráng.", "category": "strategy", "multiplayer_type": "co_op", "min_players": 1, "max_players": 50 },
+                { "id": 18, "game": "Pokémon UNITE", "link_appstore": "https://apps.apple.com/us/app/pok%C3%A9mon-unite/id1512321575", "link_google_play": "https://play.google.com/store/apps/details?id=jp.pokemon.pokemonunite", "description": "Game MOBA Pokémon 5v5 lập đội ghi điểm trên chiến trường huyền thoại.", "category": "moba", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 19, "game": "Sky: Children of the Light", "link_appstore": "https://apps.apple.com/us/app/sky-children-of-the-light/id1462117269", "link_google_play": "https://play.google.com/store/apps/details?id=com.tgc.sky.android", "description": "Hành trình mưu trí & cảm xúc ấm áp phiêu lưu trên mây cùng người chơi khác.", "category": "rpg", "multiplayer_type": "co_op", "min_players": 1, "max_players": 8 },
+                { "id": 20, "game": "Identity V", "link_appstore": "https://apps.apple.com/us/app/identity-v/id1347780154", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.idv.googleplay", "description": "Game đối kháng bất cân sức 1 vs 4 phong cách gothic ma mị.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 5, "max_players": 5 },
+                { "id": 21, "game": "Dead by Daylight Mobile", "link_appstore": "https://apps.apple.com/us/app/dead-by-daylight-mobile/id1552684824", "link_google_play": "https://play.google.com/store/apps/details?id=com.bhvr.deadbydaylight", "description": "Game kinh dị sinh tồn 1 Kẻ Sát Nhân săn tìm 4 Kẻ Sống Sót trốn chạy.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 5, "max_players": 5 },
+                { "id": 22, "game": "Goose Goose Duck", "link_appstore": "https://apps.apple.com/us/app/goose-goose-duck/id1588691880", "link_google_play": "https://play.google.com/store/apps/details?id=com.gaggle.goosegooseduck", "description": "Game suy luận xã hội ngỗng và vịt với vô số vai trò độc đáo vui nhộn.", "category": "casual", "multiplayer_type": "social_deduction", "min_players": 5, "max_players": 16 },
+                { "id": 23, "game": "Wolvesville (Ma Sói)", "link_appstore": "https://apps.apple.com/us/app/wolvesville-werewolf-online/id1271281098", "link_google_play": "https://play.google.com/store/apps/details?id=com.werewolfonline", "description": "Game bài Ma Sói huyền thoại online tranh luận tìm Dân Làng hay Dân Thường.", "category": "casual", "multiplayer_type": "social_deduction", "min_players": 8, "max_players": 16 },
+                { "id": 24, "game": "Plato: Games & Group Chats", "link_appstore": "https://apps.apple.com/us/app/plato-games-group-chats/id1053011339", "link_google_play": "https://play.google.com/store/apps/details?id=com.plato.android", "description": "Nền tảng tập hợp hơn 45 game boardgame & minigame vừa chat vừa chơi cực cuốn.", "category": "casual", "multiplayer_type": "party", "min_players": 2, "max_players": 10 },
+                { "id": 25, "game": "UNO!", "link_appstore": "https://apps.apple.com/us/app/uno/id1388552607", "link_google_play": "https://play.google.com/store/apps/details?id=com.mattel.uno", "description": "Trò chơi bài UNO chính thức với chế độ 2v2, quy tắc riêng cực kỳ kịch tính.", "category": "casual", "multiplayer_type": "party", "min_players": 2, "max_players": 4 },
+                { "id": 26, "game": "Ludo King", "link_appstore": "https://apps.apple.com/us/app/ludo-king/id1193091532", "link_google_play": "https://play.google.com/store/apps/details?id=com.ludo.king", "description": "Game Cờ Cá Ngựa quốc dân cùng bạn bè tung xí ngầu so tài may mắn.", "category": "casual", "multiplayer_type": "party", "min_players": 2, "max_players": 6 },
+                { "id": 27, "game": "Mario Kart Tour", "link_appstore": "https://apps.apple.com/us/app/mario-kart-tour/id1297051259", "link_google_play": "https://play.google.com/store/apps/details?id=com.nintendo.zaka", "description": "Đua xe nấm Mario Kart thả chuối và mai rùa với người chơi toàn thế giới.", "category": "racing", "multiplayer_type": "party", "min_players": 2, "max_players": 8 },
+                { "id": 28, "game": "Rocket League Sideswipe", "link_appstore": "https://apps.apple.com/us/app/rocket-league-sideswipe/id1549027048", "link_google_play": "https://play.google.com/store/apps/details?id=com.Psyonix.RL2D", "description": "Bóng đá bằng xe xe đua nhào lộn 1v1 và 2v2 cực đỉnh từ Psyonix.", "category": "sports", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 4 },
+                { "id": 29, "game": "Asphalt 9: Legends", "link_appstore": "https://apps.apple.com/us/app/asphalt-9-legends/id805603214", "link_google_play": "https://play.google.com/store/apps/details?id=com.gameloft.anmp.asphalt9", "description": "Game đua xe siêu xe đồ họa 3D chân thực đấu multiplayer tốc độ cao.", "category": "racing", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 8 },
+                { "id": 30, "game": "EA SPORTS FC Mobile (FIFA)", "link_appstore": "https://apps.apple.com/us/app/ea-sports-fc-mobile-football/id1094930513", "link_google_play": "https://play.google.com/store/apps/details?id=com.ea.gp.fifamobile", "description": "Xây dựng đội bóng trong mơ và so tài bóng đá thực tế online với bạn bè.", "category": "sports", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 31, "game": "eFootball 2024 (PES Mobile)", "link_appstore": "https://apps.apple.com/us/app/efootball-2024/id1117270703", "link_google_play": "https://play.google.com/store/apps/details?id=jp.konami.pesam", "description": "Game mô phỏng bóng đá chân thực thời gian thực từ Konami.", "category": "sports", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 32, "game": "BombSquad", "link_appstore": "https://apps.apple.com/us/app/bombsquad/id1438093223", "link_google_play": "https://play.google.com/store/apps/details?id=net.froemling.bombsquad", "description": "Ném bom thổi bay bạn bè trong các minigame cướp cờ, hockey, đấm box.", "category": "party", "multiplayer_type": "party", "min_players": 2, "max_players": 8 },
+                { "id": 33, "game": "Human Fall Flat", "link_appstore": "https://apps.apple.com/us/app/human-fall-flat/id1468820109", "link_google_play": "https://play.google.com/store/apps/details?id=com.and.games505.humanfallflat", "description": "Game giải đố vật lý ngớ ngẩn phối hợp nhóm người búp bê vượt địa hình.", "category": "puzzle", "multiplayer_type": "co_op", "min_players": 2, "max_players": 8 },
+                { "id": 34, "game": "Terraria", "link_appstore": "https://apps.apple.com/us/app/terraria/id402288580", "link_google_play": "https://play.google.com/store/apps/details?id=com.and.games505.TerrariaPaid", "description": "Khám phá, đào khoáng sản, đánh boss và xây dựng thế giới 2D sandbox kỳ diệu.", "category": "sandbox", "multiplayer_type": "co_op", "min_players": 1, "max_players": 8 },
+                { "id": 35, "game": "Standoff 2", "link_appstore": "https://apps.apple.com/us/app/standoff-2/id1359706095", "link_google_play": "https://play.google.com/store/apps/details?id=com.axlebolt.standoff2", "description": "Game bắn súng góc nhìn thứ nhất FPS chuẩn phong cách Counter-Strike.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 36, "game": "Critical Ops", "link_appstore": "https://apps.apple.com/us/app/critical-ops/id1091931526", "link_google_play": "https://play.google.com/store/apps/details?id=com.criticalforceentertainment.criticalops", "description": "Game bắn súng hành thuật 5v5 gỡ bom kịch tính đòi hỏi kỹ năng cao.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 37, "game": "Blood Strike", "link_appstore": "https://apps.apple.com/us/app/blood-strike/id1637086940", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.g104na", "description": "Game bắn súng sinh tồn góc nhìn FPS nhịp độ siêu nhanh với kỹ năng đặc vụ.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 100 },
+                { "id": 38, "game": "T3 Arena", "link_appstore": "https://apps.apple.com/us/app/t3-arena/id1602814337", "link_google_play": "https://play.google.com/store/apps/details?id=com.xd.t3.global", "description": "Bắn súng anh hùng hero shooter 3v3 và 5v5 cực kỳ nhịp nhàng tươi sáng.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 6 },
+                { "id": 39, "game": "Farlight 84", "link_appstore": "https://apps.apple.com/us/app/farlight-84/id1671239860", "link_google_play": "https://play.google.com/store/apps/details?id=com.miraclegames.farlight84", "description": "Bắn súng sinh tồn tương lai với ba lô phản lực Jetpack và xe bọc thép hủy diệt.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 60 },
+                { "id": 40, "game": "Special Forces Group 2", "link_appstore": "https://apps.apple.com/us/app/special-forces-group-2/id1158828904", "link_google_play": "https://play.google.com/store/apps/details?id=com.ForgeGames.SpecialForcesGroup2", "description": "Game bắn súng chiến thuật cổ điển hỗ trợ chơi qua LAN wifi nội bộ.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 16 },
+                { "id": 41, "game": "Pixel Gun 3D", "link_appstore": "https://apps.apple.com/us/app/pixel-gun-3d-battle-royale/id640111933", "link_google_play": "https://play.google.com/store/apps/details?id=com.pixel.gun3d", "description": "Game bắn súng đồ họa khối Minecraft với hàng trăm vũ khí độc lạ.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 12 },
+                { "id": 42, "game": "Frag Pro Shooter", "link_appstore": "https://apps.apple.com/us/app/frag-pro-shooter/id1366556396", "link_google_play": "https://play.google.com/store/apps/details?id=com.ohbibi.fps", "description": "Game bắn súng đối kháng 1v1 kết hợp điều khiển biệt đội anh hùng.", "category": "action", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 43, "game": "Honkai: Star Rail", "link_appstore": "https://apps.apple.com/us/app/honkai-star-rail/id1599719154", "link_google_play": "https://play.google.com/store/apps/details?id=com.HoYoverse.hkrpgoversea", "description": "Game nhập vai chiến thuật theo lượt không gian vũ trụ từ HoYoverse.", "category": "rpg", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 44, "game": "Tower of Fantasy", "link_appstore": "https://apps.apple.com/us/app/tower-of-fantasy/id1625838880", "link_google_play": "https://play.google.com/store/apps/details?id=com.levelinfinite.hotta.gp", "description": "MMORPG thế giới mở phong cách anime sci-fi lập đội diệt boss hoành tráng.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 50 },
+                { "id": 45, "game": "Diablo Immortal", "link_appstore": "https://apps.apple.com/us/app/diablo-immortal/id1492005122", "link_google_play": "https://play.google.com/store/apps/details?id=com.blizzard.diablo.immortal", "description": "Siêu phẩm nhập vai hành động cày hầm ngục dark fantasy chính chủ Blizzard.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 100 },
+                { "id": 46, "game": "Albion Online", "link_appstore": "https://apps.apple.com/us/app/albion-online/id1209138036", "link_google_play": "https://play.google.com/store/apps/details?id=com.sandboxinteractive.albiononline", "description": "MMORPG sandbox góc nhìn từ trên xuống với nền kinh tế do người chơi tự quyết.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 100 },
+                { "id": 47, "game": "LifeAfter", "link_appstore": "https://apps.apple.com/us/app/lifeafter/id1441752845", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.mrzhna", "description": "Game sinh tồn hậu tận thế thảm họa zombie cùng dựng nhà và lập trại.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 48, "game": "Undawn", "link_appstore": "https://apps.apple.com/us/app/undawn/id1590125207", "link_google_play": "https://play.google.com/store/apps/details?id=com.tencent.lolm", "description": "Game sinh tồn thế giới mở quy mô lớn chống lại xác sống cùng đồng đội.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 8 },
+                { "id": 49, "game": "Ragnarok Origin", "link_appstore": "https://apps.apple.com/us/app/ragnarok-origin-global/id1535496426", "link_google_play": "https://play.google.com/store/apps/details?id=com.gravity.roo.en", "description": "Huyền thoại MMORPG Ragnarok trở lại với đồ họa 3D đáng yêu.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 50 },
+                { "id": 50, "game": "MapleStory M", "link_appstore": "https://apps.apple.com/us/app/maplestory-m/id1290086677", "link_google_play": "https://play.google.com/store/apps/details?id=com.nexon.maplem.global", "description": "Nấm Lùn Phiêu Lưu Ký đi cảnh màn hình ngang quen thuộc sống lại.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 10 },
+                { "id": 51, "game": "Soul Knight", "link_appstore": "https://apps.apple.com/us/app/soul-knight/id1184155508", "link_google_play": "https://play.google.com/store/apps/details?id=com.ChillyRoom.DungeonShooter", "description": "Game cày hầm ngục roguelike pixel co-op mạng cục bộ hoặc online đỉnh cao.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 52, "game": "Soul Knight Prequel", "link_appstore": "https://apps.apple.com/us/app/soul-knight-prequel/id1632420993", "link_google_play": "https://play.google.com/store/apps/details?id=com.chillyroom.soulknightprequel", "description": "Nhập vai ARPG cày đồ chia class và phối hợp kỹ năng tổ đội phiêu lưu.", "category": "rpg", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 53, "game": "PK XD", "link_appstore": "https://apps.apple.com/us/app/pk-xd-explore-universes/id1484042802", "link_google_play": "https://play.google.com/store/apps/details?id=com.movile.playkids.pkxd", "description": "Thế giới mở mô phỏng sáng tạo nhân vật, trang trí nhà cửa và chơi minigame.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 50 },
+                { "id": 54, "game": "Mini World: Creata", "link_appstore": "https://apps.apple.com/us/app/mini-world-creata/id1170420713", "link_google_play": "https://play.google.com/store/apps/details?id=com.playmini.miniworld", "description": "Game sandbox 3D tự do sáng tạo và khám phá hàng nghìn bản đồ cộng đồng.", "category": "sandbox", "multiplayer_type": "party", "min_players": 1, "max_players": 40 },
+                { "id": 55, "game": "Super Sus", "link_appstore": "https://apps.apple.com/us/app/super-sus-who-is-the-impostor/id1586523971", "link_google_play": "https://play.google.com/store/apps/details?id=com.pi.supersus", "description": "Game Ma Sói không gian 3D thế hệ mới với hơn 30 vai trò nhân vật độc đáo.", "category": "casual", "multiplayer_type": "social_deduction", "min_players": 6, "max_players": 15 },
+                { "id": 56, "game": "Suspects: Mystery Mansion", "link_appstore": "https://apps.apple.com/us/app/suspects-mystery-mansion/id1539201002", "link_google_play": "https://play.google.com/store/apps/details?id=com.wildlife.games.battle.royale.free.suspects.mystery.mansion", "description": "Giải mã vụ án biệt thự bí ẩn cùng các nhân vật động vật ngộ nghĩnh.", "category": "casual", "multiplayer_type": "social_deduction", "min_players": 6, "max_players": 10 },
+                { "id": 57, "game": "Town of Salem", "link_appstore": "https://apps.apple.com/us/app/town-of-salem-the-coven/id1421703603", "link_google_play": "https://play.google.com/store/apps/details?id=com.blankmediagames.townofsalem", "description": "Trò chơi đấu trí suy luận Mafia kinh điển đòi hỏi khả năng nói dối và biện luận.", "category": "casual", "multiplayer_type": "social_deduction", "min_players": 7, "max_players": 15 },
+                { "id": 58, "game": "Monopoly Go!", "link_appstore": "https://apps.apple.com/us/app/monopoly-go/id1621128561", "link_google_play": "https://play.google.com/store/apps/details?id=com.scopely.monopolygo", "description": "Game Cờ Tỷ Phú di động cải tiến xới tung bàn cờ đi cướp phá bạn bè.", "category": "board", "multiplayer_type": "party", "min_players": 2, "max_players": 4 },
+                { "id": 59, "game": "Chess.com", "link_appstore": "https://apps.apple.com/us/app/chess-play-learn/id329218549", "link_google_play": "https://play.google.com/store/apps/details?id=com.chess", "description": "Ứng dụng Cờ Vua online lớn nhất thế giới so tài cao thấp cùng bạn bè.", "category": "board", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 60, "game": "Exploding Kittens", "link_appstore": "https://apps.apple.com/us/app/exploding-kittens-official/id1020226941", "link_google_play": "https://play.google.com/store/apps/details?id=com.explodingkittens.projectg", "description": "Game bài Mèo Nổ siêu hài hước hại bạn hại bè cực kỳ hại não.", "category": "card", "multiplayer_type": "party", "min_players": 2, "max_players": 5 },
+                { "id": 61, "game": "Ticket to Ride", "link_appstore": "https://apps.apple.com/us/app/ticket-to-ride/id432501313", "link_google_play": "https://play.google.com/store/apps/details?id=com.asmodeedigital.tickettoride", "description": "Boardgame nối đường ray xe lửa liên lục địa nổi tiếng thế giới.", "category": "board", "multiplayer_type": "party", "min_players": 2, "max_players": 5 },
+                { "id": 62, "game": "Catan Universe", "link_appstore": "https://apps.apple.com/us/app/catan-universe/id1219614488", "link_google_play": "https://play.google.com/store/apps/details?id=com.usm.catanuniverse", "description": "Boardgame định cư đảo Catan giao thương khoáng sản chiếm tài nguyên.", "category": "board", "multiplayer_type": "party", "min_players": 3, "max_players": 6 },
+                { "id": 63, "game": "Phase 10: World Tour", "link_appstore": "https://apps.apple.com/us/app/phase-10-world-tour/id1467451347", "link_google_play": "https://play.google.com/store/apps/details?id=com.mattel.phase10", "description": "Trò chơi bài tạo bộ 10 giai đoạn thú vị từ nhà sản xuất UNO.", "category": "card", "multiplayer_type": "party", "min_players": 2, "max_players": 4 },
+                { "id": 64, "game": "Scrabble GO", "link_appstore": "https://apps.apple.com/us/app/scrabble-go-word-game/id1480623129", "link_google_play": "https://play.google.com/store/apps/details?id=com.pie.scrabble", "description": "Game ghép từ Tiếng Anh kinh điển thử thách vốn từ vựng cùng bạn bè.", "category": "puzzle", "multiplayer_type": "1v1", "min_players": 2, "max_players": 4 },
+                { "id": 65, "game": "Golf Battle", "link_appstore": "https://apps.apple.com/us/app/golf-battle/id1322201389", "link_google_play": "https://play.google.com/store/apps/details?id=com.miniclip.golfbattle", "description": "Đua đánh golf minigame 6 người cùng lúc xem ai đánh bóng vào lỗ nhanh nhất.", "category": "sports", "multiplayer_type": "party", "min_players": 2, "max_players": 6 },
+                { "id": 66, "game": "Tennis Clash", "link_appstore": "https://apps.apple.com/us/app/tennis-clash-multiplayer-game/id1346177109", "link_google_play": "https://play.google.com/store/apps/details?id=com.tbg.tennis", "description": "Game quần vợt Tennis 3D thi đấu trực tiếp 1v1 thao tác quẹt tay đơn giản.", "category": "sports", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 67, "game": "Head Ball 2", "link_appstore": "https://apps.apple.com/us/app/head-ball-2-online-soccer/id1193899732", "link_google_play": "https://play.google.com/store/apps/details?id=com.masomo.headball2", "description": "Bóng đá đầu to 1v1 sử dụng kỹ năng đặc biệt vô cùng hài hước.", "category": "sports", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 68, "game": "Drive Ahead!", "link_appstore": "https://apps.apple.com/us/app/drive-ahead/id994883403", "link_google_play": "https://play.google.com/store/apps/details?id=com.dodreams.driveahead", "description": "Đấu xe húc đầu làm vỡ mũ bảo hiểm đối phương chơi 2 người trên 1 máy.", "category": "racing", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 69, "game": "Beach Buggy Racing 2", "link_appstore": "https://apps.apple.com/us/app/beach-buggy-racing-2/id1430580320", "link_google_play": "https://play.google.com/store/apps/details?id=com.vectorunit.cobra.google", "description": "Đua xe địa hình bãi biển nhặt kỹ năng đặc biệt bắn nổ xe đối thủ.", "category": "racing", "multiplayer_type": "party", "min_players": 2, "max_players": 8 },
+                { "id": 70, "game": "NBA 2K Mobile Basketball", "link_appstore": "https://apps.apple.com/us/app/nba-2k-mobile-basketball-game/id1252801207", "link_google_play": "https://play.google.com/store/apps/details?id=com.catdaddy.nba2k", "description": "Game bóng rổ đỉnh cao đồ họa console thi đấu PvP thời gian thực.", "category": "sports", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 71, "game": "Slam Dunk Mobile", "link_appstore": "https://apps.apple.com/us/app/slam-dunk/id1501676690", "link_google_play": "https://play.google.com/store/apps/details?id=com.denachina.g63002013.android", "description": "Game bóng rổ 3v3 theo bộ manga Cao Thủ Bóng Rổ Slam Dunk.", "category": "sports", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 6 },
+                { "id": 72, "game": "KartRider Rush+", "link_appstore": "https://apps.apple.com/us/app/kartrider-rush/id1492370887", "link_google_play": "https://play.google.com/store/apps/details?id=com.nexon.kart", "description": "Huyền thoại đua xe bối cảnh Boom Online trở lại với kỹ năng drift mượt mà.", "category": "racing", "multiplayer_type": "party", "min_players": 2, "max_players": 8 },
+                { "id": 73, "game": "Speed Drifters (ZingSpeed Mobile)", "link_appstore": "https://apps.apple.com/us/app/speed-drifters/id1433062332", "link_google_play": "https://play.google.com/store/apps/details?id=com.garena.game.kgvn", "description": "Game đua xe tốc độ drift đốt cháy đường đua cùng kho thời trang đa dạng.", "category": "racing", "multiplayer_type": "party", "min_players": 2, "max_players": 6 },
+                { "id": 74, "game": "Spaceteam", "link_appstore": "https://apps.apple.com/us/app/spaceteam/id570808614", "link_google_play": "https://play.google.com/store/apps/details?id=com.sleepingbeastgames.spaceteam", "description": "Game la hét phối hợp điều khiển phi thuyền space ngộ nghĩnh qua Wifi/Bluetooth.", "category": "party", "multiplayer_type": "co_op", "min_players": 2, "max_players": 8 },
+                { "id": 75, "game": "DUAL!", "link_appstore": "https://apps.apple.com/us/app/dual/id918998818", "link_google_play": "https://play.google.com/store/apps/details?id=com.secretexit.dual", "description": "Game bắn đạn kết nối màn hình 2 điện thoại áp sát nhau cực kỳ sáng tạo.", "category": "action", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 76, "game": "Micro Battles", "link_appstore": "https://apps.apple.com/us/app/micro-battles/id928373752", "link_google_play": "https://play.google.com/store/apps/details?id=com.donutgames.microbattles", "description": "Tập hợp các trận đối đầu 1v1 chỉ bằng 1 nút bấm trên cùng 1 màn hình.", "category": "casual", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 77, "game": "Stickman Party", "link_appstore": "https://apps.apple.com/us/app/stickman-party-234-mini-games/id1485642220", "link_google_play": "https://play.google.com/store/apps/details?id=com.PlayMax.playergames", "description": "Bộ minigame người que cho 1 đến 4 người chơi chung trên cùng điện thoại.", "category": "party", "multiplayer_type": "party", "min_players": 1, "max_players": 4 },
+                { "id": 78, "game": "Glow Hockey 2", "link_appstore": "https://apps.apple.com/us/app/glow-hockey-2/id389146522", "link_google_play": "https://play.google.com/store/apps/details?id=com.natenai.glowhockey2", "description": "Game khúc côn cầu không khí đèn neon gạt bóng 2 người kinh điển.", "category": "casual", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 79, "game": "BADLAND", "link_appstore": "https://apps.apple.com/us/app/badland/id535176909", "link_google_play": "https://play.google.com/store/apps/details?id=com.frogmind.badland", "description": "Hành trình bay qua khu rừng bẫy chông co-op 4 người cùng chơi trên 1 màn hình.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 80, "game": "Badland Brawl", "link_appstore": "https://apps.apple.com/us/app/badland-brawl/id1301961145", "link_google_play": "https://play.google.com/store/apps/details?id=com.frogmind.badlandbrawl", "description": "Game bắn ná vật lý đẩy tháp đối kháng thời gian thực dựa trên vũ trụ Badland.", "category": "strategy", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 4 },
+                { "id": 81, "game": "Crossy Road", "link_appstore": "https://apps.apple.com/us/app/crossy-road/id918520702", "link_google_play": "https://play.google.com/store/apps/details?id=com.yodo1.crossyroad", "description": "Game dắt gà qua đường vượt sông tránh ô tô chơi cùng bạn bè.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 4 },
+                { "id": 82, "game": "Worms Zone .io", "link_appstore": "https://apps.apple.com/us/app/worms-zone-io-voracious-snake/id1489679203", "link_google_play": "https://play.google.com/store/apps/details?id=com.wildspike.wormszone", "description": "Rắn săn mồi ăn bánh kẹo vây bắt các đối thủ rắn khác cực cuốn.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 50 },
+                { "id": 83, "game": "Slither.io", "link_appstore": "https://apps.apple.com/us/app/slither-io/id1091944558", "link_google_play": "https://play.google.com/store/apps/details?id=air.com.hypah.io.slither", "description": "Trò chơi Rắn săn mồi online huyền thoại bẫy đầu rắn đối phương.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 100 },
+                { "id": 84, "game": "Agar.io", "link_appstore": "https://apps.apple.com/us/app/agar-io/id995250017", "link_google_play": "https://play.google.com/store/apps/details?id=com.miniclip.agario", "description": "Game bong bóng nuốt tế bào nhỏ để lớn mạnh và tách đôi săn lùng.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 100 },
+                { "id": 85, "game": "Paper.io 2", "link_appstore": "https://apps.apple.com/us/app/paper-io-2/id1436214349", "link_google_play": "https://play.google.com/store/apps/details?id=io.voodoo.paperio2", "description": "Vẽ đường bao chiếm lãnh thổ không cho đối thủ cắt ngang vệt màu.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 20 },
+                { "id": 86, "game": "Hole.io", "link_appstore": "https://apps.apple.com/us/app/hole-io/id1389128371", "link_google_play": "https://play.google.com/store/apps/details?id=com.voodoo.hole", "description": "Hố đen vũ trụ nuốt chửng thành phố, xe cộ và các hố đen đối thủ.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 16 },
+                { "id": 87, "game": "Last Island of Survival", "link_appstore": "https://apps.apple.com/us/app/last-island-of-survival/id1463020928", "link_google_play": "https://play.google.com/store/apps/details?id=com.herogame.gamelord.lastdayrules", "description": "Game sinh tồn tự do xây dựng căn cứ và đi raid nhà đối thủ phong cách Rust.", "category": "action", "multiplayer_type": "mmo", "min_players": 1, "max_players": 100 },
+                { "id": 88, "game": "ARK: Survival Evolved", "link_appstore": "https://apps.apple.com/us/app/ark-survival-evolved/id1280892953", "link_google_play": "https://play.google.com/store/apps/details?id=com.studiowildcard.wardrumstudios.ark", "description": "Săn bắn, thuần phục khủng long và sinh tồn hoang dã cùng bang hội.", "category": "action", "multiplayer_type": "mmo", "min_players": 1, "max_players": 60 },
+                { "id": 89, "game": "Dragon Raja", "link_appstore": "https://apps.apple.com/us/app/dragon-raja/id1487866632", "link_google_play": "https://play.google.com/store/apps/details?id=com.zloong.eu.dr.gp", "description": "MMORPG đồ họa Unreal Engine 4 lộng lẫy trong thế giới giả tưởng hiện đại.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 100 },
+                { "id": 90, "game": "Black Desert Mobile", "link_appstore": "https://apps.apple.com/us/app/black-desert-mobile/id1477824130", "link_google_play": "https://play.google.com/store/apps/details?id=com.pearlabyss.blackdesertm.gl", "description": "Siêu phẩm nhập vai chiến đấu chặt chém đỉnh cao từ Korea.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 100 },
+                { "id": 91, "game": "Ni no Kuni: Cross Worlds", "link_appstore": "https://apps.apple.com/us/app/ni-no-kuni-cross-worlds/id1580131495", "link_google_play": "https://play.google.com/store/apps/details?id=com.netmarble.enn", "description": "MMORPG đồ họa phim hoạt hình Studio Ghibli nhẹ nhàng bay bổng.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 50 },
+                { "id": 92, "game": "Torchlight: Infinite", "link_appstore": "https://apps.apple.com/us/app/torchlight-infinite/id1528659828", "link_google_play": "https://play.google.com/store/apps/details?id=com.xd.indie.torchlightglobal", "description": "ARPG chặt chém loot đồ cày build nhân vật độc đáo phong cách Torchlight.", "category": "rpg", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 93, "game": "AdventureQuest 3D MMORPG", "link_appstore": "https://apps.apple.com/us/app/adventurequest-3d-mmo/id968076390", "link_google_play": "https://play.google.com/store/apps/details?id=com.battleon.aq3d", "description": "Game MMORPG hài hước cross-platform chơi mượt trên cả PC và Mobile.", "category": "rpg", "multiplayer_type": "mmo", "min_players": 1, "max_players": 50 },
+                { "id": 94, "game": "Onmyoji Arena (Âm Dương Sư MOBA)", "link_appstore": "https://apps.apple.com/us/app/onmyoji-arena/id1343073259", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.g78na.gb", "description": "Game MOBA Thức Thần Nhật Bản 5v5 cân bằng tuyệt đối từ NetEase.", "category": "moba", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 95, "game": "Heroes Evolved", "link_appstore": "https://apps.apple.com/us/app/heroes-evolved/id1172106173", "link_google_play": "https://play.google.com/store/apps/details?id=com.rsg.heroesevolved", "description": "MOBA chiến thuật đấu đội với bản đồ sương mù chiến tranh Fog of War.", "category": "moba", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 96, "game": "Extraordinary Ones", "link_appstore": "https://apps.apple.com/us/app/extraordinary-ones/id1463777553", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.g116na", "description": "MOBA học viện siêu quậy phong cách Manga Anime Nhật Bản cực nhộn.", "category": "moba", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 97, "game": "Shadowgun Legends", "link_appstore": "https://apps.apple.com/us/app/shadowgun-legends-online-fps/id1091251468", "link_google_play": "https://play.google.com/store/apps/details?id=com.madfingergames.fps.online.shadowgun.legends", "description": "Game bắn súng viễn tưởng cày hầm ngục đồ họa đẹp như Console.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 98, "game": "Modern Combat 5", "link_appstore": "https://apps.apple.com/us/app/modern-combat-5/id858215500", "link_google_play": "https://play.google.com/store/apps/details?id=com.gameloft.android.ANMP.GloftM5HM", "description": "Tượng đài bắn súng FPS quân sự đa dạng chế độ thi đấu biệt đội.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 12 },
+                { "id": 99, "game": "World War Heroes: WW2 FPS", "link_appstore": "https://apps.apple.com/us/app/world-war-heroes-ww2-fps/id1281535287", "link_google_play": "https://play.google.com/store/apps/details?id=com.gamedevltd.wwh", "description": "Chiến tranh thế giới thứ 2 góc nhìn thứ nhất với xe tăng và súng trường cổ.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 100, "game": "MilkChoco", "link_appstore": "https://apps.apple.com/us/app/milkchoco/id1216930058", "link_google_play": "https://play.google.com/store/apps/details?id=com.gameparadiso.milkchoco", "description": "Bắn súng góc nhìn thứ ba 5v5 nhân vật sữa và socola siêu đáng yêu.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 101, "game": "Specimen Zero - Online horror", "link_appstore": "https://apps.apple.com/us/app/specimen-zero-online-horror/id1562915351", "link_google_play": "https://play.google.com/store/apps/details?id=com.Cafebazaar.SpecimenZero", "description": "Trốn thoát khỏi bệnh viện kinh dị cùng bạn bè tránh quái vật gớm ghiếc.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 102, "game": "Horrorfield Multiplayer horror", "link_appstore": "https://apps.apple.com/us/app/horrorfield-multiplayer-horror/id1448092284", "link_google_play": "https://play.google.com/store/apps/details?id=com.skytecgames.horrorfield", "description": "Game kinh dị trốn tìm 4 con người hợp lực thoát khỏi tay gã đồ tể.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 5, "max_players": 5 },
+                { "id": 103, "game": "Granny 3", "link_appstore": "https://apps.apple.com/us/app/granny-3/id1571249767", "link_google_play": "https://play.google.com/store/apps/details?id=com.DVloper.Granny3", "description": "Trốn khỏi căn nhà của Bà Ngoại và Ông Nội ma quỷ đầy cạm bẫy.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 104, "game": "Mimicry: Horror Action", "link_appstore": "https://apps.apple.com/us/app/mimicry-horror-action-online/id1588673738", "link_google_play": "https://play.google.com/store/apps/details?id=com.europosit.pixel.gun.horror", "description": "Game hành động kinh dị 9 người chơi, 1 người sẽ biến thành quái vật biến hình.", "category": "action", "multiplayer_type": "social_deduction", "min_players": 4, "max_players": 9 },
+                { "id": 105, "game": "Psych! Outwit Your Friends", "link_appstore": "https://apps.apple.com/us/app/psych-outwit-your-friends/id1009115712", "link_google_play": "https://play.google.com/store/apps/details?id=com.wb.goog.psych", "description": "Game đố vui bịa câu trả lời giả để lừa bạn bè chọn câu trả lời của mình.", "category": "casual", "multiplayer_type": "party", "min_players": 2, "max_players": 10 },
+                { "id": 106, "game": "Keep Talking and Nobody Explodes", "link_appstore": "https://apps.apple.com/us/app/keep-talking-nobody-explodes/id1459923097", "link_google_play": "https://play.google.com/store/apps/details?id=com.steelcrategames.keeptalkingandnobodyexplodes", "description": "1 người gỡ bom, những người còn lại đọc cẩm nang hướng dẫn qua giọng nói.", "category": "puzzle", "multiplayer_type": "co_op", "min_players": 2, "max_players": 6 },
+                { "id": 107, "game": "Don't Starve Pocket Edition", "link_appstore": "https://apps.apple.com/us/app/dont-starve-pocket-edition/id1012268403", "link_google_play": "https://play.google.com/store/apps/details?id=com.kleientertainment.doNotStarvePocket", "description": "Game sinh tồn hoang dã dark fantasy nổi tiếng cùng bạn bè chống lại bóng tối.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 108, "game": "Cooking Battle", "link_appstore": "https://apps.apple.com/us/app/cooking-battle/id1475510651", "link_google_play": "https://play.google.com/store/apps/details?id=com.garena.game.kgvn", "description": "Game nấu ăn điên rồ phong cách Overcooked thi đấu 2v2 bận rộn tay chân.", "category": "party", "multiplayer_type": "co_op", "min_players": 2, "max_players": 4 },
+                { "id": 109, "game": "Auto Chess", "link_appstore": "https://apps.apple.com/us/app/auto-chess/id1464338890", "link_google_play": "https://play.google.com/store/apps/details?id=com.dragonest.autochess.google", "description": "Khởi nguồn phong trào cờ tự động Auto Battler 8 người chơi do Drodo Studio phát triển.", "category": "strategy", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 8 },
+                { "id": 110, "game": "World of Tanks Blitz", "link_appstore": "https://apps.apple.com/us/app/world-of-tanks-blitz-pVP-mmo/id859204743", "link_google_play": "https://play.google.com/store/apps/details?id=net.wargaming.wot.blitz", "description": "Đấu xe tăng bọc thép 7v7 chiến thuật thời gian thực siêu chân thực.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 14 },
+                { "id": 111, "game": "World of Warships Blitz", "link_appstore": "https://apps.apple.com/us/app/world-of-warships-blitz-mmo/id1205558963", "link_google_play": "https://play.google.com/store/apps/details?id=net.wargaming.wows.blitz", "description": "Hải chiến tàu chiến, hạm đội hàng không mẫu hạm 7v7 hoành tráng trên biển.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 14 },
+                { "id": 112, "game": "War Thunder Mobile", "link_appstore": "https://apps.apple.com/us/app/war-thunder-mobile/id1588049012", "link_google_play": "https://play.google.com/store/apps/details?id=com.gaijin.wtm", "description": "Chiến tranh tổng lực không quân, lục quân, hải quân vật lý chuẩn xác.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 113, "game": "Brawlhalla", "link_appstore": "https://apps.apple.com/us/app/brawlhalla/id1491520571", "link_google_play": "https://play.google.com/store/apps/details?id=com.ubisoft.brawlhalla", "description": "Game đối kháng đài 2D đánh văng đối thủ phong cách Super Smash Bros.", "category": "action", "multiplayer_type": "party", "min_players": 2, "max_players": 8 },
+                { "id": 114, "game": "Flash Party", "link_appstore": "https://apps.apple.com/us/app/flash-party/id1579830302", "link_google_play": "https://play.google.com/store/apps/details?id=com.xd.platform.starlight", "description": "Game đối kháng nền tảng 3D nhịp độ cao đấm đá combo cực sướng tay.", "category": "action", "multiplayer_type": "party", "min_players": 2, "max_players": 4 },
+                { "id": 115, "game": "Metal Slug Awakening (Rambo Luyện Thép)", "link_appstore": "https://apps.apple.com/us/app/metal-slug-awakening/id1626219376", "link_google_play": "https://play.google.com/store/apps/details?id=com.vng.metalslug", "description": "Rambo lùn bắn súng đi cảnh huyền thoại tái xuất đồ họa 3D lột xác.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 3 },
+                { "id": 116, "game": "Contra Returns", "link_appstore": "https://apps.apple.com/us/app/contra-returns/id1414013182", "link_google_play": "https://play.google.com/store/apps/details?id=com.garena.game.kgvn", "description": "Game Contra huyền thoại phiên bản di động chơi Co-op 2 người diệt vi khuẩn ngoài hành tinh.", "category": "action", "multiplayer_type": "co_op", "min_players": 1, "max_players": 2 },
+                { "id": 117, "game": "Skullgirls: Fighting RPG", "link_appstore": "https://apps.apple.com/us/app/skullgirls-fighting-rpg/id1282135259", "link_google_play": "https://play.google.com/store/apps/details?id=com.autumn.skullgirls", "description": "Game đối kháng 2D đồ họa hoạt hình vẽ tay tuyệt đẹp combo hoa mắt.", "category": "action", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 118, "game": "Shadow Fight 4: Arena", "link_appstore": "https://apps.apple.com/us/app/shadow-fight-4-arena/id1479168922", "link_google_play": "https://play.google.com/store/apps/details?id=com.nekki.shadowfightarena", "description": "Đấu sĩ bóng đêm đối kháng 3v3 thi đấu PvP kỹ năng thực thụ.", "category": "action", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 119, "game": "Cyber Hunter", "link_appstore": "https://apps.apple.com/us/app/cyber-hunter/id1435263259", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.hyna", "description": "Bắn súng sinh tồn kết hợp xây tường rào, bay lượn leo trèo tự do.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 100 },
+                { "id": 120, "game": "Sausage Man", "link_appstore": "https://apps.apple.com/us/app/sausage-man/id1563283282", "link_google_play": "https://play.google.com/store/apps/details?id=com.sofunny.Sausage", "description": "Game sinh tồn xúc xích béo tròn cưỡi rồng, dùng súng sấm sét cực bựa.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 100 },
+                { "id": 121, "game": "Omega Strikers", "link_appstore": "https://apps.apple.com/us/app/omega-strikers/id1660598263", "link_google_play": "https://play.google.com/store/apps/details?id=com.odysseyinteractive.omegastrikers", "description": "Đá bóng năng lượng anh hùng 3v3 đánh văng đối thủ khỏi sân đấu.", "category": "sports", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 6 },
+                { "id": 122, "game": "Harry Potter: Magic Awakened", "link_appstore": "https://apps.apple.com/us/app/harry-potter-magic-awakened/id1556303273", "link_google_play": "https://play.google.com/store/apps/details?id=com.zenstudios.hpma", "description": "Nhập vai học viên Hogwarts đấu thẻ bài phép thuật 1v1 và 2v2.", "category": "rpg", "multiplayer_type": "team_pvp", "min_players": 1, "max_players": 4 },
+                { "id": 123, "game": "Yu-Gi-Oh! Master Duel", "link_appstore": "https://apps.apple.com/us/app/yu-gi-oh-master-duel/id1554246823", "link_google_play": "https://play.google.com/store/apps/details?id=jp.konami.masterduel", "description": "Game bài Ma Thuật Yu-Gi-Oh! chuẩn luật quốc tế đồ họa triệu hồi hoành tráng.", "category": "card", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 124, "game": "Yu-Gi-Oh! Duel Links", "link_appstore": "https://apps.apple.com/us/app/yu-gi-oh-duel-links/id1068378177", "link_google_play": "https://play.google.com/store/apps/details?id=jp.konami.duellinks", "description": "Đấu bài Yugioh tốc độ nhanh Speed Duel hóa thân thành Yugi, Kaiba.", "category": "card", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 125, "game": "Legends of Runeterra", "link_appstore": "https://apps.apple.com/us/app/legends-of-runeterra/id1145006477", "link_google_play": "https://play.google.com/store/apps/details?id=com.riotgames.legendsofruneterra", "description": "Game thẻ bài chiến thuật thế giới LMHT từ Riot Games đòi hỏi tư duy sâu.", "category": "card", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 126, "game": "Hearthstone", "link_appstore": "https://apps.apple.com/us/app/hearthstone/id625257520", "link_google_play": "https://play.google.com/store/apps/details?id=com.blizzard.wtcg.hearthstone", "description": "Huyền thoại card game từ Blizzard đấu trí thẻ bài Warcraft hấp dẫn.", "category": "card", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 127, "game": "MARVEL SNAP", "link_appstore": "https://apps.apple.com/us/app/marvel-snap/id1592080003", "link_google_play": "https://play.google.com/store/apps/details?id=com.nvsgames.snap", "description": "Game thẻ bài siêu anh hùng Marvel mỗi trận đấu chỉ kéo dài 3 phút siêu cuốn.", "category": "card", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 128, "game": "Magic: The Gathering Arena", "link_appstore": "https://apps.apple.com/us/app/magic-the-gathering-arena/id1496267021", "link_google_play": "https://play.google.com/store/apps/details?id=com.wizards.mtga", "description": "Ông tổ thể loại card game quy tụ hàng nghìn lá bài ma thuật biến hóa.", "category": "card", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 129, "game": "Project SEKAI: COLORFUL STAGE!", "link_appstore": "https://apps.apple.com/us/app/hatsune-miku-colorful-stage/id1580044138", "link_google_play": "https://play.google.com/store/apps/details?id=com.sega.ColorfulStage.en", "description": "Game âm nhạc Hatsune Miku gõ phím nhịp điệu thi đấu phòng nhạc 5 người.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 5 },
+                { "id": 130, "game": "BanG Dream! Girls Band Party!", "link_appstore": "https://apps.apple.com/us/app/bang-dream-girls-band-party/id1335529760", "link_google_play": "https://play.google.com/store/apps/details?id=com.bushiroad.en.bangdreamgbp", "description": "Game âm nhạc nhịp điệu lập ban nhạc anime nữ cùng chơi live concert.", "category": "casual", "multiplayer_type": "party", "min_players": 1, "max_players": 5 },
+                { "id": 131, "game": "Just Dance Now", "link_appstore": "https://apps.apple.com/us/app/just-dance-now/id911358374", "link_google_play": "https://play.google.com/store/apps/details?id=com.ubisoft.dance.justdance", "description": "Biến điện thoại thành tay cầm nhảy theo điệu nhạc trên màn hình TV/Máy tính.", "category": "party", "multiplayer_type": "party", "min_players": 1, "max_players": 100 },
+                { "id": 132, "game": "Beatstar - Touch Your Music", "link_appstore": "https://apps.apple.com/us/app/beatstar/id1510804349", "link_google_play": "https://play.google.com/store/apps/details?id=com.spaceapegames.beatstar", "description": "Chạm theo giai điệu các bài hát Pop, Rock, Hip-hop hot nhất hiện nay.", "category": "casual", "multiplayer_type": "1v1", "min_players": 1, "max_players": 2 },
+                { "id": 133, "game": "Real Boxing 2", "link_appstore": "https://apps.apple.com/us/app/real-boxing-2/id905163074", "link_google_play": "https://play.google.com/store/apps/details?id=com.vividgames.realboxing2", "description": "Quyền Anh đấm mốc đối thủ 1v1 đồ họa Unreal Engine chân thực.", "category": "sports", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 134, "game": "WWE Mayhem", "link_appstore": "https://apps.apple.com/us/app/wwe-mayhem/id1230144413", "link_google_play": "https://play.google.com/store/apps/details?id=com.reliancegames.wwemayhem", "description": "Đô vật mỹ WWE biểu diễn tuyệt kỹ quăng quật sàn đấu gay kấn.", "category": "sports", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 135, "game": "CarX Drift Racing 2", "link_appstore": "https://apps.apple.com/us/app/carx-drift-racing-2/id1198091172", "link_google_play": "https://play.google.com/store/apps/details?id=com.carxtech.carxdr2", "description": "Đỉnh cao đua xe drift khét lẹt lề đường mô phỏng vật lý lốp xe sát thực tế.", "category": "racing", "multiplayer_type": "party", "min_players": 2, "max_players": 8 },
+                { "id": 136, "game": "Knives Out", "link_appstore": "https://apps.apple.com/us/app/knives-out/id1312038238", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.ko", "description": "Game bắn súng sinh tồn 100 người bản đồ cực rộng đến từ NetEase.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 100 },
+                { "id": 137, "game": "Rules of Survival", "link_appstore": "https://apps.apple.com/us/app/rules-of-survival/id1307961751", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.chongzhi", "description": "Cựu vương sinh tồn 120 người chơi nhảy dù gom súng đạn bắn nhau.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 120 },
+                { "id": 138, "game": "Shadow Fight 3", "link_appstore": "https://apps.apple.com/us/app/shadow-fight-3-action-rpg/id1143488258", "link_google_play": "https://play.google.com/store/apps/details?id=com.nekki.shadowfight3", "description": "Nhập vai hiệp sĩ bóng đêm chiến đấu võ thuật binh khí 3D đẹp mắt.", "category": "action", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 139, "game": "Crossy Road Castle", "link_appstore": "https://apps.apple.com/us/app/crossy-road-castle/id1478913360", "link_google_play": "https://play.google.com/store/apps/details?id=com.hipsterwhale.crossyroadcastle", "description": "Leo tháp mạo hiểm vượt chướng ngại vật co-op 4 người vui nhộn.", "category": "party", "multiplayer_type": "co_op", "min_players": 1, "max_players": 4 },
+                { "id": 140, "game": "Raskulls Online", "link_appstore": "https://apps.apple.com/us/app/raskulls-online/id1438000000", "link_google_play": "https://play.google.com/store/apps/details?id=com.halfbrick.raskulls", "description": "Game đua phá khối đá sinh tồn đối kháng hài hước từ Halfbrick.", "category": "party", "multiplayer_type": "party", "min_players": 2, "max_players": 4 },
+                { "id": 141, "game": "Phigros", "link_appstore": "https://apps.apple.com/us/app/phigros/id1485641198", "link_google_play": "https://play.google.com/store/apps/details?id=com.PigeonGames.Phigros", "description": "Game âm nhạc nốt nhạc di động xoay chuyển biến ảo hoàn toàn miễn phí.", "category": "casual", "multiplayer_type": "1v1", "min_players": 1, "max_players": 2 },
+                { "id": 142, "game": "Arcaea", "link_appstore": "https://apps.apple.com/us/app/arcaea/id1205999225", "link_google_play": "https://play.google.com/store/apps/details?id=moe.low.arc", "description": "Game nhịp điệu 3D không gian ánh sáng & bóng tối thử thách ngón tay cực hạn.", "category": "casual", "multiplayer_type": "1v1", "min_players": 1, "max_players": 2 },
+                { "id": 143, "game": "Cytoid: A Community Rhythm Game", "link_appstore": "https://apps.apple.com/us/app/cytoid/id1190226307", "link_google_play": "https://play.google.com/store/apps/details?id=moe.cytoid.cytoid", "description": "Game âm nhạc nhịp điệu do cộng đồng tự sáng tạo chart bài hát.", "category": "casual", "multiplayer_type": "1v1", "min_players": 1, "max_players": 2 },
+                { "id": 144, "game": "Need for Speed No Limits", "link_appstore": "https://apps.apple.com/us/app/need-for-speed-no-limits/id883393043", "link_google_play": "https://play.google.com/store/apps/details?id=com.ea.game.nfs14_row", "description": "Đua xe ngầm đường phố độ xe cảnh sát rượt đuổi nghẹt thở.", "category": "racing", "multiplayer_type": "party", "min_players": 1, "max_players": 8 },
+                { "id": 145, "game": "Real Racing 3", "link_appstore": "https://apps.apple.com/us/app/real-racing-3/id556179615", "link_google_play": "https://play.google.com/store/apps/details?id=com.ea.games.r3_row", "description": "Đua xe F1 và GT mô phỏng thực tế đường đua chuẩn quốc tế.", "category": "racing", "multiplayer_type": "party", "min_players": 2, "max_players": 8 },
+                { "id": 146, "game": "Shadowgun War Games", "link_appstore": "https://apps.apple.com/us/app/shadowgun-war-games-5v5-fps/id1483832049", "link_google_play": "https://play.google.com/store/apps/details?id=com.madfingergames.wargames.fps", "description": "Game bắn súng FPS anh hùng 5v5 cướp cờ sinh tử nhịp độ cao.", "category": "action", "multiplayer_type": "team_pvp", "min_players": 2, "max_players": 10 },
+                { "id": 147, "game": "Street Fighter IV CE", "link_appstore": "https://apps.apple.com/us/app/street-fighter-iv-ce/id1239644982", "link_google_play": "https://play.google.com/store/apps/details?id=jp.co.capcom.sf4ce", "description": "Game đối kháng Huyền Thoại Đào Đường Street Fighter tung Chưởng Hadoken.", "category": "action", "multiplayer_type": "1v1", "min_players": 2, "max_players": 2 },
+                { "id": 148, "game": "ZOZ: Final Hour", "link_appstore": "https://apps.apple.com/us/app/zoz-final-hour/id1582298711", "link_google_play": "https://play.google.com/store/apps/details?id=com.netease.zozfh", "description": "Game bắn súng tìm Máu Người Đột Biến trốn thoát bằng trực thuống.", "category": "action", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 15 },
+                { "id": 149, "game": "Chess Rush", "link_appstore": "https://apps.apple.com/us/app/chess-rush/id1468205461", "link_google_play": "https://play.google.com/store/apps/details?id=com.tencent.rid", "description": "Cờ tự động đấu tướng nhịp độ nhanh Turbo Mode 10 phút/trận.", "category": "strategy", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 8 },
+                { "id": 150, "game": "Magic Chess: Bang Bang", "link_appstore": "https://apps.apple.com/us/app/magic-chess-bang-bang/id1478144211", "link_google_play": "https://play.google.com/store/apps/details?id=com.mobile.legends.chess", "description": "Cờ nhân phẩm dựa trên dàn tướng Mobile Legends siêu chiến thuật.", "category": "strategy", "multiplayer_type": "battle_royale", "min_players": 1, "max_players": 8 }
+            ]
+        };
+
+        // CORS Proxy Endpoint
+        const PROXY_URL = 'https://bold-night.year-tucking-0v.workers.dev/?url=';
+
+        // Helper function to format file sizes
+        function formatBytes(bytes) {
+            if (!bytes || isNaN(bytes)) return 'N/A';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        }
+
+        const LANGUAGE_MAP = {
+            'EN': 'English', 'VI': 'Vietnamese', 'JA': 'Japanese', 'KO': 'Korean',
+            'ZH': 'Simplified Chinese', 'ZHT': 'Traditional Chinese', 'ZH-HANT': 'Traditional Chinese', 'ZH-HANS': 'Simplified Chinese',
+            'FR': 'French', 'DE': 'German', 'ES': 'Spanish', 'IT': 'Italian',
+            'PT': 'Portuguese', 'RU': 'Russian', 'TH': 'Thai', 'TR': 'Turkish',
+            'ID': 'Indonesian', 'AR': 'Arabic', 'NL': 'Dutch', 'PL': 'Polish',
+            'SV': 'Swedish', 'MS': 'Malay', 'HI': 'Hindi', 'CS': 'Czech',
+            'DA': 'Danish', 'FI': 'Finnish', 'EL': 'Greek', 'HE': 'Hebrew',
+            'HU': 'Hungarian', 'NO': 'Norwegian', 'RO': 'Romanian', 'SK': 'Slovak',
+            'UK': 'Ukrainian'
+        };
+
+        function formatLanguages(isoCodes) {
+            if (!isoCodes || !Array.isArray(isoCodes) || isoCodes.length === 0) return 'N/A';
+            
+            let displayNames = null;
+            try {
+                displayNames = new Intl.DisplayNames(['en'], { type: 'language' });
+            } catch (e) {}
+
+            return isoCodes.map(code => {
+                const upper = String(code).toUpperCase();
+                if (LANGUAGE_MAP[upper]) return LANGUAGE_MAP[upper];
+                if (displayNames) {
+                    try {
+                        const name = displayNames.of(code);
+                        if (name) return name;
+                    } catch (e) {}
+                }
+                return upper;
+            }).join(', ');
+        }
+
+        // Application State
+        let appData = JSON.parse(JSON.stringify(INITIAL_JSON));
+        let enrichedMetadata = {}; // Cached fetched metadata
+        let loadingState = {}; // Tracking currently pending fetches
+        let viewMode = 'grid'; // 'grid' or 'list'
+        let activePlayerPreset = 'all'; // Player Count Quick Filter Preset
+        
+        let cardObserver = null;
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-msg');
+            msgEl.innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        async function fetchMetadataLazy(gameId) {
+            const game = appData.games.find(g => g.id === gameId);
+            if (!game || !game.link_appstore) return;
+
+            const match = game.link_appstore.match(/id(\d+)/);
+            if (!match) return;
+            const appId = match[1];
+
+            if (enrichedMetadata[appId] || loadingState[appId]) return;
+
+            loadingState[appId] = true;
+
+            try {
+                const targetApi = `https://itunes.apple.com/lookup?id=${appId}`;
+                const proxiedUrl = PROXY_URL + encodeURIComponent(targetApi);
+
+                const response = await fetch(proxiedUrl);
+                if (!response.ok) throw new Error('Proxy response error');
+                
+                const data = await response.json();
+                if (data.results && data.results.length > 0) {
+                    const info = data.results[0];
+                    const meta = {
+                        iconUrl: info.artworkUrl100 || info.artworkUrl500 || info.artworkUrl60,
+                        artworkUrl: info.screenshotUrls ? info.screenshotUrls[0] : info.artworkUrl500,
+                        screenshots: info.screenshotUrls || [],
+                        rating: info.averageUserRating ? info.averageUserRating.toFixed(1) : 'N/A',
+                        ratingCount: info.userRatingCount || 0,
+                        sellerName: info.sellerName || info.artistName || 'Nhà phát hành',
+                        genres: info.genres || [],
+                        price: info.formattedPrice || (info.price === 0 ? 'Miễn phí' : (info.price ? `$${info.price}` : 'Miễn phí')),
+                        fileSize: info.fileSizeBytes ? formatBytes(parseInt(info.fileSizeBytes, 10)) : 'N/A',
+                        bundleId: info.bundleId || 'N/A',
+                        languages: formatLanguages(info.languageCodesISO2A),
+                        primaryGenre: info.primaryGenreName || 'Games',
+                        contentRating: info.contentAdvisoryRating || 'N/A',
+                        minimumOs: info.minimumOsVersion ? `Requires iOS ${info.minimumOsVersion} or later.` : 'N/A',
+                        copyright: info.copyright || (info.sellerName ? `© ${info.sellerName}` : 'N/A')
+                    };
+                    enrichedMetadata[appId] = meta;
+                    updateCardUI(gameId, meta);
+                }
+            } catch (err) {
+                console.warn(`[Proxy Lazy Fetch Error] ID ${appId}:`, err);
+            } finally {
+                loadingState[appId] = false;
+            }
+        }
+
+        function updateCardUI(gameId, meta) {
+            const imgEl = document.getElementById(`img-game-${gameId}`);
+            const iconSkeleton = document.getElementById(`icon-skeleton-${gameId}`);
+            
+            if (imgEl && meta.iconUrl) {
+                imgEl.src = meta.iconUrl;
+                imgEl.onload = () => {
+                    imgEl.classList.remove('hidden');
+                    if (iconSkeleton) iconSkeleton.classList.add('hidden');
+                };
+            }
+
+            const rateEl = document.getElementById(`rating-badge-${gameId}`);
+            if (rateEl && meta.rating) {
+                rateEl.innerHTML = `
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-bold text-[11px] border border-amber-500/20">
+                            <i class="fa-solid fa-star text-[10px]"></i> ${meta.rating}
+                            <span class="text-slate-500 font-normal text-[9px]">(${meta.ratingCount.toLocaleString()})</span>
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-semibold text-[10px] border border-emerald-500/20">
+                            <i class="fa-solid fa-tag text-[9px]"></i> ${meta.price}
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 font-semibold text-[10px] border border-indigo-500/20">
+                            <i class="fa-solid fa-hard-drive text-[9px]"></i> ${meta.fileSize}
+                        </span>
+                    </div>
+                `;
+            }
+
+            const bundleEl = document.getElementById(`bundle-badge-${gameId}`);
+            if (bundleEl && meta.bundleId) {
+                bundleEl.innerHTML = `<i class="fa-solid fa-box text-[10px] text-brand-400"></i> ${meta.bundleId}`;
+            }
+        }
+
+        function setupIntersectionObserver() {
+            if ('IntersectionObserver' in window) {
+                cardObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const gameId = parseInt(entry.target.getAttribute('data-game-id'), 10);
+                            if (gameId) {
+                                fetchMetadataLazy(gameId);
+                            }
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, {
+                    root: null,
+                    rootMargin: '100px',
+                    threshold: 0.1
+                });
+            }
+        }
+
+        function populateFilterDropdowns() {
+            const catSelect = document.getElementById('filter-category');
+            const typeSelect = document.getElementById('filter-type');
+            if (!catSelect || !typeSelect) return;
+
+            const currentCat = catSelect.value;
+            const currentType = typeSelect.value;
+
+            const categories = new Set();
+            const types = new Set();
+
+            if (appData && Array.isArray(appData.games)) {
+                appData.games.forEach(g => {
+                    if (g.category) categories.add(g.category);
+                    if (g.multiplayer_type) types.add(g.multiplayer_type);
+                });
+            }
+
+            catSelect.innerHTML = '<option value="">Tất cả thể loại</option>' + 
+                Array.from(categories).sort().map(cat => `<option value="${cat}">${cat.toUpperCase()}</option>`).join('');
+
+            typeSelect.innerHTML = '<option value="">Tất cả kiểu đấu</option>' + 
+                Array.from(types).sort().map(t => `<option value="${t}">${t.replace(/_/g, ' ').toUpperCase()}</option>`).join('');
+
+            catSelect.value = currentCat;
+            typeSelect.value = currentType;
+        }
+
+        function getFilteredAndSortedGames() {
+            if (!appData || !Array.isArray(appData.games)) return [];
+
+            const searchVal = (document.getElementById('filter-search')?.value || '').toLowerCase().trim();
+            const catVal = document.getElementById('filter-category')?.value || '';
+            const typeVal = document.getElementById('filter-type')?.value || '';
+            const maxPlayersVal = parseInt(document.getElementById('filter-players-range')?.value || '100', 10);
+            const chkAppstore = document.getElementById('chk-appstore')?.checked || false;
+            const chkPlaystore = document.getElementById('chk-playstore')?.checked || false;
+            const sortVal = document.getElementById('sort-select')?.value || 'id-asc';
+
+            let result = appData.games.filter(game => {
+                if (searchVal) {
+                    const nameMatch = game.game && game.game.toLowerCase().includes(searchVal);
+                    const descMatch = game.description && game.description.toLowerCase().includes(searchVal);
+                    const catMatch = game.category && game.category.toLowerCase().includes(searchVal);
+                    const typeMatch = game.multiplayer_type && game.multiplayer_type.toLowerCase().includes(searchVal);
+                    if (!nameMatch && !descMatch && !catMatch && !typeMatch) return false;
+                }
+
+                if (catVal && game.category !== catVal) return false;
+                if (typeVal && game.multiplayer_type !== typeVal) return false;
+                if (game.min_players > maxPlayersVal) return false;
+                if (chkAppstore && (!game.link_appstore || game.link_appstore.trim() === '')) return false;
+                if (chkPlaystore && (!game.link_google_play || game.link_google_play.trim() === '')) return false;
+
+                // Quick Player Count Chip Filter Logic
+                if (activePlayerPreset !== 'all') {
+                    if (activePlayerPreset === '1') {
+                        if (!(game.min_players <= 1 && game.max_players >= 1)) return false;
+                    } else if (activePlayerPreset === '2') {
+                        if (!(game.min_players <= 2 && game.max_players >= 2)) return false;
+                    } else if (activePlayerPreset === '3-4') {
+                        if (!(game.min_players <= 4 && game.max_players >= 3)) return false;
+                    } else if (activePlayerPreset === '5-10') {
+                        if (!(game.min_players <= 10 && game.max_players >= 5)) return false;
+                    } else if (activePlayerPreset === '10+') {
+                        if (game.max_players < 10) return false;
+                    }
+                }
+
+                return true;
+            });
+
+            result.sort((a, b) => {
+                switch (sortVal) {
+                    case 'name-asc':
+                        return a.game.localeCompare(b.game);
+                    case 'name-desc':
+                        return b.game.localeCompare(a.game);
+                    case 'max-players-desc':
+                        return b.max_players - a.max_players;
+                    case 'max-players-asc':
+                        return a.max_players - b.max_players;
+                    case 'id-asc':
+                    default:
+                        return a.id - b.id;
+                }
+            });
+
+            return result;
+        }
+
+        function renderGames() {
+            const container = document.getElementById('games-container');
+            const emptyState = document.getElementById('empty-state');
+            const badgeCount = document.getElementById('game-count-badge');
+            
+            const filtered = getFilteredAndSortedGames();
+            badgeCount.innerText = `${filtered.length} Game`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            if (viewMode === 'list') {
+                container.className = "flex flex-col gap-3";
+            } else {
+                container.className = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5";
+            }
+
+            container.innerHTML = filtered.map(game => {
+                const appIdMatch = game.link_appstore ? game.link_appstore.match(/id(\d+)/) : null;
+                const appId = appIdMatch ? appIdMatch[1] : null;
+                const meta = appId ? enrichedMetadata[appId] : null;
+
+                const defaultIcon = `https://placehold.co/120x120/1d4ed8/ffffff?text=${encodeURIComponent(game.game.substring(0, 2).toUpperCase())}`;
+                const iconSrc = meta && meta.iconUrl ? meta.iconUrl : defaultIcon;
+                const hasCachedMeta = !!meta;
+
+                if (viewMode === 'list') {
+                    return `
+                        <div data-game-id="${game.id}" class="game-card glass-panel p-3.5 sm:p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 card-hover">
+                            <div class="flex items-center gap-3.5 flex-grow">
+                                <div class="relative w-12 h-12 sm:w-14 sm:h-14 flex-shrink-0">
+                                    <div id="icon-skeleton-${game.id}" class="${hasCachedMeta ? 'hidden' : ''} absolute inset-0 rounded-2xl skeleton-shimmer"></div>
+                                    <img id="img-game-${game.id}" src="${hasCachedMeta ? iconSrc : defaultIcon}" alt="${game.game}" 
+                                        class="${hasCachedMeta ? '' : 'hidden'} w-12 h-12 sm:w-14 sm:h-14 rounded-2xl object-cover bg-slate-800 shadow-md">
+                                </div>
+                                <div class="space-y-1">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <h3 class="font-bold text-xs sm:text-sm text-slate-100">${game.game}</h3>
+                                        <span class="px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 text-[9px] font-bold uppercase tracking-wider">${game.category}</span>
+                                    </div>
+                                    <div id="bundle-badge-${game.id}" class="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+                                        ${hasCachedMeta ? `<i class="fa-solid fa-box text-[10px] text-brand-400"></i> ${meta.bundleId}` : 'Đang tải thông tin...'}
+                                    </div>
+                                    <p class="text-xs text-slate-400 line-clamp-1 max-w-md">${game.description}</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-800/80">
+                                <span class="text-[11px] font-medium text-slate-300 bg-slate-800/80 px-2.5 py-1 rounded-xl border border-slate-700/50">
+                                    <i class="fa-solid fa-users text-brand-400 mr-1"></i> ${game.min_players}-${game.max_players} người
+                                </span>
+                                <button onclick="openDetailModal(${game.id})" class="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition active:scale-95">
+                                    Chi tiết
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                return `
+                    <div data-game-id="${game.id}" class="game-card glass-panel p-4 rounded-2xl border border-slate-800 flex flex-col justify-between card-hover group relative overflow-hidden">
+                        <div>
+                            <div class="flex items-start justify-between gap-3 mb-3">
+                                <div class="relative w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0">
+                                    <div id="icon-skeleton-${game.id}" class="${hasCachedMeta ? 'hidden' : ''} absolute inset-0 rounded-2xl skeleton-shimmer"></div>
+                                    <img id="img-game-${game.id}" src="${hasCachedMeta ? iconSrc : defaultIcon}" alt="${game.game}" 
+                                        class="${hasCachedMeta ? '' : 'hidden'} w-14 h-14 sm:w-16 sm:h-16 rounded-2xl object-cover bg-slate-800 shadow-md group-hover:scale-105 transition duration-300">
+                                </div>
+                                <div class="flex flex-col items-end gap-1">
+                                    <span class="px-2 py-0.5 rounded-full bg-brand-500/15 text-brand-400 text-[9px] font-bold uppercase tracking-wider border border-brand-500/20">
+                                        ${game.category}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[9px] font-medium border border-slate-700">
+                                        ${game.multiplayer_type}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <h3 class="font-bold text-sm sm:text-base text-slate-100 group-hover:text-brand-400 transition line-clamp-1 mb-1">
+                                ${game.game}
+                            </h3>
+
+                            <div id="bundle-badge-${game.id}" class="text-[10px] font-mono text-slate-500 mb-2 truncate">
+                                ${hasCachedMeta ? `<i class="fa-solid fa-box text-[10px] text-brand-400"></i> ${meta.bundleId}` : 'Đang tải dữ liệu...'}
+                            </div>
+
+                            <div id="rating-badge-${game.id}" class="min-h-[24px] mb-2">
+                                ${hasCachedMeta ? `
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-bold text-[11px] border border-amber-500/20">
+                                            <i class="fa-solid fa-star text-[10px]"></i> ${meta.rating}
+                                            <span class="text-slate-500 font-normal text-[9px]">(${meta.ratingCount.toLocaleString()})</span>
+                                        </span>
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 font-semibold text-[10px] border border-emerald-500/20">
+                                            <i class="fa-solid fa-tag text-[9px]"></i> ${meta.price}
+                                        </span>
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 font-semibold text-[10px] border border-indigo-500/20">
+                                            <i class="fa-solid fa-hard-drive text-[9px]"></i> ${meta.fileSize}
+                                        </span>
+                                    </div>
+                                ` : `
+                                    <div class="w-full h-5 rounded-md skeleton-shimmer"></div>
+                                `}
+                            </div>
+
+                            <p class="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-3">
+                                ${game.description}
+                            </p>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 mt-auto">
+                            <div class="text-[11px] font-medium text-slate-300 flex items-center gap-1 bg-slate-800/80 px-2.5 py-1 rounded-lg">
+                                <i class="fa-solid fa-users text-brand-400"></i>
+                                <span>${game.min_players} - ${game.max_players}</span>
+                            </div>
+
+                            <button onclick="openDetailModal(${game.id})" class="px-3 py-1.5 rounded-xl bg-brand-600/90 hover:bg-brand-500 text-white text-xs font-semibold transition flex items-center gap-1 active:scale-95">
+                                Xem <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            if (cardObserver) {
+                document.querySelectorAll('.game-card').forEach(card => {
+                    cardObserver.observe(card);
+                });
+            }
+        }
+
+        async function openDetailModal(gameId) {
+            const game = appData.games.find(g => g.id === gameId);
+            if (!game) return;
+
+            const modal = document.getElementById('modal-detail');
+            const body = document.getElementById('modal-detail-body');
+
+            body.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-20 h-20 rounded-2xl skeleton-shimmer"></div>
+                        <div class="space-y-2 flex-grow">
+                            <div class="w-2/3 h-6 rounded-lg skeleton-shimmer"></div>
+                            <div class="w-1/3 h-4 rounded-lg skeleton-shimmer"></div>
+                            <div class="w-1/2 h-4 rounded-lg skeleton-shimmer"></div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="h-16 rounded-xl skeleton-shimmer"></div>
+                        <div class="h-16 rounded-xl skeleton-shimmer"></div>
+                        <div class="h-16 rounded-xl skeleton-shimmer"></div>
+                        <div class="h-16 rounded-xl skeleton-shimmer"></div>
+                    </div>
+                    <div class="h-24 rounded-xl skeleton-shimmer"></div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+
+            let appIdMatch = game.link_appstore ? game.link_appstore.match(/id(\d+)/) : null;
+            let appId = appIdMatch ? appIdMatch[1] : null;
+
+            if (appId && !enrichedMetadata[appId]) {
+                await fetchMetadataLazy(gameId);
+            }
+
+            let meta = appId ? enrichedMetadata[appId] : null;
+            const defaultIcon = `https://placehold.co/150x150/1d4ed8/ffffff?text=${encodeURIComponent(game.game.substring(0, 2).toUpperCase())}`;
+            const iconUrl = meta && meta.iconUrl ? meta.iconUrl : defaultIcon;
+
+            body.innerHTML = `
+                <!-- Modal Header -->
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 pb-4 border-b border-slate-800">
+                    <img src="${iconUrl}" alt="${game.game}" class="w-20 h-20 rounded-2xl object-cover bg-slate-800 shadow-xl flex-shrink-0">
+                    <div class="space-y-1 flex-grow">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-lg sm:text-xl font-extrabold text-slate-100">${game.game}</h2>
+                            <span class="px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold uppercase">${game.category}</span>
+                            ${meta && meta.contentRating ? `<span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[10px] font-bold border border-slate-700">${meta.contentRating}</span>` : ''}
+                        </div>
+                        <p class="text-xs text-slate-400"><i class="fa-solid fa-building text-brand-500 mr-1"></i> ${meta && meta.sellerName ? meta.sellerName : 'Nhà phát hành'}</p>
+                        ${meta && meta.rating ? `
+                            <div class="flex items-center gap-1.5 text-xs text-amber-400 font-bold pt-1">
+                                <i class="fa-solid fa-star"></i> ${meta.rating} / 5.0
+                                <span class="text-slate-500 font-normal">(${meta.ratingCount.toLocaleString()} lượt đánh giá)</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Extended Data Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div class="p-3 bg-darkbg rounded-xl border border-slate-800 space-y-0.5">
+                        <span class="text-[10px] uppercase font-semibold text-slate-500 block">Mức giá</span>
+                        <span class="text-xs font-bold text-emerald-400 flex items-center gap-1">
+                            <i class="fa-solid fa-tag text-[10px]"></i> ${meta ? meta.price : 'Miễn phí'}
+                        </span>
+                    </div>
+
+                    <div class="p-3 bg-darkbg rounded-xl border border-slate-800 space-y-0.5">
+                        <span class="text-[10px] uppercase font-semibold text-slate-500 block">Dung lượng</span>
+                        <span class="text-xs font-bold text-indigo-400 flex items-center gap-1">
+                            <i class="fa-solid fa-hard-drive text-[10px]"></i> ${meta ? meta.fileSize : 'N/A'}
+                        </span>
+                    </div>
+
+                    <div class="p-3 bg-darkbg rounded-xl border border-slate-800 space-y-0.5">
+                        <span class="text-[10px] uppercase font-semibold text-slate-500 block">Sức chứa phòng</span>
+                        <span class="text-xs font-bold text-slate-200 flex items-center gap-1">
+                            <i class="fa-solid fa-users text-brand-500 text-[10px]"></i> ${game.min_players} - ${game.max_players} người
+                        </span>
+                    </div>
+
+                    <div class="p-3 bg-darkbg rounded-xl border border-slate-800 space-y-0.5">
+                        <span class="text-[10px] uppercase font-semibold text-slate-500 block">Kiểu Đấu</span>
+                        <span class="text-xs font-bold text-cyan-400 truncate block">${game.multiplayer_type}</span>
+                    </div>
+                </div>
+
+                <!-- Apple Information Section -->
+                <div class="p-4 bg-darkbg/90 rounded-2xl border border-slate-800 space-y-3">
+                    <h4 class="text-xs font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2 pb-2 border-b border-slate-800/80">
+                        <i class="fa-brands fa-apple text-brand-400 text-sm"></i> Apple Information
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                        <div class="space-y-0.5">
+                            <span class="text-slate-500 font-medium block">Seller</span>
+                            <span class="text-slate-200 font-semibold">${meta ? meta.sellerName : 'N/A'}</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-slate-500 font-medium block">Size</span>
+                            <span class="text-slate-200 font-semibold">${meta ? meta.fileSize : 'N/A'}</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-slate-500 font-medium block">Category</span>
+                            <span class="text-slate-200 font-semibold">${meta ? meta.primaryGenre : 'Games'}</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-slate-500 font-medium block">Compatibility</span>
+                            <span class="text-slate-200 font-medium">${meta ? meta.minimumOs : 'N/A'}</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-slate-500 font-medium block">Age Rating</span>
+                            <span class="text-slate-200 font-semibold">${meta ? meta.contentRating : 'N/A'}</span>
+                        </div>
+                        <div class="space-y-0.5">
+                            <span class="text-slate-500 font-medium block">Bundle ID</span>
+                            <span class="font-mono text-slate-300 text-[11px] select-all bg-slate-800/60 px-1.5 py-0.5 rounded">${meta ? meta.bundleId : 'N/A'}</span>
+                        </div>
+                        <div class="col-span-1 sm:col-span-2 lg:col-span-3 space-y-0.5 pt-1 border-t border-slate-800/50">
+                            <span class="text-slate-500 font-medium block">Languages</span>
+                            <p class="text-slate-300 font-medium leading-relaxed">${meta ? meta.languages : 'N/A'}</p>
+                        </div>
+                        <div class="col-span-1 sm:col-span-2 lg:col-span-3 space-y-0.5 pt-1">
+                            <span class="text-slate-500 font-medium block">Copyright</span>
+                            <span class="text-slate-400 text-[11px]">${meta ? meta.copyright : 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Description -->
+                <div class="space-y-1.5">
+                    <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Mô tả game</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed bg-darkbg/50 p-3.5 rounded-xl border border-slate-800/80">
+                        ${game.description}
+                    </p>
+                </div>
+
+                <!-- Screenshots Gallery (Proxied) -->
+                ${meta && meta.screenshots && meta.screenshots.length > 0 ? `
+                    <div class="space-y-2">
+                        <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Hình ảnh xem trước (Proxy Loaded)</h4>
+                        <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                            ${meta.screenshots.slice(0, 5).map(screen => `
+                                <img src="${PROXY_URL + encodeURIComponent(screen)}" loading="lazy" alt="Screenshot" class="h-36 sm:h-40 rounded-xl object-cover border border-slate-800 shadow-md">
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Action Download Links -->
+                <div class="pt-2 flex flex-col sm:flex-row gap-2.5">
+                    ${game.link_appstore ? `
+                        <a href="${game.link_appstore}" target="_blank" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-bold flex items-center justify-center gap-2 border border-slate-700 transition">
+                            <i class="fa-brands fa-apple text-base"></i> Tải trên App Store
+                        </a>
+                    ` : ''}
+                    ${game.link_google_play ? `
+                        <a href="${game.link_google_play}" target="_blank" class="flex-1 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-bold flex items-center justify-center gap-2 border border-slate-700 transition">
+                            <i class="fa-brands fa-google-play text-base text-emerald-400"></i> Tải trên Google Play
+                        </a>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+
+            setupIntersectionObserver();
+
+            // Quick Player Count Preset Event Listeners
+            document.querySelectorAll('.btn-player-chip').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const targetBtn = e.currentTarget;
+                    const preset = targetBtn.getAttribute('data-player-preset');
+                    activePlayerPreset = preset;
+
+                    document.querySelectorAll('.btn-player-chip').forEach(b => {
+                        b.classList.remove('bg-brand-600', 'text-white', 'shadow-lg', 'shadow-brand-600/30', 'border-brand-500');
+                        b.classList.add('bg-darkbg/80', 'text-slate-300', 'border-slate-700/80');
+                    });
+
+                    targetBtn.classList.remove('bg-darkbg/80', 'text-slate-300', 'border-slate-700/80');
+                    targetBtn.classList.add('bg-brand-600', 'text-white', 'shadow-lg', 'shadow-brand-600/30', 'border-brand-500');
+
+                    const displayEl = document.getElementById('quick-player-display');
+                    if (displayEl) {
+                        const labelMap = {
+                            'all': 'Tất cả (1 - 100 người)',
+                            '1': 'Chế độ Solo (1 người)',
+                            '2': 'Chế độ 2 Người (1v1 / Co-op)',
+                            '3-4': 'Chế độ 3-4 Người (Squad)',
+                            '5-10': 'Chế độ 5-10 Người (Đội)',
+                            '10+': 'Chế độ 10+ - 100 Người'
+                        };
+                        displayEl.innerHTML = `<i class="fa-solid fa-circle-dot text-[8px] text-brand-400 animate-pulse"></i> ${labelMap[preset] || 'Đã lọc số người'}`;
+                    }
+
+                    renderGames();
+                });
+            });
+
+            const btnToggleMobileFilter = document.getElementById('btn-toggle-mobile-filter');
+            const btnCloseMobileFilter = document.getElementById('btn-close-mobile-filter');
+            const sidebarFilters = document.getElementById('sidebar-filters');
+
+            if (btnToggleMobileFilter) {
+                btnToggleMobileFilter.addEventListener('click', () => {
+                    sidebarFilters.classList.toggle('hidden');
+                });
+            }
+            if (btnCloseMobileFilter) {
+                btnCloseMobileFilter.addEventListener('click', () => {
+                    sidebarFilters.classList.add('hidden');
+                });
+            }
+
+            populateFilterDropdowns();
+            renderGames();
+
+            document.getElementById('filter-search').addEventListener('input', renderGames);
+            document.getElementById('filter-category').addEventListener('change', renderGames);
+            document.getElementById('filter-type').addEventListener('change', renderGames);
+            document.getElementById('sort-select').addEventListener('change', renderGames);
+            document.getElementById('chk-appstore').addEventListener('change', renderGames);
+            document.getElementById('chk-playstore').addEventListener('change', renderGames);
+
+            const rangeInput = document.getElementById('filter-players-range');
+            const rangeVal = document.getElementById('player-count-val');
+            rangeInput.addEventListener('input', (e) => {
+                const val = e.target.value;
+                rangeVal.innerText = `1 - ${val} người`;
+                renderGames();
+            });
+
+            document.getElementById('btn-reset-filters').addEventListener('click', () => {
+                document.getElementById('filter-search').value = '';
+                document.getElementById('filter-category').value = '';
+                document.getElementById('filter-type').value = '';
+                document.getElementById('filter-players-range').value = 100;
+                rangeVal.innerText = '1 - 100 người';
+                document.getElementById('chk-appstore').checked = false;
+                document.getElementById('chk-playstore').checked = false;
+                document.getElementById('sort-select').value = 'id-asc';
+                
+                // Reset quick player chips
+                activePlayerPreset = 'all';
+                document.querySelectorAll('.btn-player-chip').forEach((b, idx) => {
+                    if (idx === 0) {
+                        b.classList.remove('bg-darkbg/80', 'text-slate-300', 'border-slate-700/80');
+                        b.classList.add('bg-brand-600', 'text-white', 'shadow-lg', 'shadow-brand-600/30', 'border-brand-500');
+                    } else {
+                        b.classList.remove('bg-brand-600', 'text-white', 'shadow-lg', 'shadow-brand-600/30', 'border-brand-500');
+                        b.classList.add('bg-darkbg/80', 'text-slate-300', 'border-slate-700/80');
+                    }
+                });
+                const displayEl = document.getElementById('quick-player-display');
+                if (displayEl) {
+                    displayEl.innerHTML = `<i class="fa-solid fa-circle-dot text-[8px] text-brand-400 animate-pulse"></i> Tất cả (1 - 100 người)`;
+                }
+
+                renderGames();
+                showToast('Đã đặt lại tất cả bộ lọc');
+            });
+
+            const btnGrid = document.getElementById('btn-view-grid');
+            const btnList = document.getElementById('btn-view-list');
+
+            btnGrid.addEventListener('click', () => {
+                viewMode = 'grid';
+                btnGrid.className = "px-2.5 py-1 rounded-lg text-xs text-white bg-brand-600 transition";
+                btnList.className = "px-2.5 py-1 rounded-lg text-xs text-slate-400 hover:text-white transition";
+                renderGames();
+            });
+
+            btnList.addEventListener('click', () => {
+                viewMode = 'list';
+                btnList.className = "px-2.5 py-1 rounded-lg text-xs text-white bg-brand-600 transition";
+                btnGrid.className = "px-2.5 py-1 rounded-lg text-xs text-slate-400 hover:text-white transition";
+                renderGames();
+            });
+
+            document.getElementById('modal-detail-close').addEventListener('click', () => {
+                document.getElementById('modal-detail').classList.add('hidden');
+            });
+
+            const modalAdd = document.getElementById('modal-add-game');
+            document.getElementById('btn-add-game').addEventListener('click', () => {
+                modalAdd.classList.remove('hidden');
+            });
+            document.getElementById('modal-add-close').addEventListener('click', () => {
+                modalAdd.classList.add('hidden');
+            });
+            document.getElementById('btn-cancel-add').addEventListener('click', () => {
+                modalAdd.classList.add('hidden');
+            });
+
+            document.getElementById('form-add-game').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('input-game-name').value.trim();
+                const category = document.getElementById('input-game-category').value.trim().toLowerCase();
+                const type = document.getElementById('input-game-type').value.trim().toLowerCase();
+                const minP = parseInt(document.getElementById('input-game-min').value, 10);
+                const maxP = parseInt(document.getElementById('input-game-max').value, 10);
+                const appStore = document.getElementById('input-game-appstore').value.trim();
+                const playStore = document.getElementById('input-game-playstore').value.trim();
+                const desc = document.getElementById('input-game-desc').value.trim();
+
+                const newGame = {
+                    id: Date.now(),
+                    game: name,
+                    link_appstore: appStore,
+                    link_google_play: playStore,
+                    description: desc,
+                    category: category,
+                    multiplayer_type: type,
+                    min_players: minP,
+                    max_players: maxP
+                };
+
+                appData.games.unshift(newGame);
+                populateFilterDropdowns();
+                renderGames();
+
+                modalAdd.classList.add('hidden');
+                document.getElementById('form-add-game').reset();
+                showToast(`Đã thêm "${name}" thành công!`);
+            });
+
+            const modalJson = document.getElementById('modal-json');
+            const textareaJson = document.getElementById('json-editor-textarea');
+
+            document.getElementById('btn-json-modal').addEventListener('click', () => {
+                textareaJson.value = JSON.stringify(appData, null, 2);
+                modalJson.classList.remove('hidden');
+            });
+
+            document.getElementById('modal-json-close').addEventListener('click', () => {
+                modalJson.classList.add('hidden');
+            });
+
+            document.getElementById('btn-copy-json').addEventListener('click', () => {
+                textareaJson.select();
+                document.execCommand('copy');
+                showToast('Đã sao chép dữ liệu JSON vào Clipboard!');
+            });
+
+            document.getElementById('btn-apply-json').addEventListener('click', () => {
+                try {
+                    const parsed = JSON.parse(textareaJson.value);
+                    if (!parsed.games || !Array.isArray(parsed.games)) {
+                        throw new Error('Dữ liệu JSON phải chứa mảng "games"');
+                    }
+                    appData = parsed;
+                    populateFilterDropdowns();
+                    renderGames();
+                    modalJson.classList.add('hidden');
+                    showToast('Cập nhật JSON thành công!');
+                } catch (err) {
+                    showToast('Lỗi JSON: ' + err.message);
+                }
+            });
+
+            document.getElementById('btn-reset-default-json').addEventListener('click', () => {
+                appData = JSON.parse(JSON.stringify(INITIAL_JSON));
+                textareaJson.value = JSON.stringify(appData, null, 2);
+                populateFilterDropdowns();
+                renderGames();
+                showToast('Đã khôi phục 150 Game mặc định!');
+            });
+
+            window.addEventListener('click', (e) => {
+                if (e.target === modalAdd) modalAdd.classList.add('hidden');
+                if (e.target === modalJson) modalJson.classList.add('hidden');
+                if (e.target === document.getElementById('modal-detail')) document.getElementById('modal-detail').classList.add('hidden');
+            });
+        });
+    </script>
+</body>
+</html>
