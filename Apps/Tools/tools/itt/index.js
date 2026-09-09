@@ -22,8 +22,8 @@ export function template() {
         <div class="relative flex flex-col w-full max-w-[1000px] mx-auto min-h-[600px] pb-10">
             <!-- Header -->
             <div class="mb-8 px-2 ui-fade-in">
-                <h2 class="text-[28px] font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Trích xuất văn bản (OCR Siêu tốc)</h2>
-                <p class="text-[13px] text-zinc-500 font-medium">Tự động nhận diện tức thì ngay khi nạp ảnh. Tối ưu ảnh tối/tương phản thấp.</p>
+                <h2 class="text-[28px] font-black text-zinc-900 dark:text-white tracking-tight leading-none mb-2">Trích xuất văn bản</h2>
+                <p class="text-[13px] text-zinc-500 font-medium">Chạy hoàn toàn nội bộ trong trình duyệt. Không gửi dữ liệu ra bên ngoài.</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start ui-fade-in" style="animation-delay: 100ms;">
@@ -38,13 +38,6 @@ export function template() {
                             </button>
                         </div>
 
-                        <!-- URL Input Group -->
-                        <div class="flex items-center bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl p-1.5 focus-within:ring-1 ring-zinc-900 dark:ring-white transition-shadow border border-zinc-200 dark:border-zinc-800 mb-4">
-                            <i class="fas fa-link text-zinc-400 ml-3 text-sm"></i>
-                            <input id="ocr-url-input" type="url" class="w-full bg-transparent border-none outline-none px-3 py-2 text-xs font-bold text-zinc-900 dark:text-white placeholder-zinc-400" placeholder="Dán link ảnh (http://...)...">
-                            <button id="ocr-url-btn" class="btn-premium bg-zinc-900 dark:bg-white px-4 py-2 rounded-xl text-xs font-bold text-white dark:text-zinc-900 whitespace-nowrap">Tải URL</button>
-                        </div>
-
                         <!-- Dropzone Area -->
                         <div id="ocr-dropzone" class="relative rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center min-h-[220px] group">
                             <input type="file" id="ocr-file-input" accept="image/*" class="hidden">
@@ -54,7 +47,7 @@ export function template() {
                                     <i class="fas fa-magic"></i>
                                 </div>
                                 <p class="text-sm font-bold text-zinc-900 dark:text-white mb-1">Kéo thả hoặc dán ảnh (Ctrl + V)</p>
-                                <p class="text-xs text-zinc-500">Tự động kích hoạt nhận dạng tức thì</p>
+                                <p class="text-xs text-zinc-500">Nhấp để chọn tệp từ máy</p>
                             </div>
 
                             <div id="ocr-preview-wrap" class="w-full h-full hidden flex flex-col items-center justify-center">
@@ -72,26 +65,16 @@ export function template() {
                         <!-- Options -->
                         <div class="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
                             <div class="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl p-3 border border-zinc-200 dark:border-zinc-800">
-                                <i class="fas fa-tachometer-alt text-zinc-400 text-sm ml-1"></i>
-                                <div class="flex-1">
-                                    <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block leading-tight">Cơ chế xử lý</label>
-                                    <select id="ocr-engine-select" class="w-full bg-transparent border-none outline-none text-xs font-bold text-zinc-900 dark:text-white cursor-pointer p-0">
-                                        <option value="fast" class="dark:bg-zinc-900">⚡ Tốc độ cao (Tessdata Fast + Tự nâng tương phản)</option>
-                                        <option value="standard" class="dark:bg-zinc-900">🎯 Cân bằng chi tiết (Standard Tessdata)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800/30 rounded-2xl p-3 border border-zinc-200 dark:border-zinc-800">
                                 <i class="fas fa-globe text-zinc-400 text-sm ml-1"></i>
                                 <div class="flex-1">
-                                    <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block leading-tight">Ngôn ngữ</label>
+                                    <label class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest block leading-tight">Ngôn ngữ nhận dạng</label>
                                     <select id="ocr-lang-select" class="w-full bg-transparent border-none outline-none text-xs font-bold text-zinc-900 dark:text-white cursor-pointer p-0">
-                                        <option value="auto" class="dark:bg-zinc-900">✨ Tự động nhận diện (Auto Detect Script)</option>
                                         <option value="vie" class="dark:bg-zinc-900">Tiếng Việt (vie)</option>
                                         <option value="eng" class="dark:bg-zinc-900">Tiếng Anh (eng)</option>
+                                        <option value="vie+eng" class="dark:bg-zinc-900">Tiếng Việt + Tiếng Anh</option>
                                         <option value="jpn" class="dark:bg-zinc-900">Tiếng Nhật (jpn)</option>
                                         <option value="chi_sim" class="dark:bg-zinc-900">Tiếng Trung Giản Thể (chi_sim)</option>
+                                        <option value="auto" class="dark:bg-zinc-900">✨ Tự nhận diện (Yêu cầu osd.traineddata.gz)</option>
                                     </select>
                                 </div>
                             </div>
@@ -111,7 +94,7 @@ export function template() {
                         <!-- Progress Bar -->
                         <div id="ocr-progress-box" class="w-full mb-4 hidden">
                             <div class="flex justify-between text-[11px] font-bold text-zinc-500 mb-1.5">
-                                <span id="ocr-progress-label">Đang xử lý...</span>
+                                <span id="ocr-progress-label">Đang khởi tạo...</span>
                                 <span id="ocr-progress-val">0%</span>
                             </div>
                             <div class="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
@@ -119,7 +102,7 @@ export function template() {
                             </div>
                         </div>
 
-                        <textarea id="ocr-result-text" readonly class="w-full bg-zinc-50 dark:bg-[#121214]/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 outline-none text-sm font-medium text-zinc-900 dark:text-white resize-y min-h-[300px] custom-scrollbar placeholder-zinc-400 focus-within:ring-2 ring-zinc-900 dark:ring-white transition-all leading-relaxed" placeholder="Kết quả nhận diện sẽ xuất hiện tại đây..."></textarea>
+                        <textarea id="ocr-result-text" readonly class="w-full bg-zinc-50 dark:bg-[#121214]/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 outline-none text-sm font-medium text-zinc-900 dark:text-white resize-y min-h-[300px] custom-scrollbar placeholder-zinc-400 focus-within:ring-2 ring-zinc-900 dark:ring-white transition-all leading-relaxed" placeholder="Kết quả nhận diện sẽ hiển thị ở đây..."></textarea>
 
                         <div class="grid grid-cols-2 gap-3 mt-4">
                             <button id="ocr-copy-btn" class="btn-premium py-3.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-sm flex items-center justify-center gap-2">
@@ -145,10 +128,7 @@ export function init() {
     const previewImg = document.getElementById('ocr-preview-img');
     const clearBtn = document.getElementById('ocr-clear-btn');
     const pasteBtn = document.getElementById('ocr-paste-btn');
-    const urlInput = document.getElementById('ocr-url-input');
-    const urlBtn = document.getElementById('ocr-url-btn');
     
-    const engineSelect = document.getElementById('ocr-engine-select');
     const langSelect = document.getElementById('ocr-lang-select');
     const resultText = document.getElementById('ocr-result-text');
     const statusBadge = document.getElementById('ocr-status-badge');
@@ -162,18 +142,40 @@ export function init() {
     let currentImageData = null;
     let isProcessing = false;
 
-    const loadTesseract = () => {
+    // Chuẩn hóa Base URL tuyệt đối đến thư mục chứa file index.js hiện tại
+    const CURRENT_DIR = new URL('.', import.meta.url).href;
+
+    const PATHS = {
+        script: new URL('tesseract/tesseract.min.js', CURRENT_DIR).href,
+        workerPath: new URL('tesseract/worker.min.js', CURRENT_DIR).href,
+        corePath: new URL('tesseract/tesseract-core.wasm.js', CURRENT_DIR).href,
+        langPath: new URL('tessdata', CURRENT_DIR).href.replace(/\/$/, '') // bỏ dấu / ở cuối nếu có
+    };
+
+    // Kiểm tra tính kết nối của file trước khi để WebAssembly chạy
+    const verifyResource = async (url, label) => {
+        try {
+            const res = await fetch(url, { method: 'HEAD' });
+            if (!res.ok) throw new Error(`Status ${res.status}`);
+            return true;
+        } catch (e) {
+            console.error(`[Preflight Check] Thiếu hoặc sai đường dẫn: ${label} (${url})`);
+            throw new Error(`Không tìm thấy file: ${label}. Đường dẫn: ${url}`);
+        }
+    };
+
+    const loadTesseract = async () => {
+        if (window.Tesseract) return window.Tesseract;
+        await verifyResource(PATHS.script, 'tesseract.min.js');
         return new Promise((resolve, reject) => {
-            if (window.Tesseract) return resolve(window.Tesseract);
             const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+            script.src = PATHS.script;
             script.onload = () => resolve(window.Tesseract);
-            script.onerror = () => reject(new Error('Không thể tải Tesseract OCR.'));
+            script.onerror = () => reject(new Error('Lỗi load script tesseract.min.js'));
             document.head.appendChild(script);
         });
     };
 
-    // Chuẩn hóa và tiền xử lý ảnh (chống trôi chữ mờ, nền tối, tương phản kém)
     const preprocessImage = (imageSrc) => {
         return new Promise((resolve) => {
             const img = new Image();
@@ -188,7 +190,6 @@ export function init() {
                 const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imgData.data;
 
-                // Tính toán độ sáng trung bình để phát hiện nền tối (Dark mode)
                 let totalLuminance = 0;
                 for (let i = 0; i < data.length; i += 4) {
                     totalLuminance += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
@@ -196,15 +197,11 @@ export function init() {
                 const avgLuminance = totalLuminance / (data.length / 4);
                 const isDarkBackground = avgLuminance < 110;
 
-                // Chuẩn hóa ảnh: nếu nền tối -> đảo màu chữ thành đen nền trắng + tăng tương phản
                 for (let i = 0; i < data.length; i += 4) {
                     let gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                    
                     if (isDarkBackground) {
-                        // Kéo rõ chữ xám/tối trên nền đen
                         gray = gray > 40 ? 0 : 255;
                     }
-
                     data[i] = gray;
                     data[i + 1] = gray;
                     data[i + 2] = gray;
@@ -241,7 +238,6 @@ export function init() {
     const resetImage = () => {
         currentImageData = null;
         fileInput.value = '';
-        urlInput.value = '';
         previewImg.src = '';
         placeholder.classList.remove('hidden');
         previewWrap.classList.add('hidden');
@@ -259,7 +255,7 @@ export function init() {
                 if (imageType) {
                     const blob = await item.getType(imageType);
                     handleFile(blob);
-                    UI.showAlert('Đã nạp ảnh', 'Đang nhận diện toàn bộ các dòng...', 'info');
+                    UI.showAlert('Đã nạp ảnh', 'Đang nhận diện nội dung...', 'info');
                     return;
                 }
             }
@@ -269,28 +265,9 @@ export function init() {
         }
     });
 
-    const handleUrlLoad = async () => {
-        const url = urlInput.value.trim();
-        if (!url) return;
-        try {
-            statusBadge.textContent = 'Đang tải URL';
-            statusBadge.className = 'px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase rounded-lg';
-            const response = await fetch(url);
-            const blob = await response.blob();
-            if (!blob.type.startsWith('image/')) throw new Error('Không phải ảnh');
-            handleFile(blob);
-        } catch (e) {
-            UI.showAlert('Lỗi tải URL', 'Không thể lấy ảnh do CORS. Vui lòng dán ảnh trực tiếp.', 'error');
-        }
-    };
-
-    urlBtn.addEventListener('click', handleUrlLoad);
-    urlInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') handleUrlLoad();
-    });
-
     window.addEventListener('paste', (e) => {
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        const items = (e.clipboardData || e.originalEvent.clipboardData)?.items;
+        if (!items) return;
         for (let item of items) {
             if (item.kind === 'file' && item.type.startsWith('image/')) {
                 const blob = item.getAsFile();
@@ -334,8 +311,9 @@ export function init() {
         resetImage();
     });
 
-    langSelect.addEventListener('change', () => { if (currentImageData && !isProcessing) runOCR(); });
-    engineSelect.addEventListener('change', () => { if (currentImageData && !isProcessing) runOCR(); });
+    langSelect.addEventListener('change', () => { 
+        if (currentImageData && !isProcessing) runOCR(); 
+    });
 
     async function runOCR() {
         if (!currentImageData || isProcessing) return;
@@ -344,74 +322,96 @@ export function init() {
         progressBox.classList.remove('hidden');
         progressBar.style.width = '10%';
         progressVal.textContent = '10%';
-        statusBadge.textContent = 'Đang nhận diện';
+        statusBadge.textContent = 'Khởi động';
         statusBadge.className = 'px-2.5 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase rounded-lg';
         resultText.value = '';
 
         try {
-            const Tesseract = await loadTesseract();
-            
-            // Bước 1: Nâng cao tương phản ảnh tránh nuốt dòng xám/tối
-            progressLabel.textContent = 'Tối ưu hóa độ tương phản...';
-            const optimizedImage = await preprocessImage(currentImageData);
+            // 1. Kiểm tra tài nguyên cốt lõi (Tránh ném Aborted(-1))
+            progressLabel.textContent = 'Kiểm tra tài nguyên offline...';
+            await verifyResource(PATHS.workerPath, 'worker.min.js');
+            await verifyResource(PATHS.corePath, 'tesseract-core.wasm.js');
 
-            const isFast = engineSelect.value === 'fast';
-            const dataUrl = isFast 
-                ? 'https://raw.githubusercontent.com/naptha/tessdata_fast/master/'
-                : 'https://raw.githubusercontent.com/naptha/tessdata/master/';
+            const Tesseract = await loadTesseract();
+
+            progressLabel.textContent = 'Tối ưu độ tương phản ảnh...';
+            const optimizedImage = await preprocessImage(currentImageData);
 
             let chosenLang = langSelect.value;
 
-            // Bước 2: Tự động phân tích hệ chữ viết
+            // Xử lý tự nhận diện ngôn ngữ nếu chọn 'auto'
             if (chosenLang === 'auto') {
-                progressLabel.textContent = 'Dò hệ chữ viết...';
-                const osdWorker = await Tesseract.createWorker('osd', 0);
+                progressLabel.textContent = 'Đang nhận diện hệ chữ (OSD)...';
+                await verifyResource(`${PATHS.langPath}/osd.traineddata.gz`, 'osd.traineddata.gz');
+
+                const osdWorker = await Tesseract.createWorker('osd', 0, {
+                    workerPath: PATHS.workerPath,
+                    corePath: PATHS.corePath,
+                    langPath: PATHS.langPath,
+                    gzip: true,
+                    errorHandler: err => console.error('OSD Worker Error:', err)
+                });
+
                 const osdRes = await osdWorker.detect(optimizedImage);
                 await osdWorker.terminate();
 
                 const script = osdRes?.data?.script || 'Latin';
                 const scriptMap = {
-                    'Japanese': 'jpn+eng',
-                    'Han': 'chi_sim+chi_tra+eng',
-                    'Hangul': 'kor+eng',
-                    'Cyrillic': 'rus+eng',
-                    'Latin': 'vie+eng'
+                    'Japanese': 'jpn',
+                    'Han': 'chi_sim',
+                    'Hangul': 'eng',
+                    'Cyrillic': 'eng',
+                    'Latin': 'vie'
                 };
-                chosenLang = scriptMap[script] || 'vie+eng';
-                statusBadge.textContent = `${script}`;
+                chosenLang = scriptMap[script] || 'vie';
+                statusBadge.textContent = `Hệ chữ: ${script}`;
             }
 
-            // Bước 3: Khởi tạo Worker với PSM = 6 (Nhận dạng toàn bộ các khối dòng)
+            // Kiểm tra trước file model ngôn ngữ được chọn
+            const langs = chosenLang.split('+');
+            for (const l of langs) {
+                await verifyResource(`${PATHS.langPath}/${l}.traineddata.gz`, `${l}.traineddata.gz`);
+            }
+
+            // 2. Khởi tạo Worker chính với cấu hình Offline chuẩn
+            progressLabel.textContent = 'Nạp mô hình ngôn ngữ...';
             const worker = await Tesseract.createWorker(chosenLang, 1, {
-                langPath: dataUrl,
-                cacheMethod: 'write',
+                workerPath: PATHS.workerPath,
+                corePath: PATHS.corePath,
+                langPath: PATHS.langPath,
+                gzip: true,
                 logger: m => {
                     if (m.status === 'recognizing text') {
                         const percent = Math.round((m.progress || 0) * 100);
                         progressBar.style.width = `${percent}%`;
                         progressVal.textContent = `${percent}%`;
-                        progressLabel.textContent = 'Đang quét toàn bộ dòng chữ...';
+                        progressLabel.textContent = 'Đang bóc tách từng dòng chữ...';
+                    } else if (m.status === 'loading language traineddata') {
+                        progressLabel.textContent = 'Nạp dữ liệu từ tessdata local...';
                     }
+                },
+                errorHandler: err => {
+                    console.error('Worker internal error:', err);
                 }
             });
 
-            // Ép Tesseract quét theo khối văn bản liên tục đồng nhất
             await worker.setParameters({
                 tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
             });
 
+            progressLabel.textContent = 'Đang nhận diện...';
             const { data: { text } } = await worker.recognize(optimizedImage);
             await worker.terminate();
 
             resultText.value = text.trim();
-            statusBadge.textContent = 'Thành công';
+            statusBadge.textContent = 'Hoàn tất';
             statusBadge.className = 'px-2.5 py-1 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase rounded-lg';
-            UI.showAlert('Hoàn tất', 'Đã trích xuất đầy đủ các dòng văn bản.', 'success');
+            UI.showAlert('Hoàn tất', 'Đã trích xuất nội dung thành công.', 'success');
         } catch (err) {
-            console.error(err);
-            statusBadge.textContent = 'Thất bại';
+            console.error('Lỗi quy trình OCR:', err);
+            statusBadge.textContent = 'Lỗi';
             statusBadge.className = 'px-2.5 py-1 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-[10px] font-bold uppercase rounded-lg';
-            UI.showAlert('Lỗi nhận diện', 'Không thể bóc tách nội dung từ ảnh.', 'error');
+            UI.showAlert('Lỗi nhận diện', err.message || 'Kiểm tra console F12 để biết chi tiết.', 'error');
         } finally {
             isProcessing = false;
         }

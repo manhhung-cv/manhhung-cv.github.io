@@ -1,60 +1,598 @@
-/* js/css/style.css */
+:root {
+    --ios-ease: cubic-bezier(0.32, 0.72, 0, 1);
+    --hunq-accent: #6366f1;
+    --hunq-glass: rgba(255, 255, 255, 0.16);
+    --hunq-glass-border: rgba(255, 255, 255, 0.2);
+}
 
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+*,
+*::before,
+*::after {
+    box-sizing: border-box !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
+    overflow: hidden;
+    background: #000;
+}
+
+#wallpaper-layer {
+    position: fixed;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+    transition: background 0.4s ease-in-out;
+    /* Mặc định: Gradient Xanh lá Light Mode */
+    background-image: radial-gradient(circle at 15% 15%, #d1fae5 0%, #a7f3d0 45%, #6ee7b7 100%);
+}
+
+/* Khi kích hoạt Dark Mode: Chuyển sang Gradient Xanh ngọc lục bảo OLED */
+html.dark #wallpaper-layer {
+    background-image: radial-gradient(circle at 15% 15%, #064e3b 0%, #06241b 45%, #020f0b 100%) !important;
+}
+
+.liquid-glass {
+    background: var(--hunq-glass);
+    backdrop-filter: blur(40px) saturate(190%);
+    -webkit-backdrop-filter: blur(40px) saturate(190%);
+    border: 1px solid var(--hunq-glass-border);
+}
+
+/* ========================================================
+   1. STATUS BAR: TRONG SUỐT TRÊN HOME, ĐỔ MÀU KHI VÀO APP
+   ======================================================== */
+#top-system-bar {
+    position: relative;
+    height: calc(44px + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Khi ở Home: Nền trong suốt */
+#top-system-bar.statusbar-home {
+    background-color: transparent !important;
+    border-bottom: 1px solid transparent !important;
+    color: #ffffff !important;
+}
+
+/* Khi vào App: Màu theo Dark / Light */
+#top-system-bar.statusbar-app-dark {
+    background-color: #0d1117 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #ffffff !important;
+}
+
+#top-system-bar.statusbar-app-light {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1) !important;
+    color: #18181b !important;
+}
+#top-system-bar.statusbar-app-light button,
+#top-system-bar.statusbar-app-light span {
+    color: #18181b !important;
+}
+
+#main-content-wrapper {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 44px - env(safe-area-inset-top));
+}
+
+/* ========================================================
+   2. APP CONTAINER & FULL MÀN HÌNH
+   ======================================================== */
+#tab-contents-container {
+    position: absolute;
+    inset: 0;
+    z-index: 35;
+    background-color: #000;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+#single-app-host {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
 
 .view-pane {
     display: none;
-    animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    border-radius: 0px !important;
 }
 
 .view-pane.active {
-    display: block;
+    display: flex !important;
+    flex-direction: column;
 }
 
-@keyframes slideUpFade {
-    from { opacity: 0; transform: translateY(15px) scale(0.99); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+.view-pane-body {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
 }
 
-.premium-card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.app-window-header {
+    height: 44px;
+    background: rgba(18, 18, 24, 0.98);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+    flex-shrink: 0;
+    z-index: 10;
 }
 
-.premium-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 24px -8px rgba(0,0,0,0.06);
+.window-tool-btn {
+    padding: 5px 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 11px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.dark .premium-card:hover {
-    box-shadow: 0 12px 24px -8px rgba(0,0,0,0.5);
-}
-/* Tối ưu hiệu ứng thu nhỏ thanh Tab */
-#tab-strip-container {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transform-origin: top;
+.window-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.18);
 }
 
-/* Back to top button animation */
-#back-to-top {
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+/* ========================================================
+   3. CHIA ĐÔI MÀN HÌNH VÀ THANH RESIZER
+   ======================================================== */
+#split-app-host {
+    position: absolute;
+    inset: 0;
+    background-color: #000;
 }
 
-#back-to-top:active {
-    transform: scale(0.9);
+#split-resizer {
+    width: 10px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    transition: background 0.2s;
+    z-index: 50;
+    cursor: col-resize;
 }
 
-/* Glassmorphism cho Main Viewport để các card nổi bật hơn */
-.premium-card {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(8px);
+#split-resizer:hover, #split-resizer.resizing {
+    background: var(--hunq-accent);
 }
 
-.dark .premium-card {
-    background: rgba(18, 18, 20, 0.8);
-    backdrop-filter: blur(8px);
+.resizer-handle {
+    width: 4px;
+    height: 40px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.7);
 }
 
-/* Ẩn scrollbar cho tab strip */
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+@media (max-width: 767px) {
+    #split-app-host {
+        flex-direction: column !important;
+    }
+    #split-resizer {
+        width: 100% !important;
+        height: 10px !important;
+        cursor: row-resize !important;
+    }
+    .resizer-handle {
+        width: 40px !important;
+        height: 4px !important;
+    }
+}
+
+/* ========================================================
+   4. KÉO THẢ TỰ DO VÀ HIỆU ỨNG RUNG CHỈNH SỬA
+   ======================================================== */
+@keyframes ios-jiggle {
+    0% { transform: rotate(-1.2deg) scale(1.01); }
+    50% { transform: rotate(1.2deg) scale(1.01); }
+    100% { transform: rotate(-1.2deg) scale(1.01); }
+}
+
+.jiggling { animation: ios-jiggle 0.24s infinite ease-in-out alternate; }
+.jiggling:nth-child(2n) { animation-duration: 0.28s; animation-delay: 0.05s; }
+.jiggling:nth-child(3n) { animation-duration: 0.22s; animation-delay: 0.09s; }
+
+.dragging-item {
+    opacity: 0.3 !important;
+    transform: scale(0.9) !important;
+}
+
+.grid-cell {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.cell-hover-target {
+    background: rgba(99, 102, 241, 0.25) !important;
+    border: 2px dashed rgba(255, 255, 255, 0.8) !important;
+}
+
+.dock-hover-target {
+    background: rgba(99, 102, 241, 0.35) !important;
+    border: 2px dashed rgba(255, 255, 255, 0.9) !important;
+}
+
+.edge-zone {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    z-index: 45;
+    pointer-events: none;
+}
+.edge-zone.active-dnd { pointer-events: auto; }
+#edge-left { left: 0; }
+#edge-right { right: 0; }
+
+/* ========================================================
+   5. MOBIUI: ICON & DOCK
+   ======================================================== */
+#dynamic-island-wrapper {
+    position: fixed;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    pointer-events: auto;
+}
+
+#dynamic-island {
+    transition: all 0.35s var(--ios-ease);
+    transform-origin: top center;
+}
+
+#dynamic-island.island-compact {
+    width: 110px;
+    height: 28px;
+    border-radius: 20px;
+}
+
+#dynamic-island.island-alert {
+    width: min(92vw, 360px);
+    height: 60px;
+    border-radius: 30px;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+#app-viewport {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+}
+
+#homescreen-launcher {
+    padding: 4px 10px;
+}
+
+#launcher-viewport {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+#launcher-pages-slider {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    will-change: transform;
+    transition: transform 0.35s var(--ios-ease);
+}
+
+.launcher-page {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    height: 100%;
+    position: relative;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.grid-layer-container {
+    position: relative;
+    width: 100%;
+    max-width: min(100%, calc((100vh - 180px) * 4 / 6));
+    aspect-ratio: 4 / 6;
+    height: auto;
+    margin: auto;
+}
+
+.grid-layer {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    gap: 12px;
+    box-sizing: border-box;
+}
+
+.home-item {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Icon to hơn trên MobiUI */
+[data-device-mode="phone"] .app-icon-box {
+    width: 62px !important;
+    height: 62px !important;
+    border-radius: 20px !important;
+    font-size: 26px !important;
+}
+[data-device-mode="phone"] .app-icon-label {
+    font-size: 11.5px !important;
+    font-weight: 500 !important;
+    max-width: 72px !important;
+}
+
+/* Page Dots mặc định */
+.page-dot-btn {
+    height: 10px;
+    border-radius: 9999px;
+    transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    cursor: pointer;
+}
+.page-dot-btn.active {
+    width: 26px;
+    background-color: #ffffff;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+.page-dot-btn.inactive {
+    width: 10px;
+    background-color: rgba(255, 255, 255, 0.4);
+}
+.page-dot-btn.inactive:hover {
+    background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* ========================================================
+   THU NHỎ CỤM PAGE DOTS TRÊN MOBIUI (PHONE)
+   ======================================================== */
+[data-device-mode="phone"] #page-dots-wrapper {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+}
+
+/* Khung pill bọc ngoài dots + kính lúp + nút thêm trang */
+[data-device-mode="phone"] #page-dots-wrapper > div {
+    padding: 3px 8px !important;
+    gap: 6px !important;
+}
+
+/* Thu nhỏ nút tìm kiếm và nút (+) trong thanh dots */
+[data-device-mode="phone"] #page-dots-wrapper button[title="Tìm kiếm"],
+[data-device-mode="phone"] #page-dots-wrapper button[title="Thêm trang mới"] {
+    width: 24px !important;
+    height: 24px !important;
+}
+[data-device-mode="phone"] #page-dots-wrapper button[title="Tìm kiếm"] i,
+[data-device-mode="phone"] #page-dots-wrapper button[title="Thêm trang mới"] i {
+    font-size: 10px !important;
+}
+
+/* Đường vạch kẻ chia nhỏ lại */
+[data-device-mode="phone"] #page-dots-wrapper .w-px {
+    height: 10px !important;
+}
+
+/* Viên chấm dots nhỏ gọn */
+[data-device-mode="phone"] .page-dot-btn {
+    height: 6px !important;
+}
+[data-device-mode="phone"] .page-dot-btn.active {
+    width: 16px !important;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.6) !important;
+}
+[data-device-mode="phone"] .page-dot-btn.inactive {
+    width: 6px !important;
+}
+
+/* DOCK TỰ ĐỘNG CO GIÃN THEO SỐ LƯỢNG ICON */
+#hunqos-dock {
+    width: auto !important;
+    min-width: 240px;
+    max-width: 92vw;
+    height: 72px;
+    padding: 0 16px;
+    border-radius: 36px;
+}
+
+.dock-item {
+    width: 48px;
+    height: 48px;
+    border-radius: 18px;
+    position: relative;
+    flex-shrink: 0;
+}
+
+/* ========================================================
+   6. GIAO DIỆN DEXUI
+   ======================================================== */
+[data-device-mode="desktop"] #home-bar-touch-area { display: none !important; }
+[data-device-mode="desktop"] #dynamic-island-wrapper { display: none !important; }
+
+[data-device-mode="desktop"] #top-system-bar {
+    height: 36px !important;
+    padding: 0 16px !important;
+}
+
+[data-device-mode="desktop"] #desktop-apple-menu { display: flex !important; }
+[data-device-mode="desktop"] #desktop-menubar-tabs { display: flex !important; }
+[data-device-mode="desktop"] #os-clock { font-size: 12px !important; }
+
+[data-device-mode="desktop"] #main-content-wrapper {
+    height: calc(100vh - 36px) !important;
+}
+
+[data-device-mode="desktop"] #app-viewport {
+    padding-bottom: 84px !important;
+}
+
+[data-device-mode="desktop"] .grid-layer-container {
+    aspect-ratio: unset !important;
+    max-width: 96vw !important;
+    width: 95vw !important;
+    height: calc(100vh - 140px) !important;
+}
+
+[data-device-mode="desktop"] #hunqos-dock-wrapper {
+    position: fixed;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    pointer-events: none;
+}
+
+[data-device-mode="desktop"] #hunqos-dock {
+    pointer-events: auto;
+    height: 64px !important;
+    padding: 0 18px !important;
+    border-radius: 24px !important;
+    background: rgba(22, 22, 30, 0.65) !important;
+    backdrop-filter: blur(35px) saturate(200%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-device-mode="desktop"] .dock-item {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 14px !important;
+}
+
+/* ========================================================
+   7. GIAO DIỆN TABUI
+   ======================================================== */
+[data-device-mode="tablet"] #top-system-bar {
+    height: calc(40px + env(safe-area-inset-top)) !important;
+    padding: 0 24px !important;
+}
+
+[data-device-mode="tablet"] #main-content-wrapper {
+    height: calc(100vh - 40px - env(safe-area-inset-top)) !important;
+}
+
+[data-device-mode="tablet"] #app-viewport {
+    padding-bottom: calc(30px + env(safe-area-inset-bottom)) !important;
+}
+
+[data-device-mode="tablet"] .grid-layer-container {
+    aspect-ratio: unset !important;
+    max-width: 90vw !important;
+    width: 90vw !important;
+    height: calc(100vh - 160px) !important;
+}
+
+[data-device-mode="tablet"] #hunqos-dock {
+    height: 70px !important;
+    border-radius: 28px !important;
+}
+
+/* ========================================================
+   8. MOBIUI KHI XOAY NGANG
+   ======================================================== */
+@media (orientation: landscape) {
+    [data-device-mode="phone"] .grid-layer-container {
+        max-width: 88vw !important;
+        aspect-ratio: unset !important;
+        height: calc(100vh - 145px) !important;
+    }
+
+    [data-device-mode="phone"] #dynamic-island-wrapper {
+        top: 2px !important;
+        transform: translateX(-50%) scale(0.85);
+    }
+
+    [data-device-mode="phone"] #page-dots-wrapper {
+        padding-top: 2px !important;
+        padding-bottom: 2px !important;
+    }
+
+    [data-device-mode="phone"] #hunqos-dock-wrapper {
+        padding-bottom: 4px !important;
+    }
+
+    [data-device-mode="phone"] #hunqos-dock {
+        height: 52px !important;
+        border-radius: 26px !important;
+        padding: 0 12px !important;
+    }
+
+    [data-device-mode="phone"] .dock-item {
+        width: 38px !important;
+        height: 38px !important;
+        border-radius: 14px !important;
+        font-size: 15px !important;
+    }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ========================================================
+   THEME ICON: HÌNH DẠNG & MÀU SẮC
+   ======================================================== */
+
+/* 1. Hình dạng: Bo nhẹ (Mặc định) */
+.shape-rounded .app-icon-box,
+.shape-rounded .dock-item {
+    border-radius: 20px !important;
+}
+
+/* 2. Hình dạng: Tròn */
+.shape-circle .app-icon-box,
+.shape-circle .dock-item {
+    border-radius: 9999px !important;
+}
+
+/* 3. Hình dạng: Vuông góc */
+.shape-square .app-icon-box,
+.shape-square .dock-item {
+    border-radius: 6px !important;
+}
+
+/* Hỗ trợ biểu tượng FontAwesome hiển thị màu Gradient */
+.icon-gradient-text {
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    display: inline-block;
+}

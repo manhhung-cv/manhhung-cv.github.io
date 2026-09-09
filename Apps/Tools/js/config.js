@@ -389,6 +389,14 @@ export const TOOLS = [
         icon: 'fa-solid fa-file-image',
         desc: 'Công cụ chuyển đổi hình ảnh thành văn bản bằng OCR.',
         tags: ['image', 'text', 'ocr']
+    },
+    {
+        id: 'text-to-speech',
+        catId: 'utilities', // Bạn có thể đổi catId này cho phù hợp với danh mục hệ thống của bạn (ví dụ: 'tools', 'hardware')
+        name: 'Chuyển văn bản thành giọng nói',
+        icon: 'fa-solid fa-volume-up',
+        desc: 'Công cụ chuyển đổi văn bản thành giọng nói với nhiều ngôn ngữ và giọng đọc khác nhau.',
+        tags: ['text', 'speech', 'voice', 'tts']
     }
 
 ];
